@@ -76,6 +76,25 @@ const ADDITIVE: u8 = 128;
 /// Only be able to change dependencies.
 const DEP_ONLY: u8 = 192;
 
+/// Admin capability that restricts who can deploy and upgrade contracts
+public struct PackageAdminCap has key, store {
+    id: UID
+}
+
+/// Error for when someone without admin capability tries to manage packages
+const ENotAuthorizedPackageAdmin: u64 = 5;
+
+/// Initialize function to create the PackageAdminCap on system initialization
+/// This would be called during genesis or initial system setup
+public fun init_package_admin(ctx: &mut TxContext) {
+    transfer::transfer(
+        PackageAdminCap {
+            id: object::new(ctx)
+        },
+        tx_context::sender(ctx)
+    );
+}
+
 /// This type can only be created in the transaction that
 /// generates a module, by consuming its one-time witness, so it
 /// can be used to identify the address that published the package
@@ -131,10 +150,15 @@ public struct UpgradeReceipt {
 }
 
 /// Claim a Publisher object.
-/// Requires a One-Time-Witness to prove ownership. Due to this
-/// constraint there can be only one Publisher object per module
-/// but multiple per package (!).
-public fun claim<OTW: drop>(otw: OTW, ctx: &mut TxContext): Publisher {
+/// Requires a One-Time-Witness to prove ownership and the PackageAdminCap. 
+/// Due to this constraint there can be only one Publisher object per module
+/// but multiple per package (!). Requiring admin cap restricts package publishing
+/// to authorized administrators.
+public fun claim<OTW: drop>(
+    _admin_cap: &PackageAdminCap,
+    otw: OTW, 
+    ctx: &mut TxContext
+): Publisher {
     assert!(types::is_one_time_witness(&otw), ENotOneTimeWitness);
 
     let type_name = type_name::get_with_original_ids<OTW>();
@@ -149,9 +173,13 @@ public fun claim<OTW: drop>(otw: OTW, ctx: &mut TxContext): Publisher {
 #[allow(lint(self_transfer))]
 /// Claim a Publisher object and send it to transaction sender.
 /// Since this function can only be called in the module initializer,
-/// the sender is the publisher.
-public fun claim_and_keep<OTW: drop>(otw: OTW, ctx: &mut TxContext) {
-    mys::transfer::public_transfer(claim(otw, ctx), ctx.sender())
+/// the sender is the publisher. Requires admin cap to restrict access.
+public fun claim_and_keep<OTW: drop>(
+    admin_cap: &PackageAdminCap,
+    otw: OTW, 
+    ctx: &mut TxContext
+) {
+    mys::transfer::public_transfer(claim(admin_cap, otw, ctx), ctx.sender())
 }
 
 /// Destroy a Publisher object effectively removing all privileges
@@ -277,7 +305,14 @@ public entry fun make_immutable(cap: UpgradeCap) {
 /// the upgrade must have a matching digest, and the changes relative to
 /// the parent package must be compatible with the policy in the ticket
 /// for the upgrade to succeed.
-public fun authorize_upgrade(cap: &mut UpgradeCap, policy: u8, digest: vector<u8>): UpgradeTicket {
+/// 
+/// Requires admin capability to restrict package upgrades to authorized administrators.
+public fun authorize_upgrade(
+    _admin_cap: &PackageAdminCap,
+    cap: &mut UpgradeCap, 
+    policy: u8, 
+    digest: vector<u8>
+): UpgradeTicket {
     let id_zero = @0x0.to_id();
     assert!(cap.package != id_zero, EAlreadyAuthorized);
     assert!(policy >= cap.policy, ETooPermissive);

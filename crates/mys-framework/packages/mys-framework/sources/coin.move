@@ -205,10 +205,32 @@ public fun destroy_zero<T>(c: Coin<T>) {
 
 // === Registering new coin types and managing the coin supply ===
 
+/// Admin capability that restricts who can create currencies
+public struct CurrencyAdminCap has key, store {
+    id: UID
+}
+
+/// Error for when someone without admin capability tries to create a currency
+const ENotAuthorizedAdmin: u64 = 4;
+
+/// Initialize function to create the CurrencyAdminCap on system initialization
+/// This would be called during genesis or initial system setup
+public fun init_currency_admin(ctx: &mut TxContext) {
+    transfer::transfer(
+        CurrencyAdminCap {
+            id: object::new(ctx)
+        },
+        tx_context::sender(ctx)
+    );
+}
+
 /// Create a new currency type `T` as and return the `TreasuryCap` for
 /// `T` to the caller. Can only be called with a `one-time-witness`
 /// type, ensuring that there's only one `TreasuryCap` per `T`.
+/// 
+/// Requires the CurrencyAdminCap to restrict currency creation to authorized admins.
 public fun create_currency<T: drop>(
+    _admin_cap: &CurrencyAdminCap,
     witness: T,
     decimals: u8,
     symbol: vector<u8>,
@@ -244,7 +266,10 @@ public fun create_currency<T: drop>(
 /// The `allow_global_pause` flag enables an additional API that will cause all addresses to
 /// be denied. Note however, that this doesn't affect per-address entries of the deny list and
 /// will not change the result of the "contains" APIs.
+/// 
+/// Requires the CurrencyAdminCap to restrict regulated currency creation to authorized admins.
 public fun create_regulated_currency_v2<T: drop>(
+    admin_cap: &CurrencyAdminCap,
     witness: T,
     decimals: u8,
     symbol: vector<u8>,
@@ -255,6 +280,7 @@ public fun create_regulated_currency_v2<T: drop>(
     ctx: &mut TxContext,
 ): (TreasuryCap<T>, DenyCapV2<T>, CoinMetadata<T>) {
     let (treasury_cap, metadata) = create_currency(
+        admin_cap,
         witness,
         decimals,
         symbol,

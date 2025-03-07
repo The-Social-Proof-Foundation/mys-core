@@ -20,6 +20,7 @@ module mys::ai_data_monetization {
     use mys::ai_agent_integration::{Self};
     use mys::platform::{Self, Platform};
     use mys::profile::{Self, Profile};
+    use mys::fee_distribution::{Self, FeeRegistry};
     
     // === Errors ===
     /// Unauthorized operation
@@ -55,41 +56,31 @@ module mys::ai_data_monetization {
     /// Premium data monetization (comprehensive data access)
     const MONETIZATION_PREMIUM: u8 = 2;
     
-    // === Default Revenue Shares ===
+    // === Fee Model Names ===
+    /// Name for basic data usage fee model
+    const FEE_MODEL_BASIC: vector<u8> = b"AI_Data_Basic";
+    /// Name for standard data usage fee model
+    const FEE_MODEL_STANDARD: vector<u8> = b"AI_Data_Standard";
+    /// Name for premium data usage fee model
+    const FEE_MODEL_PREMIUM: vector<u8> = b"AI_Data_Premium";
+    
+    // === Default Fee Amounts ===
+    /// Default fee for basic data usage (in MYS tokens)
+    const DEFAULT_BASIC_FEE: u64 = 10;
+    /// Default fee for standard data usage (in MYS tokens)
+    const DEFAULT_STANDARD_FEE: u64 = 50;
+    /// Default fee for premium data usage (in MYS tokens)
+    const DEFAULT_PREMIUM_FEE: u64 = 100;
+    
+    // === Default Revenue Shares (in basis points) ===
     /// Default user share percentage (50%)
-    const DEFAULT_USER_SHARE: u64 = 50;
+    const DEFAULT_USER_SHARE: u64 = 5000; // 50%
     /// Default platform share percentage (30%)
-    const DEFAULT_PLATFORM_SHARE: u64 = 30;
+    const DEFAULT_PLATFORM_SHARE: u64 = 3000; // 30%
     /// Default MySocial share percentage (20%)
-    const DEFAULT_MYSOCIAL_SHARE: u64 = 20;
+    const DEFAULT_MYSOCIAL_SHARE: u64 = 2000; // 20%
     
-    // === Structs ===
-    
-    /// Fee configuration for data monetization
-    struct FeeConfig has key {
-        id: UID,
-        /// Default fee for basic data usage (in MYS tokens)
-        basic_fee: u64,
-        /// Default fee for standard data usage (in MYS tokens)
-        standard_fee: u64,
-        /// Default fee for premium data usage (in MYS tokens)
-        premium_fee: u64,
-        /// User share percentage (out of 100)
-        user_share: u64,
-        /// Platform share percentage (out of 100)
-        platform_share: u64,
-        /// MySocial share percentage (out of 100)
-        mysocial_share: u64,
-        /// MySocial treasury address
-        treasury_address: address,
-    }
-    
-    /// AI Data Monetization Treasury
-    struct Treasury has key {
-        id: UID,
-        /// Balance holding MySocial's share
-        balance: Balance<MYS>,
-    }
+    // === Structs ==="
     
     /// AI Data Monetization Manager
     struct DataMonetizationManager has key {
@@ -221,28 +212,6 @@ module mys::ai_data_monetization {
     
     /// Initialize the AI Data Monetization system
     fun init(ctx: &mut TxContext) {
-        // Create and share fee configuration
-        transfer::share_object(
-            FeeConfig {
-                id: object::new(ctx),
-                basic_fee: 10, // 10 MYS tokens for basic usage
-                standard_fee: 50, // 50 MYS tokens for standard usage
-                premium_fee: 100, // 100 MYS tokens for premium usage
-                user_share: DEFAULT_USER_SHARE,
-                platform_share: DEFAULT_PLATFORM_SHARE,
-                mysocial_share: DEFAULT_MYSOCIAL_SHARE,
-                treasury_address: tx_context::sender(ctx),
-            }
-        );
-        
-        // Create and share treasury
-        transfer::share_object(
-            Treasury {
-                id: object::new(ctx),
-                balance: balance::zero(),
-            }
-        );
-        
         // Create and share data monetization manager
         transfer::share_object(
             DataMonetizationManager {
@@ -253,6 +222,80 @@ module mys::ai_data_monetization {
                 agent_fee_overrides: table::new(ctx),
                 total_earnings: 0,
             }
+        );
+    }
+    
+    /// Initialize AI Data Monetization fee models in the universal fee distribution system
+    /// This should be called during system initialization after fee_distribution is initialized
+    public entry fun initialize_fee_models(
+        admin_cap: &fee_distribution::AdminCap,
+        registry: &mut fee_distribution::FeeRegistry,
+        ctx: &mut TxContext
+    ) {
+        // Recipient addresses
+        let recipient_addresses = vector[
+            // User representative address (placeholder - in real usage this will be dynamic)
+            @0x0,
+            // Platform representative address
+            tx_context::sender(ctx),
+            // MySocial treasury address
+            tx_context::sender(ctx)
+        ];
+        
+        // Recipient names
+        let recipient_names = vector[
+            string::utf8(b"User"),
+            string::utf8(b"Platform"),
+            string::utf8(b"MySocial Treasury")
+        ];
+        
+        // Recipient shares (in basis points)
+        let recipient_shares = vector[
+            DEFAULT_USER_SHARE,
+            DEFAULT_PLATFORM_SHARE,
+            DEFAULT_MYSOCIAL_SHARE
+        ];
+        
+        // Create fee model for basic data usage
+        fee_distribution::create_fixed_fee_model(
+            admin_cap,
+            registry,
+            string::utf8(FEE_MODEL_BASIC),
+            string::utf8(b"Fee for basic AI data usage"),
+            DEFAULT_BASIC_FEE * 100000000, // Convert to smallest units
+            recipient_addresses,
+            recipient_names,
+            recipient_shares,
+            tx_context::sender(ctx), // Owner (admin)
+            ctx
+        );
+        
+        // Create fee model for standard data usage
+        fee_distribution::create_fixed_fee_model(
+            admin_cap,
+            registry,
+            string::utf8(FEE_MODEL_STANDARD),
+            string::utf8(b"Fee for standard AI data usage"),
+            DEFAULT_STANDARD_FEE * 100000000, // Convert to smallest units
+            recipient_addresses,
+            recipient_names,
+            recipient_shares,
+            tx_context::sender(ctx), // Owner (admin)
+            ctx
+        );
+        
+        // Create fee model for premium data usage
+        fee_distribution::create_fixed_fee_model(
+            admin_cap,
+            registry,
+            string::utf8(FEE_MODEL_PREMIUM),
+            string::utf8(b"Fee for premium AI data usage"),
+            DEFAULT_PREMIUM_FEE * 100000000, // Convert to smallest units
+            recipient_addresses,
+            recipient_names,
+            recipient_shares,
+            tx_context::sender(ctx), // Owner (admin)
+            ctx
         );
     }
     
@@ -336,11 +379,10 @@ module mys::ai_data_monetization {
     
     // === Agent Payment ===
     
-    /// Pay for data usage
+    /// Pay for data usage using the universal fee distribution system
     public entry fun pay_for_data_usage(
         manager: &mut DataMonetizationManager,
-        treasury: &mut Treasury,
-        fee_config: &FeeConfig,
+        fee_registry: &mut FeeRegistry,
         agent_cap: &AgentCap,
         platform_id: ID,
         profile_id: ID,
@@ -357,81 +399,32 @@ module mys::ai_data_monetization {
         // Verify usage type is allowed for this profile
         assert!(vector::contains(&profile_settings.allowed_usage_types, &usage_type), EUserNotOptedIn);
         
-        // Determine payment amount based on monetization level
-        let payment_amount = if (table::contains(&manager.agent_fee_overrides, agent_cap.agent_id)) {
-            // Use agent-specific fee override if available
-            let fee_override = table::borrow(&manager.agent_fee_overrides, agent_cap.agent_id);
-            if (profile_settings.monetization_level == MONETIZATION_BASIC) {
-                fee_override.basic_fee
-            } else if (profile_settings.monetization_level == MONETIZATION_STANDARD) {
-                fee_override.standard_fee
-            } else {
-                fee_override.premium_fee
-            }
+        // Determine which fee model to use based on monetization level
+        let fee_model_name = if (profile_settings.monetization_level == MONETIZATION_BASIC) {
+            string::utf8(FEE_MODEL_BASIC)
+        } else if (profile_settings.monetization_level == MONETIZATION_STANDARD) {
+            string::utf8(FEE_MODEL_STANDARD)
         } else {
-            // Use default fees from config
-            if (profile_settings.monetization_level == MONETIZATION_BASIC) {
-                fee_config.basic_fee
-            } else if (profile_settings.monetization_level == MONETIZATION_STANDARD) {
-                fee_config.standard_fee
-            } else {
-                fee_config.premium_fee
-            }
+            string::utf8(FEE_MODEL_PREMIUM)
         };
         
-        // Verify payment is sufficient
-        assert!(coin::value(payment) >= payment_amount, EInsufficientBalance);
+        // Look up fee model ID
+        let (exists, fee_model_id) = fee_distribution::find_fee_model_by_name(
+            fee_registry,
+            fee_model_name
+        );
+        assert!(exists, EInvalidFeeConfig);
         
-        // Determine revenue shares
-        let (user_share, platform_share, mysocial_share) = if (
-            table::contains(&manager.agent_fee_overrides, agent_cap.agent_id)
-        ) {
-            let fee_override = table::borrow(&manager.agent_fee_overrides, agent_cap.agent_id);
-            (fee_override.user_share, fee_override.platform_share, fee_override.mysocial_share)
-        } else {
-            (fee_config.user_share, fee_config.platform_share, fee_config.mysocial_share)
-        };
-        
-        // Calculate share amounts
-        let user_amount = (payment_amount * user_share) / 100;
-        let platform_amount = (payment_amount * platform_share) / 100;
-        let mysocial_amount = payment_amount - user_amount - platform_amount;
-        
-        // Extract payment from coin
-        let payment_balance = coin::extract(payment, payment_amount);
-        
-        // Distribute shares
-        
-        // User share
-        let profile_settings = table::borrow_mut(&mut manager.profile_settings, profile_id);
-        profile_settings.earned_revenue = profile_settings.earned_revenue + user_amount;
-        profile_settings.total_earnings = profile_settings.total_earnings + user_amount;
-        
-        // Platform share
-        if (!table::contains(&manager.platform_treasuries, platform_id)) {
-            table::add(
-                &mut manager.platform_treasuries,
-                platform_id,
-                PlatformTreasury {
-                    platform_id,
-                    balance: balance::zero(),
-                    total_earnings: 0,
-                }
-            );
-        };
-        let platform_treasury = table::borrow_mut(&mut manager.platform_treasuries, platform_id);
-        balance::join(&mut platform_treasury.balance, balance::split(&mut payment_balance, platform_amount));
-        platform_treasury.total_earnings = platform_treasury.total_earnings + platform_amount;
-        
-        // MySocial share
-        balance::join(&mut treasury.balance, balance::split(&mut payment_balance, mysocial_amount));
-        
-        // Add any remaining dust to MySocial balance (should be 0)
-        if (balance::value(&payment_balance) > 0) {
-            balance::join(&mut treasury.balance, payment_balance);
-        } else {
-            balance::destroy_zero(payment_balance);
-        };
+        // Process the payment through fee distribution system
+        // The system will extract the correct fee and distribute it to recipients
+        let transaction_amount = coin::value(payment);
+        let fee_amount = fee_distribution::collect_and_distribute_fees<MYS>(
+            fee_registry,
+            fee_model_id,
+            transaction_amount,
+            payment,
+            ctx
+        );
         
         // Update agent payment record
         if (!table::contains(&manager.agent_payments, agent_cap.agent_id)) {
@@ -447,12 +440,12 @@ module mys::ai_data_monetization {
             );
         };
         let payment_record = table::borrow_mut(&mut manager.agent_payments, agent_cap.agent_id);
-        payment_record.total_payments = payment_record.total_payments + payment_amount;
+        payment_record.total_payments = payment_record.total_payments + fee_amount;
         payment_record.usage_count = payment_record.usage_count + 1;
         payment_record.last_payment = tx_context::epoch_timestamp_ms(ctx);
         
-        // Update total earnings
-        manager.total_earnings = manager.total_earnings + payment_amount;
+        // Update total earnings for stats
+        manager.total_earnings = manager.total_earnings + fee_amount;
         
         // Create data usage authorization token
         let current_time = tx_context::epoch_timestamp_ms(ctx);
@@ -465,19 +458,51 @@ module mys::ai_data_monetization {
             platform_id,
             monetization_level: profile_settings.monetization_level,
             allowed_usage_types: profile_settings.allowed_usage_types,
-            payment_amount,
+            payment_amount: fee_amount,
             creation_timestamp: current_time,
             expiration_timestamp: expiration_time,
         };
         
-        // Emit event
+        // Emit legacy event for compatibility
+        // Get the fee model info to extract shares
+        let (_, _, _, _, total_split_bps) = fee_distribution::get_fee_model_info(
+            fee_registry,
+            fee_model_id
+        );
+        let splits = fee_distribution::get_fee_splits(fee_registry, fee_model_id);
+        
+        // Default share values if we can't extract them
+        let mut user_share = DEFAULT_USER_SHARE;
+        let mut platform_share = DEFAULT_PLATFORM_SHARE;
+        let mut mysocial_share = DEFAULT_MYSOCIAL_SHARE;
+        
+        // Try to extract shares from fee model
+        let i = 0;
+        let len = vector::length(&splits);
+        while (i < len) {
+            let split = vector::borrow(&splits, i);
+            if (i == 0) { // Assuming first split is for user
+                user_share = split.share_bps;
+            } else if (i == 1) { // Assuming second split is for platform
+                platform_share = split.share_bps;
+            } else if (i == 2) { // Assuming third split is for MySocial
+                mysocial_share = split.share_bps;
+            };
+            i = i + 1;
+        };
+        
+        // Calculate approximate share amounts for the event
+        let user_amount = (fee_amount * user_share) / 10000;
+        let platform_amount = (fee_amount * platform_share) / 10000;
+        let mysocial_amount = fee_amount - user_amount - platform_amount;
+        
         event::emit(DataUsagePaymentEvent {
             agent_id: agent_cap.agent_id,
             platform_id,
             profile_id,
             usage_type,
             monetization_level: profile_settings.monetization_level,
-            payment_amount,
+            payment_amount: fee_amount,
             user_share: user_amount,
             platform_share: platform_amount,
             mysocial_share: mysocial_amount,

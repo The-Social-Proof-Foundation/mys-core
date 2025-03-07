@@ -553,6 +553,7 @@ module mys_system::mys_system {
     ///    gas coins.
     /// 3. Distribute computation charge to validator stake.
     /// 4. Update all validators.
+    /// 5. Advance the blob storage system to the next epoch.
     fun advance_epoch(
         storage_reward: Balance<MYS>,
         computation_reward: Balance<MYS>,
@@ -582,6 +583,18 @@ module mys_system::mys_system {
             epoch_start_timestamp_ms,
             ctx,
         );
+        
+        // Advance the blob storage epoch if the blob storage system is initialized
+        if (exists<blob_storage::system::BlobStorageState>(@blob_storage)) {
+            let blob_state = borrow_global_mut<blob_storage::system::BlobStorageState>(@blob_storage);
+            // Create a new committee with validator information from the current validator set
+            let (new_committee, new_params) = blob_storage::system::create_committee_from_validator_set(
+                self.validators(),
+                new_epoch as u32,
+                ctx
+            );
+            blob_storage::system::advance_epoch(blob_state, new_committee, &new_params, ctx);
+        };
 
         storage_rebate
     }

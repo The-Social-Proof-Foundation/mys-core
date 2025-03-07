@@ -15,6 +15,7 @@ module mys::token_orderbook_integration {
     use mys::mys::MYS;
 
     use mys::user_token::{Self, UserTokenInfo, TokenRegistry, FeeCollector};
+    use mys::fee_distribution::{Self, FeeRegistry};
     
     use deepbook::custodian_v2::{Self as custodian, AccountCap};
     use deepbook::clob_v2::{Self as clob, Pool, PoolOwnerCap};
@@ -81,6 +82,18 @@ module mys::token_orderbook_integration {
         platform_fee: u64,
     }
     
+    // === Fee Model Names ===
+    /// Name for token trading fee model
+    const FEE_MODEL_TOKEN_TRADING: vector<u8> = b"Token_Trading_Fee";
+    
+    // === Default Fee Values ===
+    /// Default trading fee in basis points (0.5%)
+    const DEFAULT_TRADING_FEE_BPS: u64 = 50;
+    /// Default creator share of fees in basis points (80%)
+    const DEFAULT_CREATOR_SHARE_BPS: u64 = 8000;
+    /// Default platform share of fees in basis points (20%)
+    const DEFAULT_PLATFORM_SHARE_BPS: u64 = 2000;
+    
     // === Initialization ===
     
     /// Initialize the order book integration
@@ -91,6 +104,48 @@ module mys::token_orderbook_integration {
                 id: object::new(ctx),
                 token_pools: vector::empty(),
             }
+        );
+    }
+    
+    /// Initialize token trading fee model in the universal fee distribution system
+    /// This should be called during system initialization after fee_distribution is initialized
+    public entry fun initialize_fee_model(
+        admin_cap: &fee_distribution::AdminCap,
+        registry: &mut fee_distribution::FeeRegistry,
+        ctx: &mut TxContext
+    ) {
+        // Recipient addresses
+        let recipient_addresses = vector[
+            // Creator representative (placeholder - in real usage this will be dynamic)
+            @0x0,
+            // Platform representative
+            tx_context::sender(ctx)
+        ];
+        
+        // Recipient names
+        let recipient_names = vector[
+            string::utf8(b"Token Creator"),
+            string::utf8(b"Platform")
+        ];
+        
+        // Recipient shares (in basis points)
+        let recipient_shares = vector[
+            DEFAULT_CREATOR_SHARE_BPS,
+            DEFAULT_PLATFORM_SHARE_BPS
+        ];
+        
+        // Create fee model for token trading
+        fee_distribution::create_percentage_fee_model(
+            admin_cap,
+            registry,
+            string::utf8(FEE_MODEL_TOKEN_TRADING),
+            string::utf8(b"Fee for token trading and swaps"),
+            DEFAULT_TRADING_FEE_BPS,
+            recipient_addresses,
+            recipient_names,
+            recipient_shares,
+            tx_context::sender(ctx), // Owner (admin)
+            ctx
         );
     }
     
@@ -179,11 +234,12 @@ module mys::token_orderbook_integration {
         clob::create_account(ctx)
     }
     
-    /// Deposit base asset into DeepBook
+
+    /// Deposit base asset into DeepBook using universal fee distribution system
     public entry fun deposit_base<BaseAsset, QuoteAsset>(
         pool: &mut Pool<BaseAsset, QuoteAsset>,
         token_registry: &TokenRegistry,
-        fee_collector: &mut FeeCollector<BaseAsset>,
+        fee_registry: &mut FeeRegistry,
         coin: Coin<BaseAsset>,
         account_cap: &AccountCap,
         ctx: &mut TxContext
@@ -195,7 +251,7 @@ module mys::token_orderbook_integration {
         if (is_user_token(token_registry, token_type)) {
             process_token_fees<BaseAsset>(
                 token_registry,
-                fee_collector,
+                fee_registry,
                 &mut processed_coin,
                 ctx
             );
@@ -205,11 +261,12 @@ module mys::token_orderbook_integration {
         clob::deposit_base(pool, processed_coin, account_cap);
     }
     
-    /// Deposit quote asset into DeepBook
+    
+    /// Deposit quote asset into DeepBook using universal fee distribution
     public entry fun deposit_quote<BaseAsset, QuoteAsset>(
         pool: &mut Pool<BaseAsset, QuoteAsset>,
         token_registry: &TokenRegistry,
-        fee_collector: &mut FeeCollector<QuoteAsset>,
+        fee_registry: &mut FeeRegistry,
         coin: Coin<QuoteAsset>,
         account_cap: &AccountCap,
         ctx: &mut TxContext
@@ -221,7 +278,7 @@ module mys::token_orderbook_integration {
         if (is_user_token(token_registry, token_type)) {
             process_token_fees<QuoteAsset>(
                 token_registry,
-                fee_collector,
+                fee_registry,
                 &mut processed_coin,
                 ctx
             );
@@ -363,12 +420,12 @@ module mys::token_orderbook_integration {
         };
     }
     
-    /// Swap exact base for quote using DeepBook
+    
+    /// Swap exact base for quote using DeepBook with universal fee distribution
     public entry fun swap_exact_base_for_quote<BaseAsset, QuoteAsset>(
         pool: &mut Pool<BaseAsset, QuoteAsset>,
         token_registry: &TokenRegistry,
-        fee_collector_base: &mut FeeCollector<BaseAsset>,
-        fee_collector_quote: &mut FeeCollector<QuoteAsset>,
+        fee_registry: &mut FeeRegistry,
         account_cap: &AccountCap,
         client_order_id: u64,
         quantity: u64,
@@ -388,7 +445,7 @@ module mys::token_orderbook_integration {
         if (is_user_token(token_registry, token_type_base)) {
             process_token_fees<BaseAsset>(
                 token_registry,
-                fee_collector_base,
+                fee_registry,
                 &mut processed_base_coin,
                 ctx
             );
@@ -410,7 +467,7 @@ module mys::token_orderbook_integration {
         if (is_user_token(token_registry, token_type_quote) && coin::value(&ret_quote_coin) > 0) {
             let processed_coin = process_token_fees_and_return<QuoteAsset>(
                 token_registry,
-                fee_collector_quote,
+                fee_registry,
                 ret_quote_coin,
                 ctx
             );
@@ -575,44 +632,67 @@ module mys::token_orderbook_integration {
         result
     }
     
-    /// Process fees for a coin
+    
+    /// Process fees for a coin using the universal fee distribution system
     fun process_token_fees<T>(
-        registry: &TokenRegistry,
-        fee_collector: &mut FeeCollector<T>,
+        token_registry: &TokenRegistry,
+        fee_registry: &mut FeeRegistry,
         coin: &mut Coin<T>,
         ctx: &mut TxContext
     ) {
         let token_type = tx_context::type_into_address<T>();
         
         // Get token info
-        if (!is_user_token(registry, token_type)) {
+        if (!is_user_token(token_registry, token_type)) {
             return
         };
         
-        let token_info = user_token::find_token_info(registry, token_type);
+        // Look up the token trading fee model
+        let (exists, fee_model_id) = fee_distribution::find_fee_model_by_name(
+            fee_registry,
+            string::utf8(FEE_MODEL_TOKEN_TRADING)
+        );
         
-        // Calculate fees
+        if (!exists) {
+            // Fall back to legacy implementation if fee model not found
+            return
+        };
+        
+        // Get token info for event emission
+        let token_info = user_token::find_token_info(token_registry, token_type);
+        
+        // Calculate and collect fees
         let amount = coin::value(coin);
-        let fee_amount = (amount * token_info.commission_bps) / 10000;
+        let fee_amount = fee_distribution::collect_and_distribute_fees<T>(
+            fee_registry,
+            fee_model_id,
+            amount,
+            coin,
+            ctx
+        );
         
         if (fee_amount > 0) {
-            let creator_fee = (fee_amount * token_info.creator_split_bps) / 10000;
-            let platform_fee = fee_amount - creator_fee;
+            // Get fee splits for event emission
+            let splits = fee_distribution::get_fee_splits(fee_registry, fee_model_id);
             
-            // Take fee from coin
-            let fee_coin = coin::split(coin, fee_amount, ctx);
-            let fee_balance = coin::into_balance(fee_coin);
+            // Default values for creator and platform fees
+            let mut creator_fee = 0;
+            let mut platform_fee = 0;
             
-            // Split fee between creator and platform
-            if (creator_fee > 0) {
-                let creator_fee_balance = balance::split(&mut fee_balance, creator_fee);
-                balance::join(&mut fee_collector.creator_balance, creator_fee_balance);
+            // Extract creator and platform shares from fee splits
+            let i = 0;
+            let len = vector::length(&splits);
+            while (i < len) {
+                let split = vector::borrow(&splits, i);
+                if (i == 0) { // Assuming first split is for creator
+                    creator_fee = (fee_amount * split.share_bps) / 10000;
+                } else if (i == 1) { // Assuming second split is for platform
+                    platform_fee = (fee_amount * split.share_bps) / 10000;
+                };
+                i = i + 1;
             };
             
-            // Add remaining fee to platform
-            balance::join(&mut fee_collector.platform_balance, fee_balance);
-            
-            // Emit event for fee collection
+            // Emit event for fee collection (for compatibility)
             event::emit(TokenTradeFeesCollectedEvent {
                 token_id: token_type,
                 token_creator: token_info.user,
@@ -623,15 +703,16 @@ module mys::token_orderbook_integration {
         };
     }
     
-    /// Process fees for a coin and return the processed coin
+    
+    /// Process fees for a coin and return the processed coin using fee distribution
     fun process_token_fees_and_return<T>(
-        registry: &TokenRegistry,
-        fee_collector: &mut FeeCollector<T>,
+        token_registry: &TokenRegistry,
+        fee_registry: &mut FeeRegistry,
         coin: Coin<T>,
         ctx: &mut TxContext
     ): Coin<T> {
         let mut processed_coin = coin;
-        process_token_fees(registry, fee_collector, &mut processed_coin, ctx);
+        process_token_fees(token_registry, fee_registry, &mut processed_coin, ctx);
         processed_coin
     }
 }

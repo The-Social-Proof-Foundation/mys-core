@@ -584,14 +584,43 @@ public fun remove_rule_for_action<T, Rule: drop>(
 
 // === Protected: Treasury Management ===
 
+/// Admin capability for token operations
+public struct TokenAdminCap has key, store {
+    id: UID
+}
+
+/// Error for unauthorized token operations
+const ENotAuthorizedTokenAdmin: u64 = 8;
+
+/// Initialize the token admin capability
+public fun init_token_admin(ctx: &mut TxContext) {
+    transfer::transfer(
+        TokenAdminCap {
+            id: object::new(ctx)
+        },
+        tx_context::sender(ctx)
+    );
+}
+
 /// Mint a `Token` with a given `amount` using the `TreasuryCap`.
-public fun mint<T>(cap: &mut TreasuryCap<T>, amount: u64, ctx: &mut TxContext): Token<T> {
+/// Requires admin capability to restrict token minting to authorized administrators.
+public fun mint<T>(
+    _admin_cap: &TokenAdminCap,
+    cap: &mut TreasuryCap<T>, 
+    amount: u64, 
+    ctx: &mut TxContext
+): Token<T> {
     let balance = cap.supply_mut().increase_supply(amount);
     Token { id: object::new(ctx), balance }
 }
 
 /// Burn a `Token` using the `TreasuryCap`.
-public fun burn<T>(cap: &mut TreasuryCap<T>, token: Token<T>) {
+/// Requires admin capability to restrict token burning to authorized administrators.
+public fun burn<T>(
+    _admin_cap: &TokenAdminCap,
+    cap: &mut TreasuryCap<T>, 
+    token: Token<T>
+) {
     let Token { id, balance } = token;
     cap.supply_mut().decrease_supply(balance);
     id.delete();
@@ -599,7 +628,9 @@ public fun burn<T>(cap: &mut TreasuryCap<T>, token: Token<T>) {
 
 /// Flush the `TokenPolicy.spent_balance` into the `TreasuryCap`. This
 /// action is only available to the `TreasuryCap` owner.
+/// Requires admin capability to restrict to authorized administrators.
 public fun flush<T>(
+    _admin_cap: &TokenAdminCap,
     self: &mut TokenPolicy<T>,
     cap: &mut TreasuryCap<T>,
     _ctx: &mut TxContext,
