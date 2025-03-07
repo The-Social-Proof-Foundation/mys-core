@@ -1,0 +1,21 @@
+[package]
+name = "mys-transaction-builder"
+version = "0.0.0"
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+bcs.workspace = true
+
+move-binary-format.workspace = true
+mys-json-rpc-types.workspace = true
+mys-types.workspace = true
+mys-json.workspace = true
+mys-protocol-config.workspace = true
+
+move-core-types.workspace = true

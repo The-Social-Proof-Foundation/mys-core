@@ -1,0 +1,51 @@
+[package]
+name = "mys-tool"
+version.workspace = true
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+num_cpus.workspace = true
+bcs.workspace = true
+clap = { version = "4.1.4", features = ["derive"] }
+colored.workspace = true
+comfy-table.workspace = true
+eyre.workspace = true
+futures.workspace = true
+hex.workspace = true
+move-core-types.workspace = true
+itertools.workspace = true
+ron.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+tempfile.workspace = true
+tracing.workspace = true
+prometheus.workspace = true
+object_store.workspace = true
+indicatif.workspace = true
+
+anemo-cli.workspace = true
+anemo.workspace = true
+telemetry-subscribers.workspace = true
+tokio = { workspace = true, features = ["full"] }
+typed-store.workspace = true
+fastcrypto.workspace = true
+
+mys-config.workspace = true
+mys-core.workspace = true
+mys-network.workspace = true
+mys-snapshot.workspace = true
+mys-protocol-config.workspace = true
+mys-replay.workspace = true
+mys-sdk.workspace = true
+mys-storage.workspace = true
+mys-types.workspace = true
+mys-archival.workspace = true
+mys-package-dump.workspace = true
+mys-tls.workspace = true
+bin-version.workspace = true

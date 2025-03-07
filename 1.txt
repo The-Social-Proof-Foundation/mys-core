@@ -1,0 +1,12 @@
+./target/debug/.fingerprint/mysop-cli-2389664f5ac9ef41/dep-test-lib-suioplib
+./target/debug/.fingerprint/mysop-cli-2389664f5ac9ef41/test-lib-suioplib.json
+./target/debug/.fingerprint/mysop-cli-2389664f5ac9ef41/test-lib-suioplib
+./target/debug/.fingerprint/mysop-cli-a4535d7313ce0074/lib-suioplib.json
+./target/debug/.fingerprint/mysop-cli-a4535d7313ce0074/lib-suioplib
+./target/debug/.fingerprint/mysop-cli-a4535d7313ce0074/dep-lib-suioplib
+./target/debug/.fingerprint/mysop-cli-978a0eccf835f82c/bin-suiop
+./target/debug/.fingerprint/mysop-cli-978a0eccf835f82c/bin-suiop.json
+./target/debug/.fingerprint/mysop-cli-978a0eccf835f82c/dep-bin-suiop
+./target/debug/.fingerprint/mysop-cli-4a5591f23f905f3f/test-bin-suiop.json
+./target/debug/.fingerprint/mysop-cli-4a5591f23f905f3f/dep-test-bin-suiop
+./target/debug/.fingerprint/mysop-cli-4a5591f23f905f3f/test-bin-suiop

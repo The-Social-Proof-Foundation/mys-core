@@ -1,0 +1,13 @@
+[Unit]
+Description=MySocial Node
+
+[Service]
+User=mys
+WorkingDirectory=/opt/mys/
+Environment=RUST_BACKTRACE=1
+Environment=RUST_LOG=info,mys_core=debug,narwhal=debug,consensus=debug,jsonrpsee=error
+ExecStart=/opt/mys/bin/mys-node --config-path /opt/mys/config/validator.yaml
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

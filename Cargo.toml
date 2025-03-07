@@ -1,0 +1,739 @@
+[workspace]
+resolver = "2"
+
+exclude = [
+    "examples/tic-tac-toe/cli",
+    "external-crates/move/crates/bytecode-interpreter-crypto",
+    "external-crates/move/crates/bytecode-verifier-libfuzzer",
+    "external-crates/move/crates/bytecode-verifier-tests",
+    "external-crates/move/crates/bytecode-verifier-prop-tests",
+    "external-crates/move/crates/bytecode-verifier-transactional-tests",
+    "external-crates/move/crates/enum-compat-util",
+    "external-crates/move/crates/invalid-mutations",
+    "external-crates/move/crates/language-benchmarks",
+    "external-crates/move/crates/module-generation",
+    "external-crates/move/crates/move-abstract-interpreter",
+    "external-crates/move/crates/move-abstract-stack",
+    "external-crates/move/crates/move-analyzer",
+    "external-crates/move/crates/move-binary-format",
+    "external-crates/move/crates/move-borrow-graph",
+    "external-crates/move/crates/move-bytecode-source-map",
+    "external-crates/move/crates/move-bytecode-utils",
+    "external-crates/move/crates/move-bytecode-verifier",
+    "external-crates/move/crates/move-bytecode-verifier-meter",
+    "external-crates/move/crates/move-bytecode-viewer",
+    "external-crates/move/crates/move-cli",
+    "external-crates/move/crates/move-command-line-common",
+    "external-crates/move/crates/move-compiler",
+    "external-crates/move/crates/move-compiler-transactional-tests",
+    "external-crates/move/crates/move-core-types",
+    "external-crates/move/crates/move-coverage",
+    "external-crates/move/crates/move-disassembler",
+    "external-crates/move/crates/move-docgen",
+    "external-crates/move/crates/move-ir-compiler",
+    "external-crates/move/crates/move-ir-compiler-transactional-tests",
+    "external-crates/move/crates/move-ir-to-bytecode",
+    "external-crates/move/crates/move-ir-to-bytecode-syntax",
+    "external-crates/move/crates/move-ir-types",
+    "external-crates/move/crates/move-model",
+    "external-crates/move/crates/move-package",
+    "external-crates/move/crates/move-proc-macros",
+    "external-crates/move/crates/move-stackless-bytecode",
+    "external-crates/move/crates/move-stdlib",
+    "external-crates/move/crates/move-stdlib-natives",
+    "external-crates/move/crates/move-symbol-pool",
+    "external-crates/move/crates/move-transactional-test-runner",
+    "external-crates/move/crates/move-trace-format",    
+    "external-crates/move/crates/move-unit-test",
+    "external-crates/move/crates/move-vm-config",
+    "external-crates/move/crates/move-vm-integration-tests",
+    "external-crates/move/crates/move-vm-profiler",
+    "external-crates/move/crates/move-vm-runtime",
+    "external-crates/move/crates/move-vm-test-utils",
+    "external-crates/move/crates/move-vm-transactional-tests",
+    "external-crates/move/crates/move-vm-types",
+    "external-crates/move/crates/serializer-tests",
+    "external-crates/move/crates/test-generation",
+    "external-crates/move/move-execution/v0/crates/move-bytecode-verifier",
+    "external-crates/move/move-execution/v0/crates/move-stdlib-natives",
+    "external-crates/move/move-execution/v0/crates/move-vm-runtime",
+    "external-crates/move/move-execution/v1/crates/move-bytecode-verifier",
+    "external-crates/move/move-execution/v1/crates/move-stdlib-natives",
+    "external-crates/move/move-execution/v1/crates/move-vm-runtime",
+    "external-crates/move/move-execution/v2/crates/move-abstract-interpreter",
+    "external-crates/move/move-execution/v2/crates/move-bytecode-verifier",
+    "external-crates/move/move-execution/v2/crates/move-stdlib-natives",
+    "external-crates/move/move-execution/v2/crates/move-vm-runtime",
+]
+
+members = [
+    "consensus/config",
+    "consensus/core",
+    "consensus/simtests",
+    "crates/anemo-benchmark",
+    "crates/bin-version",
+    "crates/mysten-common",
+    "crates/mysten-metrics",
+    "crates/mysten-network",
+    "crates/mysten-service",
+    "crates/mysten-util-mem",
+    "crates/mysten-util-mem-derive",
+    "crates/prometheus-closure-metric",
+    "crates/shared-crypto",
+    "crates/simulacrum",
+    "crates/mys",
+    "crates/mys-adapter-transactional-tests",
+    "crates/mys-analytics-indexer",
+    "crates/mys-analytics-indexer-derive",
+    "crates/mys-archival",
+    "crates/mys-authority-aggregation",
+    "crates/mys-aws-orchestrator",
+    "crates/mys-benchmark",
+    "crates/mys-bridge",
+    "crates/mys-bridge-cli",
+    "crates/mys-bridge-indexer",
+    "crates/mys-cluster-test",
+    "crates/mys-config",
+    "crates/mys-core",
+    "crates/mys-cost",
+    "crates/mys-data-ingestion",
+    "crates/mys-data-ingestion-core",
+    "crates/mys-deepbook-indexer",
+    "crates/mys-default-config",
+    "crates/mys-e2e-tests",
+    "crates/mys-edge-proxy",
+    "crates/mys-enum-compat-util",
+    "crates/mys-faucet",
+    "crates/mys-field-count",
+    "crates/mys-field-count-derive",
+    "crates/mys-framework",
+    "crates/mys-framework-snapshot",
+    "crates/mys-framework-tests",
+    "crates/mys-genesis-builder",
+    "crates/mys-graphql-e2e-tests",
+    "crates/mys-graphql-rpc",
+    "crates/mys-graphql-rpc-client",
+    "crates/mys-graphql-rpc-headers",
+    "crates/mys-http",
+    "crates/mys-indexer",
+    "crates/mys-indexer-alt",
+    "crates/mys-indexer-alt-e2e-tests",
+    "crates/mys-indexer-alt-framework",
+    "crates/mys-indexer-alt-jsonrpc",
+    "crates/mys-indexer-alt-metrics",
+    "crates/mys-indexer-alt-restorer",
+    "crates/mys-indexer-alt-schema",
+    "crates/mys-indexer-builder",
+    "crates/mys-json",
+    "crates/mys-json-rpc",
+    "crates/mys-json-rpc-api",
+    "crates/mys-json-rpc-tests",
+    "crates/mys-json-rpc-types",
+    "crates/mys-keys",
+    "crates/mys-kvstore",
+    "crates/mys-light-client",
+    "crates/mys-macros",
+    "crates/mys-metric-checker",
+    "crates/mys-move",
+    "crates/mys-move-build",
+    "crates/mys-move-lsp",
+    "crates/mys-mvr-graphql-e2e-tests",
+    "crates/mys-mvr-graphql-rpc",
+    "crates/mys-network",
+    "crates/mys-node",
+    "crates/mys-open-rpc",
+    "crates/mys-open-rpc-macros",
+    "crates/mys-oracle",
+    "crates/mys-package-dump",
+    "crates/mys-package-management",
+    "crates/mys-package-resolver",
+    "crates/mys-pg-db",
+    "crates/mys-proc-macros",
+    "crates/mys-protocol-config",
+    "crates/mys-protocol-config-macros",
+    "crates/mys-proxy",
+    "crates/mys-replay",
+    "crates/mys-rosetta",
+    "crates/mys-rpc-api",
+    "crates/mys-rpc-loadgen",
+    "crates/mys-sdk",
+    "crates/mys-security-watchdog",
+    "crates/mys-simulator",
+    "crates/mys-single-node-benchmark",
+    "crates/mys-snapshot",
+    "crates/mys-source-validation",
+    "crates/mys-source-validation-service",
+    "crates/mys-storage",
+    "crates/mys-surfer",
+    "crates/mys-swarm",
+    "crates/mys-swarm-config",
+    "crates/mys-synthetic-ingestion",
+    "crates/mys-telemetry",
+    "crates/mys-test-transaction-builder",
+    "crates/mys-test-validator",
+    "crates/mys-tls",
+    "crates/mys-tool",
+    "crates/mys-transaction-builder",
+    "crates/mys-transaction-checks",
+    "crates/mys-transactional-test-runner",
+    "crates/mys-types",
+    "crates/mys-upgrade-compatibility-transactional-tests",
+    "crates/mys-verifier-transactional-tests",
+    "crates/mysns-indexer",
+    "crates/mysop-cli",
+    "crates/telemetry-subscribers",
+    "crates/test-cluster",
+    "crates/transaction-fuzzer",
+    "crates/typed-store",
+    "crates/typed-store-derive",
+    "crates/typed-store-error",
+    "crates/typed-store-workspace-hack",
+    "crates/x",
+    "mys-execution",
+    "mys-execution/cut",
+    "mys-execution/latest/mys-adapter",
+    "mys-execution/latest/mys-move-natives",
+    "mys-execution/latest/mys-verifier",
+    "mys-execution/v0/mys-adapter",
+    "mys-execution/v0/mys-move-natives",
+    "mys-execution/v0/mys-verifier",
+    "mys-execution/v1/mys-adapter",
+    "mys-execution/v1/mys-move-natives",
+    "mys-execution/v1/mys-verifier",
+    "mys-execution/v2/mys-adapter",
+    "mys-execution/v2/mys-move-natives",
+    "mys-execution/v2/mys-verifier",
+]
+
+[workspace.package]
+# This version string will be inherited by mys-core, mys-faucet, mys-node, mys-tools, mys-sdk, mys-move-build, and mys crates.
+version = "1.43.1"
+
+[profile.release]
+# debug = 1 means line charts only, which is minimum needed for good stack traces
+debug = 1
+# Write debug info into a separate file.
+split-debuginfo = 'packed'
+# Without stripping, mys binary size would be > 1GB.
+strip = 'debuginfo'
+# Exit process with SIGABRT when any thread panics
+panic = 'abort'
+
+# Same as release, but build with lto (~50min build time).
+[profile.release-lto]
+inherits = "release"
+# Enable Link Time Optimization for better runtime performance
+lto = true
+# Use single codegen unit to enable better optimizations
+codegen-units = 1
+
+# Same as release, but build binary with debug symbols (binary size will be ~ 1GB).
+[profile.release-dbgsym]
+inherits = "release"
+split-debuginfo = 'off'
+strip = 'none'
+
+# Inherits from the release profile above.
+[profile.bench]
+# For convenience.
+strip = 'none'
+
+[profile.test.package.move-compiler]
+# opt-level 2 for move-compiler reduces the size of some of its
+# (recursive) stack frames by up to 10x, avoiding stack overflows.
+opt-level = 2
+
+[profile.simulator]
+inherits = "test"
+debug = true
+debug-assertions = true
+overflow-checks = true
+# opt-level 1 gives >5x speedup for simulator tests without slowing down build times very much.
+opt-level = 1
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+    'cfg(msim)',
+    'cfg(fail_points)',
+] }
+
+# Dependencies that should be kept in sync through the whole workspace
+[workspace.dependencies]
+anyhow = "1.0.71"
+arrow = "52"
+arrow-array = "52"
+arc-swap = { version = "1.5.1", features = ["serde"] }
+assert_cmd = "2.0.6"
+async-graphql = "=7.0.1"
+async-graphql-axum = "=7.0.1"
+async-graphql-value = "=7.0.1"
+async-recursion = "1.0.4"
+async-stream = "0.3.6"
+async-trait = "0.1.61"
+atomic_float = "0.1"
+aws-config = "0.56"
+aws-sdk-ec2 = "0.29.0"
+aws-sdk-dynamodb = "0.29.0"
+aws-smithy-http = "0.56"
+aws-smithy-runtime-api = "0.56"
+axum = { version = "0.7", default-features = false, features = [
+    "macros",
+    "tokio",
+    "http1",
+    "http2",
+    "json",
+    "matched-path",
+    "original-uri",
+    "form",
+    "query",
+    "ws",
+] }
+axum-extra = { version = "0.9", features = ["typed-header"] }
+axum-server = { git = "https://github.com/bmwill/axum-server.git", rev = "f44323e271afdd1365fd0c8b0a4c0bbdf4956cb7", version = "0.6", default-features = false, features = [
+    "tls-rustls",
+] }
+backoff = { version = "0.4.0", features = [
+    "futures",
+    "futures-core",
+    "pin-project-lite",
+    "tokio",
+    "tokio_1",
+] }
+base64 = "0.21.2"
+base64-url = "2"
+bcs = "0.1.4"
+better_any = "0.1.1"
+bimap = "0.6.2"
+bincode = "1.3.3"
+bip32 = "0.4.0"
+byteorder = "1.4.3"
+bytes = { version = "1.5.0", features = ["serde"] }
+cached = "0.43.0"
+camino = "1.1.1"
+cfg-if = "1.0.0"
+chrono = { version = "0.4.26", features = ["clock", "serde"] }
+clap = { version = "4.4", features = ["derive", "wrap_help"] }
+codespan-reporting = "0.11.1"
+collectable = "0.0.2"
+colored = "2.0.0"
+color-eyre = "0.6.2"
+comfy-table = "6.1.3"
+console-subscriber = "0.2"
+const-str = "0.5.3"
+count-min-sketch = "0.1.7"
+criterion = { version = "0.5.0", features = [
+    "async",
+    "async_tokio",
+    "html_reports",
+] }
+crossterm = "0.25.0"
+csv = "1.2.1"
+cynic = { version = "3.7.3", features = ["http-reqwest"] }
+cynic-codegen = "= 3.7.3"
+dashmap = "5.5.3"
+# datatest-stable = "0.1.2"
+datatest-stable = { git = "https://github.com/nextest-rs/datatest-stable.git", rev = "72db7f6d1bbe36a5407e96b9488a581f763e106f" }
+derive-syn-parse = "0.1.5"
+derive_builder = "0.12.0"
+derive_more = "1.0.0"
+diesel = "2.2"
+diesel_migrations = "2.2"
+diesel-async = "0.5"
+dirs = "4.0.0"
+duration-str = "0.5.0"
+ed25519 = { version = "1.5.0", features = ["pkcs8", "alloc", "zeroize"] }
+ed25519-consensus = { version = "2.0.1", features = ["serde"] }
+either = "1.8.0"
+petgraph = "0.5.1"
+enum_dispatch = "^0.3"
+expect-test = "1.4.0"
+eyre = "0.6.8"
+fdlimit = "0.2.1"
+flate2 = "1.0.28"
+fs_extra = "1.3.0"
+futures = "0.3.28"
+futures-core = "0.3.21"
+git-version = "0.3.5"
+glob = "0.3.1"
+governor = "0.6.0"
+gcp_auth = "0.12.3"
+hashbrown = "0.12"
+hdrhistogram = "7.5.1"
+hex = "0.4.3"
+hex-literal = "0.3.4"
+http = "1"
+http-body = "1"
+humantime = "2.1.0"
+hyper = "1"
+hyper-util = "0.1.6"
+hyper-rustls = { version = "0.27", default-features = false, features = [
+    "webpki-roots",
+    "http1",
+    "http2",
+    "ring",
+    "tls12",
+] }
+im = "15"
+impl-trait-for-tuples = "0.2.0"
+indexmap = { version = "2.1.0", features = ["serde"] }
+indicatif = "0.17.2"
+inquire = "0.6.0"
+insta = { version = "1.21.1", features = ["redactions", "yaml", "json"] }
+insta-cmd = "0.6.0"
+integer-encoding = "3.0.1"
+ipnetwork = "0.20.0"
+itertools = "0.13.0"
+jemalloc-ctl = "^0.5"
+jsonrpsee = { version = "0.24.7", features = ["server", "macros", "ws-client", "http-client", "jsonrpsee-core"] }
+json_to_table = { git = "https://github.com/zhiburt/tabled/", rev = "e449317a1c02eb6b29e409ad6617e5d9eb7b3bd4" }
+leb128 = "0.2.5"
+lru = "0.10"
+match_opt = "0.1.2"
+miette = { version = "7", features = ["fancy"] }
+mime = "0.3"
+mockall = "0.11.4"
+moka = { version = "0.12", default-features = false, features = [
+    "sync",
+    "atomic64",
+] }
+more-asserts = "0.3.1"
+msim = { git = "https://github.com/MystenLabs/mysten-sim.git", rev = "e06fc6fa9aeb978ffc621f8b27c06a404042279f", package = "msim" }
+msim-macros = { git = "https://github.com/MystenLabs/mysten-sim.git", rev = "e06fc6fa9aeb978ffc621f8b27c06a404042279f", package = "msim-macros" }
+multiaddr = "0.17.0"
+nexlint = { git = "https://github.com/nextest-rs/nexlint.git", rev = "7ce56bd591242a57660ed05f14ca2483c37d895b" }
+nexlint-lints = { git = "https://github.com/nextest-rs/nexlint.git", rev = "7ce56bd591242a57660ed05f14ca2483c37d895b" }
+nonempty = "0.9.0"
+notify = "6.1.1"
+ntest = "0.9.0"
+num-bigint = "0.4.4"
+num_cpus = "1.15.0"
+num_enum = "0.6.1"
+object_store = { version = "0.10", features = ["aws", "gcp", "azure", "http"] }
+once_cell = "1.18.0"
+ouroboros = "0.17"
+parking_lot = { version = "0.12.3", features = ["arc_lock"] }
+parquet = "52"
+pin-project-lite = "0.2.13"
+pkcs8 = { version = "0.9.0", features = ["std"] }
+pprof = { version = "0.14.0", features = ["cpp", "frame-pointer"] }
+pretty_assertions = "1.3.0"
+prettytable-rs = "0.10.0"
+proc-macro2 = "1.0.47"
+prometheus = "0.13.3"
+prometheus-http-query = { version = "0.8", default-features = false, features = [
+    "rustls-tls",
+] }
+prometheus-parse = { git = "https://github.com/asonnino/prometheus-parser.git", rev = "75334db" }
+proptest = "1.6.0"
+proptest-derive = "0.5"
+prost = "0.13"
+prost-build = "0.13"
+prost-types = "0.13.1"
+protobuf = { version = "2.28", features = ["with-bytes"] }
+quinn-proto = "0.11.7"
+quote = "1.0.23"
+rand = "0.8.5"
+rayon = "1.5.3"
+rcgen = "0.13"
+regex = "1.7.1"
+reqwest = { version = "0.12", default-features = false, features = [
+    "http2",
+    "json",
+    "rustls-tls",
+] }
+roaring = "0.10.6"
+ron = "0.8.0"
+rstest = "0.16.0"
+rusoto_core = { version = "0.48.0", default-features = false, features = [
+    "rustls",
+] }
+rusoto_kms = { version = "0.48.0", default-features = false, features = [
+    "rustls",
+] }
+russh = "0.38.0"
+russh-keys = "0.38.0"
+rust-version = "1.56.1"
+rustls = { version = "0.23", default-features = false, features = [
+    "std",
+    "tls12",
+    "ring",
+] }
+rustls-pemfile = "2"
+rustversion = "1.0.9"
+rustyline = "9.1.2"
+rustyline-derive = "0.7.0"
+schemars = { version = "0.8.21", features = ["either"] }
+scopeguard = "1.1"
+serde = { version = "1.0.144", features = ["derive", "rc"] }
+serde-env = "0.2.0"
+serde-name = "0.2.1"
+serde-reflection = "0.5"
+serde_json = { version = "1.0.95", features = ["preserve_order"] }
+serde_repr = "0.1"
+serde_test = "1.0.147"
+serde_with = "3.8"
+# serde_yaml = "0.9.21"
+serde_yaml = "0.8.26"
+shell-words = "1.1.0"
+shellexpand = "3.1.0"
+signature = "1.6.0"
+similar = "2.4.0"
+simple_moving_average = "1.0.2"
+simple-server-timing-header = "0.1.1"
+slip10_ed25519 = "0.1.3"
+smallvec = "1.10.0"
+snap = "1.1.0"
+snowflake-api = "0.9.0"
+static_assertions = "1.1.0"
+strum = { version = "0.24", features = ["derive"] }
+strum_macros = "0.24.3"
+syn = { version = "1.0.104", features = ["full", "derive", "extra-traits"] }
+# syn = { version = "2", features = ["full", "fold", "extra-traits"] }
+synstructure = "0.12"
+sysinfo = "0.27.5"
+tabled = { version = "0.12" }
+tap = "1.0.1"
+tar = "0.4.40"
+tempfile = "3.3.0"
+test-fuzz = "3.0.4"
+thiserror = "1.0.40"
+tiny-bip39 = "1.0.0"
+tokio = "1.43.0"
+tokio-retry = "0.3"
+tokio-rustls = { version = "0.26", default-features = false, features = [
+    "tls12",
+    "ring",
+] }
+tokio-stream = { version = "0.1.14", features = ["sync", "net"] }
+tokio-util = "0.7.10"
+toml = { version = "0.7.4", features = ["preserve_order"] }
+toml_edit = { version = "0.19.10" }
+tonic = { version = "0.12", features = ["zstd", "transport", "tls-webpki-roots"] }
+tonic-build = { version = "0.12", features = ["prost", "transport"] }
+tonic-health = "0.12"
+tonic-reflection = "0.12"
+tonic-rustls = "0.1.0"
+tower = { version = "0.4.12", features = [
+    "full",
+    "util",
+    "timeout",
+    "load-shed",
+    "limit",
+] }
+tower-http = { version = "0.5", features = [
+    "cors",
+    "full",
+    "trace",
+    "set-header",
+    "propagate-header",
+] }
+tower-layer = "0.3.2"
+twox-hash = "1.6.3"
+tracing = "0.1.37"
+tracing-appender = "0.2.2"
+tracing-subscriber = { version = "0.3.15", default-features = false, features = [
+    "std",
+    "smallvec",
+    "fmt",
+    "ansi",
+    "time",
+    "json",
+    "registry",
+    "env-filter",
+] }
+ttl_cache = "0.5.1"
+uint = "0.9.4"
+unescape = "0.1.0"
+ureq = "2.9.1"
+url = "2.3.1"
+uuid = { version = "1.1.2", features = ["v4", "fast-rng"] }
+walkdir = "2.5.0"
+webpki = { version = "0.102", package = "rustls-webpki", features = [
+    "alloc",
+    "std",
+] }
+wiremock = "0.5"
+x509-parser = { version = "0.14.0", features = ["verify"] }
+zstd = "0.12.3"
+zeroize = "1.6.0"
+versions = "4.1.0"
+linked-hash-map = "0.5.6"
+shlex = "1.3.0"
+
+# Move dependencies
+move-binary-format = { path = "external-crates/move/crates/move-binary-format" }
+move-bytecode-utils = { path = "external-crates/move/crates/move-bytecode-utils" }
+move-bytecode-source-map = { path = "external-crates/move/crates/move-bytecode-source-map" }
+move-bytecode-verifier-meter = { path = "external-crates/move/crates/move-bytecode-verifier-meter" }
+move-cli = { path = "external-crates/move/crates/move-cli" }
+move-compiler = { path = "external-crates/move/crates/move-compiler" }
+move-core-types = { path = "external-crates/move/crates/move-core-types" }
+move-disassembler = { path = "external-crates/move/crates/move-disassembler" }
+move-package = { path = "external-crates/move/crates/move-package" }
+move-unit-test = { path = "external-crates/move/crates/move-unit-test" }
+move-vm-config = { path = "external-crates/move/crates/move-vm-config" }
+move-vm-test-utils = { path = "external-crates/move/crates/move-vm-test-utils/", features = [
+    "tiered-gas",
+] }
+move-vm-types = { path = "external-crates/move/crates/move-vm-types" }
+move-vm-profiler = { path = "external-crates/move/crates/move-vm-profiler" }
+move-command-line-common = { path = "external-crates/move/crates/move-command-line-common" }
+move-transactional-test-runner = { path = "external-crates/move/crates/move-transactional-test-runner" }
+move-ir-types = { path = "external-crates/move/crates/move-ir-types" }
+move-stackless-bytecode = { path = "external-crates/move/crates/move-stackless-bytecode" }
+move-symbol-pool = { path = "external-crates/move/crates/move-symbol-pool" }
+move-abstract-interpreter = { path = "external-crates/move/crates/move-abstract-interpreter" }
+move-abstract-stack = { path = "external-crates/move/crates/move-abstract-stack" }
+move-analyzer = { path = "external-crates/move/crates/move-analyzer" }
+move-trace-format = { path = "external-crates/move/crates/move-trace-format" }
+
+fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "69d496c71fb37e3d22fe85e5bbfd4256d61422b9" }
+fastcrypto-tbls = { git = "https://github.com/MystenLabs/fastcrypto", rev = "69d496c71fb37e3d22fe85e5bbfd4256d61422b9" }
+fastcrypto-zkp = { git = "https://github.com/MystenLabs/fastcrypto", rev = "69d496c71fb37e3d22fe85e5bbfd4256d61422b9", package = "fastcrypto-zkp" }
+fastcrypto-vdf = { git = "https://github.com/MystenLabs/fastcrypto", rev = "69d496c71fb37e3d22fe85e5bbfd4256d61422b9", features = [
+    "experimental",
+] }
+passkey-types = { version = "0.2.0" }
+passkey-client = { version = "0.2.0" }
+passkey-authenticator = { version = "0.2.0" }
+coset = "0.3"
+p256 = { version = "0.13.2", features = ["ecdsa"] }
+
+p384 = { version = "0.13.0", default-features = false, features = ["ecdsa","sha384"] }
+ciborium = "0.2"
+
+# anemo dependencies
+anemo = { git = "https://github.com/mystenlabs/anemo.git", rev = "e609f7697ed6169bf0760882a0b6c032a57e4f3b" }
+anemo-build = { git = "https://github.com/mystenlabs/anemo.git", rev = "e609f7697ed6169bf0760882a0b6c032a57e4f3b" }
+anemo-cli = { git = "https://github.com/mystenlabs/anemo.git", rev = "e609f7697ed6169bf0760882a0b6c032a57e4f3b" }
+anemo-tower = { git = "https://github.com/mystenlabs/anemo.git", rev = "e609f7697ed6169bf0760882a0b6c032a57e4f3b" }
+
+# core-types with json format for REST api
+# mys-sdk-types = { version = "0.0.1", features = ["hash", "serde", "schemars"] }
+mys-sdk-types = { git = "https://github.com/alleycat1/mys-rust-sdk.git", rev = "833a2224423af438ec4c803986050a5afbf20816", features = ["hash", "serde"] }
+mys-sdk-transaction-builder = { git = "https://github.com/alleycat1/mys-rust-sdk.git", rev = "833a2224423af438ec4c803986050a5afbf20816", package = "mys-transaction-builder" }
+
+### Workspace Members ###
+anemo-benchmark = { path = "crates/anemo-benchmark" }
+bin-version = { path = "crates/bin-version" }
+mysten-common = { path = "crates/mysten-common" }
+mysten-metrics = { path = "crates/mysten-metrics" }
+mysten-network = { path = "crates/mysten-network" }
+mysten-service = { path = "crates/mysten-service" }
+mysten-util-mem = { path = "crates/mysten-util-mem" }
+mysten-util-mem-derive = { path = "crates/mysten-util-mem-derive" }
+prometheus-closure-metric = { path = "crates/prometheus-closure-metric" }
+shared-crypto = { path = "crates/shared-crypto" }
+simulacrum = { path = "crates/simulacrum" }
+mys = { path = "crates/mys" }
+mys-adapter-transactional-tests = { path = "crates/mys-adapter-transactional-tests" }
+mys-analytics-indexer = { path = "crates/mys-analytics-indexer" }
+mys-analytics-indexer-derive = { path = "crates/mys-analytics-indexer-derive" }
+mys-archival = { path = "crates/mys-archival" }
+mys-authority-aggregation = { path = "crates/mys-authority-aggregation" }
+mys-benchmark = { path = "crates/mys-benchmark" }
+mys-bridge = { path = "crates/mys-bridge" }
+mys-cluster-test = { path = "crates/mys-cluster-test" }
+mys-config = { path = "crates/mys-config" }
+mys-core = { path = "crates/mys-core" }
+mys-cost = { path = "crates/mys-cost" }
+mys-data-ingestion = { path = "crates/mys-data-ingestion" }
+mys-data-ingestion-core = { path = "crates/mys-data-ingestion-core" }
+mys-default-config = { path = "crates/mys-default-config" }
+mys-e2e-tests = { path = "crates/mys-e2e-tests" }
+mys-enum-compat-util = { path = "crates/mys-enum-compat-util" }
+mys-faucet = { path = "crates/mys-faucet" }
+mys-field-count = { path = "crates/mys-field-count" }
+mys-field-count-derive = { path = "crates/mys-field-count-derive" }
+mys-framework = { path = "crates/mys-framework" }
+mys-framework-snapshot = { path = "crates/mys-framework-snapshot" }
+mys-framework-tests = { path = "crates/mys-framework-tests" }
+mys-graphql-rpc = { path = "crates/mys-graphql-rpc" }
+mys-graphql-rpc-client = { path = "crates/mys-graphql-rpc-client" }
+mys-graphql-rpc-headers = { path = "crates/mys-graphql-rpc-headers" }
+mys-genesis-builder = { path = "crates/mys-genesis-builder" }
+mys-http = { path = "crates/mys-http" }
+mys-indexer = { path = "crates/mys-indexer" }
+mys-indexer-alt = { path = "crates/mys-indexer-alt" }
+mys-indexer-alt-framework = { path = "crates/mys-indexer-alt-framework" }
+mys-indexer-alt-jsonrpc = { path = "crates/mys-indexer-alt-jsonrpc" }
+mys-indexer-alt-metrics = { path = "crates/mys-indexer-alt-metrics" }
+mys-indexer-alt-restorer = { path = "crates/mys-indexer-alt-restorer" }
+mys-indexer-alt-schema = { path = "crates/mys-indexer-alt-schema" }
+mys-indexer-builder = { path = "crates/mys-indexer-builder" }
+mys-json = { path = "crates/mys-json" }
+mys-json-rpc = { path = "crates/mys-json-rpc" }
+mys-json-rpc-api = { path = "crates/mys-json-rpc-api" }
+mys-json-rpc-types = { path = "crates/mys-json-rpc-types" }
+mys-keys = { path = "crates/mys-keys" }
+mys-kvstore = {path = "crates/mys-kvstore"}
+mys-macros = { path = "crates/mys-macros" }
+mys-metric-checker = { path = "crates/mys-metric-checker" }
+mys-move = { path = "crates/mys-move" }
+mys-move-build = { path = "crates/mys-move-build" }
+mys-move-lsp = { path = "crates/mys-move-lsp" }
+mys-mvr-graphql-rpc = { path = "crates/mys-mvr-graphql-rpc" }
+mys-network = { path = "crates/mys-network" }
+mys-node = { path = "crates/mys-node" }
+mys-open-rpc = { path = "crates/mys-open-rpc" }
+mys-open-rpc-macros = { path = "crates/mys-open-rpc-macros" }
+mys-package-dump = { path = "crates/mys-package-dump" }
+mys-package-management = { path = "crates/mys-package-management" }
+mys-package-resolver = { path = "crates/mys-package-resolver" }
+mys-pg-db = { path = "crates/mys-pg-db" }
+mys-proc-macros = { path = "crates/mys-proc-macros" }
+mys-protocol-config = { path = "crates/mys-protocol-config" }
+mys-protocol-config-macros = { path = "crates/mys-protocol-config-macros" }
+mys-proxy = { path = "crates/mys-proxy" }
+mys-replay = { path = "crates/mys-replay" }
+mys-rosetta = { path = "crates/mys-rosetta" }
+mys-rpc-loadgen = { path = "crates/mys-rpc-loadgen" }
+mys-sdk = { path = "crates/mys-sdk" }
+mys-simulator = { path = "crates/mys-simulator" }
+mys-snapshot = { path = "crates/mys-snapshot" }
+mys-source-validation = { path = "crates/mys-source-validation" }
+mys-source-validation-service = { path = "crates/mys-source-validation-service" }
+mys-storage = { path = "crates/mys-storage" }
+mys-surfer = { path = "crates/mys-surfer" }
+mys-swarm = { path = "crates/mys-swarm" }
+mys-swarm-config = { path = "crates/mys-swarm-config" }
+mys-synthetic-ingestion = { path = "crates/mys-synthetic-ingestion" }
+mys-telemetry = { path = "crates/mys-telemetry" }
+mys-test-transaction-builder = { path = "crates/mys-test-transaction-builder" }
+mys-test-validator = { path = "crates/mys-test-validator" }
+mys-tls = { path = "crates/mys-tls" }
+mys-rpc-api = { path = "crates/mys-rpc-api" }
+mys-tool = { path = "crates/mys-tool" }
+mys-transaction-builder = { path = "crates/mys-transaction-builder" }
+mys-transaction-checks = { path = "crates/mys-transaction-checks" }
+mys-transactional-test-runner = { path = "crates/mys-transactional-test-runner" }
+mys-types = { path = "crates/mys-types" }
+mys-upgrade-compatibility-transactional-tests = { path = "crates/mys-upgrade-compatibility-transactional-tests" }
+mys-verifier-transactional-tests = { path = "crates/mys-verifier-transactional-tests" }
+telemetry-subscribers = { path = "crates/telemetry-subscribers" }
+test-cluster = { path = "crates/test-cluster" }
+transaction-fuzzer = { path = "crates/transaction-fuzzer" }
+typed-store = { path = "crates/typed-store" }
+typed-store-error = { path = "crates/typed-store-error" }
+x = { path = "crates/x" }
+
+consensus-config = { path = "consensus/config" }
+consensus-core = { path = "consensus/core" }
+consensus-simtests = { path = "consensus/simtests" }
+
+mys-execution = { path = "mys-execution" }
+# mys-move-natives = { path = "mys-execution/latest/mys-move-natives", package = "mys-move-natives-latest" }
+# mys-adapter = { path = "mys-execution/latest/mys-adapter", package = "mys-adapter-latest" }
+# mys-verifier = { path = "mys-execution/latest/mys-verifier", package = "mys-verifier-latest" }
+# move-stdlib = { path = "external-crates/move/move-stdlib" }
+# move-vm-runtime = { path = "external-crates/move/move-vm/runtime" }
+# move-bytecode-verifier = { path = "external-crates/move/move-bytecode-verifier" }
+
+# mysop dependencies
+docker-api = "0.12.2"
+field_names = "0.2.0"
+semver = "1.0.16"
+spinners = "4.1.0"
+include_dir = "0.7.3"
+
+[patch.crates-io]

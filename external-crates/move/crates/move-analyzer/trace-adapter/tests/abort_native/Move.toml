@@ -1,0 +1,10 @@
+[package]
+name = "abort_native"
+edition = "2024.beta"
+
+[dependencies]
+MySocial = { git = "https://github.com/MystenLabs/mys.git", subdir = "crates/mys-framework/packages/mys-framework", rev = "framework/mainnet" }
+
+[addresses]
+abort_native = "0x0"
+MySocial = "0x2"

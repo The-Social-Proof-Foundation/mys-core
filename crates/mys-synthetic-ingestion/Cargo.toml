@@ -1,0 +1,23 @@
+[package]
+name = "mys-synthetic-ingestion"
+version = "0.0.0"
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+clap.workspace = true
+simulacrum.workspace = true
+mys-test-transaction-builder.workspace = true
+mys-types.workspace = true
+telemetry-subscribers.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+mys-storage.workspace = true
+
+[dev-dependencies]
+mys-storage.workspace = true
+tempfile.workspace = true

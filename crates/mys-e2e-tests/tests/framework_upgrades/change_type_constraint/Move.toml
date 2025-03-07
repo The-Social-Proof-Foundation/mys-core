@@ -1,0 +1,12 @@
+[package]
+name = "MySocialExtraChangeTypeConstraint"
+version = "0.0.1"
+edition = "2024.beta"
+
+[dependencies]
+MySocialSystem = { local = "../../../../mys-framework/packages/mys-system" }
+MySocial = { local = "../../../../mys-framework/packages/mys-framework" }
+MoveStdlib = { local = "../../../../mys-framework/packages/move-stdlib" }
+
+[addresses]
+mys_system = "0x3"

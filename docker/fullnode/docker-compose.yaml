@@ -1,0 +1,18 @@
+---
+version: "3.9"
+services:
+  fullnode:
+    # Note: Update the tag to the latest version of mysten/mys-node for mainnet or testnet.
+    image: mysten/mys-node:mainnet-v1.19.1
+    ports:
+    - "8080:8080"
+    - "8084:8084/udp"
+    - "9000:9000"
+    - "9184:9184"
+    volumes:
+    - ./fullnode-template.yaml:/opt/mys/config/fullnode.yaml:ro
+    - ./genesis.blob:/opt/mys/config/genesis.blob:ro
+    - ./mysdb:/opt/mys/db:rw
+    command: ["/opt/mys/bin/mys-node", "--config-path", "/opt/mys/config/fullnode.yaml"]
+volumes:
+  mysdb:

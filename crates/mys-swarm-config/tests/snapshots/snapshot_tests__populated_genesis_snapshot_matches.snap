@@ -1,0 +1,8 @@
+---
+source: crates/mys-config/tests/snapshot_tests.rs
+expression: genesis.mys_system_wrapper_object()
+---
+id:
+  id: "0x0000000000000000000000000000000000000000000000000000000000000005"
+version: 1
+

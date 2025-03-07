@@ -1,0 +1,10 @@
+[package]
+name = "demo"
+edition = "2024.beta"
+
+[dependencies]
+MySocial = { local = "../../../../mys-framework/packages/mys-framework" }
+
+[addresses]
+demo = "0x0"
+

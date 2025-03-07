@@ -1,0 +1,36 @@
+[package]
+name = "mys-surfer"
+version.workspace = true
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+mys-core.workspace = true
+mys-swarm-config.workspace = true
+mys-json-rpc-types.workspace = true
+mys-move-build.workspace = true
+mys-protocol-config.workspace = true
+mys-types.workspace = true
+test-cluster.workspace = true
+
+async-trait.workspace = true
+bcs.workspace = true
+clap.workspace = true
+futures.workspace = true
+indexmap.workspace = true
+rand.workspace = true
+tokio = { workspace = true, features = ["full", "tracing", "test-util"] }
+tracing.workspace = true
+
+move-binary-format.workspace = true
+move-core-types.workspace = true
+telemetry-subscribers.workspace = true
+
+[dev-dependencies]
+prometheus.workspace = true
+mys-macros.workspace = true
+mys-simulator.workspace = true
+
+move-package.workspace = true

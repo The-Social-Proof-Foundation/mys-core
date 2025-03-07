@@ -1,0 +1,11 @@
+[package]
+name = "BridgedETH"
+version = "0.0.1"
+edition = "legacy"
+
+[dependencies]
+MoveStdlib = { local = "../../../../crates/mys-framework/packages/move-stdlib" }
+MySocial = { local = "../../../../crates/mys-framework/packages/mys-framework" }
+
+[addresses]
+bridged_eth = "0x0"

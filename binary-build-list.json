@@ -1,0 +1,22 @@
+{
+    "release_binaries": [
+        "mys",
+        "mys-node",
+        "mys-tool",
+        "mys-faucet",
+        "mys-data-ingestion",
+        "mys-bridge",
+        "mys-bridge-cli",
+        "mys-graphql-rpc",
+        "mys-test-validator",
+        "move-analyzer"
+    ],
+    "internal_binaries": [
+        "stress",
+        "mys-proxy",
+        "mys-metric-checker",
+        "mys-analytics-indexer",
+        "mys-security-watchdog",
+		"mysop"
+	]
+}

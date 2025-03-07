@@ -1,0 +1,33 @@
+[package]
+name = "mys-move-build"
+version.workspace = true
+edition = "2021"
+authors = ["Mysten Labs <eng@mystenlabs.com>"]
+description = "Logic for building MySocial Move Packages"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+fastcrypto.workspace = true
+tempfile.workspace = true
+
+move-bytecode-verifier = { path = "../../external-crates/move/crates/move-bytecode-verifier" }
+mys-verifier = { path = "../../mys-execution/latest/mys-verifier", package = "mys-verifier-latest" }
+
+serde-reflection.workspace = true
+mys-types.workspace = true
+mys-protocol-config.workspace = true
+mys-package-management.workspace = true
+
+move-binary-format.workspace = true
+move-bytecode-utils.workspace = true
+move-command-line-common.workspace = true
+move-compiler.workspace = true
+move-core-types.workspace = true
+move-ir-types.workspace = true
+move-package.workspace = true
+move-symbol-pool.workspace = true
+
+[dev-dependencies]
+datatest-stable.workspace = true

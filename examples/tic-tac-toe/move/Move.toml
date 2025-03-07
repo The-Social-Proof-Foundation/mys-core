@@ -1,0 +1,9 @@
+[package]
+name = "tic_tac_toe"
+edition = "2024.beta"
+
+[dependencies]
+MySocial = { local = "../../../crates/mys-framework/packages/mys-framework" }
+
+[addresses]
+tic_tac_toe = "0x0"

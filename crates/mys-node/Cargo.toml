@@ -1,0 +1,61 @@
+[package]
+name = "mys-node"
+version.workspace = true
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+anemo.workspace = true
+anemo-tower.workspace = true
+arc-swap.workspace = true
+axum.workspace = true
+anyhow.workspace = true
+base64.workspace = true
+bcs.workspace = true
+clap.workspace = true
+consensus-core.workspace = true
+prometheus.workspace = true
+tokio = { workspace = true, features = ["full"] }
+tracing.workspace = true
+futures.workspace = true
+parking_lot.workspace = true
+tower.workspace = true
+reqwest.workspace = true
+tap.workspace = true
+serde.workspace = true
+bin-version.workspace = true
+url.workspace = true
+humantime.workspace = true
+
+mys-archival.workspace = true
+mys-tls.workspace = true
+mys-macros.workspace = true
+mys-config.workspace = true
+mys-core.workspace = true
+mys-rpc-api.workspace = true
+mys-storage.workspace = true
+mys-network.workspace = true
+mys-json-rpc.workspace = true
+mys-json-rpc-api.workspace = true
+mys-protocol-config.workspace = true
+mys-snapshot.workspace = true
+mys-telemetry.workspace = true
+mys-types.workspace = true
+mysten-metrics.workspace = true
+mysten-service.workspace = true
+mysten-common.workspace = true
+typed-store.workspace = true
+mysten-network.workspace = true
+telemetry-subscribers.workspace = true
+fastcrypto.workspace = true
+fastcrypto-zkp.workspace = true
+move-vm-profiler.workspace = true
+mys-http.workspace = true
+
+[target.'cfg(msim)'.dependencies]
+mys-simulator.workspace = true

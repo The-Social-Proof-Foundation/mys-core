@@ -1,0 +1,8 @@
+[package]
+name = "MySocial"
+version = "0.0.1"
+published-at = "0x2"
+edition = "development"
+
+[addresses]
+mys = "0x2"

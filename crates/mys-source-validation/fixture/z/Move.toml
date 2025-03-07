@@ -1,0 +1,10 @@
+[package]
+name = "z"
+version = "0.0.1"
+published-at = "$STORAGE_ID"
+
+[dependencies]
+MySocial = { local = "$REPO_ROOT/crates/mys-framework/packages/mys-framework" }
+
+[addresses]
+z = "$RUNTIME_ID"

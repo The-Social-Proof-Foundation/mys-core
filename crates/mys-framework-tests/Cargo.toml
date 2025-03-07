@@ -1,0 +1,37 @@
+[package]
+name = "mys-framework-tests"
+version = "0.1.0"
+edition = "2021"
+authors = ["Mysten Labs <eng@mystenlabs.com>"]
+description = "Runs Move tests for mys-framework"
+license = "Apache-2.0"
+publish = false
+
+[lints]
+workspace = true
+
+[[test]]
+name = "move_tests"
+harness = false
+
+[dev-dependencies]
+datatest-stable.workspace = true
+prometheus.workspace = true
+
+mys-framework.workspace = true
+mys-move.workspace = true
+mys-move-build.workspace = true
+mys-protocol-config.workspace = true
+mys-types.workspace = true
+
+move-bytecode-verifier = { path = "../../external-crates/move/crates/move-bytecode-verifier" }
+mys-adapter = { path = "../../mys-execution/latest/mys-adapter", package = "mys-adapter-latest" }
+mys-verifier = { path = "../../mys-execution/latest/mys-verifier", package = "mys-verifier-latest" }
+
+move-bytecode-verifier-meter.workspace = true
+move-cli.workspace = true
+move-package.workspace = true
+move-unit-test.workspace = true
+mys-config.workspace = true
+
+[dependencies]

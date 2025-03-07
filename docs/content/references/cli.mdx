@@ -1,0 +1,35 @@
+---
+title: MySocial CLI
+description: MySocial provides command line tools to interact with the network, its features, and the Move programming language. Individual command groups are referred to as MySocial Client CLI, MySocial Console CLI, MySocial Keytool CLI, MySocial Move CLI, and MySocial Validator CLI.
+---
+
+MySocial provides a command line interface (CLI) tool to interact with the MySocial network, its features, and the Move programming language. The complete suite of tools is called the MySocial CLI, with commands grouped together by feature. Each group of commands is commonly referred to by its top-level command: MySocial Client CLI, MySocial Console CLI, MySocial Keytool CLI, MySocial Move CLI, and MySocial Validator CLI.
+
+{@include: ../snippets/cli-check-install.mdx}
+
+## Update CLI
+
+To get the latest version of the CLI, you can run the following command from a terminal or console. Be sure to replace `<BRANCH-NAME>` with `main`, `devnet`, `testnet`, or `mainnet` to get the desired version. For more information on the branches available, see [MySocial Environment Setup](./contribute/mys-environment.mdx).
+
+```sh
+$ cargo install --locked --git https://github.com/MystenLabs/mys.git --branch <BRANCH-NAME> --features tracing mys
+```
+
+:::info
+
+The `tracing` feature is important as it adds Move test coverage and debugger support in the MySocial CLI. Unless it is enabled you will not be able to use these two features.
+
+:::
+
+## MySocial CLI commands
+
+There are a number of top-level commands available, but the five most useful to users are the following. Use the `help` flag for the commands that are not documented yet. For example, `mys validator --help`.  
+
+- **[MySocial Client CLI](./cli/client.mdx):** Use the `mys client` commands to interact with the MySocial network.
+- **[MySocial Client PTB CLI](./cli/ptb.mdx):** Use the `mys client ptb` command to build and execute PTBs.
+- **[MySocial Console CLI](./cli/console.mdx):** Use `mys console` to open an interactive console with the currently active network.
+- **[MySocial Keytool CLI](./cli/keytool.mdx):** Use the `mys keytool` commands to access cryptography utilities.
+- **[MySocial Move CLI](./cli/move.mdx):** Use the `mys move` commands to work with the Move programming language.
+- **[MySocial Validator CLI](./cli/validator.mdx):** Use the `mys validator` commands to access tools useful for MySocial validators.
+
+

@@ -1,0 +1,11 @@
+[package]
+name = "Locked Stake"
+version = "0.0.1"
+edition = "2024.beta"
+
+[dependencies]
+MySocial = { local = "../../../crates/mys-framework/packages/mys-framework" }
+MySocialSystem = { local = "../../../crates/mys-framework/packages/mys-system" }
+
+[addresses]
+locked_stake = "0x0"

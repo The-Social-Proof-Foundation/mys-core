@@ -1,0 +1,46 @@
+[package]
+name = "mys-cluster-test"
+version.workspace = true
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+futures.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["full"] }
+tokio-util.workspace = true
+jsonrpsee.workspace = true
+tracing.workspace = true
+clap.workspace = true
+reqwest.workspace = true
+async-trait.workspace = true
+anyhow = { workspace = true, features = ["backtrace"] }
+uuid.workspace = true
+prometheus.workspace = true
+fastcrypto.workspace = true
+shared-crypto.workspace = true
+derive_more = { workspace = true, features = ["debug"] }
+regex.workspace = true
+
+mys-indexer.workspace = true
+mys-faucet.workspace = true
+mys-graphql-rpc.workspace = true
+mys-pg-db.workspace = true
+mys-swarm.workspace = true
+mys-swarm-config.workspace = true
+mys-json-rpc-types.workspace = true
+mys-sdk.workspace = true
+mys-keys.workspace = true
+mys-types.workspace = true
+mys-core.workspace = true
+mys-json.workspace = true
+mys-config.workspace = true
+mys-test-transaction-builder.workspace = true
+telemetry-subscribers.workspace = true
+
+test-cluster.workspace = true
+move-core-types.workspace = true
+mys-move-build.workspace = true

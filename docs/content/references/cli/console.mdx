@@ -1,0 +1,49 @@
+---
+title: MySocial Console CLI
+description: The MySocial Console CLI provides command-level access to interact with the MySocial network by wrapping the MySocial Client CLI command.
+---
+
+The MySocial CLI `console` command provides command-level access to interact with the MySocial network by wrapping the MySocial Client CLI command in a shell-like functionality. This command spins up a new process and provides the user an environment for running all the available MySocial Client CLI commands. In addition, it also offers command history support.
+
+{@include: ../../snippets/cli-check-install.mdx}
+
+## Commands
+
+For all available commands, consult the [MySocial Client CLI docs](./client.mdx). To start the MySocial Console, type `mys console`, which displays some information similar to the following: 
+
+```sh
+🚀 ~ % mys console
+   _____       _    ______                       __
+  / ___/__  __(_)  / ____/___  ____  _________  / /__
+  \__ \/ / / / /  / /   / __ \/ __ \/ ___/ __ \/ / _ \
+ ___/ / /_/ / /  / /___/ /_/ / / / (__  ) /_/ / /  __/
+/____/\__,_/_/   \____/\____/_/ /_/____/\____/_/\___/
+--- MySocial Console 1.14.0 ---
+
+Managed addresses : 2
+Active address: 0x3...235
+Keystore Type : File
+Keystore Path : Some("/Users/user/.mys/mys_config/mys.keystore")
+Active environment : testnet
+RPC URL: https://fullnode.testnet.mys.io:443
+[warn] Client/Server api version mismatch, client api version : 1.14.0, server api version : 1.13.0
+Connecting to MySocial full node. API version 1.13.0
+
+Available RPC methods: ["mys_devInspectTransactionBlock", "mys_dryRunTransactionBlock", "mys_executeTransactionBlock", 
+"mys_getChainIdentifier", "mys_getCheckpoint", "mys_getCheckpoints", "mys_getEvents", "mys_getLatestCheckpointSequenceNumber", 
+"mys_getLoadedChildObjects", "mys_getMoveFunctionArgTypes", "mys_getNormalizedMoveFunction", "mys_getNormalizedMoveModule", 
+"mys_getNormalizedMoveModulesByPackage", "mys_getNormalizedMoveStruct", "mys_getObject", "mys_getProtocolConfig", 
+"mys_getTotalTransactionBlocks", "mys_getTransactionBlock", "mys_multiGetObjects", "mys_multiGetTransactionBlocks", 
+"mys_tryGetPastObject", "mys_tryMultiGetPastObjects", "mysx_getAllBalances", "mysx_getAllCoins", "mysx_getBalance", 
+"mysx_getCoinMetadata", "mysx_getCoins", "mysx_getCommitteeInfo", "mysx_getDynamicFieldObject", "mysx_getDynamicFields", 
+"mysx_getLatestMySocialSystemState", "mysx_getOwnedObjects", "mysx_getReferenceGasPrice", "mysx_getStakes", "mysx_getStakesByIds", 
+"mysx_getTotalSupply", "mysx_getValidatorsApy", "mysx_queryEvents", "mysx_queryTransactionBlocks", "mysx_resolveNameServiceAddress", 
+"mysx_resolveNameServiceNames", "mysx_subscribeEvent", "mysx_subscribeTransaction", "unsafe_batchTransaction", "unsafe_mergeCoins", 
+"unsafe_moveCall", "unsafe_pay", "unsafe_payAllMySocial", "unsafe_payMySocial", "unsafe_publish", "unsafe_requestAddStake", 
+"unsafe_requestWithdrawStake", "unsafe_splitCoin", "unsafe_splitCoinEqual", "unsafe_transferObject", "unsafe_transferMySocial"]
+
+Welcome to the MySocial interactive console.
+
+mys>-$
+
+```

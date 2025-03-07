@@ -1,0 +1,24 @@
+/crates/mys-types/src/crypto.rs @joyqvq @kchalkias @benr-ml
+/crates/mys-types/src/base_types.rs @joyqvq
+/crates/mys-keys/ @joyqvq @patrickkuo
+/crates/mys-protocol-config @mystenmark
+
+*.md @randall-Mysten @ronny-mysten
+# Omit auto-generated changelogs and changesets from docs review:
+/.changeset/*.md
+CHANGELOG.md
+
+# When snapshot changes, most likely we will need to recreate the genesis blob.
+/crates/mys-config/tests/snapshot_tests.rs @tharbert
+
+# When native functions change, so we can evaluate cost impact
+/crates/mys-framework/src/natives/ @oxade
+
+# GraphQL RPC working group
+/crates/mys-graphql-rpc/ @oxade @amnn @wlmyng @stefan-mysten @emmazzz @myswombat
+/crates/mys-graphql-e2e-tests/ @oxade @amnn @wlmyng @stefan-mysten @emmazzz @myswombat
+
+# Consensus working group
+/consensus/ @MystenLabs/consensus
+/crates/mys-core/src/consensus_handler.rs @MystenLabs/consensus
+/crates/mys-core/src/consensus_adapter.rs @MystenLabs/consensus

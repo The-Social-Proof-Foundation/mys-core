@@ -1,0 +1,26 @@
+[package]
+name = "mys-json"
+version = "0.0.0"
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+bcs.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+
+mys-types.workspace = true
+
+move-binary-format.workspace = true
+move-bytecode-utils.workspace = true
+move-core-types.workspace = true
+fastcrypto.workspace = true
+
+[dev-dependencies]
+test-fuzz.workspace = true
+mys-move-build.workspace = true
+mys-framework.workspace = true

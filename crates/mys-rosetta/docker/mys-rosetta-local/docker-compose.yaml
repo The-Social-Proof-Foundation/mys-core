@@ -1,0 +1,40 @@
+---
+version: "3.9"
+services:
+  mys-network:
+    image: mysten/mys-rosetta-local
+    ports:
+      - "9000:9000"
+    expose:
+      - "9000"
+    command:
+      - /bin/bash
+      - -c
+      - |
+        /usr/local/bin/mys start
+  rosetta-online:
+    image: mysten/mys-rosetta-local
+    ports:
+      - "9002:9002"
+    expose:
+      - "9002"
+    working_dir: /mys/localnet
+    command:
+      - /bin/bash
+      - -c
+      - |
+        /usr/local/bin/mys-rosetta generate-rosetta-cli-config &
+        /usr/local/bin/mys-rosetta start-online-remote-server --full-node-url http://mys-network:9000
+    stdin_open: true
+    tty: true
+  rosetta-offline:
+    image: mysten/mys-rosetta-local
+    ports:
+      - "9003:9003"
+    expose:
+      - "9003"
+    command:
+      - /bin/bash
+      - -c
+      - |
+        /usr/local/bin/mys-rosetta start-offline-server

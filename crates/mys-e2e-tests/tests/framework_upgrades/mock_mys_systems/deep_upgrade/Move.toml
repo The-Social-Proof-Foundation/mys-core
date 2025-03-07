@@ -1,0 +1,11 @@
+[package]
+name = "MySocialSystemDeepUpgrade"
+version = "0.0.1"
+edition = "2024.beta"
+
+[dependencies]
+MySocial = { local = "../../../../../mys-framework/packages/mys-framework" }
+MoveStdlib = { local = "../../../../../mys-framework/packages/move-stdlib" }
+
+[addresses]
+mys_system = "0x3"
