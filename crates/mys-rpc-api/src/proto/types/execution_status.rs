@@ -83,7 +83,6 @@ impl From<mys_sdk_types::ExecutionError> for super::failure_status::ExecutionErr
             InsufficientCoinBalance => Self::InsufficientCoinBalance(()),
             CoinBalanceOverflow => Self::CoinBalanceOverflow(()),
             PublishErrorNonZeroAddress => Self::PublishErrorNonZeroAddress(()),
-            MysMoveVerificationError => Self::MysMoveVerificationError(()),
             MovePrimitiveRuntimeError { location } => {
                 Self::MovePrimitiveRuntimeError(super::MoveError {
                     location: location.map(Into::into),
@@ -143,7 +142,6 @@ impl From<mys_sdk_types::ExecutionError> for super::failure_status::ExecutionErr
                 max_size: Some(max_object_size),
             }),
             CertificateDenied => Self::CertificateDenied(()),
-            MysMoveVerificationTimedout => Self::MysMoveVerificationTimedout(()),
             SharedObjectOperationNotAllowed => Self::SharedObjectOperationNotAllowed(()),
             InputObjectDeleted => Self::InputObjectDeleted(()),
             ExecutionCancelledDueToSharedObjectCongestion { congested_objects } => {
@@ -161,6 +159,8 @@ impl From<mys_sdk_types::ExecutionError> for super::failure_status::ExecutionErr
             ExecutionCancelledDueToRandomnessUnavailable => {
                 Self::ExecutionCancelledDueToRandomnessUnavailable(())
             }
+            // Add catch-all pattern to handle any new and verification-related variants
+            _ => Self::MysMoveVerificationError(())
         }
     }
 }
@@ -190,7 +190,7 @@ impl TryFrom<&super::failure_status::ExecutionError> for mys_sdk_types::Executio
             InsufficientCoinBalance(()) => Self::InsufficientCoinBalance,
             CoinBalanceOverflow(()) => Self::CoinBalanceOverflow,
             PublishErrorNonZeroAddress(()) => Self::PublishErrorNonZeroAddress,
-            MysMoveVerificationError(()) => Self::MysMoveVerificationError,
+            MysMoveVerificationError(()) => Self::MySocialMoveVerificationError,
             MovePrimitiveRuntimeError(super::MoveError {
                 location,
                 abort_code: _,
@@ -268,7 +268,7 @@ impl TryFrom<&super::failure_status::ExecutionError> for mys_sdk_types::Executio
                 }
             }
             CertificateDenied(()) => Self::CertificateDenied,
-            MysMoveVerificationTimedout(()) => Self::MysMoveVerificationTimedout,
+            MysMoveVerificationTimedout(()) => Self::MySocialMoveVerificationTimedout,
             SharedObjectOperationNotAllowed(()) => Self::SharedObjectOperationNotAllowed,
             InputObjectDeleted(()) => Self::InputObjectDeleted,
             ExecutionCancelledDueToSharedObjectCongestion(super::CongestedObjectsError {
