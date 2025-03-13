@@ -17,12 +17,12 @@ title: Module `mys::address`
 -  [Function `max`](#mys_address_max)
 
 
-<pre><code><b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
+<pre><code><b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
+<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
 </code></pre>
 
 
@@ -278,7 +278,7 @@ or if an invalid character is encountered.
 
 ## Function `length`
 
-Length of a MySocial address in bytes
+Length of a Mys address in bytes
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../mys/address.md#mys_address_length">length</a>(): u64

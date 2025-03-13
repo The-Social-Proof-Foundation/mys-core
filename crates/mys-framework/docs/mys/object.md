@@ -2,7 +2,7 @@
 title: Module `mys::object`
 ---
 
-MySocial object identifiers
+Mys object identifiers
 
 
 -  [Struct `ID`](#mys_object_ID)
@@ -34,14 +34,14 @@ MySocial object identifiers
 -  [Function `record_new_uid`](#mys_object_record_new_uid)
 
 
-<pre><code><b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
+<pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
+<b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
+<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
-<b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
-<b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
 </code></pre>
 
 
@@ -50,7 +50,7 @@ MySocial object identifiers
 
 ## Struct `ID`
 
-An object ID. This is used to reference MySocial Objects.
+An object ID. This is used to reference Mys Objects.
 This is *not* guaranteed to be globally unique--anyone can create an <code><a href="../mys/object.md#mys_object_ID">ID</a></code> from a <code><a href="../mys/object.md#mys_object_UID">UID</a></code> or
 from an object, and ID's can be freely copied and dropped.
 Here, the values are not globally unique because there can be multiple values of type <code><a href="../mys/object.md#mys_object_ID">ID</a></code>
@@ -82,7 +82,7 @@ as you want for a given <code>obj</code>, and each <code><a href="../mys/object.
 
 ## Struct `UID`
 
-Globally unique IDs that define an object's ID in storage. Any MySocial Object, that is a struct
+Globally unique IDs that define an object's ID in storage. Any Mys Object, that is a struct
 with the <code>key</code> ability, must have <code><a href="../mys/object.md#mys_object_id">id</a>: <a href="../mys/object.md#mys_object_UID">UID</a></code> as its first field.
 These are globally unique in the sense that no two values of type <code><a href="../mys/object.md#mys_object_UID">UID</a></code> are ever equal, in
 other words for any two values <code>id1: <a href="../mys/object.md#mys_object_UID">UID</a></code> and <code>id2: <a href="../mys/object.md#mys_object_UID">UID</a></code>, <code>id1</code> != <code>id2</code>.
@@ -177,7 +177,7 @@ The hardcoded ID for the singleton Random Object.
 
 <a name="mys_object_MYS_SYSTEM_STATE_OBJECT_ID"></a>
 
-The hardcoded ID for the singleton MySocial System State Object.
+The hardcoded ID for the singleton Mys System State Object.
 
 
 <pre><code><b>const</b> <a href="../mys/object.md#mys_object_MYS_SYSTEM_STATE_OBJECT_ID">MYS_SYSTEM_STATE_OBJECT_ID</a>: <b>address</b> = 0x5;
@@ -558,7 +558,7 @@ Get the inner bytes of <code><a href="../mys/object.md#mys_object_id">id</a></co
 
 ## Function `new`
 
-Create a new object. Returns the <code><a href="../mys/object.md#mys_object_UID">UID</a></code> that must be stored in a MySocial object.
+Create a new object. Returns the <code><a href="../mys/object.md#mys_object_UID">UID</a></code> that must be stored in a Mys object.
 This is the only way to create <code><a href="../mys/object.md#mys_object_UID">UID</a></code>s.
 
 
@@ -587,10 +587,10 @@ This is the only way to create <code><a href="../mys/object.md#mys_object_UID">U
 ## Function `delete`
 
 Delete the object and its <code><a href="../mys/object.md#mys_object_UID">UID</a></code>. This is the only way to eliminate a <code><a href="../mys/object.md#mys_object_UID">UID</a></code>.
-This exists to inform MySocial of object deletions. When an object
+This exists to inform Mys of object deletions. When an object
 gets unpacked, the programmer will have to do something with its
 <code><a href="../mys/object.md#mys_object_UID">UID</a></code>. The implementation of this function emits a deleted
-system event so MySocial knows to process the object deletion
+system event so Mys knows to process the object deletion
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../mys/object.md#mys_object_delete">delete</a>(<a href="../mys/object.md#mys_object_id">id</a>: <a href="../mys/object.md#mys_object_UID">mys::object::UID</a>)
@@ -717,7 +717,7 @@ Get the inner bytes for the underlying <code><a href="../mys/object.md#mys_objec
 ## Function `borrow_uid`
 
 Get the <code><a href="../mys/object.md#mys_object_UID">UID</a></code> for <code>obj</code>.
-Safe because MySocial has an extra bytecode verifier pass that forces every struct with
+Safe because Mys has an extra bytecode verifier pass that forces every struct with
 the <code>key</code> ability to have a distinguished <code><a href="../mys/object.md#mys_object_UID">UID</a></code> field.
 Cannot be made public as the access to <code><a href="../mys/object.md#mys_object_UID">UID</a></code> for a given object must be privileged, and
 restrictable in the object's module.

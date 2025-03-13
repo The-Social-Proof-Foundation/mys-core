@@ -18,7 +18,7 @@ platform-specific parameter.
 ## Function `length`
 
 Should be converted to a native function.
-Current implementation only works for MySocial.
+Current implementation only works for Mys.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../std/address.md#std_address_length">length</a>(): <a href="../std/u64.md#std_u64">u64</a>

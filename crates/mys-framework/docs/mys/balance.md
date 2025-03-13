@@ -25,12 +25,12 @@ custom coins with <code><a href="../mys/balance.md#mys_balance_Supply">Supply</a
 -  [Function `destroy_supply`](#mys_balance_destroy_supply)
 
 
-<pre><code><b>use</b> <a href="../std/address.md#std_address">std::address</a>;
+<pre><code><b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
+<b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
 </code></pre>
 
 
@@ -150,7 +150,7 @@ For when an overflow is happening on Supply operations.
 
 
 
-<pre><code><b>const</b> <a href="../mys/balance.md#mys_balance_MYS_TYPE_NAME">MYS_TYPE_NAME</a>: vector&lt;u8&gt; = vector[48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 50, 58, 58, 115, 117, 105, 58, 58, 83, 85, 73];
+<pre><code><b>const</b> <a href="../mys/balance.md#mys_balance_MYS_TYPE_NAME">MYS_TYPE_NAME</a>: vector&lt;u8&gt; = vector[48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 50, 58, 58, 109, 121, 115, 58, 58, 77, 89, 83];
 </code></pre>
 
 

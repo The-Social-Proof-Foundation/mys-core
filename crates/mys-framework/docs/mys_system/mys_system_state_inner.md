@@ -68,15 +68,7 @@ title: Module `mys_system::mys_system_state_inner`
 -  [Function `extract_coin_balance`](#mys_system_mys_system_state_inner_extract_coin_balance)
 
 
-<pre><code><b>use</b> <a href="../std/address.md#std_address">std::address</a>;
-<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
-<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
-<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
-<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
-<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
-<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
-<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
@@ -86,10 +78,10 @@ title: Module `mys_system::mys_system_state_inner`
 <b>use</b> <a href="../mys/dynamic_object_field.md#mys_dynamic_object_field">mys::dynamic_object_field</a>;
 <b>use</b> <a href="../mys/event.md#mys_event">mys::event</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
+<b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/pay.md#mys_pay">mys::pay</a>;
 <b>use</b> <a href="../mys/priority_queue.md#mys_priority_queue">mys::priority_queue</a>;
-<b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/table.md#mys_table">mys::table</a>;
 <b>use</b> <a href="../mys/table_vec.md#mys_table_vec">mys::table_vec</a>;
 <b>use</b> <a href="../mys/transfer.md#mys_transfer">mys::transfer</a>;
@@ -107,6 +99,14 @@ title: Module `mys_system::mys_system_state_inner`
 <b>use</b> <a href="../mys_system/validator_set.md#mys_system_validator_set">mys_system::validator_set</a>;
 <b>use</b> <a href="../mys_system/validator_wrapper.md#mys_system_validator_wrapper">mys_system::validator_wrapper</a>;
 <b>use</b> <a href="../mys_system/voting_power.md#mys_system_voting_power">mys_system::voting_power</a>;
+<b>use</b> <a href="../std/address.md#std_address">std::address</a>;
+<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
+<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
+<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
+<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
+<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
+<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
 
@@ -271,7 +271,7 @@ Added min_validator_count.
 
 ## Struct `MysSystemStateInner`
 
-The top-level object containing all information of the MySocial system.
+The top-level object containing all information of the Mys system.
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../mys_system/mys_system_state_inner.md#mys_system_mys_system_state_inner_MysSystemStateInner">MysSystemStateInner</a> <b>has</b> store

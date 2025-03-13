@@ -45,14 +45,6 @@ title: Module `bridge::bridge`
 <b>use</b> <a href="../bridge/message.md#bridge_message">bridge::message</a>;
 <b>use</b> <a href="../bridge/message_types.md#bridge_message_types">bridge::message_types</a>;
 <b>use</b> <a href="../bridge/treasury.md#bridge_treasury">bridge::treasury</a>;
-<b>use</b> <a href="../std/address.md#std_address">std::address</a>;
-<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
-<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
-<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
-<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
-<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
-<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
-<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 <b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
@@ -68,12 +60,12 @@ title: Module `bridge::bridge`
 <b>use</b> <a href="../mys/hash.md#mys_hash">mys::hash</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
 <b>use</b> <a href="../mys/linked_table.md#mys_linked_table">mys::linked_table</a>;
+<b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/object_bag.md#mys_object_bag">mys::object_bag</a>;
 <b>use</b> <a href="../mys/package.md#mys_package">mys::package</a>;
 <b>use</b> <a href="../mys/pay.md#mys_pay">mys::pay</a>;
 <b>use</b> <a href="../mys/priority_queue.md#mys_priority_queue">mys::priority_queue</a>;
-<b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/table.md#mys_table">mys::table</a>;
 <b>use</b> <a href="../mys/table_vec.md#mys_table_vec">mys::table_vec</a>;
 <b>use</b> <a href="../mys/transfer.md#mys_transfer">mys::transfer</a>;
@@ -83,16 +75,24 @@ title: Module `bridge::bridge`
 <b>use</b> <a href="../mys/vec_map.md#mys_vec_map">mys::vec_map</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
 <b>use</b> <a href="../mys/versioned.md#mys_versioned">mys::versioned</a>;
+<b>use</b> <a href="../mys_system/mys_system.md#mys_system_mys_system">mys_system::mys_system</a>;
+<b>use</b> <a href="../mys_system/mys_system_state_inner.md#mys_system_mys_system_state_inner">mys_system::mys_system_state_inner</a>;
 <b>use</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">mys_system::stake_subsidy</a>;
 <b>use</b> <a href="../mys_system/staking_pool.md#mys_system_staking_pool">mys_system::staking_pool</a>;
 <b>use</b> <a href="../mys_system/storage_fund.md#mys_system_storage_fund">mys_system::storage_fund</a>;
-<b>use</b> <a href="../mys_system/mys_system.md#mys_system_mys_system">mys_system::mys_system</a>;
-<b>use</b> <a href="../mys_system/mys_system_state_inner.md#mys_system_mys_system_state_inner">mys_system::mys_system_state_inner</a>;
 <b>use</b> <a href="../mys_system/validator.md#mys_system_validator">mys_system::validator</a>;
 <b>use</b> <a href="../mys_system/validator_cap.md#mys_system_validator_cap">mys_system::validator_cap</a>;
 <b>use</b> <a href="../mys_system/validator_set.md#mys_system_validator_set">mys_system::validator_set</a>;
 <b>use</b> <a href="../mys_system/validator_wrapper.md#mys_system_validator_wrapper">mys_system::validator_wrapper</a>;
 <b>use</b> <a href="../mys_system/voting_power.md#mys_system_voting_power">mys_system::voting_power</a>;
+<b>use</b> <a href="../std/address.md#std_address">std::address</a>;
+<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
+<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
+<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
+<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
+<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
+<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
 
@@ -957,7 +957,7 @@ title: Module `bridge::bridge`
         <a href="../bridge/bridge.md#bridge_bridge_EUnexpectedChainID">EUnexpectedChainID</a>,
     );
     <b>let</b> message_key = <a href="../bridge/message.md#bridge_message">message</a>.key();
-    // retrieve pending <a href="../bridge/message.md#bridge_message">message</a> <b>if</b> source chain is MySocial, the initial <a href="../bridge/message.md#bridge_message">message</a>
+    // retrieve pending <a href="../bridge/message.md#bridge_message">message</a> <b>if</b> source chain is Mys, the initial <a href="../bridge/message.md#bridge_message">message</a>
     // must exist on chain
     <b>if</b> (<a href="../bridge/message.md#bridge_message">message</a>.source_chain() == inner.chain_id) {
         <b>let</b> record = &<b>mut</b> inner.token_transfer_records[message_key];

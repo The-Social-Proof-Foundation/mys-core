@@ -664,21 +664,6 @@ is_inactive_validator
 active_validator_addresses
 	public(package) fun
 	0x3::validator_set
-StorageFund
-	public struct
-	0x3::storage_fund
-new
-	public(package) fun
-	0x3::storage_fund
-advance_epoch
-	public(package) fun
-	0x3::storage_fund
-total_object_storage_rebates
-	public fun
-	0x3::storage_fund
-total_balance
-	public fun
-	0x3::storage_fund
 StakeSubsidy
 	public struct
 	0x3::stake_subsidy
@@ -694,6 +679,21 @@ current_epoch_subsidy_amount
 get_distribution_counter
 	public(package) fun
 	0x3::stake_subsidy
+StorageFund
+	public struct
+	0x3::storage_fund
+new
+	public(package) fun
+	0x3::storage_fund
+advance_epoch
+	public(package) fun
+	0x3::storage_fund
+total_object_storage_rebates
+	public fun
+	0x3::storage_fund
+total_balance
+	public fun
+	0x3::storage_fund
 SystemParameters
 	public struct
 	0x3::mys_system_state_inner
@@ -2959,6 +2959,57 @@ max_heapify_recursive
 priorities
 	public fun
 	0x2::priority_queue
+Profile
+	public struct
+	0x2::profile
+ProfileCreatedEvent
+	public struct
+	0x2::profile
+ProfileUpdatedEvent
+	public struct
+	0x2::profile
+UsernameUpdatedEvent
+	public struct
+	0x2::profile
+UsernameNFTAssignedEvent
+	public struct
+	0x2::profile
+UsernameNFTRemovedEvent
+	public struct
+	0x2::profile
+create_profile
+	public fun
+	0x2::profile
+create_and_register_profile
+	public entry fun
+	0x2::profile
+update_profile
+	public entry fun
+	0x2::profile
+display_name
+	public fun
+	0x2::profile
+bio
+	public fun
+	0x2::profile
+profile_picture
+	public fun
+	0x2::profile
+created_at
+	public fun
+	0x2::profile
+owner
+	public fun
+	0x2::profile
+id
+	public fun
+	0x2::profile
+has_username_nft
+	public fun
+	0x2::profile
+username_nft_id
+	public fun
+	0x2::profile
 Versioned
 	public struct
 	0x2::versioned

@@ -2,7 +2,7 @@
 title: Module `mys::types`
 ---
 
-MySocial types helpers and utilities
+Mys types helpers and utilities
 
 
 -  [Function `is_one_time_witness`](#mys_types_is_one_time_witness)
