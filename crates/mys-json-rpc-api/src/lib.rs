@@ -27,6 +27,9 @@ use prometheus::{register_int_counter_with_registry, IntCounter};
 pub use read::ReadApiClient;
 pub use read::ReadApiOpenRpc;
 pub use read::ReadApiServer;
+pub use social::SocialReadApiClient;
+pub use social::SocialReadApiOpenRpc;
+pub use social::SocialReadApiServer;
 use tap::TapFallible;
 use tracing::warn;
 pub use transaction_builder::TransactionBuilderClient;
@@ -43,6 +46,7 @@ mod governance;
 mod indexer;
 mod move_utils;
 mod read;
+mod social;
 mod transaction_builder;
 mod write;
 

@@ -11127,6 +11127,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "mys-social"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum 0.7.5",
+ "bcs",
+ "clap",
+ "fastcrypto",
+ "futures",
+ "jsonrpsee",
+ "mys-core",
+ "mys-json",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-open-rpc",
+ "mys-open-rpc-macros",
+ "mys-sdk",
+ "mys-types",
+ "mysten-metrics",
+ "prometheus",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_with 3.9.0",
+ "tap",
+ "test-cluster",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "mys-source-validation"
 version = "1.43.1"
 dependencies = [

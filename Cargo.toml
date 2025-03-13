@@ -82,6 +82,7 @@ members = [
     "crates/shared-crypto",
     "crates/simulacrum",
     "crates/mys",
+    "crates/mys-social",
     "crates/mys-adapter-transactional-tests",
     "crates/mys-analytics-indexer",
     "crates/mys-analytics-indexer-derive",

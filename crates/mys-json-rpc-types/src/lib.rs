@@ -16,6 +16,7 @@ pub use mys_governance::*;
 pub use mys_move::*;
 pub use mys_object::*;
 pub use mys_protocol::*;
+pub use mys_social::*;
 pub use mys_transaction::*;
 use mys_types::base_types::ObjectID;
 
@@ -34,6 +35,7 @@ mod mys_governance;
 mod mys_move;
 mod mys_object;
 mod mys_protocol;
+mod mys_social;
 mod mys_transaction;
 
 pub type DynamicFieldPage = Page<DynamicFieldInfo, ObjectID>;

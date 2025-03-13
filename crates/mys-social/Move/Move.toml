@@ -1,0 +1,12 @@
+[package]
+name = "MysocialPackage"
+version = "0.0.1"
+published-at = "0x0"
+edition = "2024.beta"
+
+[dependencies]
+MoveStdlib = { local = "../../mys-framework/packages/move-stdlib" }
+
+[addresses]
+mysocial = "0x0"
+sui = "0x2"
