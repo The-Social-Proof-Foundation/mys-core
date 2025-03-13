@@ -4,92 +4,89 @@
 /// Defines the `Coin` type - platform wide representation of fungible
 /// tokens and coins. `Coin` can be described as a secure wrapper around
 /// `Balance` type.
-module mys::coin {
-    use std::ascii;
-    use std::string;
-    use std::type_name;
-    use std::option::Option;
-    use mys::balance::{Self, Balance, Supply};
-    use mys::deny_list::DenyList;
-    use mys::url::{Self, Url};
-    use mys::object::{Self, UID, ID};
-    use mys::transfer;
-    use mys::tx_context::TxContext;
+module mys::coin;
 
-    // Allows calling `.split_vec(amounts, ctx)` on `coin`
-    public use fun mys::pay::split_vec as Coin.split_vec;
+use std::ascii;
+use std::string;
+use std::type_name;
+use mys::balance::{Self, Balance, Supply};
+use mys::deny_list::DenyList;
+use mys::url::{Self, Url};
 
-    // Allows calling `.join_vec(coins)` on `coin`
-    public use fun mys::pay::join_vec as Coin.join_vec;
+// Allows calling `.split_vec(amounts, ctx)` on `coin`
+public use fun mys::pay::split_vec as Coin.split_vec;
 
-    // Allows calling `.split_and_transfer(amount, recipient, ctx)` on `coin`
-    public use fun mys::pay::split_and_transfer as Coin.split_and_transfer;
+// Allows calling `.join_vec(coins)` on `coin`
+public use fun mys::pay::join_vec as Coin.join_vec;
 
-    // Allows calling `.divide_and_keep(n, ctx)` on `coin`
-    public use fun mys::pay::divide_and_keep as Coin.divide_and_keep;
+// Allows calling `.split_and_transfer(amount, recipient, ctx)` on `coin`
+public use fun mys::pay::split_and_transfer as Coin.split_and_transfer;
 
-    /// A type passed to create_supply is not a one-time witness.
-    const EBadWitness: u64 = 0;
-    /// Invalid arguments are passed to a function.
-    const EInvalidArg: u64 = 1;
-    /// Trying to split a coin more times than its balance allows.
-    const ENotEnough: u64 = 2;
-    // #[error]
-    // const EGlobalPauseNotAllowed: vector<u8> =
-    //    b"Kill switch was not allowed at the creation of the DenyCapV2";
-    const EGlobalPauseNotAllowed: u64 = 3;
+// Allows calling `.divide_and_keep(n, ctx)` on `coin`
+public use fun mys::pay::divide_and_keep as Coin.divide_and_keep;
 
-    /// A coin of type `T` worth `value`. Transferable and storable
-    public struct Coin<phantom T> has key, store {
-        id: UID,
-        balance: Balance<T>,
-    }
+/// A type passed to create_supply is not a one-time witness.
+const EBadWitness: u64 = 0;
+/// Invalid arguments are passed to a function.
+const EInvalidArg: u64 = 1;
+/// Trying to split a coin more times than its balance allows.
+const ENotEnough: u64 = 2;
+// #[error]
+// const EGlobalPauseNotAllowed: vector<u8> =
+//    b"Kill switch was not allowed at the creation of the DenyCapV2";
+const EGlobalPauseNotAllowed: u64 = 3;
 
-    /// Each Coin type T created through `create_currency` function will have a
-    /// unique instance of CoinMetadata<T> that stores the metadata for this coin type.
-    public struct CoinMetadata<phantom T> has key, store {
-        id: UID,
-        /// Number of decimal places the coin uses.
-        /// A coin with `value ` N and `decimals` D should be shown as N / 10^D
-        /// E.g., a coin with `value` 7002 and decimals 3 should be displayed as 7.002
-        /// This is metadata for display usage only.
-        decimals: u8,
-        /// Name for the token
-        name: string::String,
-        /// Symbol for the token
-        symbol: ascii::String,
-        /// Description of the token
-        description: string::String,
-        /// URL for the token logo
-        icon_url: Option<Url>,
-    }
+/// A coin of type `T` worth `value`. Transferable and storable
+public struct Coin<phantom T> has key, store {
+    id: UID,
+    balance: Balance<T>,
+}
 
-    /// Similar to CoinMetadata, but created only for regulated coins that use the DenyList.
-    /// This object is always immutable.
-    public struct RegulatedCoinMetadata<phantom T> has key {
-        id: UID,
-        /// The ID of the coin's CoinMetadata object.
-        coin_metadata_object: ID,
-        /// The ID of the coin's DenyCap object.
-        deny_cap_object: ID,
-    }
+/// Each Coin type T created through `create_currency` function will have a
+/// unique instance of CoinMetadata<T> that stores the metadata for this coin type.
+public struct CoinMetadata<phantom T> has key, store {
+    id: UID,
+    /// Number of decimal places the coin uses.
+    /// A coin with `value ` N and `decimals` D should be shown as N / 10^D
+    /// E.g., a coin with `value` 7002 and decimals 3 should be displayed as 7.002
+    /// This is metadata for display usage only.
+    decimals: u8,
+    /// Name for the token
+    name: string::String,
+    /// Symbol for the token
+    symbol: ascii::String,
+    /// Description of the token
+    description: string::String,
+    /// URL for the token logo
+    icon_url: Option<Url>,
+}
 
-    /// Capability allowing the bearer to mint and burn
-    /// coins of type `T`. Transferable
-    public struct TreasuryCap<phantom T> has key, store {
-        id: UID,
-        total_supply: Supply<T>,
-    }
+/// Similar to CoinMetadata, but created only for regulated coins that use the DenyList.
+/// This object is always immutable.
+public struct RegulatedCoinMetadata<phantom T> has key {
+    id: UID,
+    /// The ID of the coin's CoinMetadata object.
+    coin_metadata_object: ID,
+    /// The ID of the coin's DenyCap object.
+    deny_cap_object: ID,
+}
 
-    /// Capability allowing the bearer to deny addresses from using the currency's coins--
-    /// immediately preventing those addresses from interacting with the coin as an input to a
-    /// transaction and at the start of the next preventing them from receiving the coin.
-    /// If `allow_global_pause` is true, the bearer can enable a global pause that behaves as if
-    /// all addresses were added to the deny list.
-    public struct DenyCapV2<phantom T> has key, store {
-        id: UID,
-        allow_global_pause: bool,
-    }
+/// Capability allowing the bearer to mint and burn
+/// coins of type `T`. Transferable
+public struct TreasuryCap<phantom T> has key, store {
+    id: UID,
+    total_supply: Supply<T>,
+}
+
+/// Capability allowing the bearer to deny addresses from using the currency's coins--
+/// immediately preventing those addresses from interacting with the coin as an input to a
+/// transaction and at the start of the next preventing them from receiving the coin.
+/// If `allow_global_pause` is true, the bearer can enable a global pause that behaves as if
+/// all addresses were added to the deny list.
+public struct DenyCapV2<phantom T> has key, store {
+    id: UID,
+    allow_global_pause: bool,
+}
 
 // === Supply <-> TreasuryCap morphing and accessors  ===
 
@@ -138,11 +135,6 @@ public fun balance_mut<T>(coin: &mut Coin<T>): &mut Balance<T> {
 /// Wrap a balance into a Coin to make it transferable.
 public fun from_balance<T>(balance: Balance<T>, ctx: &mut TxContext): Coin<T> {
     Coin { id: object::new(ctx), balance }
-}
-
-/// Create a coin with a given value (primarily for testing purposes)
-public fun from_value<T>(value: u64, ctx: &mut TxContext): Coin<T> {
-    from_balance(balance::create_with_value<T>(value), ctx)
 }
 
 /// Destruct a Coin wrapper and keep the balance.
@@ -213,62 +205,10 @@ public fun destroy_zero<T>(c: Coin<T>) {
 
 // === Registering new coin types and managing the coin supply ===
 
-/// Admin capability that restricts who can create currencies
-public struct CurrencyAdminCap has key, store {
-    id: UID
-}
-
-/// Error for when someone without admin capability tries to create a currency
-const ENotAuthorizedAdmin: u64 = 4;
-
-/// Initialize function to create the CurrencyAdminCap on system initialization
-/// This would be called during genesis or initial system setup
-public fun init_currency_admin(ctx: &mut TxContext) {
-    transfer::transfer(
-        CurrencyAdminCap {
-            id: object::new(ctx)
-        },
-        tx_context::sender(ctx)
-    );
-}
-
 /// Create a new currency type `T` as and return the `TreasuryCap` for
 /// `T` to the caller. Can only be called with a `one-time-witness`
 /// type, ensuring that there's only one `TreasuryCap` per `T`.
-/// 
-/// Requires the CurrencyAdminCap to restrict currency creation to authorized admins.
 public fun create_currency<T: drop>(
-    _admin_cap: &CurrencyAdminCap,
-    witness: T,
-    decimals: u8,
-    symbol: vector<u8>,
-    name: vector<u8>,
-    description: vector<u8>,
-    icon_url: Option<Url>,
-    ctx: &mut TxContext,
-): (TreasuryCap<T>, CoinMetadata<T>) {
-    // Make sure there's only one instance of the type T
-    assert!(mys::types::is_one_time_witness(&witness), EBadWitness);
-
-    (
-        TreasuryCap {
-            id: object::new(ctx),
-            total_supply: balance::create_supply(witness),
-        },
-        CoinMetadata {
-            id: object::new(ctx),
-            decimals,
-            name: string::utf8(name),
-            symbol: ascii::string(symbol),
-            description: string::utf8(description),
-            icon_url,
-        },
-    )
-}
-
-/// Internal function for creating currency from the mys module
-/// Skips the admin cap check since this is only used during genesis
-public(package) fun create_currency_internal<T: drop>(
     witness: T,
     decimals: u8,
     symbol: vector<u8>,
@@ -304,10 +244,7 @@ public(package) fun create_currency_internal<T: drop>(
 /// The `allow_global_pause` flag enables an additional API that will cause all addresses to
 /// be denied. Note however, that this doesn't affect per-address entries of the deny list and
 /// will not change the result of the "contains" APIs.
-/// 
-/// Requires the CurrencyAdminCap to restrict regulated currency creation to authorized admins.
 public fun create_regulated_currency_v2<T: drop>(
-    admin_cap: &CurrencyAdminCap,
     witness: T,
     decimals: u8,
     symbol: vector<u8>,
@@ -318,7 +255,6 @@ public fun create_regulated_currency_v2<T: drop>(
     ctx: &mut TxContext,
 ): (TreasuryCap<T>, DenyCapV2<T>, CoinMetadata<T>) {
     let (treasury_cap, metadata) = create_currency(
-        admin_cap,
         witness,
         decimals,
         symbol,
@@ -603,11 +539,7 @@ public fun create_regulated_currency<T: drop>(
     icon_url: Option<Url>,
     ctx: &mut TxContext,
 ): (TreasuryCap<T>, DenyCap<T>, CoinMetadata<T>) {
-    // Create admin cap for this function
-    let admin_cap = CurrencyAdminCap { id: object::new(ctx) };
-    
     let (treasury_cap, metadata) = create_currency(
-        &admin_cap,
         witness,
         decimals,
         symbol,
@@ -616,10 +548,6 @@ public fun create_regulated_currency<T: drop>(
         icon_url,
         ctx,
     );
-    
-    // Cleanup admin cap
-    let CurrencyAdminCap { id } = admin_cap;
-    id.delete();
     let deny_cap = DenyCap {
         id: object::new(ctx),
     };
@@ -632,7 +560,7 @@ public fun create_regulated_currency<T: drop>(
 }
 
 /// The index into the deny list vector for the `mys::coin::Coin` type.
-const DENY_LIST_COIN_INDEX: u64 = 0;
+const DENY_LIST_COIN_INDEX: u64 = 0; // TODO public(package) const
 
 /// Adds the given address to the deny list, preventing it
 /// from interacting with the specified coin type as an input to a transaction.
@@ -681,6 +609,4 @@ public fun deny_list_contains<T>(deny_list: &DenyList, addr: address): bool {
 
     let `type` = type_name::into_string(name).into_bytes();
     deny_list.v1_contains(DENY_LIST_COIN_INDEX, `type`, addr)
-}
-
 }

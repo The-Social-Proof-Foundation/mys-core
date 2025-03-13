@@ -5,10 +5,6 @@
 /// shared object that is created at 0x6 during genesis.
 module mys::clock;
 
-use mys::object::{Self, UID};
-use mys::transfer;
-use mys::tx_context::TxContext;
-
 /// Sender is not @0x0 the system address.
 const ENotSystemAddress: u64 = 0;
 

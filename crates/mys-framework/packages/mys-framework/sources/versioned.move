@@ -4,8 +4,6 @@
 module mys::versioned;
 
 use mys::dynamic_field;
-use mys::object::{Self, UID, ID};
-use mys::tx_context::TxContext;
 
 /// Failed to upgrade the inner object due to invalid capability or new version.
 const EInvalidUpgrade: u64 = 0;

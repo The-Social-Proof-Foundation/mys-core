@@ -14,10 +14,7 @@ module mys::display;
 
 use std::string::String;
 use mys::event;
-use mys::object::{Self, UID, ID};
 use mys::package::Publisher;
-use mys::transfer;
-use mys::tx_context::{Self, TxContext};
 use mys::vec_map::{Self, VecMap};
 
 /// For when T does not belong to the package `Publisher`.
@@ -108,7 +105,7 @@ public fun new_with_fields<T: key>(
 #[allow(lint(self_transfer))]
 /// Create a new empty Display<T> object and keep it.
 public entry fun create_and_keep<T: key>(pub: &Publisher, ctx: &mut TxContext) {
-    transfer::public_transfer(new<T>(pub, ctx), tx_context::sender(ctx))
+    transfer::public_transfer(new<T>(pub, ctx), ctx.sender())
 }
 
 /// Manually bump the version and emit an event with the updated version's contents.
@@ -117,7 +114,7 @@ public entry fun update_version<T: key>(display: &mut Display<T>) {
     event::emit(VersionUpdated<T> {
         version: display.version,
         fields: *&display.fields,
-        id: object::uid_to_inner(&display.id),
+        id: display.id.to_inner(),
     })
 }
 
@@ -178,10 +175,9 @@ public fun fields<T: key>(d: &Display<T>): &VecMap<String, String> {
 /// Internal function to create a new `Display<T>`.
 fun create_internal<T: key>(ctx: &mut TxContext): Display<T> {
     let uid = object::new(ctx);
-    let id = object::uid_to_inner(&uid);
 
     event::emit(DisplayCreated<T> {
-        id,
+        id: uid.to_inner(),
     });
 
     Display {

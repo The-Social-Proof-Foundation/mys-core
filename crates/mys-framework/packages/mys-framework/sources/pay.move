@@ -5,8 +5,6 @@
 module mys::pay;
 
 use mys::coin::Coin;
-use mys::transfer;
-use mys::tx_context::{Self, TxContext};
 
 /// For when empty vector is supplied into join function.
 const ENoCoins: u64 = 0;
@@ -14,7 +12,7 @@ const ENoCoins: u64 = 0;
 #[allow(lint(self_transfer))]
 /// Transfer `c` to the sender of the current transaction
 public fun keep<T>(c: Coin<T>, ctx: &TxContext) {
-    transfer::public_transfer(c, tx_context::sender(ctx))
+    transfer::public_transfer(c, ctx.sender())
 }
 
 /// Split coin `self` to two coins, one with balance `split_amount`,
@@ -51,7 +49,7 @@ public entry fun divide_and_keep<T>(self: &mut Coin<T>, n: u64, ctx: &mut TxCont
     let mut vec: vector<Coin<T>> = self.divide_into_n(n, ctx);
     let (mut i, len) = (0, vec.length());
     while (i < len) {
-        transfer::public_transfer(vec.pop_back(), tx_context::sender(ctx));
+        transfer::public_transfer(vec.pop_back(), ctx.sender());
         i = i + 1;
     };
     vec.destroy_empty();

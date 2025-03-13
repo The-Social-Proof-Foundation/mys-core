@@ -147,3 +147,7 @@ tracing = [
     "mys-types/tracing",
     "mys-execution/tracing",
 ]
+
+[[bin]]
+name = "myso"
+path = "src/main.rs"

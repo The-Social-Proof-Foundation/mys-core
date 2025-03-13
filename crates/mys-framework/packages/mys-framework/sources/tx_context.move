@@ -49,15 +49,6 @@ public fun epoch(self: &TxContext): u64 {
     self.epoch
 }
 
-/// Convert a type to its corresponding address representation
-/// This is useful for working with coin types or other type-indexed collections
-public fun type_into_address<T>(): address {
-    let type_name = std::type_name::get<T>();
-    std::ascii::into_bytes(type_name.get_address())
-        .pop_back(); // Remove the trailing null byte from the address string
-    @0x1 // PLACEHOLDER: Just returning an address for now - in a real implementation we'd parse the string
-}
-
 /// Return the epoch start time as a unix timestamp in milliseconds.
 public fun epoch_timestamp_ms(self: &TxContext): u64 {
     self.epoch_timestamp_ms

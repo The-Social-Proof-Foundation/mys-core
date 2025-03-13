@@ -8,183 +8,52 @@ module mys::package;
 
 use std::ascii::String;
 use std::type_name;
-use std::vector;
 use mys::types;
-use mys::object::{Self, UID, ID};
-use mys::transfer;
-use mys::tx_context::{Self, TxContext};
 
-/// Types used for package management
-public struct Publisher has key, store {
-    id: UID,
-    package: String,
-    module_name: String,
-}
+/// Allows calling `.burn` to destroy a `Publisher`.
+public use fun burn_publisher as Publisher.burn;
 
-/// Capability controlling the ability to upgrade a package.
-public struct UpgradeCap has key, store {
-    id: UID,
-    /// (Mutable) ID of the package that can be upgraded.
-    package: ID,
-    /// (Mutable) The number of upgrades that have been applied
-    /// successively to the original package.  Initially 0.
-    version: u64,
-    /// What kind of upgrades are allowed.
-    policy: u8,
-}
+/// Allows calling `.module_` to access the name of the module a
+/// `Publisher` was derived from.
+public use fun published_module as Publisher.module_;
 
-/// Permission to perform a particular upgrade
-public struct UpgradeTicket {
-    /// (Immutable) ID of the `UpgradeCap` this originated from.
-    cap: ID,
-    /// (Immutable) ID of the package that can be upgraded.
-    package: ID,
-    /// (Immutable) The policy regarding what kind of upgrade this ticket permits.
-    policy: u8,
-    /// (Immutable) SHA256 digest of the bytecode and transitive dependencies that will be used in the upgrade.
-    digest: vector<u8>,
-}
+/// Allows calling `.package` to access the address of the package
+/// a `Publisher` was derived from.
+public use fun published_package as Publisher.package;
 
-/// Result of a successful upgrade
-public struct UpgradeReceipt {
-    /// (Immutable) ID of the `UpgradeCap` this originated from.
-    cap: ID,
-    /// (Immutable) ID of the package after it was upgraded.
-    package: ID,
-}
+/// Allows calling `.package` to access the package this cap
+/// authorizes upgrades for.
+public use fun upgrade_package as UpgradeCap.package;
 
-/// Method functions for the Publisher, UpgradeCap, UpgradeTicket, and UpgradeReceipt types
-/// Note: Method syntax using dot notation is not supported in Move 2024.beta
-/// So we comment out all these functions and use standard function calls instead
+/// Allows calling `.policy` to access the most permissive kind of
+/// upgrade this cap will authorize.
+public use fun upgrade_policy as UpgradeCap.policy;
 
-/*
-public fun Publisher.burn(self: Publisher) {
-    burn_publisher(self)
-}
+/// Allows calling `.authorize` to initiate an upgrade.
+public use fun authorize_upgrade as UpgradeCap.authorize;
 
-public fun Publisher.module_(self: &Publisher): &String {
-    published_module(self)
-}
+/// Allows calling `.commit` to finalize an upgrade.
+public use fun commit_upgrade as UpgradeCap.commit;
 
-public fun Publisher.package(self: &Publisher): &String {
-    published_package(self)
-}
+/// Allows calling `.package` to access the package this ticket
+/// authorizes an upgrade for.
+public use fun ticket_package as UpgradeTicket.package;
 
-public fun UpgradeCap.package(self: &UpgradeCap): ID {
-    upgrade_package(self)
-}
+/// Allows calling `.policy` to access the kind of upgrade this
+/// ticket authorizes.
+public use fun ticket_policy as UpgradeTicket.policy;
 
-public fun UpgradeCap.version(self: &UpgradeCap): u64 {
-    self.version
-}
+/// Allows calling `.digest` to access the digest of the bytecode
+/// used for this upgrade.
+public use fun ticket_digest as UpgradeTicket.digest;
 
-public fun UpgradeCap.policy(self: &UpgradeCap): u8 {
-    upgrade_policy(self)
-}
+/// Allows calling `.cap` to fetch the ID of the cap this receipt
+/// should be applied to.
+public use fun receipt_cap as UpgradeReceipt.cap;
 
-public fun UpgradeCap.upgrade_policy(self: &UpgradeCap): u8 {
-    self.policy
-}
-
-public fun UpgradeCap.authorize(
-    self: &mut UpgradeCap, 
-    admin_cap: &PackageAdminCap,
-    policy: u8, 
-    digest: vector<u8>
-): UpgradeTicket {
-    authorize_upgrade(admin_cap, self, policy, digest)
-}
-
-public fun UpgradeCap.authorize_upgrade(
-    self: &mut UpgradeCap,
-    policy: u8, 
-    digest: vector<u8>
-): UpgradeTicket {
-    let id_zero = @0x0.to_id();
-    assert!(self.package != id_zero, EAlreadyAuthorized);
-    assert!(policy >= self.policy, ETooPermissive);
-
-    let package = self.package;
-    self.package = id_zero;
-
-    UpgradeTicket {
-        cap: object::id(self),
-        package,
-        policy,
-        digest,
-    }
-}
-
-public fun UpgradeCap.commit(self: &mut UpgradeCap, receipt: UpgradeReceipt) {
-    commit_upgrade(self, receipt)
-}
-
-public fun UpgradeCap.commit_upgrade(self: &mut UpgradeCap, receipt: UpgradeReceipt) {
-    let UpgradeReceipt { cap: cap_id, package } = receipt;
-
-    assert!(object::id(self) == cap_id, EWrongUpgradeCap);
-    assert!(self.package.to_address() == @0x0, ENotAuthorized);
-
-    self.package = package;
-    self.version = self.version + 1;
-}
-
-public fun UpgradeCap.only_additive_upgrades(self: &mut UpgradeCap) {
-    self.restrict(ADDITIVE)
-}
-
-public fun UpgradeCap.only_dep_upgrades(self: &mut UpgradeCap) {
-    self.restrict(DEP_ONLY)
-}
-
-public fun UpgradeCap.make_immutable(self: UpgradeCap) {
-    let UpgradeCap { id, package: _, version: _, policy: _ } = self;
-    id.delete();
-}
-
-fun UpgradeCap.restrict(self: &mut UpgradeCap, policy: u8) {
-    assert!(self.policy <= policy, ETooPermissive);
-    self.policy = policy;
-}
-
-public fun UpgradeTicket.package(self: &UpgradeTicket): ID {
-    ticket_package(self)
-}
-
-public fun UpgradeTicket.policy(self: &UpgradeTicket): u8 {
-    ticket_policy(self)
-}
-
-public fun UpgradeTicket.digest(self: &UpgradeTicket): &vector<u8> {
-    ticket_digest(self)
-}
-
-public fun UpgradeTicket.test_upgrade(self: UpgradeTicket): UpgradeReceipt {
-    let UpgradeTicket { cap, package, policy: _, digest: _ } = self;
-
-    // Generate a fake package ID for the upgraded package by
-    // hashing the existing package and cap ID.
-    let mut data = cap.to_bytes();
-    data.append(package.to_bytes());
-    let package = object::id_from_bytes(mys::hash::blake2b256(&data));
-
-    UpgradeReceipt {
-        cap,
-        package,
-    }
-}
-*/
-
-// Commented out due to Move 2024.beta not supporting method syntax
-/*
-public fun UpgradeReceipt.cap(self: &UpgradeReceipt): ID {
-    receipt_cap(self)
-}
-
-public fun UpgradeReceipt.package(self: &UpgradeReceipt): ID {
-    receipt_package(self)
-}
-*/
+/// Allows calling `.package` to fetch the ID of the package after
+/// upgrade.
+public use fun receipt_package as UpgradeReceipt.package;
 
 /// Tried to create a `Publisher` using a type that isn't a
 /// one-time witness.
@@ -207,43 +76,65 @@ const ADDITIVE: u8 = 128;
 /// Only be able to change dependencies.
 const DEP_ONLY: u8 = 192;
 
-/// Admin capability that restricts who can deploy and upgrade contracts
-public struct PackageAdminCap has key, store {
-    id: UID
-}
-
-/// Error for when someone without admin capability tries to manage packages
-const ENotAuthorizedPackageAdmin: u64 = 5;
-
-/// Initialize function to create the PackageAdminCap on system initialization
-/// This would be called during genesis or initial system setup
-public fun init_package_admin(ctx: &mut TxContext) {
-    transfer::transfer(
-        PackageAdminCap {
-            id: object::new(ctx)
-        },
-        tx_context::sender(ctx)
-    );
-}
-
 /// This type can only be created in the transaction that
 /// generates a module, by consuming its one-time witness, so it
 /// can be used to identify the address that published the package
 /// a type originated from.
+public struct Publisher has key, store {
+    id: UID,
+    package: String,
+    module_name: String,
+}
 
+/// Capability controlling the ability to upgrade a package.
+public struct UpgradeCap has key, store {
+    id: UID,
+    /// (Mutable) ID of the package that can be upgraded.
+    package: ID,
+    /// (Mutable) The number of upgrades that have been applied
+    /// successively to the original package.  Initially 0.
+    version: u64,
+    /// What kind of upgrades are allowed.
+    policy: u8,
+}
 
+/// Permission to perform a particular upgrade (for a fixed version of
+/// the package, bytecode to upgrade with and transitive dependencies to
+/// depend against).
+///
+/// An `UpgradeCap` can only issue one ticket at a time, to prevent races
+/// between concurrent updates or a change in its upgrade policy after
+/// ismysng a ticket, so the ticket is a "Hot Potato" to preserve forward
+/// progress.
+public struct UpgradeTicket {
+    /// (Immutable) ID of the `UpgradeCap` this originated from.
+    cap: ID,
+    /// (Immutable) ID of the package that can be upgraded.
+    package: ID,
+    /// (Immutable) The policy regarding what kind of upgrade this ticket
+    /// permits.
+    policy: u8,
+    /// (Immutable) SHA256 digest of the bytecode and transitive
+    /// dependencies that will be used in the upgrade.
+    digest: vector<u8>,
+}
 
+/// Issued as a result of a successful upgrade, containing the
+/// information to be used to update the `UpgradeCap`.  This is a "Hot
+/// Potato" to ensure that it is used to update its `UpgradeCap` before
+/// the end of the transaction that performed the upgrade.
+public struct UpgradeReceipt {
+    /// (Immutable) ID of the `UpgradeCap` this originated from.
+    cap: ID,
+    /// (Immutable) ID of the package after it was upgraded.
+    package: ID,
+}
 
 /// Claim a Publisher object.
-/// Requires a One-Time-Witness to prove ownership and the PackageAdminCap. 
-/// Due to this constraint there can be only one Publisher object per module
-/// but multiple per package (!). Requiring admin cap restricts package publishing
-/// to authorized administrators.
-public fun claim<OTW: drop>(
-    _admin_cap: &PackageAdminCap,
-    otw: OTW, 
-    ctx: &mut TxContext
-): Publisher {
+/// Requires a One-Time-Witness to prove ownership. Due to this
+/// constraint there can be only one Publisher object per module
+/// but multiple per package (!).
+public fun claim<OTW: drop>(otw: OTW, ctx: &mut TxContext): Publisher {
     assert!(types::is_one_time_witness(&otw), ENotOneTimeWitness);
 
     let type_name = type_name::get_with_original_ids<OTW>();
@@ -258,13 +149,9 @@ public fun claim<OTW: drop>(
 #[allow(lint(self_transfer))]
 /// Claim a Publisher object and send it to transaction sender.
 /// Since this function can only be called in the module initializer,
-/// the sender is the publisher. Requires admin cap to restrict access.
-public fun claim_and_keep<OTW: drop>(
-    admin_cap: &PackageAdminCap,
-    otw: OTW, 
-    ctx: &mut TxContext
-) {
-    mys::transfer::public_transfer(claim(admin_cap, otw, ctx), ctx.sender())
+/// the sender is the publisher.
+public fun claim_and_keep<OTW: drop>(otw: OTW, ctx: &mut TxContext) {
+    mys::transfer::public_transfer(claim(otw, ctx), ctx.sender())
 }
 
 /// Destroy a Publisher object effectively removing all privileges
@@ -390,14 +277,7 @@ public entry fun make_immutable(cap: UpgradeCap) {
 /// the upgrade must have a matching digest, and the changes relative to
 /// the parent package must be compatible with the policy in the ticket
 /// for the upgrade to succeed.
-/// 
-/// Requires admin capability to restrict package upgrades to authorized administrators.
-public fun authorize_upgrade(
-    _admin_cap: &PackageAdminCap,
-    cap: &mut UpgradeCap, 
-    policy: u8, 
-    digest: vector<u8>
-): UpgradeTicket {
+public fun authorize_upgrade(cap: &mut UpgradeCap, policy: u8, digest: vector<u8>): UpgradeTicket {
     let id_zero = @0x0.to_id();
     assert!(cap.package != id_zero, EAlreadyAuthorized);
     assert!(policy >= cap.policy, ETooPermissive);

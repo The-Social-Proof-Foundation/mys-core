@@ -8,9 +8,6 @@
 module mys::object_table;
 
 use mys::dynamic_object_field as ofield;
-use mys::object::{Self, UID, ID};
-use mys::tx_context::TxContext;
-use std::option::Option;
 
 // Attempted to destroy a non-empty table
 const ETableNotEmpty: u64 = 0;
@@ -87,7 +84,7 @@ public fun is_empty<K: copy + drop + store, V: key + store>(table: &ObjectTable<
 public fun destroy_empty<K: copy + drop + store, V: key + store>(table: ObjectTable<K, V>) {
     let ObjectTable { id, size } = table;
     assert!(size == 0, ETableNotEmpty);
-    object::delete(id)
+    id.delete()
 }
 
 /// Returns the ID of the object associated with the key if the table has an entry with key `k: K`

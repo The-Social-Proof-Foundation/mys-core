@@ -24,15 +24,13 @@
 module mys::bag;
 
 use mys::dynamic_field as field;
-use mys::object;
-use mys::tx_context::TxContext;
 
 // Attempted to destroy a non-empty bag
 const EBagNotEmpty: u64 = 0;
 
 public struct Bag has key, store {
     /// the ID of this bag
-    id: object::UID,
+    id: UID,
     /// the number of key-value pairs in the bag
     size: u64,
 }
@@ -110,5 +108,5 @@ public fun is_empty(bag: &Bag): bool {
 public fun destroy_empty(bag: Bag) {
     let Bag { id, size } = bag;
     assert!(size == 0, EBagNotEmpty);
-    object::delete(id)
+    id.delete()
 }

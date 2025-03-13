@@ -25,11 +25,6 @@ public use fun uid_to_address as UID.to_address;
 /// Allows calling `.to_bytes` on a `UID` to get a `vector<u8>`.
 public use fun uid_to_bytes as UID.to_bytes;
 
-/// Get the owner address of an object (who can use `transfer::transfer` to send the object)
-public fun owner<T: key>(obj: &T): address {
-    object::id(obj).to_address()
-}
-
 /// The hardcoded ID for the singleton Mys System State Object.
 const MYS_SYSTEM_STATE_OBJECT_ID: address = @0x5;
 
@@ -102,8 +97,8 @@ public fun id_from_address(bytes: address): ID {
 #[allow(unused_function)]
 /// Create the `UID` for the singleton `MysSystemState` object.
 /// This should only be called once from `mys_system`.
-fun mys_system_state(ctx: &mys::tx_context::TxContext): UID {
-    assert!(mys::tx_context::sender(ctx) == @0x0, ENotSystemAddress);
+fun mys_system_state(ctx: &TxContext): UID {
+    assert!(ctx.sender() == @0x0, ENotSystemAddress);
     UID {
         id: ID { bytes: MYS_SYSTEM_STATE_OBJECT_ID },
     }
@@ -174,9 +169,9 @@ public fun uid_to_address(uid: &UID): address {
 
 /// Create a new object. Returns the `UID` that must be stored in a Mys object.
 /// This is the only way to create `UID`s.
-public fun new(ctx: &mut mys::tx_context::TxContext): UID {
+public fun new(ctx: &mut TxContext): UID {
     UID {
-        id: ID { bytes: mys::tx_context::fresh_object_address(ctx) },
+        id: ID { bytes: ctx.fresh_object_address() },
     }
 }
 
@@ -233,6 +228,6 @@ native fun record_new_uid(id: address);
 
 #[test_only]
 /// Return the most recent created object ID.
-public fun last_created(ctx: &mys::tx_context::TxContext): ID {
-    ID { bytes: mys::tx_context::last_created_object_id(ctx) }
+public fun last_created(ctx: &TxContext): ID {
+    ID { bytes: ctx.last_created_object_id() }
 }
