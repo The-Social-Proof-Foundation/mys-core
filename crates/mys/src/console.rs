@@ -46,14 +46,14 @@ pub async fn start_console(
         version.push('-');
         version.push_str(git_rev);
     }
-    writeln!(out, "--- Mys Console {version} ---")?;
+    writeln!(out, "--- MySocial Console {version} ---")?;
     writeln!(out)?;
     writeln!(out, "{}", context.config.deref())?;
 
     let client = context.get_client().await?;
     writeln!(
         out,
-        "Connecting to Mys full node. API version {}",
+        "Connecting to MySocial full node. API version {}",
         client.api_version()
     )?;
 
@@ -75,7 +75,7 @@ pub async fn start_console(
     }
 
     writeln!(out)?;
-    writeln!(out, "Welcome to the Mys interactive console.")?;
+    writeln!(out, "Welcome to the MySocial interactive console.")?;
     writeln!(out)?;
 
     let mut shell = Shell::new(
@@ -155,7 +155,7 @@ async fn handle_command(
         result,
         MysClientCommandResult::Switch(SwitchResponse { env: Some(_), .. })
     ) {
-        println!("Mys environment switch completed, please restart Mys console.");
+        println!("MySocial environment switch completed, please restart MySocial console.");
         return Ok(true);
     }
     Ok(false)

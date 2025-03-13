@@ -92,7 +92,7 @@ impl<P: Display, S: Send, H: AsyncHandler<S>> Shell<P, S, H> {
                         // These are shell only commands.
                         match s.as_str() {
                             "quit" | "exit" => {
-                                writeln!(out, "Bye!")?;
+                                writeln!(out, "Bye! Thank you for using MySocial!")?;
                                 break;
                             }
                             "clear" => {

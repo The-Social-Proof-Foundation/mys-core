@@ -5,7 +5,7 @@
 module mys::profile_tests {
     use mys::test_scenario::{Self, Scenario};
     use mys::test_utils;
-    use mys::social_network::profile::{Self, Profile};
+    use mys::profile::{Self, Profile};
     use mys::tx_context;
     use mys::object::{Self, UID};
     use mys::url::{Self, Url};
@@ -102,7 +102,7 @@ module mys::profile_tests {
     }
     
     #[test]
-    #[expected_failure(abort_code = profile::ENotProfileOwner)]
+    #[expected_failure(abort_code = profile::EUnauthorized)]
     fun test_update_profile_not_owner() {
         let scenario = test_scenario::begin(TEST_SENDER);
         

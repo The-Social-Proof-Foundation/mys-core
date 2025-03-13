@@ -6,6 +6,9 @@
 module mys::linked_table;
 
 use mys::dynamic_field as field;
+use mys::object::{Self, UID};
+use mys::tx_context::TxContext;
+use std::option::{Self, Option};
 
 // Attempted to destroy a non-empty table
 const ETableNotEmpty: u64 = 0;
@@ -188,12 +191,12 @@ public fun is_empty<K: copy + drop + store, V: store>(table: &LinkedTable<K, V>)
 public fun destroy_empty<K: copy + drop + store, V: store>(table: LinkedTable<K, V>) {
     let LinkedTable { id, size, head: _, tail: _ } = table;
     assert!(size == 0, ETableNotEmpty);
-    id.delete()
+    object::delete(id)
 }
 
 /// Drop a possibly non-empty table.
 /// Usable only if the value type `V` has the `drop` ability
 public fun drop<K: copy + drop + store, V: drop + store>(table: LinkedTable<K, V>) {
     let LinkedTable { id, size: _, head: _, tail: _ } = table;
-    id.delete()
+    object::delete(id)
 }

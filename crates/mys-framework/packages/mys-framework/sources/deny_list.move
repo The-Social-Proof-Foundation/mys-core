@@ -11,6 +11,9 @@ use mys::config::{Self, Config};
 use mys::dynamic_object_field as ofield;
 use mys::table::{Self, Table};
 use mys::vec_set::{Self, VecSet};
+use mys::object::{Self, UID, ID};
+use mys::tx_context::{Self, TxContext};
+use mys::transfer;
 
 /// Trying to create a deny list object when not called by the system address.
 const ENotSystemAddress: u64 = 0;

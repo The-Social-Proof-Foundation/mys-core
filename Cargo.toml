@@ -610,8 +610,8 @@ anemo-tower = { git = "https://github.com/mystenlabs/anemo.git", rev = "e609f769
 
 # core-types with json format for REST api
 # mys-sdk-types = { version = "0.0.1", features = ["hash", "serde", "schemars"] }
-mys-sdk-types = { git = "https://github.com/alleycat1/mys-rust-sdk.git", rev = "833a2224423af438ec4c803986050a5afbf20816", features = ["hash", "serde"] }
-mys-sdk-transaction-builder = { git = "https://github.com/alleycat1/mys-rust-sdk.git", rev = "833a2224423af438ec4c803986050a5afbf20816", package = "mys-transaction-builder" }
+mys-sdk-types = { git = "https://github.com/The-Social-Proof-Foundation/mys-rust-sdk.git", rev = "6fd9740e72d2f76f6158792689784812b5cd2ff5", features = ["hash", "serde"] }
+mys-sdk-transaction-builder = { git = "https://github.com/The-Social-Proof-Foundation/mys-rust-sdk.git", rev = "6fd9740e72d2f76f6158792689784812b5cd2ff5", package = "mys-transaction-builder" }
 
 ### Workspace Members ###
 anemo-benchmark = { path = "crates/anemo-benchmark" }

@@ -11,6 +11,9 @@ module mys::authenticator_state;
 
 use std::string::{Self, String, utf8};
 use mys::dynamic_field;
+use mys::object::{Self, UID, ID};
+use mys::tx_context::{Self, TxContext};
+use mys::transfer;
 
 /// Sender is not @0x0 the system address.
 const ENotSystemAddress: u64 = 0;
@@ -141,8 +144,8 @@ fun jwk_lt(a: &ActiveJwk, b: &ActiveJwk): bool {
 /// Create and share the AuthenticatorState object. This function is call exactly once, when
 /// the authenticator state object is first created.
 /// Can only be called by genesis or change_epoch transactions.
-fun create(ctx: &TxContext) {
-    assert!(ctx.sender() == @0x0, ENotSystemAddress);
+fun create(ctx: &mut TxContext) {
+    assert!(tx_context::sender(ctx) == @0x0, ENotSystemAddress);
 
     let version = CurrentVersion;
 
@@ -152,7 +155,7 @@ fun create(ctx: &TxContext) {
     };
 
     let mut self = AuthenticatorState {
-        id: object::authenticator_state(),
+        id: object::new(ctx),
         version,
     };
 
@@ -202,10 +205,10 @@ fun check_sorted(new_active_jwks: &vector<ActiveJwk>) {
 fun update_authenticator_state(
     self: &mut AuthenticatorState,
     new_active_jwks: vector<ActiveJwk>,
-    ctx: &TxContext,
+    ctx: &mut TxContext,
 ) {
     // Validator will make a special system call with sender set as 0x0.
-    assert!(ctx.sender() == @0x0, ENotSystemAddress);
+    assert!(tx_context::sender(ctx) == @0x0, ENotSystemAddress);
 
     check_sorted(&new_active_jwks);
     let new_active_jwks = deduplicate(new_active_jwks);
@@ -284,10 +287,10 @@ fun expire_jwks(
     self: &mut AuthenticatorState,
     // any jwk below this epoch is not retained
     min_epoch: u64,
-    ctx: &TxContext,
+    ctx: &mut TxContext,
 ) {
     // This will only be called by mys_system::advance_epoch
-    assert!(ctx.sender() == @0x0, ENotSystemAddress);
+    assert!(tx_context::sender(ctx) == @0x0, ENotSystemAddress);
 
     let inner = load_inner_mut(self);
 
@@ -350,13 +353,13 @@ fun expire_jwks(
 #[allow(unused_function)]
 /// Get the current active_jwks. Called when the node starts up in order to load the current
 /// JWK state from the chain.
-fun get_active_jwks(self: &AuthenticatorState, ctx: &TxContext): vector<ActiveJwk> {
-    assert!(ctx.sender() == @0x0, ENotSystemAddress);
+fun get_active_jwks(self: &AuthenticatorState, ctx: &mut TxContext): vector<ActiveJwk> {
+    assert!(tx_context::sender(ctx) == @0x0, ENotSystemAddress);
     self.load_inner().active_jwks
 }
 
 #[test_only]
-public fun create_for_testing(ctx: &TxContext) {
+public fun create_for_testing(ctx: &mut TxContext) {
     create(ctx);
 }
 
@@ -364,20 +367,20 @@ public fun create_for_testing(ctx: &TxContext) {
 public fun update_authenticator_state_for_testing(
     self: &mut AuthenticatorState,
     new_active_jwks: vector<ActiveJwk>,
-    ctx: &TxContext,
+    ctx: &mut TxContext,
 ) {
-    self.update_authenticator_state(new_active_jwks, ctx);
+    update_authenticator_state(self, new_active_jwks, ctx);
 }
 
 #[test_only]
-public fun expire_jwks_for_testing(self: &mut AuthenticatorState, min_epoch: u64, ctx: &TxContext) {
-    self.expire_jwks(min_epoch, ctx);
+public fun expire_jwks_for_testing(self: &mut AuthenticatorState, min_epoch: u64, ctx: &mut TxContext) {
+    expire_jwks(self, min_epoch, ctx);
 }
 
 #[test_only]
 public fun get_active_jwks_for_testing(
     self: &AuthenticatorState,
-    ctx: &TxContext,
+    ctx: &mut TxContext,
 ): vector<ActiveJwk> {
-    self.get_active_jwks(ctx)
+    get_active_jwks(self, ctx)
 }

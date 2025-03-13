@@ -29,6 +29,11 @@ public fun inner_url(self: &Url): String {
     self.url
 }
 
+/// Get inner URL as bytes
+public fun inner_url_bytes(self: &Url): vector<u8> {
+    std::ascii::into_bytes(self.url)
+}
+
 /// Update the inner URL
 public fun update(self: &mut Url, url: String) {
     self.url = url;

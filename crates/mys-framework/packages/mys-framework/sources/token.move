@@ -21,12 +21,15 @@
 /// control over the currency which a simple open-loop system can't provide.
 module mys::token;
 
-use std::{string::String, type_name::{Self, TypeName}};
+use std::{string::String, type_name::{Self, TypeName}, option::{Self, Option}};
 use mys::{
-    balance::{Self, Balance},
-    coin::{Coin, TreasuryCap},
+    balance::{Self, Balance, Supply},
+    coin::{Self, Coin, TreasuryCap},
     dynamic_field as df,
     event,
+    object::{Self, ID, UID},
+    transfer,
+    tx_context::{Self, TxContext},
     vec_map::{Self, VecMap},
     vec_set::{Self, VecSet}
 };
@@ -175,7 +178,7 @@ public fun share_policy<T>(policy: TokenPolicy<T>) {
 /// "transfer" action. The `ActionRequest` contains the `recipient` field
 /// to be used in verification.
 public fun transfer<T>(t: Token<T>, recipient: address, ctx: &mut TxContext): ActionRequest<T> {
-    let amount = t.balance.value();
+    let amount = balance::value(&t.balance);
     transfer::transfer(t, recipient);
 
     new_request(
@@ -195,11 +198,11 @@ public fun transfer<T>(t: Token<T>, recipient: address, ctx: &mut TxContext): Ac
 /// request and join the spent balance with the `TokenPolicy.spent_balance`.
 public fun spend<T>(t: Token<T>, ctx: &mut TxContext): ActionRequest<T> {
     let Token { id, balance } = t;
-    id.delete();
+    object::delete(id);
 
     new_request(
         spend_action(),
-        balance.value(),
+        balance::value(&balance),
         option::none(),
         option::some(balance),
         ctx,
@@ -210,11 +213,11 @@ public fun spend<T>(t: Token<T>, ctx: &mut TxContext): ActionRequest<T> {
 /// "to_coin" action.
 public fun to_coin<T>(t: Token<T>, ctx: &mut TxContext): (Coin<T>, ActionRequest<T>) {
     let Token { id, balance } = t;
-    let amount = balance.value();
-    id.delete();
+    let amount = balance::value(&balance);
+    object::delete(id);
 
     (
-        balance.into_coin(ctx),
+        coin::from_balance(balance, ctx),
         new_request(
             to_coin_action(),
             amount,
@@ -228,10 +231,10 @@ public fun to_coin<T>(t: Token<T>, ctx: &mut TxContext): (Coin<T>, ActionRequest
 /// Convert an open `Coin` into a `Token`. Creates an `ActionRequest` for
 /// the "from_coin" action.
 public fun from_coin<T>(coin: Coin<T>, ctx: &mut TxContext): (Token<T>, ActionRequest<T>) {
-    let amount = coin.value();
+    let amount = coin::value(&coin);
     let token = Token {
         id: object::new(ctx),
-        balance: coin.into_balance(),
+        balance: coin::into_balance(coin),
     };
 
     (
@@ -251,17 +254,17 @@ public fun from_coin<T>(coin: Coin<T>, ctx: &mut TxContext): (Token<T>, ActionRe
 /// Join two `Token`s into one, always available.
 public fun join<T>(token: &mut Token<T>, another: Token<T>) {
     let Token { id, balance } = another;
-    token.balance.join(balance);
-    id.delete();
+    balance::join(&mut token.balance, balance);
+    object::delete(id);
 }
 
 /// Split a `Token` with `amount`.
 /// Aborts if the `Token.balance` is lower than `amount`.
 public fun split<T>(token: &mut Token<T>, amount: u64, ctx: &mut TxContext): Token<T> {
-    assert!(token.balance.value() >= amount, EBalanceTooLow);
+    assert!(balance::value(&token.balance) >= amount, EBalanceTooLow);
     Token {
         id: object::new(ctx),
-        balance: token.balance.split(amount),
+        balance: balance::split(&mut token.balance, amount),
     }
 }
 
@@ -277,15 +280,15 @@ public fun zero<T>(ctx: &mut TxContext): Token<T> {
 /// Aborts if the `Token.balance` is not zero.
 public fun destroy_zero<T>(token: Token<T>) {
     let Token { id, balance } = token;
-    assert!(balance.value() == 0, ENotZero);
-    balance.destroy_zero();
-    id.delete();
+    assert!(balance::value(&balance) == 0, ENotZero);
+    balance::destroy_zero(balance);
+    object::delete(id);
 }
 
 #[allow(lint(self_transfer))]
 /// Transfer the `Token` to the transaction sender.
 public fun keep<T>(token: Token<T>, ctx: &mut TxContext) {
-    transfer::transfer(token, ctx.sender())
+    transfer::transfer(token, tx_context::sender(ctx))
 }
 
 // === Request Handling ===
@@ -304,7 +307,7 @@ public fun new_request<T>(
         amount,
         recipient,
         spent_balance,
-        sender: ctx.sender(),
+        sender: tx_context::sender(ctx),
         approvals: vec_set::empty(),
     }
 }
@@ -336,15 +339,15 @@ public fun confirm_request<T>(
         recipient,
     } = request;
 
-    spent_balance.destroy_none();
+    option::destroy_none(spent_balance);
 
-    let rules = &(*policy.rules.get(&name)).into_keys();
-    let rules_len = rules.length();
+    let rules = &vec_set::into_keys(*vec_map::get(&policy.rules, &name));
+    let rules_len = vector::length(rules);
     let mut i = 0;
 
     while (i < rules_len) {
-        let rule = &rules[i];
-        assert!(approvals.contains(rule), ENotApproved);
+        let rule = vector::borrow(rules, i);
+        assert!(vec_set::contains(&approvals, rule), ENotApproved);
         i = i + 1;
     };
 
@@ -361,15 +364,38 @@ public fun confirm_request<T>(
 /// See `confirm_request` for the list of abort conditions.
 public fun confirm_request_mut<T>(
     policy: &mut TokenPolicy<T>,
-    mut request: ActionRequest<T>,
+    request: ActionRequest<T>,
     ctx: &mut TxContext,
 ): (String, u64, address, Option<address>) {
-    assert!(policy.rules.contains(&request.name), EUnknownAction);
-    assert!(request.spent_balance.is_some(), EUseImmutableConfirm);
+    assert!(vec_map::contains(&policy.rules, &request.name), EUnknownAction);
+    assert!(option::is_some(&request.spent_balance), EUseImmutableConfirm);
 
-    policy.spent_balance.join(request.spent_balance.extract());
+    // Make a copy of the request
+    let request_name = request.name;
+    let request_amount = request.amount;  
+    let request_sender = request.sender;
+    let request_recipient = request.recipient;
+    
+    // Extract the spent_balance and fully consume the request
+    let mut spent_balance_option;
+    {
+        let ActionRequest {
+            name: _,
+            amount: _,
+            sender: _,
+            recipient: _,
+            spent_balance,
+            approvals: _
+        } = request;
+        spent_balance_option = spent_balance;
+    };
+    
+    // Join the spent balance with the policy balance
+    balance::join(&mut policy.spent_balance, option::extract(&mut spent_balance_option));
+    option::destroy_none(spent_balance_option);
 
-    confirm_request(policy, request, ctx)
+    // Create params for confirm_request manually
+    (request_name, request_amount, request_sender, request_recipient)
 }
 
 /// Confirm an `ActionRequest` as the `TokenPolicyCap` owner. This function
@@ -592,6 +618,7 @@ public struct TokenAdminCap has key, store {
 /// Error for unauthorized token operations
 const ENotAuthorizedTokenAdmin: u64 = 8;
 
+#[allow(lint(self_transfer))]
 /// Initialize the token admin capability
 public fun init_token_admin(ctx: &mut TxContext) {
     transfer::transfer(

@@ -19,6 +19,8 @@
 module mys::table;
 
 use mys::dynamic_field as field;
+use mys::object::{Self, UID};
+use mys::tx_context::TxContext;
 
 // Attempted to destroy a non-empty table
 const ETableNotEmpty: u64 = 0;

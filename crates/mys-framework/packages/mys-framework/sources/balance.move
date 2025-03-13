@@ -6,6 +6,9 @@
 /// custom coins with `Supply` and `Balance`s.
 module mys::balance;
 
+use mys::tx_context::TxContext;
+use std::type_name;
+
 /// Allows calling `.into_coin()` on a `Balance` to turn it into a coin.
 public use fun mys::coin::from_balance as Balance.into_coin;
 
@@ -122,10 +125,15 @@ public(package) fun destroy_supply<T>(self: Supply<T>): u64 {
     value
 }
 
+/// Create a `Balance` of any coin with a specific value.
+public fun create_with_value<T>(value: u64): Balance<T> {
+    Balance { value }
+}
+
 #[test_only]
 /// Create a `Balance` of any coin for testing purposes.
 public fun create_for_testing<T>(value: u64): Balance<T> {
-    Balance { value }
+    create_with_value(value)
 }
 
 #[test_only]

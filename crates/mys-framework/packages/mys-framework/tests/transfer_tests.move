@@ -8,13 +8,13 @@ module mys::transfer_tests {
     const RECIPIENT: address = @0xDEAD;
 
     /// Object that can be transferred
-    struct TransferableObj has key, store {
+    public struct TransferableObj has key, store {
         id: UID,
         value: u64,
     }
 
     /// Object without store ability - can only be transferred within its module
-    struct RestrictedObj has key {
+    public struct RestrictedObj has key {
         id: UID,
         value: u64,
     }

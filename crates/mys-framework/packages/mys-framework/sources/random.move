@@ -5,7 +5,11 @@
 module mys::random;
 
 use std::bcs;
+use std::vector;
 use mys::hmac::hmac_sha3_256;
+use mys::object::{Self, UID};
+use mys::transfer;
+use mys::tx_context::TxContext;
 use mys::versioned::{Self, Versioned};
 
 // Sender is not @0x0 the system address.

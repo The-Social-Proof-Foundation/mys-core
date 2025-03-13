@@ -5,8 +5,8 @@
 module mys::social_graph_tests {
     use mys::test_scenario::{Self, Scenario};
     use mys::test_utils;
-    use mys::social_network::profile::{Self, Profile};
-    use mys::social_network::social_graph::{Self, SocialGraph};
+    use mys::profile::{Self, Profile};
+    use mys::social_graph::{Self, SocialGraph};
     use mys::tx_context;
     use mys::object::{Self, UID};
     use mys::url::{Self, Url};

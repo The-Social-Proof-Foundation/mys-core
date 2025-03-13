@@ -694,6 +694,11 @@ MultiSigPublicKey:
             - TYPENAME: PublicKey
             - U8
     - threshold: U16
+MysAddress:
+  NEWTYPESTRUCT:
+    TUPLEARRAY:
+      CONTENT: U8
+      SIZE: 32
 Object:
   STRUCT:
     - data:
@@ -911,11 +916,6 @@ StructTag:
     - type_args:
         SEQ:
           TYPENAME: TypeTag
-MysAddress:
-  NEWTYPESTRUCT:
-    TUPLEARRAY:
-      CONTENT: U8
-      SIZE: 32
 TransactionData:
   ENUM:
     0:
