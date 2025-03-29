@@ -905,7 +905,7 @@ impl MysNode {
             subscription_service_checkpoint_sender,
         };
 
-        info!("MysNode started!");
+        info!("MySocial Node started!");
         let node = Arc::new(node);
         let node_copy = node.clone();
         spawn_monitored_task!(async move {
