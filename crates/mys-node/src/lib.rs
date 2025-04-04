@@ -41,7 +41,6 @@ use mys_core::state_accumulator::StateAccumulatorMetrics;
 use mys_core::storage::RestReadStore;
 use mys_core::traffic_controller::metrics::TrafficControllerMetrics;
 use mys_json_rpc::bridge_api::BridgeReadApi;
-use mys_json_rpc::profile_api::ProfileReadApi;
 use mys_json_rpc_api::JsonRpcMetrics;
 use mys_network::randomness;
 use mys_rpc_api::subscription::SubscriptionService;
@@ -2229,13 +2228,6 @@ pub async fn build_http_server(
             config.indexer_max_subscriptions,
         ))?;
         server.register_module(MoveUtils::new(state.clone()))?;
-        
-        // Register profile API
-        server.register_module(ProfileReadApi::new(
-            state.clone(),
-            kv_store,
-            metrics,
-        ))?;
 
         let server_type = config.jsonrpc_server_type();
 

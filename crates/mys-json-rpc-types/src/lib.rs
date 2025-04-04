@@ -15,7 +15,6 @@ pub use mys_extended::*;
 pub use mys_governance::*;
 pub use mys_move::*;
 pub use mys_object::*;
-pub use mys_profile::*;
 pub use mys_protocol::*;
 pub use mys_transaction::*;
 use mys_types::base_types::ObjectID;
@@ -34,7 +33,6 @@ mod mys_extended;
 mod mys_governance;
 mod mys_move;
 mod mys_object;
-mod mys_profile;
 mod mys_protocol;
 mod mys_transaction;
 
