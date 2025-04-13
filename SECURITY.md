@@ -43,7 +43,7 @@ All other impacts are considered out-of-scope and ineligible for payout.
 
 
 CRITICAL [$100,000-$500,000 USD]
-1. Exceeding the maximum supply of 10 billion MYS + allowing the attacker to claim the excess funds
+1. Exceeding the maximum supply of 1 billion MySo + allowing the attacker to claim the excess funds
 2. Loss of Funds which includes
     * Unauthorized creation, copying, transfer or destruction of objects via bypass of or exploit of bugs in the Move or MySocial bytecode verifier
     * Address Collision – creating two distinct authentication schemes that hash to the same MYS address in a manner that lead to significant loss of funds

@@ -68,7 +68,7 @@ async fn pay_with_gas_budget(budget: u64) -> TransactionIdentifierResponseResult
             "operation_identifier":{"index":0},
             "type":"PayMys",
             "account": { "address" : recipient.to_string() },
-            "amount" : { "value": "1000000000" , "currency": { "symbol": "MYS", "decimals": 9}}
+            "amount" : { "value": "1000000000" , "currency": { "symbol": "MySo", "decimals": 9}}
         },{
             "operation_identifier":{"index":1},
             "type":"PayMys",
@@ -76,7 +76,7 @@ async fn pay_with_gas_budget(budget: u64) -> TransactionIdentifierResponseResult
             "amount" : {
                 "value": "-1000000000",
                 "currency": {
-                    "symbol": "MYS",
+                    "symbol": "MySo",
                     "decimals": 9,
                 }
             },

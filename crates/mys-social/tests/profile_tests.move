@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #[test_only]
-#[allow(unused_const)]
+#[allow(unused_const, duplicate_alias, unused_use)]
 module social_contracts::profile_tests {
     use std::string;
     use std::option;
@@ -12,7 +12,7 @@ module social_contracts::profile_tests {
     use mys::url;
     use mys::coin::{Self, Coin};
     use mys::mys::MYS;
-    use mys::clock;
+    use mys::clock::{Self, Clock};
     use mys::transfer;
     
     const ADMIN: address = @0xAD;
@@ -21,10 +21,14 @@ module social_contracts::profile_tests {
     
     #[test]
     fun test_create_profile() {
-        let scenario = test_scenario::begin(ADMIN);
+        let mut scenario = test_scenario::begin(ADMIN);
         {
-            // Create test clock
+            // Initialize the UsernameRegistry
+            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            
+            // Create test clock and share it using the correct approach
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
             
             // Mint coins for test
             let coins = coin::mint_for_testing<MYS>(20_000_000_000, test_scenario::ctx(&mut scenario));
@@ -34,8 +38,8 @@ module social_contracts::profile_tests {
         // Create a profile
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let clock = test_scenario::take_shared<clock::Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             
             // Create profile
             profile::create_profile(
@@ -45,7 +49,6 @@ module social_contracts::profile_tests {
                 string::utf8(b"This is my bio"),
                 b"https://example.com/image.png",
                 b"",
-                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -73,10 +76,14 @@ module social_contracts::profile_tests {
     
     #[test]
     fun test_update_profile() {
-        let scenario = test_scenario::begin(ADMIN);
+        let mut scenario = test_scenario::begin(ADMIN);
         {
-            // Create test clock
+            // Initialize the UsernameRegistry
+            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            
+            // Create test clock and share it using the correct approach
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
             
             // Mint coins for test
             let coins = coin::mint_for_testing<MYS>(20_000_000_000, test_scenario::ctx(&mut scenario));
@@ -86,8 +93,8 @@ module social_contracts::profile_tests {
         // Create a profile
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let clock = test_scenario::take_shared<clock::Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             
             // Create profile
             profile::create_profile(
@@ -97,7 +104,6 @@ module social_contracts::profile_tests {
                 string::utf8(b"Original bio"),
                 b"https://example.com/image.png",
                 b"",
-                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -108,7 +114,7 @@ module social_contracts::profile_tests {
         // Update the profile in the next transaction
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
             
             profile::update_profile(
                 &mut profile,
@@ -149,12 +155,16 @@ module social_contracts::profile_tests {
     }
     
     #[test]
-    #[expected_failure(abort_code = profile::EUnauthorized)]
+    #[expected_failure(abort_code = profile::EUnauthorized, location = social_contracts::profile)]
     fun test_unauthorized_update() {
-        let scenario = test_scenario::begin(ADMIN);
+        let mut scenario = test_scenario::begin(ADMIN);
         {
-            // Create test clock
+            // Initialize the UsernameRegistry
+            profile::init_for_testing(test_scenario::ctx(&mut scenario));
+            
+            // Create test clock and share it using the correct approach
             let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
             
             // Mint coins for test
             let coins = coin::mint_for_testing<MYS>(20_000_000_000, test_scenario::ctx(&mut scenario));
@@ -164,8 +174,8 @@ module social_contracts::profile_tests {
         // Create a profile
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
-            let clock = test_scenario::take_shared<clock::Clock>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             
             // Create profile
             profile::create_profile(
@@ -175,7 +185,6 @@ module social_contracts::profile_tests {
                 string::utf8(b"This is my bio"),
                 b"https://example.com/image.png",
                 b"",
-                &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
@@ -186,7 +195,7 @@ module social_contracts::profile_tests {
         // User2 tries to update User1's profile
         test_scenario::next_tx(&mut scenario, USER2);
         {
-            let profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
+            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
             
             // This should fail with EUnauthorized
             profile::update_profile(

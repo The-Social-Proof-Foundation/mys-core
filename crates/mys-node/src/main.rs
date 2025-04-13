@@ -150,7 +150,7 @@ fn main() {
     runtimes.metrics.spawn(async move {
         let node = node_once_cell_clone.get().await;
         let chain_identifier = node.state().get_chain_identifier().to_string();
-        info!("Mys chain identifier: {chain_identifier}");
+        info!("MySocial chain identifier: {chain_identifier}");
         prometheus_registry
             .register(mysten_metrics::uptime_metric(
                 if is_validator {

@@ -15,16 +15,16 @@ module mys::mys {
     const ENotSystemAddress: u64 = 1;
 
     #[allow(unused_const)]
-    /// The amount of Mist per Mys token based on the the fact that mist is
-    /// 10^-9 of a Mys token
+    /// The amount of Mist per MySo token based on the the fact that mist is
+    /// 10^-9 of a MySo token
     const MIST_PER_MYS: u64 = 1_000_000_000;
 
     #[allow(unused_const)]
-    /// The total supply of Mys denominated in whole Mys tokens (10 Billion)
-    const TOTAL_SUPPLY_MYS: u64 = 10_000_000_000;
+    /// The total supply of MySo denominated in whole MySo tokens (1 Billion)
+    const TOTAL_SUPPLY_MYS: u64 = 1_000_000_000;
 
-    /// The total supply of Mys denominated in Mist (10 Billion * 10^9)
-    const TOTAL_SUPPLY_MIST: u64 = 10_000_000_000_000_000_000;
+    /// The total supply of MySo denominated in Mist (1 Billion * 10^9)
+    const TOTAL_SUPPLY_MIST: u64 = 1_000_000_000_000_000_000;
 
     /// Name of the coin
     struct MYS has drop {}
@@ -39,10 +39,9 @@ module mys::mys {
         let (treasury, metadata) = coin::create_currency(
             MYS {},
             9,
-            b"MYS",
-            b"Mys",
-            // TODO: add appropriate description and logo url
-            b"",
+            b"MySo",
+            b"MySocial",
+            b"The native token of the MySocial blockchain.",
             option::none(),
             ctx
         );

@@ -3,23 +3,26 @@
 
 /// Social graph module for the MySocial network
 /// Manages social relationships between users (following/followers)
+#[allow(duplicate_alias, unused_use, unused_const)]
 module social_contracts::social_graph {
     use std::vector;
+    use std::option;
     
-    use mys::object::{Self, UID, ID};
+    use mys::object::{Self, UID};
     use mys::tx_context::{Self, TxContext};
     use mys::event;
     use mys::transfer;
     use mys::table::{Self, Table};
     use mys::vec_set::{Self, VecSet};
     
-    use social_contracts::profile::{Self, Profile};
+    use social_contracts::profile;
 
     /// Error codes
     const EUnauthorized: u64 = 0;
     const EAlreadyFollowing: u64 = 1;
     const ENotFollowing: u64 = 2;
     const ECannotFollowSelf: u64 = 3;
+    const EProfileNotFound: u64 = 4;
 
     /// Global social graph object that tracks relationships between users
     public struct SocialGraph has key {
@@ -57,11 +60,18 @@ module social_contracts::social_graph {
     /// Follow a profile by address
     public entry fun follow(
         social_graph: &mut SocialGraph,
-        follower_profile_id: address,
+        registry: &profile::UsernameRegistry,
         following_profile_id: address,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
+        
+        // Look up the caller's profile ID from registry
+        let mut caller_profile_id_opt = profile::lookup_profile_by_owner(registry, sender);
+        assert!(option::is_some(&caller_profile_id_opt), EProfileNotFound);
+        
+        // Extract follower profile ID
+        let follower_profile_id = option::extract(&mut caller_profile_id_opt);
         
         // Cannot follow self
         assert!(follower_profile_id != following_profile_id, ECannotFollowSelf);
@@ -97,11 +107,18 @@ module social_contracts::social_graph {
     /// Unfollow a profile by address
     public entry fun unfollow(
         social_graph: &mut SocialGraph,
-        follower_profile_id: address,
+        registry: &profile::UsernameRegistry,
         following_profile_id: address,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
+        
+        // Look up the caller's profile ID from registry
+        let mut caller_profile_id_opt = profile::lookup_profile_by_owner(registry, sender);
+        assert!(option::is_some(&caller_profile_id_opt), EProfileNotFound);
+        
+        // Extract follower profile ID
+        let follower_profile_id = option::extract(&mut caller_profile_id_opt);
         
         // Check if following sets exist
         assert!(table::contains(&social_graph.following, follower_profile_id), ENotFollowing);

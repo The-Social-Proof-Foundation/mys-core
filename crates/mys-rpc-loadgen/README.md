@@ -1,4 +1,4 @@
-# mys-rpc-loadgen: Load Generator for MYS RPC Servers
+# mys-rpc-loadgen: Load Generator for TESTING MYS RPC Servers
 
 `mys-rpc-loadgen` is a utility that facilitates the generation of read and write loads on single or multiple MySocial RPC servers. Its primary functions include performance testing and data correctness verification.
 

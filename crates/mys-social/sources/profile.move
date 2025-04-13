@@ -3,24 +3,20 @@
 
 /// Profile module for the MySocial network
 /// Handles user identity, profile creation, management, and username registration
-#[allow(unused_const, duplicate_alias)]
+#[allow(unused_const, duplicate_alias, unused_use, unused_variable, implicit_const_copy, unused_let_mut)]
 module social_contracts::profile {
     use std::string::{Self, String};
     use std::vector;
     use std::option::{Self, Option};
     use std::ascii;
     
-    use mys::object::{Self, UID, ID};
+    use mys::object::{Self, UID};
     use mys::tx_context::{Self, TxContext};
     use mys::event;
-    use mys::transfer::{Self, public_transfer};
+    use mys::transfer;
     use mys::url::{Self, Url};
     use mys::dynamic_field;
     use mys::table::{Self, Table};
-    use mys::coin::{Self, Coin};
-    use mys::balance::{Self, Balance};
-    use mys::mys::MYS;
-    use mys::clock::{Self, Clock};
 
     /// Error codes
     const EProfileAlreadyExists: u64 = 0;
@@ -126,6 +122,14 @@ module social_contracts::profile {
         github_username: Option<String>,
         /// Last updated timestamp for profile data
         last_updated: u64,
+        /// Number of followers
+        followers_count: u64,
+        /// Number of profiles this user is following
+        following_count: u64,
+        /// Number of posts created by this profile
+        post_count: u64,
+        /// Total amount of tips received
+        tips_received: u64,
     }
 
     // === Events ===
@@ -191,11 +195,13 @@ module social_contracts::profile {
         let name_bytes = string::as_bytes(name);
         let lowercase_name = to_lowercase_bytes(name_bytes);
         
-        let mut i = 0;
-        let reserved_count = vector::length(&RESERVED_NAMES);
+        // Make a local copy of RESERVED_NAMES to avoid implicit copies
+        let reserved_names = RESERVED_NAMES;
+        let reserved_count = vector::length(&reserved_names);
         
+        let mut i = 0;
         while (i < reserved_count) {
-            let reserved = *vector::borrow(&RESERVED_NAMES, i);
+            let reserved = *vector::borrow(&reserved_names, i);
             
             // Exact match with reserved name (case-insensitive)
             if (vector::length(&lowercase_name) == vector::length(&reserved)) {
@@ -260,7 +266,6 @@ module social_contracts::profile {
         bio: String,
         profile_picture_url: vector<u8>,
         cover_photo_url: vector<u8>,
-        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let owner = tx_context::sender(ctx);
@@ -281,9 +286,6 @@ module social_contracts::profile {
         
         // Check that the username isn't already registered
         assert!(!table::contains(&registry.usernames, username), EUsernameNotAvailable);
-        
-        // Get current time
-        let now_seconds = clock::timestamp_ms(clock) / 1000; // Convert to seconds
         
         // Create the profile object
         let profile_picture = if (vector::length(&profile_picture_url) > 0) {
@@ -330,6 +332,10 @@ module social_contracts::profile {
             reddit_username: option::none(),
             github_username: option::none(),
             last_updated: now,
+            followers_count: 0,
+            following_count: 0,
+            post_count: 0,
+            tips_received: 0,
         };
         
         // Get the profile ID
@@ -761,5 +767,159 @@ module social_contracts::profile {
         if (table::contains(authorized_services, service_address)) {
             table::remove(authorized_services, service_address);
         };
+    }
+
+    /// Get the ID address of a profile
+    public fun get_id_address(profile: &Profile): address {
+        object::uid_to_address(&profile.id)
+    }
+
+    /// Get the owner of a profile
+    public fun get_owner(profile: &Profile): address {
+        profile.owner
+    }
+
+    /// Get the followers count for a profile
+    public fun get_followers_count(profile: &Profile): u64 {
+        profile.followers_count
+    }
+
+    /// Get the post count for a profile
+    public fun get_post_count(profile: &Profile): u64 {
+        profile.post_count
+    }
+
+    /// Get the tips received for a profile
+    public fun get_tips_received(profile: &Profile): u64 {
+        profile.tips_received
+    }
+
+    /// Increment followers count (called by follow module)
+    public fun increment_followers_count(profile: &mut Profile): u64 {
+        profile.followers_count = profile.followers_count + 1;
+        profile.followers_count
+    }
+
+    /// Decrement followers count (called by follow module)
+    public fun decrement_followers_count(profile: &mut Profile): u64 {
+        if (profile.followers_count > 0) {
+            profile.followers_count = profile.followers_count - 1;
+        };
+        profile.followers_count
+    }
+
+    /// Increment post count (called by post module when creating a post)
+    public fun increment_post_count(profile: &mut Profile): u64 {
+        profile.post_count = profile.post_count + 1;
+        profile.post_count
+    }
+
+    /// Decrement post count (called by post module when deleting a post)
+    public fun decrement_post_count(profile: &mut Profile): u64 {
+        if (profile.post_count > 0) {
+            profile.post_count = profile.post_count - 1;
+        };
+        profile.post_count
+    }
+
+    /// Add tips received (called by post/comment module when tipping)
+    public fun add_tips_received(profile: &mut Profile, amount: u64): u64 {
+        profile.tips_received = profile.tips_received + amount;
+        profile.tips_received
+    }
+
+    /// Get the following count for a profile
+    public fun get_following_count(profile: &Profile): u64 {
+        profile.following_count
+    }
+
+    /// Increment following count (called when this profile follows another profile)
+    public fun increment_following_count(profile: &mut Profile): u64 {
+        profile.following_count = profile.following_count + 1;
+        profile.following_count
+    }
+
+    /// Decrement following count (called when this profile unfollows another profile)
+    public fun decrement_following_count(profile: &mut Profile): u64 {
+        if (profile.following_count > 0) {
+            profile.following_count = profile.following_count - 1;
+        };
+        profile.following_count
+    }
+
+    #[test_only]
+    /// Initialize test environment for profile module
+    public fun test_init(ctx: &mut TxContext) {
+        let registry = UsernameRegistry {
+            id: object::new(ctx),
+            usernames: table::new(ctx),
+            address_profiles: table::new(ctx),
+        };
+        
+        transfer::share_object(registry);
+    }
+
+    #[test_only]
+    /// Initialize the profile registry for testing
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(ctx)
+    }
+
+    #[test_only]
+    /// Register a test username for testing
+    public fun register_username(
+        registry: &mut UsernameRegistry,
+        username: String,
+        display_name: Option<String>,
+        _profile_picture: Option<String>,
+        ctx: &mut TxContext
+    ) {
+        let owner = tx_context::sender(ctx);
+        let epoch = tx_context::epoch(ctx);
+        
+        // Create a profile with a proper ID
+        let profile = Profile {
+            id: object::new(ctx),
+            display_name,
+            bio: string::utf8(b"Test bio"),
+            profile_picture: option::none(),
+            cover_photo: option::none(),
+            created_at: epoch,
+            owner,
+            birthdate: option::none(),
+            current_location: option::none(),
+            raised_location: option::none(),
+            phone: option::none(),
+            email: option::none(),
+            gender: option::none(),
+            political_view: option::none(),
+            religion: option::none(),
+            education: option::none(),
+            website: option::none(),
+            primary_language: option::none(),
+            relationship_status: option::none(),
+            x_username: option::none(),
+            mastodon_username: option::none(),
+            facebook_username: option::none(),
+            reddit_username: option::none(),
+            github_username: option::none(),
+            last_updated: epoch,
+            followers_count: 0,
+            post_count: 0,
+            tips_received: 0,
+            following_count: 0,
+        };
+        
+        // Get the profile ID and use it for registration
+        let profile_id = object::uid_to_address(&profile.id);
+        
+        // Register the username
+        table::add(&mut registry.usernames, username, profile_id);
+        
+        // Map owner to profile
+        table::add(&mut registry.address_profiles, owner, profile_id);
+        
+        // Share the profile
+        transfer::share_object(profile);
     }
 }

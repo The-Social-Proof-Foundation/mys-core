@@ -11,7 +11,7 @@ use mys_types::base_types::{ObjectRef, MysAddress};
 #[tokio::test]
 async fn test_currency_defaults() {
     let expected = Currency {
-        symbol: "MYS".to_string(),
+        symbol: "MySo".to_string(),
         decimals: 9,
         metadata: CurrencyMetadata {
             coin_type: "0x2::mys::MYS".to_string(),
@@ -20,7 +20,7 @@ async fn test_currency_defaults() {
 
     let currency: Currency = serde_json::from_value(json!(
         {
-            "symbol": "MYS",
+            "symbol": "MySo",
             "decimals": 9,
         }
     ))

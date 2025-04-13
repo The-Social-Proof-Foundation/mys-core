@@ -1841,7 +1841,7 @@ checksum = "230c5f1ca6a325a32553f8640d31ac9b49f2411e901e427570154868b46da4f7"
 
 [[package]]
 name = "bin-version"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "const-str",
  "git-version",
@@ -8495,7 +8495,7 @@ checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 
 [[package]]
 name = "mys"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anyhow",
@@ -8716,7 +8716,7 @@ dependencies = [
 
 [[package]]
 name = "mys-analytics-indexer"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "arrow",
@@ -8768,7 +8768,7 @@ dependencies = [
 
 [[package]]
 name = "mys-analytics-indexer-derive"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "proc-macro2 1.0.87",
  "quote 1.0.37",
@@ -8777,7 +8777,7 @@ dependencies = [
 
 [[package]]
 name = "mys-archival"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -8901,7 +8901,7 @@ dependencies = [
 
 [[package]]
 name = "mys-bridge"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -8952,7 +8952,7 @@ dependencies = [
 
 [[package]]
 name = "mys-bridge-cli"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -9019,7 +9019,7 @@ dependencies = [
 
 [[package]]
 name = "mys-cluster-test"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -9209,7 +9209,7 @@ dependencies = [
 
 [[package]]
 name = "mys-data-ingestion"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -9307,7 +9307,7 @@ dependencies = [
 
 [[package]]
 name = "mys-default-config"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "quote 1.0.37",
  "syn 1.0.107",
@@ -9315,7 +9315,7 @@ dependencies = [
 
 [[package]]
 name = "mys-e2e-tests"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -9465,7 +9465,7 @@ dependencies = [
 
 [[package]]
 name = "mys-faucet"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-recursion",
@@ -9511,14 +9511,14 @@ dependencies = [
 
 [[package]]
 name = "mys-field-count"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "mys-field-count-derive",
 ]
 
 [[package]]
 name = "mys-field-count-derive"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "quote 1.0.37",
  "syn 1.0.107",
@@ -9546,7 +9546,7 @@ dependencies = [
 
 [[package]]
 name = "mys-framework-snapshot"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -9627,7 +9627,7 @@ dependencies = [
 
 [[package]]
 name = "mys-graphql-rpc"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -9748,7 +9748,7 @@ dependencies = [
 
 [[package]]
 name = "mys-indexer"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -9826,7 +9826,7 @@ dependencies = [
 
 [[package]]
 name = "mys-indexer-alt"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -9886,7 +9886,7 @@ dependencies = [
 
 [[package]]
 name = "mys-indexer-alt-framework"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -9921,7 +9921,7 @@ dependencies = [
 
 [[package]]
 name = "mys-indexer-alt-jsonrpc"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -9964,7 +9964,7 @@ dependencies = [
 
 [[package]]
 name = "mys-indexer-alt-metrics"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "axum 0.7.5",
@@ -10006,7 +10006,7 @@ dependencies = [
 
 [[package]]
 name = "mys-indexer-alt-schema"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -10226,7 +10226,7 @@ dependencies = [
 
 [[package]]
 name = "mys-kvstore"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -10249,7 +10249,7 @@ dependencies = [
 
 [[package]]
 name = "mys-light-client"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -10287,7 +10287,7 @@ dependencies = [
 
 [[package]]
 name = "mys-metric-checker"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "backoff",
@@ -10308,7 +10308,7 @@ dependencies = [
 
 [[package]]
 name = "mys-move"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -10355,7 +10355,7 @@ dependencies = [
 
 [[package]]
 name = "mys-move-build"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "datatest-stable",
@@ -10379,7 +10379,7 @@ dependencies = [
 
 [[package]]
 name = "mys-move-lsp"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "bin-version",
  "clap",
@@ -10486,7 +10486,7 @@ dependencies = [
 
 [[package]]
 name = "mys-mvr-graphql-rpc"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -10606,7 +10606,7 @@ dependencies = [
 
 [[package]]
 name = "mys-node"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anemo-tower",
@@ -10658,7 +10658,7 @@ dependencies = [
 
 [[package]]
 name = "mys-open-rpc"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -10694,7 +10694,7 @@ dependencies = [
 
 [[package]]
 name = "mys-oracle"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -10724,7 +10724,7 @@ dependencies = [
 
 [[package]]
 name = "mys-package-dump"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bcs",
@@ -10741,7 +10741,7 @@ dependencies = [
 
 [[package]]
 name = "mys-package-management"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "move-core-types",
@@ -10780,7 +10780,7 @@ dependencies = [
 
 [[package]]
 name = "mys-pg-db"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bb8",
@@ -10925,7 +10925,7 @@ dependencies = [
 
 [[package]]
 name = "mys-rosetta"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11019,7 +11019,7 @@ dependencies = [
 
 [[package]]
 name = "mys-rpc-loadgen"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11048,7 +11048,7 @@ dependencies = [
 
 [[package]]
 name = "mys-sdk"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-recursion",
@@ -11105,7 +11105,7 @@ dependencies = [
 
 [[package]]
 name = "mys-security-watchdog"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "arrow-array",
@@ -11152,7 +11152,7 @@ dependencies = [
 
 [[package]]
 name = "mys-single-node-benchmark"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "async-trait",
  "bcs",
@@ -11255,7 +11255,7 @@ dependencies = [
 
 [[package]]
 name = "mys-source-validation"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "colored",
@@ -11381,7 +11381,7 @@ dependencies = [
 
 [[package]]
 name = "mys-surfer"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "async-trait",
  "bcs",
@@ -11503,7 +11503,7 @@ dependencies = [
 
 [[package]]
 name = "mys-test-validator"
-version = "1.43.1"
+version = "0.0.1"
 
 [[package]]
 name = "mys-tls"
@@ -11529,7 +11529,7 @@ dependencies = [
 
 [[package]]
 name = "mys-tool"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anemo",
  "anemo-cli",
@@ -11829,7 +11829,7 @@ dependencies = [
 
 [[package]]
 name = "mysns-indexer"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -11869,7 +11869,7 @@ dependencies = [
 
 [[package]]
 name = "mysop-cli"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "axum 0.7.5",
@@ -18737,7 +18737,7 @@ dependencies = [
 
 [[package]]
 name = "x"
-version = "1.43.1"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "camino",

@@ -107,7 +107,7 @@ macro_rules! define_system_package_metadata {
                     $name,
                     concat!("crates/mys-framework/packages/", $path),
                     $id,
-                    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/packages_compiled", "/", $path)),
+                    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/packages_compiled/", $path)),
                     &$deps,
                 )),*
             ]

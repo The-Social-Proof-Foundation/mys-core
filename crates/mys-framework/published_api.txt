@@ -2959,57 +2959,6 @@ max_heapify_recursive
 priorities
 	public fun
 	0x2::priority_queue
-Profile
-	public struct
-	0x2::profile
-ProfileCreatedEvent
-	public struct
-	0x2::profile
-ProfileUpdatedEvent
-	public struct
-	0x2::profile
-UsernameUpdatedEvent
-	public struct
-	0x2::profile
-UsernameNFTAssignedEvent
-	public struct
-	0x2::profile
-UsernameNFTRemovedEvent
-	public struct
-	0x2::profile
-create_profile
-	public fun
-	0x2::profile
-create_and_register_profile
-	public entry fun
-	0x2::profile
-update_profile
-	public entry fun
-	0x2::profile
-display_name
-	public fun
-	0x2::profile
-bio
-	public fun
-	0x2::profile
-profile_picture
-	public fun
-	0x2::profile
-created_at
-	public fun
-	0x2::profile
-owner
-	public fun
-	0x2::profile
-id
-	public fun
-	0x2::profile
-has_username_nft
-	public fun
-	0x2::profile
-username_nft_id
-	public fun
-	0x2::profile
 Versioned
 	public struct
 	0x2::versioned

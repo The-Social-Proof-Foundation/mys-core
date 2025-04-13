@@ -289,7 +289,7 @@ pub struct AccountConfig {
     pub gas_amounts: Vec<u64>,
 }
 
-pub const DEFAULT_GAS_AMOUNT: u64 = 30_000_000_000_000_000;
+pub const DEFAULT_GAS_AMOUNT: u64 = 100_000_000_000_000;
 pub const DEFAULT_NUMBER_OF_AUTHORITIES: usize = 4;
 const DEFAULT_NUMBER_OF_ACCOUNT: usize = 5;
 pub const DEFAULT_NUMBER_OF_OBJECT_PER_ACCOUNT: usize = 5;
@@ -301,7 +301,7 @@ impl GenesisConfig {
     /// Port offset for benchmarks' genesis configs.
     pub const BENCHMARKS_PORT_OFFSET: u16 = 2000;
     /// The gas amount for each genesis gas object.
-    const BENCHMARK_GAS_AMOUNT: u64 = 50_000_000_000_000_000;
+    const BENCHMARK_GAS_AMOUNT: u64 = 50_000_000_000_000;
     /// Trigger epoch change every hour minutes.
     const BENCHMARK_EPOCH_DURATION_MS: u64 = 60 * 60 * 1000;
 

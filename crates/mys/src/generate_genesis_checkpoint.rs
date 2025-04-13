@@ -17,6 +17,14 @@ async fn main() {
     let dir = Utf8PathBuf::try_from(dir).unwrap();
 
     let mut builder = Builder::new();
+    
+    // Add custom token parameters
+    builder = builder.with_token_parameters(
+        "MySo".to_string(),
+        "MySocial".to_string(),
+        "The native token of the MySocial blockchain.".to_string()
+    );
+    
     let mut keys = Vec::new();
     for i in 0..2 {
         let key: AuthorityKeyPair = get_key_pair_from_rng(&mut rand::rngs::OsRng).1;

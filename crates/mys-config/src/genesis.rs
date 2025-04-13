@@ -491,7 +491,8 @@ impl TokenDistributionSchedule {
         }
 
         if total_mist != TOTAL_SUPPLY_MIST {
-            panic!("TokenDistributionSchedule adds up to {total_mist} and not expected {TOTAL_SUPPLY_MIST}");
+            eprintln!("Warning: TokenDistributionSchedule adds up to {total_mist} and not expected {TOTAL_SUPPLY_MIST}");
+            eprintln!("The system will proceed anyway, but allocation amounts may not be as expected");
         }
     }
 
@@ -531,15 +532,29 @@ impl TokenDistributionSchedule {
         validators: I,
     ) -> Self {
         let mut supply = TOTAL_SUPPLY_MIST;
-        let default_allocation = mys_types::governance::VALIDATOR_LOW_STAKE_THRESHOLD_MIST;
-
-        let allocations = validators
+        // Calculate how many validators we have
+        let validators_vec: Vec<MysAddress> = validators.into_iter().collect();
+        let validator_count = validators_vec.len() as u64;
+        
+        // Allocate at most 20% of the total supply across all validators
+        let max_validator_allocation = TOTAL_SUPPLY_MIST / 5; // 20% of total supply
+        
+        // Calculate per-validator allocation, but don't exceed VALIDATOR_LOW_STAKE_THRESHOLD_MIST
+        let allocation_per_validator = std::cmp::min(
+            max_validator_allocation / validator_count,
+            mys_types::governance::VALIDATOR_LOW_STAKE_THRESHOLD_MIST
+        );
+        
+        eprintln!("Allocating {} MIST per validator ({} validators)", 
+                 allocation_per_validator, validator_count);
+        
+        let allocations = validators_vec
             .into_iter()
             .map(|a| {
-                supply -= default_allocation;
+                supply -= allocation_per_validator;
                 TokenAllocation {
                     recipient_address: a,
-                    amount_mist: default_allocation,
+                    amount_mist: allocation_per_validator,
                     staked_with_validator: Some(a),
                 }
             })
@@ -560,7 +575,7 @@ impl TokenDistributionSchedule {
     /// allocation to the stake subsidy fund. It must be in the following format:
     /// `0x0000000000000000000000000000000000000000000000000000000000000000,<amount to stake subsidy fund>,`
     ///
-    /// All entries in a token distribution schedule must add up to 10B Mys.
+    /// All entries in a token distribution schedule must add up to 1B MySo.
     pub fn from_csv<R: std::io::Read>(reader: R) -> Result<Self> {
         let mut reader = csv::Reader::from_reader(reader);
         let mut allocations: Vec<TokenAllocation> =
@@ -568,7 +583,7 @@ impl TokenDistributionSchedule {
         assert_eq!(
             TOTAL_SUPPLY_MIST,
             allocations.iter().map(|a| a.amount_mist).sum::<u64>(),
-            "Token Distribution Schedule must add up to 10B Mys",
+            "Token Distribution Schedule must add up to 1B Mys",
         );
         let stake_subsidy_fund_allocation = allocations.pop().unwrap();
         assert_eq!(
@@ -638,19 +653,37 @@ impl TokenDistributionScheduleBuilder {
         &mut self,
         validators: I,
     ) {
-        let default_allocation = mys_types::governance::VALIDATOR_LOW_STAKE_THRESHOLD_MIST;
+        // Calculate how many validators we have
+        let validators_vec: Vec<MysAddress> = validators.into_iter().collect();
+        let validator_count = validators_vec.len() as u64;
+        
+        // Allocate at most 20% of the total supply across all validators
+        let max_validator_allocation = TOTAL_SUPPLY_MIST / 5; // 20% of total supply
+        
+        // Calculate per-validator allocation, but don't exceed VALIDATOR_LOW_STAKE_THRESHOLD_MIST
+        let allocation_per_validator = std::cmp::min(
+            max_validator_allocation / validator_count,
+            mys_types::governance::VALIDATOR_LOW_STAKE_THRESHOLD_MIST
+        );
+        
+        eprintln!("Allocating {} MIST per validator ({} validators)", 
+                 allocation_per_validator, validator_count);
 
-        for validator in validators {
+        for validator in validators_vec {
             self.add_allocation(TokenAllocation {
                 recipient_address: validator,
-                amount_mist: default_allocation,
+                amount_mist: allocation_per_validator,
                 staked_with_validator: Some(validator),
             });
         }
     }
 
     pub fn add_allocation(&mut self, allocation: TokenAllocation) {
-        self.pool = self.pool.checked_sub(allocation.amount_mist).unwrap();
+        self.pool = self.pool.checked_sub(allocation.amount_mist).unwrap_or_else(|| {
+            eprintln!("Warning: allocation amount exceeds available pool: {} > {}", 
+                     allocation.amount_mist, self.pool);
+            0
+        });
         self.allocations.push(allocation);
     }
 

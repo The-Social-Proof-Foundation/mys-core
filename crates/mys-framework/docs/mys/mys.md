@@ -99,20 +99,20 @@ The amount of Mist per Mys token based on the fact that mist is
 
 <a name="mys_mys_TOTAL_SUPPLY_MIST"></a>
 
-The total supply of Mys denominated in Mist (10 Billion * 10^9)
+The total supply of Mys denominated in Mist (1 Billion * 10^9)
 
 
-<pre><code><b>const</b> <a href="../mys/mys.md#mys_mys_TOTAL_SUPPLY_MIST">TOTAL_SUPPLY_MIST</a>: u64 = 10000000000000000000;
+<pre><code><b>const</b> <a href="../mys/mys.md#mys_mys_TOTAL_SUPPLY_MIST">TOTAL_SUPPLY_MIST</a>: u64 = 1000000000000000000;
 </code></pre>
 
 
 
 <a name="mys_mys_TOTAL_SUPPLY_MYS"></a>
 
-The total supply of Mys denominated in whole Mys tokens (10 Billion)
+The total supply of Mys denominated in whole Mys tokens (1 Billion)
 
 
-<pre><code><b>const</b> <a href="../mys/mys.md#mys_mys_TOTAL_SUPPLY_MYS">TOTAL_SUPPLY_MYS</a>: u64 = 10000000000;
+<pre><code><b>const</b> <a href="../mys/mys.md#mys_mys_TOTAL_SUPPLY_MYS">TOTAL_SUPPLY_MYS</a>: u64 = 1000000000;
 </code></pre>
 
 
@@ -125,7 +125,7 @@ Register the <code><a href="../mys/mys.md#mys_mys_MYS">MYS</a></code> Coin to ac
 This should be called only once during genesis creation.
 
 
-<pre><code><b>fun</b> <a href="../mys/mys.md#mys_mys_new">new</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;
+<pre><code><b>fun</b> <a href="../mys/mys.md#mys_mys_new">new</a>(token_symbol: vector&lt;u8&gt;, token_name: vector&lt;u8&gt;, token_description: vector&lt;u8&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;
 </code></pre>
 
 
@@ -134,16 +134,20 @@ This should be called only once during genesis creation.
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../mys/mys.md#mys_mys_new">new</a>(ctx: &<b>mut</b> TxContext): Balance&lt;<a href="../mys/mys.md#mys_mys_MYS">MYS</a>&gt; {
+<pre><code><b>fun</b> <a href="../mys/mys.md#mys_mys_new">new</a>(
+    token_symbol: vector&lt;u8&gt;,
+    token_name: vector&lt;u8&gt;,
+    token_description: vector&lt;u8&gt;,
+    ctx: &<b>mut</b> TxContext
+): Balance&lt;<a href="../mys/mys.md#mys_mys_MYS">MYS</a>&gt; {
     <b>assert</b>!(ctx.sender() == @0x0, <a href="../mys/mys.md#mys_mys_ENotSystemAddress">ENotSystemAddress</a>);
     <b>assert</b>!(ctx.epoch() == 0, <a href="../mys/mys.md#mys_mys_EAlreadyMinted">EAlreadyMinted</a>);
     <b>let</b> (treasury, metadata) = <a href="../mys/coin.md#mys_coin_create_currency">coin::create_currency</a>(
         <a href="../mys/mys.md#mys_mys_MYS">MYS</a> {},
         9,
-        b"<a href="../mys/mys.md#mys_mys_MYS">MYS</a>",
-        b"Mys",
-        // TODO: add appropriate description and logo <a href="../mys/url.md#mys_url">url</a>
-        b"",
+        token_symbol,
+        token_name,
+        token_description,
         option::none(),
         ctx,
     );

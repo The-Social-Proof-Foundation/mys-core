@@ -32,7 +32,7 @@ async fn get_coin_info() {
         .into_inner();
 
     assert_eq!(coin_type, Some(coin_type_sdk.into()));
-    assert_eq!(metadata.unwrap().symbol, Some("MYS".to_owned()));
+    assert_eq!(metadata.unwrap().symbol, Some("MySo".to_owned()));
     assert_eq!(
         treasury.unwrap().total_supply,
         Some(mys_types::gas_coin::TOTAL_SUPPLY_MIST)
