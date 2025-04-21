@@ -4,29 +4,21 @@
 /// Governance module for the MySocial network
 /// Manages the decentralized governance system with delegate council and community assembly
 /// Implements proposal submission, voting, and execution processes
-#[allow(unused_use, duplicate_alias, unused_const, unused_field, unused_assignment, unused_mut_parameter)]
+
 module social_contracts::governance {
-    use std::string::{Self, String};
-    use std::vector;
-    use std::option::{Self, Option};
-    use std::bcs;
+    use std::string::{String};
     
     use mys::dynamic_field;
     use mys::vec_set::{Self, VecSet};
-    use mys::tx_context::{Self, TxContext};
-    use mys::object::{Self, UID, ID};
     use mys::event;
-    use mys::transfer;
     use mys::table::{Self, Table};
     use mys::coin::{Self, Coin};
     use mys::balance::{Self, Balance};
     use mys::mys::MYS;
-    use mys::url;
     use mys::package::{Self, Publisher};
     
+    use social_contracts::upgrade;
     use social_contracts::profile;
-    use social_contracts::post;
-    use social_contracts::platform;
 
     /// Error codes
     const EUnauthorized: u64 = 0;
@@ -34,24 +26,23 @@ module social_contracts::governance {
     const EInvalidParameter: u64 = 2;
     const ENotDelegate: u64 = 3;
     const EAlreadyDelegate: u64 = 4;
-    const ETermNotExpired: u64 = 5;
     const EProposalNotFound: u64 = 6;
     const EInvalidProposalStatus: u64 = 7;
     const EAlreadyVoted: u64 = 8;
     const ENotVotingPhase: u64 = 9;
-    const EInsufficientVotes: u64 = 10;
     const EVotingPeriodNotEnded: u64 = 11;
     const EVotingPeriodEnded: u64 = 12;
-    const EInsufficientAge: u64 = 15;
-    const EExceedsMaxVotes: u64 = 16;
-    const EInvalidVoteCount: u64 = 17;
-    const EInvalidRegistry: u64 = 18;
-    const EAlreadyNominated: u64 = 19;
+    const EExceedsMaxVotes: u64 = 13;
+    const EInvalidVoteCount: u64 = 14;
+    const EInvalidRegistry: u64 = 15;
+    const EAlreadyNominated: u64 = 16;
+    const EWrongVersion: u64 = 17;
 
     /// Proposal type constants
     const PROPOSAL_TYPE_ECOSYSTEM: u8 = 0;
     const PROPOSAL_TYPE_REPUTATION: u8 = 1;
     const PROPOSAL_TYPE_COMMUNITY_NOTES: u8 = 2;
+    const PROPOSAL_TYPE_PLATFORM: u8 = 3;
 
     /// Proposal status constants
     const STATUS_SUBMITTED: u8 = 0;
@@ -71,7 +62,7 @@ module social_contracts::governance {
     const DELEGATE_REASONS_FIELD: vector<u8> = b"delegate_reasons";
 
     /// Governance registry that keeps track of all delegates and proposals
-    public struct GovernanceRegistry has key {
+    public struct GovernanceDAO has key {
         id: UID,
         /// Registry type identifier (ecosystem, reputation, community notes)
         registry_type: u8,
@@ -93,6 +84,7 @@ module social_contracts::governance {
         delegate_addresses: VecSet<address>,
         nominee_addresses: VecSet<address>,
         voters: Table<address, Table<address, bool>>, // target -> (voter -> upvote)
+        version: u64,
     }
 
     /// Delegate struct representing a member of the delegate council
@@ -256,7 +248,7 @@ module social_contracts::governance {
     /// Create and share separate governance registries for each proposal type
     fun init(ctx: &mut TxContext) {
         // Create Ecosystem Governance Registry
-        let mut ecosystem_registry = GovernanceRegistry {
+        let mut ecosystem_registry = GovernanceDAO {
             id: object::new(ctx),
             registry_type: PROPOSAL_TYPE_ECOSYSTEM,
             // Configuration parameters specific to ecosystem governance
@@ -277,10 +269,11 @@ module social_contracts::governance {
             delegate_addresses: vec_set::empty<address>(),
             nominee_addresses: vec_set::empty<address>(),
             voters: table::new<address, Table<address, bool>>(ctx),
+            version: upgrade::current_version(),
         };
         
         // Create Reputation Governance Registry
-        let mut reputation_registry = GovernanceRegistry {
+        let mut reputation_registry = GovernanceDAO {
             id: object::new(ctx),
             registry_type: PROPOSAL_TYPE_REPUTATION,
             // Configuration parameters specific to reputation governance
@@ -301,10 +294,11 @@ module social_contracts::governance {
             delegate_addresses: vec_set::empty<address>(),
             nominee_addresses: vec_set::empty<address>(),
             voters: table::new<address, Table<address, bool>>(ctx),
+            version: upgrade::current_version(),
         };
         
         // Create Community Notes Governance Registry
-        let mut community_notes_registry = GovernanceRegistry {
+        let mut community_notes_registry = GovernanceDAO {
             id: object::new(ctx),
             registry_type: PROPOSAL_TYPE_COMMUNITY_NOTES,
             // Configuration parameters specific to community notes governance
@@ -325,6 +319,7 @@ module social_contracts::governance {
             delegate_addresses: vec_set::empty<address>(),
             nominee_addresses: vec_set::empty<address>(),
             voters: table::new<address, Table<address, bool>>(ctx),
+            version: upgrade::current_version(),
         };
         
         // Initialize each registry's status tables
@@ -338,7 +333,7 @@ module social_contracts::governance {
         transfer::share_object(community_notes_registry);
     }
 
-    fun initialize_registry_tables(registry: &mut GovernanceRegistry, _ctx: &mut TxContext) {
+    fun initialize_registry_tables(registry: &mut GovernanceDAO, _ctx: &mut TxContext) {
         table::add(&mut registry.proposals_by_status, STATUS_SUBMITTED, vector::empty<ID>());
         table::add(&mut registry.proposals_by_status, STATUS_DELEGATE_REVIEW, vector::empty<ID>());
         table::add(&mut registry.proposals_by_status, STATUS_COMMUNITY_VOTING, vector::empty<ID>());
@@ -351,7 +346,7 @@ module social_contracts::governance {
     /// Update governance parameters
     /// Can only be called by the contract owner with a valid publisher
     public entry fun update_governance_parameters(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         publisher: &Publisher,
         delegate_count: u64,
         delegate_term_epochs: u64,
@@ -364,7 +359,7 @@ module social_contracts::governance {
         _ctx: &mut TxContext
     ) {
         // Verify caller has a valid publisher for this module
-        assert!(package::from_module<GovernanceRegistry>(publisher), EUnauthorized);
+        assert!(package::from_module<GovernanceDAO>(publisher), EUnauthorized);
         // Ensure parameters are sensible
         assert!(delegate_count > 1, EInvalidParameter);
         assert!(delegate_term_epochs > 0, EInvalidParameter);
@@ -389,7 +384,7 @@ module social_contracts::governance {
     /// Nominate self as a delegate
     /// Requires the caller to have a valid profile
     public entry fun nominate_delegate(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         profile_registry: &profile::UsernameRegistry,
         ctx: &mut TxContext
     ) {
@@ -434,7 +429,7 @@ module social_contracts::governance {
     /// Positive votes support the delegate, negative votes express disapproval
     /// Users can change their vote at any time
     public entry fun vote_for_delegate(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         target_address: address,
         upvote: bool,
         ctx: &mut TxContext
@@ -568,7 +563,7 @@ module social_contracts::governance {
 
     /// Updates delegate panel at the end of a delegate term cycle.
     public entry fun update_delegate_panel(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         ctx: &mut TxContext
     ) {
         let current_epoch = tx_context::epoch(ctx);
@@ -811,7 +806,7 @@ module social_contracts::governance {
     /// Universal function to submit any type of proposal
     /// Handles all proposal types: ecosystem, reputation disputes, and community notes
     public entry fun submit_proposal(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         proposal_type: u8,
         title: String,
         description: String,
@@ -822,12 +817,7 @@ module social_contracts::governance {
         ctx: &mut TxContext
     ) {
         // Verify proposal type is valid
-        assert!(
-            proposal_type == PROPOSAL_TYPE_ECOSYSTEM || 
-            proposal_type == PROPOSAL_TYPE_REPUTATION || 
-            proposal_type == PROPOSAL_TYPE_COMMUNITY_NOTES, 
-            EInvalidParameter
-        );
+        assert!(proposal_type <= PROPOSAL_TYPE_PLATFORM, EInvalidParameter);
         
         // Verify registry type matches proposal type
         assert!(registry.registry_type == proposal_type, EInvalidRegistry);
@@ -867,7 +857,7 @@ module social_contracts::governance {
     /// Submit a new proposal to the ecosystem registry
     /// Requires staking MYS tokens equal to the proposal submission cost
     public entry fun submit_ecosystem_proposal(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         title: String,
         description: String,
         reference_id: Option<ID>,
@@ -890,7 +880,7 @@ module social_contracts::governance {
 
     /// Submit a special proposal for reputation dispute
     public entry fun submit_reputation_dispute(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         title: String,
         description: String,
         disputed_profile_id: ID,
@@ -914,7 +904,7 @@ module social_contracts::governance {
 
     /// Submit a special proposal for community note
     public entry fun submit_community_note(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         title: String,
         description: String,
         disputed_content_id: ID,
@@ -938,7 +928,7 @@ module social_contracts::governance {
 
     /// Internal function for submitting proposals
     fun submit_proposal_internal(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         title: String,
         description: String,
         proposal_type: u8,
@@ -1022,7 +1012,7 @@ module social_contracts::governance {
 
     /// Allow a proposal owner to rescind their proposal if it's still in the delegate review stage
     public entry fun rescind_proposal(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         proposal_id: ID,
         ctx: &mut TxContext
     ) {
@@ -1085,7 +1075,7 @@ module social_contracts::governance {
 
     /// Delegate votes on a proposal if it should move to community voting
     public entry fun delegate_vote_on_proposal(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         proposal_id: ID,
         approve: bool,
         mut reason: Option<String>,
@@ -1169,9 +1159,9 @@ module social_contracts::governance {
 
     /// Move a proposal to community voting phase
     fun move_to_community_voting_by_id(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         proposal_id: ID,
-        ctx: &mut TxContext
+        ctx: &TxContext
     ) {
         // Get proposal from registry
         let mut proposal = table::remove(&mut registry.proposals, proposal_id);
@@ -1215,7 +1205,7 @@ module social_contracts::governance {
 
     /// Reject a proposal by ID (avoids reference issues)
     fun reject_proposal_by_id(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         proposal_id: ID,
         current_time: u64,
         ctx: &mut TxContext
@@ -1266,7 +1256,7 @@ module social_contracts::governance {
     /// Community vote on a proposal with quadratic voting
     /// Users can cast multiple votes by paying a quadratically increasing cost
     public entry fun community_vote_on_proposal(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         proposal_id: ID,
         vote_count: u64,
         approve: bool,
@@ -1341,7 +1331,7 @@ module social_contracts::governance {
 
     /// Finalize a proposal after the voting period ends
     public entry fun finalize_proposal(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         proposal_id: ID,
         ctx: &mut TxContext
     ) {
@@ -1535,7 +1525,7 @@ module social_contracts::governance {
 
     /// Mark a proposal as implemented
     public entry fun mark_proposal_implemented(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         proposal_id: ID,
         description: Option<String>,
         ctx: &mut TxContext
@@ -1582,10 +1572,10 @@ module social_contracts::governance {
 
     /// Get all proposals of a specific type
     public fun get_proposals_by_type(
-        registry: &GovernanceRegistry,
+        registry: &GovernanceDAO,
         proposal_type: u8
     ): vector<ID> {
-        assert!(proposal_type <= PROPOSAL_TYPE_COMMUNITY_NOTES, EInvalidParameter);
+        assert!(proposal_type <= PROPOSAL_TYPE_PLATFORM, EInvalidParameter);
         let mut result = vector::empty<ID>();
         let statuses = vector[ STATUS_SUBMITTED, STATUS_DELEGATE_REVIEW, STATUS_COMMUNITY_VOTING, STATUS_APPROVED, STATUS_REJECTED, STATUS_IMPLEMENTED ];
         let mut s = 0;
@@ -1613,7 +1603,7 @@ module social_contracts::governance {
 
     /// Get all proposals with a specific status
     public fun get_proposals_by_status(
-        registry: &GovernanceRegistry,
+        registry: &GovernanceDAO,
         status: u8
     ): vector<ID> {
         assert!(status <= STATUS_IMPLEMENTED, EInvalidParameter);
@@ -1621,13 +1611,13 @@ module social_contracts::governance {
     }
 
     /// Get number of delegates
-    public fun get_delegate_count(registry: &GovernanceRegistry): u64 {
+    public fun get_delegate_count(registry: &GovernanceDAO): u64 {
         table::length(&registry.delegates)
     }
 
     /// Get delegate information
     public fun get_delegate_info(
-        registry: &GovernanceRegistry,
+        registry: &GovernanceDAO,
         addr: address
     ): (ID, u64, u64, u64, u64, u64, u64, u64, u64) {
         assert!(table::contains(&registry.delegates, addr), ENotDelegate);
@@ -1648,7 +1638,7 @@ module social_contracts::governance {
 
     /// Get proposal information
     public fun get_proposal_info(
-        registry: &GovernanceRegistry,
+        registry: &GovernanceDAO,
         id: ID
     ): (String, String, u8, Option<ID>, Option<String>, address, u64, u8, u64, u64) {
         assert!(table::contains(&registry.proposals, id), EProposalNotFound);
@@ -1669,14 +1659,14 @@ module social_contracts::governance {
     }
 
     /// Get the current treasury balance
-    public fun treasury_balance(registry: &GovernanceRegistry): u64 {
+    public fun treasury_balance(registry: &GovernanceDAO): u64 {
         balance::value(&registry.treasury)
     }
 
     /// Calculate cost for additional votes beyond the first free vote
     public fun calculate_vote_cost(
         vote_count: u64,
-        registry: &GovernanceRegistry
+        registry: &GovernanceDAO
     ): u64 {
         if (vote_count <= 1) {
             return 0
@@ -1687,13 +1677,13 @@ module social_contracts::governance {
     }
 
     /// Check if an address is a delegate
-    public fun is_delegate( registry: &GovernanceRegistry, addr: address ): bool {
+    public fun is_delegate( registry: &GovernanceDAO, addr: address ): bool {
         table::contains(&registry.delegates, addr)
     }
 
     /// Check if delegate term has expired
     public fun is_delegate_term_expired(
-        registry: &GovernanceRegistry,
+        registry: &GovernanceDAO,
         addr: address,
         current_epoch: u64
     ): bool {
@@ -1707,7 +1697,7 @@ module social_contracts::governance {
 
     /// Get governance parameters
     public fun get_governance_parameters(
-        registry: &GovernanceRegistry
+        registry: &GovernanceDAO
     ): (u64, u64, u64, u64, u64, u64, u64, u64) {
         (
             registry.delegate_count,
@@ -1723,7 +1713,7 @@ module social_contracts::governance {
 
     /// If more than half of delegates reject, reject the proposal manually
     public entry fun reject_proposal_manually(
-        registry: &mut GovernanceRegistry,
+        registry: &mut GovernanceDAO,
         proposal_id: ID,
         ctx: &mut TxContext
     ) {
@@ -1739,5 +1729,79 @@ module social_contracts::governance {
         // Reject the proposal
         let current_time = tx_context::epoch_timestamp_ms(ctx);
         reject_proposal_by_id(registry, proposal_id, current_time, ctx);
+    }
+
+    /// Create a platform-specific governance registry when a platform is approved
+    /// This function can only be called by the platform toggle_platform_approval function
+    /// and only the package publisher can call it
+    public fun create_platform_governance(
+        delegate_count: u64,
+        delegate_term_epochs: u64,
+        proposal_submission_cost: u64,
+        min_on_chain_age_days: u64,
+        max_votes_per_user: u64,
+        quadratic_base_cost: u64,
+        voting_period_epochs: u64,
+        quorum_votes: u64,
+        ctx: &mut TxContext
+    ): ID {
+        // Create Platform Governance Registry with parameters
+        let mut platform_registry = GovernanceDAO {
+            id: object::new(ctx),
+            registry_type: PROPOSAL_TYPE_PLATFORM,
+            // Configuration parameters specific to platform governance
+            delegate_count, 
+            delegate_term_epochs,
+            proposal_submission_cost,
+            min_on_chain_age_days,
+            max_votes_per_user,
+            quadratic_base_cost,
+            voting_period_epochs,
+            quorum_votes,
+            // Tables
+            delegates: table::new<address, Delegate>(ctx),
+            proposals: table::new<ID, Proposal>(ctx),
+            proposals_by_status: table::new<u8, vector<ID>>(ctx),
+            treasury: balance::zero(),
+            nominated_delegates: table::new<address, NominatedDelegate>(ctx),
+            delegate_addresses: vec_set::empty<address>(),
+            nominee_addresses: vec_set::empty<address>(),
+            voters: table::new<address, Table<address, bool>>(ctx),
+            version: upgrade::current_version(),
+        };
+        
+        // Initialize registry tables
+        initialize_registry_tables(&mut platform_registry, ctx);
+        
+        // Get the ID before sharing
+        let registry_id = object::id(&platform_registry);
+        
+        // Share the registry object
+        transfer::share_object(platform_registry);
+        
+        // Return the registry ID
+        registry_id
+    }
+
+    /// Get version of GovernanceDAO
+    public fun version(registry: &GovernanceDAO): u64 {
+        registry.version
+    }
+
+    /// Set version of GovernanceDAO
+    public fun set_version(registry: &mut GovernanceDAO, new_version: u64) {
+        registry.version = new_version;
+    }
+
+    /// Public entry function that migrates registry to the latest version
+    public entry fun migrate_registry(registry: &mut GovernanceDAO, _ctx: &mut TxContext) {
+        let current_version = registry.version;
+        let latest_version = upgrade::current_version();
+
+        assert!(current_version < latest_version, EWrongVersion);
+
+        // Version-specific migrations would go here when needed
+        
+        registry.version = latest_version;
     }
 }

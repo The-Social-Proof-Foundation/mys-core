@@ -3,35 +3,41 @@
 
 /// Profile module for the MySocial network
 /// Handles user identity, profile creation, management, and username registration
-#[allow(unused_const, duplicate_alias, unused_use, unused_variable, implicit_const_copy, unused_let_mut)]
+
 module social_contracts::profile {
     use std::string::{Self, String};
-    use std::vector;
-    use std::option::{Self, Option};
     use std::ascii;
     
-    use mys::object::{Self, UID};
-    use mys::tx_context::{Self, TxContext};
-    use mys::event;
-    use mys::transfer;
-    use mys::url::{Self, Url};
     use mys::dynamic_field;
+    use mys::event;
     use mys::table::{Self, Table};
+    use mys::coin::{Self, Coin};
+    use mys::balance::Balance;
+    use mys::mys::MYS;
+    use mys::url::{Self, Url};
+    
+    use social_contracts::upgrade;
 
     /// Error codes
     const EProfileAlreadyExists: u64 = 0;
     const EUnauthorized: u64 = 1;
-    const EUsernameAlreadySet: u64 = 2;
-    const EUsernameNotRegistered: u64 = 3;
-    const EInvalidUsername: u64 = 4;
-    const ENameRegistryMismatch: u64 = 5;
-    const EProfileCreateFailed: u64 = 6;
-    const EReservedName: u64 = 7;
-    const EInsufficientPayment: u64 = 8;
-    const EUsernameNotAvailable: u64 = 9;
-    const ENotAdmin: u64 = 10;
-    const ENotAuthorizedService: u64 = 12;
-    
+    const EInvalidUsername: u64 = 2;
+    const EProfileCreateFailed: u64 = 3;
+    const EReservedName: u64 = 4;
+    const EUsernameNotAvailable: u64 = 5;
+    const ENotAuthorizedService: u64 = 6;
+    // New error codes for profile offers
+    const EOfferAlreadyExists: u64 = 7;
+    const EOfferDoesNotExist: u64 = 8;
+    const ECannotOfferOwnProfile: u64 = 9;
+    const EInsufficientTokens: u64 = 10;
+    const EUnauthorizedOfferAction: u64 = 11;
+    const EOfferBelowMinimum: u64 = 12;
+    const EBadgeNotFound: u64 = 13;
+    const EBadgeAlreadyExists: u64 = 14;
+
+    const PROFILE_SALE_FEE_BPS: u64 = 500;
+
     /// Reserved usernames that cannot be registered
     const RESERVED_NAMES: vector<vector<u8>> = vector[
         b"admin", 
@@ -60,6 +66,15 @@ module social_contracts::profile {
 
     /// Field names for dynamic fields
     const USERNAME_FIELD: vector<u8> = b"username";
+    // Field name for offers
+    const OFFERS_FIELD: vector<u8> = b"profile_offers";
+
+    /// Social Ecosystem Treasury that receives fees from profile sales
+    public struct EcosystemTreasury has key {
+        id: UID,
+        /// Treasury address that receives fees
+        treasury_address: address,
+    }
 
     /// Username Registry that stores mappings between usernames and profiles
     public struct UsernameRegistry has key {
@@ -68,6 +83,8 @@ module social_contracts::profile {
         usernames: Table<String, address>,
         // Maps addresses (owners) to their profile IDs
         address_profiles: Table<address, address>,
+        // Version of the registry, allows for controlled upgrades
+        version: u64,
     }
 
     
@@ -96,6 +113,8 @@ module social_contracts::profile {
         phone: Option<String>,
         /// Email as encrypted string (optional)
         email: Option<String>,
+        /// Is email verified flag
+        is_email_verified: bool,
         /// Gender as encrypted string (optional)
         gender: Option<String>,
         /// Political view as encrypted string (optional)
@@ -130,9 +149,66 @@ module social_contracts::profile {
         post_count: u64,
         /// Total amount of tips received
         tips_received: u64,
+        /// Minimum offer amount in MYSO tokens the owner is willing to accept (optional)
+        min_offer_amount: Option<u64>,
+        /// Collection of badges assigned to the profile
+        badges: vector<ProfileBadge>,
+    }
+
+    /// Profile Badge that can be assigned to profiles by platform admins/moderators
+    /// These badges cannot be transferred or sold and stay with the profile
+    public struct ProfileBadge has store, copy, drop {
+        /// Unique identifier for the badge (platform ID + badge name)
+        badge_id: String,
+        /// Name of the badge
+        name: String,
+        /// Description of what the badge represents
+        description: String,
+        /// Image URL for the badge
+        image_url: String,
+        /// ID of the platform that issued the badge
+        platform_id: address,
+        /// Timestamp when the badge was issued
+        issued_at: u64,
+        /// Address of the admin/moderator who issued the badge
+        issued_by: address,
+        /// Badge type/tier (1-100), allows for badge hierarchy
+        badge_type: u8,
     }
 
     // === Events ===
+
+    /// Event emitted when a badge is assigned to a profile
+    public struct BadgeAssignedEvent has copy, drop {
+        /// ID of the profile receiving the badge
+        profile_id: address,
+        /// Badge identifier
+        badge_id: String,
+        /// Badge name
+        name: String,
+        /// Platform ID that issued the badge
+        platform_id: address,
+        /// Admin/moderator who assigned the badge
+        assigned_by: address,
+        /// Timestamp when assigned
+        assigned_at: u64,
+        /// Badge type/tier
+        badge_type: u8,
+    }
+
+    /// Event emitted when a badge is revoked from a profile
+    public struct BadgeRevokedEvent has copy, drop {
+        /// ID of the profile losing the badge
+        profile_id: address,
+        /// Badge identifier
+        badge_id: String,
+        /// Platform ID that issued the badge
+        platform_id: address,
+        /// Admin/moderator who revoked the badge
+        revoked_by: address,
+        /// Timestamp when revoked
+        revoked_at: u64,
+    }
 
     /// Profile created event
     public struct ProfileCreatedEvent has copy, drop {
@@ -162,6 +238,7 @@ module social_contracts::profile {
         raised_location: Option<String>,
         phone: Option<String>,
         email: Option<String>,
+        is_email_verified: bool,
         gender: Option<String>,
         political_view: Option<String>,
         religion: Option<String>,
@@ -174,17 +251,78 @@ module social_contracts::profile {
         facebook_username: Option<String>,
         reddit_username: Option<String>,
         github_username: Option<String>,
+        min_offer_amount: Option<u64>,
+    }
+
+    /// Event emitted when an offer is created for a profile
+    public struct ProfileOfferCreatedEvent has copy, drop {
+        profile_id: address,
+        offeror: address,
+        amount: u64,
+        created_at: u64,
+    }
+
+    /// Event emitted when an offer is accepted
+    public struct ProfileOfferAcceptedEvent has copy, drop {
+        profile_id: address,
+        offeror: address,
+        previous_owner: address,
+        amount: u64,
+        accepted_at: u64,
+    }
+
+    /// Event emitted when an offer is rejected or revoked
+    public struct ProfileOfferRejectedEvent has copy, drop {
+        profile_id: address,
+        offeror: address,
+        rejected_by: address,
+        amount: u64,
+        rejected_at: u64,
+        is_revoked: bool,
+    }
+
+    /// Represents an offer to purchase a profile
+    public struct ProfileOffer has store {
+        offeror: address,
+        amount: u64,
+        created_at: u64,
+        locked_myso: Balance<MYS>,
+    }
+
+    /// Event emitted when a fee is collected from a profile sale
+    public struct ProfileSaleFeeEvent has copy, drop {
+        profile_id: address,
+        offeror: address,
+        previous_owner: address,
+        sale_amount: u64,
+        fee_amount: u64,
+        fee_recipient: address,
+        timestamp: u64,
     }
 
     /// Module initializer to create the username registry
     fun init(ctx: &mut TxContext) {
+        // Import current version from upgrade module
+        let current_version = upgrade::current_version();
+        
         let registry = UsernameRegistry {
             id: object::new(ctx),
             usernames: table::new(ctx),
             address_profiles: table::new(ctx),
+            version: current_version,
         };
+        
+        // Create the Ecosystem treasury owned by the contract deployer
+        let treasury = EcosystemTreasury {
+            id: object::new(ctx),
+            treasury_address: tx_context::sender(ctx),
+        };
+        
         // Share the registry to make it globally accessible
         transfer::share_object(registry);
+        
+        // Share the treasury to make it globally accessible
+        transfer::share_object(treasury);
     }
 
     // === Username Management Functions ===
@@ -256,7 +394,6 @@ module social_contracts::profile {
 
     // === Profile Creation and Management ===
 
-
     /// Create a new profile with a required username
     /// This is the main entry point for new users, combining profile and username creation
     public entry fun create_profile(
@@ -268,6 +405,9 @@ module social_contracts::profile {
         cover_photo_url: vector<u8>,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), 1);
+        
         let owner = tx_context::sender(ctx);
         let now = tx_context::epoch(ctx);
 
@@ -319,6 +459,7 @@ module social_contracts::profile {
             raised_location: option::none(),
             phone: option::none(),
             email: option::none(),
+            is_email_verified: false,
             gender: option::none(),
             political_view: option::none(),
             religion: option::none(),
@@ -336,6 +477,8 @@ module social_contracts::profile {
             following_count: 0,
             post_count: 0,
             tips_received: 0,
+            min_offer_amount: option::none(),
+            badges: vector::empty<ProfileBadge>(),
         };
         
         // Get the profile ID
@@ -401,6 +544,9 @@ module social_contracts::profile {
         new_owner: address,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), 1);
+        
         let sender = tx_context::sender(ctx);
         
         // Verify sender is the owner
@@ -411,6 +557,13 @@ module social_contracts::profile {
         
         // Update registry mappings
         table::remove(&mut registry.address_profiles, sender);
+        
+        // Check if the offeror already has a profile in the registry
+        // If so, remove it before adding the new mapping (allows profile swapping)
+        if (table::contains(&registry.address_profiles, new_owner)) {
+            table::remove(&mut registry.address_profiles, new_owner);
+        };
+        
         table::add(&mut registry.address_profiles, new_owner, profile_id);
         
         // Update the profile owner
@@ -446,6 +599,7 @@ module social_contracts::profile {
             raised_location: profile.raised_location,
             phone: profile.phone,
             email: profile.email,
+            is_email_verified: profile.is_email_verified,
             gender: profile.gender,
             political_view: profile.political_view,
             religion: profile.religion,
@@ -458,6 +612,7 @@ module social_contracts::profile {
             facebook_username: profile.facebook_username,
             reddit_username: profile.reddit_username,
             github_username: profile.github_username,
+            min_offer_amount: profile.min_offer_amount,
         });
         
         // Transfer profile to new owner
@@ -491,6 +646,7 @@ module social_contracts::profile {
         facebook_username: Option<String>,
         reddit_username: Option<String>,
         github_username: Option<String>,
+        min_offer_amount: Option<u64>,
         ctx: &mut TxContext
     ) {
         // Verify sender is the owner
@@ -583,6 +739,10 @@ module social_contracts::profile {
         if (option::is_some(&github_username)) {
             profile.github_username = github_username;
         };
+
+        if (option::is_some(&min_offer_amount)) {
+            profile.min_offer_amount = min_offer_amount;
+        };
         
         // Update the last updated timestamp
         profile.last_updated = now;
@@ -626,6 +786,7 @@ module social_contracts::profile {
             raised_location: profile.raised_location,
             phone: profile.phone,
             email: profile.email,
+            is_email_verified: profile.is_email_verified,
             gender: profile.gender,
             political_view: profile.political_view,
             religion: profile.religion,
@@ -638,6 +799,7 @@ module social_contracts::profile {
             facebook_username: profile.facebook_username,
             reddit_username: profile.reddit_username,
             github_username: profile.github_username,
+            min_offer_amount: profile.min_offer_amount,
         });
     }
     
@@ -847,6 +1009,312 @@ module social_contracts::profile {
         profile.following_count
     }
 
+    /// Create an offer to purchase a profile
+    /// Locks MYSO tokens in the offer
+    public entry fun create_offer(
+        profile: &mut Profile,
+        coin: &mut Coin<MYS>,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        let profile_owner = profile.owner;
+        let profile_id = object::uid_to_address(&profile.id);
+        let now = tx_context::epoch(ctx);
+        
+        // Cannot offer on your own profile
+        assert!(sender != profile_owner, ECannotOfferOwnProfile);
+        
+        // Check if there's sufficient tokens
+        assert!(coin::value(coin) >= amount && amount > 0, EInsufficientTokens);
+        
+        // Check if the offer meets the minimum amount requirement (if set)
+        if (option::is_some(&profile.min_offer_amount)) {
+            let min_amount = *option::borrow(&profile.min_offer_amount);
+            assert!(amount >= min_amount, EOfferBelowMinimum);
+        };
+        
+        // Initialize offers table if it doesn't exist
+        if (!dynamic_field::exists_(&profile.id, OFFERS_FIELD)) {
+            let offers = table::new<address, ProfileOffer>(ctx);
+            dynamic_field::add(&mut profile.id, OFFERS_FIELD, offers);
+        };
+        
+        // Get the offers table
+        let offers = dynamic_field::borrow_mut<vector<u8>, Table<address, ProfileOffer>>(&mut profile.id, OFFERS_FIELD);
+        
+        // Check if the sender already has an offer
+        assert!(!table::contains(offers, sender), EOfferAlreadyExists);
+        
+        // Split tokens from the coin and convert to a balance for secure storage
+        let offer_coin = coin::split(coin, amount, ctx);
+        // Convert to balance to lock tokens in the offer
+        let locked_myso = coin::into_balance(offer_coin);
+        
+        // Create and store the offer with locked tokens
+        let offer = ProfileOffer {
+            offeror: sender,
+            amount,
+            created_at: now,
+            locked_myso,
+        };
+        
+        table::add(offers, sender, offer);
+        
+        // Emit an event to track offer creation
+        event::emit(ProfileOfferCreatedEvent {
+            profile_id,
+            offeror: sender,
+            amount,
+            created_at: now,
+        });
+    }
+    
+    /// Accept an offer to purchase a profile
+    /// Transfers tokens to the profile owner and profile ownership to the offeror
+    public entry fun accept_offer(
+        registry: &mut UsernameRegistry,
+        mut profile: Profile,
+        treasury: &EcosystemTreasury,
+        offeror: address,
+        new_main_profile: Option<address>,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        let profile_id = object::uid_to_address(&profile.id);
+        let now = tx_context::epoch(ctx);
+        
+        // Verify sender is the profile owner
+        assert!(profile.owner == sender, EUnauthorized);
+        
+        // Check if offers table exists
+        assert!(dynamic_field::exists_(&profile.id, OFFERS_FIELD), EOfferDoesNotExist);
+        
+        // Get the offers table
+        let offers = dynamic_field::borrow_mut<vector<u8>, Table<address, ProfileOffer>>(&mut profile.id, OFFERS_FIELD);
+        
+        // Check if the offer exists
+        assert!(table::contains(offers, offeror), EOfferDoesNotExist);
+        
+        // Remove the offer from the table and get the locked tokens
+        let ProfileOffer { offeror: _, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
+        
+        // Calculate the fee amount (5% of the total)
+        let fee_amount = (amount * PROFILE_SALE_FEE_BPS) / 10000;
+        
+        // Convert the locked balance to a coin
+        let mut payment = coin::from_balance(locked_myso, ctx);
+        
+        // Split the fee amount to send to the treasury
+        let fee_payment = coin::split(&mut payment, fee_amount, ctx);
+        
+        // Send the fee to the treasury treasury
+        transfer::public_transfer(fee_payment, treasury.treasury_address);
+        
+        // Send the remaining amount to the profile owner
+        transfer::public_transfer(payment, sender);
+        
+        // Update registry mappings to reflect new ownership
+        table::remove(&mut registry.address_profiles, sender);
+        
+        // Check if the offeror already has a profile in the registry
+        // If so, remove it before adding the new mapping (allows profile swapping)
+        if (table::contains(&registry.address_profiles, offeror)) {
+            table::remove(&mut registry.address_profiles, offeror);
+        };
+        
+        // Add new mapping for buyer
+        table::add(&mut registry.address_profiles, offeror, profile_id);
+        
+        // If the seller provided a new main profile, register it as their main profile
+        if (option::is_some(&new_main_profile)) {
+            let new_profile_id = *option::borrow(&new_main_profile);
+            // Add the new profile mapping for the seller
+            table::add(&mut registry.address_profiles, sender, new_profile_id);
+        };
+        
+        // Update the profile owner
+        let previous_owner = profile.owner;
+        profile.owner = offeror;
+        
+        // Emit an event to track offer acceptance and token transfer
+        event::emit(ProfileOfferAcceptedEvent {
+            profile_id,
+            offeror,
+            previous_owner,
+            amount,
+            accepted_at: now,
+        });
+        
+        // Emit a comprehensive profile updated event to indicate ownership change
+        event::emit(ProfileUpdatedEvent {
+            profile_id,
+            display_name: profile.display_name,
+            username: if (dynamic_field::exists_(&profile.id, USERNAME_FIELD)) {
+                option::some(*dynamic_field::borrow<vector<u8>, String>(&profile.id, USERNAME_FIELD))
+            } else {
+                option::none()
+            },
+            bio: profile.bio,
+            profile_picture: if (option::is_some(&profile.profile_picture)) {
+                let url = option::borrow(&profile.profile_picture);
+                option::some(ascii_to_string(url::inner_url(url)))
+            } else {
+                option::none()
+            },
+            cover_photo: if (option::is_some(&profile.cover_photo)) {
+                let url = option::borrow(&profile.cover_photo);
+                option::some(ascii_to_string(url::inner_url(url)))
+            } else {
+                option::none()
+            },
+            owner: offeror,
+            updated_at: now,
+            // Include all sensitive fields
+            birthdate: profile.birthdate,
+            current_location: profile.current_location,
+            raised_location: profile.raised_location,
+            phone: profile.phone,
+            email: profile.email,
+            is_email_verified: profile.is_email_verified,
+            gender: profile.gender,
+            political_view: profile.political_view,
+            religion: profile.religion,
+            education: profile.education,
+            website: profile.website,
+            primary_language: profile.primary_language,
+            relationship_status: profile.relationship_status,
+            x_username: profile.x_username,
+            mastodon_username: profile.mastodon_username,
+            facebook_username: profile.facebook_username,
+            reddit_username: profile.reddit_username,
+            github_username: profile.github_username,
+            min_offer_amount: profile.min_offer_amount,
+        });
+        
+        // Emit a fee event
+        event::emit(ProfileSaleFeeEvent {
+            profile_id,
+            offeror,
+            previous_owner,
+            sale_amount: amount,
+            fee_amount,
+            fee_recipient: treasury.treasury_address,
+            timestamp: now,
+        });
+        
+        // Transfer the profile object to the new owner
+        transfer::public_transfer(profile, offeror);
+    }
+    
+    /// Reject or revoke an offer on a profile
+    /// Can be called by the profile owner to reject or the offeror to revoke
+    /// Returns locked MYSO tokens to the offeror
+    public entry fun reject_or_revoke_offer(
+        profile: &mut Profile,
+        offeror: address,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        let profile_id = object::uid_to_address(&profile.id);
+        let now = tx_context::epoch(ctx);
+        
+        // Check if offers table exists
+        assert!(dynamic_field::exists_(&profile.id, OFFERS_FIELD), EOfferDoesNotExist);
+        
+        // Get the offers table
+        let offers = dynamic_field::borrow_mut<vector<u8>, Table<address, ProfileOffer>>(&mut profile.id, OFFERS_FIELD);
+        
+        // Check if the offer exists
+        assert!(table::contains(offers, offeror), EOfferDoesNotExist);
+        
+        // Verify sender is either the profile owner or the offeror
+        assert!(profile.owner == sender || offeror == sender, EUnauthorizedOfferAction);
+        
+        // Remove the offer from the table and get the locked tokens
+        let ProfileOffer { offeror, amount, created_at: _, locked_myso } = table::remove(offers, offeror);
+        
+        // Convert the locked balance back to a coin and return to the offeror
+        // This unlocks the tokens and returns them to the original offeror
+        let refund = coin::from_balance(locked_myso, ctx);
+        transfer::public_transfer(refund, offeror);
+        
+        // Determine if this is a rejection (by owner) or revocation (by offeror)
+        let is_revoked = offeror == sender;
+        
+        // Emit an event to track offer rejection/revocation and token return
+        event::emit(ProfileOfferRejectedEvent {
+            profile_id,
+            offeror,
+            rejected_by: sender,
+            amount,
+            rejected_at: now,
+            is_revoked,
+        });
+    }
+
+    /// Check if a profile has an offer from a specific address
+    public fun has_offer_from(profile: &Profile, offeror: address): bool {
+        if (!dynamic_field::exists_(&profile.id, OFFERS_FIELD)) {
+            return false
+        };
+        
+        let offers = dynamic_field::borrow<vector<u8>, Table<address, ProfileOffer>>(&profile.id, OFFERS_FIELD);
+        table::contains(offers, offeror)
+    }
+    
+    /// Check if a profile has any active offers
+    public fun has_offers(profile: &Profile): bool {
+        if (!dynamic_field::exists_(&profile.id, OFFERS_FIELD)) {
+            return false
+        };
+        
+        let offers = dynamic_field::borrow<vector<u8>, Table<address, ProfileOffer>>(&profile.id, OFFERS_FIELD);
+        table::length(offers) > 0
+    }
+
+    /// Get the treasury address from the EcosystemTreasury
+    public fun get_treasury_address(treasury: &EcosystemTreasury): address {
+        treasury.treasury_address
+    }
+
+    // Accessor for version field
+    public fun version(registry: &UsernameRegistry): u64 {
+        registry.version
+    }
+
+    // Mutable accessor for version field (only for upgrade module)
+    public fun borrow_version_mut(registry: &mut UsernameRegistry): &mut u64 {
+        &mut registry.version
+    }
+
+    /// Migration function for the registry
+    public entry fun migrate_registry(
+        registry: &mut UsernameRegistry,
+        _: &upgrade::UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(registry.version < current_version, 1);
+        
+        // Remember old version and update to new version
+        let old_version = registry.version;
+        registry.version = current_version;
+        
+        // Emit event for object migration
+        let registry_id = object::id(registry);
+        upgrade::emit_migration_event(
+            registry_id,
+            string::utf8(b"UsernameRegistry"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+        
+        // Any migration logic can be added here for future upgrades
+    }
+
     #[test_only]
     /// Initialize test environment for profile module
     public fun test_init(ctx: &mut TxContext) {
@@ -854,6 +1322,7 @@ module social_contracts::profile {
             id: object::new(ctx),
             usernames: table::new(ctx),
             address_profiles: table::new(ctx),
+            version: 1,
         };
         
         transfer::share_object(registry);
@@ -891,6 +1360,7 @@ module social_contracts::profile {
             raised_location: option::none(),
             phone: option::none(),
             email: option::none(),
+            is_email_verified: false,
             gender: option::none(),
             political_view: option::none(),
             religion: option::none(),
@@ -908,6 +1378,8 @@ module social_contracts::profile {
             post_count: 0,
             tips_received: 0,
             following_count: 0,
+            min_offer_amount: option::none(),
+            badges: vector::empty<ProfileBadge>(),
         };
         
         // Get the profile ID and use it for registration
@@ -921,5 +1393,237 @@ module social_contracts::profile {
         
         // Share the profile
         transfer::share_object(profile);
+    }
+
+    /// Get the minimum offer amount for a profile
+    public fun min_offer_amount(profile: &Profile): &Option<u64> {
+        &profile.min_offer_amount
+    }
+
+    /// Check if a profile is for sale (has a minimum offer amount set)
+    public fun is_for_sale(profile: &Profile): bool {
+        option::is_some(&profile.min_offer_amount)
+    }
+
+    /// Adds a badge to a profile - called by platform module
+    /// This function trusts the caller has done authorization checks
+    public fun add_badge_to_profile(
+        profile: &mut Profile,
+        badge_id: String,
+        badge_name: String,
+        badge_description: String,
+        badge_image_url: String,
+        platform_id: address,
+        timestamp: u64,
+        issuer: address,
+        badge_type: u8
+    ) {
+        // Create the new badge
+        let badge = ProfileBadge {
+            badge_id: badge_id,
+            name: badge_name,
+            description: badge_description,
+            image_url: badge_image_url,
+            platform_id,
+            issued_at: timestamp,
+            issued_by: issuer,
+            badge_type,
+        };
+        
+        // Check if badge with same ID already exists
+        let mut i = 0;
+        let len = vector::length(&profile.badges);
+        while (i < len) {
+            let existing_badge = vector::borrow(&profile.badges, i);
+            if (string::as_bytes(&existing_badge.badge_id) == string::as_bytes(&badge_id)) {
+                abort EBadgeAlreadyExists
+            };
+            i = i + 1;
+        };
+        
+        // Add the badge to the profile
+        vector::push_back(&mut profile.badges, badge);
+        
+        // Emit badge assigned event
+        event::emit(BadgeAssignedEvent {
+            profile_id: object::uid_to_address(&profile.id),
+            badge_id: badge_id,
+            name: badge_name,
+            platform_id,
+            assigned_by: issuer,
+            assigned_at: timestamp,
+            badge_type,
+        });
+    }
+    
+    /// Removes a badge from a profile - called by platform module
+    /// This function trusts the caller has done authorization checks
+    public fun remove_badge_from_profile(
+        profile: &mut Profile,
+        badge_id: &String,
+        platform_id: address,
+        revoker: address,
+        timestamp: u64
+    ) {
+        // Search for and remove the badge with the given ID
+        let mut found = false;
+        let mut i = 0;
+        let len = vector::length(&profile.badges);
+        
+        while (i < len) {
+            let badge = vector::borrow(&profile.badges, i);
+            if (string::as_bytes(&badge.badge_id) == string::as_bytes(badge_id)) {
+                // Ensure badge was issued by this platform
+                assert!(badge.platform_id == platform_id, EUnauthorized);
+                
+                // Remove the badge at this index
+                vector::remove(&mut profile.badges, i);
+                found = true;
+                
+                // Emit badge revoked event
+                event::emit(BadgeRevokedEvent {
+                    profile_id: object::uid_to_address(&profile.id),
+                    badge_id: *badge_id,
+                    platform_id,
+                    revoked_by: revoker,
+                    revoked_at: timestamp,
+                });
+                
+                break
+            };
+            i = i + 1;
+        };
+        
+        // Make sure we found and removed the badge
+        assert!(found, EBadgeNotFound);
+    }
+
+    /// Get all badges associated with a profile
+    public fun get_profile_badges(profile: &Profile): vector<ProfileBadge> {
+        profile.badges
+    }
+    
+    /// Check if a profile has a specific badge
+    public fun has_badge(profile: &Profile, badge_id: &String): bool {
+        let mut i = 0;
+        let len = vector::length(&profile.badges);
+        
+        while (i < len) {
+            let badge = vector::borrow(&profile.badges, i);
+            if (string::as_bytes(&badge.badge_id) == string::as_bytes(badge_id)) {
+                return true
+            };
+            i = i + 1;
+        };
+        
+        false
+    }
+    
+    /// Get a specific badge from a profile by badge ID
+    public fun get_badge(profile: &Profile, badge_id: &String): Option<ProfileBadge> {
+        let mut i = 0;
+        let len = vector::length(&profile.badges);
+        
+        while (i < len) {
+            let badge = vector::borrow(&profile.badges, i);
+            if (string::as_bytes(&badge.badge_id) == string::as_bytes(badge_id)) {
+                return option::some(*badge)
+            };
+            i = i + 1;
+        };
+        
+        option::none()
+    }
+    
+    /// Get badges issued by a specific platform
+    public fun get_platform_badges(profile: &Profile, platform_id: address): vector<ProfileBadge> {
+        let mut result = vector::empty<ProfileBadge>();
+        
+        let mut i = 0;
+        let len = vector::length(&profile.badges);
+        
+        while (i < len) {
+            let badge = vector::borrow(&profile.badges, i);
+            if (badge.platform_id == platform_id) {
+                vector::push_back(&mut result, *badge);
+            };
+            i = i + 1;
+        };
+        
+        result
+    }
+    
+    /// Count the number of badges a profile has
+    public fun badge_count(profile: &Profile): u64 {
+        vector::length(&profile.badges)
+    }
+    
+    /// Get whether the email is verified for a profile
+    public fun is_email_verified(profile: &Profile): bool {
+        profile.is_email_verified
+    }
+    
+    /// Toggle the email verification status for a profile
+    /// Only the admin with the UpgradeAdminCap can call this function
+    public entry fun toggle_email_verification(
+        profile: &mut Profile,
+        _admin_cap: &upgrade::UpgradeAdminCap,
+        is_verified: bool,
+        ctx: &mut TxContext
+    ) {
+        // Admin check is implicit through the requirement of the UpgradeAdminCap
+        let _admin = tx_context::sender(ctx);
+        
+        // Update the email verification status
+        profile.is_email_verified = is_verified;
+        
+        // Get the profile ID for the event
+        let profile_id = object::uid_to_address(&profile.id);
+        
+        // Emit profile updated event to reflect the change in verification status
+        event::emit(ProfileUpdatedEvent {
+            profile_id,
+            display_name: profile.display_name,
+            username: if (dynamic_field::exists_(&profile.id, USERNAME_FIELD)) {
+                option::some(*dynamic_field::borrow<vector<u8>, String>(&profile.id, USERNAME_FIELD))
+            } else {
+                option::none()
+            },
+            bio: profile.bio,
+            profile_picture: if (option::is_some(&profile.profile_picture)) {
+                let url = option::borrow(&profile.profile_picture);
+                option::some(ascii_to_string(url::inner_url(url)))
+            } else {
+                option::none()
+            },
+            cover_photo: if (option::is_some(&profile.cover_photo)) {
+                let url = option::borrow(&profile.cover_photo);
+                option::some(ascii_to_string(url::inner_url(url)))
+            } else {
+                option::none()
+            },
+            owner: profile.owner,
+            updated_at: tx_context::epoch(ctx),
+            // Include all sensitive fields
+            birthdate: profile.birthdate,
+            current_location: profile.current_location,
+            raised_location: profile.raised_location,
+            phone: profile.phone,
+            email: profile.email,
+            is_email_verified: profile.is_email_verified,
+            gender: profile.gender,
+            political_view: profile.political_view,
+            religion: profile.religion,
+            education: profile.education,
+            website: profile.website,
+            primary_language: profile.primary_language,
+            relationship_status: profile.relationship_status,
+            x_username: profile.x_username,
+            mastodon_username: profile.mastodon_username,
+            facebook_username: profile.facebook_username,
+            reddit_username: profile.reddit_username,
+            github_username: profile.github_username,
+            min_offer_amount: profile.min_offer_amount,
+        });
     }
 }

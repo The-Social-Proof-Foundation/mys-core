@@ -3,27 +3,22 @@
 
 /// Platform module for the MySocial network
 /// Manages social media platforms and their timelines
-#[allow(unused_use, duplicate_alias, unused_const)]
+
 module social_contracts::platform {
     use std::string::{Self, String};
-    use std::vector;
-    use std::option;
     
     use mys::dynamic_field;
     use mys::vec_set::{Self, VecSet};
-    use mys::tx_context::{Self, TxContext};
-    use mys::object::{Self, UID, ID};
-    use mys::event;
-    use mys::transfer;
     use mys::table::{Self, Table};
     use mys::coin::{Self, Coin};
     use mys::balance::{Self, Balance};
     use mys::mys::MYS;
-    use mys::url;
     use mys::package::{Self, Publisher};
+    use mys::event;
     
     use social_contracts::profile;
-    use social_contracts::post;
+    use social_contracts::governance;
+    use social_contracts::upgrade;
 
     /// Error codes
     const EUnauthorized: u64 = 0;
@@ -31,9 +26,12 @@ module social_contracts::platform {
     const EAlreadyBlocked: u64 = 2;
     const ENotBlocked: u64 = 3;
     const EInvalidTokenAmount: u64 = 4;
-    const ENotContractOwner: u64 = 7;
-    const EAlreadyJoined: u64 = 8;
-    const ENotJoined: u64 = 9;
+    const ENotContractOwner: u64 = 5;
+    const EAlreadyJoined: u64 = 6;
+    const ENotJoined: u64 = 7;
+    const EWrongVersion: u64 = 8;
+    const EInsufficientTreasuryFunds: u64 = 9;
+    const EEmptyRecipientsList: u64 = 10;
 
     /// Field names for dynamic fields
     const MODERATORS_FIELD: vector<u8> = b"moderators";
@@ -87,6 +85,21 @@ module social_contracts::platform {
         treasury: Balance<MYS>,
         /// Whether the platform is approved by the contract owner
         approved: bool,
+        /// Whether the platform wants DAO governance
+        wants_dao_governance: bool,
+        /// DAO governance configuration parameters (all optional)
+        delegate_count: Option<u64>,
+        delegate_term_epochs: Option<u64>,
+        proposal_submission_cost: Option<u64>,
+        min_on_chain_age_days: Option<u64>,
+        max_votes_per_user: Option<u64>,
+        quadratic_base_cost: Option<u64>,
+        voting_period_epochs: Option<u64>,
+        quorum_votes: Option<u64>,
+        /// ID of governance registry if created
+        governance_registry_id: Option<ID>,
+        /// Version for upgrades
+        version: u64,
     }
 
     /// Platform registry that keeps track of all platforms
@@ -96,6 +109,8 @@ module social_contracts::platform {
         platforms_by_name: Table<String, address>,
         /// Table mapping developer addresses to their platforms
         platforms_by_developer: Table<address, vector<address>>,
+        /// Version for upgrades
+        version: u64,
     }
 
     /// Platform created event
@@ -181,6 +196,16 @@ module social_contracts::platform {
         timestamp: u64,
     }
 
+    /// Event emitted when tokens are airdropped from the platform treasury
+    public struct TokenAirdropEvent has copy, drop {
+        platform_id: address,
+        recipient: address,
+        amount: u64,
+        reason_code: u8,
+        executed_by: address,
+        timestamp: u64,
+    }
+
     /// Create and share the global platform registry
     /// This should be called once during system initialization
     fun init(ctx: &mut TxContext) {
@@ -188,6 +213,7 @@ module social_contracts::platform {
             id: object::new(ctx),
             platforms_by_name: table::new(ctx),
             platforms_by_developer: table::new(ctx),
+            version: upgrade::current_version(),
         };
 
         transfer::share_object(registry);
@@ -206,14 +232,48 @@ module social_contracts::platform {
         links: vector<String>,
         status: u8,
         release_date: String,
+        wants_dao_governance: bool,
+        delegate_count: Option<u64>,
+        delegate_term_epochs: Option<u64>,
+        proposal_submission_cost: Option<u64>,
+        min_on_chain_age_days: Option<u64>,
+        max_votes_per_user: Option<u64>,
+        quadratic_base_cost: Option<u64>,
+        voting_period_epochs: Option<u64>,
+        quorum_votes: Option<u64>,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         let platform_id = object::new(ctx);
         let developer = tx_context::sender(ctx);
         let now = tx_context::epoch(ctx);
 
         // Check if platform name is already taken
         assert!(!table::contains(&registry.platforms_by_name, name), EPlatformAlreadyExists);
+
+        // Validate status code is one of the defined constants
+        assert!(
+            status == STATUS_DEVELOPMENT || 
+            status == STATUS_ALPHA || 
+            status == STATUS_BETA || 
+            status == STATUS_LIVE || 
+            status == STATUS_MAINTENANCE || 
+            status == STATUS_SUNSET || 
+            status == STATUS_SHUTDOWN,
+            EUnauthorized
+        );
+
+        // If DAO governance is not wanted, set all governance parameters to None
+        let actual_delegate_count = if (wants_dao_governance) delegate_count else option::none();
+        let actual_delegate_term_epochs = if (wants_dao_governance) delegate_term_epochs else option::none();
+        let actual_proposal_submission_cost = if (wants_dao_governance) proposal_submission_cost else option::none();
+        let actual_min_on_chain_age_days = if (wants_dao_governance) min_on_chain_age_days else option::none();
+        let actual_max_votes_per_user = if (wants_dao_governance) max_votes_per_user else option::none();
+        let actual_quadratic_base_cost = if (wants_dao_governance) quadratic_base_cost else option::none();
+        let actual_voting_period_epochs = if (wants_dao_governance) voting_period_epochs else option::none();
+        let actual_quorum_votes = if (wants_dao_governance) quorum_votes else option::none();
 
         let mut platform = Platform {
             id: platform_id,
@@ -232,6 +292,17 @@ module social_contracts::platform {
             created_at: now,
             treasury: balance::zero(),
             approved: false, // New platforms are not approved by default
+            wants_dao_governance,
+            delegate_count: actual_delegate_count,
+            delegate_term_epochs: actual_delegate_term_epochs,
+            proposal_submission_cost: actual_proposal_submission_cost,
+            min_on_chain_age_days: actual_min_on_chain_age_days,
+            max_votes_per_user: actual_max_votes_per_user,
+            quadratic_base_cost: actual_quadratic_base_cost,
+            voting_period_epochs: actual_voting_period_epochs,
+            quorum_votes: actual_quorum_votes,
+            governance_registry_id: option::none(),
+            version: upgrade::current_version(),
         };
         
         // Create empty moderators set
@@ -292,6 +363,9 @@ module social_contracts::platform {
         new_shutdown_date: Option<String>,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        
         let now = tx_context::epoch(ctx);
 
         // Verify caller is platform developer
@@ -325,6 +399,26 @@ module social_contracts::platform {
             shutdown_date: platform.shutdown_date,
             updated_at: now,
         });
+    }
+
+    /// Get the version of a platform
+    public fun platform_version(platform: &Platform): u64 {
+        platform.version
+    }
+
+    /// Get a mutable reference to the platform version (only for upgrade module)
+    public fun borrow_platform_version_mut(platform: &mut Platform): &mut u64 {
+        &mut platform.version
+    }
+
+    /// Get the version of the platform registry
+    public fun registry_version(registry: &PlatformRegistry): u64 {
+        registry.version
+    }
+
+    /// Get a mutable reference to the registry version (only for upgrade module)
+    public fun borrow_registry_version_mut(registry: &mut PlatformRegistry): &mut u64 {
+        &mut registry.version
     }
 
     /// Add MYS tokens to platform treasury
@@ -479,12 +573,102 @@ module social_contracts::platform {
         // Toggle approval status
         platform.approved = !platform.approved;
         
+        // If platform is now approved and wants DAO governance, create governance registry
+        if (platform.approved && platform.wants_dao_governance && option::is_none(&platform.governance_registry_id)) {
+            // Use default values if options are None
+            let delegate_count = if (option::is_some(&platform.delegate_count)) {
+                *option::borrow(&platform.delegate_count)
+            } else {
+                7 // Default value
+            };
+            
+            let delegate_term_epochs = if (option::is_some(&platform.delegate_term_epochs)) {
+                *option::borrow(&platform.delegate_term_epochs)
+            } else {
+                30 // Default value
+            };
+            
+            let proposal_submission_cost = if (option::is_some(&platform.proposal_submission_cost)) {
+                *option::borrow(&platform.proposal_submission_cost)
+            } else {
+                50_000_000 // Default value
+            };
+            
+            let min_on_chain_age_days = if (option::is_some(&platform.min_on_chain_age_days)) {
+                *option::borrow(&platform.min_on_chain_age_days)
+            } else {
+                7 // Default value
+            };
+            
+            let max_votes_per_user = if (option::is_some(&platform.max_votes_per_user)) {
+                *option::borrow(&platform.max_votes_per_user)
+            } else {
+                5 // Default value
+            };
+            
+            let quadratic_base_cost = if (option::is_some(&platform.quadratic_base_cost)) {
+                *option::borrow(&platform.quadratic_base_cost)
+            } else {
+                5_000_000 // Default value
+            };
+            
+            let voting_period_epochs = if (option::is_some(&platform.voting_period_epochs)) {
+                *option::borrow(&platform.voting_period_epochs)
+            } else {
+                3 // Default value
+            };
+            
+            let quorum_votes = if (option::is_some(&platform.quorum_votes)) {
+                *option::borrow(&platform.quorum_votes)
+            } else {
+                15 // Default value
+            };
+            
+            // Create governance registry for this platform
+            let registry_id = governance::create_platform_governance(
+                delegate_count,
+                delegate_term_epochs,
+                proposal_submission_cost,
+                min_on_chain_age_days,
+                max_votes_per_user,
+                quadratic_base_cost,
+                voting_period_epochs,
+                quorum_votes,
+                ctx
+            );
+            
+            // Store registry ID in the platform
+            platform.governance_registry_id = option::some(registry_id);
+        };
+        
         // Emit approval status changed event
         event::emit(PlatformApprovalChangedEvent {
             platform_id: object::uid_to_address(&platform.id),
             approved: platform.approved,
             changed_by: tx_context::sender(ctx),
         });
+    }
+
+    /// Create a new platform status
+    public fun new_status(status: u8): PlatformStatus {
+        // Validate the status code is one of the defined constants
+        assert!(
+            status == STATUS_DEVELOPMENT || 
+            status == STATUS_ALPHA || 
+            status == STATUS_BETA || 
+            status == STATUS_LIVE || 
+            status == STATUS_MAINTENANCE || 
+            status == STATUS_SUNSET || 
+            status == STATUS_SHUTDOWN,
+            EUnauthorized
+        );
+        
+        PlatformStatus { status }
+    }
+    
+    /// Get the status value
+    public fun status_value(status: &PlatformStatus): u8 {
+        status.status
     }
 
     /// Join a platform - establishes initial connection between profile and platform
@@ -650,16 +834,6 @@ module social_contracts::platform {
         &platform.links
     }
 
-    /// Create a new platform status
-    public fun new_status(status: u8): PlatformStatus {
-        PlatformStatus { status }
-    }
-
-    /// Get platform status value
-    public fun status_value(status: &PlatformStatus): u8 {
-        status.status
-    }
-
     /// Get platform status
     public fun status(platform: &Platform): u8 {
         status_value(&platform.status)
@@ -745,6 +919,210 @@ module social_contracts::platform {
         vec_set::into_keys(*blocked_profiles)
     }
 
+    /// Check if platform wants DAO governance
+    public fun wants_dao_governance(platform: &Platform): bool {
+        platform.wants_dao_governance
+    }
+
+    /// Get platform's governance registry ID if available
+    public fun governance_registry_id(platform: &Platform): &Option<ID> {
+        &platform.governance_registry_id
+    }
+
+    /// Get platform's governance parameters
+    public fun governance_parameters(platform: &Platform): (Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>) {
+        (
+            platform.delegate_count,
+            platform.delegate_term_epochs,
+            platform.proposal_submission_cost,
+            platform.min_on_chain_age_days,
+            platform.max_votes_per_user,
+            platform.quadratic_base_cost,
+            platform.voting_period_epochs,
+            platform.quorum_votes
+        )
+    }
+
+    /// Airdrop tokens to multiple recipients from the platform treasury
+    /// Can only be called by platform developer or moderator
+    public entry fun airdrop_from_treasury(
+        platform: &mut Platform,
+        recipients: vector<address>,
+        amount_per_recipient: u64,
+        reason_code: u8,
+        ctx: &mut TxContext
+    ) {
+        let caller = tx_context::sender(ctx);
+        
+        // Verify caller is platform developer or moderator
+        assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
+        
+        // Check that recipients list is not empty
+        let recipients_count = vector::length(&recipients);
+        assert!(recipients_count > 0, EEmptyRecipientsList);
+        
+        // Calculate total amount needed
+        let total_amount = amount_per_recipient * recipients_count;
+        
+        // Verify platform treasury has enough funds
+        assert!(balance::value(&platform.treasury) >= total_amount, EInsufficientTreasuryFunds);
+        
+        // Get current timestamp for events
+        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        let platform_id = object::uid_to_address(&platform.id);
+        
+        // Send tokens to each recipient
+        let mut i = 0;
+        while (i < recipients_count) {
+            let recipient = *vector::borrow(&recipients, i);
+            
+            // Create coin from platform treasury balance
+            let airdrop_coin = coin::from_balance(
+                balance::split(&mut platform.treasury, amount_per_recipient), 
+                ctx
+            );
+            
+            // Transfer to recipient
+            transfer::public_transfer(airdrop_coin, recipient);
+            
+            // Emit airdrop event for tracking
+            event::emit(TokenAirdropEvent {
+                platform_id,
+                recipient,
+                amount: amount_per_recipient,
+                reason_code,
+                executed_by: caller,
+                timestamp: current_time,
+            });
+            
+            i = i + 1;
+        };
+    }
+
+    /// Assign a badge to a profile - can only be called by platform admin/moderator
+    /// This is the primary entry point for badge assignment
+    public entry fun assign_badge(
+        platform: &Platform,
+        profile: &mut profile::Profile,
+        badge_name: String,
+        badge_description: String,
+        badge_image_url: String,
+        badge_type: u8,
+        ctx: &mut TxContext
+    ) {
+        // Verify caller is platform admin or moderator
+        let caller = tx_context::sender(ctx);
+        assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
+        
+        // Get platform ID
+        let platform_id = object::uid_to_address(&platform.id);
+        
+        // Get current time
+        let now = tx_context::epoch(ctx);
+        
+        // Create a unique badge ID
+        let mut badge_id = string::utf8(b"badge_");
+        string::append(&mut badge_id, badge_name);
+        
+        // Add the badge directly to the profile
+        profile::add_badge_to_profile(
+            profile,
+            badge_id,
+            badge_name,
+            badge_description,
+            badge_image_url,
+            platform_id,
+            now,
+            caller,
+            badge_type
+        );
+    }
+
+    /// Revoke a badge from a profile - can only be called by platform admin/moderator
+    /// This is the primary entry point for badge revocation
+    public entry fun revoke_badge(
+        platform: &Platform,
+        profile: &mut profile::Profile,
+        badge_id: String,
+        ctx: &mut TxContext
+    ) {
+        // Verify caller is platform admin or moderator
+        let caller = tx_context::sender(ctx);
+        assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
+        
+        // Get platform ID
+        let platform_id = object::uid_to_address(&platform.id);
+        
+        // Get current time
+        let now = tx_context::epoch(ctx);
+        
+        // Remove the badge directly from the profile
+        profile::remove_badge_from_profile(
+            profile,
+            &badge_id,
+            platform_id,
+            caller,
+            now
+        );
+    }
+
+    /// When adding a moderator to a platform, register them with the profile module
+    public fun add_moderator_register(
+        platform: &mut Platform,
+        moderator_address: address,
+        ctx: &mut TxContext
+    ) {
+        // Verify caller is platform developer
+        let caller = tx_context::sender(ctx);
+        assert!(platform.developer == caller, EUnauthorized);
+        
+        // Get moderators set
+        let moderators = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut platform.id, MODERATORS_FIELD);
+        
+        // Add moderator if not already a moderator
+        if (!vec_set::contains(moderators, &moderator_address)) {
+            vec_set::insert(moderators, moderator_address);
+            
+            // Emit moderator added event
+            let platform_id = object::uid_to_address(&platform.id);
+            event::emit(ModeratorAddedEvent {
+                platform_id,
+                moderator_address,
+                added_by: caller,
+            });
+        };
+    }
+    
+    /// When removing a moderator from a platform
+    public fun remove_moderator_unregister(
+        platform: &mut Platform,
+        moderator_address: address,
+        ctx: &mut TxContext
+    ) {
+        // Verify caller is platform developer
+        let caller = tx_context::sender(ctx);
+        assert!(platform.developer == caller, EUnauthorized);
+        
+        // Cannot remove developer as moderator
+        assert!(moderator_address != platform.developer, EUnauthorized);
+        
+        // Get moderators set
+        let moderators = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut platform.id, MODERATORS_FIELD);
+        
+        // Remove moderator if they are a moderator
+        if (vec_set::contains(moderators, &moderator_address)) {
+            vec_set::remove(moderators, &moderator_address);
+            
+            // Emit moderator removed event
+            let platform_id = object::uid_to_address(&platform.id);
+            event::emit(ModeratorRemovedEvent {
+                platform_id,
+                moderator_address,
+                removed_by: caller,
+            });
+        };
+    }
+
     #[test_only]
     /// Initialize test environment for platform module
     public fun test_init(ctx: &mut TxContext) {
@@ -752,8 +1130,34 @@ module social_contracts::platform {
             id: object::new(ctx),
             platforms_by_name: table::new(ctx),
             platforms_by_developer: table::new(ctx),
+            version: 1, // Set to version 1 for testing
         };
 
         transfer::share_object(registry);
+    }
+    
+    #[test_only]
+    /// Test helper to directly set a profile as joined to a platform
+    /// Simplifies testing by bypassing the normal join flow
+    public fun test_join_platform(platform: &mut Platform, profile_id: ID) {
+        // Create joined profiles set if it doesn't exist
+        if (!dynamic_field::exists_(&platform.id, JOINED_PROFILES_FIELD)) {
+            let joined_profiles = vec_set::empty<ID>();
+            dynamic_field::add(&mut platform.id, JOINED_PROFILES_FIELD, joined_profiles);
+        };
+        
+        // Get joined profiles set
+        let joined_profiles = dynamic_field::borrow_mut<vector<u8>, VecSet<ID>>(&mut platform.id, JOINED_PROFILES_FIELD);
+        
+        // Add profile to joined profiles
+        if (!vec_set::contains(joined_profiles, &profile_id)) {
+            vec_set::insert(joined_profiles, profile_id);
+        };
+    }
+    
+    #[test_only]
+    /// Test helper to set the approval status of a platform
+    public fun test_set_approval(platform: &mut Platform, approved: bool) {
+        platform.approved = approved;
     }
 }

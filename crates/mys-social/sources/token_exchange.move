@@ -6,16 +6,11 @@
 /// and post tokens using an Automated Market Maker (AMM) with a quadratic pricing curve.
 /// It includes fee distribution mechanisms for transactions, splitting between profile owner,
 /// platform, and ecosystem treasury.
-#[allow(unused_use, duplicate_alias, unused_const, unused_field, deprecated_usage)]
+
+#[allow(unused_field, deprecated_usage, unused_const)]
 module social_contracts::token_exchange {
     use std::string::{Self, String};
-    use std::ascii;
-    use std::vector;
-    use std::option::{Self, Option};
-    
-    use mys::object::{Self, UID, ID};
-    use mys::tx_context::{Self, TxContext};
-    use mys::transfer;
+
     use mys::event;
     use mys::table::{Self, Table};
     use mys::coin::{Self, Coin};
@@ -23,11 +18,11 @@ module social_contracts::token_exchange {
     use mys::balance::{Self, Balance};
     use mys::clock::{Self, Clock};
     use mys::math;
-    use mys::linked_table::{Self, LinkedTable};
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
     use social_contracts::post::{Self, Post};
-    use social_contracts::block_list::{Self, BlockListRegistry};
+    use social_contracts::block_list::{BlockListRegistry};
+    use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     // === Error codes ===
     /// Operation can only be performed by the admin
@@ -118,7 +113,7 @@ module social_contracts::token_exchange {
     // === Structs ===
 
     /// Admin capability for the token exchange
-    public struct AdminCap has key, store {
+    public struct ExchangeAdminCap has key, store {
         id: UID,
     }
 
@@ -137,12 +132,25 @@ module social_contracts::token_exchange {
         base_price: u64,
         /// Quadratic coefficient for pricing curve
         quadratic_coefficient: u64,
-        /// Platform treasury address
-        platform_treasury: address,
         /// Ecosystem treasury address
         ecosystem_treasury: address,
         /// Maximum percentage a single wallet can hold of any token
         max_hold_percent_bps: u64,
+        /// Post viral thresholds & weights
+        post_likes_weight: u64,
+        post_comments_weight: u64,
+        post_tips_weight: u64,
+        post_viral_threshold: u64,
+        /// Profile viral thresholds & weights
+        profile_follows_weight: u64,
+        profile_posts_weight: u64,
+        profile_tips_weight: u64,
+        profile_viral_threshold: u64,
+        /// Auction duration limits (in seconds)
+        min_post_auction_duration: u64,
+        max_post_auction_duration: u64,
+        min_profile_auction_duration: u64,
+        max_profile_auction_duration: u64,
     }
 
     /// Registry of all tokens in the exchange
@@ -152,6 +160,8 @@ module social_contracts::token_exchange {
         tokens: Table<address, TokenInfo>,
         /// Table from profile/post ID to auction info
         auctions: Table<address, AuctionInfo>,
+        /// Version for upgrades
+        version: u64,
     }
 
     /// Information about a token
@@ -187,6 +197,8 @@ module social_contracts::token_exchange {
         mys_balance: Balance<MYS>,
         /// Mapping of holders' addresses to their token balances
         holders: Table<address, u64>,
+        /// Version for upgrades
+        version: u64,
     }
 
     /// Social token that represents a user's owned tokens
@@ -231,6 +243,8 @@ module social_contracts::token_exchange {
         mys_balance: Balance<MYS>,
         /// Mapping of contributors' addresses to their MYS contributions
         contributions: Table<address, u64>,
+        /// Version for upgrades
+        version: u64,
     }
 
     // === Events ===
@@ -303,12 +317,30 @@ module social_contracts::token_exchange {
 
     /// Event emitted when exchange config is updated
     public struct ConfigUpdatedEvent has copy, drop {
+        /// Who performed the update
+        updated_by: address,
+        /// When the update occurred
+        timestamp: u64,
+        /// Fee percentages
         total_fee_bps: u64,
         creator_fee_bps: u64,
         platform_fee_bps: u64,
         treasury_fee_bps: u64,
+        /// Curve parameters
         base_price: u64,
         quadratic_coefficient: u64,
+        /// Treasury addresses
+        ecosystem_treasury: address,
+        /// Maximum hold percentage
+        max_hold_percent_bps: u64,
+        /// Viral thresholds and weights
+        post_viral_threshold: u64,
+        profile_viral_threshold: u64,
+        /// Auction durations
+        min_post_auction_duration: u64,
+        max_post_auction_duration: u64,
+        min_profile_auction_duration: u64,
+        max_profile_auction_duration: u64,
     }
 
     /// Event emitted when tokens are purchased by someone who already has a social token
@@ -326,7 +358,7 @@ module social_contracts::token_exchange {
         
         // Create and transfer admin capability to the transaction sender
         transfer::public_transfer(
-            AdminCap {
+            ExchangeAdminCap {
                 id: object::new(ctx),
             },
             sender
@@ -342,9 +374,20 @@ module social_contracts::token_exchange {
                 treasury_fee_bps: DEFAULT_TREASURY_FEE_BPS,
                 base_price: DEFAULT_BASE_PRICE,
                 quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
-                platform_treasury: sender, // Initially set to sender, should be updated
                 ecosystem_treasury: sender, // Initially set to sender, should be updated
                 max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
+                post_likes_weight: POST_LIKES_WEIGHT,
+                post_comments_weight: POST_COMMENTS_WEIGHT,
+                post_tips_weight: POST_TIPS_WEIGHT,
+                post_viral_threshold: POST_VIRAL_THRESHOLD,
+                profile_follows_weight: PROFILE_FOLLOWS_WEIGHT,
+                profile_posts_weight: PROFILE_POSTS_WEIGHT,
+                profile_tips_weight: PROFILE_TIPS_WEIGHT,
+                profile_viral_threshold: PROFILE_VIRAL_THRESHOLD,
+                min_post_auction_duration: MIN_POST_AUCTION_DURATION,
+                max_post_auction_duration: MAX_POST_AUCTION_DURATION,
+                min_profile_auction_duration: MIN_PROFILE_AUCTION_DURATION,
+                max_profile_auction_duration: MAX_PROFILE_AUCTION_DURATION,
             }
         );
         
@@ -354,6 +397,7 @@ module social_contracts::token_exchange {
                 id: object::new(ctx),
                 tokens: table::new(ctx),
                 auctions: table::new(ctx),
+                version: upgrade::current_version(),
             }
         );
     }
@@ -361,8 +405,8 @@ module social_contracts::token_exchange {
     // === Admin Functions ===
 
     /// Update exchange configuration
-    public entry fun update_config(
-        _admin_cap: &AdminCap,
+    public entry fun update_exchange_config(
+        _admin_cap: &ExchangeAdminCap,
         config: &mut ExchangeConfig,
         total_fee_bps: u64, 
         creator_fee_bps: u64,
@@ -370,10 +414,21 @@ module social_contracts::token_exchange {
         treasury_fee_bps: u64,
         base_price: u64,
         quadratic_coefficient: u64,
-        platform_treasury: address,
         ecosystem_treasury: address,
         max_hold_percent_bps: u64,
-        _ctx: &mut TxContext
+        post_likes_weight: u64,
+        post_comments_weight: u64,
+        post_tips_weight: u64,
+        post_viral_threshold: u64,
+        profile_follows_weight: u64,
+        profile_posts_weight: u64,
+        profile_tips_weight: u64,
+        profile_viral_threshold: u64,
+        min_post_auction_duration: u64,
+        max_post_auction_duration: u64,
+        min_profile_auction_duration: u64,
+        max_profile_auction_duration: u64,
+        ctx: &mut TxContext
     ) {
         // Verify sum of fee percentages equals total
         assert!(creator_fee_bps + platform_fee_bps + treasury_fee_bps == total_fee_bps, EInvalidFeeConfig);
@@ -381,25 +436,58 @@ module social_contracts::token_exchange {
         // Verify curve parameters are valid
         assert!(base_price > 0 && quadratic_coefficient > 0, EInvalidCurveParams);
         
-        // Update config
+        // Verify auction durations are valid
+        assert!(min_post_auction_duration < max_post_auction_duration, EInvalidAuctionDuration);
+        assert!(min_profile_auction_duration < max_profile_auction_duration, EInvalidAuctionDuration);
+        
+        // Update fee config
         config.total_fee_bps = total_fee_bps;
         config.creator_fee_bps = creator_fee_bps;
         config.platform_fee_bps = platform_fee_bps;
         config.treasury_fee_bps = treasury_fee_bps;
+        
+        // Update curve parameters
         config.base_price = base_price;
         config.quadratic_coefficient = quadratic_coefficient;
-        config.platform_treasury = platform_treasury;
+        
+        // Update treasury addresses
         config.ecosystem_treasury = ecosystem_treasury;
         config.max_hold_percent_bps = max_hold_percent_bps;
         
+        // Update viral thresholds & weights
+        config.post_likes_weight = post_likes_weight;
+        config.post_comments_weight = post_comments_weight;
+        config.post_tips_weight = post_tips_weight;
+        config.post_viral_threshold = post_viral_threshold;
+        config.profile_follows_weight = profile_follows_weight;
+        config.profile_posts_weight = profile_posts_weight;
+        config.profile_tips_weight = profile_tips_weight;
+        config.profile_viral_threshold = profile_viral_threshold;
+        
+        // Update auction duration limits
+        config.min_post_auction_duration = min_post_auction_duration;
+        config.max_post_auction_duration = max_post_auction_duration;
+        config.min_profile_auction_duration = min_profile_auction_duration;
+        config.max_profile_auction_duration = max_profile_auction_duration;
+        
         // Emit config updated event
         event::emit(ConfigUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            timestamp: tx_context::epoch(ctx),
             total_fee_bps,
             creator_fee_bps,
             platform_fee_bps,
             treasury_fee_bps,
             base_price,
             quadratic_coefficient,
+            ecosystem_treasury,
+            max_hold_percent_bps,
+            post_viral_threshold,
+            profile_viral_threshold,
+            min_post_auction_duration,
+            max_post_auction_duration,
+            min_profile_auction_duration,
+            max_profile_auction_duration,
         });
     }
 
@@ -489,6 +577,7 @@ module social_contracts::token_exchange {
             info: auction_info,
             mys_balance: balance::zero(),
             contributions: table::new(ctx),
+            version: upgrade::current_version(),
         };
         
         // Add to registry
@@ -560,6 +649,7 @@ module social_contracts::token_exchange {
             info: auction_info,
             mys_balance: balance::zero(),
             contributions: table::new(ctx),
+            version: upgrade::current_version(),
         };
         
         // Add to registry
@@ -763,6 +853,7 @@ module social_contracts::token_exchange {
             info: updated_token_info,
             mys_balance: balance::zero(),
             holders: table::new(ctx),
+            version: upgrade::current_version(),
         };
         
         // Distribute tokens to contributors
@@ -850,6 +941,7 @@ module social_contracts::token_exchange {
         pool: &mut TokenPool,
         config: &ExchangeConfig,
         block_list_registry: &BlockListRegistry,
+        platform: &mut social_contracts::platform::Platform,
         mut payment: Coin<MYS>,
         amount: u64,
         ctx: &mut TxContext
@@ -890,10 +982,13 @@ module social_contracts::token_exchange {
                 transfer::public_transfer(creator_fee_coin, pool.info.owner);
             };
             
-            // Send platform fee
+            // Send platform fee - add to platform treasury
             if (platform_fee > 0) {
-                let platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
-                transfer::public_transfer(platform_fee_coin, config.platform_treasury);
+                let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
+                // Add to platform treasury
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+                // Destroy the emptied coin
+                coin::destroy_zero(platform_fee_coin);
             };
             
             // Send treasury fee
@@ -971,6 +1066,7 @@ module social_contracts::token_exchange {
         pool: &mut TokenPool,
         config: &ExchangeConfig,
         block_list_registry: &BlockListRegistry,
+        platform: &mut social_contracts::platform::Platform,
         mut payment: Coin<MYS>,
         amount: u64,
         social_token: &mut SocialToken,
@@ -1015,10 +1111,13 @@ module social_contracts::token_exchange {
                 transfer::public_transfer(creator_fee_coin, pool.info.owner);
             };
             
-            // Send platform fee
+            // Send platform fee - add to platform treasury
             if (platform_fee > 0) {
-                let platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
-                transfer::public_transfer(platform_fee_coin, config.platform_treasury);
+                let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
+                // Add to platform treasury
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+                // Destroy the emptied coin
+                coin::destroy_zero(platform_fee_coin);
             };
             
             // Send treasury fee
@@ -1090,6 +1189,7 @@ module social_contracts::token_exchange {
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
         config: &ExchangeConfig,
+        platform: &mut social_contracts::platform::Platform,
         social_token: &mut SocialToken,
         amount: u64,
         ctx: &mut TxContext
@@ -1142,10 +1242,13 @@ module social_contracts::token_exchange {
                 transfer::public_transfer(creator_fee_coin, pool.info.owner);
             };
             
-            // Send fee to platform
+            // Send fee to platform - add to platform treasury
             if (platform_fee > 0) {
-                let platform_fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, platform_fee), ctx);
-                transfer::public_transfer(platform_fee_coin, config.platform_treasury);
+                let mut platform_fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, platform_fee), ctx);
+                // Add to platform treasury
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+                // Destroy the emptied coin
+                coin::destroy_zero(platform_fee_coin);
             };
             
             // Send fee to treasury
@@ -1286,5 +1389,126 @@ module social_contracts::token_exchange {
     /// Initialize the token exchange for testing
     public fun init_for_testing(ctx: &mut TxContext) {
         init(ctx)
+    }
+
+    /// Create a new ExchangeAdminCap for testing
+    #[test_only]
+    public fun create_admin_cap_for_testing(ctx: &mut TxContext): ExchangeAdminCap {
+        ExchangeAdminCap {
+            id: object::new(ctx)
+        }
+    }
+
+    // === Versioning Functions ===
+
+    /// Get the version of the token registry
+    public fun registry_version(registry: &TokenRegistry): u64 {
+        registry.version
+    }
+
+    /// Get a mutable reference to the registry version (for upgrade module)
+    public fun borrow_registry_version_mut(registry: &mut TokenRegistry): &mut u64 {
+        &mut registry.version
+    }
+
+    /// Get the version of a token pool
+    public fun pool_version(pool: &TokenPool): u64 {
+        pool.version
+    }
+
+    /// Get a mutable reference to the pool version (for upgrade module)
+    public fun borrow_pool_version_mut(pool: &mut TokenPool): &mut u64 {
+        &mut pool.version
+    }
+
+    /// Get the version of an auction pool
+    public fun auction_version(pool: &AuctionPool): u64 {
+        pool.version
+    }
+
+    /// Get a mutable reference to the auction pool version (for upgrade module)
+    public fun borrow_auction_version_mut(pool: &mut AuctionPool): &mut u64 {
+        &mut pool.version
+    }
+
+    /// Migration function for TokenRegistry
+    public entry fun migrate_token_registry(
+        registry: &mut TokenRegistry,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(registry.version < current_version, EInvalidFeeConfig);
+        
+        // Remember old version and update to new version
+        let old_version = registry.version;
+        registry.version = current_version;
+        
+        // Emit event for object migration
+        let registry_id = object::id(registry);
+        upgrade::emit_migration_event(
+            registry_id,
+            string::utf8(b"TokenRegistry"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+        
+        // Any migration logic can be added here for future upgrades
+    }
+
+    /// Migration function for TokenPool
+    public entry fun migrate_token_pool(
+        pool: &mut TokenPool,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(pool.version < current_version, EInvalidFeeConfig);
+        
+        // Remember old version and update to new version
+        let old_version = pool.version;
+        pool.version = current_version;
+        
+        // Emit event for object migration
+        let pool_id = object::id(pool);
+        upgrade::emit_migration_event(
+            pool_id,
+            string::utf8(b"TokenPool"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+        
+        // Any migration logic can be added here for future upgrades
+    }
+
+    /// Migration function for AuctionPool
+    public entry fun migrate_auction_pool(
+        pool: &mut AuctionPool,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(pool.version < current_version, EInvalidFeeConfig);
+        
+        // Remember old version and update to new version
+        let old_version = pool.version;
+        pool.version = current_version;
+        
+        // Emit event for object migration
+        let pool_id = object::id(pool);
+        upgrade::emit_migration_event(
+            pool_id,
+            string::utf8(b"AuctionPool"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+        
+        // Any migration logic can be added here for future upgrades
     }
 } 

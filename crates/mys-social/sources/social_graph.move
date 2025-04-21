@@ -3,26 +3,23 @@
 
 /// Social graph module for the MySocial network
 /// Manages social relationships between users (following/followers)
-#[allow(duplicate_alias, unused_use, unused_const)]
+
 module social_contracts::social_graph {
-    use std::vector;
-    use std::option;
+    use std::string;
     
-    use mys::object::{Self, UID};
-    use mys::tx_context::{Self, TxContext};
     use mys::event;
-    use mys::transfer;
     use mys::table::{Self, Table};
     use mys::vec_set::{Self, VecSet};
     
     use social_contracts::profile;
+    use social_contracts::upgrade;
 
     /// Error codes
-    const EUnauthorized: u64 = 0;
-    const EAlreadyFollowing: u64 = 1;
-    const ENotFollowing: u64 = 2;
-    const ECannotFollowSelf: u64 = 3;
-    const EProfileNotFound: u64 = 4;
+    const EAlreadyFollowing: u64 = 0;
+    const ENotFollowing: u64 = 1;
+    const ECannotFollowSelf: u64 = 2;
+    const EProfileNotFound: u64 = 3;
+    const EWrongVersion: u64 = 4;
 
     /// Global social graph object that tracks relationships between users
     public struct SocialGraph has key {
@@ -31,6 +28,8 @@ module social_contracts::social_graph {
         following: Table<address, VecSet<address>>,
         /// Table mapping profile IDs to sets of profiles following them
         followers: Table<address, VecSet<address>>,
+        /// Current version of the object
+        version: u64,
     }
 
     /// Follow event
@@ -51,10 +50,17 @@ module social_contracts::social_graph {
             id: object::new(ctx),
             following: table::new(ctx),
             followers: table::new(ctx),
+            version: upgrade::current_version(),
         };
 
         // Share the social graph to make it globally accessible
         transfer::share_object(social_graph);
+    }
+    
+    #[test_only]
+    /// Initialize the social graph for testing
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(ctx)
     }
 
     /// Follow a profile by address
@@ -64,6 +70,9 @@ module social_contracts::social_graph {
         following_profile_id: address,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(social_graph.version == upgrade::current_version(), EWrongVersion);
+        
         let sender = tx_context::sender(ctx);
         
         // Look up the caller's profile ID from registry
@@ -111,6 +120,9 @@ module social_contracts::social_graph {
         following_profile_id: address,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(social_graph.version == upgrade::current_version(), EWrongVersion);
+        
         let sender = tx_context::sender(ctx);
         
         // Look up the caller's profile ID from registry
@@ -142,7 +154,45 @@ module social_contracts::social_graph {
         });
     }
 
+    /// Migrate the social graph to a new version
+    /// Only callable by the admin with the AdminCap
+    public entry fun migrate_social_graph(
+        social_graph: &mut SocialGraph,
+        _: &upgrade::UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(social_graph.version < current_version, EWrongVersion);
+        
+        // Remember old version and update to new version
+        let old_version = social_graph.version;
+        social_graph.version = current_version;
+        
+        // Emit event for object migration
+        let graph_id = object::id(social_graph);
+        upgrade::emit_migration_event(
+            graph_id,
+            string::utf8(b"SocialGraph"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+        
+        // Any migration logic can be added here for future upgrades
+    }
+
+    /// Get a mutable reference to the version field (for upgrade module)
+    public fun borrow_version_mut(social_graph: &mut SocialGraph): &mut u64 {
+        &mut social_graph.version
+    }
+
     // === Getters ===
+
+    /// Get the version of the social graph
+    public fun version(social_graph: &SocialGraph): u64 {
+        social_graph.version
+    }
 
     /// Check if a profile is following another profile
     public fun is_following(social_graph: &SocialGraph, follower_id: address, following_id: address): bool {
