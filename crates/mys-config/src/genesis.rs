@@ -536,8 +536,8 @@ impl TokenDistributionSchedule {
         let validators_vec: Vec<MysAddress> = validators.into_iter().collect();
         let validator_count = validators_vec.len() as u64;
         
-        // Allocate at most 20% of the total supply across all validators
-        let max_validator_allocation = TOTAL_SUPPLY_MIST / 5; // 20% of total supply
+        // Allocate at most 0.5% of the total supply across all validators
+        let max_validator_allocation = TOTAL_SUPPLY_MIST / 200; // 0.5% of total supply
         
         // Calculate per-validator allocation, but don't exceed VALIDATOR_LOW_STAKE_THRESHOLD_MIST
         let allocation_per_validator = std::cmp::min(
@@ -657,8 +657,8 @@ impl TokenDistributionScheduleBuilder {
         let validators_vec: Vec<MysAddress> = validators.into_iter().collect();
         let validator_count = validators_vec.len() as u64;
         
-        // Allocate at most 20% of the total supply across all validators
-        let max_validator_allocation = TOTAL_SUPPLY_MIST / 5; // 20% of total supply
+        // Allocate at most 0.5% of the total supply across all validators
+        let max_validator_allocation = TOTAL_SUPPLY_MIST / 200; // 0.5% of total supply
         
         // Calculate per-validator allocation, but don't exceed VALIDATOR_LOW_STAKE_THRESHOLD_MIST
         let allocation_per_validator = std::cmp::min(

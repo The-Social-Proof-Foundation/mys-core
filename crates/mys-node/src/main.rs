@@ -84,7 +84,7 @@ fn main() {
 
     drop(metrics_rt);
 
-    info!("Mys Node version: {VERSION}");
+    info!("MySocial Node version: {VERSION}");
     info!(
         "Supported protocol versions: {:?}",
         config.supported_protocol_versions

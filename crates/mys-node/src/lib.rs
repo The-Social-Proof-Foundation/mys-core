@@ -2274,7 +2274,7 @@ pub async fn build_http_server(
         .serve(&config.json_rpc_address, router)
         .map_err(|e| anyhow::anyhow!("{e}"))?;
 
-    info!(local_addr =? handle.local_addr(), "Mys JSON-RPC server listening on {}", handle.local_addr());
+    info!(local_addr =? handle.local_addr(), "MySocail JSON-RPC server listening on {}", handle.local_addr());
 
     Ok((Some(handle), Some(subscription_service_checkpoint_sender)))
 }

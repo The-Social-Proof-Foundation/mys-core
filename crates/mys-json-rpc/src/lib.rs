@@ -295,7 +295,7 @@ impl JsonRpcServerBuilder {
         let handle = ServerHandle {
             handle: ServerHandleInner::Axum(handle),
         };
-        info!(local_addr =? addr, "Mys JSON-RPC server listening on {addr}");
+        info!(local_addr =? addr, "MySocail JSON-RPC server listening on {addr}");
         Ok(handle)
     }
 }

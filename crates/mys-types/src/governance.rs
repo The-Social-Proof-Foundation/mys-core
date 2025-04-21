@@ -21,21 +21,21 @@ pub const MAX_VALIDATOR_COUNT: u64 = 150;
 
 /// Lower-bound on the amount of stake required to become a validator.
 ///
-/// 1.5 million MYS
-pub const MIN_VALIDATOR_JOINING_STAKE_MIST: u64 = 1_500_000_000_000_000;
+/// 250,000 MySo (was 1.5 million)
+pub const MIN_VALIDATOR_JOINING_STAKE_MIST: u64 = 250_000_000_000_000;
 
 /// Validators with stake amount below `validator_low_stake_threshold` are considered to
 /// have low stake and will be escorted out of the validator set after being below this
 /// threshold for more than `validator_low_stake_grace_period` number of epochs.
 ///
-/// 1 million MYS
-pub const VALIDATOR_LOW_STAKE_THRESHOLD_MIST: u64 = 1_000_000_000_000_000;
+/// 200,000 MySo (was 1 million)
+pub const VALIDATOR_LOW_STAKE_THRESHOLD_MIST: u64 = 200_000_000_000_000;
 
 /// Validators with stake below `validator_very_low_stake_threshold` will be removed
 /// immediately at epoch change, no grace period.
 ///
-/// 0.5 million MYS
-pub const VALIDATOR_VERY_LOW_STAKE_THRESHOLD_MIST: u64 = 500_000_000_000_000;
+/// 100,000 MySo (was 0.5 million)
+pub const VALIDATOR_VERY_LOW_STAKE_THRESHOLD_MIST: u64 = 100_000_000_000_000;
 
 /// A validator can have stake below `validator_low_stake_threshold`
 /// for this many epochs before being kicked out.
