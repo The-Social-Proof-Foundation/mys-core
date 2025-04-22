@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 import { themes } from "prism-react-renderer";
@@ -19,7 +20,7 @@ const config = {
   favicon: "/img/favicon.ico",
 
   // Set the production url of your site here
-  url: "https://docs.mys.io",
+  url: "https://docs.mysocial.network",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: "/",
@@ -239,7 +240,7 @@ const config = {
         logo: {
           alt: "MySocial Logo",
           src: "img/mys-logo-footer.svg",
-          href: "https://mys.io",
+          href: "https://mysocial.network",
         },
         style: "dark",
         copyright: `© ${new Date().getFullYear()} MySocial Foundation | Documentation distributed under <a href="https://github.com/MystenLabs/mys/blob/main/docs/site/LICENSE">CC BY 4.0</a>`,

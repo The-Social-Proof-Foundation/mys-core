@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use arc_swap::ArcSwapOption;
 use mysten_metrics::monitored_mpsc::UnboundedReceiver;

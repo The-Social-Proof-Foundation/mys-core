@@ -5,7 +5,7 @@ The `mys-metric-checker` crate is used for querying prometheus metrics and valid
 ### Example Usage
 
 ```
-RUST_LOG=debug cargo run --package mys-metric-checker --bin mys-metric-checker  -- --api-key xxxxxxxx --api-user xxxx_metrics --config checks.yaml --url https://xxxx.mys.io/prometheus
+RUST_LOG=debug cargo run --package mys-metric-checker --bin mys-metric-checker  -- --api-key xxxxxxxx --api-user xxxx_metrics --config checks.yaml --url https://xxxx.mysocial.network/prometheus
 ```
 
 ### Example Config

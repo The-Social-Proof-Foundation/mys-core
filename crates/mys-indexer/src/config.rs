@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::db::ConnectionPoolConfig;
@@ -402,7 +403,7 @@ impl Default for RestoreConfig {
     fn default() -> Self {
         Self {
             start_epoch: 0, // not used b/c it's required
-            snapshot_endpoint: "https://formal-snapshot.mainnet.mys.io".to_string(),
+            snapshot_endpoint: "https://formal-snapshot.mainnet.mysocial.network".to_string(),
             snapshot_bucket: "mysten-mainnet-formal".to_string(),
             snapshot_download_dir: "".to_string(), // not used b/c it's required
             gcs_archive_bucket: "mysten-mainnet-archives".to_string(),

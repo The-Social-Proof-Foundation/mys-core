@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::ops::Range;
@@ -114,7 +115,7 @@ pub struct AnalyticsIndexerConfig {
     pub file_type: FileType,
     #[clap(
         long,
-        default_value = "https://checkpoints.mainnet.mys.io",
+        default_value = "https://checkpoints.mainnet.mysocial.network",
         global = true
     )]
     pub remote_store_url: String,

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useState, useEffect } from "react";
@@ -37,12 +38,12 @@ const NetworkSelect = () => {
           <InputLabel
             id="network"
             className="dark:text-white"
-          >{`RPC: https://fullnode.${selection.toLowerCase()}.mys.io:443`}</InputLabel>
+          >{`RPC: https://fullnode.${selection.toLowerCase()}.mysocial.network:443`}</InputLabel>
           <Select
             label-id="network"
             id="network-select"
             value={selection}
-            label={`RPC: https://fullnode.${selection.toLowerCase()}.mys.io:443`}
+            label={`RPC: https://fullnode.${selection.toLowerCase()}.mysocial.network:443`}
             onChange={handleChange}
             className="dark:text-white dark:bg-mys-ghost-dark"
           >

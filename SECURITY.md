@@ -14,11 +14,11 @@ You should receive an acknowledgement of your report within 48 hours for critica
 
 If you do not get a response, contact info@hackenproof.com. DO NOT include attachments or provide detail regarding the security issue.
 
-If you are reporting something outside the scope of HackenProof's Bug Bounty Program for MySocial, contact [security@mys.io](mailto:security@mys.io)
+If you are reporting something outside the scope of HackenProof's Bug Bounty Program for MySocial, contact [security@mysocial.network](mailto:security@mysocial.network)
 
 # Bug bounties
 
-The MySocial Foundation offers bug bounties for security issues found at different levels of severity. If a vulnerability is found, follow the process detailed above to report the issue. All bug reports must come with a runnable [testnet](https://github.com/MystenLabs/mys/tree/testnet) Proof-of-Concept with an end-effect impacting an asset-in-scope in order to be considered for a reward. You do not need to have a fix in order to submit a report or receive a bounty. By your participation in MySocial Foundation’s bug bounty program you agree to be bound and abide by our [terms of service](https://mys.io/terms) and [privacy policy](https://mys.io/policy) .
+The MySocial Foundation offers bug bounties for security issues found at different levels of severity. If a vulnerability is found, follow the process detailed above to report the issue. All bug reports must come with a runnable [testnet](https://github.com/MystenLabs/mys/tree/testnet) Proof-of-Concept with an end-effect impacting an asset-in-scope in order to be considered for a reward. You do not need to have a fix in order to submit a report or receive a bounty. By your participation in MySocial Foundation’s bug bounty program you agree to be bound and abide by our [terms of service](https://mysocial.network/terms) and [privacy policy](https://mysocial.network/policy) .
 
 ## Assets in scope
 
@@ -168,7 +168,7 @@ _If you find a bug or vulnerability, report it using the [HackenProof dashboard]
 
 _Mys and HackenProof will be conducting Office Hours to answer questions. A date will be announced on Twitter by [@MysNetwork](https://x.com/mysnetwork). If you are not able to attend, you can email questions to info@hackenproof.com._ with questions regarding the Bug Bounty Program.
 
-For additional security concerns/questions/comments outside the scope of the HackenProof Bug Bounty Program, reach out to MySocial's Community [Discord](https://discord.gg/mys), [Forums](https://forums.mys.io/), or e-mail us at _security@mys.io_
+For additional security concerns/questions/comments outside the scope of the HackenProof Bug Bounty Program, reach out to MySocial's Community [Discord](https://discord.gg/mys), [Forums](https://forums.mysocial.network/), or e-mail us at _security@mys.io_
 
 **Who is behind this program?**
 

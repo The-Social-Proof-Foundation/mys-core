@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
@@ -26,7 +27,7 @@ impl Worker for CustomWorker {
 async fn main() -> Result<()> {
     let (executor, term_sender) = setup_single_workflow(
         CustomWorker,
-        "https://checkpoints.testnet.mys.io".to_string(),
+        "https://checkpoints.testnet.mysocial.network".to_string(),
         0,    /* initial checkpoint number */
         5,    /* concurrency */
         None, /* extra reader options */

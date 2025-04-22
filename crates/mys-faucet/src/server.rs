@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -40,7 +41,7 @@ use serde::Deserialize;
 use anyhow::ensure;
 use once_cell::sync::Lazy;
 
-const DEFAULT_FAUCET_WEB_APP_URL: &str = "https://faucet.mys.io";
+const DEFAULT_FAUCET_WEB_APP_URL: &str = "https://faucet.mysocial.network";
 
 static FAUCET_WEB_APP_URL: Lazy<String> = Lazy::new(|| {
     std::env::var("FAUCET_WEB_APP_URL")
@@ -322,7 +323,7 @@ async fn health() -> &'static str {
     "OK"
 }
 
-/// Redirect to faucet.mys.io/?network if it's testnet/devnet network. For local network, keep the
+/// Redirect to faucet.mysocial.network/?network if it's testnet/devnet network. For local network, keep the
 /// previous behavior to return health status.
 async fn redirect(Host(host): Host) -> Response {
     let url = FAUCET_WEB_APP_URL.to_string();

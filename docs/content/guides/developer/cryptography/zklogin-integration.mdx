@@ -38,7 +38,7 @@ npm install @mysten/mys@experimental
 ```typescript
 import { generateNonce, generateRandomness } from '@mysten/mys/zklogin';
 
-const FULLNODE_URL = 'https://fullnode.devnet.mys.io'; // replace with the RPC URL you want to use
+const FULLNODE_URL = 'https://fullnode.devnet.mysocial.network'; // replace with the RPC URL you want to use
 const mysClient = new MySocialClient({ url: FULLNODE_URL });
 const { epoch, epochDurationMs, epochStartTimestampMs } = await mysClient.getLatestMySocialSystemState();
 

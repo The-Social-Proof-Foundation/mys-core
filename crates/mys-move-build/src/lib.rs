@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 extern crate move_ir_types;
@@ -227,7 +228,7 @@ pub fn decorate_warnings(warning_diags: Diagnostics, files: Option<&MappedFiles>
         report_warnings(f, warning_diags);
     }
     if any_linter_warnings {
-        eprintln!("Please report feedback on the linter warnings at https://forums.mys.io\n");
+        eprintln!("Please report feedback on the linter warnings at https://forums.mysocial.network\n");
     }
     if filtered_diags_num > 0 {
         eprintln!("Total number of linter warnings suppressed: {filtered_diags_num} (unique lints: {unique})");

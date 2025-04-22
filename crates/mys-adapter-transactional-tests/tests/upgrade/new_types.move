@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //# init --addresses Test_DepV1=0x0 Test_DepV2=0x0 Test_V1=0x0 Test_V2=0x0 Test_V3=0x0 --accounts A

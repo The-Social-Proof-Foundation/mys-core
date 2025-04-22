@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Context;
@@ -31,7 +32,7 @@ pub const MYS_KEYSTORE_FILENAME: &str = "mys.keystore";
 pub const MYS_KEYSTORE_ALIASES_FILENAME: &str = "mys.aliases";
 pub const MYS_BENCHMARK_GENESIS_GAS_KEYSTORE_FILENAME: &str = "benchmark.keystore";
 pub const MYS_GENESIS_FILENAME: &str = "genesis.blob";
-pub const MYS_DEV_NET_URL: &str = "https://fullnode.devnet.mys.io:443";
+pub const MYS_DEV_NET_URL: &str = "https://fullnode.devnet.mysocial.network:443";
 
 pub const AUTHORITIES_DB_NAME: &str = "authorities_db";
 pub const CONSENSUS_DB_NAME: &str = "consensus_db";

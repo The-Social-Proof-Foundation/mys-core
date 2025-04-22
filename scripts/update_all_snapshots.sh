@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Automatically update all snapshots. This is needed when the framework is changed or when protocol config is changed.

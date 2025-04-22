@@ -1,4 +1,5 @@
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 # fixing issue https://github.com/MystenLabs/mys/issues/6546

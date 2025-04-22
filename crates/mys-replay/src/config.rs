@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{fs::File, io::BufReader, path::PathBuf, str::FromStr};
@@ -104,7 +105,7 @@ impl Default for ReplayableNetworkConfigSet {
             name: "testnet".to_string(),
             epoch_zero_start_timestamp: 0,
             epoch_zero_rgp: 0,
-            public_full_node: url_from_str("https://fullnode.testnet.mys.io:443")
+            public_full_node: url_from_str("https://fullnode.testnet.mysocial.network:443")
                 .expect("invalid socket address")
                 .to_string(),
         };
@@ -112,7 +113,7 @@ impl Default for ReplayableNetworkConfigSet {
             name: "devnet".to_string(),
             epoch_zero_start_timestamp: 0,
             epoch_zero_rgp: 0,
-            public_full_node: url_from_str("https://fullnode.devnet.mys.io:443")
+            public_full_node: url_from_str("https://fullnode.devnet.mysocial.network:443")
                 .expect("invalid socket address")
                 .to_string(),
         };
@@ -120,7 +121,7 @@ impl Default for ReplayableNetworkConfigSet {
             name: "mainnet".to_string(),
             epoch_zero_start_timestamp: 0,
             epoch_zero_rgp: 0,
-            public_full_node: url_from_str("https://fullnode.mainnet.mys.io:443")
+            public_full_node: url_from_str("https://fullnode.mainnet.mysocial.network:443")
                 .expect("invalid socket address")
                 .to_string(),
         };

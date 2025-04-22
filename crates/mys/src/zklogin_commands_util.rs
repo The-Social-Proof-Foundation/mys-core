@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::anyhow;
@@ -211,8 +212,8 @@ pub async fn perform_zk_login_test_tx(
 fn get_config(network: &str) -> (&str, &str) {
     match network {
         "devnet" => (
-            "https://faucet.devnet.mys.io/gas",
-            "https://rpc.devnet.mys.io:443",
+            "https://faucet.devnet.mysocial.network/gas",
+            "https://rpc.devnet.mysocial.network:443",
         ),
         "localnet" => ("http://127.0.0.1:9123/gas", "http://127.0.0.1:9000"),
         _ => panic!("Invalid network"),

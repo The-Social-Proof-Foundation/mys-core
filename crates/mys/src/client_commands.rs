@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -1501,8 +1502,8 @@ impl MysClientCommands {
                 let address = get_identity_address(address, context)?;
                 let url = if let Some(url) = url {
                     ensure!(
-                        !url.starts_with("https://faucet.testnet.mys.io"),
-                        "For testnet tokens, please use the Web UI: https://faucet.mys.io/?address={address}"
+                        !url.starts_with("https://faucet.testnet.mysocial.network"),
+                        "For testnet tokens, please use the Web UI: https://faucet.mysocial.network/?address={address}"
                     );
                     url
                 } else {
@@ -1510,9 +1511,9 @@ impl MysClientCommands {
 
                     if let Ok(env) = active_env {
                         let network = match env.rpc.as_str() {
-                            MYS_DEVNET_URL => "https://faucet.devnet.mys.io/v1/gas",
+                            MYS_DEVNET_URL => "https://faucet.devnet.mysocial.network/v1/gas",
                             MYS_TESTNET_URL => {
-                                bail!("For testnet tokens, please use the Web UI: https://faucet.mys.io/?address={address}");
+                                bail!("For testnet tokens, please use the Web UI: https://faucet.mysocial.network/?address={address}");
                             }
                             MYS_LOCAL_NETWORK_URL | MYS_LOCAL_NETWORK_URL_0 => "http://127.0.0.1:9123/gas",
                             _ => bail!("Cannot recognize the active network. Please provide the gas faucet full URL.")
@@ -3111,7 +3112,7 @@ async fn check_protocol_version_and_warn(client: &MysClient) -> Result<(), anyho
                 "[warning] CLI's protocol version is {cli_protocol_version}, but the active \
                 network's protocol version is {on_chain_protocol_version}. \
                 \n Consider installing the latest version of the CLI - \
-                https://docs.mys.io/guides/developer/getting-started/mys-install \n\n \
+                https://docs.mysocial.network/guides/developer/getting-started/mys-install \n\n \
                 If publishing/upgrading returns a dependency verification error, then install the \
                 latest CLI version."
             )

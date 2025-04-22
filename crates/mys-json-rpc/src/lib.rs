@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::env;
@@ -71,7 +72,7 @@ pub fn mys_rpc_doc(version: &str) -> Project {
     Project::new(
         version,
         "Mys JSON-RPC",
-        "Mys JSON-RPC API for interaction with Mys Full node. Make RPC calls using https://fullnode.NETWORK.mys.io:443, where NETWORK is the network you want to use (testnet, devnet, mainnet). By default, local networks use port 9000.",
+        "Mys JSON-RPC API for interaction with Mys Full node. Make RPC calls using https://fullnode.NETWORK.mysocial.network:443, where NETWORK is the network you want to use (testnet, devnet, mainnet). By default, local networks use port 9000.",
         "Mysten Labs",
         "https://mystenlabs.com",
         "build@mystenlabs.com",

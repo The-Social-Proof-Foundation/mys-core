@@ -11,7 +11,7 @@ We appreciate contributions, but **simple typo fixes (e.g., minor spelling error
 
 ## Documentation
 
-Found a small error or typo in the main documentation? Each page on the [docs.mys.io](https://docs.mys.io/) site includes an **Edit this page** link at the bottom that you can use to edit the page in GitHub. The content is located in the docs/content directory of the MySocial repo, so you can make a PR if you prefer. 
+Found a small error or typo in the main documentation? Each page on the [docs.mysocial.network](https://docs.mysocial.network/) site includes an **Edit this page** link at the bottom that you can use to edit the page in GitHub. The content is located in the docs/content directory of the MySocial repo, so you can make a PR if you prefer. 
 
 For larger documentation issues, you can [create an issue](https://github.com/MystenLabs/mys/issues/new/choose) in GitHub. To fix the problem yourself, follow the [documentation contribution](./docs/content/references/contribute/contribution-process.mdx) guidelines.
 

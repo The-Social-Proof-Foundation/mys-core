@@ -28,7 +28,7 @@ brew services start postgresql@version
 
 ### Local Development(Recommended)
 
-See the [docs](https://docs.mys.io/guides/developer/getting-started/local-network) for detailed information. Below is a quick start guide:
+See the [docs](https://docs.mysocial.network/guides/developer/getting-started/local-network) for detailed information. Below is a quick start guide:
 
 Start a local network using the `mys` binary:
 ```sh
@@ -59,11 +59,11 @@ git fetch upstream devnet && git reset --hard upstream/devnet
 - run indexer as a writer, which pulls data from fullnode and writes data to DB
 ```sh
 # Change the RPC_CLIENT_URL to http://0.0.0.0:9000 to run indexer against local validator & fullnode
-cargo run --bin mys-indexer -- --db-url "<DATABASE_URL>" --rpc-client-url "https://fullnode.devnet.mys.io:443" --fullnode-sync-worker --reset-db
+cargo run --bin mys-indexer -- --db-url "<DATABASE_URL>" --rpc-client-url "https://fullnode.devnet.mysocial.network:443" --fullnode-sync-worker --reset-db
 ```
-- run indexer as a reader, which is a JSON RPC server with the [interface](https://docs.mys.io/mys-api-ref#mysx_getallbalances)
+- run indexer as a reader, which is a JSON RPC server with the [interface](https://docs.mysocial.network/mys-api-ref#mysx_getallbalances)
 ```
-cargo run --bin mys-indexer -- --db-url "<DATABASE_URL>" --rpc-client-url "https://fullnode.devnet.mys.io:443" --rpc-server-worker
+cargo run --bin mys-indexer -- --db-url "<DATABASE_URL>" --rpc-client-url "https://fullnode.devnet.mysocial.network:443" --rpc-server-worker
 ```
 More flags info can be found in this [file](src/main.rs#L41).
 
@@ -123,7 +123,7 @@ Note that you need an existing database for this to work. Using the DATABASE_URL
 
 ```sh
 # Change the RPC_CLIENT_URL to http://0.0.0.0:9000 to run indexer against local validator & fullnode
-cargo run --bin mys-indexer --features mysql-feature --no-default-features -- --db-url "<DATABASE_URL>" --rpc-client-url "https://fullnode.devnet.mys.io:443" --fullnode-sync-worker --reset-db
+cargo run --bin mys-indexer --features mysql-feature --no-default-features -- --db-url "<DATABASE_URL>" --rpc-client-url "https://fullnode.devnet.mysocial.network:443" --fullnode-sync-worker --reset-db
 ```
 
 ### Extending the indexer

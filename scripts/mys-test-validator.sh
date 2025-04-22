@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 echo "mys-test-validator binary has been deprecated in favor of mys start, which is a more powerful command that allows you to start the local network with more options.

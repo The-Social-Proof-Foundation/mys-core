@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use crate::certificate_deny_config::CertificateDenyConfig;
 use crate::genesis;
@@ -443,7 +444,7 @@ impl Default for TransactionKeyValueStoreReadConfig {
 }
 
 fn default_base_url() -> String {
-    "https://transactions.mys.io/".to_string()
+    "https://transactions.mysocial.network/".to_string()
 }
 
 fn default_cache_size() -> u64 {

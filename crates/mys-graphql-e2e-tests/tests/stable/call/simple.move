@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //# init --protocol-version 51 --addresses Test=0x0 A=0x42 --simulator --custom-validator-account --reference-gas-price 234 --default-gas-price 1000

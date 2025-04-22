@@ -4,6 +4,7 @@ description: tests/shell_tests/new_tests/new_files.sh
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 # basic test that mys move new outputs correct files

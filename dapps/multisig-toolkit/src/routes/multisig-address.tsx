@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 import { PublicKey } from '@mysten/mys/cryptography';
@@ -134,7 +135,7 @@ export default function MultiSigAddressGenerator() {
 					<CardHeader>
 						<CardTitle>Mys MultiSig Address</CardTitle>
 						<CardDescription>
-							https://docs.mys.io/testnet/learn/cryptography/mys-multisig
+							https://docs.mysocial.network/testnet/learn/cryptography/mys-multisig
 						</CardDescription>
 					</CardHeader>
 					<CardContent>

@@ -1,5 +1,6 @@
 #! /usr/bin/env bash
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 set -e
@@ -53,6 +54,7 @@ UPGRADE_CAP=$(
 CONFIG="$(readlink -f ../ui/src)/env.$ENV.ts"
 cat > $CONFIG <<EOF
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 export default {

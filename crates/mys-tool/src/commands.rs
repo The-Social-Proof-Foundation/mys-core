@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -700,9 +701,9 @@ impl ToolCommand {
                 let aws_endpoint = env::var("AWS_SNAPSHOT_ENDPOINT").ok().or_else(|| {
                     if no_sign_request {
                         if network == Chain::Mainnet {
-                            Some("https://formal-snapshot.mainnet.mys.io".to_string())
+                            Some("https://formal-snapshot.mainnet.mysocial.network".to_string())
                         } else if network == Chain::Testnet {
-                            Some("https://formal-snapshot.testnet.mys.io".to_string())
+                            Some("https://formal-snapshot.testnet.mysocial.network".to_string())
                         } else {
                             None
                         }
@@ -931,9 +932,9 @@ impl ToolCommand {
                 let snapshot_store_config = if no_sign_request {
                     let aws_endpoint = env::var("AWS_SNAPSHOT_ENDPOINT").ok().or_else(|| {
                         if network == Chain::Mainnet {
-                            Some("https://db-snapshot.mainnet.mys.io".to_string())
+                            Some("https://db-snapshot.mainnet.mysocial.network".to_string())
                         } else if network == Chain::Testnet {
-                            Some("https://db-snapshot.testnet.mys.io".to_string())
+                            Some("https://db-snapshot.testnet.mysocial.network".to_string())
                         } else {
                             None
                         }

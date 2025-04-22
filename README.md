@@ -4,7 +4,7 @@
 
 # Welcome to MySocial
 
-[MySocial](https://mys.io) is a next-generation smart contract platform with high throughput, low latency, and an asset-oriented programming model powered by the [Move programming language](https://github.com/MystenLabs/awesome-move).
+[MySocial](https://mysocial.network) is a next-generation smart contract platform with high throughput, low latency, and an asset-oriented programming model powered by the [Move programming language](https://github.com/MystenLabs/awesome-move).
 
 ## MySocial Highlights
 
@@ -52,10 +52,10 @@ MySocial is supported by several cutting-edge [peer-reviewed studies](https://gi
 
 Use the following links to learn more about MySocial and the MySocial ecosystem:
 
- * Learn more about working with MySocial in the [MySocial Documentation](https://docs.mys.io/).
+ * Learn more about working with MySocial in the [MySocial Documentation](https://docs.mysocial.network/).
  * Join the MySocial community on [MySocial Discord](https://discord.gg/mys).
- * Find out more about the MySocial ecosystem on the [MySocial Resources](https://mys.io/resources/) page.
- * Review information about MySocial governance, [decentralization](https://mysfoundation.org/decentralization), and [Developer Grants Program](https://mys.io/grants-hub) on the [MySocial Foundation](https://mys.io/about) site.
+ * Find out more about the MySocial ecosystem on the [MySocial Resources](https://mysocial.network/resources/) page.
+ * Review information about MySocial governance, [decentralization](https://mysfoundation.org/decentralization), and [Developer Grants Program](https://mysocial.network/grants-hub) on the [MySocial Foundation](https://mysocial.network/about) site.
 
 
  ## How to Contribute

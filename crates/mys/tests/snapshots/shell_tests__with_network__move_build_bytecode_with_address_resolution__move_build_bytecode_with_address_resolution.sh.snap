@@ -4,6 +4,7 @@ description: tests/shell_tests/with_network/move_build_bytecode_with_address_res
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 mys client --client.config $CONFIG \

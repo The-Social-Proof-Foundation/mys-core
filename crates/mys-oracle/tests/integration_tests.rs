@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::path::Path;
@@ -430,7 +431,7 @@ async fn get_gas(client: &MysClient, sender: MysAddress) -> (ObjectRef, u64) {
 
 async fn init_test_client() -> (MysClient, Keystore, MysAddress) {
     let client = MysClientBuilder::default()
-        .build("https://rpc.devnet.mys.io:443")
+        .build("https://rpc.devnet.mysocial.network:443")
         .await
         .unwrap();
 

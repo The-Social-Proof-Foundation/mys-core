@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use crate::FaucetError;
 use async_trait::async_trait;
@@ -126,7 +127,7 @@ pub struct FaucetConfig {
     #[clap(long, action = clap::ArgAction::Set, default_value_t = false)]
     pub batch_enabled: bool,
 
-    /// Testnet faucet requires authentication via the Web UI at <https://faucet.mys.io>
+    /// Testnet faucet requires authentication via the Web UI at <https://faucet.mysocial.network>
     /// This flag is used to indicate that authentication mode is enabled.
     #[clap(long)]
     pub authenticated: bool,

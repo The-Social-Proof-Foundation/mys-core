@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 """

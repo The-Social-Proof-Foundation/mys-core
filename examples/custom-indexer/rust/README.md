@@ -1,7 +1,7 @@
 # MySocial Custom Indexer Example
 This is a complimentary example to the MySocial Custom Indexer documentation.
 It demonstrates how to create a custom indexer for the MySocial search engine.
-See the [MySocial Custom Indexer documentation](https://docs.mys.io/guides/developer/advanced/custom-indexer) for more information.
+See the [MySocial Custom Indexer documentation](https://docs.mysocial.network/guides/developer/advanced/custom-indexer) for more information.
 
 ## Prerequisites
 - Rust

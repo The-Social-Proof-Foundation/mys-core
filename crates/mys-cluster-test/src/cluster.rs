@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::config::{ClusterTestOpt, Env};
@@ -28,16 +29,16 @@ use tempfile::tempdir;
 use test_cluster::{TestCluster, TestClusterBuilder};
 use tracing::info;
 
-const DEVNET_FAUCET_ADDR: &str = "https://faucet.devnet.mys.io:443";
-const STAGING_FAUCET_ADDR: &str = "https://faucet.staging.mys.io:443";
-const CONTINUOUS_FAUCET_ADDR: &str = "https://faucet.ci.mys.io:443";
-const CONTINUOUS_NOMAD_FAUCET_ADDR: &str = "https://faucet.nomad.ci.mys.io:443";
-const TESTNET_FAUCET_ADDR: &str = "https://faucet.testnet.mys.io:443";
-const DEVNET_FULLNODE_ADDR: &str = "https://rpc.devnet.mys.io:443";
-const STAGING_FULLNODE_ADDR: &str = "https://fullnode.staging.mys.io:443";
-const CONTINUOUS_FULLNODE_ADDR: &str = "https://fullnode.ci.mys.io:443";
-const CONTINUOUS_NOMAD_FULLNODE_ADDR: &str = "https://fullnode.nomad.ci.mys.io:443";
-const TESTNET_FULLNODE_ADDR: &str = "https://fullnode.testnet.mys.io:443";
+const DEVNET_FAUCET_ADDR: &str = "https://faucet.devnet.mysocial.network:443";
+const STAGING_FAUCET_ADDR: &str = "https://faucet.staging.mysocial.network:443";
+const CONTINUOUS_FAUCET_ADDR: &str = "https://faucet.ci.mysocial.network:443";
+const CONTINUOUS_NOMAD_FAUCET_ADDR: &str = "https://faucet.nomad.ci.mysocial.network:443";
+const TESTNET_FAUCET_ADDR: &str = "https://faucet.testnet.mysocial.network:443";
+const DEVNET_FULLNODE_ADDR: &str = "https://rpc.devnet.mysocial.network:443";
+const STAGING_FULLNODE_ADDR: &str = "https://fullnode.staging.mysocial.network:443";
+const CONTINUOUS_FULLNODE_ADDR: &str = "https://fullnode.ci.mysocial.network:443";
+const CONTINUOUS_NOMAD_FULLNODE_ADDR: &str = "https://fullnode.nomad.ci.mysocial.network:443";
+const TESTNET_FULLNODE_ADDR: &str = "https://fullnode.testnet.mysocial.network:443";
 
 pub struct ClusterFactory;
 

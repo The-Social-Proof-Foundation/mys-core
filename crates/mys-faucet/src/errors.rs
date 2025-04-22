@@ -1,11 +1,12 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum FaucetError {
-    #[error("Missing X-Turnstile-Token header. For testnet tokens, please use the Web UI: https://faucet.mys.io")]
+    #[error("Missing X-Turnstile-Token header. For testnet tokens, please use the Web UI: https://faucet.mysocial.network")]
     MissingTurnstileTokenHeader,
 
     #[error("Request limit exceeded. {0}")]

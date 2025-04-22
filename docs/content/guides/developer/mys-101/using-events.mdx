@@ -39,7 +39,7 @@ With the dependency added, you can use the `emit` function to trigger an event w
 The MySocial RPC provides a [queryEvents](/mys-api-ref#mysx_queryEvents) method to query on-chain packages and return available events. As an example, the following `curl` command queries the Deepbook package on Mainnet for a specific type of event:
 
 ```sh
-$ curl -X POST https://fullnode.mainnet.mys.io:443 \
+$ curl -X POST https://fullnode.mainnet.mysocial.network:443 \
 -H "Content-Type: application/json" \
 -d '{
   "jsonrpc": "2.0",
@@ -265,7 +265,7 @@ const PACKAGE_ID_CONST: &str = "0x279525274aa623ef31a25ad90e3b99f27c8dbbad636a64
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let mys_mainnet = MySocialClientBuilder::default()
-        .build("https://fullnode.mainnet.mys.io:443")
+        .build("https://fullnode.mainnet.mysocial.network:443")
         .await?;
 
     let events = mys_mainnet

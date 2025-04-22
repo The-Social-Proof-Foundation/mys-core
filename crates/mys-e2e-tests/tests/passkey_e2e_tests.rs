@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use fastcrypto::traits::ToFromBytes;
 use p256::pkcs8::DecodePublicKey;
@@ -91,7 +92,7 @@ async fn create_credential_and_sign_test_tx(
     let store: Option<Passkey> = None;
     let my_authenticator = Authenticator::new(my_aaguid, store, user_validation_method);
     let mut my_client = Client::new(my_authenticator);
-    let origin = Url::parse("https://www.mys.io").unwrap();
+    let origin = Url::parse("https://www.mysocial.network").unwrap();
 
     // Create credential.
     let challenge_bytes_from_rp: Bytes = random_vec(32).into();

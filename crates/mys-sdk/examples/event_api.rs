@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 mod utils;
@@ -34,8 +35,8 @@ async fn main() -> Result<(), anyhow::Error> {
     println!(" *** Query events ***\n ");
 
     let ws = MysClientBuilder::default()
-        .ws_url("wss://rpc.testnet.mys.io:443")
-        .build("https://fullnode.testnet.mys.io:443")
+        .ws_url("wss://rpc.testnet.mysocial.network:443")
+        .build("https://fullnode.testnet.mysocial.network:443")
         .await?;
     println!("WS version {:?}", ws.api_version());
 

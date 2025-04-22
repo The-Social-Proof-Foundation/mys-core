@@ -14,13 +14,13 @@ title: MySocial Bridge Testnet Incentive Program FAQ
 **A:** After the program ends, the rewards will be sent to eligible participants' MySocial addresses on Mainnet that they used to test MySocial Bridge on testnet.
 
 **Q: Am I eligible for rewards if I test the bridge by directly calling the contract/package?**\
-**A:** No, to be eligible, users must directly interact with the [MySocial Bridge web interface on Testnet](https://bridge.testnet.mys.io/?ref=blog.mys.io)
+**A:** No, to be eligible, users must directly interact with the [MySocial Bridge web interface on Testnet](https://bridge.testnet.mysocial.network/?ref=blog.mysocial.network)
 
-**Q: Can I use a bot to bulk test the [MySocial Bridge Testnet](https://bridge.testnet.mys.io/)?**\
+**Q: Can I use a bot to bulk test the [MySocial Bridge Testnet](https://bridge.testnet.mysocial.network/)?**\
 **A:** We expect real valuable signals and feedback to come from human testers. **Using a bot for testing is discouraged and will negatively impact your final rewards.**
 
 **Q: How do I get test tokens?**\
-**A:** Refer to the ["How to Guide" found in our latest blog post](https://blog.mys.io/mys-bridge-live-on-testnet-with-incentives/).
+**A:** Refer to the ["How to Guide" found in our latest blog post](https://blog.mysocial.network/mys-bridge-live-on-testnet-with-incentives/).
 
 **Q: What is a roundtrip bridge? Do I have to do a round trip bridge to be eligible for rewards? What if I do three Ethereum to MySocial transfers and one MySocial to Ethereum transfer?**\
 **A:** A roundtrip consists of bridging assets from Sepolia to MySocial Testnet, then bridging from MySocial Testnet back to Sepolia. Only a round trip is eligible for rewards. If an address does three Ethereum to MySocial transfers and one MySocial to Ethereum transfer, it will be counted as one eligible test activity.
@@ -32,7 +32,7 @@ title: MySocial Bridge Testnet Incentive Program FAQ
 **A:** No it doesn't. Namely transferring 1 Native Sepolia ETH from Ethereum to MySocial and 500 USDC from MySocial to Ethereum is considered an eligible test activity.
 
 **Q: I see my transfer is "delayed". What does it mean?**\
-**A:** Check the "What is the limiter?" on the [FAQ section of the MySocial Bridge Website] (https://bridge.testnet.mys.io/#faq). On Mainnet we expect the limiter to be hit rarely. However during the incentivize program we may intentionally trigger this scenario more often to thoroughly test it.
+**A:** Check the "What is the limiter?" on the [FAQ section of the MySocial Bridge Website] (https://bridge.testnet.mysocial.network/#faq). On Mainnet we expect the limiter to be hit rarely. However during the incentivize program we may intentionally trigger this scenario more often to thoroughly test it.
 
 **Q: Is there a point system or dashboard for this program?**\
 **A:** No, eligible test activities are not calculated in real time.

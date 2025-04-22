@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use anyhow::Result;
 use prometheus::Registry;
@@ -34,7 +35,7 @@ async fn main() -> Result<()> {
     executor
         .run(
             tempfile::tempdir()?.into_path(),
-            Some(format!("https://checkpoints.{}.mys.io", network)),
+            Some(format!("https://checkpoints.{}.mysocial.network", network)),
             vec![],
             ReaderOptions::default(),
             exit_receiver,

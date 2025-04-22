@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 // Creates an event Test::M1::EventA, Test::M1::EventB<Object>, Test::M2::EventA, Test::M2::EventB<Object>

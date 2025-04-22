@@ -8,7 +8,7 @@ enclosed in quotation marks, you should use an editor that supports UTF-8, not t
 		<owners>MySocial Foundation</owners>
 		<title>Main MySocial Binary</title>
 		<authors>mys</authors>
-		<projectUrl>https://mys.io/</projectUrl>
+		<projectUrl>https://mysocial.network/</projectUrl>
 		<licenseUrl>https://github.com/MystenLabs/mys/blob/main/LICENSE</licenseUrl>
 		<iconUrl>https://assets-global.website-files.com/6425f546844727ce5fb9e5ab/643775f4a15c9a9e10426daa_Mys_Favicon_256.png</iconUrl>
 		<projectSourceUrl>https://github.com/MystenLabs/mys/</projectSourceUrl>

@@ -97,7 +97,7 @@
       { "source": "/guides/developer/getting-started/mys-environment", "destination": "/references/contribute/mys-environment", "permanent": true},
       { "source": "/concepts/mys-move-concepts/patterns/capabilities", "destination": "https://move-book.com/programmability/capability.html", "permanent": true },
       { "source": "/concepts/mys-move-concepts/patterns/witness", "destination": "https://move-book.com/programmability/witness-pattern.html", "permanent": true },
-      { "source": "/concepts/mys-move-concepts/patterns/hot-potato", "destination": "https://examples.mys.io/patterns/hot-potato.html", "permanent": false },
+      { "source": "/concepts/mys-move-concepts/patterns/hot-potato", "destination": "https://examples.mysocial.network/patterns/hot-potato.html", "permanent": false },
       { "source": "/concepts/mys-move-concepts/patterns/id-pointer", "destination": "https://move-book.com/storage/uid-and-id.html", "permanent": true },
       { "source": "/concepts/mys-move-concepts/patterns/transferrable-witness", "destination": "https://move-book.com/programmability/witness-pattern.html", "permanent": true },
       { "source": "/guides/developer/advanced/asset-tokenization", "destination": "/guides/developer/nft/asset-tokenization", "permanent": true },

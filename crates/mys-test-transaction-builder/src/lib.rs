@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use move_core_types::ident_str;
@@ -155,7 +156,7 @@ impl TestTransactionBuilder {
                 CallArg::Pure(bcs::to_bytes("example_nft_name").unwrap()),
                 CallArg::Pure(bcs::to_bytes("example_nft_description").unwrap()),
                 CallArg::Pure(
-                    bcs::to_bytes("https://mys.io/_nuxt/img/mys-logo.8d3c44e.svg").unwrap(),
+                    bcs::to_bytes("https://mysocial.network/_nuxt/img/mys-logo.8d3c44e.svg").unwrap(),
                 ),
             ],
         )

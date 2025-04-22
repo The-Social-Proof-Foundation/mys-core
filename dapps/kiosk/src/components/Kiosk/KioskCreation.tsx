@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 import { toast } from 'react-hot-toast';
@@ -28,7 +29,7 @@ export function KioskCreation({ onCreate }: { onCreate: () => void }) {
 					connects to Testnet and that you have at least 1 MYS to cover gas fees. You can get test
 					MYS tokens using{' '}
 					<a
-						href="https://docs.mys.io/build/faucet"
+						href="https://docs.mysocial.network/build/faucet"
 						target="_blank"
 						rel="noreferrer"
 						className="underline"

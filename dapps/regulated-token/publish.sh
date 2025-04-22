@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 PUBLISH=$(mys client publish --gas-budget 100000000 --skip-dependency-verification --with-unpublished-dependencies --json);

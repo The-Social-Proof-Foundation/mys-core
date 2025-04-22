@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -39,7 +40,7 @@ use mys_types::{
 };
 use tokio::join;
 
-pub const MYS_MAINNET_URL: &str = "https://fullnode.mainnet.mys.io:443";
+pub const MYS_MAINNET_URL: &str = "https://fullnode.mainnet.mysocial.network:443";
 pub const GET_POOLS_PATH: &str = "/get_pools";
 pub const GET_HISTORICAL_VOLUME_BY_BALANCE_MANAGER_ID_WITH_INTERVAL: &str =
     "/historical_volume_by_balance_manager_id_with_interval/:pool_names/:balance_manager_id";

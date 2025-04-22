@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 //! This module implements the [Rosetta Account API](https://www.rosetta-api.org/docs/AccountApi.html)
 use axum::extract::State;

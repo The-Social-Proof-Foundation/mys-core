@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use self::db_dump::{dump_table, duplicate_objects_summary, list_tables, table_summary, StoreName};

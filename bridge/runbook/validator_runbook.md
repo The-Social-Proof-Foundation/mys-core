@@ -1,1 +1,1 @@
-The runbook is now located at mys/docs/content/guides/operator/bridge-node-configuration.mdx. You can view it online at https://docs.mys.io/guides/operator/bridge-node-configuration
+The runbook is now located at mys/docs/content/guides/operator/bridge-node-configuration.mdx. You can view it online at https://docs.mysocial.network/guides/operator/bridge-node-configuration

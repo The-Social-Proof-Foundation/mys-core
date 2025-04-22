@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 mod utils;
@@ -11,7 +12,7 @@ use utils::setup_for_read;
 // check if it has coins and request coins from the faucet if there aren't any.
 // If there is no wallet, it will create a wallet and two addresses, set one address as active,
 // and add 1 MYS to the active address.
-// By default, the example will use the Mys testnet network (fullnode.testnet.mys.io:443).
+// By default, the example will use the Mys testnet network (fullnode.testnet.mysocial.network:443).
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {

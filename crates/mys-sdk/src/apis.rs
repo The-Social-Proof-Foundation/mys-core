@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use fastcrypto::encoding::Base64;
@@ -1028,8 +1029,8 @@ impl EventApi {
     /// #[tokio::main]
     /// async fn main() -> Result<(), anyhow::Error> {
     ///     let mys = MysClientBuilder::default()
-    ///         .ws_url("wss://rpc.mainnet.mys.io:443")
-    ///         .build("https://fullnode.mainnet.mys.io:443")
+    ///         .ws_url("wss://rpc.mainnet.mysocial.network:443")
+    ///         .build("https://fullnode.mainnet.mysocial.network:443")
     ///         .await?;
     ///     let mut subscribe_all = mys
     ///         .event_api()

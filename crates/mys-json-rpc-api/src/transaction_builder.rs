@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use fastcrypto::encoding::Base64;
@@ -128,7 +129,7 @@ pub trait TransactionBuilder {
         function: String,
         /// the type arguments of the Move function
         type_arguments: Vec<MysTypeTag>,
-        /// the arguments to be passed into the Move function, in [MysJson](https://docs.mys.io/build/mys-json) format
+        /// the arguments to be passed into the Move function, in [MysJson](https://docs.mysocial.network/build/mys-json) format
         arguments: Vec<MysJsonValue>,
         /// gas object to be used in this transaction, node will pick one from the signer's possession if not provided
         gas: Option<ObjectID>,

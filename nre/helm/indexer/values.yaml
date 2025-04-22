@@ -28,7 +28,7 @@ env:
   CHECKPOINT_COMIT_BATCH_SIZE:
     value: "300"
   RPC_CLIENT:
-    value: "https://public-rpc.mainnet.mys.io"
+    value: "https://public-rpc.mainnet.mysocial.network"
   REMOTE_STORE:
     value: "https://storage.googleapis/mysten-mainnet-checkpoints"
   DB_URL:

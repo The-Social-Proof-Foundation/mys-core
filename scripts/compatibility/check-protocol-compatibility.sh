@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 NETWORK="$1"
@@ -22,13 +23,13 @@ if [ -z "$RELEASED_COMMIT" ]; then
 
   case "$NETWORK" in
     devnet)
-      URL="https://$API_USER:$API_KEY@gateway.mimir.mys.io/prometheus/api/v1/query"
+      URL="https://$API_USER:$API_KEY@gateway.mimir.mysocial.network/prometheus/api/v1/query"
       ;;
     testnet)
-      URL="http://$API_USER:$API_KEY@metrics-gw-2.testnet.mys.io/prometheus/api/v1/query"
+      URL="http://$API_USER:$API_KEY@metrics-gw-2.testnet.mysocial.network/prometheus/api/v1/query"
       ;;
     mainnet)
-      URL="https://$API_USER:$API_KEY@metrics-gw-2.mainnet.mys.io/prometheus/api/v1/query"
+      URL="https://$API_USER:$API_KEY@metrics-gw-2.mainnet.mysocial.network/prometheus/api/v1/query"
       ;;
   esac
 

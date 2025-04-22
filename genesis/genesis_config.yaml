@@ -14,9 +14,9 @@ protocol_version: ~  # Latest version
 allow_insertion_of_extra_objects: true
 
 # Epoch duration in milliseconds (default: 24 hours)
-# 3 hours = 10,800,000 ms
+# 1 hour = 3,600,000 ms
 # 24 hours = 86,400,000 ms
-epoch_duration_ms: 10800000  # 3 hours for testnet (faster epochs)
+epoch_duration_ms: 7200000  # 2 hours for testnet (faster epochs)
 
 # Stake subsidy parameters
 #
@@ -37,6 +37,6 @@ stake_subsidy_decrease_rate: 300
 
 # Accounts to add tokens to
 accounts:
-  - address: ""
+  - address: "<ADDRESS_HERE>"
     gas_amounts:
       - 100000000000000

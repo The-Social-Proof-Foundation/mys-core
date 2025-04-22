@@ -4,6 +4,7 @@ description: tests/shell_tests/with_network/source_verification_deprecation/no_f
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 # check that we get a deprecation warning when upgrading without any dependency verification flags

@@ -4,6 +4,7 @@ description: tests/shell_tests/new_tests/gitignore_has_build.sh
 ---
 ----- script -----
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 # mys move new example when `example/.gitignore` already contains build/*; it should be unchanged

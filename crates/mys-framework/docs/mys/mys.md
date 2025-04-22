@@ -88,7 +88,7 @@ Sender is not @0x0 the system address.
 
 <a name="mys_mys_MIST_PER_MYS"></a>
 
-The amount of Mist per Mys token based on the fact that mist is
+The amount of Mist per MySo token based on the fact that mist is
 10^-9 of a Mys token
 
 
@@ -99,7 +99,7 @@ The amount of Mist per Mys token based on the fact that mist is
 
 <a name="mys_mys_TOTAL_SUPPLY_MIST"></a>
 
-The total supply of Mys denominated in Mist (1 Billion * 10^9)
+The total supply of MySo denominated in Mist (1 Billion * 10^9)
 
 
 <pre><code><b>const</b> <a href="../mys/mys.md#mys_mys_TOTAL_SUPPLY_MIST">TOTAL_SUPPLY_MIST</a>: u64 = 1000000000000000000;
@@ -109,7 +109,7 @@ The total supply of Mys denominated in Mist (1 Billion * 10^9)
 
 <a name="mys_mys_TOTAL_SUPPLY_MYS"></a>
 
-The total supply of Mys denominated in whole Mys tokens (1 Billion)
+The total supply of MySo denominated in whole MySo tokens (1 Billion)
 
 
 <pre><code><b>const</b> <a href="../mys/mys.md#mys_mys_TOTAL_SUPPLY_MYS">TOTAL_SUPPLY_MYS</a>: u64 = 1000000000;

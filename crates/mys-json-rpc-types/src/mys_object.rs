@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::cmp::Ordering;
@@ -200,7 +201,7 @@ pub struct MysObjectData {
     pub storage_rebate: Option<u64>,
     /// The Display metadata for frontend UI rendering, default to be None unless MysObjectDataOptions.showContent is set to true
     /// This can also be None if the struct type does not have Display defined
-    /// See more details in <https://forums.mys.io/t/nft-object-display-proposal/4872>
+    /// See more details in <https://forums.mysocial.network/t/nft-object-display-proposal/4872>
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display: Option<DisplayFieldsResponse>,
     /// Move object content or package content, default to be None unless MysObjectDataOptions.showContent is set to true

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useState, useEffect } from "react";
@@ -14,9 +15,9 @@ export default function ProtocolConfig(props) {
     params: [],
   };
   const urls = [
-    "https://fullnode.mainnet.mys.io:443",
-    "https://fullnode.testnet.mys.io:443",
-    "https://fullnode.devnet.mys.io:443",
+    "https://fullnode.mainnet.mysocial.network:443",
+    "https://fullnode.testnet.mysocial.network:443",
+    "https://fullnode.devnet.mysocial.network:443",
   ];
   const [results, setResults] = useState({
     mainnet: null,

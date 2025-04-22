@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -385,7 +386,7 @@ impl<'a> PTBBuilder<'a> {
                     self.addresses.insert(ident, *addr);
                 }
             }
-            // If we encounter a dotted string e.g., "foo.0" or "mys.io" or something like that
+            // If we encounter a dotted string e.g., "foo.0" or "mysocial.network" or something like that
             // this see if we can find an address for it in the environment and bind to it.
             PTBArg::VariableAccess(ref head, ref fields) => {
                 let key = format!(

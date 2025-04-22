@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use crate::key_identity::{get_identity_address_from_keystore, KeyIdentity};
 use crate::zklogin_commands_util::{perform_zk_login_test_tx, read_cli_line};
@@ -1031,7 +1032,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "25769832374-famecqrhe2gkebt5fvqms2263046lj96.apps.googleusercontent.com",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
                 let url_2 = get_oidc_url(
@@ -1039,7 +1040,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "rs1bh065i9ya4ydvifixl4kss0uhpt",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
                 let url_3 = get_oidc_url(
@@ -1047,7 +1048,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "233307156352917",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
                 let url_4 = get_oidc_url(
@@ -1055,13 +1056,13 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "aa6bddf393b54d4e0d42ae0014edfd2f",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
                 let url_5 = get_token_exchange_url(
                     OIDCProvider::Kakao,
                     "aa6bddf393b54d4e0d42ae0014edfd2f",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     "$YOUR_AUTH_CODE",
                     "", // not needed
                 )?;
@@ -1070,7 +1071,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "nl.digkas.wallet.client",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
                 let url_7 = get_oidc_url(
@@ -1078,13 +1079,13 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "2426087588661.5742457039348",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
                 let url_8 = get_token_exchange_url(
                     OIDCProvider::Slack,
                     "2426087588661.5742457039348",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     "$YOUR_AUTH_CODE",
                     "39b955a118f2f21110939bf3dff1de90",
                 )?;
@@ -1096,7 +1097,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "6c56t7re6ekgmv23o7to8r0sic",
-                    "https://www.mys.io/",
+                    "https://www.mysocial.network/",
                     &jwt_randomness,
                 )?;
                 let url_10 = get_oidc_url(
@@ -1104,7 +1105,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "2e3e87cb-bf24-4399-ab98-48343d457124",
-                    "https://www.mys.io",
+                    "https://www.mysocial.network",
                     &jwt_randomness,
                 )?;
                 let url_11 = get_oidc_url(
@@ -1112,7 +1113,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "kns-dev",
-                    "https://mys.io/", // placeholder
+                    "https://mysocial.network/", // placeholder
                     &jwt_randomness,
                 )?;
                 let url_12 = get_oidc_url(
@@ -1136,7 +1137,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "2e3i87cb-bf24-4399-ab98-48343d457124",
-                    "https://www.mys.io",
+                    "https://www.mysocial.network",
                     &jwt_randomness,
                 )?;
                 let url_15 = get_oidc_url(
@@ -1165,7 +1166,7 @@ impl KeyToolCommand {
                 println!("Visit URL (Arden): {url_14}");
                 println!("Visit URL (AWS - Trace): {url_15}");
 
-                println!("Finish login and paste the entire URL here (e.g. https://mys.io/#id_token=...):");
+                println!("Finish login and paste the entire URL here (e.g. https://mysocial.network/#id_token=...):");
 
                 let parsed_token = read_cli_line()?;
                 let tx_digest = perform_zk_login_test_tx(
