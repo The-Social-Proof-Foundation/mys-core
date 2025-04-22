@@ -1346,7 +1346,7 @@ impl Display for CommandOutput {
                         "rawIntentMsg",
                         "intent",
                         "rawTxData",
-                        "mysAddress",
+                        "mysoAddress",
                     ])
                     .push_record([
                         &data.mys_signature,

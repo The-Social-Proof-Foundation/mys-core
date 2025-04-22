@@ -1353,7 +1353,7 @@ impl MysClientCommands {
 
                 if let Some(gas) = opts.gas {
                     if input_coins.contains(&gas) {
-                        bail!("Gas coin is in input coins of Pay transaction, use PayMys transaction instead!");
+                        bail!("Gas coin is in input coins of Pay transaction, use PayMySo transaction instead!");
                     }
                 }
 
@@ -1371,11 +1371,11 @@ impl MysClientCommands {
             } => {
                 ensure!(
                     !input_coins.is_empty(),
-                    "PayMys transaction requires a non-empty list of input coins"
+                    "PayMySo transaction requires a non-empty list of input coins"
                 );
                 ensure!(
                     !recipients.is_empty(),
-                    "PayMys transaction requires a non-empty list of recipient addresses"
+                    "PayMySo transaction requires a non-empty list of recipient addresses"
                 );
                 ensure!(
                     recipients.len() == amounts.len(),
@@ -2072,7 +2072,7 @@ impl Display for MysClientCommandResult {
                 }
 
                 let mut builder = TableBuilder::default();
-                builder.set_header(vec!["gasCoinId", "mistBalance (MIST)", "mysBalance (MYS)"]);
+                builder.set_header(vec!["gasCoinId", "mistBalance (MIST)", "mysoBalance (MySo)"]);
                 for coin in &gas_coins {
                     builder.push_record(vec![
                         coin.gas_coin_id.to_string(),

@@ -39,7 +39,7 @@ By default, this command also verify all the transactions in the checkpoint, spe
 
 **Note** you must put `--num-threads ` after the urls, otherwise the command will not be parsed correctly
 
-### Example 2: (WIP) Execute PayMys Transaction
+### Example 2: (WIP) Execute PayMySo Transaction
 
 ```bash
 cargo run --bin mys-rpc-loadgen -- --urls "http://127.0.0.1:9000" --num-threads 1 pay-mys --repeat 100

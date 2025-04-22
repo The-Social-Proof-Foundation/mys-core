@@ -226,7 +226,7 @@ pub enum MysCommand {
         #[clap(short, long, help = "Dump the public keys of all authorities")]
         dump_addresses: bool,
     },
-    /// Bootstrap and initialize a new mys network
+    /// Bootstrap and initialize a new mysocial network
     #[clap(name = "genesis")]
     Genesis {
         #[clap(long, help = "Start genesis with a given config file")]
@@ -272,14 +272,14 @@ pub enum MysCommand {
         #[clap(subcommand)]
         cmd: KeyToolCommand,
     },
-    /// Start Mys interactive console.
+    /// Start the MySocial interactive console.
     #[clap(name = "console")]
     Console {
         /// Sets the file storing the state of our user accounts (an empty one will be created if missing)
         #[clap(long = "client.config")]
         config: Option<PathBuf>,
     },
-    /// Client for interacting with the Mys network.
+    /// Client for interacting with the MySocial network.
     #[clap(name = "client")]
     Client {
         /// Sets the file storing the state of our user accounts (an empty one will be created if missing)

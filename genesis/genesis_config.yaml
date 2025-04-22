@@ -1,0 +1,42 @@
+---
+# Genesis configuration parameters
+# This file controls the epoch duration and stake subsidy parameters
+
+# Chain start timestamp (in milliseconds since epoch)
+# Default: current time
+# Setting this to a future time will delay the start of the chain
+chain_start_timestamp_ms: ~
+
+# Protocol version
+protocol_version: ~  # Latest version
+
+# Whether to allow insertion of extra objects in genesis
+allow_insertion_of_extra_objects: true
+
+# Epoch duration in milliseconds (default: 24 hours)
+# 3 hours = 10,800,000 ms
+# 24 hours = 86,400,000 ms
+epoch_duration_ms: 10800000  # 3 hours for testnet (faster epochs)
+
+# Stake subsidy parameters
+#
+# When to start paying stake subsidies (0 = from beginning)
+stake_subsidy_start_epoch: 0
+
+# Initial stake subsidy distribution amount per epoch (in MIST)
+# Default: 35,000 MySo = 35,000,000,000,000 MIST
+stake_subsidy_initial_distribution_amount: 35000000000000
+
+# Number of epochs before decreasing the subsidy amount
+# Default: 15 epochs
+stake_subsidy_period_length: 15
+
+# Rate at which subsidy decreases at end of each period (in basis points)
+# 300 basis points = 3%
+stake_subsidy_decrease_rate: 300
+
+# Accounts to add tokens to
+accounts:
+  - address: ""
+    gas_amounts:
+      - 100000000000000

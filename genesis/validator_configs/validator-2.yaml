@@ -1,0 +1,55 @@
+---
+# Validator-2 config
+protocol-key-pair:
+  path: /opt/mys/validator2_keys/protocol.key
+network-key-pair:
+  path: /opt/mys/validator2_keys/network.key
+worker-key-pair:
+  path: /opt/mys/validator2_keys/worker.key
+account-key-pair:
+  path: /opt/mys/validator2_keys/account.key
+db-path: /opt/mys/db2
+network-address: "/dns/validator2.mysocial.network/tcp/8080/http"
+metrics-address: "0.0.0.0:9184"
+admin-interface-port: 1337
+json-rpc-address: "0.0.0.0:9000"
+enable-experimental-rest-api: true
+websocket-address: "0.0.0.0:9001"
+consensus-config:
+  address: "/ip4/0.0.0.0/tcp/8083/http"
+  db-path: /opt/mys/db2/consensus_db
+  internal-worker-address: "/ip4/0.0.0.0/tcp/8084/http"
+  max-pending-transactions: 1000
+  narwhal-config:
+    header-num-of-batches-threshold: 32
+    max-header-num-of-batches: 1000
+    max-header-delay: 1000ms
+    min-header-delay: 500ms
+    gc-depth: 50
+    sync-retry-delay: 5000ms
+    sync-retry-nodes: 3
+    batch-size: 500000
+    max-batch-delay: 100ms
+    block-synchronizer:
+      range-synchronize-timeout: 30000ms
+      certificates-synchronize-timeout: 30000ms
+      payload-synchronize-timeout: 30000ms
+      payload-availability-timeout: 30000ms
+      handler-certificate-deliver-timeout: 30000ms
+genesis:
+  genesis-file-location: "/opt/mys/config/genesis.blob"
+p2p-config:
+  listen-address: "/ip4/0.0.0.0/udp/8084"
+  external-address: "/dns/validator2.mysocial.network/udp/8084"
+authority-store-pruning-config:
+  num-latest-epoch-dbs-to-retain: 3
+  epoch-db-pruning-period-secs: 3600
+  max-checkpoints-in-pruning-queue: 15
+  max-transactions-in-pruning-queue: 1000
+  periodic-pruning-period-secs: 3600
+checkpoint-executor-config:
+  checkpoint-execution-max-concurrency: 200
+  local-execution-timeout-sec: 10
+db-checkpoint-config:
+  perform-db-checkpoints-at-epoch-end: true
+  checkpoint-path: /opt/mys/db2_checkpoint 

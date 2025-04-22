@@ -255,7 +255,7 @@ impl TransactionBuilder {
     ) -> anyhow::Result<TransactionData> {
         if let Some(gas) = gas {
             if input_coins.contains(&gas) {
-                return Err(anyhow!("Gas coin is in input coins of Pay transaction, use PayMys transaction instead!"));
+                return Err(anyhow!("Gas coin is in input coins of Pay transaction, use PayMySo transaction instead!"));
             }
         }
 
@@ -280,7 +280,7 @@ impl TransactionBuilder {
         Ok(obj_refs)
     }
 
-    /// Construct a transaction kind for the PayMys transaction type
+    /// Construct a transaction kind for the PayMySo transaction type
     ///
     /// Use this function together with tx_data_for_dry_run or tx_data
     /// for maximum reusability
