@@ -124,10 +124,6 @@ fi
 # Return to genesis directory
 popd > /dev/null
 
-# Copy faucet info to root
-cp "${GENESIS_DIR}/faucet/faucet_info.txt" "${GENESIS_DIR}/"
-cp "${GENESIS_DIR}/faucet/faucet.json" "${GENESIS_DIR}/"
-
 # Update the token distribution CSV
 echo "Updating token_distribution.csv with faucet address..."
 sed -i.bak "s/0xFAUCET_ADDRESS_TO_BE_REPLACED/$FAUCET_ADDRESS/g" "${GENESIS_DIR}/token_distribution.csv"
@@ -143,16 +139,5 @@ if [ $remaining_keys -gt 0 ]; then
 fi
 
 echo -e "${GREEN}All keys generated successfully!${NC}"
-echo
-echo -e "${YELLOW}Next steps:${NC}"
-echo "1. Initialize genesis ceremony:"
-echo "   ./init_genesis.sh"
-echo "2. Add validators to the ceremony:"
-echo "   ./add_validators.sh"
-echo "3. Finalize genesis ceremony:"
-echo "   ./finalize_genesis.sh"
-echo
-echo "Note: If you want custom token distribution, you will need to manually edit the"
-echo "token-distribution-schedule file after running init_genesis.sh"
 echo
 echo "Remember to securely back up all generated keys!" 

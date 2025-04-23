@@ -1,9 +1,28 @@
-*~
+# Exclude target directory to reduce build context size
+target/
+**/*.rs.bk
 *.swp
 **/.terraform/
-target/
 **/*Dockerfile
 *.md
 build/
 storage/
 docker/
+
+# Documentation
+docs/
+
+# Git
+.git/
+.github/
+.gitignore
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# Allow all source files
+!src/
+!Cargo.toml
+!Cargo.lock
