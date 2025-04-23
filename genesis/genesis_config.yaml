@@ -2,41 +2,62 @@
 # Genesis configuration parameters
 # This file controls the epoch duration and stake subsidy parameters
 
-# Chain start timestamp (in milliseconds since epoch)
-# Default: current time
-# Setting this to a future time will delay the start of the chain
-chain_start_timestamp_ms: ~
+ssfn_config_info: ~
+validator_config_info: ~
 
-# Protocol version
-protocol_version: ~  # Latest version
+parameters:
+    # Chain start timestamp (in milliseconds since epoch)
+    # Default: current time
+    # Setting this to a future time will delay the start of the chain
+    chain_start_timestamp_ms: 1745391498
 
-# Whether to allow insertion of extra objects in genesis
-allow_insertion_of_extra_objects: true
+    # Protocol version
+    protocol_version: 74  # Latest version
 
-# Epoch duration in milliseconds (default: 24 hours)
-# 1 hour = 3,600,000 ms
-# 24 hours = 86,400,000 ms
-epoch_duration_ms: 7200000  # 2 hours for testnet (faster epochs)
+    # Whether to allow insertion of extra objects in genesis
+    allow_insertion_of_extra_objects: true
 
-# Stake subsidy parameters
-#
-# When to start paying stake subsidies (0 = from beginning)
-stake_subsidy_start_epoch: 0
+    # Epoch duration in milliseconds (default: 24 hours)
+    # 1 hour = 3,600,000 ms
+    # 24 hours = 86,400,000 ms
+    epoch_duration_ms: 7200000  # 2 hours for testnet (faster epochs)
 
-# Initial stake subsidy distribution amount per epoch (in MIST)
-# Default: 35,000 MySo = 35,000,000,000,000 MIST
-stake_subsidy_initial_distribution_amount: 35000000000000
+    # Stake subsidy parameters
+    #
+    # When to start paying stake subsidies (0 = from beginning)
+    stake_subsidy_start_epoch: 0
 
-# Number of epochs before decreasing the subsidy amount
-# Default: 15 epochs
-stake_subsidy_period_length: 15
+    # Initial stake subsidy distribution amount per epoch (in MIST)
+    # Default: 35,000 MySo = 35,000,000,000,000 MIST
+    stake_subsidy_initial_distribution_amount: 35000000000000
 
-# Rate at which subsidy decreases at end of each period (in basis points)
-# 300 basis points = 3%
-stake_subsidy_decrease_rate: 300
+    # Number of epochs before decreasing the subsidy amount
+    # Default: 15 epochs
+    stake_subsidy_period_length: 15
+
+    # Rate at which subsidy decreases at end of each period (in basis points)
+    # 300 basis points = 3%
+    stake_subsidy_decrease_rate: 300
 
 # Accounts to add tokens to
 accounts:
-  - address: "<ADDRESS_HERE>"
+    # Fullnode
+  - address: "0xe57b80a069f20dcc735156ed47885721c1973196f62d59331081c8b5b87820c2"
     gas_amounts:
-      - 100000000000000
+      - 250000000000000 # 250,000 MySo
+    # Validator 1
+  - address: "0x78f113b0b19d91a9d6117d4d10363a12c662632a36abd0942afe5385e997e1c6"
+    gas_amounts:
+      - 500000000000000 # 500,000 MySo
+    # Validator 2
+  - address: "0x9221eb756877fa8866c32114df8f1f3081a0a7099b17154d01e007c11e66b12d"
+    gas_amounts:
+      - 500000000000000 # 500,000 MySo
+    # Validator 3
+  - address: "0x65a2cbdedbbb8cba7065314694537644a6ba8c4a14f2fe2ef5b93f9372a716ab"
+    gas_amounts:
+      - 500000000000000 # 500,000 MySo
+    # Faucet
+  - address: "0x5522740c19d6507776b690c501f86a346043b136e6feb3603ce3ee200bef7fa4"
+    gas_amounts:
+      - 100000000000000 # 100,000 MySo

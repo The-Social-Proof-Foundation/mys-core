@@ -94,7 +94,42 @@ for i in {1..3}; do
   echo
 done
 
-# Step 2: Generate faucet key
+# Step 2: Generate fullnode key
+echo -e "${YELLOW}Generating fullnode key...${NC}"
+
+# Create the key in its own directory for cleaner organization
+mkdir -p "${GENESIS_DIR}/fullnode"
+pushd "${GENESIS_DIR}/fullnode" > /dev/null
+
+cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519 > fullnode_output.txt
+
+# Extract key information
+FULLNODE_ADDRESS=$(grep "mysAddress" fullnode_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
+FULLNODE_MNEMONIC=$(grep "mnemonic" fullnode_output.txt | sed 's/│//g' | awk '{$1=""; print $0}' | xargs)
+
+echo "Fullnode Address: $FULLNODE_ADDRESS"
+echo "Fullnode Mnemonic: $FULLNODE_MNEMONIC"
+
+# Save fullnode info for reference
+echo "Fullnode Address: $FULLNODE_ADDRESS" > fullnode_info.txt
+echo "Fullnode Mnemonic: $FULLNODE_MNEMONIC" >> fullnode_info.txt
+cp fullnode_output.txt fullnode.json
+
+# Move fullnode key file if it exists
+if [ -f "${FULLNODE_ADDRESS}.key" ]; then
+    mv "${FULLNODE_ADDRESS}.key" fullnode.key
+    echo "Created fullnode.key"
+fi
+
+# Return to genesis directory
+popd > /dev/null
+
+# Update genesis config with fullnode address
+echo "Updating genesis config with fullnode address..."
+sed -i.bak "s/0x58c30fa5593cffbca7603446d4567ec933f4996c6eac0831c0137d564c71adc3/$FULLNODE_ADDRESS/g" "${GENESIS_DIR}/genesis_config.yaml"
+rm -f "${GENESIS_DIR}/genesis_config.yaml.bak"
+
+# Step 3: Generate faucet key
 echo -e "${YELLOW}Generating faucet key...${NC}"
 
 # Create the key in its own directory for cleaner organization
@@ -124,10 +159,10 @@ fi
 # Return to genesis directory
 popd > /dev/null
 
-# Update the token distribution CSV
-echo "Updating token_distribution.csv with faucet address..."
-sed -i.bak "s/0xFAUCET_ADDRESS_TO_BE_REPLACED/$FAUCET_ADDRESS/g" "${GENESIS_DIR}/token_distribution.csv"
-rm -f "${GENESIS_DIR}/token_distribution.csv.bak"
+# Update genesis config with faucet address
+echo "Updating genesis config with faucet address..."
+sed -i.bak "s/0x7b15d74e88a8f8f11dd896d31f09f4f68268baaafc0cb2ed60264a596791d4fe/$FAUCET_ADDRESS/g" "${GENESIS_DIR}/genesis_config.yaml"
+rm -f "${GENESIS_DIR}/genesis_config.yaml.bak"
 
 # Clean up any remaining .key files in the root directory
 echo -e "${YELLOW}Checking for any remaining key files...${NC}"

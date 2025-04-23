@@ -27,6 +27,9 @@ Move.lock
 .trace
 .coverage_map.mvcov
 
+# Genesis files
+genesis/files/*
+
 # Thumbnails
 ._*
 
