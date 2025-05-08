@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: mys-social-indexer-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mys_social_indexer
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  indexer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mys-social-indexer
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/myso_social_indexer
+      - DATABASE_MAX_CONNECTIONS=10
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - CHECKPOINT_URL=https://checkpoints.testnet.mysocial.network
+      - START_CHECKPOINT=0
+      - INDEXER_CONCURRENCY=5
+      - RUST_LOG=info,mys_social_indexer=debug
+      - PROFILE_PACKAGE_ADDRESS=0xe5759970ebb63cb02e34af3304a61600b07ed3cbd10376b3a0be98952b54aa76
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:

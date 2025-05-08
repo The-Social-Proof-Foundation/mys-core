@@ -1,0 +1,67 @@
+[package]
+name = "mys-social-indexer"
+version = "0.1.0"
+edition = "2021"
+authors = ["MySocial Team"]
+description = "Social network indexer for MySocial blockchain"
+license = "Apache-2.0"
+
+[dependencies]
+# Core MySocial dependencies
+mys-types = { path = "../../crates/mys-types" }
+mys-data-ingestion-core = { path = "../../crates/mys-data-ingestion-core" }
+mys-sdk = { path = "../../crates/mys-sdk" }
+mys-json-rpc-types = { path = "../../crates/mys-json-rpc-types" }
+mys-json-rpc-api = { path = "../../crates/mys-json-rpc-api" }
+
+# Async runtime and traits
+tokio = { workspace = true }
+async-trait = { workspace = true }
+
+# Database
+diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json", "numeric"] }
+diesel-async = { workspace = true, features = ["postgres", "deadpool"] }
+diesel_migrations = { workspace = true }
+
+# Serialization and deserialization
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Logging and metrics
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
+prometheus = { workspace = true }
+
+# Utilities
+chrono = { workspace = true, features = ["serde"] }
+bigdecimal = { workspace = true, features = ["serde"] }
+once_cell = { workspace = true }
+futures = { workspace = true }
+dotenv = "0.15.0"
+hex = "0.4.3"
+base64 = "0.21.0"
+deadpool = "0.10.0"
+jsonrpsee = { workspace = true, features = ["client", "ws-client", "http-client"] }
+
+# Web server for API
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true, features = ["trace", "cors"] }
+hyper = { workspace = true, features = ["full"] }
+
+[dev-dependencies]
+tokio-test = "0.4.3"
+test-log = { version = "0.2.14", features = ["trace"] }
+tracing-test = "0.2.4"
+
+[[bin]]
+name = "mys-social-indexer"
+path = "src/main.rs"
+
+[lib]
+name = "mys_social_indexer"
+path = "src/lib.rs"
