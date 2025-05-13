@@ -2,15 +2,18 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15
+    image: timescale/timescaledb:latest-pg15
     container_name: mys-social-indexer-db
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: mys_social_indexer
+      TIMESCALEDB_TUNE_MAX_CONNECTIONS: "200"
+      TIMESCALEDB_TUNE_MAX_MEMORY: "2GB"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-scripts:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
     healthcheck:

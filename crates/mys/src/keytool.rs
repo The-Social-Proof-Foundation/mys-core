@@ -14,7 +14,7 @@ use fastcrypto::secp256k1::recoverable::Secp256k1Sig;
 use fastcrypto::traits::{KeyPair, ToFromBytes};
 use fastcrypto_zkp::bn254::utils::{
     gen_address_seed, get_nonce, get_oidc_url, get_proof, get_test_issuer_jwt_token,
-    get_token_exchange_url,
+    get_social_proof_token_url,
 };
 use fastcrypto_zkp::bn254::zk_login::{fetch_jwks, OIDCProvider, ZkLoginInputs};
 use fastcrypto_zkp::bn254::zk_login::{JwkId, JWK};
@@ -1059,7 +1059,7 @@ impl KeyToolCommand {
                     "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
-                let url_5 = get_token_exchange_url(
+                let url_5 = get_social_proof_token_url(
                     OIDCProvider::Kakao,
                     "aa6bddf393b54d4e0d42ae0014edfd2f",
                     "https://mysocial.network/",
@@ -1082,7 +1082,7 @@ impl KeyToolCommand {
                     "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
-                let url_8 = get_token_exchange_url(
+                let url_8 = get_social_proof_token_url(
                     OIDCProvider::Slack,
                     "2426087588661.5742457039348",
                     "https://mysocial.network/",

@@ -1,0 +1,424 @@
+// Copyright (c) MySocial Team
+// SPDX-License-Identifier: Apache-2.0
+
+use diesel::sql_types::*;
+use diesel::{Insertable, Selectable, QueryableByName};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use chrono::{DateTime, Utc};
+
+/// Post model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::posts)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Post {
+    #[diesel(sql_type = Varchar)]
+    pub id: String,
+    #[diesel(sql_type = Varchar)]
+    pub post_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub owner: String,
+    #[diesel(sql_type = Varchar)]
+    pub profile_id: String,
+    #[diesel(sql_type = Text)]
+    pub content: String,
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub media_urls: Option<Value>,
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub mentions: Option<Value>,
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub metadata_json: Option<Value>,
+    #[diesel(sql_type = Varchar)]
+    pub post_type: String,
+    #[diesel(sql_type = Nullable<Varchar>)]
+    pub parent_post_id: Option<String>,
+    #[diesel(sql_type = Int8)]
+    pub created_at: i64,
+    #[diesel(sql_type = Nullable<Int8>)]
+    pub updated_at: Option<i64>,
+    #[diesel(sql_type = Nullable<Int8>)]
+    pub deleted_at: Option<i64>,
+    #[diesel(sql_type = Int8)]
+    pub reaction_count: i64,
+    #[diesel(sql_type = Int8)]
+    pub comment_count: i64,
+    #[diesel(sql_type = Int8)]
+    pub repost_count: i64,
+    #[diesel(sql_type = Int8)]
+    pub tips_received: i64,
+    #[diesel(sql_type = Bool)]
+    pub removed_from_platform: bool,
+    #[diesel(sql_type = Nullable<Varchar>)]
+    pub removed_by: Option<String>,
+    #[diesel(sql_type = Varchar)]
+    pub transaction_id: String,
+    pub time: DateTime<Utc>,
+    pub my_ip_id: Option<String>,
+    pub revenue_recipient: Option<String>,
+}
+
+/// New post model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::posts)]
+pub struct NewPost {
+    pub id: String,
+    pub post_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub content: String,
+    pub media_urls: Option<Value>,
+    pub mentions: Option<Value>,
+    pub metadata_json: Option<Value>,
+    pub post_type: String,
+    pub parent_post_id: Option<String>,
+    pub created_at: i64,
+    pub updated_at: Option<i64>,
+    pub deleted_at: Option<i64>,
+    pub reaction_count: i64,
+    pub comment_count: i64,
+    pub repost_count: i64,
+    pub tips_received: i64,
+    pub removed_from_platform: bool,
+    pub removed_by: Option<String>,
+    pub transaction_id: String,
+    pub my_ip_id: Option<String>,
+    pub revenue_recipient: Option<String>,
+}
+
+/// Comment model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::comments)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Comment {
+    #[diesel(sql_type = Varchar)]
+    pub id: String,
+    #[diesel(sql_type = Varchar)]
+    pub comment_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub post_id: String,
+    #[diesel(sql_type = Nullable<Varchar>)]
+    pub parent_comment_id: Option<String>,
+    #[diesel(sql_type = Varchar)]
+    pub owner: String,
+    #[diesel(sql_type = Varchar)]
+    pub profile_id: String,
+    #[diesel(sql_type = Text)]
+    pub content: String,
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub media_urls: Option<Value>,
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub mentions: Option<Value>,
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub metadata_json: Option<Value>,
+    #[diesel(sql_type = Int8)]
+    pub created_at: i64,
+    #[diesel(sql_type = Nullable<Int8>)]
+    pub updated_at: Option<i64>,
+    #[diesel(sql_type = Nullable<Int8>)]
+    pub deleted_at: Option<i64>,
+    #[diesel(sql_type = Int8)]
+    pub reaction_count: i64,
+    #[diesel(sql_type = Int8)]
+    pub comment_count: i64,
+    #[diesel(sql_type = Int8)]
+    pub repost_count: i64,
+    #[diesel(sql_type = Int8)]
+    pub tips_received: i64,
+    #[diesel(sql_type = Bool)]
+    pub removed_from_platform: bool,
+    #[diesel(sql_type = Nullable<Varchar>)]
+    pub removed_by: Option<String>,
+    #[diesel(sql_type = Varchar)]
+    pub transaction_id: String,
+    pub time: DateTime<Utc>,
+}
+
+/// New comment model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::comments)]
+pub struct NewComment {
+    pub id: String,
+    pub comment_id: String,
+    pub post_id: String,
+    pub parent_comment_id: Option<String>,
+    pub owner: String,
+    pub profile_id: String,
+    pub content: String,
+    pub media_urls: Option<Value>,
+    pub mentions: Option<Value>,
+    pub metadata_json: Option<Value>,
+    pub created_at: i64,
+    pub updated_at: Option<i64>,
+    pub deleted_at: Option<i64>,
+    pub reaction_count: i64,
+    pub comment_count: i64,
+    pub repost_count: i64,
+    pub tips_received: i64,
+    pub removed_from_platform: bool,
+    pub removed_by: Option<String>,
+    pub transaction_id: String,
+}
+
+/// Reaction model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::reactions)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Reaction {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Varchar)]
+    pub object_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub user_address: String,
+    #[diesel(sql_type = Varchar)]
+    pub reaction_text: String,
+    #[diesel(sql_type = Bool)]
+    pub is_post: bool,
+    #[diesel(sql_type = Int8)]
+    pub created_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Varchar)]
+    pub transaction_id: String,
+}
+
+/// New reaction model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::reactions)]
+pub struct NewReaction {
+    pub object_id: String,
+    pub user_address: String,
+    pub reaction_text: String,
+    pub is_post: bool,
+    pub created_at: i64,
+    pub transaction_id: String,
+}
+
+/// Reaction count model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::reaction_counts)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ReactionCount {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Varchar)]
+    pub object_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub reaction_text: String,
+    #[diesel(sql_type = Int8)]
+    pub count: i64,
+}
+
+/// New reaction count model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::reaction_counts)]
+pub struct NewReactionCount {
+    pub object_id: String,
+    pub reaction_text: String,
+    pub count: i64,
+}
+
+/// Repost model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::reposts)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Repost {
+    #[diesel(sql_type = Varchar)]
+    pub id: String,
+    #[diesel(sql_type = Varchar)]
+    pub repost_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub original_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub original_post_id: String,
+    #[diesel(sql_type = Bool)]
+    pub is_original_post: bool,
+    #[diesel(sql_type = Varchar)]
+    pub owner: String,
+    #[diesel(sql_type = Varchar)]
+    pub profile_id: String,
+    #[diesel(sql_type = Int8)]
+    pub created_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Varchar)]
+    pub transaction_id: String,
+}
+
+/// New repost model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::reposts)]
+pub struct NewRepost {
+    pub id: String,
+    pub repost_id: String,
+    pub original_id: String,
+    pub original_post_id: String,
+    pub is_original_post: bool,
+    pub owner: String,
+    pub profile_id: String,
+    pub created_at: i64,
+    pub transaction_id: String,
+}
+
+/// Tip model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::tips)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Tip {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Varchar)]
+    pub tipper: String,
+    #[diesel(sql_type = Varchar)]
+    pub recipient: String,
+    #[diesel(sql_type = Varchar)]
+    pub object_id: String,
+    #[diesel(sql_type = Int8)]
+    pub amount: i64,
+    #[diesel(sql_type = Bool)]
+    pub is_post: bool,
+    #[diesel(sql_type = Int8)]
+    pub created_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Varchar)]
+    pub transaction_id: String,
+}
+
+/// New tip model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::tips)]
+pub struct NewTip {
+    pub tipper: String,
+    pub recipient: String,
+    pub object_id: String,
+    pub amount: i64,
+    pub is_post: bool,
+    pub created_at: i64,
+    pub transaction_id: String,
+}
+
+/// Moderation event model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::posts_moderation_events)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ModerationEvent {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Varchar)]
+    pub object_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub platform_id: String,
+    #[diesel(sql_type = Bool)]
+    pub removed: bool,
+    #[diesel(sql_type = Varchar)]
+    pub moderated_by: String,
+    #[diesel(sql_type = Int8)]
+    pub moderated_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Varchar)]
+    pub transaction_id: String,
+}
+
+/// New moderation event model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::posts_moderation_events)]
+pub struct NewModerationEvent {
+    pub object_id: String,
+    pub platform_id: String,
+    pub removed: bool,
+    pub moderated_by: String,
+    pub moderated_at: i64,
+    pub transaction_id: String,
+}
+
+/// Report model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::posts_reports)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Report {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Varchar)]
+    pub object_id: String,
+    #[diesel(sql_type = Bool)]
+    pub is_comment: bool,
+    #[diesel(sql_type = Varchar)]
+    pub reporter: String,
+    #[diesel(sql_type = Int2)]
+    pub reason_code: i16,
+    #[diesel(sql_type = Text)]
+    pub description: String,
+    #[diesel(sql_type = Int8)]
+    pub reported_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Varchar)]
+    pub transaction_id: String,
+}
+
+/// New report model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::posts_reports)]
+pub struct NewReport {
+    pub object_id: String,
+    pub is_comment: bool,
+    pub reporter: String,
+    pub reason_code: i16,
+    pub description: String,
+    pub reported_at: i64,
+    pub transaction_id: String,
+}
+
+/// Deletion event model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::posts_deletion_events)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct DeletionEvent {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Varchar)]
+    pub object_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub owner: String,
+    #[diesel(sql_type = Varchar)]
+    pub profile_id: String,
+    #[diesel(sql_type = Bool)]
+    pub is_post: bool,
+    #[diesel(sql_type = Nullable<Varchar>)]
+    pub post_type: Option<String>,
+    #[diesel(sql_type = Nullable<Varchar>)]
+    pub post_id: Option<String>,
+    #[diesel(sql_type = Int8)]
+    pub deleted_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Varchar)]
+    pub transaction_id: String,
+}
+
+/// New deletion event model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::posts_deletion_events)]
+pub struct NewDeletionEvent {
+    pub object_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub is_post: bool,
+    pub post_type: Option<String>,
+    pub post_id: Option<String>,
+    pub deleted_at: i64,
+    pub transaction_id: String,
+}
+
+// Types for database results
+#[derive(Debug, QueryableByName)]
+pub struct PostWithEngagement {
+    #[diesel(embed)]
+    pub post: Post,
+    #[diesel(sql_type = Int8)]
+    pub engagement_score: i64,
+    #[diesel(sql_type = Float8)]
+    pub trending_score: f64,
+} 

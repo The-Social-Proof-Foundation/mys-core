@@ -40,7 +40,7 @@ title: Module `mys_system::staking_pool`
 -  [Function `split_staked_mys`](#mys_system_staking_pool_split_staked_mys)
 -  [Function `join_staked_mys`](#mys_system_staking_pool_join_staked_mys)
 -  [Function `is_equal_staking_metadata`](#mys_system_staking_pool_is_equal_staking_metadata)
--  [Function `pool_token_exchange_rate_at_epoch`](#mys_system_staking_pool_pool_token_exchange_rate_at_epoch)
+-  [Function `pool_social_proof_token_rate_at_epoch`](#mys_system_staking_pool_pool_social_proof_token_rate_at_epoch)
 -  [Function `pending_stake_amount`](#mys_system_staking_pool_pending_stake_amount)
 -  [Function `pending_stake_withdraw_amount`](#mys_system_staking_pool_pending_stake_withdraw_amount)
 -  [Function `exchange_rates`](#mys_system_staking_pool_exchange_rates)
@@ -710,7 +710,7 @@ A proportional amount of pool token withdraw is recorded and processed at epoch 
     <b>let</b> <a href="../mys_system/staking_pool.md#mys_system_staking_pool_FungibleStakedMys">FungibleStakedMys</a> { id, <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_id">pool_id</a>, value } = fungible_staked_mys;
     <b>assert</b>!(<a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_id">pool_id</a> == object::id(pool), <a href="../mys_system/staking_pool.md#mys_system_staking_pool_EWrongPool">EWrongPool</a>);
     object::delete(id);
-    <b>let</b> latest_exchange_rate = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_token_exchange_rate_at_epoch">pool_token_exchange_rate_at_epoch</a>(pool, tx_context::epoch(ctx));
+    <b>let</b> latest_exchange_rate = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_social_proof_token_rate_at_epoch">pool_social_proof_token_rate_at_epoch</a>(pool, tx_context::epoch(ctx));
     <b>let</b> fungible_staked_mys_data: &<b>mut</b> <a href="../mys_system/staking_pool.md#mys_system_staking_pool_FungibleStakedMysData">FungibleStakedMysData</a> = bag::borrow_mut(
         &<b>mut</b> pool.extra_fields,
         <a href="../mys_system/staking_pool.md#mys_system_staking_pool_FungibleStakedMysDataKey">FungibleStakedMysDataKey</a> {}
@@ -815,7 +815,7 @@ Convert the given staked MYS to an FungibleStakedMys object
         <a href="../mys_system/staking_pool.md#mys_system_staking_pool_ECannotMintFungibleStakedMysYet">ECannotMintFungibleStakedMysYet</a>
     );
     object::delete(id);
-    <b>let</b> exchange_rate_at_staking_epoch = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_token_exchange_rate_at_epoch">pool_token_exchange_rate_at_epoch</a>(
+    <b>let</b> exchange_rate_at_staking_epoch = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_social_proof_token_rate_at_epoch">pool_social_proof_token_rate_at_epoch</a>(
         pool,
         <a href="../mys_system/staking_pool.md#mys_system_staking_pool_stake_activation_epoch">stake_activation_epoch</a>
     );
@@ -878,7 +878,7 @@ Returns values are amount of pool tokens withdrawn and withdrawn principal porti
 ) : (u64, Balance&lt;MYS&gt;) {
     // Check that the stake information matches the pool.
     <b>assert</b>!(staked_mys.<a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_id">pool_id</a> == object::id(pool), <a href="../mys_system/staking_pool.md#mys_system_staking_pool_EWrongPool">EWrongPool</a>);
-    <b>let</b> exchange_rate_at_staking_epoch = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_token_exchange_rate_at_epoch">pool_token_exchange_rate_at_epoch</a>(pool, staked_mys.<a href="../mys_system/staking_pool.md#mys_system_staking_pool_stake_activation_epoch">stake_activation_epoch</a>);
+    <b>let</b> exchange_rate_at_staking_epoch = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_social_proof_token_rate_at_epoch">pool_social_proof_token_rate_at_epoch</a>(pool, staked_mys.<a href="../mys_system/staking_pool.md#mys_system_staking_pool_stake_activation_epoch">stake_activation_epoch</a>);
     <b>let</b> principal_withdraw = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_unwrap_staked_mys">unwrap_staked_mys</a>(staked_mys);
     <b>let</b> pool_token_withdraw_amount = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_get_token_amount">get_token_amount</a>(
 		&exchange_rate_at_staking_epoch,
@@ -1070,7 +1070,7 @@ portion because the principal portion was already taken out of the staker's self
     pool_token_withdraw_amount: u64,
     epoch: u64,
 ) : Balance&lt;MYS&gt; {
-    <b>let</b> exchange_rate = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_token_exchange_rate_at_epoch">pool_token_exchange_rate_at_epoch</a>(pool, epoch);
+    <b>let</b> exchange_rate = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_social_proof_token_rate_at_epoch">pool_social_proof_token_rate_at_epoch</a>(pool, epoch);
     <b>let</b> total_mys_withdraw_amount = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_get_mys_amount">get_mys_amount</a>(&exchange_rate, pool_token_withdraw_amount);
     <b>let</b> <b>mut</b> reward_withdraw_amount =
         <b>if</b> (total_mys_withdraw_amount &gt;= principal_withdraw_amount)
@@ -1520,13 +1520,13 @@ Returns true if all the staking parameters of the staked mys except the principa
 
 </details>
 
-<a name="mys_system_staking_pool_pool_token_exchange_rate_at_epoch"></a>
+<a name="mys_system_staking_pool_pool_social_proof_token_rate_at_epoch"></a>
 
-## Function `pool_token_exchange_rate_at_epoch`
+## Function `pool_social_proof_token_rate_at_epoch`
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_token_exchange_rate_at_epoch">pool_token_exchange_rate_at_epoch</a>(pool: &<a href="../mys_system/staking_pool.md#mys_system_staking_pool_StakingPool">mys_system::staking_pool::StakingPool</a>, epoch: u64): <a href="../mys_system/staking_pool.md#mys_system_staking_pool_PoolTokenExchangeRate">mys_system::staking_pool::PoolTokenExchangeRate</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_social_proof_token_rate_at_epoch">pool_social_proof_token_rate_at_epoch</a>(pool: &<a href="../mys_system/staking_pool.md#mys_system_staking_pool_StakingPool">mys_system::staking_pool::StakingPool</a>, epoch: u64): <a href="../mys_system/staking_pool.md#mys_system_staking_pool_PoolTokenExchangeRate">mys_system::staking_pool::PoolTokenExchangeRate</a>
 </code></pre>
 
 
@@ -1535,7 +1535,7 @@ Returns true if all the staking parameters of the staked mys except the principa
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_token_exchange_rate_at_epoch">pool_token_exchange_rate_at_epoch</a>(pool: &<a href="../mys_system/staking_pool.md#mys_system_staking_pool_StakingPool">StakingPool</a>, epoch: u64): <a href="../mys_system/staking_pool.md#mys_system_staking_pool_PoolTokenExchangeRate">PoolTokenExchangeRate</a> {
+<pre><code><b>public</b> <b>fun</b> <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_social_proof_token_rate_at_epoch">pool_social_proof_token_rate_at_epoch</a>(pool: &<a href="../mys_system/staking_pool.md#mys_system_staking_pool_StakingPool">StakingPool</a>, epoch: u64): <a href="../mys_system/staking_pool.md#mys_system_staking_pool_PoolTokenExchangeRate">PoolTokenExchangeRate</a> {
     // If the pool is preactive then the exchange rate is always 1:1.
     <b>if</b> (<a href="../mys_system/staking_pool.md#mys_system_staking_pool_is_preactive_at_epoch">is_preactive_at_epoch</a>(pool, epoch)) {
         <b>return</b> <a href="../mys_system/staking_pool.md#mys_system_staking_pool_initial_exchange_rate">initial_exchange_rate</a>()
@@ -1811,7 +1811,7 @@ Returns true if the provided staking pool is preactive at the provided epoch.
 
 
 <pre><code><b>fun</b> <a href="../mys_system/staking_pool.md#mys_system_staking_pool_check_balance_invariants">check_balance_invariants</a>(pool: &<a href="../mys_system/staking_pool.md#mys_system_staking_pool_StakingPool">StakingPool</a>, epoch: u64) {
-    <b>let</b> exchange_rate = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_token_exchange_rate_at_epoch">pool_token_exchange_rate_at_epoch</a>(pool, epoch);
+    <b>let</b> exchange_rate = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_pool_social_proof_token_rate_at_epoch">pool_social_proof_token_rate_at_epoch</a>(pool, epoch);
     // check that the pool token balance and mys balance ratio matches the exchange rate stored.
     <b>let</b> expected = <a href="../mys_system/staking_pool.md#mys_system_staking_pool_get_token_amount">get_token_amount</a>(&exchange_rate, pool.<a href="../mys_system/staking_pool.md#mys_system_staking_pool_mys_balance">mys_balance</a>);
     <b>let</b> actual = pool.pool_token_balance;

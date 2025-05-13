@@ -9,8 +9,9 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn, trace};
 
 use crate::db::{Database, DbConnection};
-use crate::events::{FollowEvent, UnfollowEvent};
+use crate::events::{FollowEvent, UnfollowEvent, parse_event, event_utils::parse_json_event};
 use crate::schema;
+use mys_types::event::Event as MysEvent;
 
 use super::listener::BlockchainEvent;
 
@@ -341,7 +342,7 @@ impl SocialGraphEventHandler {
             info!("Processing social graph event: {}", event.event_type);
             
             if event.event_type.ends_with("::FollowEvent") {
-                match crate::events::parse_event::<FollowEvent>(&event.data) {
+                match parse_json_event::<FollowEvent>(&event.data) {
                     Ok(follow_event) => {
                         info!("Processing follow: {} -> {}", &follow_event.follower, &follow_event.following);
                         if let Err(e) = self.process_follow_event(&follow_event, Some(&event)).await {
@@ -353,7 +354,7 @@ impl SocialGraphEventHandler {
                     }
                 }
             } else if event.event_type.ends_with("::UnfollowEvent") {
-                match crate::events::parse_event::<UnfollowEvent>(&event.data) {
+                match parse_json_event::<UnfollowEvent>(&event.data) {
                     Ok(unfollow_event) => {
                         info!("Processing unfollow: {} -> {}", &unfollow_event.follower, &unfollow_event.unfollowed);
                         if let Err(e) = self.process_unfollow_event(&unfollow_event, Some(&event)).await {
@@ -385,4 +386,55 @@ impl SocialGraphEventHandler {
         warn!("Social graph event handler channel closed");
         Ok(())
     }
+}
+
+/// Handle specific event types from MysEvent
+pub async fn handle_event(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) -> Result<()> {
+    let event_type = &event.type_.to_string(); // Convert StructTag to String
+    
+    if event_type.ends_with("::FollowEvent") {
+        let parsed_event = parse_event::<FollowEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse FollowEvent: {}", e))?;
+        
+        // Create a temporary BlockchainEvent to use with existing handlers
+        let blockchain_event = BlockchainEvent {
+            event_type: event_type.clone(), // Using the string version
+            event_id: transaction_id.to_string(),
+            data: serde_json::to_value(event).unwrap_or_default(),
+            timestamp_ms: 0, // Not used in this context
+            tx_digest: transaction_id.to_string(),
+        };
+        
+        // Create a handler instance just for this event
+        let handler = SocialGraphEventHandler::new(
+            db.clone(), 
+            mpsc::channel(1).1, // Dummy channel that won't be used
+            "direct_handler".to_string()
+        );
+        
+        handler.process_follow_event(&parsed_event, Some(&blockchain_event)).await?;
+    } else if event_type.ends_with("::UnfollowEvent") {
+        let parsed_event = parse_event::<UnfollowEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse UnfollowEvent: {}", e))?;
+        
+        // Create a temporary BlockchainEvent to use with existing handlers
+        let blockchain_event = BlockchainEvent {
+            event_type: event_type.clone(), // Using the string version
+            event_id: transaction_id.to_string(),
+            data: serde_json::to_value(event).unwrap_or_default(),
+            timestamp_ms: 0, // Not used in this context
+            tx_digest: transaction_id.to_string(),
+        };
+        
+        // Create a handler instance just for this event
+        let handler = SocialGraphEventHandler::new(
+            db.clone(), 
+            mpsc::channel(1).1, // Dummy channel that won't be used
+            "direct_handler".to_string()
+        );
+        
+        handler.process_unfollow_event(&parsed_event, Some(&blockchain_event)).await?;
+    }
+    
+    Ok(())
 }

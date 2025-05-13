@@ -1,82 +1,76 @@
 // Copyright (c) MySocial Team
 // SPDX-License-Identifier: Apache-2.0
 
-pub mod routes;
 pub mod handlers;
+pub mod routes;
+pub use routes::build_router;
 
-use axum::{
-    routing::{get},
-    Router,
-};
-use std::net::SocketAddr;
-use tower_http::trace::TraceLayer;
-
+use anyhow::Result;
+use axum::http::Method;
+use tower_http::cors::{Any, CorsLayer};
+use axum_server::bind;
 use std::sync::Arc;
-use crate::db::Database;
-use crate::config::Config;
+use std::net::SocketAddr;
+use tracing::info;
 
-/// Setup the API server
-pub async fn setup_api_server(config: &Config, db: Arc<Database>) -> anyhow::Result<()> {
-    let app = create_router(db);
-    
-    // Create socket address
-    let addr = SocketAddr::new(
-        config.server.host.parse()?,
-        config.server.port,
-    );
-    
-    // Start server
-    tracing::info!("Starting API server on {}", addr);
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
-    
-    Ok(())
+use crate::config::Config;
+use crate::db::Database;
+
+/// API server for the indexer
+pub struct ApiServer {
+    /// The database connection
+    db: Arc<Database>,
+    /// The address to bind to
+    addr: SocketAddr,
 }
 
-/// Create the API router
-fn create_router(db: Arc<Database>) -> Router {
-    // Get a clone of the unwrapped pool for API handlers
-    let pool = db.pool.as_ref().clone();
+impl ApiServer {
+    /// Create a new API server
+    pub fn new(db: Arc<Database>, addr: SocketAddr) -> Self {
+        Self { db, addr }
+    }
     
-    Router::new()
-        // Health routes
-        .route("/health", get(handlers::health::health_check))
+    /// Start the API server
+    pub async fn start(&self) -> Result<()> {
+        // Build the router using our routes module
+        let mut app = build_router(self.db.clone());
         
-        // Profile routes
-        .route("/recent-profiles", get(handlers::profiles::latest_profiles))
-        .route("/profile/:address", get(handlers::profiles::get_profile_by_address))
-        .route("/profile/username/:username", get(handlers::profiles::get_profile_by_username))
+        // Add CORS middleware
+        let cors = CorsLayer::new()
+            .allow_methods([Method::GET, Method::POST])
+            .allow_origin(Any)
+            .allow_headers(Any);
+            
+        // Add CORS to the router
+        app = app.layer(cors);
         
-        // Social graph routes
-        .route("/profile/following/:profile_id", get(handlers::social_graph::get_following))
-        .route("/profile/followers/:profile_id", get(handlers::social_graph::get_followers))
-        .route("/profile/is-following/:follower_profile_id/:following_profile_id", get(handlers::social_graph::check_following))
-        .route("/profile/stats/:profile_id", get(handlers::social_graph::get_follow_stats))
+        info!("Starting API server on {}", self.addr);
         
-        // Profile blocking routes
-        .route("/profile/blocked/:profile_id", get(handlers::blocking::get_blocked_profiles))
-        .route("/profile/is-blocked/:blocker_profile_id/:blocked_profile_id", get(handlers::blocking::check_profile_blocked))
+        // Start the server
+        bind(self.addr)
+            .serve(app.into_make_service())
+            .await?;
         
-        // Profile events routes
-        .route("/profile-events/:profile_id", get(handlers::profile_events::get_profile_events))
-        .route("/profile-events/:profile_id/platforms", get(handlers::profile_events::get_platform_memberships))
-        .route("/profile-events/:profile_id/blocking", get(handlers::profile_events::get_blocking_history))
-        
-        // Platform routes
-        .route("/platforms", get(handlers::platforms::get_platforms))
-        .route("/platforms/approved", get(handlers::platforms::get_approved_platforms))
-        .route("/platform/:platform_id", get(handlers::platforms::get_platform_by_id))
-        .route("/platform/:platform_id/approval", get(handlers::platforms::get_platform_approval_status))
-        .route("/platform/:platform_id/moderators", get(handlers::platforms::get_platform_moderators))
-        .route("/platform/:platform_id/blocked", get(handlers::platforms::get_platform_blocked_profiles))
-        
-        // Platform blocking routes
-        .route("/platforms/blocked-by/:profile_id", get(handlers::blocking::get_blocked_platforms))
-        .route("/platform/is-blocked/:profile_id/:platform_id", get(handlers::blocking::check_platform_blocked))
+        Ok(())
+    }
+}
 
-        // Add shared state
-        .with_state(pool)
-        
-        // Add tracing
-        .layer(TraceLayer::new_for_http())
+/// Set up the API server
+pub async fn start_api_server(
+    db: Arc<Database>, 
+    config: &Config,
+) -> Result<()> {
+    // Get the API server address from the config
+    let api_addr: SocketAddr = format!("{}:{}", 
+        config.server.host, 
+        config.server.port
+    ).parse()?;
+    
+    info!("Configuring API server at {}", api_addr);
+    
+    // Create the server
+    let server = ApiServer::new(db, api_addr);
+    
+    // Start the server
+    server.start().await
 }

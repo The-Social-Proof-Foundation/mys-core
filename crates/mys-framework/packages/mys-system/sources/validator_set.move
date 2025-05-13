@@ -69,7 +69,7 @@ module mys_system::validator_set {
         commission_rate: u64,
         pool_staking_reward: u64,
         storage_fund_staking_reward: u64,
-        pool_token_exchange_rate: PoolTokenExchangeRate,
+        pool_social_proof_token_rate: PoolTokenExchangeRate,
         tallying_rule_reporters: vector<address>,
         tallying_rule_global_score: u64,
     }
@@ -84,7 +84,7 @@ module mys_system::validator_set {
         commission_rate: u64,
         pool_staking_reward: u64,
         storage_fund_staking_reward: u64,
-        pool_token_exchange_rate: PoolTokenExchangeRate,
+        pool_social_proof_token_rate: PoolTokenExchangeRate,
         tallying_rule_reporters: vector<address>,
         tallying_rule_global_score: u64,
     }
@@ -1256,7 +1256,7 @@ module mys_system::validator_set {
                     commission_rate: v.commission_rate(),
                     pool_staking_reward: pool_staking_reward_amounts[i],
                     storage_fund_staking_reward: storage_fund_staking_reward_amounts[i],
-                    pool_token_exchange_rate: v.pool_token_exchange_rate_at_epoch(new_epoch),
+                    pool_social_proof_token_rate: v.pool_social_proof_token_rate_at_epoch(new_epoch),
                     tallying_rule_reporters,
                     tallying_rule_global_score,
                 }

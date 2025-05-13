@@ -29,6 +29,7 @@ Move.lock
 
 # Genesis files
 genesis/files/*
+genesis/*
 
 # Thumbnails
 ._*

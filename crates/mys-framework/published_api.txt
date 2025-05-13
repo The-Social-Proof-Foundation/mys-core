@@ -121,7 +121,7 @@ join_staked_mys
 is_equal_staking_metadata
 	public fun
 	0x3::staking_pool
-pool_token_exchange_rate_at_epoch
+pool_social_proof_token_rate_at_epoch
 	public fun
 	0x3::staking_pool
 pending_stake_amount
@@ -322,7 +322,7 @@ gas_price
 commission_rate
 	public fun
 	0x3::validator
-pool_token_exchange_rate_at_epoch
+pool_social_proof_token_rate_at_epoch
 	public fun
 	0x3::validator
 staking_pool_id

@@ -51,7 +51,7 @@ show_menu() {
         5) platform_menu ;;
         6) block_list_menu ;;
         7) governance_menu ;;
-        8) token_exchange_menu ;;
+        8) social_proof_token_menu ;;
         9) view_object ;;
         10) upgrade_menu ;;
         0) exit 0 ;;
@@ -959,7 +959,7 @@ governance_menu() {
 }
 
 # Token Exchange Menu
-token_exchange_menu() {
+social_proof_token_menu() {
     print_header "Token Exchange Menu"
     echo "1. Create Token Auction"
     echo "2. Contribute to Auction"
@@ -977,7 +977,7 @@ token_exchange_menu() {
         4) buy_tokens ;;
         5) sell_tokens ;;
         6) show_menu ;;
-        *) echo "Invalid option" && token_exchange_menu ;;
+        *) echo "Invalid option" && social_proof_token_menu ;;
     esac
 }
 
@@ -1090,12 +1090,12 @@ create_token_auction() {
     read -p "Enter auction duration (seconds): " duration
     
     print_info "Creating token auction..."
-    myso client call --package $PACKAGE_ID --module token_exchange --function create_auction --args "$token_type" "$token_id" "$duration" --gas-budget $GAS_BUDGET
+    myso client call --package $PACKAGE_ID --module social_proof_token --function create_auction --args "$token_type" "$token_id" "$duration" --gas-budget $GAS_BUDGET
     
     print_success "Token auction created!"
     
     read -p "Press Enter to continue..."
-    token_exchange_menu
+    social_proof_token_menu
 }
 
 # Contribute to Auction
@@ -1107,12 +1107,12 @@ contribute_to_auction() {
     read -p "Enter contribution amount: " amount
     
     print_info "Contributing to auction..."
-    myso client call --package $PACKAGE_ID --module token_exchange --function contribute_to_auction --args "$pool_id" "$coin_id" "$amount" --gas-budget $GAS_BUDGET
+    myso client call --package $PACKAGE_ID --module social_proof_token --function contribute_to_auction --args "$pool_id" "$coin_id" "$amount" --gas-budget $GAS_BUDGET
     
     print_success "Contribution made to auction!"
     
     read -p "Press Enter to continue..."
-    token_exchange_menu
+    social_proof_token_menu
 }
 
 # Finalize Auction
@@ -1122,12 +1122,12 @@ finalize_auction() {
     read -p "Enter auction pool ID: " pool_id
     
     print_info "Finalizing auction..."
-    myso client call --package $PACKAGE_ID --module token_exchange --function finalize_auction --args "$pool_id" --gas-budget $GAS_BUDGET
+    myso client call --package $PACKAGE_ID --module social_proof_token --function finalize_auction --args "$pool_id" --gas-budget $GAS_BUDGET
     
     print_success "Auction finalized!"
     
     read -p "Press Enter to continue..."
-    token_exchange_menu
+    social_proof_token_menu
 }
 
 # Buy Tokens
@@ -1139,12 +1139,12 @@ buy_tokens() {
     read -p "Enter number of tokens to buy: " amount
     
     print_info "Buying tokens..."
-    myso client call --package $PACKAGE_ID --module token_exchange --function buy_tokens --args "$pool_id" "$coin_id" "$amount" --gas-budget $GAS_BUDGET
+    myso client call --package $PACKAGE_ID --module social_proof_token --function buy_tokens --args "$pool_id" "$coin_id" "$amount" --gas-budget $GAS_BUDGET
     
     print_success "Tokens purchased!"
     
     read -p "Press Enter to continue..."
-    token_exchange_menu
+    social_proof_token_menu
 }
 
 # Sell Tokens
@@ -1155,12 +1155,12 @@ sell_tokens() {
     read -p "Enter number of tokens to sell: " amount
     
     print_info "Selling tokens..."
-    myso client call --package $PACKAGE_ID --module token_exchange --function sell_tokens --args "$pool_id" "$amount" --gas-budget $GAS_BUDGET
+    myso client call --package $PACKAGE_ID --module social_proof_token --function sell_tokens --args "$pool_id" "$amount" --gas-budget $GAS_BUDGET
     
     print_success "Tokens sold!"
     
     read -p "Press Enter to continue..."
-    token_exchange_menu
+    social_proof_token_menu
 }
 
 # Upgrade Management Menu

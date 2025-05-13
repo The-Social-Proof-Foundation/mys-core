@@ -15,16 +15,37 @@ use once_cell::sync::OnceCell;
 static MYSOCIAL_PACKAGE_ADDRESS: OnceCell<String> = OnceCell::new();
 
 /// Default MySocial package address if not set via environment
-pub const DEFAULT_MYSOCIAL_PACKAGE_ADDRESS: &str = "0x85dbbae4295fabb5cd64e81e458eb0e9cf52bda6d6d6281b5ded900db9e0feb1";
+pub const DEFAULT_MYSOCIAL_PACKAGE_ADDRESS: &str = "0x8b3e7cd6412d3514bd0b2bd8571ecfef7827e12ca581e22f49e23107d7baeb92";
 
 /// Module names within the MySocial package
 pub const PROFILE_MODULE_NAME: &str = "profile";
 pub const PLATFORM_MODULE_NAME: &str = "platform";
 pub const SOCIAL_GRAPH_MODULE_NAME: &str = "social_graph";
 pub const BLOCK_LIST_MODULE_NAME: &str = "block_list";
+pub const POST_MODULE_NAME: &str = "post";
+pub const GOVERNANCE_MODULE_NAME: &str = "governance";
 
 /// Common struct names
 pub const PROFILE_STRUCT_NAME: &str = "Profile";
+
+/// Governance registry types
+pub const GOVERNANCE_REGISTRY_ECOSYSTEM: u8 = 0;
+pub const GOVERNANCE_REGISTRY_REPUTATION: u8 = 1;
+pub const GOVERNANCE_REGISTRY_COMMUNITY_NOTES: u8 = 2;
+
+/// Governance proposal status values
+pub const GOVERNANCE_STATUS_SUBMITTED: u8 = 0;
+pub const GOVERNANCE_STATUS_DELEGATE_REVIEW: u8 = 1;
+pub const GOVERNANCE_STATUS_COMMUNITY_VOTING: u8 = 2;
+pub const GOVERNANCE_STATUS_APPROVED: u8 = 3;
+pub const GOVERNANCE_STATUS_REJECTED: u8 = 4;
+pub const GOVERNANCE_STATUS_IMPLEMENTED: u8 = 5;
+pub const GOVERNANCE_STATUS_OWNER_RESCINDED: u8 = 6;
+
+/// Nominee status values
+pub const NOMINEE_STATUS_PENDING: u8 = 0;
+pub const NOMINEE_STATUS_ELECTED: u8 = 1;
+pub const NOMINEE_STATUS_REJECTED: u8 = 2;
 
 /// Set the MySocial package address
 pub fn set_mysocial_package_address(address: String) {
@@ -54,5 +75,10 @@ pub fn get_profile_package_address() -> &'static str {
 
 /// Get the platform package address (same as the main package)
 pub fn get_platform_package_address() -> &'static str {
+    get_mysocial_package_address()
+}
+
+/// Get the governance package address (same as the main package)
+pub fn get_governance_package_address() -> &'static str {
     get_mysocial_package_address()
 }

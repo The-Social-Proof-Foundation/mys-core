@@ -178,6 +178,520 @@ table! {
     }
 }
 
+// Define posts table
+table! {
+    posts (id, time) {
+        id -> Varchar,
+        post_id -> Varchar,
+        owner -> Varchar,
+        profile_id -> Varchar,
+        content -> Text,
+        media_urls -> Nullable<Jsonb>,
+        mentions -> Nullable<Jsonb>,
+        metadata_json -> Nullable<Jsonb>,
+        post_type -> Varchar,
+        parent_post_id -> Nullable<Varchar>,
+        created_at -> Int8,
+        updated_at -> Nullable<Int8>,
+        deleted_at -> Nullable<Int8>,
+        reaction_count -> Int8,
+        comment_count -> Int8,
+        repost_count -> Int8,
+        tips_received -> Int8,
+        removed_from_platform -> Bool,
+        removed_by -> Nullable<Varchar>,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+        my_ip_id -> Nullable<Varchar>,
+        revenue_recipient -> Nullable<Varchar>,
+    }
+}
+
+// Define comments table
+table! {
+    comments (id, time) {
+        id -> Varchar,
+        comment_id -> Varchar,
+        post_id -> Varchar,
+        parent_comment_id -> Nullable<Varchar>,
+        owner -> Varchar,
+        profile_id -> Varchar,
+        content -> Text,
+        media_urls -> Nullable<Jsonb>,
+        mentions -> Nullable<Jsonb>,
+        metadata_json -> Nullable<Jsonb>,
+        created_at -> Int8,
+        updated_at -> Nullable<Int8>,
+        deleted_at -> Nullable<Int8>,
+        reaction_count -> Int8,
+        comment_count -> Int8,
+        repost_count -> Int8,
+        tips_received -> Int8,
+        removed_from_platform -> Bool,
+        removed_by -> Nullable<Varchar>,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define reactions table
+table! {
+    reactions (id, time) {
+        id -> Int4,
+        object_id -> Varchar,
+        user_address -> Varchar,
+        reaction_text -> Varchar,
+        is_post -> Bool,
+        created_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define reaction_counts table
+table! {
+    reaction_counts (id) {
+        id -> Int4,
+        object_id -> Varchar,
+        reaction_text -> Varchar,
+        count -> Int8,
+    }
+}
+
+// Define reposts table
+table! {
+    reposts (id, time) {
+        id -> Varchar,
+        repost_id -> Varchar,
+        original_id -> Varchar,
+        original_post_id -> Varchar,
+        is_original_post -> Bool,
+        owner -> Varchar,
+        profile_id -> Varchar,
+        created_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define tips table
+table! {
+    tips (id, time) {
+        id -> Int4,
+        tipper -> Varchar,
+        recipient -> Varchar,
+        object_id -> Varchar,
+        amount -> Int8,
+        is_post -> Bool,
+        created_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define posts_reports table
+table! {
+    posts_reports (id, time) {
+        id -> Int4,
+        object_id -> Varchar,
+        is_comment -> Bool,
+        reporter -> Varchar,
+        reason_code -> Int2,
+        description -> Text,
+        reported_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define posts_transfers table
+table! {
+    posts_transfers (id, time) {
+        id -> Int4,
+        object_id -> Varchar,
+        previous_owner -> Varchar,
+        new_owner -> Varchar,
+        is_post -> Bool,
+        transferred_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define posts_moderation_events table
+table! {
+    posts_moderation_events (id, time) {
+        id -> Int4,
+        object_id -> Varchar,
+        platform_id -> Varchar,
+        removed -> Bool,
+        moderated_by -> Varchar,
+        moderated_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define posts_deletion_events table
+table! {
+    posts_deletion_events (id, time) {
+        id -> Int4,
+        object_id -> Varchar,
+        owner -> Varchar,
+        profile_id -> Varchar,
+        is_post -> Bool,
+        post_type -> Nullable<Varchar>,
+        post_id -> Nullable<Varchar>,
+        deleted_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// ===========================================================================
+// MY IP TABLES
+// ===========================================================================
+
+// Define my_ip table
+table! {
+    my_ip (id) {
+        id -> Int4,
+        license_id -> Varchar,
+        name -> Varchar,
+        description -> Nullable<Text>,
+        creator -> Varchar,
+        creation_time -> Int8,
+        license_type -> Int2,
+        permission_flags -> Int8,
+        license_state -> Int2,
+        proof_of_creativity_id -> Nullable<Varchar>,
+        custom_license_uri -> Nullable<Text>,
+        revenue_recipient -> Nullable<Varchar>,
+        transferable -> Bool,
+        expires_at -> Nullable<Int8>,
+        version -> Int4,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define my_ip_permissions reference table
+table! {
+    my_ip_permissions (id) {
+        id -> Int4,
+        permission_name -> Varchar,
+        bit_position -> Int4,
+        description -> Text,
+    }
+}
+
+// Define my_ip_events table
+table! {
+    my_ip_events (id) {
+        id -> Int4,
+        event_type -> Varchar,
+        license_id -> Varchar,
+        event_data -> Jsonb,
+        created_by -> Varchar,
+        created_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define my_ip_grants table
+table! {
+    my_ip_grants (id) {
+        id -> Int4,
+        license_id -> Varchar,
+        grantor -> Varchar,
+        grantee -> Varchar,
+        grant_type -> Varchar,
+        payment_amount -> Int8,
+        payment_token -> Nullable<Varchar>,
+        grant_time -> Int8,
+        expiration_time -> Nullable<Int8>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define my_ip_revenue table
+table! {
+    my_ip_revenue (id) {
+        id -> Int4,
+        license_id -> Varchar,
+        post_id -> Nullable<Varchar>,
+        from_address -> Varchar,
+        to_address -> Varchar,
+        amount -> Int8,
+        revenue_type -> Varchar,
+        revenue_time -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// ===========================================================================
+// SOCIAL PROOF TOKEN TABLES
+// ===========================================================================
+
+// Define social_proof_token_pools table
+table! {
+    social_proof_token_pools (id, time) {
+        id -> Int4,
+        pool_id -> Varchar,
+        token_type -> Int2,
+        owner -> Varchar,
+        associated_id -> Varchar,
+        symbol -> Varchar,
+        name -> Varchar,
+        circulating_supply -> Int8,
+        base_price -> Int8,
+        quadratic_coefficient -> Int8,
+        created_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define spt_holdings table
+table! {
+    spt_holdings (id, time) {
+        id -> Int4,
+        pool_id -> Varchar,
+        holder_address -> Varchar,
+        amount -> Int8,
+        acquired_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define spt_transactions table
+table! {
+    spt_transactions (id, time) {
+        id -> Int4,
+        pool_id -> Varchar,
+        transaction_type -> Varchar,
+        sender -> Varchar,
+        amount -> Int8,
+        mys_amount -> Int8,
+        fee_amount -> Int8,
+        creator_fee -> Int8,
+        platform_fee -> Int8,
+        treasury_fee -> Int8,
+        price -> Int8,
+        created_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define spt_auction_pools table
+table! {
+    spt_auction_pools (id, time) {
+        id -> Int4,
+        auction_id -> Varchar,
+        associated_id -> Varchar,
+        token_type -> Int2,
+        owner -> Varchar,
+        status -> Int2,
+        start_time -> Int8,
+        duration -> Int8,
+        total_contribution -> Int8,
+        total_tokens -> Int8,
+        finalized_at -> Nullable<Int8>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define spt_auction_contributions table
+table! {
+    spt_auction_contributions (id, time) {
+        id -> Int4,
+        auction_id -> Varchar,
+        contributor_address -> Varchar,
+        amount -> Int8,
+        contributed_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define spt_price_history table
+table! {
+    spt_price_history (id, time) {
+        id -> Int4,
+        pool_id -> Varchar,
+        price -> Int8,
+        circulating_supply -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// ===========================================================================
+// GOVERNANCE TABLES
+// ===========================================================================
+
+// Define governance_registries table
+table! {
+    governance_registries (id) {
+        id -> Int4,
+        registry_type -> Int2,
+        delegate_count -> Int8,
+        delegate_term_epochs -> Int8,
+        proposal_submission_cost -> Int8,
+        min_on_chain_age_days -> Int8,
+        max_votes_per_user -> Int8,
+        quadratic_base_cost -> Int8,
+        voting_period_epochs -> Int8,
+        quorum_votes -> Int8,
+        updated_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define delegates table
+table! {
+    delegates (id, time) {
+        id -> Int4,
+        address -> Varchar,
+        profile_id -> Varchar,
+        registry_type -> Int2,
+        upvotes -> Int8,
+        downvotes -> Int8,
+        proposals_reviewed -> Int8,
+        proposals_submitted -> Int8,
+        sided_winning_proposals -> Int8,
+        sided_losing_proposals -> Int8,
+        term_start -> Int8,
+        term_end -> Int8,
+        is_active -> Bool,
+        created_at -> Int8,
+        updated_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define nominated_delegates table
+table! {
+    nominated_delegates (id, time) {
+        id -> Int4,
+        address -> Varchar,
+        profile_id -> Varchar,
+        registry_type -> Int2,
+        upvotes -> Int8,
+        downvotes -> Int8,
+        scheduled_term_start_epoch -> Int8,
+        nomination_time -> Int8,
+        status -> Int2,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define proposals table
+table! {
+    proposals (id, time) {
+        id -> Varchar,
+        title -> Varchar,
+        description -> Text,
+        proposal_type -> Int2,
+        reference_id -> Nullable<Varchar>,
+        metadata_json -> Nullable<Jsonb>,
+        submitter -> Varchar,
+        submission_time -> Int8,
+        delegate_approval_count -> Int8,
+        delegate_rejection_count -> Int8,
+        community_votes_for -> Int8,
+        community_votes_against -> Int8,
+        status -> Int2,
+        voting_start_time -> Nullable<Int8>,
+        voting_end_time -> Nullable<Int8>,
+        reward_pool -> Int8,
+        implemented_description -> Nullable<Text>,
+        implementation_time -> Nullable<Int8>,
+        rescind_time -> Nullable<Int8>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define delegate_ratings table
+table! {
+    delegate_ratings (id, time) {
+        id -> Int4,
+        target_address -> Varchar,
+        voter_address -> Varchar,
+        registry_type -> Int2,
+        is_active_delegate -> Bool,
+        upvote -> Bool,
+        rated_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define delegate_votes table
+table! {
+    delegate_votes (id, time) {
+        id -> Int4,
+        proposal_id -> Varchar,
+        delegate_address -> Varchar,
+        approve -> Bool,
+        vote_time -> Int8,
+        reason -> Nullable<Text>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define community_votes table
+table! {
+    community_votes (id, time) {
+        id -> Int4,
+        proposal_id -> Varchar,
+        voter_address -> Varchar,
+        vote_weight -> Int8,
+        approve -> Bool,
+        vote_time -> Int8,
+        vote_cost -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define reward_distributions table
+table! {
+    reward_distributions (id, time) {
+        id -> Int4,
+        proposal_id -> Varchar,
+        recipient_address -> Varchar,
+        amount -> Int8,
+        distribution_time -> Int8,
+        distribution_type -> Nullable<Varchar>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define governance_events table for tracking governance events
+table! {
+    governance_events (id) {
+        id -> Int4,
+        event_type -> Varchar,
+        registry_type -> Int2,
+        event_data -> Jsonb,
+        event_id -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
 // Allow joining the tables if needed
 allow_tables_to_appear_in_same_query!(
     profiles,
@@ -191,4 +705,37 @@ allow_tables_to_appear_in_same_query!(
     platform_memberships,
     profiles_blocked,
     profile_events,
+    posts,
+    comments,
+    reactions,
+    reaction_counts,
+    reposts,
+    tips,
+    posts_reports,
+    posts_transfers,
+    posts_moderation_events,
+    posts_deletion_events,
+    // MyIP tables
+    my_ip,
+    my_ip_permissions,
+    my_ip_events,
+    my_ip_grants,
+    my_ip_revenue,
+    // Social Proof Token tables
+    social_proof_token_pools,
+    spt_holdings,
+    spt_transactions,
+    spt_auction_pools,
+    spt_auction_contributions,
+    spt_price_history,
+    // Governance tables
+    governance_registries,
+    delegates,
+    nominated_delegates,
+    proposals,
+    delegate_ratings,
+    delegate_votes,
+    community_votes,
+    reward_distributions,
+    governance_events,
 );

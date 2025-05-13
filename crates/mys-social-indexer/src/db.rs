@@ -24,6 +24,30 @@ pub struct Database {
     pub pool: Arc<DbPool>,
 }
 
+/// Query result types for SQL queries
+pub mod query_types {
+    use diesel::prelude::*;
+    use diesel::sql_types::*;
+
+    /// Result type for proposal type query
+    #[derive(QueryableByName, Debug)]
+    pub struct ProposalTypeResult {
+        #[diesel(sql_type = Int2)]
+        pub proposal_type: i16,
+    }
+
+    /// Result type for delegate vote query
+    #[derive(QueryableByName, Debug)]
+    pub struct DelegateVoteResult {
+        #[diesel(sql_type = Text)]
+        pub delegate_address: String,
+        #[diesel(sql_type = Bool)]
+        pub approve: bool,
+        #[diesel(sql_type = Text)]
+        pub submitter: String,
+    }
+}
+
 impl Database {
     /// Create a new database instance
     pub fn new(pool: DbPool) -> Self {

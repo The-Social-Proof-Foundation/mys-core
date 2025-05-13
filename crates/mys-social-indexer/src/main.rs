@@ -8,7 +8,18 @@ use tracing::{error, info};
 
 use mys_social_indexer::{
     api,
-    blockchain::{BlockchainEventListener, ProfileEventListener, SocialGraphEventHandler, PlatformEventHandler, BlockListEventHandler},
+    blockchain::{
+        // Import all handlers from the blockchain module
+        BlockchainEventListener,
+        ProfileEventListener,
+        SocialGraphEventHandler,
+        PlatformEventHandler,
+        BlockListEventHandler,
+        PostEventHandler,
+        GovernanceEventHandler,
+        MyIpEventHandler,
+        SocialProofTokenHandler,
+    },
     config::Config,
     db,
     set_mysocial_package_address,
@@ -60,6 +71,8 @@ async fn main() -> Result<()> {
     let (social_graph_tx, social_graph_rx) = mpsc::channel(100);
     let (platform_tx, platform_rx) = mpsc::channel(100);
     let (block_list_tx, block_list_rx) = mpsc::channel(100);
+    let (post_tx, post_rx) = mpsc::channel(100);
+    let (governance_tx, governance_rx) = mpsc::channel(100);
     
     // Create the blockchain event listener
     let blockchain_listener = Arc::new(BlockchainEventListener::new(config.clone(), db_pool.clone()));
@@ -69,6 +82,8 @@ async fn main() -> Result<()> {
     blockchain_listener.register_event_handler(social_graph_tx).await;
     blockchain_listener.register_event_handler(platform_tx).await;
     blockchain_listener.register_event_handler(block_list_tx).await;
+    blockchain_listener.register_event_handler(post_tx).await;
+    blockchain_listener.register_event_handler(governance_tx).await;
     
     // Create and start profile event listener
     let mut profile_listener = ProfileEventListener::new(
@@ -98,6 +113,28 @@ async fn main() -> Result<()> {
         "block-list-worker".to_string(),
     );
     
+    // Create and start post event handler
+    let mut post_handler = PostEventHandler::new(
+        db_pool.clone(),
+        post_rx,
+        "post-worker".to_string(),
+    );
+    
+    // Create and start governance event handler
+    let mut governance_handler = GovernanceEventHandler::new(
+        db_pool.clone(),
+        governance_rx,
+        "governance-worker".to_string(),
+    );
+    
+    // Initialize the MyIP event handler
+    // Note: This handler has a different API pattern - it just needs a database connection
+    let _my_ip_handler = MyIpEventHandler::new(db_pool.clone());
+    
+    // Initialize the social proof token handler
+    // Note: This handler has a different API pattern - it just needs a database connection
+    let _social_proof_token_handler = SocialProofTokenHandler::new(db_pool.clone());
+    
     let profile_handle = tokio::spawn(async move {
         if let Err(e) = profile_listener.start().await {
             error!("Profile event listener error: {}", e);
@@ -122,6 +159,18 @@ async fn main() -> Result<()> {
         }
     });
     
+    let post_handle = tokio::spawn(async move {
+        if let Err(e) = post_handler.start().await {
+            error!("Post handler error: {}", e);
+        }
+    });
+    
+    let governance_handle = tokio::spawn(async move {
+        if let Err(e) = governance_handler.start().await {
+            error!("Governance handler error: {}", e);
+        }
+    });
+    
     // Start the blockchain event listener
     let blockchain_handle = tokio::spawn({
         let listener = blockchain_listener.clone();
@@ -134,8 +183,9 @@ async fn main() -> Result<()> {
     
     // Start the API server
     let api_handle = tokio::spawn(async move {
-        if let Err(e) = api::setup_api_server(&config, db_pool).await {
-            error!("API server error: {}", e);
+        if let Err(e) = api::start_api_server(db_pool, &config).await {
+            error!("Failed to start API server: {}", e);
+            std::process::exit(1);
         }
     });
     
@@ -152,6 +202,12 @@ async fn main() -> Result<()> {
         }
         _ = block_list_handle => {
             error!("Block list handler terminated unexpectedly");
+        }
+        _ = post_handle => {
+            error!("Post handler terminated unexpectedly");
+        }
+        _ = governance_handle => {
+            error!("Governance handler terminated unexpectedly");
         }
         _ = blockchain_handle => {
             error!("Blockchain event listener terminated unexpectedly");

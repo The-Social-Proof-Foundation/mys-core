@@ -251,7 +251,7 @@ each validator, emitted during epoch advancement.
 <dd>
 </dd>
 <dt>
-<code>pool_token_exchange_rate: <a href="../mys_system/staking_pool.md#mys_system_staking_pool_PoolTokenExchangeRate">mys_system::staking_pool::PoolTokenExchangeRate</a></code>
+<code>pool_social_proof_token_rate: <a href="../mys_system/staking_pool.md#mys_system_staking_pool_PoolTokenExchangeRate">mys_system::staking_pool::PoolTokenExchangeRate</a></code>
 </dt>
 <dd>
 </dd>
@@ -328,7 +328,7 @@ V2 of ValidatorEpochInfoEvent containing more information about the validator.
 <dd>
 </dd>
 <dt>
-<code>pool_token_exchange_rate: <a href="../mys_system/staking_pool.md#mys_system_staking_pool_PoolTokenExchangeRate">mys_system::staking_pool::PoolTokenExchangeRate</a></code>
+<code>pool_social_proof_token_rate: <a href="../mys_system/staking_pool.md#mys_system_staking_pool_PoolTokenExchangeRate">mys_system::staking_pool::PoolTokenExchangeRate</a></code>
 </dt>
 <dd>
 </dd>
@@ -2817,7 +2817,7 @@ including stakes, rewards, performance, etc.
                 commission_rate: v.commission_rate(),
                 pool_staking_reward: pool_staking_reward_amounts[i],
                 storage_fund_staking_reward: storage_fund_staking_reward_amounts[i],
-                pool_token_exchange_rate: v.pool_token_exchange_rate_at_epoch(new_epoch),
+                pool_social_proof_token_rate: v.pool_social_proof_token_rate_at_epoch(new_epoch),
                 tallying_rule_reporters,
                 tallying_rule_global_score,
             }

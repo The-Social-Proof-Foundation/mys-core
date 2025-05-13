@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to generate validator keys and faucet keys
+# Script to generate fullnode and faucet keys
 
 # Set up colors for output
 GREEN='\033[0;32m'
@@ -12,16 +12,19 @@ GENESIS_DIR=$(pwd)
 echo -e "${GREEN}MySocial Genesis Key Generator${NC}"
 echo "-----------------------------------"
 
+# Array to store validator addresses
+declare -a VALIDATOR_ADDRESSES
+
 # Step 1: Generate validator keys
 echo -e "${YELLOW}Generating validator keys...${NC}"
 
 for i in {1..3}; do
   echo -e "Creating keys for validator $i..."
   # Create directory if it doesn't exist
-  mkdir -p "${GENESIS_DIR}/validator_keys/validator$i"
+  mkdir -p "${GENESIS_DIR}/validators/validator$i"
   
   # Change to the validator directory for key generation
-  pushd "${GENESIS_DIR}/validator_keys/validator$i" > /dev/null
+  pushd "${GENESIS_DIR}/validators/validator$i" > /dev/null
   
   echo "  • Generating account keys..."
   cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519 > account_output.txt
@@ -43,6 +46,9 @@ for i in {1..3}; do
   PROTOCOL_ADDRESS=$(grep "mysAddress" protocol_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
   NETWORK_ADDRESS=$(grep "mysAddress" network_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
   WORKER_ADDRESS=$(grep "mysAddress" worker_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
+  
+  # Add to validator addresses array
+  VALIDATOR_ADDRESSES[$i-1]=$ACCOUNT_ADDRESS
   
   echo "$ACCOUNT_ADDRESS" > address.txt
   
@@ -90,14 +96,14 @@ for i in {1..3}; do
   
   echo -e "${GREEN}Validator $i keys generated successfully!${NC}"
   echo "  Account Address: $ACCOUNT_ADDRESS"
-  echo "  Keys saved to validator_keys/validator$i/"
+  echo "  Keys saved to validators/validator$i/"
   echo
 done
 
 # Step 2: Generate fullnode key
 echo -e "${YELLOW}Generating fullnode key...${NC}"
 
-# Create the key in its own directory for cleaner organization
+# Create the key in its own directory
 mkdir -p "${GENESIS_DIR}/fullnode"
 pushd "${GENESIS_DIR}/fullnode" > /dev/null
 
@@ -124,28 +130,28 @@ fi
 # Return to genesis directory
 popd > /dev/null
 
-# Update genesis config with fullnode address
-echo "Updating genesis config with fullnode address..."
-sed -i.bak "s/0x58c30fa5593cffbca7603446d4567ec933f4996c6eac0831c0137d564c71adc3/$FULLNODE_ADDRESS/g" "${GENESIS_DIR}/genesis_config.yaml"
-rm -f "${GENESIS_DIR}/genesis_config.yaml.bak"
+echo -e "${GREEN}Fullnode key generated successfully!${NC}"
+echo "Address: $FULLNODE_ADDRESS"
+echo "Key saved to fullnode/"
+echo
 
 # Step 3: Generate faucet key
 echo -e "${YELLOW}Generating faucet key...${NC}"
 
-# Create the key in its own directory for cleaner organization
+# Create the key in its own directory
 mkdir -p "${GENESIS_DIR}/faucet"
 pushd "${GENESIS_DIR}/faucet" > /dev/null
 
 cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519 > faucet_output.txt
 
-# Update token distribution CSV
+# Extract key information
 FAUCET_ADDRESS=$(grep "mysAddress" faucet_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
 FAUCET_MNEMONIC=$(grep "mnemonic" faucet_output.txt | sed 's/│//g' | awk '{$1=""; print $0}' | xargs)
 
 echo "Faucet Address: $FAUCET_ADDRESS"
 echo "Faucet Mnemonic: $FAUCET_MNEMONIC"
 
-# Save faucet info for later use in Railway.app
+# Save faucet info for later use
 echo "Faucet Address: $FAUCET_ADDRESS" > faucet_info.txt
 echo "Faucet Mnemonic: $FAUCET_MNEMONIC" >> faucet_info.txt
 cp faucet_output.txt faucet.json
@@ -159,20 +165,87 @@ fi
 # Return to genesis directory
 popd > /dev/null
 
-# Update genesis config with faucet address
-echo "Updating genesis config with faucet address..."
-sed -i.bak "s/0x7b15d74e88a8f8f11dd896d31f09f4f68268baaafc0cb2ed60264a596791d4fe/$FAUCET_ADDRESS/g" "${GENESIS_DIR}/genesis_config.yaml"
-rm -f "${GENESIS_DIR}/genesis_config.yaml.bak"
-
-# Clean up any remaining .key files in the root directory
-echo -e "${YELLOW}Checking for any remaining key files...${NC}"
-remaining_keys=$(find "${GENESIS_DIR}" -maxdepth 1 -name "0x*.key" | wc -l)
-if [ $remaining_keys -gt 0 ]; then
-  echo "Moving $remaining_keys remaining key files to the key_backup directory"
-  mkdir -p "${GENESIS_DIR}/key_backup"
-  mv "${GENESIS_DIR}"/0x*.key "${GENESIS_DIR}/key_backup/"
-fi
-
-echo -e "${GREEN}All keys generated successfully!${NC}"
+echo -e "${GREEN}Faucet key generated successfully!${NC}"
+echo "Address: $FAUCET_ADDRESS"
+echo "Key saved to faucet/"
 echo
-echo "Remember to securely back up all generated keys!" 
+
+# Step 4: Update genesis_config.yaml with generated addresses
+echo -e "${YELLOW}Updating genesis_config.yaml with generated addresses...${NC}"
+
+# Make a backup of the original file
+cp "${GENESIS_DIR}/genesis_config.yaml" "${GENESIS_DIR}/genesis_config.yaml.backup"
+
+# Create a new temporary file with the updated accounts section
+cat > "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
+---
+# Genesis configuration parameters
+# This file controls the epoch duration and stake subsidy parameters
+
+parameters:
+  # Chain start timestamp (in milliseconds since epoch)
+  chain_start_timestamp_ms: $(date +%s)000
+
+  # Protocol version
+  protocol_version: 74  # Latest version
+
+  # Whether to allow insertion of extra objects in genesis
+  allow_insertion_of_extra_objects: true
+
+  # Epoch duration in milliseconds (default: 24 hours)
+  # 1 hour = 3,600,000 ms
+  # 24 hours = 86,400,000 ms
+  epoch_duration_ms: 7200000  # 2 hours for testnet (faster epochs)
+
+  # Stake subsidy parameters
+  #
+  # When to start paying stake subsidies (0 = from beginning)
+  stake_subsidy_start_epoch: 0
+
+  # Initial stake subsidy distribution amount per epoch (in MIST)
+  # Default: 35,000 MySo = 35,000,000,000,000 MIST
+  stake_subsidy_initial_distribution_amount: 35000000000000
+
+  # Number of epochs before decreasing the subsidy amount
+  # Default: 15 epochs
+  stake_subsidy_period_length: 15
+
+  # Rate at which subsidy decreases at end of each period (in basis points)
+  # 300 basis points = 3%
+  stake_subsidy_decrease_rate: 300
+
+# Accounts to add tokens to
+accounts:
+  # Treasury/Team allocation
+  - address: "$FULLNODE_ADDRESS"
+    gas_amounts:
+      - 250000000000000 # 250,000 MySo
+  # Validator 1
+  - address: "${VALIDATOR_ADDRESSES[0]}"
+    gas_amounts:
+      - 500000000000000 # 500,000 MySo
+  # Validator 2
+  - address: "${VALIDATOR_ADDRESSES[1]}"
+    gas_amounts:
+      - 500000000000000 # 500,000 MySo
+  # Validator 3
+  - address: "${VALIDATOR_ADDRESSES[2]}"
+    gas_amounts:
+      - 500000000000000 # 500,000 MySo
+  # Faucet
+  - address: "$FAUCET_ADDRESS"
+    gas_amounts:
+      - 100000000000000 # 100,000 MySo
+EOL
+
+# Replace the original file with the new one
+mv "${GENESIS_DIR}/genesis_config.new.yaml" "${GENESIS_DIR}/genesis_config.yaml"
+
+echo -e "${GREEN}Genesis config updated successfully!${NC}"
+echo "Backup saved as genesis_config.yaml.backup"
+echo
+
+echo -e "${GREEN}All keys generated and configurations updated!${NC}"
+echo
+echo "Remember to securely back up all generated keys!"
+echo "You can now run: myso genesis -f --with-faucet --committee-size 3 --from-config genesis_config.yaml" 

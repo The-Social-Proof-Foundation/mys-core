@@ -1,12 +1,18 @@
 # MySocial Social Indexer
 
-A simplified indexer for the MySocial blockchain that focuses on tracking user profiles and their updates.
+A indexer for the MySocial blockchain that focuses on tracking social interactions.
 
 ## Features
 
 - **Profile Indexing**: Tracks profile creation and updates
-- **Database Storage**: Stores profile data in PostgreSQL
-- **REST API**: Provides endpoints for accessing profile data
+- **Social Graph Indexing**: Tracks follow/unfollow relationships
+- **Platform Indexing**: Tracks platform creation and user membership
+- **Post Indexing**: Tracks posts, comments, reactions, tips, and reposts
+- **MyIP Integration**: Tracks intellectual property licenses and revenue
+- **Governance Integration**: Tracks proposals, voting, and delegates
+- **Social Proof Token**: Tracks token pools, transactions, holdings, and auctions
+- **Database Storage**: Stores all data in TimescaleDB (PostgreSQL)
+- **REST API**: Provides endpoints for accessing indexed data
 - **Configurable**: Customizable via environment variables
 - **Containerized**: Easy deployment with Docker
 
@@ -15,9 +21,9 @@ A simplified indexer for the MySocial blockchain that focuses on tracking user p
 The indexer consists of the following components:
 
 1. **Blockchain Listener**: Processes MySocial blockchain checkpoints and extracts events
-2. **Event Processor**: Identifies and processes profile-related events
-3. **Database**: Stores profile data in PostgreSQL
-4. **API Server**: Exposes profile data through REST endpoints
+2. **Event Processor**: Identifies and processes events from various modules
+3. **Database**: Stores indexed data in TimescaleDB (PostgreSQL)
+4. **API Server**: Exposes indexed data via REST API endpoints
 
 ## Getting Started
 
@@ -80,39 +86,91 @@ RUST_LOG=info,mys_social_indexer=debug
 
 ## API Endpoints
 
-### Profiles
+### Health Check
+- **GET /health** - Check the indexer's health
 
-- `GET /profiles` - List profiles with pagination (query params: limit, offset)
-- `GET /profiles/:address` - Get profile by owner address
-- `GET /profiles/username/:username` - Get profile by username
+### Profile API
+- **GET /profiles** - List profiles
+- **GET /profiles/address/:address** - Get profile by blockchain address
+- **GET /profiles/username/:username** - Get profile by username
+- **GET /profiles/:id/posts** - Get posts by a profile
+- **GET /profiles/:id/events** - Get profile events
+- **GET /profiles/:id/platforms** - Get platform memberships
+- **GET /profiles/:id/blocking** - Get blocking history
 
-### Health
+### Social Graph API
+- **GET /profiles/:id/following** - List profiles followed by a profile
+- **GET /profiles/:id/followers** - List followers of a profile
+- **GET /profiles/:id/stats** - Get follow statistics
+- **GET /social-graph/check/:follower/:following** - Check if a profile follows another
 
-- `GET /health` - Check the health of the API server
+### Blocking API
+- **GET /profiles/:id/blocked** - List profiles blocked by a profile
+- **GET /profiles/:id/blocked-platforms** - List platforms blocked by a profile
+- **GET /blocklist/check/profile/:blocker/:blocked** - Check if a profile is blocked
+- **GET /blocklist/check/platform/:profile/:platform** - Check if a platform is blocked
 
-## Database Schema
+### Platform API
+- **GET /platforms** - List platforms
+- **GET /platforms/approved** - List approved platforms
+- **GET /platforms/:id** - Get platform by ID
+- **GET /platforms/:id/moderators** - Get platform moderators
+- **GET /platforms/:id/approval** - Get platform approval status
+- **GET /platforms/:id/blocked** - Get profiles blocked by a platform
 
-```sql
--- Profiles Table
-CREATE TABLE profiles (
-    id SERIAL PRIMARY KEY,
-    owner_address VARCHAR(255) NOT NULL,
-    username VARCHAR(100) NOT NULL,
-    display_name VARCHAR(255),
-    bio TEXT,
-    avatar_url VARCHAR(255),
-    website_url VARCHAR(255),
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
+### Post API
+- **GET /posts** - List posts
+- **GET /posts/:id** - Get post by ID
+- **GET /posts/:id/comments** - Get comments for a post
+- **GET /posts/:id/reactions** - Get reactions for a post
+- **GET /posts/:id/reposts** - Get reposts of a post
+- **GET /posts/trending** - Get trending posts
 
--- Indexer State Table
-CREATE TABLE indexer_checkpoint_state (
-    id SERIAL PRIMARY KEY,
-    last_processed_checkpoint BIGINT NOT NULL,
-    last_processed_timestamp TIMESTAMP NOT NULL DEFAULT NOW()
-);
-```
+### MyIP API (Intellectual Property)
+- **GET /licenses** - List intellectual property licenses
+- **GET /licenses/popular** - Get popular licenses
+- **GET /licenses/:id** - Get license by ID
+- **GET /licenses/:id/events** - Get events for a license
+- **GET /licenses/:id/grants** - Get grants for a license
+- **GET /licenses/:id/revenue** - Get revenue for a license
+- **GET /licenses/:id/posts** - Get posts using a license
+- **GET /licenses/:id/stats** - Get statistics for a license
+- **GET /licenses/:id/revenue-timeline** - Get revenue timeline for a license
+- **GET /creators/:id/licenses** - Get licenses created by an address
+
+### Governance API
+- **GET /governance/proposals** - List governance proposals
+- **GET /governance/proposals/:id** - Get proposal details
+- **GET /governance/proposals/:id/votes** - Get community votes on a proposal
+- **GET /governance/delegates** - List delegates
+- **GET /governance/delegates/:address** - Get delegate details
+- **GET /governance/delegates/:address/proposals** - Get proposals reviewed by a delegate
+- **GET /governance/delegates/:address/ratings** - Get ratings for a delegate
+- **GET /governance/nominees** - List nominated delegates 
+- **GET /governance/registries** - List governance registries
+- **GET /governance/registries/:registry_type** - Get registry by type
+- **GET /governance/events** - List recent governance events
+
+### Social Proof Token API
+- **GET /social-proof-token/pools** - List token pools
+- **GET /social-proof-token/pools/:id** - Get token pool by ID
+- **GET /social-proof-token/pools/by-associated-id/:id** - Get token pool by associated profile or post ID
+- **GET /social-proof-token/pools/:id/transactions** - Get transactions for a token pool
+- **GET /social-proof-token/pools/:id/holdings** - Get holdings for a token pool
+- **GET /social-proof-token/pools/:id/price-history** - Get price history for a token pool
+- **GET /social-proof-token/auctions** - List active token auctions
+- **GET /social-proof-token/auctions/:id** - Get auction details by ID
+- **GET /social-proof-token/auctions/:id/contributions** - Get contributions for an auction
+- **GET /social-proof-token/popular** - Get popular token pools
+- **GET /social-proof-token/users/:address/holdings** - Get token holdings for a user
+- **GET /social-proof-token/analytics/top-performers** - Get tokens with highest price/volume growth in specified period
+- **GET /social-proof-token/portfolios/:address/performance** - Track user's token portfolio value over time with ROI metrics
+- **GET /social-proof-token/creators/:address/revenue-streams** - Break down creator revenue from token fees across content
+- **GET /social-proof-token/market-sentiment** - Aggregate buy/sell patterns to create market momentum indicators
+- **GET /social-proof-token/pools/:id/liquidity-profile** - Show transaction volume, frequency and depth to assess token liquidity
+
+### Search API
+- **GET /search** - Global search across profiles, posts, tokens, platforms, licenses, and governance proposals
 
 ## License
 

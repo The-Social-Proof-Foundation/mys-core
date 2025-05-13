@@ -1,0 +1,1912 @@
+// Copyright (c) MySocial Team
+// SPDX-License-Identifier: Apache-2.0
+
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    Json,
+};
+use serde::{Deserialize, Serialize};
+use tracing::error;
+use std::sync::Arc;
+use diesel_async::RunQueryDsl;
+use diesel::OptionalExtension;
+
+use crate::db::Database;
+use crate::models::social_proof_token::{
+    SocialProofTokenPoolWithPrice,
+    SocialProofTokenTransaction, SocialProofTokenHolding,
+    SocialProofAuctionPool, SocialProofAuctionContribution,
+    SocialProofPriceAggregation,
+    PopularTokenPool, UserTokenHoldings, UserTokenHolding,
+};
+
+// Shared query parameters
+#[derive(Debug, Deserialize)]
+pub struct PaginationParams {
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
+}
+
+impl PaginationParams {
+    fn get_page(&self) -> i64 {
+        self.page.unwrap_or(1).max(1)
+    }
+    
+    fn get_limit(&self) -> i64 {
+        self.limit.unwrap_or(20).clamp(1, 100)
+    }
+    
+    fn get_offset(&self) -> i64 {
+        (self.get_page() - 1) * self.get_limit()
+    }
+}
+
+// Time range parameters for price history
+#[derive(Debug, Deserialize)]
+pub struct TimeRangeParams {
+    pub from: Option<i64>,   // Unix timestamp in seconds
+    pub to: Option<i64>,     // Unix timestamp in seconds
+    pub interval: Option<String>, // "hour", "day", "week", "month"
+}
+
+// Custom filter params for token pools
+#[derive(Debug, Deserialize)]
+pub struct TokenPoolFilterParams {
+    pub token_type: Option<i16>,
+    pub owner: Option<String>,
+    pub sort_by: Option<String>, // "created", "supply", "price"
+    pub sort_dir: Option<String>, // "asc", "desc"
+}
+
+// Time period parameter for analytics
+#[derive(Debug, Deserialize)]
+pub struct TimePeriodParams {
+    pub period: Option<String>, // "day", "week", "month"
+}
+
+// API response structure
+#[derive(Debug, Serialize)]
+pub struct ApiResponse<T> {
+    pub data: T,
+    pub pagination: Option<PaginationInfo>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PaginationInfo {
+    pub page: i64,
+    pub limit: i64,
+    pub total: i64,
+    pub total_pages: i64,
+}
+
+// Token performance analytics response
+#[derive(Debug, Serialize)]
+pub struct TokenPerformance {
+    pub pool_id: String,
+    pub name: String,
+    pub symbol: String,
+    pub price_change_percentage: f64,
+    pub volume_change_percentage: f64,
+    pub current_price: i64,
+    pub previous_price: i64,
+    pub current_volume: i64,
+    pub previous_volume: i64,
+}
+
+// Portfolio performance analytics response
+#[derive(Debug, Serialize)]
+pub struct PortfolioPerformance {
+    pub address: String,
+    pub current_value: i64,
+    pub initial_investment: i64,
+    pub roi_percentage: f64,
+    pub holdings: Vec<PortfolioHolding>,
+    pub value_history: Vec<PortfolioValuePoint>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PortfolioHolding {
+    pub pool_id: String,
+    pub name: String,
+    pub symbol: String,
+    pub amount: i64,
+    pub current_value: i64,
+    pub initial_value: i64,
+    pub roi_percentage: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PortfolioValuePoint {
+    pub timestamp: i64,
+    pub value: i64,
+}
+
+// Creator revenue dashboard response
+#[derive(Debug, Serialize)]
+pub struct CreatorRevenueReport {
+    pub address: String,
+    pub total_revenue: i64,
+    pub token_pools: Vec<CreatorTokenRevenue>,
+    pub revenue_by_period: Vec<RevenuePeriod>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CreatorTokenRevenue {
+    pub pool_id: String,
+    pub name: String,
+    pub symbol: String,
+    pub total_revenue: i64,
+    pub buy_revenue: i64,
+    pub sell_revenue: i64,
+    pub transactions_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RevenuePeriod {
+    pub period_start: i64,
+    pub revenue: i64,
+}
+
+// Market sentiment response
+#[derive(Debug, Serialize)]
+pub struct MarketSentiment {
+    pub overall_sentiment: f64, // -1.0 to 1.0 (bearish to bullish)
+    pub buy_volume_24h: i64,
+    pub sell_volume_24h: i64,
+    pub transaction_count_24h: i64,
+    pub unique_buyers_24h: i64,
+    pub unique_sellers_24h: i64,
+    pub volume_change_percentage: f64,
+    pub price_momentum: Vec<MomentumIndicator>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MomentumIndicator {
+    pub token_type: i16,
+    pub sentiment_score: f64,
+    pub volume_change: f64,
+}
+
+// Token liquidity profile response
+#[derive(Debug, Serialize)]
+pub struct TokenLiquidityProfile {
+    pub pool_id: String,
+    pub name: String,
+    pub symbol: String,
+    pub total_volume_24h: i64,
+    pub transaction_count_24h: i64,
+    pub average_transaction_size: i64,
+    pub largest_transaction: i64,
+    pub unique_traders_count: i64,
+    pub buy_sell_ratio: f64,
+    pub volume_distribution: Vec<VolumeDistribution>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct VolumeDistribution {
+    pub hour: i64,
+    pub volume: i64,
+}
+
+// Count result for pagination queries
+#[derive(diesel::QueryableByName)]
+struct CountResult {
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub count: i64,
+}
+
+// Custom type for SQL query results in get_user_spt_holdings
+#[derive(diesel::QueryableByName)]
+struct UserTokenHoldingRow {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub pool_id: String,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub amount: i64,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub symbol: String,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub name: String,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub current_price: i64,
+}
+
+/// Get social proof token pool by ID
+pub async fn get_spt_pool_by_id(
+    State(db): State<Arc<Database>>,
+    Path(id): Path<String>,
+) -> Result<Json<ApiResponse<SocialProofTokenPoolWithPrice>>, StatusCode> {
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Using raw SQL with diesel because it's a complex query with custom joins
+    let query = diesel::sql_query(
+        r#"
+        SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
+        FROM social_proof_token_pools p
+        LEFT JOIN LATERAL (
+            SELECT price
+            FROM spt_price_history
+            WHERE pool_id = p.pool_id
+            ORDER BY time DESC
+            LIMIT 1
+        ) ph ON true
+        WHERE p.pool_id = $1
+        ORDER BY p.time DESC
+        LIMIT 1
+        "#
+    ).bind::<diesel::sql_types::Text, _>(id);
+    
+    let result = query.get_result::<SocialProofTokenPoolWithPrice>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    Ok(Json(ApiResponse {
+        data: result,
+        pagination: None,
+    }))
+}
+
+/// List social proof token pools with pagination and filtering
+pub async fn list_spt_pools(
+    State(db): State<Arc<Database>>,
+    Query(pagination): Query<PaginationParams>,
+    Query(filters): Query<TokenPoolFilterParams>,
+) -> Result<Json<ApiResponse<Vec<SocialProofTokenPoolWithPrice>>>, StatusCode> {
+    let limit = pagination.get_limit();
+    let offset = pagination.get_offset();
+    
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Determine the sort field and direction
+    let sort_field = match filters.sort_by.as_deref() {
+        Some("created") => "p.created_at",
+        Some("supply") => "p.circulating_supply",
+        Some("price") => "current_price",
+        _ => "p.time", // Default sort by time
+    };
+    
+    let sort_dir = match filters.sort_dir.as_deref() {
+        Some("asc") => "ASC",
+        _ => "DESC", // Default sort descending
+    };
+    
+    // Build and execute the query based on filter conditions
+    let token_pools = match (filters.token_type, &filters.owner) {
+        (Some(token_type), Some(owner)) => {
+            // Both token_type and owner filters
+            diesel::sql_query(&format!(
+                r#"
+                SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
+                FROM social_proof_token_pools p
+                LEFT JOIN LATERAL (
+                    SELECT price
+                    FROM spt_price_history
+                    WHERE pool_id = p.pool_id
+                    ORDER BY time DESC
+                    LIMIT 1
+                ) ph ON true
+                WHERE p.token_type = $1
+                  AND p.owner = $2
+                  AND p.time = (
+                    SELECT MAX(time) FROM social_proof_token_pools sub
+                    WHERE sub.pool_id = p.pool_id
+                  )
+                ORDER BY {} {}
+                LIMIT $3 OFFSET $4
+                "#,
+                sort_field, sort_dir
+            ))
+            .bind::<diesel::sql_types::SmallInt, _>(token_type)
+            .bind::<diesel::sql_types::Text, _>(owner)
+            .bind::<diesel::sql_types::BigInt, _>(limit)
+            .bind::<diesel::sql_types::BigInt, _>(offset)
+            .load::<SocialProofTokenPoolWithPrice>(&mut conn)
+            .await
+        },
+        (Some(token_type), None) => {
+            // Only token_type filter
+            diesel::sql_query(&format!(
+                r#"
+                SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
+                FROM social_proof_token_pools p
+                LEFT JOIN LATERAL (
+                    SELECT price
+                    FROM spt_price_history
+                    WHERE pool_id = p.pool_id
+                    ORDER BY time DESC
+                    LIMIT 1
+                ) ph ON true
+                WHERE p.token_type = $1
+                  AND p.time = (
+                    SELECT MAX(time) FROM social_proof_token_pools sub
+                    WHERE sub.pool_id = p.pool_id
+                  )
+                ORDER BY {} {}
+                LIMIT $2 OFFSET $3
+                "#,
+                sort_field, sort_dir
+            ))
+            .bind::<diesel::sql_types::SmallInt, _>(token_type)
+            .bind::<diesel::sql_types::BigInt, _>(limit)
+            .bind::<diesel::sql_types::BigInt, _>(offset)
+            .load::<SocialProofTokenPoolWithPrice>(&mut conn)
+            .await
+        },
+        (None, Some(owner)) => {
+            // Only owner filter
+            diesel::sql_query(&format!(
+                r#"
+                SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
+                FROM social_proof_token_pools p
+                LEFT JOIN LATERAL (
+                    SELECT price
+                    FROM spt_price_history
+                    WHERE pool_id = p.pool_id
+                    ORDER BY time DESC
+                    LIMIT 1
+                ) ph ON true
+                WHERE p.owner = $1
+                  AND p.time = (
+                    SELECT MAX(time) FROM social_proof_token_pools sub
+                    WHERE sub.pool_id = p.pool_id
+                  )
+                ORDER BY {} {}
+                LIMIT $2 OFFSET $3
+                "#,
+                sort_field, sort_dir
+            ))
+            .bind::<diesel::sql_types::Text, _>(owner)
+            .bind::<diesel::sql_types::BigInt, _>(limit)
+            .bind::<diesel::sql_types::BigInt, _>(offset)
+            .load::<SocialProofTokenPoolWithPrice>(&mut conn)
+            .await
+        },
+        (None, None) => {
+            // No filters
+            diesel::sql_query(&format!(
+                r#"
+                SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
+                FROM social_proof_token_pools p
+                LEFT JOIN LATERAL (
+                    SELECT price
+                    FROM spt_price_history
+                    WHERE pool_id = p.pool_id
+                    ORDER BY time DESC
+                    LIMIT 1
+                ) ph ON true
+                WHERE p.time = (
+                    SELECT MAX(time) FROM social_proof_token_pools sub
+                    WHERE sub.pool_id = p.pool_id
+                )
+                ORDER BY {} {}
+                LIMIT $1 OFFSET $2
+                "#,
+                sort_field, sort_dir
+            ))
+            .bind::<diesel::sql_types::BigInt, _>(limit)
+            .bind::<diesel::sql_types::BigInt, _>(offset)
+            .load::<SocialProofTokenPoolWithPrice>(&mut conn)
+            .await
+        }
+    }
+    .map_err(|e| {
+        error!("Database error in main query: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Count total for pagination
+    let total_count = diesel::sql_query("
+        SELECT COUNT(DISTINCT pool_id) as count
+        FROM social_proof_token_pools p
+    ")
+    .get_result::<CountResult>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error in count query: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    let total = total_count.count;
+    let total_pages = (total + limit - 1) / limit;
+    
+    Ok(Json(ApiResponse {
+        data: token_pools,
+        pagination: Some(PaginationInfo {
+            page: pagination.get_page(),
+            limit,
+            total,
+            total_pages,
+        }),
+    }))
+}
+
+/// Get social proof token pool by associated ID (profile or post ID)
+pub async fn get_spt_pool_by_associated_id(
+    State(db): State<Arc<Database>>,
+    Path(id): Path<String>,
+) -> Result<Json<ApiResponse<SocialProofTokenPoolWithPrice>>, StatusCode> {
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    let query = diesel::sql_query(
+        r#"
+        SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
+        FROM social_proof_token_pools p
+        LEFT JOIN LATERAL (
+            SELECT price
+            FROM spt_price_history
+            WHERE pool_id = p.pool_id
+            ORDER BY time DESC
+            LIMIT 1
+        ) ph ON true
+        WHERE p.associated_id = $1
+        ORDER BY p.time DESC
+        LIMIT 1
+        "#
+    ).bind::<diesel::sql_types::Text, _>(id);
+    
+    let result = query.get_result::<SocialProofTokenPoolWithPrice>(&mut conn)
+        .await
+        .optional()
+        .map_err(|e| {
+            error!("Database error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    match result {
+        Some(token_pool) => Ok(Json(ApiResponse {
+            data: token_pool,
+            pagination: None,
+        })),
+        None => Err(StatusCode::NOT_FOUND),
+    }
+}
+
+/// Get transactions for a token pool
+pub async fn get_spt_transactions(
+    State(db): State<Arc<Database>>,
+    Path(id): Path<String>,
+    Query(pagination): Query<PaginationParams>,
+) -> Result<Json<ApiResponse<Vec<SocialProofTokenTransaction>>>, StatusCode> {
+    let limit = pagination.get_limit();
+    let offset = pagination.get_offset();
+    
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Get transactions
+    let transactions = diesel::sql_query(
+        r#"
+        SELECT *
+        FROM spt_transactions
+        WHERE pool_id = $1
+        ORDER BY time DESC
+        LIMIT $2 OFFSET $3
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(id.clone())
+    .bind::<diesel::sql_types::BigInt, _>(limit)
+    .bind::<diesel::sql_types::BigInt, _>(offset)
+    .load::<SocialProofTokenTransaction>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Count total for pagination
+    let total_count = diesel::sql_query(
+        r#"
+        SELECT COUNT(*) as count
+        FROM spt_transactions
+        WHERE pool_id = $1
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(id)
+    .get_result::<CountResult>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error in count query: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    let total = total_count.count;
+    let total_pages = (total + limit - 1) / limit;
+    
+    Ok(Json(ApiResponse {
+        data: transactions,
+        pagination: Some(PaginationInfo {
+            page: pagination.get_page(),
+            limit,
+            total,
+            total_pages,
+        }),
+    }))
+}
+
+/// Get token holdings for a token pool
+pub async fn get_spt_holdings(
+    State(db): State<Arc<Database>>,
+    Path(id): Path<String>,
+    Query(pagination): Query<PaginationParams>,
+) -> Result<Json<ApiResponse<Vec<SocialProofTokenHolding>>>, StatusCode> {
+    let limit = pagination.get_limit();
+    let offset = pagination.get_offset();
+    
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Get holdings
+    let holdings = diesel::sql_query(
+        r#"
+        WITH latest_holdings AS (
+            SELECT DISTINCT ON (holder_address) *
+            FROM spt_holdings
+            WHERE pool_id = $1
+            ORDER BY holder_address, time DESC
+        )
+        SELECT *
+        FROM latest_holdings
+        WHERE amount > 0
+        ORDER BY amount DESC
+        LIMIT $2 OFFSET $3
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(id.clone())
+    .bind::<diesel::sql_types::BigInt, _>(limit)
+    .bind::<diesel::sql_types::BigInt, _>(offset)
+    .load::<SocialProofTokenHolding>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Count total for pagination
+    let total_count = diesel::sql_query(
+        r#"
+        WITH latest_holdings AS (
+            SELECT DISTINCT ON (holder_address) *
+            FROM spt_holdings
+            WHERE pool_id = $1
+            ORDER BY holder_address, time DESC
+        )
+        SELECT COUNT(*) as count
+        FROM latest_holdings
+        WHERE amount > 0
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(id)
+    .get_result::<CountResult>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error in count query: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    let total = total_count.count;
+    let total_pages = (total + limit - 1) / limit;
+    
+    Ok(Json(ApiResponse {
+        data: holdings,
+        pagination: Some(PaginationInfo {
+            page: pagination.get_page(),
+            limit,
+            total,
+            total_pages,
+        }),
+    }))
+}
+
+/// Get price history for a token pool
+pub async fn get_spt_price_history(
+    State(db): State<Arc<Database>>,
+    Path(id): Path<String>,
+    Query(time_range): Query<TimeRangeParams>,
+) -> Result<Json<ApiResponse<Vec<SocialProofPriceAggregation>>>, StatusCode> {
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Determine the interval to use for bucketing
+    let interval = match time_range.interval.as_deref() {
+        Some("hour") => "1 hour",
+        Some("day") => "1 day",
+        Some("week") => "1 week",
+        Some("month") => "1 month",
+        _ => "1 hour", // Default to hourly
+    };
+    
+    // Execute query with parameters directly
+    let price_history = if let (Some(from), Some(to)) = (time_range.from, time_range.to) {
+        let from_timestamp = chrono::DateTime::<chrono::Utc>::from_timestamp(from, 0)
+            .expect("Invalid from timestamp");
+        let to_timestamp = chrono::DateTime::<chrono::Utc>::from_timestamp(to, 0)
+            .expect("Invalid to timestamp");
+            
+        diesel::sql_query(&format!(
+            r#"
+            SELECT 
+                pool_id,
+                time_bucket('{}', time) AS bucket,
+                FIRST(price, time) AS open,
+                MAX(price) AS high,
+                MIN(price) AS low,
+                LAST(price, time) AS close,
+                LAST(circulating_supply, time) AS circulating_supply
+            FROM spt_price_history
+            WHERE pool_id = $1
+              AND time >= $2
+              AND time <= $3
+            GROUP BY pool_id, bucket
+            ORDER BY bucket ASC
+            "#,
+            interval
+        ))
+        .bind::<diesel::sql_types::Text, _>(&id)
+        .bind::<diesel::sql_types::Timestamptz, _>(from_timestamp)
+        .bind::<diesel::sql_types::Timestamptz, _>(to_timestamp)
+        .load::<SocialProofPriceAggregation>(&mut conn)
+        .await
+    } else if let Some(from) = time_range.from {
+        let from_timestamp = chrono::DateTime::<chrono::Utc>::from_timestamp(from, 0)
+            .expect("Invalid from timestamp");
+            
+        diesel::sql_query(&format!(
+            r#"
+            SELECT 
+                pool_id,
+                time_bucket('{}', time) AS bucket,
+                FIRST(price, time) AS open,
+                MAX(price) AS high,
+                MIN(price) AS low,
+                LAST(price, time) AS close,
+                LAST(circulating_supply, time) AS circulating_supply
+            FROM spt_price_history
+            WHERE pool_id = $1
+              AND time >= $2
+            GROUP BY pool_id, bucket
+            ORDER BY bucket ASC
+            "#,
+            interval
+        ))
+        .bind::<diesel::sql_types::Text, _>(&id)
+        .bind::<diesel::sql_types::Timestamptz, _>(from_timestamp)
+        .load::<SocialProofPriceAggregation>(&mut conn)
+        .await
+    } else if let Some(to) = time_range.to {
+        let to_timestamp = chrono::DateTime::<chrono::Utc>::from_timestamp(to, 0)
+            .expect("Invalid to timestamp");
+            
+        diesel::sql_query(&format!(
+            r#"
+            SELECT 
+                pool_id,
+                time_bucket('{}', time) AS bucket,
+                FIRST(price, time) AS open,
+                MAX(price) AS high,
+                MIN(price) AS low,
+                LAST(price, time) AS close,
+                LAST(circulating_supply, time) AS circulating_supply
+            FROM spt_price_history
+            WHERE pool_id = $1
+              AND time <= $2
+            GROUP BY pool_id, bucket
+            ORDER BY bucket ASC
+            "#,
+            interval
+        ))
+        .bind::<diesel::sql_types::Text, _>(&id)
+        .bind::<diesel::sql_types::Timestamptz, _>(to_timestamp)
+        .load::<SocialProofPriceAggregation>(&mut conn)
+        .await
+    } else {
+        diesel::sql_query(&format!(
+            r#"
+            SELECT 
+                pool_id,
+                time_bucket('{}', time) AS bucket,
+                FIRST(price, time) AS open,
+                MAX(price) AS high,
+                MIN(price) AS low,
+                LAST(price, time) AS close,
+                LAST(circulating_supply, time) AS circulating_supply
+            FROM spt_price_history
+            WHERE pool_id = $1
+            GROUP BY pool_id, bucket
+            ORDER BY bucket ASC
+            "#,
+            interval
+        ))
+        .bind::<diesel::sql_types::Text, _>(&id)
+        .load::<SocialProofPriceAggregation>(&mut conn)
+        .await
+    }
+    .map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    Ok(Json(ApiResponse {
+        data: price_history,
+        pagination: None,
+    }))
+}
+
+/// Get active auctions
+pub async fn get_spt_auctions(
+    State(db): State<Arc<Database>>,
+    Query(pagination): Query<PaginationParams>,
+) -> Result<Json<ApiResponse<Vec<SocialProofAuctionPool>>>, StatusCode> {
+    let limit = pagination.get_limit();
+    let offset = pagination.get_offset();
+    
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Get active auctions
+    let auctions = diesel::sql_query(
+        r#"
+        WITH latest_auctions AS (
+            SELECT DISTINCT ON (auction_id) *
+            FROM spt_auction_pools
+            ORDER BY auction_id, time DESC
+        )
+        SELECT *
+        FROM latest_auctions
+        WHERE status = 1 -- Active auctions
+        ORDER BY start_time DESC
+        LIMIT $1 OFFSET $2
+        "#
+    )
+    .bind::<diesel::sql_types::BigInt, _>(limit)
+    .bind::<diesel::sql_types::BigInt, _>(offset)
+    .load::<SocialProofAuctionPool>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Count total for pagination
+    let total_count = diesel::sql_query(
+        r#"
+        WITH latest_auctions AS (
+            SELECT DISTINCT ON (auction_id) *
+            FROM spt_auction_pools
+            ORDER BY auction_id, time DESC
+        )
+        SELECT COUNT(*) as count
+        FROM latest_auctions
+        WHERE status = 1 -- Active auctions
+        "#
+    )
+    .get_result::<CountResult>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error in count query: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    let total = total_count.count;
+    let total_pages = (total + limit - 1) / limit;
+    
+    Ok(Json(ApiResponse {
+        data: auctions,
+        pagination: Some(PaginationInfo {
+            page: pagination.get_page(),
+            limit,
+            total,
+            total_pages,
+        }),
+    }))
+}
+
+/// Get auction by ID
+pub async fn get_spt_auction_by_id(
+    State(db): State<Arc<Database>>,
+    Path(id): Path<String>,
+) -> Result<Json<ApiResponse<SocialProofAuctionPool>>, StatusCode> {
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    let result = diesel::sql_query(
+        r#"
+        SELECT *
+        FROM spt_auction_pools
+        WHERE auction_id = $1
+        ORDER BY time DESC
+        LIMIT 1
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(id)
+    .get_result::<SocialProofAuctionPool>(&mut conn)
+    .await
+    .optional()
+    .map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    match result {
+        Some(auction) => Ok(Json(ApiResponse {
+            data: auction,
+            pagination: None,
+        })),
+        None => Err(StatusCode::NOT_FOUND),
+    }
+}
+
+/// Get auction contributions
+pub async fn get_spt_auction_contributions(
+    State(db): State<Arc<Database>>,
+    Path(id): Path<String>,
+    Query(pagination): Query<PaginationParams>,
+) -> Result<Json<ApiResponse<Vec<SocialProofAuctionContribution>>>, StatusCode> {
+    let limit = pagination.get_limit();
+    let offset = pagination.get_offset();
+    
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Get contributions
+    let contributions = diesel::sql_query(
+        r#"
+        SELECT *
+        FROM spt_auction_contributions
+        WHERE auction_id = $1
+        ORDER BY time DESC
+        LIMIT $2 OFFSET $3
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(id.clone())
+    .bind::<diesel::sql_types::BigInt, _>(limit)
+    .bind::<diesel::sql_types::BigInt, _>(offset)
+    .load::<SocialProofAuctionContribution>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Count total for pagination
+    let total_count = diesel::sql_query(
+        r#"
+        SELECT COUNT(*) as count
+        FROM spt_auction_contributions
+        WHERE auction_id = $1
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(id)
+    .get_result::<CountResult>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error in count query: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    let total = total_count.count;
+    let total_pages = (total + limit - 1) / limit;
+    
+    Ok(Json(ApiResponse {
+        data: contributions,
+        pagination: Some(PaginationInfo {
+            page: pagination.get_page(),
+            limit,
+            total,
+            total_pages,
+        }),
+    }))
+}
+
+/// Get token holdings for a user
+pub async fn get_user_spt_holdings(
+    State(db): State<Arc<Database>>,
+    Path(address): Path<String>,
+) -> Result<Json<ApiResponse<UserTokenHoldings>>, StatusCode> {
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Using raw SQL as this requires complex selects and joins
+    let holdings_rows = diesel::sql_query(
+        r#"
+        WITH latest_holdings AS (
+            SELECT DISTINCT ON (pool_id) *
+            FROM spt_holdings
+            WHERE holder_address = $1
+            ORDER BY pool_id, time DESC
+        ),
+        pool_info AS (
+            SELECT DISTINCT ON (pool_id) p.*, 
+                   COALESCE(ph.price, p.base_price) as current_price
+            FROM social_proof_token_pools p
+            LEFT JOIN LATERAL (
+                SELECT price
+                FROM spt_price_history
+                WHERE pool_id = p.pool_id
+                ORDER BY time DESC
+                LIMIT 1
+            ) ph ON true
+            ORDER BY pool_id, p.time DESC
+        )
+        SELECT 
+            h.pool_id, h.amount, 
+            p.symbol, p.name, p.current_price
+        FROM latest_holdings h
+        JOIN pool_info p ON h.pool_id = p.pool_id
+        WHERE h.amount > 0
+        ORDER BY h.amount * p.current_price DESC
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(address.clone())
+    .load::<UserTokenHoldingRow>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Convert to UserTokenHolding objects
+    let mut total_value: i64 = 0;
+    let mut user_holdings: Vec<UserTokenHolding> = Vec::new();
+    
+    for row in holdings_rows {
+        let value = row.current_price * row.amount;
+        total_value += value;
+        
+        user_holdings.push(UserTokenHolding {
+            pool_id: row.pool_id,
+            symbol: row.symbol,
+            name: row.name,
+            amount: row.amount,
+            current_price: row.current_price,
+            value,
+        });
+    }
+    
+    // Create the response
+    let result = UserTokenHoldings {
+        holder_address: address,
+        holdings: user_holdings,
+        total_value,
+    };
+    
+    Ok(Json(ApiResponse {
+        data: result,
+        pagination: None,
+    }))
+}
+
+/// Get popular token pools
+pub async fn get_popular_tokens(
+    State(db): State<Arc<Database>>,
+    Query(pagination): Query<PaginationParams>,
+) -> Result<Json<ApiResponse<Vec<PopularTokenPool>>>, StatusCode> {
+    let limit = pagination.get_limit();
+    let offset = pagination.get_offset();
+    
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Get popular tokens from the view
+    let tokens = diesel::sql_query(
+        r#"
+        SELECT * FROM popular_token_pools
+        LIMIT $1 OFFSET $2
+        "#
+    )
+    .bind::<diesel::sql_types::BigInt, _>(limit)
+    .bind::<diesel::sql_types::BigInt, _>(offset)
+    .load::<PopularTokenPool>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Count total for pagination - this is a view so count is the total rows
+    let total_count = diesel::sql_query(
+        r#"
+        SELECT COUNT(*) as count
+        FROM popular_token_pools
+        "#
+    )
+    .get_result::<CountResult>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error in count query: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    let total = total_count.count;
+    let total_pages = (total + limit - 1) / limit;
+    
+    Ok(Json(ApiResponse {
+        data: tokens,
+        pagination: Some(PaginationInfo {
+            page: pagination.get_page(),
+            limit,
+            total,
+            total_pages,
+        }),
+    }))
+}
+
+/// Get token performance analytics based on time period
+pub async fn get_top_performing_tokens(
+    State(db): State<Arc<Database>>,
+    Query(params): Query<TimePeriodParams>,
+) -> Result<Json<ApiResponse<Vec<TokenPerformance>>>, StatusCode> {
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Determine time period for comparison
+    let period_interval = match params.period.as_deref() {
+        Some("day") => "1 day",
+        Some("week") => "7 days",
+        Some("month") => "30 days",
+        _ => "1 day", // Default to daily comparison
+    };
+    
+    // Execute query to get top performing tokens
+    let query = diesel::sql_query(&format!(
+        r#"
+        WITH current_prices AS (
+            SELECT DISTINCT ON (ph.pool_id) 
+                ph.pool_id, 
+                ph.price as current_price,
+                p.name,
+                p.symbol,
+                p.token_type,
+                SUM(t.mys_amount) OVER (PARTITION BY ph.pool_id) as current_volume
+            FROM spt_price_history ph
+            JOIN social_proof_token_pools p ON ph.pool_id = p.pool_id
+            LEFT JOIN spt_transactions t ON ph.pool_id = t.pool_id 
+                                        AND t.time > NOW() - INTERVAL '{}'
+            WHERE ph.time = (
+                SELECT MAX(time) FROM spt_price_history 
+                WHERE pool_id = ph.pool_id
+            )
+        ),
+        previous_prices AS (
+            SELECT DISTINCT ON (ph.pool_id) 
+                ph.pool_id, 
+                ph.price as previous_price,
+                SUM(t.mys_amount) OVER (PARTITION BY ph.pool_id) as previous_volume
+            FROM spt_price_history ph
+            LEFT JOIN spt_transactions t ON ph.pool_id = t.pool_id 
+                                        AND t.time BETWEEN NOW() - INTERVAL '{}' * 2 AND NOW() - INTERVAL '{}'
+            WHERE ph.time BETWEEN NOW() - INTERVAL '{}' * 2 AND NOW() - INTERVAL '{}'
+        )
+        SELECT 
+            c.pool_id,
+            c.name,
+            c.symbol,
+            c.current_price,
+            p.previous_price,
+            COALESCE(c.current_volume, 0) as current_volume,
+            COALESCE(p.previous_volume, 0) as previous_volume,
+            CASE 
+                WHEN p.previous_price = 0 THEN 0
+                ELSE (c.current_price - p.previous_price) * 100.0 / p.previous_price 
+            END as price_change_percentage,
+            CASE 
+                WHEN COALESCE(p.previous_volume, 0) = 0 THEN 0
+                ELSE (COALESCE(c.current_volume, 0) - COALESCE(p.previous_volume, 0)) * 100.0 / COALESCE(p.previous_volume, 1)
+            END as volume_change_percentage
+        FROM current_prices c
+        LEFT JOIN previous_prices p ON c.pool_id = p.pool_id
+        ORDER BY price_change_percentage DESC
+        LIMIT 50
+        "#,
+        period_interval, period_interval, period_interval, period_interval, period_interval
+    ));
+    
+    #[derive(diesel::QueryableByName)]
+    struct TokenPerformanceRow {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        pool_id: String,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        name: String,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        symbol: String,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        current_price: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        previous_price: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        current_volume: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        previous_volume: i64,
+        #[diesel(sql_type = diesel::sql_types::Double)]
+        price_change_percentage: f64,
+        #[diesel(sql_type = diesel::sql_types::Double)]
+        volume_change_percentage: f64,
+    }
+    
+    let performance_rows = query
+        .load::<TokenPerformanceRow>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    // Convert to response format
+    let performances = performance_rows
+        .into_iter()
+        .map(|row| TokenPerformance {
+            pool_id: row.pool_id,
+            name: row.name,
+            symbol: row.symbol,
+            price_change_percentage: row.price_change_percentage,
+            volume_change_percentage: row.volume_change_percentage,
+            current_price: row.current_price,
+            previous_price: row.previous_price,
+            current_volume: row.current_volume,
+            previous_volume: row.previous_volume,
+        })
+        .collect();
+    
+    Ok(Json(ApiResponse {
+        data: performances,
+        pagination: None,
+    }))
+}
+
+/// Get user's token portfolio performance
+pub async fn get_user_portfolio_performance(
+    State(db): State<Arc<Database>>,
+    Path(address): Path<String>,
+    Query(time_range): Query<TimeRangeParams>,
+) -> Result<Json<ApiResponse<PortfolioPerformance>>, StatusCode> {
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Get current holdings with value
+    let holdings_query = diesel::sql_query(
+        r#"
+        WITH latest_holdings AS (
+            SELECT DISTINCT ON (pool_id) *
+            FROM spt_holdings
+            WHERE holder_address = $1
+            ORDER BY pool_id, time DESC
+        ),
+        initial_transactions AS (
+            SELECT DISTINCT ON (pool_id) *
+            FROM spt_transactions
+            WHERE sender = $1 AND transaction_type = 'BUY'
+            ORDER BY pool_id, time ASC
+        ),
+        current_prices AS (
+            SELECT DISTINCT ON (pool_id) pool_id, price
+            FROM spt_price_history
+            ORDER BY pool_id, time DESC
+        ),
+        pool_info AS (
+            SELECT DISTINCT ON (pool_id) pool_id, name, symbol
+            FROM social_proof_token_pools
+            ORDER BY pool_id, time DESC
+        )
+        SELECT 
+            h.pool_id,
+            p.name,
+            p.symbol,
+            h.amount,
+            h.amount * cp.price as current_value,
+            COALESCE(it.price * h.amount, 0) as initial_value,
+            CASE 
+                WHEN COALESCE(it.price * h.amount, 0) = 0 THEN 0
+                ELSE ((h.amount * cp.price) - (it.price * h.amount)) * 100.0 / (it.price * h.amount)
+            END as roi_percentage
+        FROM latest_holdings h
+        JOIN pool_info p ON h.pool_id = p.pool_id
+        JOIN current_prices cp ON h.pool_id = cp.pool_id
+        LEFT JOIN initial_transactions it ON h.pool_id = it.pool_id
+        WHERE h.amount > 0
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(address.clone());
+    
+    #[derive(diesel::QueryableByName)]
+    struct PortfolioHoldingRow {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        pool_id: String,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        name: String,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        symbol: String,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        amount: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        current_value: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        initial_value: i64,
+        #[diesel(sql_type = diesel::sql_types::Double)]
+        roi_percentage: f64,
+    }
+    
+    let holding_rows = holdings_query
+        .load::<PortfolioHoldingRow>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    let holdings = holding_rows
+        .into_iter()
+        .map(|row| PortfolioHolding {
+            pool_id: row.pool_id,
+            name: row.name,
+            symbol: row.symbol,
+            amount: row.amount,
+            current_value: row.current_value,
+            initial_value: row.initial_value,
+            roi_percentage: row.roi_percentage,
+        })
+        .collect::<Vec<_>>();
+    
+    // Get portfolio value over time
+    let from_date = time_range.from
+        .map(|ts| chrono::DateTime::<chrono::Utc>::from_timestamp(ts, 0)
+            .unwrap_or_else(|| chrono::Utc::now() - chrono::Duration::days(30)))
+        .unwrap_or_else(|| chrono::Utc::now() - chrono::Duration::days(30));
+    
+    let to_date = time_range.to
+        .map(|ts| chrono::DateTime::<chrono::Utc>::from_timestamp(ts, 0)
+            .unwrap_or_else(|| chrono::Utc::now()))
+        .unwrap_or_else(|| chrono::Utc::now());
+        
+    // Determine interval based on time range
+    let interval = if (to_date - from_date).num_days() > 30 {
+        "1 day"
+    } else if (to_date - from_date).num_days() > 7 {
+        "4 hours"
+    } else {
+        "1 hour"
+    };
+    
+    let value_history_query = diesel::sql_query(
+        r#"
+        WITH time_points AS (
+            SELECT generate_series(
+                $2::TIMESTAMPTZ,
+                $3::TIMESTAMPTZ,
+                $4::INTERVAL
+            ) as point_time
+        ),
+        holdings_over_time AS (
+            SELECT 
+                tp.point_time,
+                h.pool_id,
+                h.amount,
+                COALESCE(ph.price, 0) as price
+            FROM time_points tp
+            CROSS JOIN (
+                SELECT DISTINCT pool_id 
+                FROM spt_holdings 
+                WHERE holder_address = $1
+            ) distinct_pools
+            LEFT JOIN LATERAL (
+                SELECT * 
+                FROM spt_holdings
+                WHERE holder_address = $1 
+                  AND pool_id = distinct_pools.pool_id
+                  AND time <= tp.point_time
+                ORDER BY time DESC
+                LIMIT 1
+            ) h ON true
+            LEFT JOIN LATERAL (
+                SELECT price
+                FROM spt_price_history
+                WHERE pool_id = distinct_pools.pool_id
+                  AND time <= tp.point_time
+                ORDER BY time DESC
+                LIMIT 1
+            ) ph ON true
+            WHERE h.amount > 0
+        )
+        SELECT 
+            EXTRACT(EPOCH FROM point_time)::BIGINT as timestamp,
+            SUM(COALESCE(amount * price, 0)) as value
+        FROM holdings_over_time
+        GROUP BY point_time
+        ORDER BY point_time
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(address.clone())
+    .bind::<diesel::sql_types::Timestamptz, _>(from_date)
+    .bind::<diesel::sql_types::Timestamptz, _>(to_date)
+    .bind::<diesel::sql_types::Text, _>(interval);
+    
+    #[derive(diesel::QueryableByName)]
+    struct ValueHistoryRow {
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        timestamp: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        value: i64,
+    }
+    
+    let value_history_rows = value_history_query
+        .load::<ValueHistoryRow>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    let value_history = value_history_rows
+        .into_iter()
+        .map(|row| PortfolioValuePoint {
+            timestamp: row.timestamp,
+            value: row.value,
+        })
+        .collect::<Vec<_>>();
+    
+    // Calculate overall portfolio metrics
+    let current_value: i64 = holdings.iter().map(|h| h.current_value).sum();
+    let initial_investment: i64 = holdings.iter().map(|h| h.initial_value).sum();
+    let roi_percentage = if initial_investment > 0 {
+        ((current_value as f64 - initial_investment as f64) / initial_investment as f64) * 100.0
+    } else {
+        0.0
+    };
+    
+    Ok(Json(ApiResponse {
+        data: PortfolioPerformance {
+            address,
+            current_value,
+            initial_investment,
+            roi_percentage,
+            holdings,
+            value_history,
+        },
+        pagination: None,
+    }))
+}
+
+/// Get creator revenue dashboard
+pub async fn get_creator_revenue_streams(
+    State(db): State<Arc<Database>>,
+    Path(address): Path<String>,
+    Query(time_range): Query<TimeRangeParams>,
+) -> Result<Json<ApiResponse<CreatorRevenueReport>>, StatusCode> {
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Set up time range parameters
+    let from_timestamp = time_range.from
+        .map(|ts| chrono::DateTime::<chrono::Utc>::from_timestamp(ts, 0)
+            .unwrap_or_else(|| chrono::Utc::now() - chrono::Duration::days(30)))
+        .unwrap_or_else(|| chrono::Utc::now() - chrono::Duration::days(30));
+        
+    let to_timestamp = time_range.to
+        .map(|ts| chrono::DateTime::<chrono::Utc>::from_timestamp(ts, 0)
+            .unwrap_or_else(|| chrono::Utc::now()))
+        .unwrap_or_else(|| chrono::Utc::now());
+    
+    // Get revenue by token pool
+    let token_revenue_query = diesel::sql_query(
+        r#"
+        WITH token_pools AS (
+            SELECT DISTINCT ON (pool_id) *
+            FROM social_proof_token_pools
+            WHERE owner = $1
+            ORDER BY pool_id, time DESC
+        ),
+        buy_transactions AS (
+            SELECT 
+                pool_id, 
+                SUM(creator_fee) as buy_revenue,
+                COUNT(*) as buy_count
+            FROM spt_transactions
+            WHERE transaction_type = 'BUY'
+              AND pool_id IN (SELECT pool_id FROM token_pools)
+              AND time >= $2
+              AND time <= $3
+            GROUP BY pool_id
+        ),
+        sell_transactions AS (
+            SELECT 
+                pool_id, 
+                SUM(creator_fee) as sell_revenue,
+                COUNT(*) as sell_count
+            FROM spt_transactions
+            WHERE transaction_type = 'SELL'
+              AND pool_id IN (SELECT pool_id FROM token_pools)
+              AND time >= $2
+              AND time <= $3
+            GROUP BY pool_id
+        )
+        SELECT 
+            tp.pool_id,
+            tp.name,
+            tp.symbol,
+            COALESCE(bt.buy_revenue, 0) as buy_revenue,
+            COALESCE(st.sell_revenue, 0) as sell_revenue,
+            COALESCE(bt.buy_revenue, 0) + COALESCE(st.sell_revenue, 0) as total_revenue,
+            COALESCE(bt.buy_count, 0) + COALESCE(st.sell_count, 0) as transactions_count
+        FROM token_pools tp
+        LEFT JOIN buy_transactions bt ON tp.pool_id = bt.pool_id
+        LEFT JOIN sell_transactions st ON tp.pool_id = st.pool_id
+        ORDER BY total_revenue DESC
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(address.clone())
+    .bind::<diesel::sql_types::Timestamptz, _>(from_timestamp)
+    .bind::<diesel::sql_types::Timestamptz, _>(to_timestamp);
+    
+    #[derive(diesel::QueryableByName)]
+    struct TokenRevenueRow {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        pool_id: String,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        name: String,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        symbol: String,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        buy_revenue: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        sell_revenue: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        total_revenue: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        transactions_count: i64,
+    }
+    
+    let token_revenue_rows = token_revenue_query
+        .load::<TokenRevenueRow>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    let token_pools = token_revenue_rows
+        .into_iter()
+        .map(|row| CreatorTokenRevenue {
+            pool_id: row.pool_id,
+            name: row.name,
+            symbol: row.symbol,
+            total_revenue: row.total_revenue,
+            buy_revenue: row.buy_revenue,
+            sell_revenue: row.sell_revenue,
+            transactions_count: row.transactions_count,
+        })
+        .collect::<Vec<_>>();
+    
+    // Determine appropriate interval based on date range
+    let days_difference = (to_timestamp - from_timestamp).num_days();
+    let interval = if days_difference > 90 {
+        "1 week"
+    } else if days_difference > 30 {
+        "1 day"
+    } else {
+        "4 hours"
+    };
+    
+    // Get revenue by time period
+    let period_revenue_query = diesel::sql_query(
+        r#"
+        WITH time_periods AS (
+            SELECT generate_series(
+                $2::TIMESTAMPTZ,
+                $3::TIMESTAMPTZ,
+                $4::INTERVAL
+            ) as period_start
+        ),
+        creator_pools AS (
+            SELECT DISTINCT pool_id
+            FROM social_proof_token_pools
+            WHERE owner = $1
+        ),
+        period_revenues AS (
+            SELECT 
+                p.period_start,
+                SUM(t.creator_fee) as revenue
+            FROM time_periods p
+            LEFT JOIN spt_transactions t ON 
+                t.time >= p.period_start AND 
+                t.time < p.period_start + ($4::INTERVAL) AND
+                t.pool_id IN (SELECT pool_id FROM creator_pools)
+            GROUP BY p.period_start
+            ORDER BY p.period_start
+        )
+        SELECT 
+            EXTRACT(EPOCH FROM period_start)::BIGINT as period_start,
+            revenue
+        FROM period_revenues
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(address.clone())
+    .bind::<diesel::sql_types::Timestamptz, _>(from_timestamp)
+    .bind::<diesel::sql_types::Timestamptz, _>(to_timestamp)
+    .bind::<diesel::sql_types::Text, _>(interval);
+    
+    #[derive(diesel::QueryableByName)]
+    struct PeriodRevenueRow {
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        period_start: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        revenue: i64,
+    }
+    
+    let period_revenue_rows = period_revenue_query
+        .load::<PeriodRevenueRow>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    let revenue_by_period = period_revenue_rows
+        .into_iter()
+        .map(|row| RevenuePeriod {
+            period_start: row.period_start,
+            revenue: row.revenue,
+        })
+        .collect::<Vec<_>>();
+    
+    // Calculate total revenue
+    let total_revenue: i64 = token_pools.iter().map(|t| t.total_revenue).sum();
+    
+    Ok(Json(ApiResponse {
+        data: CreatorRevenueReport {
+            address,
+            total_revenue,
+            token_pools,
+            revenue_by_period,
+        },
+        pagination: None,
+    }))
+}
+
+/// Get market sentiment indicators
+pub async fn get_market_sentiment(
+    State(db): State<Arc<Database>>,
+) -> Result<Json<ApiResponse<MarketSentiment>>, StatusCode> {
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Get overall market metrics for last 24 hours
+    let market_metrics_query = diesel::sql_query(
+        r#"
+        WITH current_volume AS (
+            SELECT 
+                SUM(CASE WHEN transaction_type = 'BUY' THEN mys_amount ELSE 0 END) as buy_volume,
+                SUM(CASE WHEN transaction_type = 'SELL' THEN mys_amount ELSE 0 END) as sell_volume,
+                COUNT(*) as transaction_count,
+                COUNT(DISTINCT CASE WHEN transaction_type = 'BUY' THEN sender END) as unique_buyers,
+                COUNT(DISTINCT CASE WHEN transaction_type = 'SELL' THEN sender END) as unique_sellers
+            FROM spt_transactions
+            WHERE time > NOW() - INTERVAL '24 hours'
+        ),
+        previous_volume AS (
+            SELECT 
+                SUM(mys_amount) as total_volume
+            FROM spt_transactions
+            WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
+        )
+        SELECT 
+            c.buy_volume,
+            c.sell_volume,
+            c.transaction_count,
+            c.unique_buyers,
+            c.unique_sellers,
+            CASE 
+                WHEN COALESCE(p.total_volume, 0) = 0 THEN 0
+                ELSE ((c.buy_volume + c.sell_volume) - COALESCE(p.total_volume, 0)) * 100.0 / COALESCE(p.total_volume, 1)
+            END as volume_change_percentage,
+            CASE
+                WHEN (c.buy_volume + c.sell_volume) = 0 THEN 0
+                ELSE (c.buy_volume - c.sell_volume) * 1.0 / (c.buy_volume + c.sell_volume)
+            END as sentiment_score
+        FROM current_volume c
+        CROSS JOIN previous_volume p
+        "#
+    );
+    
+    #[derive(diesel::QueryableByName)]
+    struct MarketMetricsRow {
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        buy_volume: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        sell_volume: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        transaction_count: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        unique_buyers: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        unique_sellers: i64,
+        #[diesel(sql_type = diesel::sql_types::Double)]
+        volume_change_percentage: f64,
+        #[diesel(sql_type = diesel::sql_types::Double)]
+        sentiment_score: f64,
+    }
+    
+    let market_metrics = market_metrics_query
+        .get_result::<MarketMetricsRow>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    // Get sentiment by token type
+    let token_type_sentiment_query = diesel::sql_query(
+        r#"
+        WITH token_type_metrics AS (
+            SELECT 
+                p.token_type,
+                SUM(CASE WHEN t.transaction_type = 'BUY' THEN t.mys_amount ELSE 0 END) as buy_volume,
+                SUM(CASE WHEN t.transaction_type = 'SELL' THEN t.mys_amount ELSE 0 END) as sell_volume,
+                SUM(t.mys_amount) as current_volume
+            FROM spt_transactions t
+            JOIN social_proof_token_pools p ON t.pool_id = p.pool_id
+            WHERE t.time > NOW() - INTERVAL '24 hours'
+            GROUP BY p.token_type
+        ),
+        previous_volumes AS (
+            SELECT 
+                p.token_type,
+                SUM(t.mys_amount) as previous_volume
+            FROM spt_transactions t
+            JOIN social_proof_token_pools p ON t.pool_id = p.pool_id
+            WHERE t.time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
+            GROUP BY p.token_type
+        )
+        SELECT 
+            c.token_type,
+            CASE
+                WHEN (c.buy_volume + c.sell_volume) = 0 THEN 0
+                ELSE (c.buy_volume - c.sell_volume) * 1.0 / (c.buy_volume + c.sell_volume)
+            END as sentiment_score,
+            CASE 
+                WHEN COALESCE(p.previous_volume, 0) = 0 THEN 0
+                ELSE (c.current_volume - COALESCE(p.previous_volume, 0)) * 100.0 / COALESCE(p.previous_volume, 1)
+            END as volume_change
+        FROM token_type_metrics c
+        LEFT JOIN previous_volumes p ON c.token_type = p.token_type
+        "#
+    );
+    
+    #[derive(diesel::QueryableByName)]
+    struct TokenTypeSentimentRow {
+        #[diesel(sql_type = diesel::sql_types::SmallInt)]
+        token_type: i16,
+        #[diesel(sql_type = diesel::sql_types::Double)]
+        sentiment_score: f64,
+        #[diesel(sql_type = diesel::sql_types::Double)]
+        volume_change: f64,
+    }
+    
+    let token_type_sentiment_rows = token_type_sentiment_query
+        .load::<TokenTypeSentimentRow>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    let price_momentum = token_type_sentiment_rows
+        .into_iter()
+        .map(|row| MomentumIndicator {
+            token_type: row.token_type,
+            sentiment_score: row.sentiment_score,
+            volume_change: row.volume_change,
+        })
+        .collect::<Vec<_>>();
+    
+    Ok(Json(ApiResponse {
+        data: MarketSentiment {
+            overall_sentiment: market_metrics.sentiment_score,
+            buy_volume_24h: market_metrics.buy_volume,
+            sell_volume_24h: market_metrics.sell_volume,
+            transaction_count_24h: market_metrics.transaction_count,
+            unique_buyers_24h: market_metrics.unique_buyers,
+            unique_sellers_24h: market_metrics.unique_sellers,
+            volume_change_percentage: market_metrics.volume_change_percentage,
+            price_momentum,
+        },
+        pagination: None,
+    }))
+}
+
+/// Get token liquidity profile
+pub async fn get_token_liquidity_profile(
+    State(db): State<Arc<Database>>,
+    Path(id): Path<String>,
+) -> Result<Json<ApiResponse<TokenLiquidityProfile>>, StatusCode> {
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    // Get token pool info
+    let pool_query = diesel::sql_query(
+        r#"
+        SELECT name, symbol
+        FROM social_proof_token_pools
+        WHERE pool_id = $1
+        ORDER BY time DESC
+        LIMIT 1
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(id.clone());
+    
+    #[derive(diesel::QueryableByName)]
+    struct TokenPoolInfoRow {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        name: String,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        symbol: String,
+    }
+    
+    let pool_info = pool_query
+        .get_result::<TokenPoolInfoRow>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    // Get liquidity metrics
+    let liquidity_metrics_query = diesel::sql_query(
+        r#"
+        WITH transaction_metrics AS (
+            SELECT 
+                SUM(mys_amount) as total_volume,
+                COUNT(*) as transaction_count,
+                MAX(mys_amount) as largest_transaction,
+                COUNT(DISTINCT sender) as unique_traders_count,
+                SUM(CASE WHEN transaction_type = 'BUY' THEN mys_amount ELSE 0 END) as buy_volume,
+                SUM(CASE WHEN transaction_type = 'SELL' THEN mys_amount ELSE 0 END) as sell_volume
+            FROM spt_transactions
+            WHERE pool_id = $1
+              AND time > NOW() - INTERVAL '24 hours'
+        )
+        SELECT 
+            total_volume,
+            transaction_count,
+            CASE WHEN transaction_count = 0 THEN 0 ELSE total_volume / transaction_count END as average_transaction_size,
+            largest_transaction,
+            unique_traders_count,
+            CASE 
+                WHEN (buy_volume + sell_volume) = 0 THEN 0
+                ELSE buy_volume * 1.0 / NULLIF(sell_volume, 0)
+            END as buy_sell_ratio
+        FROM transaction_metrics
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(id.clone());
+    
+    #[derive(diesel::QueryableByName)]
+    struct LiquidityMetricsRow {
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        total_volume: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        transaction_count: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        average_transaction_size: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        largest_transaction: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        unique_traders_count: i64,
+        #[diesel(sql_type = diesel::sql_types::Double)]
+        buy_sell_ratio: f64,
+    }
+    
+    let liquidity_metrics = liquidity_metrics_query
+        .get_result::<LiquidityMetricsRow>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    // Get hourly volume distribution
+    let volume_distribution_query = diesel::sql_query(
+        r#"
+        SELECT 
+            EXTRACT(EPOCH FROM time_bucket('1 hour', time))::BIGINT as hour,
+            SUM(mys_amount) as volume
+        FROM spt_transactions
+        WHERE pool_id = $1
+          AND time > NOW() - INTERVAL '24 hours'
+        GROUP BY hour
+        ORDER BY hour
+        "#
+    )
+    .bind::<diesel::sql_types::Text, _>(id.clone());
+    
+    #[derive(diesel::QueryableByName)]
+    struct VolumeDistributionRow {
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        hour: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        volume: i64,
+    }
+    
+    let volume_distribution_rows = volume_distribution_query
+        .load::<VolumeDistributionRow>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    let volume_distribution = volume_distribution_rows
+        .into_iter()
+        .map(|row| VolumeDistribution {
+            hour: row.hour,
+            volume: row.volume,
+        })
+        .collect::<Vec<_>>();
+    
+    Ok(Json(ApiResponse {
+        data: TokenLiquidityProfile {
+            pool_id: id,
+            name: pool_info.name,
+            symbol: pool_info.symbol,
+            total_volume_24h: liquidity_metrics.total_volume,
+            transaction_count_24h: liquidity_metrics.transaction_count,
+            average_transaction_size: liquidity_metrics.average_transaction_size,
+            largest_transaction: liquidity_metrics.largest_transaction,
+            unique_traders_count: liquidity_metrics.unique_traders_count,
+            buy_sell_ratio: liquidity_metrics.buy_sell_ratio,
+            volume_distribution,
+        },
+        pagination: None,
+    }))
+} 

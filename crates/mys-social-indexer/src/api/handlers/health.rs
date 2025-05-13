@@ -11,9 +11,9 @@ use serde_json::json;
 use crate::db::DbPool;
 
 /// Health check endpoint
-pub async fn health_check(State(db_pool): State<DbPool>) -> impl IntoResponse {
+pub async fn health_check(State(pool): State<DbPool>) -> impl IntoResponse {
     // Check database connection
-    match db_pool.get().await {
+    match pool.get().await {
         Ok(_) => {
             // Database connection is successful
             (

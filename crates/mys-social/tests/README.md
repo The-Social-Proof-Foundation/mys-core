@@ -11,7 +11,7 @@ This directory contains test modules for the MySocial network features. These te
 - `platform_tests.move`: Tests for platform creation, administration, and badge management
 - `block_list_tests.move`: Tests for user blocking functionality
 - `governance_tests.move`: Tests for governance proposals and voting
-- `token_exchange_tests.move`: Tests for token exchange functionality
+- `social_proof_token_tests.move`: Tests for token exchange functionality
 - `upgrade_tests.move`: Tests for contract upgrade mechanisms
 
 ## Running Tests
@@ -53,7 +53,7 @@ myso move test --filter block_list_tests
 myso move test --filter governance_tests
 
 # Run token exchange tests
-myso move test --filter token_exchange_tests
+myso move test --filter social_proof_token_tests
 
 # Run upgrade tests
 myso move test --filter upgrade_tests
@@ -142,7 +142,7 @@ The test suite covers the following key functionality:
 | platform | ✅ Complete | High |
 | block_list | ✅ Complete | High |
 | governance | ✅ Complete | High |
-| token_exchange | ✅ Complete | Medium |
+| social_proof_token | ✅ Complete | Medium |
 | upgrade | ✅ Complete | Medium |
 
 ## Adding New Tests
