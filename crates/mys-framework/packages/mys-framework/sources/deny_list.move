@@ -45,6 +45,7 @@ const RESERVED: vector<address> = vector[
     @0xF,
     @0x403,
     @0xDEE9,
+    @0xD880
 ];
 
 /// A shared object that stores the addresses that are blocked for a given core type.

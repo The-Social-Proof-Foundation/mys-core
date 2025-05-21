@@ -89,6 +89,9 @@ RUST_LOG=info,mys_social_indexer=debug
 ### Health Check
 - **GET /health** - Check the indexer's health
 
+### Search API
+- **GET /search** - Global search across profiles, posts, tokens, platforms, licenses, and governance proposals
+
 ### Profile API
 - **GET /profiles** - List profiles
 - **GET /profiles/address/:address** - Get profile by blockchain address
@@ -168,9 +171,6 @@ RUST_LOG=info,mys_social_indexer=debug
 - **GET /social-proof-token/creators/:address/revenue-streams** - Break down creator revenue from token fees across content
 - **GET /social-proof-token/market-sentiment** - Aggregate buy/sell patterns to create market momentum indicators
 - **GET /social-proof-token/pools/:id/liquidity-profile** - Show transaction volume, frequency and depth to assess token liquidity
-
-### Search API
-- **GET /search** - Global search across profiles, posts, tokens, platforms, licenses, and governance proposals
 
 ## License
 

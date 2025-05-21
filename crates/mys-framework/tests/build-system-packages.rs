@@ -36,12 +36,14 @@ fn build_system_packages() {
     std::fs::create_dir_all(out_dir.join(DOCS_DIR)).unwrap();
 
     let packages_path = Path::new(CRATE_ROOT).join("packages");
+    // let crates_path = Path::new(CRATE_ROOT).join("..");
 
     let bridge_path = packages_path.join("bridge");
     let deepbook_path = packages_path.join("deepbook");
     let mys_system_path = packages_path.join("mys-system");
     let mys_framework_path = packages_path.join("mys-framework");
     let move_stdlib_path = packages_path.join("move-stdlib");
+    let mys_social_path = packages_path.join("mys-social");
 
     build_packages(
         &bridge_path,
@@ -49,6 +51,7 @@ fn build_system_packages() {
         &mys_system_path,
         &mys_framework_path,
         &move_stdlib_path,
+        &mys_social_path,
         out_dir,
     );
     check_diff(Path::new(CRATE_ROOT), out_dir)
@@ -84,6 +87,7 @@ fn build_packages(
     mys_system_path: &Path,
     mys_framework_path: &Path,
     stdlib_path: &Path,
+    mys_social_path: &Path,
     out_dir: &Path,
 ) {
     let config = MoveBuildConfig {
@@ -101,12 +105,14 @@ fn build_packages(
         mys_system_path,
         mys_framework_path,
         stdlib_path,
+        mys_social_path,
         out_dir,
         "bridge",
         "deepbook",
         "mys-system",
         "mys-framework",
         "move-stdlib",
+        "mys-social",
         config,
     );
 }
@@ -117,12 +123,14 @@ fn build_packages_with_move_config(
     mys_system_path: &Path,
     mys_framework_path: &Path,
     stdlib_path: &Path,
+    mys_social_path: &Path,
     out_dir: &Path,
     bridge_dir: &str,
     deepbook_dir: &str,
     system_dir: &str,
     framework_dir: &str,
     stdlib_dir: &str,
+    mys_social_dir: &str,
     config: MoveBuildConfig,
 ) {
     let stdlib_pkg = BuildConfig {
@@ -158,12 +166,20 @@ fn build_packages_with_move_config(
     .build(deepbook_path)
     .unwrap();
     let bridge_pkg = BuildConfig {
-        config,
+        config: config.clone(),
         run_bytecode_verifier: true,
         print_diags_to_stderr: false,
         chain_id: None, // Framework pkg addr is agnostic to chain, resolves from Move.toml
     }
     .build(bridge_path)
+    .unwrap();
+    let mys_social_pkg = BuildConfig {
+        config,
+        run_bytecode_verifier: true,
+        print_diags_to_stderr: false,
+        chain_id: None, // Framework pkg addr is agnostic to chain, resolves from Move.toml
+    }
+    .build(mys_social_path)
     .unwrap();
 
     let move_stdlib = stdlib_pkg.get_stdlib_modules();
@@ -171,7 +187,7 @@ fn build_packages_with_move_config(
     let mys_framework = framework_pkg.get_mys_framework_modules();
     let deepbook = deepbook_pkg.get_deepbook_modules();
     let bridge = bridge_pkg.get_bridge_modules();
-
+    let mys_social = mys_social_pkg.get_mys_social_modules();
     let compiled_packages_dir = out_dir.join(COMPILED_PACKAGES_DIR);
 
     let mys_system_members =
@@ -185,6 +201,8 @@ fn build_packages_with_move_config(
         serialize_modules_to_file(bridge, &compiled_packages_dir.join(bridge_dir)).unwrap();
     let stdlib_members =
         serialize_modules_to_file(move_stdlib, &compiled_packages_dir.join(stdlib_dir)).unwrap();
+    let mys_social_members =
+        serialize_modules_to_file(mys_social, &compiled_packages_dir.join(mys_social_dir)).unwrap();
 
     // write out generated docs
     let docs_dir = out_dir.join(DOCS_DIR);
@@ -209,6 +227,10 @@ fn build_packages_with_move_config(
         &bridge_pkg.package.compiled_docs.unwrap(),
         &mut files_to_write,
     );
+    relocate_docs(
+        &mys_social_pkg.package.compiled_docs.unwrap(),
+        &mut files_to_write,
+    );
     for (fname, doc) in files_to_write {
         let dst_path = docs_dir.join(fname);
         fs::create_dir_all(dst_path.parent().unwrap()).unwrap();
@@ -221,6 +243,7 @@ fn build_packages_with_move_config(
         deepbook_members.join("\n"),
         bridge_members.join("\n"),
         stdlib_members.join("\n"),
+        mys_social_members.join("\n"),
     ]
     .join("\n");
 

@@ -85,12 +85,20 @@ impl Loader<u64> for Db {
         // for the same reasons as above.
         let epoch_to_filter_out = if let Some(epoch) = keys.first() {
             if epoch == &latest_mys_system_state.epoch {
-                *epoch - 1
+                if *epoch > 0 {
+                    *epoch - 1
+                } else {
+                    0 // Don't subtract if epoch is already 0
+                }
             } else {
                 *epoch
             }
         } else {
-            latest_mys_system_state.epoch - 1
+            if latest_mys_system_state.epoch > 0 {
+                latest_mys_system_state.epoch - 1
+            } else {
+                0 // Don't subtract if epoch is already 0
+            }
         };
 
         // filter the exchange rates to only include data for the epochs that are less than or

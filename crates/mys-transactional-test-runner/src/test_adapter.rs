@@ -101,6 +101,7 @@ use mys_types::{utils::to_sender_signed_transaction, MYS_SYSTEM_PACKAGE_ID};
 use mys_types::{BRIDGE_ADDRESS, MOVE_STDLIB_PACKAGE_ID};
 use mys_types::{DEEPBOOK_ADDRESS, MYS_DENY_LIST_OBJECT_ID};
 use mys_types::{DEEPBOOK_PACKAGE_ID, MYS_RANDOMNESS_STATE_OBJECT_ID};
+use mys_types::{MYS_SOCIAL_PACKAGE_ID, MYS_SOCIAL_ADDRESS};
 use tempfile::{tempdir, NamedTempFile};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -2113,6 +2114,13 @@ static NAMED_ADDRESSES: Lazy<BTreeMap<String, NumericalAddress>> = Lazy::new(|| 
         "bridge".to_string(),
         NumericalAddress::new(
             BRIDGE_ADDRESS.into_bytes(),
+            move_compiler::shared::NumberFormat::Hex,
+        ),
+    );
+    map.insert(
+        "mys-social".to_string(),
+        NumericalAddress::new(
+            MYS_SOCIAL_ADDRESS.into_bytes(),
             move_compiler::shared::NumberFormat::Hex,
         ),
     );

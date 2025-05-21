@@ -120,6 +120,7 @@ built_in_pkgs! {
     MYS_SYSTEM_ADDRESS / MYS_SYSTEM_PACKAGE_ID = 0x3;
     BRIDGE_ADDRESS / BRIDGE_PACKAGE_ID = 0xb;
     DEEPBOOK_ADDRESS / DEEPBOOK_PACKAGE_ID = 0xdee9;
+    MYS_SOCIAL_ADDRESS / MYS_SOCIAL_PACKAGE_ID = 0xd880;
 }
 
 built_in_ids! {
@@ -194,6 +195,7 @@ pub fn resolve_address(addr: &str) -> Option<AccountAddress> {
         "std" => Some(MOVE_STDLIB_ADDRESS),
         "mys" => Some(MYS_FRAMEWORK_ADDRESS),
         "mys_system" => Some(MYS_SYSTEM_ADDRESS),
+        "mys_social" => Some(MYS_SOCIAL_ADDRESS),
         "bridge" => Some(BRIDGE_ADDRESS),
         _ => None,
     }
@@ -468,6 +470,13 @@ mod tests {
         expected.assert_eq(&result.to_string());
 
         let expected = expect!["0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x000000000000000000000000000000000000000000000000000000000000dee9::custodian_v2::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"];
+        expected.assert_eq(&result.to_canonical_string(/* with_prefix */ true));
+    }
+
+    #[test]
+    fn test_mys_social_module_id() {
+        let result = parse_mys_module_id("0xd880::mys-social::create").expect("should not error");
+        let expected = expect!["0xd880::mys-social::create"];
         expected.assert_eq(&result.to_canonical_string(/* with_prefix */ true));
     }
 }

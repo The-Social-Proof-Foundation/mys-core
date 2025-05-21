@@ -50,7 +50,7 @@ use mys_types::{
     is_system_package,
     move_package::{FnInfo, FnInfoKey, FnInfoMap, MovePackage},
     BRIDGE_ADDRESS, DEEPBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYS_FRAMEWORK_ADDRESS,
-    MYS_SYSTEM_ADDRESS,
+    MYS_SYSTEM_ADDRESS, MYS_SOCIAL_ADDRESS,
 };
 use mys_verifier::verifier as mys_bytecode_verifier;
 
@@ -471,6 +471,12 @@ impl CompiledPackage {
     pub fn get_stdlib_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
             .filter(|m| *m.self_id().address() == MOVE_STDLIB_ADDRESS)
+    }
+
+    /// Get bytecode modules from the Mys Social that are used by this package
+    pub fn get_mys_social_modules(&self) -> impl Iterator<Item = &CompiledModule> {
+        self.get_modules_and_deps()
+            .filter(|m| *m.self_id().address() == MYS_SOCIAL_ADDRESS)
     }
 
     /// Generate layout schemas for all types declared by this package, as well as
