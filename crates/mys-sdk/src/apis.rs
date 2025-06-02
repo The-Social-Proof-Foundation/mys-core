@@ -14,6 +14,8 @@ use std::time::Duration;
 use std::time::Instant;
 use mys_json_rpc_types::DevInspectArgs;
 use mys_json_rpc_types::MysData;
+use mys_json_rpc_types::ZkLoginIntentScope;
+use mys_json_rpc_types::ZkLoginVerifyResult;
 
 use crate::error::{Error, MysRpcResult};
 use crate::RpcClient;
@@ -707,6 +709,21 @@ impl ReadApi {
             .api
             .http
             .try_get_object_before_version(object_id, version)
+            .await?)
+    }
+
+    /// Verify a zkLogin signature against bytes that is parsed using intent_scope, and the mys address.
+    pub async fn verify_zklogin_signature(
+        &self,
+        bytes: String,
+        signature: String,
+        intent_scope: ZkLoginIntentScope,
+        address: MysAddress,
+    ) -> MysRpcResult<ZkLoginVerifyResult> {
+        Ok(self
+            .api
+            .http
+            .verify_zklogin_signature(bytes, signature, intent_scope, address)
             .await?)
     }
 }

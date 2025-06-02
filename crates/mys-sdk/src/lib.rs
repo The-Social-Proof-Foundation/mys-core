@@ -105,6 +105,7 @@ pub mod apis;
 pub mod error;
 pub mod json_rpc_error;
 pub mod mys_client_config;
+pub mod verify_personal_message_signature;
 pub mod wallet_context;
 
 pub const MYS_COIN_TYPE: &str = "0x2::mys::MYS";
