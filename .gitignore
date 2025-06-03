@@ -31,6 +31,13 @@ Move.lock
 genesis/files/*
 genesis/*
 
+# Bridge
+bridge/evm/artifacts
+bridge/evm/cache
+bridge/evm/dependencies
+bridge/evm/out
+bridge/evm/.env
+
 # Thumbnails
 ._*
 

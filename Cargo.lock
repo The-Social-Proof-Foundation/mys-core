@@ -9789,6 +9789,7 @@ dependencies = [
  "tempfile",
  "test-cluster 0.1.0",
  "tokio",
+ "tokio-postgres",
  "tracing",
  "typed-store 0.4.0",
  "url",

@@ -6,9 +6,18 @@ license = "Apache-2.0"
 publish = false
 edition = "2021"
 
+[[bin]]
+name = "mys-bridge"
+path = "src/main.rs"
+
+[[bin]]
+name = "migrate"
+path = "src/bin/migrate.rs"
+
 [dependencies]
 ethers = "2.0"
 tokio = { workspace = true, features = ["full"] }
+tokio-postgres = "0.7"
 mys-types.workspace = true
 mys-authority-aggregation.workspace = true
 arc-swap.workspace = true
