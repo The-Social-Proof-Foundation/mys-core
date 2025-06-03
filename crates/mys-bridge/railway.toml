@@ -1,10 +1,9 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "crates/mys-bridge/Dockerfile"
-watchPatterns = ["**/*.rs", "**/*.toml", "migrations/**/*.sql"]
+watchPatterns = ["**/*.rs", "**/*.toml", "**/*.yaml"]
 
 [deploy]
-startCommand = "./mys-bridge"
 healthcheckPath = "/health"
 healthcheckTimeout = 60
 restartPolicyType = "on_failure"
@@ -20,26 +19,31 @@ domains = []
 tcpProxies = []
 
 [variables]
-# Database Configuration
+# Required: Bridge authority private key (base64 encoded)
+BRIDGE_AUTHORITY_KEY = ""  # Set in Railway Dashboard
+
+# Optional: Logging configuration  
+RUST_LOG = "info,mys_bridge=debug"
+
+# Database Configuration (only needed if using bridge client features)
 DATABASE_URL = "${{Postgres.DATABASE_URL}}"
-DB_POOL_SIZE = "10"
-DB_CONNECTION_TIMEOUT = "30"
+
+# The following variables are set in the static config file but can be overridden:
+# MYS_RPC_URL = "https://fullnode.mainnet.mysocial.network:443"
+# ETH_RPC_URL = "https://sepolia.base.org" 
+# BRIDGE_CONTRACT_ADDRESS = "0x196D0E3f7b50F29531d1bd006AB3D4c2CB731DC6"
 
 # Bridge Node Configuration
-MYS_RPC_URL = "https://fullnode.mainnet.mysocial.network:443"
-ETH_RPC_URL = "https://sepolia.base.org"
 BRIDGE_NODE_PORT = "8080"
 BRIDGE_METRICS_PORT = "9090"
 
 # Contract Addresses (Base Sepolia)
-BRIDGE_CONTRACT_ADDRESS = "0x196D0E3f7b50F29531d1bd006AB3D4c2CB731DC6"
 BRIDGE_COMMITTEE_ADDRESS = "0x2e37B4ffCE8B1F00dFD7234f8D2637715A473628"
 BRIDGE_CONFIG_ADDRESS = "0x93e073F0bE555e3CAA1c9cE3e7d825496f2a5f02"
 BRIDGE_LIMITER_ADDRESS = "0x5B5691521f695c0D5743Cc7D786821b5Fda2718f"
 BRIDGE_VAULT_ADDRESS = "0xBCD346797E5DEc586B0c4Fa19b82a4E2cAd5DD67"
 
 # Bridge Authority Configuration
-BRIDGE_AUTHORITY_KEY = ""  # Set in Railway Dashboard
 BRIDGE_COMMITTEE_MEMBER = "true"
 
 # Network Configuration
@@ -48,7 +52,6 @@ TARGET_CHAIN_ID = "1"      # Mys Network
 
 # Monitoring and Logging
 LOG_LEVEL = "info"
-RUST_LOG = "mys_bridge=info,tower_http=debug"
 METRICS_ENABLED = "true"
 PROMETHEUS_PORT = "9090"
 
