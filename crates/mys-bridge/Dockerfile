@@ -24,4 +24,4 @@ RUN cargo build --release --bin mys-bridge
 EXPOSE 8080 9090
 
 # Default command - Railway can override this
-CMD ["cargo", "run", "--release", "--bin", "mys-bridge", "--", "--config-path", "bridge-config.yaml"] 
+CMD ["cargo", "run", "--release", "--bin", "mys-bridge", "--", "--config-path", "/app/bridge-config.yaml"] 
