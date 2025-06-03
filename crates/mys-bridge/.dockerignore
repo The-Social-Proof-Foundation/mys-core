@@ -1,0 +1,95 @@
+# Rust build artifacts
+target/
+!target/release/mys-bridge
+
+# Development files
+.git/
+.github/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+docs/
+README.md
+*.md
+!crates/mys-bridge/README.md
+
+# Test files
+tests/
+**/tests/
+**/*_test.rs
+**/*_tests.rs
+
+# Development tools
+.env
+.env.local
+.env.*.local
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Examples and demos
+examples/
+dapps/
+
+# Logs
+*.log
+logs/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Docker files (except the one we need)
+Dockerfile*
+!crates/mys-bridge/Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Large directories not needed for mys-bridge
+chocolatey/
+nre/
+genesis/
+bridge/evm/artifacts/
+bridge/evm/cache/
+
+# CI/CD files  
+.github/workflows/
+.github/actions/
+scripts/
+
+# External crates that might not be needed
+# (commented out to be safe - include everything for now)
+# external-crates/move/move-execution/v0/
+# external-crates/move/move-execution/v1/ 

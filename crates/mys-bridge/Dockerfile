@@ -1,56 +1,28 @@
 # MySo Bridge Dockerfile for Railway Deployment
-# Multi-stage build for optimal Docker image size
+FROM rust:1.85-slim-bullseye as builder
 
-# Stage 1: Build dependencies
-FROM rust:1.85-slim-bullseye as deps-builder
-
-# Install system dependencies
+# Install system dependencies needed for build
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     libpq-dev \
     ca-certificates \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app directory
+# Set working directory
 WORKDIR /app
 
-# Copy only Cargo files first for dependency caching
-COPY Cargo.toml Cargo.lock ./
-COPY crates/mys-bridge/Cargo.toml ./crates/mys-bridge/
+# Copy the entire workspace (Railway needs complete context)
+COPY . .
 
-# Create dummy source files to build dependencies
-RUN mkdir -p crates/mys-bridge/src && \
-    echo "fn main() {}" > crates/mys-bridge/src/main.rs && \
-    echo "pub fn lib() {}" > crates/mys-bridge/src/lib.rs
-
-# Build dependencies only
-RUN cargo build --release --bin mys-bridge
-RUN rm -rf crates/mys-bridge/src
-
-# Stage 2: Build application
-FROM deps-builder as app-builder
-
-# Copy workspace configuration
-COPY rust-toolchain.toml ./
-COPY Cargo.toml Cargo.lock ./
-
-# Copy all necessary crates for dependencies
-COPY crates/ ./crates/
-
-# Copy MySo Bridge source
-COPY crates/mys-bridge/ ./crates/mys-bridge/
-
-# Build the application
-RUN cargo build --release --bin mys-bridge
-
-# Stage 3: Create migration runner
-FROM deps-builder as migration-builder
+# Build only the mys-bridge binary (faster than building entire workspace)
+RUN cargo build --release -p mys-bridge --bin mys-bridge
 
 # Install diesel CLI for migrations
-RUN cargo install diesel_cli --no-default-features --features postgres
+RUN cargo install diesel_cli --no-default-features --features postgres --root /usr/local
 
-# Stage 4: Runtime image
+# Runtime stage
 FROM debian:bullseye-slim as runtime
 
 # Install runtime dependencies
@@ -69,47 +41,94 @@ RUN useradd --create-home --shell /bin/bash app
 WORKDIR /app
 
 # Copy the built binary
-COPY --from=app-builder /app/target/release/mys-bridge ./mys-bridge
+COPY --from=builder /app/target/release/mys-bridge ./mys-bridge
+
+# Copy diesel CLI
+COPY --from=builder /usr/local/bin/diesel /usr/local/bin/diesel
 
 # Copy migration files
-COPY --from=app-builder /app/crates/mys-bridge/migrations ./migrations
-
-# Copy diesel CLI for migrations
-COPY --from=migration-builder /usr/local/cargo/bin/diesel /usr/local/bin/diesel
+COPY --from=builder /app/crates/mys-bridge/migrations ./migrations
 
 # Create diesel configuration
 RUN echo '[print_schema]\nfile = "src/schema.rs"' > diesel.toml
 
-# Create migration script
-COPY <<EOF ./run-migrations.sh
+# Create comprehensive startup script that generates config from env vars
+RUN cat > start.sh << 'EOF'
 #!/bin/bash
 set -e
 
-echo "🔄 Running MySo Bridge database migrations..."
+echo "🔄 Starting MySo Bridge..."
 
-# Wait for database to be ready
-until pg_isready -h \${DATABASE_HOST:-localhost} -p \${DATABASE_PORT:-5432} -U \${DATABASE_USER:-postgres}; do
-    echo "⏳ Waiting for database to be ready..."
-    sleep 2
-done
-
-echo "✅ Database is ready"
-
-# Run migrations
-if [ -d "migrations" ]; then
-    echo "🚀 Running migrations..."
-    diesel migration run --database-url="\${DATABASE_URL}"
-    echo "✅ Migrations completed successfully"
+# Generate bridge authority key file from environment variable
+if [ -n "$BRIDGE_AUTHORITY_KEY" ]; then
+    echo "$BRIDGE_AUTHORITY_KEY" > /tmp/bridge_authority_key
+    BRIDGE_AUTHORITY_KEY_PATH="/tmp/bridge_authority_key"
 else
-    echo "⚠️  No migrations directory found"
+    echo "❌ BRIDGE_AUTHORITY_KEY environment variable is required"
+    exit 1
+fi
+
+# Set default values for configuration
+MYS_RPC_URL="${MYS_RPC_URL:-https://fullnode.mainnet.mysocial.network:443}"
+ETH_RPC_URL="${ETH_RPC_URL:-https://sepolia.base.org}"
+BRIDGE_NODE_PORT="${BRIDGE_NODE_PORT:-8080}"
+BRIDGE_METRICS_PORT="${BRIDGE_METRICS_PORT:-9090}"
+BRIDGE_CONTRACT_ADDRESS="${BRIDGE_CONTRACT_ADDRESS:-0x196D0E3f7b50F29531d1bd006AB3D4c2CB731DC6}"
+SOURCE_CHAIN_ID="${SOURCE_CHAIN_ID:-84532}"
+TARGET_CHAIN_ID="${TARGET_CHAIN_ID:-1}"
+RUN_CLIENT="${RUN_CLIENT:-false}"
+
+# Generate bridge node configuration file
+cat > /tmp/bridge_config.yaml << CONFIG_EOF
+server-listen-port: ${BRIDGE_NODE_PORT}
+metrics-port: ${BRIDGE_METRICS_PORT}
+bridge-authority-key-path: "${BRIDGE_AUTHORITY_KEY_PATH}"
+run-client: ${RUN_CLIENT}
+approved-governance-actions: []
+
+mys:
+  mys-rpc-url: "${MYS_RPC_URL}"
+  mys-bridge-chain-id: ${TARGET_CHAIN_ID}
+
+eth:
+  eth-rpc-url: "${ETH_RPC_URL}"
+  eth-bridge-proxy-address: "${BRIDGE_CONTRACT_ADDRESS}"
+  eth-bridge-chain-id: ${SOURCE_CHAIN_ID}
+  eth-contracts-start-block-fallback: 0
+
+metrics:
+  push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics"
+CONFIG_EOF
+
+echo "✅ Bridge configuration generated"
+
+# Wait for database to be ready if DATABASE_URL is provided
+if [ -n "$DATABASE_URL" ]; then
+    echo "📊 Checking database connection..."
+    until pg_isready -d "$DATABASE_URL"; do
+        echo "⏳ Waiting for database..."
+        sleep 2
+    done
+    echo "✅ Database is ready"
+
+    # Run migrations if they exist
+    if [ -d "migrations" ]; then
+        echo "🚀 Running database migrations..."
+        diesel migration run --database-url="$DATABASE_URL" || echo "⚠️ Migrations failed or already applied"
+    fi
+else
+    echo "⚠️ No DATABASE_URL provided, skipping database setup"
 fi
 
 echo "🎯 Starting MySo Bridge Node..."
-exec ./mys-bridge
+echo "📝 Using config file: /tmp/bridge_config.yaml"
+
+# Start the bridge node with the generated config
+exec ./mys-bridge --config-path /tmp/bridge_config.yaml "$@"
 EOF
 
 # Make scripts executable
-RUN chmod +x ./run-migrations.sh ./mys-bridge
+RUN chmod +x start.sh mys-bridge
 
 # Change ownership to app user
 RUN chown -R app:app /app
@@ -117,18 +136,17 @@ RUN chown -R app:app /app
 # Switch to app user
 USER app
 
-# Health check endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:${BRIDGE_NODE_PORT:-8080}/health || exit 1
 
 # Expose ports
 EXPOSE 8080 9090
 
 # Set environment variables
-ENV RUST_LOG=info
-ENV DATABASE_URL=""
-ENV BRIDGE_NODE_PORT=8080
-ENV BRIDGE_METRICS_PORT=9090
+ENV RUST_LOG=info \
+    BRIDGE_NODE_PORT=8080 \
+    BRIDGE_METRICS_PORT=9090
 
-# Start the application with migrations
-CMD ["./run-migrations.sh"] 
+# Start the application
+CMD ["./start.sh"] 
