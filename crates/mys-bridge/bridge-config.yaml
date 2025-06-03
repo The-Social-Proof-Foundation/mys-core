@@ -11,7 +11,7 @@ mys:
 eth:
   eth-rpc-url: "https://sepolia.base.org"
   eth-bridge-proxy-address: "0x196D0E3f7b50F29531d1bd006AB3D4c2CB731DC6"
-  eth-bridge-chain-id: 84532
+  eth-bridge-chain-id: 12
   eth-contracts-start-block-fallback: 0
 
 metrics:
