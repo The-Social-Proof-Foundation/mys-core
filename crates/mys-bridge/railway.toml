@@ -1,6 +1,6 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "crates/mys-bridge/Dockerfile"
 watchPatterns = ["**/*.rs", "**/*.toml", "migrations/**/*.sql"]
 
 [deploy]
