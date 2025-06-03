@@ -6,9 +6,9 @@ services:
     image: postgres:15-alpine
     container_name: myso-bridge-postgres
     environment:
-      POSTGRES_DB: myso_bridge
-      POSTGRES_USER: bridge_user
-      POSTGRES_PASSWORD: bridge_password
+      POSTGRES_DB: railway
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: KSZdWvSJKmuFrZjgjBEzdQwAogYclIgi
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     ports:
       - "5432:5432"
