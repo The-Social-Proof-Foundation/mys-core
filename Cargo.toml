@@ -257,6 +257,7 @@ unexpected_cfgs = { level = "warn", check-cfg = [
     'cfg(msim)',
     'cfg(fail_points)',
 ] }
+non_local_definitions = "allow"
 
 # Dependencies that should be kept in sync through the whole workspace
 [workspace.dependencies]
