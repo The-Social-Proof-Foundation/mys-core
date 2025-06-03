@@ -1,10 +1,18 @@
 use std::env;
 use std::process;
 use std::path::Path;
-use tokio_postgres::{Client, NoTls};
+use std::error::Error as StdError;
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    // Use tokio runtime directly instead of macro to avoid ABI issues
+    let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+    rt.block_on(async_main()).unwrap_or_else(|e| {
+        eprintln!("❌ Migration failed: {}", e);
+        process::exit(1);
+    });
+}
+
+async fn async_main() -> Result<(), Box<dyn StdError>> {
     println!("🚀 MySo Bridge Database Migration Runner");
     
     // Get database URL from environment
@@ -14,12 +22,9 @@ async fn main() {
     println!("🔗 Connecting to database...");
     
     // Connect to database
-    let (client, connection) = tokio_postgres::connect(&database_url, NoTls)
+    let (mut client, connection) = tokio_postgres::connect(&database_url, tokio_postgres::NoTls)
         .await
-        .unwrap_or_else(|e| {
-            eprintln!("❌ Failed to connect to database: {}", e);
-            process::exit(1);
-        });
+        .map_err(|e| format!("Failed to connect to database: {}", e))?;
     
     // Spawn connection task
     tokio::spawn(async move {
@@ -31,21 +36,16 @@ async fn main() {
     println!("✅ Connected to database successfully");
     
     // Create migrations table if it doesn't exist
-    if let Err(e) = create_migrations_table(&client).await {
-        eprintln!("❌ Failed to create migrations table: {}", e);
-        process::exit(1);
-    }
+    create_migrations_table(&mut client).await?;
     
     // Run migrations
-    if let Err(e) = run_migrations(&client).await {
-        eprintln!("❌ Failed to run migrations: {}", e);
-        process::exit(1);
-    }
+    run_migrations(&mut client).await?;
     
     println!("🎉 All migrations completed successfully!");
+    Ok(())
 }
 
-async fn create_migrations_table(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
+async fn create_migrations_table(client: &mut tokio_postgres::Client) -> Result<(), Box<dyn StdError>> {
     client.execute(
         "CREATE TABLE IF NOT EXISTS _migrations (
             id SERIAL PRIMARY KEY,
@@ -59,7 +59,7 @@ async fn create_migrations_table(client: &Client) -> Result<(), Box<dyn std::err
     Ok(())
 }
 
-async fn run_migrations(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_migrations(client: &mut tokio_postgres::Client) -> Result<(), Box<dyn StdError>> {
     let migrations_dir = "migrations";
     
     if !Path::new(migrations_dir).exists() {
