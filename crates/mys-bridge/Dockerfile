@@ -1,8 +1,5 @@
 # MySo Bridge Dockerfile for Railway Deployment
-# Multi-stage build for optimal Docker image size
-
-# Stage 1: Build dependencies
-FROM rust:1.85-slim-bullseye as deps-builder
+FROM rust:1.85-slim-bullseye as builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -12,46 +9,18 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app directory
+# Set working directory
 WORKDIR /app
 
-# Copy only Cargo files first for dependency caching
-COPY Cargo.toml Cargo.lock ./
-COPY crates/mys-bridge/Cargo.toml ./crates/mys-bridge/
-
-# Create dummy source files to build dependencies
-RUN mkdir -p crates/mys-bridge/src && \
-    echo "fn main() {}" > crates/mys-bridge/src/main.rs && \
-    echo "pub fn lib() {}" > crates/mys-bridge/src/lib.rs
-
-# Build dependencies only
-RUN cargo build --release --bin mys-bridge
-RUN rm -rf crates/mys-bridge/src
-
-# Stage 2: Build application
-FROM deps-builder as app-builder
-
-# Copy workspace configuration
-COPY rust-toolchain.toml ./
-COPY Cargo.toml Cargo.lock ./
-
-# Copy all necessary crates for dependencies
-COPY crates/ ./crates/
-
-# Copy MySo Bridge source
-COPY crates/mys-bridge/ ./crates/mys-bridge/
+# Copy all source files
+COPY . .
 
 # Build the application
 RUN cargo build --release --bin mys-bridge
+RUN cargo build --release --bin migrate
 
-# Stage 3: Create migration runner
-FROM deps-builder as migration-builder
-
-# Install diesel CLI for migrations
-RUN cargo install diesel_cli --no-default-features --features postgres
-
-# Stage 4: Runtime image
-FROM debian:bullseye-slim as runtime
+# Runtime stage
+FROM debian:bullseye-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -68,37 +37,45 @@ RUN useradd --create-home --shell /bin/bash app
 # Set working directory
 WORKDIR /app
 
-# Copy the built binary
-COPY --from=app-builder /app/target/release/mys-bridge ./mys-bridge
+# Copy the built binaries
+COPY --from=builder /app/target/release/mys-bridge ./mys-bridge
+COPY --from=builder /app/target/release/migrate ./migrate
 
 # Copy migration files
-COPY --from=app-builder /app/crates/mys-bridge/migrations ./migrations
+COPY --from=builder /app/migrations ./migrations
 
-# Copy diesel CLI for migrations
-COPY --from=migration-builder /usr/local/cargo/bin/diesel /usr/local/bin/diesel
-
-# Create diesel configuration
-RUN echo '[print_schema]\nfile = "src/schema.rs"' > diesel.toml
-
-# Create migration script
-COPY <<EOF ./run-migrations.sh
+# Create migration script that uses our custom migrate binary
+RUN cat > run-migrations.sh << 'EOF'
 #!/bin/bash
 set -e
 
 echo "🔄 Running MySo Bridge database migrations..."
 
+# Parse DATABASE_URL to get connection details for pg_isready
+if [[ $DATABASE_URL =~ postgres://([^:]+):([^@]+)@([^:]+):([^/]+)/(.+) ]]; then
+    DB_USER="${BASH_REMATCH[1]}"
+    DB_HOST="${BASH_REMATCH[3]}"
+    DB_PORT="${BASH_REMATCH[4]}"
+else
+    echo "⚠️  Could not parse DATABASE_URL for health check"
+    DB_HOST="localhost"
+    DB_PORT="5432"
+    DB_USER="postgres"
+fi
+
 # Wait for database to be ready
-until pg_isready -h \${DATABASE_HOST:-localhost} -p \${DATABASE_PORT:-5432} -U \${DATABASE_USER:-postgres}; do
-    echo "⏳ Waiting for database to be ready..."
+echo "⏳ Waiting for database at $DB_HOST:$DB_PORT..."
+until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" 2>/dev/null; do
+    echo "⏳ Database not ready, waiting..."
     sleep 2
 done
 
 echo "✅ Database is ready"
 
-# Run migrations
+# Run migrations using our custom migrate binary
 if [ -d "migrations" ]; then
     echo "🚀 Running migrations..."
-    diesel migration run --database-url="\${DATABASE_URL}"
+    ./migrate
     echo "✅ Migrations completed successfully"
 else
     echo "⚠️  No migrations directory found"
@@ -109,7 +86,7 @@ exec ./mys-bridge
 EOF
 
 # Make scripts executable
-RUN chmod +x ./run-migrations.sh ./mys-bridge
+RUN chmod +x run-migrations.sh mys-bridge migrate
 
 # Change ownership to app user
 RUN chown -R app:app /app

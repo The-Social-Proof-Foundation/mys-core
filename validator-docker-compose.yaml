@@ -1,0 +1,61 @@
+version: "3"
+
+services:
+  validator:
+    container_name: validator
+    image: mysten/mys-node:${MYS_SHA:-latest} # update with your specific version
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info,mys_core=debug,consensus=debug,jsonrpsee=error
+    ports:
+      - "8080:8080"
+      - "8081:8081/tcp"
+      - "8081:8081/udp"
+      - "8082:8082/udp"
+      - "8084:8084/udp"
+      - "9184:9184"
+    volumes:
+      - ./validator.yaml:/opt/mys/config/validator.yaml:ro
+      - ./genesis.blob:/opt/mys/config/genesis.blob:ro
+      - ./key-pairs:/opt/mys/key-pairs/:ro
+      - ./data/validator:/opt/mys/db:rw
+    command:
+      [
+        "/opt/mys/bin/mys-node",
+        "--config-path",
+        "/opt/mys/config/validator.yaml",
+      ]
+    restart: on-failure
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "10"
+        max-size: "5g"
+
+  proxy:
+    container_name: proxy
+    image: mysten/mys-tools:${MYS_SHA:-latest} # update with your specific version
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./proxy-config.yaml:/config/proxy.yaml:ro
+    command: ["/opt/mys/bin/mys-proxy", "--config", "/config/proxy.yaml"]
+    restart: on-failure
+    depends_on:
+      - validator
+
+  edge-proxy:
+    container_name: edge-proxy
+    image: mysten/mys-tools:${MYS_SHA:-latest} # update with your specific version
+    ports:
+      - "8081:8081"
+      - "9184:9184"
+    volumes:
+      - ./edge-proxy-config.yaml:/config/proxy.yaml:ro
+    command: ["/opt/mys/bin/mys-edge-proxy", "--config", "/config/proxy.yaml"]
+    restart: on-failure
+    depends_on:
+      - validator
+
+volumes:
+  mysdb: 
