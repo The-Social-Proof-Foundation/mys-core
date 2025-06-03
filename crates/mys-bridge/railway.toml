@@ -17,8 +17,8 @@ RUST_LOG = "info,mys_bridge=debug"
 DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 
 # The following variables are set in the static config file but can be overridden:
-# MYS_RPC_URL = "https://fullnode.mainnet.mysocial.network:443"
-# ETH_RPC_URL = "https://sepolia.base.org" 
+# MYS_RPC_URL = "https://fullnode.testnet.mysocial.network:9000"
+# ETH_RPC_URL = "https://base-sepolia.g.alchemy.com/v2/CTLwBwcLSgKAIYyujNUnfn6ThiSLHVNS" 
 # BRIDGE_CONTRACT_ADDRESS = "0x196D0E3f7b50F29531d1bd006AB3D4c2CB731DC6"
 
 # Bridge Node Configuration
@@ -35,7 +35,7 @@ BRIDGE_VAULT_ADDRESS = "0xBCD346797E5DEc586B0c4Fa19b82a4E2cAd5DD67"
 BRIDGE_COMMITTEE_MEMBER = "true"
 
 # Network Configuration
-SOURCE_CHAIN_ID = "84532"  # Base Sepolia
+SOURCE_CHAIN_ID = "12"  # Base Sepolia
 TARGET_CHAIN_ID = "1"      # Mys Network
 
 # Monitoring and Logging
