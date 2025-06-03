@@ -9,18 +9,9 @@ healthcheckTimeout = 60
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 
-[environments.production]
-variables = {}
-
-[services.web]
-domains = []
-
-[services.mys-bridge-node]
-tcpProxies = []
-
 [variables]
 # Required: Bridge authority private key (base64 encoded)
-BRIDGE_AUTHORITY_KEY = ""  # Set in Railway Dashboard
+BRIDGE_AUTHORITY_KEY = ""
 
 # Optional: Logging configuration  
 RUST_LOG = "info,mys_bridge=debug"
@@ -67,8 +58,4 @@ TRUSTED_PROXY_COUNT = "1"
 # Feature Flags
 ENABLE_EMERGENCY_PAUSE = "true"
 ENABLE_RATE_LIMITING = "true"
-ENABLE_TRANSFER_LIMITS = "true"
-
-[migrations]
-command = "cargo run --bin migrate"
-beforeDeploy = true 
+ENABLE_TRANSFER_LIMITS = "true" 
