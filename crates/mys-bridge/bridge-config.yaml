@@ -16,4 +16,3 @@ eth:
 
 metrics:
   push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics" 
-  
