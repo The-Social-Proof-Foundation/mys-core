@@ -5,7 +5,7 @@ run-client: false
 approved-governance-actions: []
 
 mys:
-  mys-rpc-url: "https://fullnode.mainnet.mysocial.network:443"
+  mys-rpc-url: "https://fullnode.testnet.mysocial.network:9000"
   mys-bridge-chain-id: 1
 
 eth:
