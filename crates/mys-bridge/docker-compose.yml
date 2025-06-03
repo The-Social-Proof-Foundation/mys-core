@@ -46,7 +46,7 @@ services:
         condition: service_healthy
     environment:
       # Database Configuration
-      DATABASE_URL: "postgresql://bridge_user:bridge_password@postgres:5432/myso_bridge"
+      DATABASE_URL: "postgresql://postgres:KSZdWvSJKmuFrZjgjBEzdQwAogYclIgi@gondola.proxy.rlwy.net:46759/railway"
       DB_POOL_SIZE: "10"
       DB_CONNECTION_TIMEOUT: "30"
       
