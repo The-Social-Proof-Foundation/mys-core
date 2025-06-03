@@ -1,17 +1,15 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "crates/mys-bridge/Dockerfile"
-watchPatterns = ["**/*.rs", "**/*.toml", "**/*.yaml"]
 
 [deploy]
+startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key && cargo run --release --bin mys-bridge -- --config-path bridge-config.yaml'"
 healthcheckPath = "/health"
 healthcheckTimeout = 60
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
 
 [variables]
-# Required: Bridge authority private key (base64 encoded)
 BRIDGE_AUTHORITY_KEY = ""
+RUST_LOG = "info"
 
 # Optional: Logging configuration  
 RUST_LOG = "info,mys_bridge=debug"

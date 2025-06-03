@@ -1,45 +1,27 @@
 # MySo Bridge Dockerfile for Railway Deployment
-FROM rust:1.81-bullseye as builder
+FROM rust:1.81-bullseye
 
-ARG PROFILE=release
 WORKDIR /work
 
-RUN apt-get update && apt-get install -y cmake clang
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    cmake \
+    clang \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY Cargo.toml Cargo.lock ./
-COPY consensus consensus
-COPY crates crates
-COPY mys-execution mys-execution
-COPY external-crates external-crates
-
-RUN cargo build --profile ${PROFILE} --bin mys-bridge
-
-FROM debian:bullseye-slim as runtime
-
-RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /work/target/release/mys-bridge /opt/mys/bin/mys-bridge
+# Copy workspace
+COPY . .
 
 # Copy config file
 COPY crates/mys-bridge/bridge-config.yaml /app/bridge-config.yaml
 
-# Create simple entrypoint script
-COPY <<EOF /entrypoint.sh
-#!/bin/bash
-set -e
+# Build the project
+RUN cargo build --release --bin mys-bridge
 
-if [ -n "$BRIDGE_AUTHORITY_KEY" ]; then
-  echo "$BRIDGE_AUTHORITY_KEY" > /tmp/bridge_key
-else
-  echo "Error: BRIDGE_AUTHORITY_KEY environment variable required"
-  exit 1
-fi
-
-exec /opt/mys/bin/mys-bridge --config-path /app/bridge-config.yaml "$@"
-EOF
-
-RUN chmod +x /entrypoint.sh
-
+# Expose ports
 EXPOSE 8080 9090
 
-ENTRYPOINT ["/entrypoint.sh"] 
+# Default command - Railway can override this
+CMD ["cargo", "run", "--release", "--bin", "mys-bridge", "--", "--config-path", "bridge-config.yaml"] 
