@@ -9,7 +9,6 @@ healthcheckTimeout = 60
 
 [variables]
 BRIDGE_AUTHORITY_KEY = ""
-RUST_LOG = "info"
 
 # Optional: Logging configuration  
 RUST_LOG = "info,mys_bridge=debug"
