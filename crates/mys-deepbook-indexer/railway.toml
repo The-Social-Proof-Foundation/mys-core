@@ -1,8 +1,9 @@
 [build]
 builder = "nixpacks"
+buildCommand = "cargo build --release --package mys-deepbook-indexer --bin mys-deepbook-indexer"
 
 [deploy]
-startCommand = "mys-deepbook-indexer"
+startCommand = "cargo run --release --package mys-deepbook-indexer --bin mys-deepbook-indexer"
 healthcheckPath = "/"
 healthcheckTimeout = 60
 
