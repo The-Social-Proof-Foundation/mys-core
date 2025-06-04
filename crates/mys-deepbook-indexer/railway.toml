@@ -1,6 +1,5 @@
 [build]
-builder = "dockerfile"
-dockerfilePath = "crates/mys-deepbook-indexer/Dockerfile"
+builder = "nixpacks"
 
 [deploy]
 startCommand = "mys-deepbook-indexer"
