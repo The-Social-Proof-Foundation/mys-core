@@ -11,6 +11,7 @@ serde = { version = "1.0.144", features = ["derive", "rc"] }
 tap = "1.0.1"
 diesel = { version = "2.2", features = ["serde_json"] }
 diesel-async = { version = "0.5", features = ["bb8", "postgres"] }
+diesel_migrations = "2.2.0"
 tokio = { version = "1.43.0", features = ["full"] }
 anyhow = "1.0.71"
 futures = "0.3.28"
@@ -29,6 +30,7 @@ tracing = "0.1.37"
 backoff = { version = "0.4.0", features = ["futures", "futures-core", "pin-project-lite", "tokio", "tokio_1"] }
 mys-config = { path = "../mys-config" }
 mys-indexer-builder = { path = "../mys-indexer-builder" }
+mys-pg-db = { path = "../mys-pg-db" }
 tempfile = "3.3.0"
 axum = { version = "0.7", default-features = false, features = ["macros", "tokio", "http1", "http2", "json", "matched-path", "original-uri", "form", "query", "ws"] }
 tower-http = { version = "0.5", features = ["cors", "full", "trace", "set-header", "propagate-header"] }

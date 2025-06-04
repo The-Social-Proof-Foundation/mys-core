@@ -4,8 +4,8 @@
 
 use anyhow::Result;
 use clap::*;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use mysten_metrics::start_prometheus_server;
-use std::env;
 use std::net::IpAddr;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
@@ -21,9 +21,12 @@ use mys_deepbook_indexer::mys_deepbook_indexer::MysDeepBookDataMapper;
 use mys_indexer_builder::indexer_builder::IndexerBuilder;
 use mys_indexer_builder::progress::{OutOfOrderSaveAfterDurationPolicy, ProgressSavingPolicy};
 use mys_indexer_builder::mys_datasource::MysCheckpointDatasource;
+use mys_pg_db::{Db, DbArgs};
 use mys_sdk::MysClientBuilder;
 use mys_types::base_types::ObjectID;
 use tracing::info;
+
+const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/migrations");
 
 #[derive(Parser, Clone, Debug)]
 struct Args {
@@ -60,6 +63,17 @@ async fn main() -> Result<()> {
     let ingestion_metrics = DataIngestionMetrics::new(&registry);
 
     let db_url = config.db_url.clone();
+    
+    // Run database migrations
+    info!("Running database migrations...");
+    let db_args = DbArgs {
+        database_url: db_url.parse()?,
+        ..Default::default()
+    };
+    let db = Db::for_write(db_args).await?;
+    db.run_migrations(MIGRATIONS).await?;
+    info!("Database migrations completed successfully");
+    
     let datastore = PgDeepbookPersistent::new(
         get_connection_pool(db_url.clone()).await,
         ProgressSavingPolicy::OutOfOrderSaveAfterDuration(OutOfOrderSaveAfterDurationPolicy::new(
