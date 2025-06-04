@@ -1,0 +1,42 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/mys-deepbook-indexer/Dockerfile"
+
+[deploy]
+startCommand = "mys-deepbook-indexer"
+healthcheckPath = "/"
+healthcheckTimeout = 60
+
+[variables]
+# Database Configuration
+DATABASE_URL = "postgres://tsdbadmin:awbr7d1tc0cap9hp@fzbzpjk2c1.rrpamcwlae.tsdb.cloud.timescale.com:31452/tsdb?sslmode=require"
+
+# Optional: Logging configuration  
+RUST_LOG = "info,mys_deepbook_indexer=debug"
+
+# MySocial Network Configuration
+MYS_RPC_URL = "https://fullnode.testnet.mysocial.network:9000"
+
+# DeepBook Indexer Configuration
+INDEXER_PORT = "8080"
+METRICS_PORT = "9090"
+
+# Package ID for DeepBook (you'll need to set this)
+DEEPBOOK_PACKAGE_ID = "0x000000000000000000000000000000000000000000000000000000000000d33p"
+
+# Checkpoint configuration
+# checkpoints_path can be left empty for automatic temp directory
+CHECKPOINTS_PATH = ""
+
+# Performance Settings
+SYNC_BATCH_SIZE = "100"
+SYNC_INTERVAL_MS = "5000"
+MAX_CONCURRENT_REQUESTS = "10"
+
+# Monitoring and Logging
+LOG_LEVEL = "info"
+METRICS_ENABLED = "true"
+PROMETHEUS_PORT = "9090"
+
+# Security Settings
+ENABLE_CORS = "true"
