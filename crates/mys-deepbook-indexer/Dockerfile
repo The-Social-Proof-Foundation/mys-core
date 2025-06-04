@@ -16,10 +16,10 @@ RUN apt-get update && apt-get install -y \
 # Copy workspace
 COPY . .
 
-# Change to crates directory for building
-WORKDIR /work/crates
+# Change to deepbook indexer directory for building
+WORKDIR /work/crates/mys-deepbook-indexer
 
-# Build the project
+# Build the project from the workspace root but specify the package
 RUN cargo build --release --bin mys-deepbook-indexer
 
 # Expose ports
