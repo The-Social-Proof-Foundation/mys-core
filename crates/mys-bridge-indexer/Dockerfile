@@ -19,7 +19,7 @@ COPY crates crates
 COPY mys-execution mys-execution
 COPY external-crates external-crates
 
-RUN cargo build --release --package mys-bridge-indexer --bin bridge-indexer
+RUN cargo build --release --package mys-bridge-indexer --bin bridge-indexer --config-path config.yaml
 
 # Production Image
 FROM debian:bullseye-slim AS runtime
