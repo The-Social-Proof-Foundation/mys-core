@@ -8,35 +8,30 @@ healthcheckPath = "/"
 healthcheckTimeout = 60
 
 [variables]
-# Database Configuration
+# Required: Database Configuration
 DATABASE_URL = "postgres://tsdbadmin:awbr7d1tc0cap9hp@fzbzpjk2c1.rrpamcwlae.tsdb.cloud.timescale.com:31452/tsdb?sslmode=require"
 
-# Optional: Logging configuration  
-RUST_LOG = "info,mys_deepbook_indexer=debug"
+# Required: Package ID for DeepBook
+DEEPBOOK_PACKAGE_ID = "0x000000000000000000000000000000000000000000000000000000000000d33p"
 
-# MySocial Network Configuration
+# Optional: Remote store URL (defaults to mysocial testnet)
+REMOTE_STORE_URL = "https://storage.googleapis.com/mysocial-testnet-checkpoints"
+
+# Optional: MySocial Network RPC URL (defaults to testnet)
 MYS_RPC_URL = "https://fullnode.testnet.mysocial.network:9000"
 
-# DeepBook Indexer Configuration
+# Optional: Genesis checkpoint (defaults to 0)
+DEEPBOOK_GENESIS_CHECKPOINT = "0"
+
+# Optional: Concurrency (defaults to 1)
+CONCURRENCY = "1"
+
+# Optional: Ports (defaults shown)
 INDEXER_PORT = "8080"
 METRICS_PORT = "9090"
 
-# Package ID for DeepBook (you'll need to set this)
-DEEPBOOK_PACKAGE_ID = "0x000000000000000000000000000000000000000000000000000000000000d33p"
-
-# Checkpoint configuration
-# checkpoints_path can be left empty for automatic temp directory
+# Optional: Checkpoints path (empty for temp directory)
 CHECKPOINTS_PATH = ""
 
-# Performance Settings
-SYNC_BATCH_SIZE = "100"
-SYNC_INTERVAL_MS = "5000"
-MAX_CONCURRENT_REQUESTS = "10"
-
-# Monitoring and Logging
-LOG_LEVEL = "info"
-METRICS_ENABLED = "true"
-PROMETHEUS_PORT = "9090"
-
-# Security Settings
-ENABLE_CORS = "true"
+# Optional: Logging configuration  
+RUST_LOG = "info,mys_deepbook_indexer=debug"

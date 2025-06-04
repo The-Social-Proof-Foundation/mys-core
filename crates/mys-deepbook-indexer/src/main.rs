@@ -40,15 +40,13 @@ async fn main() -> Result<()> {
 
     let args = Args::parse();
 
-    // load config
-    let config_path = if let Some(path) = args.config_path {
-        path
+    // load config from environment variables if no config file specified
+    let config = if let Some(path) = args.config_path {
+        IndexerConfig::load(&path)?
     } else {
-        env::current_dir()
-            .expect("Couldn't get current directory")
-            .join("config.yaml")
+        // Try to use environment variables
+        IndexerConfig::from_env()?
     };
-    let config = IndexerConfig::load(&config_path)?;
 
     // Init metrics server
     let metrics_address =
