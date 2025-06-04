@@ -21,10 +21,13 @@ use mys_deepbook_indexer::mys_deepbook_indexer::MysDeepBookDataMapper;
 use mys_indexer_builder::indexer_builder::IndexerBuilder;
 use mys_indexer_builder::progress::{OutOfOrderSaveAfterDurationPolicy, ProgressSavingPolicy};
 use mys_indexer_builder::mys_datasource::MysCheckpointDatasource;
-use mys_pg_db::{Db, DbArgs};
 use mys_sdk::MysClientBuilder;
 use mys_types::base_types::ObjectID;
 use tracing::info;
+use diesel_migrations::MigrationHarness;
+use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
+use diesel_async::AsyncPgConnection;
+use diesel_async::AsyncConnection;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/migrations");
 
@@ -64,14 +67,9 @@ async fn main() -> Result<()> {
 
     let db_url = config.db_url.clone();
     
-    // Run database migrations
+    // Run database migrations using TLS-enabled connection
     info!("Running database migrations...");
-    let db_args = DbArgs {
-        database_url: db_url.parse()?,
-        ..Default::default()
-    };
-    let db = Db::for_write(db_args).await?;
-    db.run_migrations(MIGRATIONS).await?;
+    run_migrations_with_tls(&db_url).await?;
     info!("Database migrations completed successfully");
     
     let datastore = PgDeepbookPersistent::new(
@@ -117,4 +115,84 @@ async fn main() -> Result<()> {
     indexer.start().await?;
 
     Ok(())
+}
+
+async fn run_migrations_with_tls(database_url: &str) -> Result<()> {
+    // Set up rustls for TLS connections
+    let rustls_config = rustls::ClientConfig::builder()
+        .dangerous()
+        .with_custom_certificate_verifier(std::sync::Arc::new(SkipServerCertCheck))
+        .with_no_client_auth();
+    let tls = tokio_postgres_rustls::MakeRustlsConnect::new(rustls_config);
+    let (client, conn) = tokio_postgres::connect(database_url, tls)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to connect to database: {}", e))?;
+    
+    tokio::spawn(async move {
+        if let Err(e) = conn.await {
+            eprintln!("Database connection error: {e}");
+        }
+    });
+    
+    let connection = AsyncPgConnection::try_from(client).await
+        .map_err(|e| anyhow::anyhow!("Failed to create async connection: {}", e))?;
+    
+    let _finished_migrations = tokio::task::spawn_blocking(move || {
+        let mut wrapper: AsyncConnectionWrapper<AsyncPgConnection> = 
+            diesel_async::async_connection_wrapper::AsyncConnectionWrapper::from(connection);
+        wrapper.run_pending_migrations(MIGRATIONS).map_err(|e| format!("{:?}", e))?;
+        Ok::<(), String>(())
+    })
+    .await?
+    .map_err(|e| anyhow::anyhow!("Failed to run migrations: {}", e))?;
+    
+    Ok(())
+}
+
+fn root_certs() -> rustls::RootCertStore {
+    rustls::RootCertStore {
+        roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
+    }
+}
+
+/// Skip performing strict certificate verification to handle cloud database certificates
+#[derive(Debug)]
+struct SkipServerCertCheck;
+
+impl rustls::client::danger::ServerCertVerifier for SkipServerCertCheck {
+    fn verify_server_cert(
+        &self,
+        _end_entity: &rustls::pki_types::CertificateDer<'_>,
+        _intermediates: &[rustls::pki_types::CertificateDer<'_>],
+        _server_name: &rustls::pki_types::ServerName<'_>,
+        _ocsp_response: &[u8],
+        _now: rustls::pki_types::UnixTime,
+    ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
+        Ok(rustls::client::danger::ServerCertVerified::assertion())
+    }
+
+    fn verify_tls12_signature(
+        &self,
+        _message: &[u8],
+        _cert: &rustls::pki_types::CertificateDer<'_>,
+        _dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+    }
+
+    fn verify_tls13_signature(
+        &self,
+        _message: &[u8],
+        _cert: &rustls::pki_types::CertificateDer<'_>,
+        _dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+    }
+
+    fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
+        rustls::client::WebPkiServerVerifier::builder(std::sync::Arc::new(root_certs()))
+            .build()
+            .unwrap()
+            .supported_verify_schemes()
+    }
 }
