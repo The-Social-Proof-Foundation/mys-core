@@ -10288,6 +10288,7 @@ dependencies = [
  "telemetry-subscribers 0.2.0",
  "tempfile",
  "tokio",
+ "tokio-postgres-rustls",
  "tower-http 0.5.2",
  "tracing",
 ]
