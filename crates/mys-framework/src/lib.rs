@@ -18,7 +18,7 @@ use mys_types::{
     object::{Object, OBJECT_START_VERSION},
     MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID, MYS_SYSTEM_PACKAGE_ID, MYS_SOCIAL_PACKAGE_ID,
 };
-use mys_types::{BRIDGE_PACKAGE_ID, DEEPBOOK_PACKAGE_ID};
+use mys_types::{BRIDGE_PACKAGE_ID, DEEPBOOK_PACKAGE_ID, BRIDGED_USDC_PACKAGE_ID};
 use tracing::error;
 
 /// Encapsulates a system package in the framework
@@ -158,6 +158,12 @@ impl BuiltInFramework {
                     MYS_FRAMEWORK_PACKAGE_ID,
                     MYS_SYSTEM_PACKAGE_ID
                 ]
+            ),
+            (
+                BRIDGED_USDC_PACKAGE_ID,
+                "BridgedUSDC",
+                "usdc",
+                [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
             )
         ])
         .iter()

@@ -44,6 +44,7 @@ fn build_system_packages() {
     let mys_framework_path = packages_path.join("mys-framework");
     let move_stdlib_path = packages_path.join("move-stdlib");
     let mys_social_path = packages_path.join("mys-social");
+    let usdc_path = packages_path.join("usdc");
 
     build_packages(
         &bridge_path,
@@ -52,6 +53,7 @@ fn build_system_packages() {
         &mys_framework_path,
         &move_stdlib_path,
         &mys_social_path,
+        &usdc_path,
         out_dir,
     );
     check_diff(Path::new(CRATE_ROOT), out_dir)
@@ -88,6 +90,7 @@ fn build_packages(
     mys_framework_path: &Path,
     stdlib_path: &Path,
     mys_social_path: &Path,
+    usdc_path: &Path,
     out_dir: &Path,
 ) {
     let config = MoveBuildConfig {
@@ -106,6 +109,7 @@ fn build_packages(
         mys_framework_path,
         stdlib_path,
         mys_social_path,
+        usdc_path,
         out_dir,
         "bridge",
         "deepbook",
@@ -113,6 +117,7 @@ fn build_packages(
         "mys-framework",
         "move-stdlib",
         "mys-social",
+        "usdc",
         config,
     );
 }
@@ -124,6 +129,7 @@ fn build_packages_with_move_config(
     mys_framework_path: &Path,
     stdlib_path: &Path,
     mys_social_path: &Path,
+    usdc_path: &Path,
     out_dir: &Path,
     bridge_dir: &str,
     deepbook_dir: &str,
@@ -131,6 +137,7 @@ fn build_packages_with_move_config(
     framework_dir: &str,
     stdlib_dir: &str,
     mys_social_dir: &str,
+    usdc_dir: &str,
     config: MoveBuildConfig,
 ) {
     let stdlib_pkg = BuildConfig {
@@ -173,6 +180,14 @@ fn build_packages_with_move_config(
     }
     .build(bridge_path)
     .unwrap();
+    let usdc_pkg = BuildConfig {
+        config: config.clone(),
+        run_bytecode_verifier: true,
+        print_diags_to_stderr: false,
+        chain_id: None,
+    }
+    .build(usdc_path)
+    .unwrap();
     let mys_social_pkg = BuildConfig {
         config,
         run_bytecode_verifier: true,
@@ -187,6 +202,7 @@ fn build_packages_with_move_config(
     let mys_framework = framework_pkg.get_mys_framework_modules();
     let deepbook = deepbook_pkg.get_deepbook_modules();
     let bridge = bridge_pkg.get_bridge_modules();
+    let usdc = usdc_pkg.get_modules();
     let mys_social = mys_social_pkg.get_mys_social_modules();
     let compiled_packages_dir = out_dir.join(COMPILED_PACKAGES_DIR);
 
@@ -199,6 +215,8 @@ fn build_packages_with_move_config(
         serialize_modules_to_file(deepbook, &compiled_packages_dir.join(deepbook_dir)).unwrap();
     let bridge_members =
         serialize_modules_to_file(bridge, &compiled_packages_dir.join(bridge_dir)).unwrap();
+    let usdc_members =
+        serialize_modules_to_file(usdc, &compiled_packages_dir.join(usdc_dir)).unwrap();
     let stdlib_members =
         serialize_modules_to_file(move_stdlib, &compiled_packages_dir.join(stdlib_dir)).unwrap();
     let mys_social_members =
@@ -231,6 +249,10 @@ fn build_packages_with_move_config(
         &mys_social_pkg.package.compiled_docs.unwrap(),
         &mut files_to_write,
     );
+    relocate_docs(
+        &usdc_pkg.package.compiled_docs.unwrap(),
+        &mut files_to_write,
+    );
     for (fname, doc) in files_to_write {
         let dst_path = docs_dir.join(fname);
         fs::create_dir_all(dst_path.parent().unwrap()).unwrap();
@@ -242,6 +264,7 @@ fn build_packages_with_move_config(
         mys_framework_members.join("\n"),
         deepbook_members.join("\n"),
         bridge_members.join("\n"),
+        usdc_members.join("\n"),
         stdlib_members.join("\n"),
         mys_social_members.join("\n"),
     ]

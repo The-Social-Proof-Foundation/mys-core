@@ -1,12 +1,12 @@
 [package]
-name = "MySocial"
+name = "BridgedUSDC"
 version = "0.0.1"
-published-at = "0x2"
+published-at = "0x0"
 edition = "2024.beta"
 
 [dependencies]
 MoveStdlib = { local = "../move-stdlib" }
+MySocial = { local = "../mys-framework" }
 
 [addresses]
-mys = "0x2"
 bridged_usdc = "0x0"
