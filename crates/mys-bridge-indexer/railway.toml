@@ -3,6 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "crates/mys-bridge-indexer/Dockerfile"
 
 [deploy]
+startCommand = "bridge-indexer"
 healthcheckPath = "/"
 healthcheckTimeout = 60
 
