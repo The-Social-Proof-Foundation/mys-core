@@ -13,12 +13,8 @@ RUN apt-get update && apt-get install -y \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace from the repository root
-COPY Cargo.toml Cargo.lock ./
-COPY consensus/ consensus/
-COPY crates/ crates/
-COPY mys-execution/ mys-execution/
-COPY external-crates/ external-crates/
+# Copy workspace
+COPY . .
 
 # Build the project
 RUN cargo build --release --bin mys-deepbook-indexer
