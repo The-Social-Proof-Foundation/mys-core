@@ -1,6 +1,40 @@
 -- Enable TimescaleDB extension
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
+-- Modify primary keys to include the partition column for TimescaleDB compatibility
+-- TimescaleDB requires all unique indexes (including PKs) to include the partition key
+
+-- Drop existing primary keys and recreate as composite keys
+ALTER TABLE order_updates DROP CONSTRAINT IF EXISTS order_updates_pkey;
+ALTER TABLE order_updates ADD CONSTRAINT order_updates_pkey PRIMARY KEY (event_digest, checkpoint_timestamp_ms);
+
+ALTER TABLE order_fills DROP CONSTRAINT IF EXISTS order_fills_pkey;
+ALTER TABLE order_fills ADD CONSTRAINT order_fills_pkey PRIMARY KEY (event_digest, checkpoint_timestamp_ms);
+
+ALTER TABLE flashloans DROP CONSTRAINT IF EXISTS flashloans_pkey;
+ALTER TABLE flashloans ADD CONSTRAINT flashloans_pkey PRIMARY KEY (event_digest, checkpoint_timestamp_ms);
+
+ALTER TABLE pool_prices DROP CONSTRAINT IF EXISTS pool_prices_pkey;
+ALTER TABLE pool_prices ADD CONSTRAINT pool_prices_pkey PRIMARY KEY (event_digest, checkpoint_timestamp_ms);
+
+ALTER TABLE balances DROP CONSTRAINT IF EXISTS balances_pkey;
+ALTER TABLE balances ADD CONSTRAINT balances_pkey PRIMARY KEY (event_digest, checkpoint_timestamp_ms);
+
+ALTER TABLE trade_params_update DROP CONSTRAINT IF EXISTS trade_params_update_pkey;
+ALTER TABLE trade_params_update ADD CONSTRAINT trade_params_update_pkey PRIMARY KEY (event_digest, checkpoint_timestamp_ms);
+
+ALTER TABLE stakes DROP CONSTRAINT IF EXISTS stakes_pkey;
+ALTER TABLE stakes ADD CONSTRAINT stakes_pkey PRIMARY KEY (event_digest, checkpoint_timestamp_ms);
+
+ALTER TABLE proposals DROP CONSTRAINT IF EXISTS proposals_pkey;
+ALTER TABLE proposals ADD CONSTRAINT proposals_pkey PRIMARY KEY (event_digest, checkpoint_timestamp_ms);
+
+ALTER TABLE votes DROP CONSTRAINT IF EXISTS votes_pkey;
+ALTER TABLE votes ADD CONSTRAINT votes_pkey PRIMARY KEY (event_digest, checkpoint_timestamp_ms);
+
+ALTER TABLE rebates DROP CONSTRAINT IF EXISTS rebates_pkey;
+ALTER TABLE rebates ADD CONSTRAINT rebates_pkey PRIMARY KEY (event_digest, checkpoint_timestamp_ms);
+
 -- Convert time-sensitive tables to hypertables
 -- These tables contain time-series data that will benefit from TimescaleDB's optimizations
 
