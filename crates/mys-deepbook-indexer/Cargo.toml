@@ -16,7 +16,6 @@ anyhow = "1.0.71"
 futures = "0.3.28"
 async-trait = "0.1.61"
 bcs = "0.1.4"
-bin-version = { path = "crates/bin-version" }
 clap = { version = "4.4", features = ["derive", "wrap_help"] }
 mysten-metrics = { path = "crates/mysten-metrics" }
 prometheus = "0.13.3"
