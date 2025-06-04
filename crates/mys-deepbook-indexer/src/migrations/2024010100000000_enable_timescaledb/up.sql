@@ -134,19 +134,5 @@ ON balances (asset, checkpoint_timestamp_ms DESC);
 CREATE INDEX IF NOT EXISTS idx_pool_prices_target_time
 ON pool_prices (target_pool, checkpoint_timestamp_ms DESC);
 
--- Enable compression for older chunks (data older than 7 days)
--- This significantly reduces storage costs while preserving all data forever
--- Compression ratio typically 90%+ for time-series data
-SELECT add_compression_policy('order_fills', INTERVAL '7 days');
-SELECT add_compression_policy('order_updates', INTERVAL '7 days');
-SELECT add_compression_policy('pool_prices', INTERVAL '7 days');
-SELECT add_compression_policy('balances', INTERVAL '7 days');
-SELECT add_compression_policy('flashloans', INTERVAL '7 days');
-SELECT add_compression_policy('stakes', INTERVAL '7 days');
-SELECT add_compression_policy('proposals', INTERVAL '7 days');
-SELECT add_compression_policy('votes', INTERVAL '7 days');
-SELECT add_compression_policy('rebates', INTERVAL '7 days');
-SELECT add_compression_policy('trade_params_update', INTERVAL '7 days');
-
 -- NO RETENTION POLICIES - Data is kept forever for complete order book history
 -- Order book data is critical financial data that must be preserved indefinitely 
