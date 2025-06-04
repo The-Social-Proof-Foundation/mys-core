@@ -19,7 +19,7 @@ COPY crates crates
 COPY mys-execution mys-execution
 COPY external-crates external-crates
 
-RUN cargo build --release --package mys-bridge-indexer --bin bridge-indexer --config-path config.yaml
+RUN cargo build --release --package mys-bridge-indexer --bin bridge-indexer
 
 # Production Image
 FROM debian:bullseye-slim AS runtime
@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y libjemalloc-dev ca-certificates curl
 ENV LD_PRELOAD /usr/lib/x86_64-linux-gnu/libjemalloc.so
 WORKDIR "$WORKDIR/mys"
 COPY --from=builder /mys/target/release/bridge-indexer /usr/local/bin
+COPY crates/mys-bridge-indexer/config.yaml /mys/config.yaml
 RUN apt update && apt install -y libpq5 ca-certificates libpq-dev postgresql
 
 ARG BUILD_DATE
