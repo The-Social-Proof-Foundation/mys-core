@@ -1,0 +1,15 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/mys-bridge-indexer/Dockerfile"
+
+[deploy]
+startCommand = "bridge-indexer"
+healthcheckPath = "/"
+healthcheckTimeout = 60
+
+[variables]
+# Database Configuration
+DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+
+# Optional: Logging configuration  
+RUST_LOG = "info,mys_bridge_indexer=debug" 
