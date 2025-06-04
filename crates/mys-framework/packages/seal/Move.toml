@@ -1,5 +1,6 @@
 [package]
 name = "seal"
+published-at = "0xseal"
 edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
 # license = ""           # e.g., "MIT", "GPL", "Apache 2.0"
 # authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
@@ -20,7 +21,7 @@ Mys = { git = "https://github.com/MystenLabs/mys.git", subdir = "crates/mys-fram
 # Override = { local = "../conflicting/version", override = true }
 
 [addresses]
-seal = "0x0"
+seal = "0xseal"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.
