@@ -10266,7 +10266,6 @@ dependencies = [
  "backoff",
  "bcs",
  "bigdecimal",
- "bin-version 0.0.1",
  "clap",
  "diesel",
  "diesel-async",

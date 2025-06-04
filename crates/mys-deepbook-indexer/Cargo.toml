@@ -17,18 +17,18 @@ futures = "0.3.28"
 async-trait = "0.1.61"
 bcs = "0.1.4"
 clap = { version = "4.4", features = ["derive", "wrap_help"] }
-mysten-metrics = { path = "crates/mysten-metrics" }
+mysten-metrics = { path = "../mysten-metrics" }
 prometheus = "0.13.3"
 serde_yaml = "0.8.26"
-mys-sdk = { path = "crates/mys-sdk" }
-mys-json-rpc-types = { path = "crates/mys-json-rpc-types" }
-mys-data-ingestion-core = { path = "crates/mys-data-ingestion-core" }
-mys-types = { path = "crates/mys-types" }
-telemetry-subscribers = { path = "crates/telemetry-subscribers" }
+mys-sdk = { path = "../mys-sdk" }
+mys-json-rpc-types = { path = "../mys-json-rpc-types" }
+mys-data-ingestion-core = { path = "../mys-data-ingestion-core" }
+mys-types = { path = "../mys-types" }
+telemetry-subscribers = { path = "../telemetry-subscribers" }
 tracing = "0.1.37"
 backoff = { version = "0.4.0", features = ["futures", "futures-core", "pin-project-lite", "tokio", "tokio_1"] }
-mys-config = { path = "crates/mys-config" }
-mys-indexer-builder = { path = "crates/mys-indexer-builder" }
+mys-config = { path = "../mys-config" }
+mys-indexer-builder = { path = "../mys-indexer-builder" }
 tempfile = "3.3.0"
 axum = { version = "0.7", default-features = false, features = ["macros", "tokio", "http1", "http2", "json", "matched-path", "original-uri", "form", "query", "ws"] }
 tower-http = { version = "0.5", features = ["cors", "full", "trace", "set-header", "propagate-header"] }
