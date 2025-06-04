@@ -10,7 +10,7 @@ edition = "2021"
 serde = { version = "1.0.144", features = ["derive", "rc"] }
 tap = "1.0.1"
 diesel = { version = "2.2", features = ["serde_json"] }
-diesel-async = { version = "0.5", features = ["bb8", "postgres"] }
+diesel-async = { version = "0.5", features = ["bb8", "postgres", "async-connection-wrapper"] }
 diesel_migrations = "2.2.0"
 tokio = { version = "1.43.0", features = ["full"] }
 anyhow = "1.0.71"
