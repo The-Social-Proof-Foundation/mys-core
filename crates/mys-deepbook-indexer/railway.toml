@@ -1,6 +1,6 @@
 [build]
-builder = "nixpacks"
-buildCommand = "cargo build --release --package mys-deepbook-indexer --bin mys-deepbook-indexer"
+builder = "dockerfile"
+dockerfilePath = "crates/mys-deepbook-indexer/Dockerfile"
 
 [deploy]
 startCommand = "mys-deepbook-indexer"
@@ -8,30 +8,5 @@ healthcheckPath = "/"
 healthcheckTimeout = 60
 
 [variables]
-# Required: Database Configuration
-DATABASE_URL = "postgres://tsdbadmin:awbr7d1tc0cap9hp@fzbzpjk2c1.rrpamcwlae.tsdb.cloud.timescale.com:31452/tsdb?sslmode=require"
-
-# Required: Package ID for DeepBook
-DEEPBOOK_PACKAGE_ID = "0x000000000000000000000000000000000000000000000000000000000000d33p"
-
-# Optional: Remote store URL (defaults to mysocial testnet)
-REMOTE_STORE_URL = "https://storage.googleapis.com/mysocial-testnet-checkpoints"
-
-# Optional: MySocial Network RPC URL (defaults to testnet)
-MYS_RPC_URL = "https://fullnode.testnet.mysocial.network:9000"
-
-# Optional: Genesis checkpoint (defaults to 0)
-DEEPBOOK_GENESIS_CHECKPOINT = "0"
-
-# Optional: Concurrency (defaults to 1)
-CONCURRENCY = "1"
-
-# Optional: Ports (defaults shown)
-INDEXER_PORT = "8080"
-METRICS_PORT = "9090"
-
-# Optional: Checkpoints path (empty for temp directory)
-CHECKPOINTS_PATH = ""
-
 # Optional: Logging configuration  
 RUST_LOG = "info,mys_deepbook_indexer=debug"
