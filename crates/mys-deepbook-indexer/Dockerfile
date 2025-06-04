@@ -26,4 +26,4 @@ RUN cargo build --release --bin mys-deepbook-indexer
 EXPOSE 8080 9090
 
 # Default command - will use environment variables for config
-CMD ["cargo", "run", "--release", "--bin", "mys-deepbook-indexer"] 
+# CMD ["cargo", "run", "--release", "--bin", "mys-deepbook-indexer"] 
