@@ -31,10 +31,10 @@ The DeepBookV3 SDK includes a constants file (`/utils/constants.ts`) that mainta
 To work with DeepBook, you must create a `DeepBookClient`. To construct the `DeepBookClient`, pass in a `MySocialClient`, the sender address, and environment. The [MySocial TypeScript SDK](https://sdk.mystenlabs.com/typescript) provides the `MySocialClient` and key functionality necessary to process transactions. The following example imports those libraries, as well.
 
 ```tsx
-import { DeepBookClient } from '@mysten/deepbook-v3';
-import { getFullnodeUrl, MySocialClient } from '@mysten/mys/client';
-import { decodeMySocialPrivateKey } from '@mysten/mys/cryptography';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
+import { DeepBookClient } from '@socialproof/deepbook-v3';
+import { getFullnodeUrl, MySocialClient } from '@socialproof/mys/client';
+import { decodeMySocialPrivateKey } from '@socialproof/mys/cryptography';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
 
 class DeepBookMarketMaker {
 	dbClient: DeepBookClient; // For building transactions
@@ -77,9 +77,9 @@ Before placing any trade, you must supply a balance manager address to the clien
 Example using an existing balance manager:
 
 ```tsx
-import { getFullnodeUrl, MySocialClient } from '@mysten/mys/client';
-import { decodeMySocialPrivateKey } from '@mysten/mys/cryptography';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
+import { getFullnodeUrl, MySocialClient } from '@socialproof/mys/client';
+import { decodeMySocialPrivateKey } from '@socialproof/mys/cryptography';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
 import { config } from 'dotenv';
 
 import { DeepBookClient } from '../src';
@@ -141,10 +141,10 @@ class DeepBookMarketMaker {
 Example creating a balance manager:
 
 ```tsx
-import { getFullnodeUrl, MySocialClient } from '@mysten/mys/client';
-import { decodeMySocialPrivateKey } from '@mysten/mys/cryptography';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
-import { Transaction } from '@mysten/mys/transactions';
+import { getFullnodeUrl, MySocialClient } from '@socialproof/mys/client';
+import { decodeMySocialPrivateKey } from '@socialproof/mys/cryptography';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
+import { Transaction } from '@socialproof/mys/transactions';
 
 import { DeepBookClient } from '../src';
 import { BalanceManager } from './types';
@@ -243,11 +243,11 @@ You can also initialize the SDK with custom coins to interact with pools that ar
 Similar to coins, the SDK comes with default pools. You can provide a `PoolMap` during construction to override this behavior.
 
 ```tsx
-import { decodeMySocialPrivateKey } from '@mysten/mys.js/cryptography';
-import { getFullnodeUrl, MySocialClient } from '@mysten/mys/client';
-import type { Keypair } from '@mysten/mys/cryptography';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
-import type { Transaction } from '@mysten/mys/transactions';
+import { decodeMySocialPrivateKey } from '@socialproof/mys.js/cryptography';
+import { getFullnodeUrl, MySocialClient } from '@socialproof/mys/client';
+import type { Keypair } from '@socialproof/mys/cryptography';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
+import type { Transaction } from '@socialproof/mys/transactions';
 
 import { DeepBookClient } from '../src/index.js'; // Adjust path according to new structure
 import type { BalanceManager } from '../src/types/index.js';
@@ -318,7 +318,7 @@ export class DeepBookMarketMaker extends DeepBookClient {
 The following example uses the default pools and coins provided.
 
 ```tsx
-import { Transaction } from '@mysten/mys/transactions';
+import { Transaction } from '@socialproof/mys/transactions';
 
 import { DeepBookMarketMaker } from './deepbookMarketMaker.js';
 

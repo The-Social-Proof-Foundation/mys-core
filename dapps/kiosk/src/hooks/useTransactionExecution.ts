@@ -2,9 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useSignTransaction, useMysClient } from '@mysten/dapp-kit';
-import { MysTransactionBlockResponseOptions } from '@mysten/mys/client';
-import { Transaction } from '@mysten/mys/transactions';
+import { useSignTransaction, useMysClient } from '@socialproof/dapp-kit';
+import { MysTransactionBlockResponseOptions } from '@socialproof/mys/client';
+import { Transaction } from '@socialproof/mys/transactions';
 
 // A helper to execute transactions by:
 // 1. Signing them using the wallet

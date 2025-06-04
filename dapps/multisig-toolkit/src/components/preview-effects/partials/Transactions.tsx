@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { MysArgument, MysCallArg, MysTransaction, TransactionBlockData } from '@mysten/mys/client';
+import { MysArgument, MysCallArg, MysTransaction, TransactionBlockData } from '@socialproof/mys/client';
 import { ReactNode } from 'react';
 
 import { ObjectLink } from '../ObjectLink';

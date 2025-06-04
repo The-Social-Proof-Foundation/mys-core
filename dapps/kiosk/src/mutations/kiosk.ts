@@ -2,9 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useCurrentAccount } from '@mysten/dapp-kit';
-import { Kiosk, KioskTransaction } from '@mysten/kiosk';
-import { Transaction } from '@mysten/mys/transactions';
+import { useCurrentAccount } from '@socialproof/dapp-kit';
+import { Kiosk, KioskTransaction } from '@socialproof/kiosk';
+import { Transaction } from '@socialproof/mys/transactions';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 

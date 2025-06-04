@@ -2,8 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useCurrentAccount } from '@mysten/dapp-kit';
-import { isValidMysAddress, normalizeMysAddress } from '@mysten/mys/utils';
+import { useCurrentAccount } from '@socialproof/dapp-kit';
+import { isValidMysAddress, normalizeMysAddress } from '@socialproof/mys/utils';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { Box, Button, Em, Flex, Separator, Spinner, Text, TextField } from '@radix-ui/themes';
 import { useTransactions } from 'hooks/useTransactions';

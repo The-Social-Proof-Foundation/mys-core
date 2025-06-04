@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { MysEvent } from '@mysten/mys/client';
+import { MysEvent } from '@socialproof/mys/client';
 import { ReactNode } from 'react';
 
 import { Textarea } from '@/components/ui/textarea';

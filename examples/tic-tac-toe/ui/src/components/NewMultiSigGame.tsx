@@ -2,10 +2,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useCurrentAccount } from '@mysten/dapp-kit';
-import { PublicKey } from '@mysten/mys/cryptography';
-import { fromBase64, toBase64 } from '@mysten/mys/utils';
-import { publicKeyFromRawBytes } from '@mysten/mys/verify';
+import { useCurrentAccount } from '@socialproof/dapp-kit';
+import { PublicKey } from '@socialproof/mys/cryptography';
+import { fromBase64, toBase64 } from '@socialproof/mys/utils';
+import { publicKeyFromRawBytes } from '@socialproof/mys/verify';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { Box, Button, Em, Flex, Separator, Spinner, Text, TextField } from '@radix-ui/themes';
 import { ComputedField } from 'components/ComputedField';

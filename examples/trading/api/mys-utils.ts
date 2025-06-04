@@ -6,10 +6,10 @@ import { execSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
-import { getFullnodeUrl, MysClient } from '@mysten/mys/client';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
-import { Transaction } from '@mysten/mys/transactions';
-import { fromBase64 } from '@mysten/mys/utils';
+import { getFullnodeUrl, MysClient } from '@socialproof/mys/client';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
+import { Transaction } from '@socialproof/mys/transactions';
+import { fromBase64 } from '@socialproof/mys/utils';
 
 export type Network = 'mainnet' | 'testnet' | 'devnet' | 'localnet';
 

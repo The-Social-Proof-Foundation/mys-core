@@ -93,13 +93,13 @@ importers:
       '@headlesmys/react':
         specifier: ^1.7.15
         version: 1.7.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@mysten/dapp-kit':
+      '@socialproof/dapp-kit':
         specifier: ^0.14.44
         version: 0.14.44(@tanstack/react-query@5.50.1(react@18.3.1))(@types/react-dom@18.3.0)(@types/react@18.3.3)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.3)
-      '@mysten/kiosk':
+      '@socialproof/kiosk':
         specifier: ^0.9.34
         version: 0.9.34(typescript@5.5.3)
-      '@mysten/mys':
+      '@socialproof/mys':
         specifier: ^1.18.0
         version: 1.18.0(typescript@5.5.3)
       '@tanstack/react-query':
@@ -151,10 +151,10 @@ importers:
 
   dapps/kiosk-cli:
     dependencies:
-      '@mysten/kiosk':
+      '@socialproof/kiosk':
         specifier: ^0.9.34
         version: 0.9.34(typescript@5.7.3)
-      '@mysten/mys':
+      '@socialproof/mys':
         specifier: ^1.18.0
         version: 1.18.0(typescript@5.7.3)
       commander:
@@ -175,10 +175,10 @@ importers:
       '@markdoc/markdoc':
         specifier: ^0.4.0
         version: 0.4.0(@types/react@18.3.3)(react@18.3.1)
-      '@mysten/dapp-kit':
+      '@socialproof/dapp-kit':
         specifier: ^0.14.44
         version: 0.14.44(@tanstack/react-query@5.50.1(react@18.3.1))(@types/react-dom@18.3.0)(@types/react@18.3.3)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.3)
-      '@mysten/mys':
+      '@socialproof/mys':
         specifier: ^1.18.0
         version: 1.18.0(typescript@5.5.3)
       '@noble/hashes':
@@ -297,10 +297,10 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@mysten/dapp-kit':
+      '@socialproof/dapp-kit':
         specifier: ^0.14.44
         version: 0.14.44(@tanstack/react-query@5.50.1(react@18.3.1))(@types/react-dom@18.3.0)(@types/react@18.3.3)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.3)
-      '@mysten/mys':
+      '@socialproof/mys':
         specifier: ^1.18.0
         version: 1.18.0(typescript@5.5.3)
       '@types/react':
@@ -330,10 +330,10 @@ importers:
 
   examples/mev_bot:
     dependencies:
-      '@mysten/bcs':
+      '@socialproof/bcs':
         specifier: ^1.2.0
         version: 1.2.0
-      '@mysten/mys':
+      '@socialproof/mys':
         specifier: ^1.18.0
         version: 1.18.0(typescript@5.5.3)
       p-limit:
@@ -349,10 +349,10 @@ importers:
 
   examples/tic-tac-toe/ui:
     dependencies:
-      '@mysten/dapp-kit':
+      '@socialproof/dapp-kit':
         specifier: ^0.14.44
         version: 0.14.44(@tanstack/react-query@5.50.1(react@18.3.1))(@types/react-dom@18.3.0)(@types/react@18.3.3)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.3)
-      '@mysten/mys':
+      '@socialproof/mys':
         specifier: ^1.18.0
         version: 1.18.0(typescript@5.5.3)
       '@radix-ui/colors':
@@ -419,7 +419,7 @@ importers:
 
   examples/trading/api:
     dependencies:
-      '@mysten/mys':
+      '@socialproof/mys':
         specifier: ^1.18.0
         version: 1.18.0(typescript@5.5.3)
       '@prisma/client':
@@ -456,10 +456,10 @@ importers:
 
   examples/trading/frontend:
     dependencies:
-      '@mysten/dapp-kit':
+      '@socialproof/dapp-kit':
         specifier: ^0.14.44
         version: 0.14.44(@tanstack/react-query@5.50.1(react@18.3.1))(@types/react-dom@18.3.0)(@types/react@18.3.3)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.3)
-      '@mysten/mys':
+      '@socialproof/mys':
         specifier: ^1.18.0
         version: 1.18.0(typescript@5.5.3)
       '@radix-ui/colors':
@@ -532,10 +532,10 @@ importers:
 
   examples/usdc-transfer-app:
     dependencies:
-      '@mysten/dapp-kit':
+      '@socialproof/dapp-kit':
         specifier: ^0.14.44
         version: 0.14.44(@tanstack/react-query@5.59.0(react@18.3.1))(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.7.3)
-      '@mysten/mys':
+      '@socialproof/mys':
         specifier: ^1.18.0
         version: 1.18.0(typescript@5.7.3)
       '@tanstack/react-query':
@@ -1989,27 +1989,27 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@mysten/bcs@1.2.0':
+  '@socialproof/bcs@1.2.0':
     resolution: {integrity: sha512-LuKonrGdGW7dq/EM6U2L9/as7dFwnhZnsnINzB/vu08Xfrj0qzWwpLOiXagAa5yZOPLK7anRZydMonczFkUPzA==}
 
-  '@mysten/dapp-kit@0.14.44':
+  '@socialproof/dapp-kit@0.14.44':
     resolution: {integrity: sha512-5b9Xr5TKQEX/jyYC+RIknAw8g6gmz1su0u1FIYCjek+5mU5dQvO0PIp88bwfjxgCyswtCgSHP/atxiiK1mextQ==}
     peerDependencies:
       '@tanstack/react-query': ^5.0.0
       react: '*'
 
-  '@mysten/kiosk@0.9.34':
+  '@socialproof/kiosk@0.9.34':
     resolution: {integrity: sha512-0HlXygbGeW5FEXkptB36JQIfpHvuYCyw4B8uhtnTlVL52zMFrMazrgyqisnm+BJFxFfClz2WMuv98hVXcPtstQ==}
     engines: {node: '>=18'}
 
-  '@mysten/mys@1.18.0':
+  '@socialproof/mys@1.18.0':
     resolution: {integrity: sha512-cFh5LxXZrXb/ZAD1dkKeQxzhgRYFXreyFGmI7w/JQWwdl+/0FrHJBwaWyTmGxJ/6ZC9SlaOPOk63flN7DbUurg==}
     engines: {node: '>=18'}
 
-  '@mysten/wallet-standard@0.13.20':
+  '@socialproof/wallet-standard@0.13.20':
     resolution: {integrity: sha512-k9nDnZ/ZkCr4wFRxiP984k/T2ZUfwd/+RfYnwbMHv6MW91no2VKb53fVxbkhqc39qGKAvrXeMonNrm37Iz0JFw==}
 
-  '@mysten/zksend@0.12.10':
+  '@socialproof/zksend@0.12.10':
     resolution: {integrity: sha512-qMbmRKnKV+AnLaKveJN8itAOMHa2pqfw3IkO3sLTlt42T5qQE0BXj9cKHMLv+F7w+k5+CBDL/0R7Xdb17hSRzw==}
 
   '@noble/curves@1.4.2':
@@ -9058,15 +9058,15 @@ snapshots:
   '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.3':
     optional: true
 
-  '@mysten/bcs@1.2.0':
+  '@socialproof/bcs@1.2.0':
     dependencies:
       bs58: 6.0.0
 
-  '@mysten/dapp-kit@0.14.44(@tanstack/react-query@5.50.1(react@18.3.1))(@types/react-dom@18.3.0)(@types/react@18.3.3)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.3)':
+  '@socialproof/dapp-kit@0.14.44(@tanstack/react-query@5.50.1(react@18.3.1))(@types/react-dom@18.3.0)(@types/react@18.3.3)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.3)':
     dependencies:
-      '@mysten/mys': 1.18.0(typescript@5.5.3)
-      '@mysten/wallet-standard': 0.13.20(typescript@5.5.3)
-      '@mysten/zksend': 0.12.10(typescript@5.5.3)
+      '@socialproof/mys': 1.18.0(typescript@5.5.3)
+      '@socialproof/wallet-standard': 0.13.20(typescript@5.5.3)
+      '@socialproof/zksend': 0.12.10(typescript@5.5.3)
       '@radix-ui/react-dialog': 1.1.1(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-dropdown-menu': 2.1.1(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-slot': 1.1.0(@types/react@18.3.3)(react@18.3.1)
@@ -9086,11 +9086,11 @@ snapshots:
       - svelte
       - typescript
 
-  '@mysten/dapp-kit@0.14.44(@tanstack/react-query@5.59.0(react@18.3.1))(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.7.3)':
+  '@socialproof/dapp-kit@0.14.44(@tanstack/react-query@5.59.0(react@18.3.1))(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.7.3)':
     dependencies:
-      '@mysten/mys': 1.18.0(typescript@5.7.3)
-      '@mysten/wallet-standard': 0.13.20(typescript@5.7.3)
-      '@mysten/zksend': 0.12.10(typescript@5.7.3)
+      '@socialproof/mys': 1.18.0(typescript@5.7.3)
+      '@socialproof/wallet-standard': 0.13.20(typescript@5.7.3)
+      '@socialproof/zksend': 0.12.10(typescript@5.7.3)
       '@radix-ui/react-dialog': 1.1.1(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-dropdown-menu': 2.1.1(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-slot': 1.1.0(@types/react@19.0.8)(react@18.3.1)
@@ -9110,24 +9110,24 @@ snapshots:
       - svelte
       - typescript
 
-  '@mysten/kiosk@0.9.34(typescript@5.5.3)':
+  '@socialproof/kiosk@0.9.34(typescript@5.5.3)':
     dependencies:
-      '@mysten/mys': 1.18.0(typescript@5.5.3)
+      '@socialproof/mys': 1.18.0(typescript@5.5.3)
     transitivePeerDependencies:
       - svelte
       - typescript
 
-  '@mysten/kiosk@0.9.34(typescript@5.7.3)':
+  '@socialproof/kiosk@0.9.34(typescript@5.7.3)':
     dependencies:
-      '@mysten/mys': 1.18.0(typescript@5.7.3)
+      '@socialproof/mys': 1.18.0(typescript@5.7.3)
     transitivePeerDependencies:
       - svelte
       - typescript
 
-  '@mysten/mys@1.18.0(typescript@5.5.3)':
+  '@socialproof/mys@1.18.0(typescript@5.5.3)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.9.0)
-      '@mysten/bcs': 1.2.0
+      '@socialproof/bcs': 1.2.0
       '@noble/curves': 1.4.2
       '@noble/hashes': 1.4.0
       '@scure/bip32': 1.4.0
@@ -9144,10 +9144,10 @@ snapshots:
       - svelte
       - typescript
 
-  '@mysten/mys@1.18.0(typescript@5.7.3)':
+  '@socialproof/mys@1.18.0(typescript@5.7.3)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.9.0)
-      '@mysten/bcs': 1.2.0
+      '@socialproof/bcs': 1.2.0
       '@noble/curves': 1.4.2
       '@noble/hashes': 1.4.0
       '@scure/bip32': 1.4.0
@@ -9164,26 +9164,26 @@ snapshots:
       - svelte
       - typescript
 
-  '@mysten/wallet-standard@0.13.20(typescript@5.5.3)':
+  '@socialproof/wallet-standard@0.13.20(typescript@5.5.3)':
     dependencies:
-      '@mysten/mys': 1.18.0(typescript@5.5.3)
+      '@socialproof/mys': 1.18.0(typescript@5.5.3)
       '@wallet-standard/core': 1.0.3
     transitivePeerDependencies:
       - svelte
       - typescript
 
-  '@mysten/wallet-standard@0.13.20(typescript@5.7.3)':
+  '@socialproof/wallet-standard@0.13.20(typescript@5.7.3)':
     dependencies:
-      '@mysten/mys': 1.18.0(typescript@5.7.3)
+      '@socialproof/mys': 1.18.0(typescript@5.7.3)
       '@wallet-standard/core': 1.0.3
     transitivePeerDependencies:
       - svelte
       - typescript
 
-  '@mysten/zksend@0.12.10(typescript@5.5.3)':
+  '@socialproof/zksend@0.12.10(typescript@5.5.3)':
     dependencies:
-      '@mysten/mys': 1.18.0(typescript@5.5.3)
-      '@mysten/wallet-standard': 0.13.20(typescript@5.5.3)
+      '@socialproof/mys': 1.18.0(typescript@5.5.3)
+      '@socialproof/wallet-standard': 0.13.20(typescript@5.5.3)
       mitt: 3.0.1
       nanostores: 0.10.3
       valibot: 0.36.0
@@ -9191,10 +9191,10 @@ snapshots:
       - svelte
       - typescript
 
-  '@mysten/zksend@0.12.10(typescript@5.7.3)':
+  '@socialproof/zksend@0.12.10(typescript@5.7.3)':
     dependencies:
-      '@mysten/mys': 1.18.0(typescript@5.7.3)
-      '@mysten/wallet-standard': 0.13.20(typescript@5.7.3)
+      '@socialproof/mys': 1.18.0(typescript@5.7.3)
+      '@socialproof/wallet-standard': 0.13.20(typescript@5.7.3)
       mitt: 3.0.1
       nanostores: 0.10.3
       valibot: 0.36.0

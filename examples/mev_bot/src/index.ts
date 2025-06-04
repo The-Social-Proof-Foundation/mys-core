@@ -2,9 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { bcs, BcsType } from '@mysten/mys/bcs';
-import { MysClient } from '@mysten/mys/client';
-import { Transaction } from '@mysten/mys/transactions';
+import { bcs, BcsType } from '@socialproof/mys/bcs';
+import { MysClient } from '@socialproof/mys/client';
+import { Transaction } from '@socialproof/mys/transactions';
 import pLimit from 'p-limit';
 
 const limit = pLimit(5);

@@ -4,7 +4,7 @@
 
 'use strict';
 
-const plugin = require('@mysten/prettier-plugin-move');
+const plugin = require('@socialproof/prettier-plugin-move');
 const { format } = require('prettier');
 const { parentPort } = require('node:worker_threads');
 

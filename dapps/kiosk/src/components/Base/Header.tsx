@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useMysClientContext } from '@mysten/dapp-kit';
+import { useMysClientContext } from '@socialproof/dapp-kit';
 import classNames from 'clsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 

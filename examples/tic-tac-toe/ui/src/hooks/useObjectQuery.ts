@@ -2,8 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useMysClientContext, useMysClientQuery, UseMysClientQueryOptions } from '@mysten/dapp-kit';
-import { GetObjectParams, MysObjectResponse } from '@mysten/mys/client';
+import { useMysClientContext, useMysClientQuery, UseMysClientQueryOptions } from '@socialproof/dapp-kit';
+import { GetObjectParams, MysObjectResponse } from '@socialproof/mys/client';
 import { useQueryClient, UseQueryResult } from '@tanstack/react-query';
 
 export type UseObjectQueryOptions = UseMysClientQueryOptions<'getObject', MysObjectResponse>;

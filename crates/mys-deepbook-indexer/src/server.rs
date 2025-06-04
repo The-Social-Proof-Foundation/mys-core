@@ -736,7 +736,7 @@ async fn price_change_24h(
         .as_millis() as i64;
 
     let timestamp_24h_ago = now - (24 * 60 * 60 * 1000); // 24 hours in milliseconds
-    let timestamp_48h_ago = now - (48 * 60 * 60 * 1000); // 24 hours in milliseconds
+    let timestamp_48h_ago = now - (48 * 60 * 60 * 1000); // 48 hours in milliseconds
 
     let mut response = HashMap::new();
 

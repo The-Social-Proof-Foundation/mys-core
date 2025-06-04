@@ -4,8 +4,8 @@
 
 import './Game.css';
 
-import { useCurrentAccount, useMysClient } from '@mysten/dapp-kit';
-import { MultiSigPublicKey } from '@mysten/mys/multisig';
+import { useCurrentAccount, useMysClient } from '@socialproof/dapp-kit';
+import { MultiSigPublicKey } from '@socialproof/mys/multisig';
 import { TrashIcon } from '@radix-ui/react-icons';
 import { AlertDialog, Badge, Button, Flex } from '@radix-ui/themes';
 import { Board } from 'components/Board';

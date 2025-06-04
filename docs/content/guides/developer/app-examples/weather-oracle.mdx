@@ -431,9 +431,9 @@ First, initialize your backend project. To do this, you need to follow these ste
 - Create a new file named `init.ts`
 
 ```typescript title='init.ts'
-import { MySocialClient } from '@mysten/mys/client';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
-import { Transaction } from '@mysten/mys/transactions';
+import { MySocialClient } from '@socialproof/mys/client';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
+import { Transaction } from '@socialproof/mys/transactions';
 import * as dotenv from 'dotenv';
 
 import { City } from './city';
@@ -542,9 +542,9 @@ The code of init.ts does the following:
 You have now initialized the `WeatherOracle` shared object. The next step is to learn how to update them every 10 minutes with the latest weather data from the OpenWeatherMap API.
 
 ```typescript title='index.ts'
-import { MySocialClient } from '@mysten/mys/client';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
-import { Transaction } from '@mysten/mys/transactions';
+import { MySocialClient } from '@socialproof/mys/client';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
+import { Transaction } from '@socialproof/mys/transactions';
 import * as dotenv from 'dotenv';
 
 import { City } from './city';

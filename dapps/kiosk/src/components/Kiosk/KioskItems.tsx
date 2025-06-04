@@ -2,8 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useCurrentAccount } from '@mysten/dapp-kit';
-import { normalizeMysAddress } from '@mysten/mys/utils';
+import { useCurrentAccount } from '@socialproof/dapp-kit';
+import { normalizeMysAddress } from '@socialproof/mys/utils';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';

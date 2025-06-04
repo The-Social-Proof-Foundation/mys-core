@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Listbox, Transition } from '@headlesmys/react';
-import { KioskOwnerCap } from '@mysten/kiosk';
-import { formatAddress } from '@mysten/mys/utils';
+import { KioskOwnerCap } from '@socialproof/kiosk';
+import { formatAddress } from '@socialproof/mys/utils';
 import classNames from 'clsx';
 import { Fragment } from 'react';
 

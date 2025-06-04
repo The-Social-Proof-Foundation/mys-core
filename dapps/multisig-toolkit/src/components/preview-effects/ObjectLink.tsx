@@ -1,8 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
-import { useMysClientContext } from '@mysten/dapp-kit';
-import { ObjectOwner, MysObjectChange } from '@mysten/mys/client';
+import { useMysClientContext } from '@socialproof/dapp-kit';
+import { ObjectOwner, MysObjectChange } from '@socialproof/mys/client';
 import { CheckIcon, CopyIcon } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';

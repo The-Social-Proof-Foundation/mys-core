@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 /* eslint-disable @tanstack/query/exhaustive-deps */
 
-import { useMysClient } from '@mysten/dapp-kit';
-import { PaginatedObjectsResponse } from '@mysten/mys/client';
+import { useMysClient } from '@socialproof/dapp-kit';
+import { PaginatedObjectsResponse } from '@socialproof/mys/client';
 import { useQuery } from '@tanstack/react-query';
 
 import { TANSTACK_OWNED_OBJECTS_KEY } from '../utils/constants';

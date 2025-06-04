@@ -2,9 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { KioskListing, KioskOwnerCap } from '@mysten/kiosk';
-import { MysObjectResponse } from '@mysten/mys/client';
-import { MIST_PER_MYS, normalizeMysAddress } from '@mysten/mys/utils';
+import { KioskListing, KioskOwnerCap } from '@socialproof/kiosk';
+import { MysObjectResponse } from '@socialproof/mys/client';
+import { MIST_PER_MYS, normalizeMysAddress } from '@socialproof/mys/utils';
 
 // Parse the display of a list of objects into a simple {object_id: display} map
 // to use throughout the app.

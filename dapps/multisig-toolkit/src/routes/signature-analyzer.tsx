@@ -2,10 +2,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { parseSerializedSignature, PublicKey, SignatureScheme } from '@mysten/mys/cryptography';
-import { parsePartialSignatures } from '@mysten/mys/multisig';
-import { toBase64 } from '@mysten/mys/utils';
-import { publicKeyFromRawBytes } from '@mysten/mys/verify';
+import { parseSerializedSignature, PublicKey, SignatureScheme } from '@socialproof/mys/cryptography';
+import { parsePartialSignatures } from '@socialproof/mys/multisig';
+import { toBase64 } from '@socialproof/mys/utils';
+import { publicKeyFromRawBytes } from '@socialproof/mys/verify';
 import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 

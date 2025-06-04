@@ -4,8 +4,8 @@
 
 import './App.css';
 
-import { ConnectButton, useCurrentAccount, useMysClientContext } from '@mysten/dapp-kit';
-import { isValidMysObjectId, normalizeMysObjectId } from '@mysten/mys/utils';
+import { ConnectButton, useCurrentAccount, useMysClientContext } from '@socialproof/dapp-kit';
+import { isValidMysObjectId, normalizeMysObjectId } from '@socialproof/mys/utils';
 import { FrameIcon } from '@radix-ui/react-icons';
 import { Box, Container, Flex, Heading, Link } from '@radix-ui/themes';
 import { Error } from 'components/Error';

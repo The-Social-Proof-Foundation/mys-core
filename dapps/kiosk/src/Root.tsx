@@ -2,8 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { createNetworkConfig, MysClientProvider, WalletProvider } from '@mysten/dapp-kit';
-import { getFullnodeUrl } from '@mysten/mys/client';
+import { createNetworkConfig, MysClientProvider, WalletProvider } from '@socialproof/dapp-kit';
+import { getFullnodeUrl } from '@socialproof/mys/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { Outlet } from 'react-router-dom';

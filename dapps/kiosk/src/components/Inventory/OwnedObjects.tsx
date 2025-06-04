@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { KioskItem } from '@mysten/kiosk';
+import { KioskItem } from '@socialproof/kiosk';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 

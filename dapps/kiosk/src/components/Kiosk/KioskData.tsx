@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tab } from '@headlesmys/react';
-import { useCurrentAccount } from '@mysten/dapp-kit';
-import { formatAddress } from '@mysten/mys/utils';
+import { useCurrentAccount } from '@socialproof/dapp-kit';
+import { formatAddress } from '@socialproof/mys/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 

@@ -8,7 +8,7 @@ This guide explores creating a programmable transaction block (PTB) on MySocial 
 This example starts by constructing a PTB to send MySocial. If you are familiar with the legacy MySocial transaction types, this is similar to a `payMySocial` transaction. To construct transactions, import the `Transaction` class, and construct it:
 
 ```ts
-import { Transaction } from '@mysten/mys/transactions';
+import { Transaction } from '@socialproof/mys/transactions';
 
 const tx = new Transaction();
 ```
@@ -151,7 +151,7 @@ const tx = Transaction.from(bytes);
 In the event that you want to build a PTB offline (as in with no `provider` required), you need to fully define all of your input values, and gas configuration (see the following example). For pure values, you can provide a `Uint8Array` which is used directly in the transaction. For objects, you can use the `Inputs` helper to construct an object reference.
 
 ```ts
-import { Inputs } from '@mysten/mys/transactions';
+import { Inputs } from '@socialproof/mys/transactions';
 
 // For pure values:
 tx.pure(pureValueAsBytes);

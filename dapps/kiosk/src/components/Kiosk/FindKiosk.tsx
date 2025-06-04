@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeMysAddress } from '@mysten/mys/utils';
+import { normalizeMysAddress } from '@socialproof/mys/utils';
 import classnames from 'clsx';
 import { FormEvent, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';

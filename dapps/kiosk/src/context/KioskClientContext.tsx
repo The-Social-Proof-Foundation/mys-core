@@ -2,8 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useMysClient, useMysClientContext } from '@mysten/dapp-kit';
-import { KioskClient, Network } from '@mysten/kiosk';
+import { useMysClient, useMysClientContext } from '@socialproof/dapp-kit';
+import { KioskClient, Network } from '@socialproof/kiosk';
 import { createContext, ReactNode, useContext, useMemo } from 'react';
 
 export const KioskClientContext = createContext<KioskClient | undefined>(undefined);

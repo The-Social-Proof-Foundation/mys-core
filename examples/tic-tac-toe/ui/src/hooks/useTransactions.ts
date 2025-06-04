@@ -2,9 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { bcs } from '@mysten/mys/bcs';
-import { PublicKey } from '@mysten/mys/cryptography';
-import { ObjectRef, Transaction } from '@mysten/mys/transactions';
+import { bcs } from '@socialproof/mys/bcs';
+import { PublicKey } from '@socialproof/mys/cryptography';
+import { ObjectRef, Transaction } from '@socialproof/mys/transactions';
 import { useNetworkVariable } from 'config';
 import { Game } from 'hooks/useGameQuery';
 import { TurnCap } from 'hooks/useTurnCapQuery';

@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ConnectButton } from '@mysten/dapp-kit';
+import { ConnectButton } from '@socialproof/dapp-kit';
 
 export function MysConnectButton() {
 	return <ConnectButton className="flex-shrink-0" />;

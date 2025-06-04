@@ -2,10 +2,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { MysObjectRef } from '@mysten/mys/client';
-import { getFaucetHost, requestMysFromFaucetV1 } from '@mysten/mys/faucet';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
-import { Transaction } from '@mysten/mys/transactions';
+import { MysObjectRef } from '@socialproof/mys/client';
+import { getFaucetHost, requestMysFromFaucetV1 } from '@socialproof/mys/faucet';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
+import { Transaction } from '@socialproof/mys/transactions';
 
 import { client } from './rpc';
 

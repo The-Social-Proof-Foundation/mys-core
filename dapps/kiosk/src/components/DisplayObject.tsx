@@ -2,8 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useCurrentAccount } from '@mysten/dapp-kit';
-import { KioskListing } from '@mysten/kiosk';
+import { useCurrentAccount } from '@socialproof/dapp-kit';
+import { KioskListing } from '@socialproof/kiosk';
 import { ReactNode } from 'react';
 
 import { DEFAULT_IMAGE } from '../utils/constants';

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /* eslint-disable @tanstack/query/exhaustive-deps */
 
-import { useMysClient, useMysClientContext } from '@mysten/dapp-kit';
+import { useMysClient, useMysClientContext } from '@socialproof/dapp-kit';
 import {
 	getKioskObject,
 	Kiosk,
@@ -11,8 +11,8 @@ import {
 	KioskItem,
 	KioskListing,
 	KioskOwnerCap,
-} from '@mysten/kiosk';
-import { MysObjectResponse } from '@mysten/mys/client';
+} from '@socialproof/kiosk';
+import { MysObjectResponse } from '@socialproof/mys/client';
 import { useQuery } from '@tanstack/react-query';
 
 import { OwnedObjectType } from '../components/Inventory/OwnedObjects';

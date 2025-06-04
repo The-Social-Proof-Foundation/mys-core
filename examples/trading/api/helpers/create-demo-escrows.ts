@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Transaction } from '@mysten/mys/transactions';
+import { Transaction } from '@socialproof/mys/transactions';
 
 import { CONFIG } from '../config';
 import { getActiveAddress, getClient, signAndExecute } from '../mys-utils';

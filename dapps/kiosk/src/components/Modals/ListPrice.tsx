@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { MIST_PER_MYS } from '@mysten/mys/utils';
+import { MIST_PER_MYS } from '@socialproof/mys/utils';
 import { useState } from 'react';
 
 import { usePlaceAndListMutation } from '../../mutations/kiosk';

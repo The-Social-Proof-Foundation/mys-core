@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useCurrentAccount, useMysClient, useMysClientContext } from '@mysten/dapp-kit';
+import { useCurrentAccount, useMysClient, useMysClientContext } from '@socialproof/dapp-kit';
 import { useQuery, useQueryClient, UseQueryResult } from '@tanstack/react-query';
 import { useNetworkVariable } from 'config';
 

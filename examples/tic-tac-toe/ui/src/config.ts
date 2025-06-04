@@ -2,8 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { createNetworkConfig } from '@mysten/dapp-kit';
-import { getFullnodeUrl } from '@mysten/mys/client';
+import { createNetworkConfig } from '@socialproof/dapp-kit';
+import { getFullnodeUrl } from '@socialproof/mys/client';
 
 import DevnetPackage from './env.devnet.ts';
 import LocalnetPackage from './env.localnet.ts';

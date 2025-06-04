@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { type BalanceChange } from '@mysten/mys/client';
+import { type BalanceChange } from '@socialproof/mys/client';
 import { useQuery } from '@tanstack/react-query';
 
 import { useDryRunContext } from '../DryRunContext';

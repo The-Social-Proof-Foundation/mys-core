@@ -7,9 +7,9 @@ import {
 	useCurrentAccount,
 	useSignTransaction,
 	useMysClient,
-} from '@mysten/dapp-kit';
-import { MysTransactionBlockResponse } from '@mysten/mys/client';
-import { Transaction } from '@mysten/mys/transactions';
+} from '@socialproof/dapp-kit';
+import { MysTransactionBlockResponse } from '@socialproof/mys/client';
+import { Transaction } from '@socialproof/mys/transactions';
 import { ComponentProps, ReactNode, useMemo, useState } from 'react';
 
 import { sponsorTransaction } from './utils/sponsorTransaction';

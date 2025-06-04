@@ -31,13 +31,13 @@ import {
   isValidMysAddress,
   isValidMysObjectId,
   MIST_PER_MYS,
-} from '@mysten/mys/utils';
-import { bcs } from '@mysten/mys/bcs';
+} from '@socialproof/mys/utils';
+import { bcs } from '@socialproof/mys/bcs';
 import { program } from 'commander';
-import { KIOSK_LISTING, KioskClient, KioskTransaction, Network } from '@mysten/kiosk';
-import { MysClient, getFullnodeUrl } from '@mysten/mys/client';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
-import { Transaction } from '@mysten/mys/transactions';
+import { KIOSK_LISTING, KioskClient, KioskTransaction, Network } from '@socialproof/kiosk';
+import { MysClient, getFullnodeUrl } from '@socialproof/mys/client';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
+import { Transaction } from '@socialproof/mys/transactions';
 
 /**
  * List of known types for shorthand search in the `search` command.

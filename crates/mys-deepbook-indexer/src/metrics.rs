@@ -4,7 +4,7 @@
 
 use prometheus::{
     register_int_counter_vec_with_registry, register_int_counter_with_registry,
-    register_int_gauge_vec_with_registry, IntCounter, IntCounterVec, IntGaugeVec, Registry,
+    register_int_gauge_vec_with_registry, register_int_gauge_with_registry, IntCounter, IntCounterVec, IntGauge, IntGaugeVec, Registry,
 };
 use mys_indexer_builder::metrics::IndexerMetricProvider;
 
@@ -15,6 +15,11 @@ pub struct DeepBookIndexerMetrics {
     pub(crate) tasks_processed_checkpoints: IntCounterVec,
     pub(crate) inflight_live_tasks: IntGaugeVec,
     pub(crate) tasks_latest_retrieved_checkpoints: IntGaugeVec,
+    // TimescaleDB-specific metrics
+    pub(crate) timescale_chunks_total: IntGaugeVec,
+    pub(crate) timescale_compressed_chunks: IntGaugeVec,
+    pub(crate) timescale_insert_rate: IntCounterVec,
+    pub(crate) timescale_query_performance: IntGauge,
 }
 
 impl DeepBookIndexerMetrics {
@@ -54,12 +59,60 @@ impl DeepBookIndexerMetrics {
                 registry,
             )
             .unwrap(),
+            // TimescaleDB-specific metrics
+            timescale_chunks_total: register_int_gauge_vec_with_registry!(
+                "deepbook_indexer_timescale_chunks_total",
+                "Total number of TimescaleDB chunks per hypertable",
+                &["hypertable"],
+                registry,
+            )
+            .unwrap(),
+            timescale_compressed_chunks: register_int_gauge_vec_with_registry!(
+                "deepbook_indexer_timescale_compressed_chunks",
+                "Number of compressed chunks per hypertable",
+                &["hypertable"],
+                registry,
+            )
+            .unwrap(),
+            timescale_insert_rate: register_int_counter_vec_with_registry!(
+                "deepbook_indexer_timescale_insert_rate",
+                "Rate of inserts into TimescaleDB hypertables",
+                &["hypertable"],
+                registry,
+            )
+            .unwrap(),
+            timescale_query_performance: register_int_gauge_with_registry!(
+                "deepbook_indexer_timescale_query_performance_ms",
+                "Average query performance for time-series queries in milliseconds",
+                registry,
+            )
+            .unwrap(),
         }
     }
 
     pub fn new_for_testing() -> Self {
         let registry = Registry::new();
         Self::new(&registry)
+    }
+
+    // Helper methods for TimescaleDB metrics
+    pub fn record_timescale_insert(&self, hypertable: &str, count: u64) {
+        self.timescale_insert_rate
+            .with_label_values(&[hypertable])
+            .inc_by(count);
+    }
+
+    pub fn update_chunk_metrics(&self, hypertable: &str, total_chunks: i64, compressed_chunks: i64) {
+        self.timescale_chunks_total
+            .with_label_values(&[hypertable])
+            .set(total_chunks);
+        self.timescale_compressed_chunks
+            .with_label_values(&[hypertable])
+            .set(compressed_chunks);
+    }
+
+    pub fn record_query_performance(&self, duration_ms: u64) {
+        self.timescale_query_performance.set(duration_ms as i64);
     }
 }
 

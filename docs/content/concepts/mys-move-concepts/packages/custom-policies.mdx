@@ -626,8 +626,8 @@ import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
-import { fromBase64 } from '@mysten/mys/utils';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
+import { fromBase64 } from '@socialproof/mys/utils';
 
 const sender = execSync(`${MYS} client active-address`, { encoding: 'utf8' }).trim();
 const signer = (() => {
@@ -675,7 +675,7 @@ const { modules, dependencies } = JSON.parse(
 Next, construct the transaction to publish the package. Wrap its `UpgradeCap` in a "day of the week" policy, which permits upgrades on Tuesdays, and send the new policy back:
 
 ```js
-import { Transaction } from '@mysten/mys/transactions';
+import { Transaction } from '@socialproof/mys/transactions';
 
 const tx = new Transaction();
 const packageUpgradeCap = tx.publish({ modules, dependencies });
@@ -693,7 +693,7 @@ tx.transferObjects([tuesdayUpgradeCap], tx.pure(sender));
 And finally, execute that transaction and display its effects to the console. The following snippet assumes that you're running your examples against a local network. Pass `devnet`, `testnet`, or `mainnet` to the `getFullnodeUrl()` function to run on Devnet, Testnet, or Mainnet respectively:
 
 ```js
-import { getFullnodeUrl, MySocialClient } from '@mysten/mys/client';
+import { getFullnodeUrl, MySocialClient } from '@socialproof/mys/client';
 
 const client = new MySocialClient({ url: getFullnodeUrl('localnet') });
 const result = await client.signAndExecuteTransaction({
@@ -719,10 +719,10 @@ import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getFullnodeUrl, MySocialClient } from '@mysten/mys/client';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
-import { Transaction } from '@mysten/mys/transactions';
-import { fromBase64 } from '@mysten/mys/utils';
+import { getFullnodeUrl, MySocialClient } from '@socialproof/mys/client';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
+import { Transaction } from '@socialproof/mys/transactions';
+import { fromBase64 } from '@socialproof/mys/utils';
 
 const MYS = 'mys';
 const POLICY_PACKAGE_ID = '<POLICY-PACKAGE>';
@@ -959,10 +959,10 @@ import { readFileSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getFullnodeUrl, MySocialClient } from '@mysten/mys/client';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
-import { Transaction, UpgradePolicy } from '@mysten/mys/transactions';
-import { fromBase64 } from '@mysten/mys/utils';
+import { getFullnodeUrl, MySocialClient } from '@socialproof/mys/client';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
+import { Transaction, UpgradePolicy } from '@socialproof/mys/transactions';
+import { fromBase64 } from '@socialproof/mys/utils';
 
 const MYS = 'mys';
 const POLICY_PACKAGE_ID = '<POLICY-PACKAGE>';
