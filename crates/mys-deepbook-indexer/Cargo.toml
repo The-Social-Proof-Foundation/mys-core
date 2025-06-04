@@ -7,32 +7,31 @@ publish = false
 edition = "2021"
 
 [dependencies]
-serde.workspace = true
-tap.workspace = true
-diesel = { workspace = true, features = ["serde_json"] }
-diesel-async = { workspace = true, features = ["bb8", "postgres"] }
-tokio = { workspace = true, features = ["full"] }
-anyhow.workspace = true
-futures.workspace = true
-async-trait.workspace = true
-bcs.workspace = true
-bin-version.workspace = true
-clap.workspace = true
-mysten-metrics.workspace = true
-prometheus.workspace = true
-serde_yaml.workspace = true
-mys-sdk.workspace = true
-mys-json-rpc-types.workspace = true
-mys-data-ingestion-core.workspace = true
-mys-types.workspace = true
-telemetry-subscribers.workspace = true
-tracing.workspace = true
-backoff.workspace = true
-mys-config.workspace = true
-mys-indexer-builder.workspace = true
-tempfile.workspace = true
-axum.workspace = true
-tower-http.workspace = true
+serde = { version = "1.0.144", features = ["derive", "rc"] }
+tap = "1.0.1"
+diesel = { version = "2.2", features = ["serde_json"] }
+diesel-async = { version = "0.5", features = ["bb8", "postgres"] }
+tokio = { version = "1.43.0", features = ["full"] }
+anyhow = "1.0.71"
+futures = "0.3.28"
+async-trait = "0.1.61"
+bcs = "0.1.4"
+clap = { version = "4.4", features = ["derive", "wrap_help"] }
+mysten-metrics = { path = "crates/mysten-metrics" }
+prometheus = "0.13.3"
+serde_yaml = "0.8.26"
+mys-sdk = { path = "crates/mys-sdk" }
+mys-json-rpc-types = { path = "crates/mys-json-rpc-types" }
+mys-data-ingestion-core = { path = "crates/mys-data-ingestion-core" }
+mys-types = { path = "crates/mys-types" }
+telemetry-subscribers = { path = "crates/telemetry-subscribers" }
+tracing = "0.1.37"
+backoff = { version = "0.4.0", features = ["futures", "futures-core", "pin-project-lite", "tokio", "tokio_1"] }
+mys-config = { path = "crates/mys-config" }
+mys-indexer-builder = { path = "crates/mys-indexer-builder" }
+tempfile = "3.3.0"
+axum = { version = "0.7", default-features = false, features = ["macros", "tokio", "http1", "http2", "json", "matched-path", "original-uri", "form", "query", "ws"] }
+tower-http = { version = "0.5", features = ["cors", "full", "trace", "set-header", "propagate-header"] }
 bigdecimal = { version = "0.4.5" }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 
