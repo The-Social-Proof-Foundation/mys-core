@@ -1620,7 +1620,7 @@
     ]
   },
   "74": {
-    "git_revision": "40e5dac11be3-dirty",
+    "git_revision": "b0d549db5f93-dirty",
     "packages": [
       {
         "name": "MoveStdlib",
@@ -1636,6 +1636,11 @@
         "name": "MysSystem",
         "path": "crates/mys-framework/packages/mys-system",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000003"
+      },
+      {
+        "name": "USDC",
+        "path": "crates/mys-framework/packages/usdc",
+        "id": "0x00000000000000000000000000000000000000000000000000000000000075d6"
       },
       {
         "name": "MySocialContracts",

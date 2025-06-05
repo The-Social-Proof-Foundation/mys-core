@@ -3889,6 +3889,12 @@ order_id
 tick_level
 	public fun
 	0xdee9::order_query
+USDC
+	public struct
+	0x75d6::usdc
+init
+	fun
+	0x75d6::usdc
 BridgeTreasury
 	public struct
 	0xb::treasury

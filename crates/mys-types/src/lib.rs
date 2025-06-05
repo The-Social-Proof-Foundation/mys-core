@@ -122,6 +122,7 @@ built_in_pkgs! {
     DEEPBOOK_ADDRESS / DEEPBOOK_PACKAGE_ID = 0xdee9;
     MYS_SOCIAL_ADDRESS / MYS_SOCIAL_PACKAGE_ID = 0xd880;
     SEAL_ADDRESS / SEAL_PACKAGE_ID = 0x5ea1;
+    USDC_ADDRESS / USDC_PACKAGE_ID = 0x75d6;
 }
 
 built_in_ids! {
@@ -198,6 +199,7 @@ pub fn resolve_address(addr: &str) -> Option<AccountAddress> {
         "mys_system" => Some(MYS_SYSTEM_ADDRESS),
         "mys_social" => Some(MYS_SOCIAL_ADDRESS),
         "seal" => Some(SEAL_ADDRESS),
+        "usdc" => Some(USDC_ADDRESS),
         "bridge" => Some(BRIDGE_ADDRESS),
         _ => None,
     }
