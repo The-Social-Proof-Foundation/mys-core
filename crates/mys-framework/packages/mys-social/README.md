@@ -6,7 +6,7 @@ This repository contains the smart contracts for the MySocial platform, a decent
 
 The contract is published on MySocial network with package ID:
 ```
-0xf16b6567d925341ab29edcf9e0dd743530f235083b2ac2603dbe6e37832eafef
+0x00000000000000000000000000000000000000000000000000000000000075d6
 ```
 
 ## Key Components
