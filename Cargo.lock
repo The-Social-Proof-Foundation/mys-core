@@ -10815,6 +10815,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "mys-price-oracle"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "clap",
+ "jsonpath_lib",
+ "mys-config",
+ "reqwest 0.12.9",
+ "serde",
+ "serde_json",
+ "telemetry-subscribers",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "mys-proc-macros"
 version = "0.7.0"
 dependencies = [
