@@ -19,7 +19,7 @@ module social_contracts::token_exchange {
     use mys::clock::{Self, Clock};
     use mys::math;
     
-    use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::profile::{Self, Profile, UsernameRegistry, EcosystemTreasury, get_treasury_address};
     use social_contracts::post::{Self, Post};
     use social_contracts::block_list::{BlockListRegistry};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
@@ -353,7 +353,7 @@ module social_contracts::token_exchange {
     // === Initialization ===
     
     /// Initialize the token exchange system
-    fun init(ctx: &mut TxContext) {
+    fun init(treasury: &profile::EcosystemTreasury, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
         
         // Create and transfer admin capability to the transaction sender
@@ -374,7 +374,7 @@ module social_contracts::token_exchange {
                 treasury_fee_bps: DEFAULT_TREASURY_FEE_BPS,
                 base_price: DEFAULT_BASE_PRICE,
                 quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
-                ecosystem_treasury: sender, // Initially set to sender, should be updated
+                ecosystem_treasury: get_treasury_address(treasury),
                 max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
                 post_likes_weight: POST_LIKES_WEIGHT,
                 post_comments_weight: POST_COMMENTS_WEIGHT,
@@ -408,13 +408,13 @@ module social_contracts::token_exchange {
     public entry fun update_exchange_config(
         _admin_cap: &ExchangeAdminCap,
         config: &mut ExchangeConfig,
-        total_fee_bps: u64, 
+        total_fee_bps: u64,
         creator_fee_bps: u64,
         platform_fee_bps: u64,
         treasury_fee_bps: u64,
         base_price: u64,
         quadratic_coefficient: u64,
-        ecosystem_treasury: address,
+        treasury: &EcosystemTreasury,
         max_hold_percent_bps: u64,
         post_likes_weight: u64,
         post_comments_weight: u64,
@@ -451,7 +451,7 @@ module social_contracts::token_exchange {
         config.quadratic_coefficient = quadratic_coefficient;
         
         // Update treasury addresses
-        config.ecosystem_treasury = ecosystem_treasury;
+        config.ecosystem_treasury = get_treasury_address(treasury);
         config.max_hold_percent_bps = max_hold_percent_bps;
         
         // Update viral thresholds & weights
@@ -480,7 +480,7 @@ module social_contracts::token_exchange {
             treasury_fee_bps,
             base_price,
             quadratic_coefficient,
-            ecosystem_treasury,
+            ecosystem_treasury: get_treasury_address(treasury),
             max_hold_percent_bps,
             post_viral_threshold,
             profile_viral_threshold,

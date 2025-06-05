@@ -14,7 +14,7 @@ module social_contracts::encrypted_content {
     use mys::coin::{Self, Coin};
     use mys::mys::MYS;
     
-    use social_contracts::profile::{Self, Profile};
+    use social_contracts::profile::{Self, Profile, EcosystemTreasury, get_treasury_address};
 
     // ====== Error codes ======
     const EUnauthorized: u64 = 1;
@@ -304,7 +304,7 @@ module social_contracts::encrypted_content {
         tier_id: String,
         recipient_public_key: vector<u8>,
         nonce: vector<u8>,
-        platform_treasury: address,
+        treasury: &EcosystemTreasury,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
@@ -333,9 +333,9 @@ module social_contracts::encrypted_content {
         
         // If platform fee is non-zero, split it off
         if (platform_fee > 0) {
-            // Split off platform fee and send to platform treasury
+            // Split off platform fee and send to unified treasury
             let platform_fee_coin = coin::split(&mut paid_coin, platform_fee, ctx);
-            transfer::public_transfer(platform_fee_coin, platform_treasury);
+            transfer::public_transfer(platform_fee_coin, get_treasury_address(treasury));
         };
         
         // Send remaining payment directly to content owner

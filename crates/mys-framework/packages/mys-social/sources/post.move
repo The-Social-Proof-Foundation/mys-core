@@ -15,7 +15,7 @@ module social_contracts::post {
     use mys::url::{Self, Url};
     use mys::package::{Self, Publisher};
     
-    use social_contracts::profile::UsernameRegistry;
+    use social_contracts::profile::{UsernameRegistry, EcosystemTreasury, get_treasury_address};
     use social_contracts::platform;
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
@@ -436,7 +436,7 @@ module social_contracts::post {
     }
     
     /// Initialize the post module
-    fun init(ctx: &mut TxContext) {
+    fun init(treasury: &EcosystemTreasury, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
         
         // Create and share post configuration
@@ -445,7 +445,7 @@ module social_contracts::post {
                 id: object::new(ctx),
                 predictions_enabled: false, // Predictions disabled by default
                 prediction_fee_bps: 500, // Default 5% fee
-                prediction_treasury: sender, // Initially set to publisher
+                prediction_treasury: get_treasury_address(treasury),
                 max_content_length: MAX_CONTENT_LENGTH,
                 max_media_urls: MAX_MEDIA_URLS,
                 max_mentions: MAX_MENTIONS,
@@ -485,7 +485,7 @@ module social_contracts::post {
         publisher: &Publisher,
         config: &mut PostConfig,
         fee_bps: u64,
-        treasury: address,
+        treasury: &EcosystemTreasury,
         _ctx: &mut TxContext
     ) {
         // Verify the publisher is for this module
@@ -496,7 +496,7 @@ module social_contracts::post {
         
         // Update configuration
         config.prediction_fee_bps = fee_bps;
-        config.prediction_treasury = treasury;
+        config.prediction_treasury = get_treasury_address(treasury);
     }
     
     /// Check if predictions are enabled
