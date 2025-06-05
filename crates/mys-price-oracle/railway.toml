@@ -1,0 +1,51 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[[build.watchPatterns]]
+include = ["crates/mys-price-oracle/**"]
+
+[environments.production.variables]
+# Oracle Configuration
+MYS_ORACLE_CHAIN_ID = "8453"
+MYS_ORACLE_TOKEN_ID = "1"
+MYS_ORACLE_UPDATE_INTERVAL = "30s"
+MYS_ORACLE_PRICE_CHANGE_THRESHOLD = "0.02"
+
+# Data Source - Uniswap V3 Base
+MYS_ORACLE_SOURCE_TYPE = "graphql"
+MYS_ORACLE_SOURCE_URL = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3-base"
+MYS_ORACLE_SOURCE_TOKEN_ADDRESS = "0xfdd6013bf2757018d8c087244f03e5a521b2d3b7"
+MYS_ORACLE_SOURCE_POOL_FEE_TIER = "3000"
+
+# Price Validation
+MYS_ORACLE_VALIDATION_MIN_PRICE_USD = "0.000001"
+MYS_ORACLE_VALIDATION_MAX_PRICE_USD = "1000000"
+MYS_ORACLE_VALIDATION_MAX_PRICE_DEVIATION_PERCENT = "50"
+
+# Retry Configuration
+MYS_ORACLE_RETRY_MAX_ATTEMPTS = "3"
+MYS_ORACLE_RETRY_INITIAL_DELAY = "100ms"
+MYS_ORACLE_RETRY_MAX_DELAY = "30s"
+MYS_ORACLE_RETRY_MULTIPLIER = "2.0"
+
+# Monitoring (Railway will assign PORT)
+MYS_ORACLE_MONITORING_HEALTH_CHECK_PORT = "8080"
+MYS_ORACLE_MONITORING_METRICS_PORT = "9090"
+
+# State Persistence
+MYS_ORACLE_PERSISTENCE_DATABASE_PATH = "/app/data/oracle_state.db"
+
+# Logging
+RUST_LOG = "info,mys_price_oracle=debug"
+
+# NOTE: These must be set as Railway secrets:
+# MYS_ORACLE_SERVER_URL - Your bridge server URL
+# MYS_ORACLE_AUTH_API_KEY - Your API key (if using API key auth)
+# MYS_ORACLE_AUTH_HMAC_SECRET - Your HMAC secret (if using HMAC auth) 
