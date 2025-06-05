@@ -48,7 +48,7 @@ use mys_types::object::{Object, Owner};
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::mys_system_state::{get_mys_system_state, MysSystemState, MysSystemStateTrait};
 use mys_types::transaction::{
-    CallArg, CheckedInputObjects, Command, InputObjectKind, ObjectReadResult, Transaction,
+    CallArg, CheckedInputObjects, Command, InputObjectKind, ObjectReadResult, Transaction
 };
 use mys_types::{BRIDGE_ADDRESS, MYS_BRIDGE_OBJECT_ID, MYS_FRAMEWORK_ADDRESS, MYS_SYSTEM_ADDRESS};
 use tracing::trace;
