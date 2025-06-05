@@ -144,6 +144,7 @@ members = [
     "crates/mys-open-rpc",
     "crates/mys-open-rpc-macros",
     "crates/mys-oracle",
+    "crates/mys-price-oracle",
     "crates/mys-package-dump",
     "crates/mys-package-management",
     "crates/mys-package-resolver",
