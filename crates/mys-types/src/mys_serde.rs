@@ -26,6 +26,7 @@ use mys_protocol_config::ProtocolVersion;
 use crate::{
     parse_mys_struct_tag, parse_mys_type_tag, DEEPBOOK_ADDRESS, MYS_CLOCK_ADDRESS,
     MYS_FRAMEWORK_ADDRESS, MYS_SYSTEM_ADDRESS, MYS_SYSTEM_STATE_ADDRESS, MYS_SOCIAL_ADDRESS,
+    SEAL_ADDRESS,
 };
 
 #[inline]
@@ -166,7 +167,7 @@ impl SerializeAs<StructTag> for MysStructTag {
     }
 }
 
-const MYS_ADDRESSES: [AccountAddress; 8] = [
+const MYS_ADDRESSES: [AccountAddress; 9] = [
     AccountAddress::ZERO,
     AccountAddress::ONE,
     MYS_FRAMEWORK_ADDRESS,
@@ -175,6 +176,7 @@ const MYS_ADDRESSES: [AccountAddress; 8] = [
     MYS_SYSTEM_STATE_ADDRESS,
     MYS_CLOCK_ADDRESS,
     MYS_SOCIAL_ADDRESS,
+    SEAL_ADDRESS,
 ];
 /// Serialize StructTag as a string, retaining the leading zeros in the address.
 pub fn to_mys_struct_tag_string(value: &StructTag) -> Result<String, fmt::Error> {

@@ -1,0 +1,13 @@
+[package]
+name = "seal"
+version = "0.0.1"
+published-at = "0x5ea1"
+edition = "2024"
+
+[dependencies]
+MoveStdlib = { local = "../move-stdlib" }
+MySocial = { local = "../mys-framework" }
+
+[addresses]
+seal = "0x5ea1"
+

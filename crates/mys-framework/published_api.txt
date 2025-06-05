@@ -6238,3 +6238,183 @@ migrate_token_pool
 migrate_auction_pool
 	public entry fun
 	0xd880::social_proof_token
+log
+	fun
+	0x5ea1::gf256
+exp
+	fun
+	0x5ea1::gf256
+add
+	public(package) fun
+	0x5ea1::gf256
+sub
+	public(package) fun
+	0x5ea1::gf256
+mul
+	public(package) fun
+	0x5ea1::gf256
+div
+	public(package) fun
+	0x5ea1::gf256
+Polynomial
+	public struct
+	0x5ea1::polynomial
+get_constant_term
+	public(package) fun
+	0x5ea1::polynomial
+add
+	fun
+	0x5ea1::polynomial
+degree
+	public(package) fun
+	0x5ea1::polynomial
+reduce
+	fun
+	0x5ea1::polynomial
+mul
+	fun
+	0x5ea1::polynomial
+div
+	fun
+	0x5ea1::polynomial
+scale
+	fun
+	0x5ea1::polynomial
+monic_linear
+	fun
+	0x5ea1::polynomial
+interpolate
+	public(package) fun
+	0x5ea1::polynomial
+evaluate
+	public fun
+	0x5ea1::polynomial
+KeyServer
+	public struct
+	0x5ea1::key_server
+KeyServerV1
+	public struct
+	0x5ea1::key_server
+Cap
+	public struct
+	0x5ea1::key_server
+create_v1
+	public fun
+	0x5ea1::key_server
+create_and_transfer_v1
+	entry fun
+	0x5ea1::key_server
+v1
+	public fun
+	0x5ea1::key_server
+name
+	public fun
+	0x5ea1::key_server
+url
+	public fun
+	0x5ea1::key_server
+key_type
+	public fun
+	0x5ea1::key_server
+pk
+	public fun
+	0x5ea1::key_server
+id
+	public fun
+	0x5ea1::key_server
+pk_as_bf_bls12381
+	public fun
+	0x5ea1::key_server
+update
+	public fun
+	0x5ea1::key_server
+kdf
+	public(package) fun
+	0x5ea1::kdf
+hash_to_g1_with_dst
+	public(package) fun
+	0x5ea1::kdf
+decrypt
+	public(package) fun
+	0x5ea1::hmac256ctr
+mac
+	fun
+	0x5ea1::hmac256ctr
+EncryptedObject
+	public struct
+	0x5ea1::bf_hmac_encryption
+VerifiedDerivedKey
+	public struct
+	0x5ea1::bf_hmac_encryption
+PublicKey
+	public struct
+	0x5ea1::bf_hmac_encryption
+KeyPurpose
+	public enum
+	0x5ea1::bf_hmac_encryption
+get_public_key
+	public fun
+	0x5ea1::bf_hmac_encryption
+decrypt
+	public fun
+	0x5ea1::bf_hmac_encryption
+verify_share
+	fun
+	0x5ea1::bf_hmac_encryption
+create_full_id
+	fun
+	0x5ea1::bf_hmac_encryption
+derive_key
+	fun
+	0x5ea1::bf_hmac_encryption
+xor
+	fun
+	0x5ea1::bf_hmac_encryption
+decrypt_shares_with_randomness
+	fun
+	0x5ea1::bf_hmac_encryption
+verify_derived_keys
+	public fun
+	0x5ea1::bf_hmac_encryption
+verify_derived_key
+	fun
+	0x5ea1::bf_hmac_encryption
+parse_encrypted_object
+	public fun
+	0x5ea1::bf_hmac_encryption
+peel_tuple_u8
+	fun
+	0x5ea1::bf_hmac_encryption
+package_id
+	public fun
+	0x5ea1::bf_hmac_encryption
+id
+	public fun
+	0x5ea1::bf_hmac_encryption
+services
+	public fun
+	0x5ea1::bf_hmac_encryption
+indices
+	public fun
+	0x5ea1::bf_hmac_encryption
+threshold
+	public fun
+	0x5ea1::bf_hmac_encryption
+nonce
+	public fun
+	0x5ea1::bf_hmac_encryption
+encrypted_shares
+	public fun
+	0x5ea1::bf_hmac_encryption
+encrypted_randomness
+	public fun
+	0x5ea1::bf_hmac_encryption
+blob
+	public fun
+	0x5ea1::bf_hmac_encryption
+aad
+	public fun
+	0x5ea1::bf_hmac_encryption
+mac
+	public fun
+	0x5ea1::bf_hmac_encryption

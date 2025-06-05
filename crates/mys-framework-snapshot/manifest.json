@@ -1620,7 +1620,7 @@
     ]
   },
   "74": {
-    "git_revision": "95d92b76a25e-dirty",
+    "git_revision": "40e5dac11be3-dirty",
     "packages": [
       {
         "name": "MoveStdlib",
@@ -1641,6 +1641,11 @@
         "name": "MySocialContracts",
         "path": "crates/mys-framework/packages/mys-social",
         "id": "0x000000000000000000000000000000000000000000000000000000000000d880"
+      },
+      {
+        "name": "Seal",
+        "path": "crates/mys-framework/packages/seal",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000005ea1"
       },
       {
         "name": "DeepBook",
