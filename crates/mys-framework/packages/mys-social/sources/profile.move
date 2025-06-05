@@ -15,6 +15,13 @@ module social_contracts::profile {
     use mys::balance::Balance;
     use mys::mys::MYS;
     use mys::url::{Self, Url};
+    use mys::clock::Clock;
+    use mys::{tx_context, object, transfer};
+
+    use seal::bf_hmac_encryption;
+
+    use social_contracts::my_ip_data::{Self as MyIPDataModule, MyIPData};
+    use social_contracts::subscription;
     
     use social_contracts::upgrade;
 
@@ -35,6 +42,7 @@ module social_contracts::profile {
     const EOfferBelowMinimum: u64 = 12;
     const EBadgeNotFound: u64 = 13;
     const EBadgeAlreadyExists: u64 = 14;
+    const EDataNotFound: u64 = 15;
 
     const PROFILE_SALE_FEE_BPS: u64 = 500;
 
@@ -68,6 +76,8 @@ module social_contracts::profile {
     const USERNAME_FIELD: vector<u8> = b"username";
     // Field name for offers
     const OFFERS_FIELD: vector<u8> = b"profile_offers";
+    // Field for storing MyIP data references
+    const MY_IP_DATA_FIELD: vector<u8> = b"my_ip_data";
 
     /// Social Ecosystem Treasury that receives fees from profile sales
     public struct EcosystemTreasury has key {
@@ -1007,6 +1017,73 @@ module social_contracts::profile {
             profile.following_count = profile.following_count - 1;
         };
         profile.following_count
+    }
+
+    /// Store MyIP data under this profile
+    public entry fun store_my_ip_data(
+        profile: &mut Profile,
+        data: MyIPData,
+        ctx: &mut TxContext
+    ) {
+        assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
+        if (!dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD)) {
+            let tbl = table::new<address, MyIPData>(ctx);
+            dynamic_field::add(&mut profile.id, MY_IP_DATA_FIELD, tbl);
+        };
+        let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, MyIPData>>(
+            &mut profile.id,
+            MY_IP_DATA_FIELD,
+        );
+        table::add(tbl, object::uid_to_address(&data.id), data);
+    }
+
+    /// Remove stored MyIP data and return it to the owner
+    public entry fun take_my_ip_data(
+        profile: &mut Profile,
+        data_id: address,
+        ctx: &mut TxContext
+    ): MyIPData {
+        assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
+        assert!(dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD), EDataNotFound);
+        let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, MyIPData>>(
+            &mut profile.id,
+            MY_IP_DATA_FIELD,
+        );
+        assert!(table::contains(tbl, data_id), EDataNotFound);
+        table::remove(tbl, data_id)
+    }
+
+    /// Decrypt a stored MyIP data URI for a viewer
+    public fun decrypt_my_ip_data(
+        profile: &Profile,
+        data_id: address,
+        viewer: address,
+        sub: &subscription::Subscription,
+        service: &subscription::Service,
+        c: &Clock,
+        keys: &vector<bf_hmac_encryption::VerifiedDerivedKey>,
+        pks: &vector<bf_hmac_encryption::PublicKey>,
+    ): Option<vector<u8>> {
+        if (!dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD)) {
+            return option::none();
+        };
+        let tbl = dynamic_field::borrow<vector<u8>, Table<address, MyIPData>>(
+            &profile.id,
+            MY_IP_DATA_FIELD,
+        );
+        if (!table::contains(tbl, data_id)) {
+            return option::none();
+        };
+        let data = table::borrow(tbl, data_id);
+        MyIPDataModule::decrypt_uri_for(
+            data,
+            viewer,
+            sub,
+            service,
+            c,
+            keys,
+            pks,
+        )
     }
 
     /// Create an offer to purchase a profile

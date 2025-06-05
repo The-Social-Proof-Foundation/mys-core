@@ -7,9 +7,8 @@
 module social_contracts::my_ip {
     use std::string::{Self, String};
     
-    use mys::event;
-    use mys::url::{Self, Url};
-    use mys::table::{Self, Table};
+    use mys::{event, url::{Self, Url}, table::{Self, Table}, clock::Clock, tx_context, object, transfer};
+    use std::option;
     
     use social_contracts::profile::{Self, Profile};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
@@ -69,7 +68,8 @@ module social_contracts::my_ip {
         revenue_recipient: Option<address>,
         transferable: bool,
         expires_at: Option<u64>,
-        
+
+
         /// Version for upgrades
         version: u64,
     }

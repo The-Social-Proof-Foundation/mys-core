@@ -14,6 +14,10 @@ module social_contracts::post {
     use mys::mys::MYS;
     use mys::url::{Self, Url};
     use mys::package::{Self, Publisher};
+    use mys::{clock::Clock, tx_context, object, transfer};
+    use std::option;
+    use social_contracts::subscription;
+    use seal::bf_hmac_encryption;
     
     use social_contracts::profile::UsernameRegistry;
     use social_contracts::platform;
@@ -51,6 +55,9 @@ module social_contracts::post {
     const ETipsNotAllowed: u64 = 26;
     const ELicenseNotRegistered: u64 = 27;
     const EInvalidConfig: u64 = 28;
+    const ENoSubscriptionService: u64 = 29;
+    const ENoEncryptedContent: u64 = 30;
+    const EPriceMismatch: u64 = 31;
 
     /// Constants for size limits
     const MAX_CONTENT_LENGTH: u64 = 5000; // 5000 chars max for content
@@ -115,6 +122,16 @@ module social_contracts::post {
         reaction_counts: Table<String, u64>,
         /// Reference to the intellectual property license for the post
         my_ip_id: Option<address>,
+        /// Optional encrypted content enforced by Seal
+        encrypted_content: Option<vector<u8>>,
+        /// Identifier used with Seal to approve access
+        encryption_id: Option<vector<u8>>,
+        /// Associated subscription service controlling decryption
+        service_id: Option<address>,
+        /// Price for one-time viewing in MYS
+        one_time_price: Option<u64>,
+        /// Addresses that purchased one-time access
+        purchased: Table<address, bool>,
         /// Version for upgrades
         version: u64,
     }
@@ -1045,6 +1062,11 @@ module social_contracts::post {
             user_reactions: table::new(ctx),
             reaction_counts: table::new(ctx),
             my_ip_id,
+            encrypted_content: option::none(),
+            encryption_id: option::none(),
+            service_id: option::none(),
+            one_time_price: option::none(),
+            purchased: table::new(ctx),
             version: upgrade::current_version(),
         };
         
@@ -2780,5 +2802,61 @@ module social_contracts::post {
             repost_tip_percentage,
             max_prediction_options,
         });
+    }
+
+    /// Attach encrypted content and optional price
+    public entry fun set_encrypted_content(
+        post: &mut Post,
+        data: vector<u8>,
+        enc_id: vector<u8>,
+        service: address,
+        price: Option<u64>,
+        ctx: &mut TxContext,
+    ) {
+        assert!(tx_context::sender(ctx) == post.owner, EUnauthorized);
+        post.encrypted_content = option::some(data);
+        post.encryption_id = option::some(enc_id);
+        post.service_id = option::some(service);
+        post.one_time_price = price;
+    }
+
+    /// Buy one-time access to encrypted content
+    public entry fun buy_one_time_access(
+        post: &mut Post,
+        payment: Coin<MYS>,
+        ctx: &mut TxContext,
+    ) {
+        assert!(option::is_some(&post.one_time_price), ENoEncryptedContent);
+        let price = *option::borrow(&post.one_time_price);
+        assert!(payment.value() == price, EPriceMismatch);
+        transfer::public_transfer(payment, post.owner);
+        table::add(&mut post.purchased, tx_context::sender(ctx), true);
+    }
+
+    /// Decrypt content for a viewer using subscription or purchase
+    public fun decrypt_content_for(
+        post: &Post,
+        viewer: address,
+        sub: &subscription::Subscription,
+        service: &subscription::Service,
+        c: &Clock,
+        derived: &vector<seal::bf_hmac_encryption::VerifiedDerivedKey>,
+        pks: &vector<seal::bf_hmac_encryption::PublicKey>,
+    ): Option<vector<u8>> {
+        if (!option::is_some(&post.encrypted_content)) return option::none();
+        if (table::contains(&post.purchased, viewer)) {
+            let obj = seal::bf_hmac_encryption::parse_encrypted_object(
+                *option::borrow(&post.encrypted_content),
+            );
+            return seal::bf_hmac_encryption::decrypt(&obj, derived, pks);
+        };
+        let sid = *option::borrow(&post.service_id);
+        assert!(sid == object::id(service), ENoSubscriptionService);
+        let id = *option::borrow(&post.encryption_id);
+        subscription::seal_approve(id, sub, service, c);
+        let obj = seal::bf_hmac_encryption::parse_encrypted_object(
+            *option::borrow(&post.encrypted_content),
+        );
+        seal::bf_hmac_encryption::decrypt(&obj, derived, pks)
     }
 }

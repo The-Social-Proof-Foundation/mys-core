@@ -16,6 +16,8 @@ module social_contracts::governance {
     use mys::balance::{Self, Balance};
     use mys::mys::MYS;
     use mys::package::{Self, Publisher};
+
+    use seal::bf_hmac_encryption::{EncryptedObject, VerifiedDerivedKey, PublicKey, decrypt};
     
     use social_contracts::upgrade;
     use social_contracts::profile;
@@ -37,6 +39,7 @@ module social_contracts::governance {
     const EInvalidRegistry: u64 = 15;
     const EAlreadyNominated: u64 = 16;
     const EWrongVersion: u64 = 17;
+    const EDelegateAnonNotAllowed: u64 = 18;
 
     /// Proposal type constants
     const PROPOSAL_TYPE_ECOSYSTEM: u8 = 0;
@@ -60,6 +63,8 @@ module social_contracts::governance {
     const VOTED_AGAINST_FIELD: vector<u8> = b"voted_against";
     const VOTED_DELEGATES_LIST_FIELD: vector<u8> = b"voted_delegates_list";
     const DELEGATE_REASONS_FIELD: vector<u8> = b"delegate_reasons";
+    const ENCRYPTED_VOTES_FIELD: vector<u8> = b"encrypted_votes";
+    const ANON_VOTERS_FIELD: vector<u8> = b"anon_voters";
 
     /// Governance registry that keeps track of all delegates and proposals
     public struct GovernanceDAO has key {
@@ -191,6 +196,13 @@ module social_contracts::governance {
         approve: bool,
         vote_time: u64,
         vote_cost: u64,
+    }
+
+    /// Event emitted when an anonymous vote is submitted
+    public struct AnonymousVoteEvent has copy, drop {
+        proposal_id: ID,
+        voter: address,
+        vote_time: u64,
     }
 
     /// Event emitted when a proposal is approved by the delegate council
@@ -1329,6 +1341,48 @@ module social_contracts::governance {
         });
     }
 
+    /// Submit an anonymous encrypted vote on a proposal
+    public entry fun community_vote_anonymous(
+        registry: &mut GovernanceDAO,
+        proposal_id: ID,
+        encrypted_vote: EncryptedObject,
+        ctx: &mut TxContext
+    ) {
+        let caller = tx_context::sender(ctx);
+        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        let current_epoch = tx_context::epoch(ctx);
+
+        assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
+        let proposal = table::borrow_mut(&mut registry.proposals, proposal_id);
+        assert!(proposal.status == STATUS_COMMUNITY_VOTING, ENotVotingPhase);
+        assert!(current_epoch <= proposal.voting_end_time, EVotingPeriodEnded);
+        assert!(!table::contains(&registry.delegates, caller), EDelegateAnonNotAllowed);
+
+        let voted_community: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_COMMUNITY_FIELD);
+        assert!(!vec_set::contains(voted_community, &caller), EAlreadyVoted);
+        vec_set::insert(voted_community, caller);
+
+        if (!dynamic_field::exists_(&proposal.id, ENCRYPTED_VOTES_FIELD)) {
+            let tbl = table::new<address, EncryptedObject>(ctx);
+            dynamic_field::add(&mut proposal.id, ENCRYPTED_VOTES_FIELD, tbl);
+        };
+        let enc_tbl: &mut Table<address, EncryptedObject> = dynamic_field::borrow_mut(&mut proposal.id, ENCRYPTED_VOTES_FIELD);
+        table::add(enc_tbl, caller, encrypted_vote);
+
+        if (!dynamic_field::exists_(&proposal.id, ANON_VOTERS_FIELD)) {
+            let set = vec_set::empty<address>();
+            dynamic_field::add(&mut proposal.id, ANON_VOTERS_FIELD, set);
+        };
+        let anon_set: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, ANON_VOTERS_FIELD);
+        vec_set::insert(anon_set, caller);
+
+        event::emit(AnonymousVoteEvent {
+            proposal_id,
+            voter: caller,
+            vote_time: current_time,
+        });
+    }
+
     /// Finalize a proposal after the voting period ends
     public entry fun finalize_proposal(
         registry: &mut GovernanceDAO,
@@ -1457,6 +1511,53 @@ module social_contracts::governance {
                 balance::destroy_zero(balance::withdraw_all(&mut proposal.reward_pool));
             };
         }
+    }
+
+    /// Finalize a proposal with anonymous votes by decrypting them first
+    public entry fun finalize_proposal_anonymous(
+        registry: &mut GovernanceDAO,
+        proposal_id: ID,
+        keys: &vector<VerifiedDerivedKey>,
+        public_keys: &vector<PublicKey>,
+        ctx: &mut TxContext
+    ) {
+        let current_epoch = tx_context::epoch(ctx);
+        assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
+
+        {
+            let proposal = table::borrow_mut(&mut registry.proposals, proposal_id);
+            assert!(proposal.status == STATUS_COMMUNITY_VOTING, EInvalidProposalStatus);
+            assert!(current_epoch > proposal.voting_end_time, EVotingPeriodNotEnded);
+
+            if (dynamic_field::exists_(&proposal.id, ENCRYPTED_VOTES_FIELD)) {
+                let votes_tbl: &Table<address, EncryptedObject> = dynamic_field::borrow(&proposal.id, ENCRYPTED_VOTES_FIELD);
+                let anon_set: &VecSet<address> = dynamic_field::borrow(&proposal.id, ANON_VOTERS_FIELD);
+                let voters_vec = vec_set::into_keys(*anon_set);
+                let mut i = 0;
+                let len = vector::length(&voters_vec);
+                while (i < len) {
+                    let addr = *vector::borrow(&voters_vec, i);
+                    let enc = table::borrow(votes_tbl, addr);
+                    let dec = decrypt(enc, keys, public_keys);
+                    if (dec.is_some()) {
+                        let b = dec.borrow();
+                        if (b.length() == 1 && b[0] == 1) {
+                            proposal.community_votes_for = proposal.community_votes_for + 1;
+                            let voted_for: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_FOR_FIELD);
+                            vec_set::insert(voted_for, addr);
+                        } else if (b.length() == 1 && b[0] == 0) {
+                            proposal.community_votes_against = proposal.community_votes_against + 1;
+                            let voted_against: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_AGAINST_FIELD);
+                            vec_set::insert(voted_against, addr);
+                        };
+                    };
+                    i = i + 1;
+                };
+                vector::destroy_empty(voters_vec);
+            };
+        }
+
+        finalize_proposal(registry, proposal_id, ctx);
     }
 
     /// Distribute rewards to winning voters
