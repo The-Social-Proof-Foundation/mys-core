@@ -55,6 +55,7 @@ pub struct Post {
     pub time: DateTime<Utc>,
     pub my_ip_id: Option<String>,
     pub revenue_recipient: Option<String>,
+    pub promotion_id: Option<String>,
 }
 
 /// New post model for insertion
@@ -83,6 +84,7 @@ pub struct NewPost {
     pub transaction_id: String,
     pub my_ip_id: Option<String>,
     pub revenue_recipient: Option<String>,
+    pub promotion_id: Option<String>,
 }
 
 /// Comment model for database
@@ -421,4 +423,171 @@ pub struct PostWithEngagement {
     pub engagement_score: i64,
     #[diesel(sql_type = Float8)]
     pub trending_score: f64,
+}
+
+/// Promoted post model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::promoted_posts)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct PromotedPost {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Varchar)]
+    pub promotion_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub post_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub owner: String,
+    #[diesel(sql_type = Varchar)]
+    pub profile_id: String,
+    #[diesel(sql_type = Int8)]
+    pub payment_per_view: i64,
+    #[diesel(sql_type = Int8)]
+    pub total_budget: i64,
+    #[diesel(sql_type = Int8)]
+    pub remaining_budget: i64,
+    #[diesel(sql_type = Bool)]
+    pub active: bool,
+    #[diesel(sql_type = Int8)]
+    pub created_at: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Varchar)]
+    pub transaction_id: String,
+}
+
+/// New promoted post model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::promoted_posts)]
+pub struct NewPromotedPost {
+    pub promotion_id: String,
+    pub post_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub payment_per_view: i64,
+    pub total_budget: i64,
+    pub remaining_budget: i64,
+    pub active: bool,
+    pub created_at: i64,
+    pub transaction_id: String,
+}
+
+/// Promotion view model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::promotion_views)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct PromotionView {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Varchar)]
+    pub post_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub promotion_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub viewer: String,
+    #[diesel(sql_type = Int8)]
+    pub payment_amount: i64,
+    #[diesel(sql_type = Int8)]
+    pub view_duration: i64,
+    #[diesel(sql_type = Varchar)]
+    pub platform_id: String,
+    #[diesel(sql_type = Int8)]
+    pub timestamp: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Varchar)]
+    pub transaction_id: String,
+}
+
+/// New promotion view model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::promotion_views)]
+pub struct NewPromotionView {
+    pub post_id: String,
+    pub promotion_id: String,
+    pub viewer: String,
+    pub payment_amount: i64,
+    pub view_duration: i64,
+    pub platform_id: String,
+    pub timestamp: i64,
+    pub transaction_id: String,
+}
+
+/// Promotion status event model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::promotion_status_events)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct PromotionStatusEvent {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Varchar)]
+    pub post_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub promotion_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub event_type: String,
+    #[diesel(sql_type = Varchar)]
+    pub triggered_by: String,
+    #[diesel(sql_type = Nullable<Bool>)]
+    pub new_status: Option<bool>,
+    #[diesel(sql_type = Nullable<Int8>)]
+    pub amount: Option<i64>,
+    #[diesel(sql_type = Int8)]
+    pub timestamp: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Varchar)]
+    pub transaction_id: String,
+}
+
+/// New promotion status event model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::promotion_status_events)]
+pub struct NewPromotionStatusEvent {
+    pub post_id: String,
+    pub promotion_id: String,
+    pub event_type: String,
+    pub triggered_by: String,
+    pub new_status: Option<bool>,
+    pub amount: Option<i64>,
+    pub timestamp: i64,
+    pub transaction_id: String,
+}
+
+/// Promotion budget event model for database
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
+#[diesel(table_name = crate::schema::promotion_budget_events)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct PromotionBudgetEvent {
+    #[diesel(sql_type = Int4)]
+    pub id: i32,
+    #[diesel(sql_type = Varchar)]
+    pub promotion_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub post_id: String,
+    #[diesel(sql_type = Varchar)]
+    pub event_type: String,
+    #[diesel(sql_type = Int8)]
+    pub amount: i64,
+    #[diesel(sql_type = Int8)]
+    pub remaining_budget: i64,
+    #[diesel(sql_type = Int8)]
+    pub timestamp: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Varchar)]
+    pub transaction_id: String,
+}
+
+/// New promotion budget event model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::promotion_budget_events)]
+pub struct NewPromotionBudgetEvent {
+    pub promotion_id: String,
+    pub post_id: String,
+    pub event_type: String,
+    pub amount: i64,
+    pub remaining_budget: i64,
+    pub timestamp: i64,
+    pub transaction_id: String,
 } 
