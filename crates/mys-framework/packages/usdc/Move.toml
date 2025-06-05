@@ -1,0 +1,12 @@
+[package]
+name = "USDC"
+version = "0.0.1"
+published-at = "0x75d6"
+edition = "2024.beta"
+
+[dependencies]
+MoveStdlib = { local = "../move-stdlib" }
+MySocial = { local = "../mys-framework" }
+
+[addresses]
+usdc = "0x75d6"

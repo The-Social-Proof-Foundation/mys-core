@@ -50,7 +50,7 @@ use mys_types::{
     is_system_package,
     move_package::{FnInfo, FnInfoKey, FnInfoMap, MovePackage},
     BRIDGE_ADDRESS, DEEPBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYS_FRAMEWORK_ADDRESS,
-    MYS_SYSTEM_ADDRESS, MYS_SOCIAL_ADDRESS, SEAL_ADDRESS,
+    MYS_SYSTEM_ADDRESS, MYS_SOCIAL_ADDRESS, SEAL_ADDRESS, USDC_ADDRESS,
 };
 use mys_verifier::verifier as mys_bytecode_verifier;
 
@@ -453,6 +453,12 @@ impl CompiledPackage {
     pub fn get_bridge_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
             .filter(|m| *m.self_id().address() == BRIDGE_ADDRESS)
+    }
+
+    /// Get bytecode modules from the USDC package that are used by this package
+    pub fn get_usdc_modules(&self) -> impl Iterator<Item = &CompiledModule> {
+        self.get_modules_and_deps()
+            .filter(|m| *m.self_id().address() == USDC_ADDRESS)
     }
 
     /// Get bytecode modules from the Mys System that are used by this package
