@@ -19,7 +19,7 @@ use mys_types::{
     MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID, MYS_SYSTEM_PACKAGE_ID, MYS_SOCIAL_PACKAGE_ID,
     SEAL_PACKAGE_ID,
 };
-use mys_types::{BRIDGE_PACKAGE_ID, DEEPBOOK_PACKAGE_ID};
+use mys_types::{BRIDGE_PACKAGE_ID, DEEPBOOK_PACKAGE_ID, USDC_PACKAGE_ID};
 use tracing::error;
 
 /// Encapsulates a system package in the framework
@@ -136,6 +136,12 @@ impl BuiltInFramework {
                 MYS_SYSTEM_PACKAGE_ID,
                 "MysSystem",
                 "mys-system",
+                [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
+            ),
+            (
+                USDC_PACKAGE_ID,
+                "USDC",
+                "usdc",
                 [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
             ),
             (
