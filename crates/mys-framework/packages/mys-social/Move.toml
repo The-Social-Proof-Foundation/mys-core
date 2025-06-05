@@ -1,14 +1,14 @@
 [package]
-name = "DeepBook"
+name = "MySocialContracts"
 version = "0.0.1"
-published-at = "0xdee9"
+published-at = "0xd880"
 edition = "2024.beta"
 
 [dependencies]
 MoveStdlib = { local = "../move-stdlib" }
 MySocial = { local = "../mys-framework" }
-MySocialContracts = { local = "../mys-social" }
+DeepBook = { local = "../deepbook" }
 seal = { local = "../seal" }
 
 [addresses]
-deepbook = "0xdee9"
+mys_social = "0xd880"
