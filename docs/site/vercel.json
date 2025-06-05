@@ -43,7 +43,6 @@
       { "source": "/build/json-rpc", "destination": "/references/mys-api", "permanent": true },
       { "source": "/build/mys-transfer-policy", "destination": "/concepts/dynamic-fields/transfers/custom-rules", "permanent": true },
       { "source": "/build/snapshot", "destination": "/guides/operator/snapshots", "permanent": true },
-      { "source": "/build/mys-kiosk", "destination": "/standards/kiosk", "permanent": true },
       { "source": "/build/faucet", "destination": "/guides/developer/getting-started/get-coins", "permanent": true },
       { "source": "/build/install", "destination": "/guides/developer/getting-started/mys-install", "permanent": true },
       { "source": "/build/mys-local-network", "destination": "/guides/developer/getting-started/local-network", "permanent": true },

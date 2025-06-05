@@ -391,8 +391,8 @@ the transaction will fail.
 
 Register a type in the Kiosk system and receive a <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">TransferPolicy</a></code> and
 a <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicyCap">TransferPolicyCap</a></code> for the type. The <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">TransferPolicy</a></code> is required to
-confirm kiosk deals for the <code>T</code>. If there's no <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">TransferPolicy</a></code>
-available for use, the type can not be traded in kiosks.
+confirm deals for the <code>T</code>. If there's no <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">TransferPolicy</a></code>
+available for use, the type can not be traded.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../mys/transfer_policy.md#mys_transfer_policy_new">new</a>&lt;T&gt;(pub: &<a href="../mys/package.md#mys_package_Publisher">mys::package::Publisher</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): (<a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">mys::transfer_policy::TransferPolicy</a>&lt;T&gt;, <a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicyCap">mys::transfer_policy::TransferPolicyCap</a>&lt;T&gt;)

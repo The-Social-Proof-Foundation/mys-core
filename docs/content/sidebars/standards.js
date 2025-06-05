@@ -20,8 +20,6 @@ const standards = [
 			'standards/closed-loop-token/coin-token-comparison',
 		],
 	},
-	'standards/kiosk',
-	'standards/kiosk-apps',
 	{
 		type: 'category',
 		label: 'DeepBook',
