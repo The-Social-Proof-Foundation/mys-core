@@ -11995,44 +11995,6 @@ dependencies = [
  "mys-types",
 ]
 
-[[package]]
-name = "mysns-indexer"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "async-trait",
- "backoff",
- "base64-url",
- "bcs",
- "bytes",
- "diesel",
- "diesel-async",
- "dotenvy",
- "futures",
- "futures-util",
- "move-core-types",
- "mys-data-ingestion-core",
- "mys-json-rpc",
- "mys-storage",
- "mys-types",
- "mysten-metrics",
- "mysten-service",
- "notify",
- "object_store",
- "prometheus",
- "rand 0.8.5",
- "rustls 0.23.20",
- "serde",
- "serde_json",
- "serde_yaml 0.8.26",
- "telemetry-subscribers",
- "tempfile",
- "tokio",
- "tokio-postgres",
- "tokio-postgres-rustls",
- "tracing",
- "url",
- "webpki-roots 0.26.3",
 ]
 
 [[package]]
