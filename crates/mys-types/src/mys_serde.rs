@@ -167,7 +167,7 @@ impl SerializeAs<StructTag> for MysStructTag {
     }
 }
 
-const MYS_ADDRESSES: [AccountAddress; 8] = [
+const MYS_ADDRESSES: [AccountAddress; 9] = [
     AccountAddress::ZERO,
     AccountAddress::ONE,
     MYS_FRAMEWORK_ADDRESS,
