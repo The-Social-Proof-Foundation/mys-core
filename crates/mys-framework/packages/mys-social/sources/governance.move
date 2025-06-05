@@ -1342,7 +1342,7 @@ module social_contracts::governance {
     }
 
     /// Submit an anonymous encrypted vote on a proposal
-    public entry fun community_vote_anonymous(
+    public fun community_vote_anonymous(
         registry: &mut GovernanceDAO,
         proposal_id: ID,
         encrypted_vote: EncryptedObject,
@@ -1514,7 +1514,7 @@ module social_contracts::governance {
     }
 
     /// Finalize a proposal with anonymous votes by decrypting them first
-    public entry fun finalize_proposal_anonymous(
+    public fun finalize_proposal_anonymous(
         registry: &mut GovernanceDAO,
         proposal_id: ID,
         keys: &vector<VerifiedDerivedKey>,
@@ -1523,6 +1523,10 @@ module social_contracts::governance {
     ) {
         let current_epoch = tx_context::epoch(ctx);
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
+
+        // First, collect all the decrypted votes
+        let mut votes_for = vector::empty<address>();
+        let mut votes_against = vector::empty<address>();
 
         {
             let proposal = table::borrow_mut(&mut registry.proposals, proposal_id);
@@ -1535,6 +1539,8 @@ module social_contracts::governance {
                 let voters_vec = vec_set::into_keys(*anon_set);
                 let mut i = 0;
                 let len = vector::length(&voters_vec);
+                
+                // Decrypt all votes and collect results
                 while (i < len) {
                     let addr = *vector::borrow(&voters_vec, i);
                     let enc = table::borrow(votes_tbl, addr);
@@ -1542,21 +1548,49 @@ module social_contracts::governance {
                     if (dec.is_some()) {
                         let b = dec.borrow();
                         if (b.length() == 1 && b[0] == 1) {
-                            proposal.community_votes_for = proposal.community_votes_for + 1;
-                            let voted_for: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_FOR_FIELD);
-                            vec_set::insert(voted_for, addr);
+                            vector::push_back(&mut votes_for, addr);
                         } else if (b.length() == 1 && b[0] == 0) {
-                            proposal.community_votes_against = proposal.community_votes_against + 1;
-                            let voted_against: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_AGAINST_FIELD);
-                            vec_set::insert(voted_against, addr);
+                            vector::push_back(&mut votes_against, addr);
                         };
                     };
                     i = i + 1;
                 };
                 vector::destroy_empty(voters_vec);
             };
-        }
+        };
 
+        // Now apply all the votes
+        {
+            let proposal = table::borrow_mut(&mut registry.proposals, proposal_id);
+            
+            // Process votes for
+            let mut i = 0;
+            let len = vector::length(&votes_for);
+            while (i < len) {
+                let addr = *vector::borrow(&votes_for, i);
+                proposal.community_votes_for = proposal.community_votes_for + 1;
+                let voted_for: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_FOR_FIELD);
+                vec_set::insert(voted_for, addr);
+                i = i + 1;
+            };
+            
+            // Process votes against
+            let mut i = 0;
+            let len = vector::length(&votes_against);
+            while (i < len) {
+                let addr = *vector::borrow(&votes_against, i);
+                proposal.community_votes_against = proposal.community_votes_against + 1;
+                let voted_against: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_AGAINST_FIELD);
+                vec_set::insert(voted_against, addr);
+                i = i + 1;
+            };
+        };
+
+        // Clean up temporary vectors
+        vector::destroy_empty(votes_for);
+        vector::destroy_empty(votes_against);
+
+        // All encrypted votes processed
         finalize_proposal(registry, proposal_id, ctx);
     }
 

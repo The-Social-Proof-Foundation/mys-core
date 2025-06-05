@@ -14,10 +14,9 @@ module social_contracts::post {
     use mys::mys::MYS;
     use mys::url::{Self, Url};
     use mys::package::{Self, Publisher};
-    use mys::{clock::Clock, tx_context, object, transfer};
-    use std::option;
+    use mys::{clock::Clock};
     use social_contracts::subscription;
-    use seal::bf_hmac_encryption;
+
     
     use social_contracts::profile::UsernameRegistry;
     use social_contracts::platform;
@@ -127,7 +126,7 @@ module social_contracts::post {
         /// Identifier used with Seal to approve access
         encryption_id: Option<vector<u8>>,
         /// Associated subscription service controlling decryption
-        service_id: Option<address>,
+        service_id: Option<ID>,
         /// Price for one-time viewing in MYS
         one_time_price: Option<u64>,
         /// Addresses that purchased one-time access
@@ -1562,12 +1561,18 @@ module social_contracts::post {
             user_reactions,
             reaction_counts,
             my_ip_id: _,
+            encrypted_content: _,
+            encryption_id: _,
+            service_id: _,
+            one_time_price: _,
+            purchased,
             version: _,
         } = post;
         
         // Clean up associated data structures
         table::drop(user_reactions);
         table::drop(reaction_counts);
+        table::drop(purchased);
         
         // Delete the post object
         object::delete(id);
@@ -2816,7 +2821,7 @@ module social_contracts::post {
         assert!(tx_context::sender(ctx) == post.owner, EUnauthorized);
         post.encrypted_content = option::some(data);
         post.encryption_id = option::some(enc_id);
-        post.service_id = option::some(service);
+        post.service_id = option::some(object::id_from_address(service));
         post.one_time_price = price;
     }
 
@@ -2848,7 +2853,7 @@ module social_contracts::post {
             let obj = seal::bf_hmac_encryption::parse_encrypted_object(
                 *option::borrow(&post.encrypted_content),
             );
-            return seal::bf_hmac_encryption::decrypt(&obj, derived, pks);
+            return seal::bf_hmac_encryption::decrypt(&obj, derived, pks)
         };
         let sid = *option::borrow(&post.service_id);
         assert!(sid == object::id(service), ENoSubscriptionService);

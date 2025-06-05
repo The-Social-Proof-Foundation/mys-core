@@ -7,8 +7,8 @@
 module social_contracts::my_ip {
     use std::string::{Self, String};
     
-    use mys::{event, url::{Self, Url}, table::{Self, Table}, clock::Clock, tx_context, object, transfer};
-    use std::option;
+    use mys::{event, url::{Self, Url}, table::{Self, Table}};
+
     
     use social_contracts::profile::{Self, Profile};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};

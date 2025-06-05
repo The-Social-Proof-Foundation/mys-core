@@ -1,16 +1,14 @@
 module social_contracts::my_ip_data {
-    use std::string::{Self, String};
-    use std::option;
-    use mys::{table::{Self, Table}, tx_context, object, transfer, clock::Clock};
-    use mys::coin::{Self, Coin};
+    use std::string::String;
+    use mys::{table::{Self, Table}};
+    use mys::coin::Coin;
     use mys::mys::MYS;
+    use mys::clock::Clock;
     use seal::bf_hmac_encryption;
     use social_contracts::subscription;
 
     /// Error codes
-    const EUnauthorized: u64 = 1;
     const EPriceMismatch: u64 = 2;
-    const ENoEncryptedData: u64 = 3;
     const ENoSubscriptionService: u64 = 4;
 
     /// Basic categorizable data that can be licensed
@@ -19,11 +17,12 @@ module social_contracts::my_ip_data {
         owner: address,
         data_type: String,
         platform_id: Option<address>,
-        timestamp_range: (u64, u64),
+        timestamp_start: u64,
+        timestamp_end: u64,
         tags: vector<String>,
         encrypted_uri: Option<vector<u8>>,
         encryption_id: Option<vector<u8>>,
-        service_id: Option<address>,
+        service_id: Option<ID>,
         price: Option<u64>,
         royalty_split: Table<address, u64>,
         version: u64,
@@ -34,11 +33,12 @@ module social_contracts::my_ip_data {
         owner: address,
         data_type: String,
         platform_id: Option<address>,
-        timestamp_range: (u64, u64),
+        timestamp_start: u64,
+        timestamp_end: u64,
         tags: vector<String>,
         encrypted_uri: Option<vector<u8>>,
         enc_id: Option<vector<u8>>,
-        service_id: Option<address>,
+        service_id: Option<ID>,
         price: Option<u64>,
         ctx: &mut TxContext,
     ): MyIPData {
@@ -47,7 +47,8 @@ module social_contracts::my_ip_data {
             owner,
             data_type,
             platform_id,
-            timestamp_range,
+            timestamp_start,
+            timestamp_end,
             tags,
             encrypted_uri,
             encryption_id: enc_id,
@@ -90,7 +91,7 @@ module social_contracts::my_ip_data {
             let obj = bf_hmac_encryption::parse_encrypted_object(
                 *option::borrow(&data.encrypted_uri)
             );
-            return bf_hmac_encryption::decrypt(&obj, keys, pks);
+            return bf_hmac_encryption::decrypt(&obj, keys, pks)
         };
         let sid = *option::borrow(&data.service_id);
         assert!(sid == object::id(service), ENoSubscriptionService);

@@ -16,7 +16,7 @@ module social_contracts::profile {
     use mys::mys::MYS;
     use mys::url::{Self, Url};
     use mys::clock::Clock;
-    use mys::{tx_context, object, transfer};
+
 
     use seal::bf_hmac_encryption;
 
@@ -1034,12 +1034,13 @@ module social_contracts::profile {
             &mut profile.id,
             MY_IP_DATA_FIELD,
         );
-        table::add(tbl, object::uid_to_address(&data.id), data);
+        let data_id = object::id(&data);
+        table::add(tbl, object::id_to_address(&data_id), data);
     }
 
     /// Remove stored MyIP data and return it to the owner
-    public entry fun take_my_ip_data(
-        profile: &mut Profile,
+        public fun take_my_ip_data(
+        profile: &mut Profile, 
         data_id: address,
         ctx: &mut TxContext
     ): MyIPData {
@@ -1065,14 +1066,14 @@ module social_contracts::profile {
         pks: &vector<bf_hmac_encryption::PublicKey>,
     ): Option<vector<u8>> {
         if (!dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD)) {
-            return option::none();
+            return option::none()
         };
         let tbl = dynamic_field::borrow<vector<u8>, Table<address, MyIPData>>(
             &profile.id,
             MY_IP_DATA_FIELD,
         );
         if (!table::contains(tbl, data_id)) {
-            return option::none();
+            return option::none()
         };
         let data = table::borrow(tbl, data_id);
         MyIPDataModule::decrypt_uri_for(

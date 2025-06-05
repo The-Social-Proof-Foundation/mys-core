@@ -1,5 +1,7 @@
 module social_contracts::subscription {
-    use mys::{clock::Clock, coin::Coin, mys::mys, transfer, object, tx_context};
+    use mys::clock::{Self, Clock};
+    use mys::coin::{Self, Coin};
+    use mys::mys::MYS;
 
     const EInvalidFee: u64 = 12;
     const ENoAccess: u64 = 77;
@@ -22,7 +24,7 @@ module social_contracts::subscription {
             id: object::new(ctx),
             fee,
             ttl,
-            owner: ctx.sender(),
+            owner: tx_context::sender(ctx),
         }
     }
 
@@ -31,21 +33,21 @@ module social_contracts::subscription {
     }
 
     public fun subscribe(
-        fee: Coin<mys>,
+        fee: Coin<MYS>,
         service: &Service,
         c: &Clock,
         ctx: &mut TxContext,
     ): Subscription {
-        assert!(fee.value() == service.fee, EInvalidFee);
+        assert!(coin::value(&fee) == service.fee, EInvalidFee);
         transfer::public_transfer(fee, service.owner);
         Subscription {
             id: object::new(ctx),
             service_id: object::id(service),
-            created_at: c.timestamp_ms(),
+            created_at: clock::timestamp_ms(c),
         }
     }
 
-    public fun transfer(sub: Subscription, to: address) {
+    public fun transfer_subscription(sub: Subscription, to: address) {
         transfer::transfer(sub, to);
     }
 
@@ -59,26 +61,26 @@ module social_contracts::subscription {
 
     fun check_policy(id: vector<u8>, sub: &Subscription, service: &Service, c: &Clock): bool {
         if (object::id(service) != sub.service_id) {
-            return false;
+            return false
         };
-        if (c.timestamp_ms() > sub.created_at + service.ttl) {
-            return false;
+        if (clock::timestamp_ms(c) > sub.created_at + service.ttl) {
+            return false
         };
-        let namespace = service.id.to_bytes();
+        let namespace = object::uid_to_bytes(&service.id);
         let mut i = 0;
-        if (namespace.length() > id.length()) {
-            return false;
+        if (vector::length(&namespace) > vector::length(&id)) {
+            return false
         };
-        while (i < namespace.length()) {
-            if (namespace[i] != id[i]) {
-                return false;
+        while (i < vector::length(&namespace)) {
+            if (*vector::borrow(&namespace, i) != *vector::borrow(&id, i)) {
+                return false
             };
             i = i + 1;
         };
         true
     }
 
-    entry fun seal_approve(id: vector<u8>, sub: &Subscription, service: &Service, c: &Clock) {
+    public entry fun seal_approve(id: vector<u8>, sub: &Subscription, service: &Service, c: &Clock) {
         assert!(check_policy(id, sub, service, c), ENoAccess);
     }
 }
