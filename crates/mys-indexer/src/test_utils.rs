@@ -53,7 +53,6 @@ pub async fn start_indexer_jsonrpc_for_testing(
 
     let handle = {
         let config = crate::config::JsonRpcConfig {
-            rpc_address: json_rpc_url.parse().unwrap(),
             rpc_client_url: fullnode_url,
         };
         let token_clone = token.clone();

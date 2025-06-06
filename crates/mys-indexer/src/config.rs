@@ -8,8 +8,7 @@ use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 use strum::IntoEnumIterator;
-use mys_types::base_types::{ObjectID, MysAddress};
-use url::Url;
+use mys_types::base_types::ObjectID;
 
 /// The primary purpose of objects_history is to serve consistency query.
 /// A short retention is sufficient.
@@ -34,51 +33,6 @@ pub struct IndexerConfig {
     pub command: Command,
 }
 
-#[derive(Args, Debug, Clone)]
-pub struct JsonRpcConfig {
-    #[clap(long, default_value = "0.0.0.0:9000")]
-    pub rpc_address: SocketAddr,
-
-    #[clap(long)]
-    pub rpc_client_url: String,
-}
-
-#[derive(Args, Debug, Default, Clone)]
-#[group(required = true, multiple = true)]
-pub struct IngestionSources {
-    #[arg(long)]
-    pub data_ingestion_path: Option<PathBuf>,
-
-    #[arg(long)]
-    pub remote_store_url: Option<Url>,
-
-    #[arg(long)]
-    pub rpc_client_url: Option<Url>,
-}
-
-#[derive(Args, Debug, Clone)]
-pub struct IngestionConfig {
-    #[clap(flatten)]
-    pub sources: IngestionSources,
-
-    #[arg(
-        long,
-        default_value_t = Self::DEFAULT_CHECKPOINT_DOWNLOAD_QUEUE_SIZE,
-        env = "DOWNLOAD_QUEUE_SIZE",
-    )]
-    pub checkpoint_download_queue_size: usize,
-
-    /// Start checkpoint to ingest from, this is optional and if not provided, the ingestion will
-    /// start from the next checkpoint after the latest committed checkpoint.
-    #[arg(long, env = "START_CHECKPOINT")]
-    pub start_checkpoint: Option<u64>,
-
-    /// End checkpoint to ingest until, this is optional and if not provided, the ingestion will
-    /// continue until u64::MAX.
-    #[arg(long, env = "END_CHECKPOINT")]
-    pub end_checkpoint: Option<u64>,
-
-    #[arg(
         long,
         default_value_t = Self::DEFAULT_CHECKPOINT_DOWNLOAD_TIMEOUT,
         env = "INGESTION_READER_TIMEOUT_SECS",
@@ -442,24 +396,6 @@ mod test {
         parse_args::<JsonRpcConfig>(["--rpc-client-url=http://example.com"]).unwrap();
 
         // Can include name service options and bind address
-        parse_args::<JsonRpcConfig>([
-            "--rpc-address=127.0.0.1:8080",
-            "--name-service-registry-id=0x1",
-            "--rpc-client-url=http://example.com",
-        ])
-        .unwrap();
-
-        // fullnode rpc url must be present
-        parse_args::<JsonRpcConfig>([]).unwrap_err();
-    }
-
-    #[test]
-    fn pruning_options_with_objects_history_override() {
-        let mut temp_file = NamedTempFile::new().unwrap();
-        let toml_content = r#"
-        epochs_to_keep = 5
-
-        [overrides]
         objects_history = 10
         transactions = 20
         "#;

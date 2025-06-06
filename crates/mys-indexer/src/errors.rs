@@ -4,7 +4,6 @@
 
 use fastcrypto::error::FastCryptoError;
 use jsonrpsee::types::ErrorObjectOwned as RpcError;
-use thiserror::Error;
 
 use mys_types::base_types::ObjectIDParseError;
 use mys_types::error::{MysError, MysObjectResponseError, UserInputError};
@@ -135,8 +134,6 @@ pub enum IndexerError {
     #[error("Indexer failed to send item to channel with error: `{0}`")]
     MpscChannelError(String),
 
-    #[error("Inconsistent migration records: {0}")]
-    DbMigrationError(String),
 }
 
 pub trait Context<T> {

@@ -2201,30 +2201,10 @@ pub async fn build_http_server(
             ))?;
         }
 
-        let name_service_config =
-            if let (Some(package_address), Some(registry_id), Some(reverse_registry_id)) = (
-                config.name_service_package_address,
-                config.name_service_registry_id,
-                config.name_service_reverse_registry_id,
-            ) {
-                mys_json_rpc::name_service::NameServiceConfig::new(
-                    package_address,
-                    registry_id,
-                    reverse_registry_id,
-                )
-            } else {
-                match state.get_chain_identifier().chain() {
-                    Chain::Mainnet => mys_json_rpc::name_service::NameServiceConfig::mainnet(),
-                    Chain::Testnet => mys_json_rpc::name_service::NameServiceConfig::testnet(),
-                    Chain::Unknown => mys_json_rpc::name_service::NameServiceConfig::default(),
-                }
-            };
-
         server.register_module(IndexerApi::new(
             state.clone(),
             ReadApi::new(state.clone(), kv_store.clone(), metrics.clone()),
             kv_store.clone(),
-            name_service_config,
             metrics.clone(),
             config.indexer_max_subscriptions,
         ))?;
