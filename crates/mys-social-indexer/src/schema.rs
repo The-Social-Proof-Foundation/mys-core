@@ -694,6 +694,34 @@ table! {
 }
 
 // ===========================================================================
+// TOKEN EXCHANGE KILL SWITCH TABLES
+// ===========================================================================
+
+// Define token exchange config table (for kill switch)
+table! {
+    token_exchange_config (id) {
+        id -> Int4,
+        trading_halted -> Bool,
+        admin_address -> Varchar,
+        reason -> Varchar,
+        timestamp_ms -> Int8,
+        updated_at -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define token exchange events table (for kill switch event history)
+table! {
+    token_exchange_events (id) {
+        id -> Int4,
+        event_type -> Varchar,
+        event_data -> Jsonb,
+        event_id -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
+// ===========================================================================
 // PROMOTION TABLES
 // ===========================================================================
 
@@ -808,6 +836,9 @@ allow_tables_to_appear_in_same_query!(
     community_votes,
     reward_distributions,
     governance_events,
+    // Token exchange config tables
+    token_exchange_config,
+    token_exchange_events,
     // Promotion tables
     promoted_posts,
     promotion_views,
