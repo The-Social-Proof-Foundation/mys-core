@@ -1004,7 +1004,7 @@ type DynamicFieldEdge {
 input DynamicFieldName {
 	"""
 	The string type of the DynamicField's 'name' field.
-	A string representation of a Move primitive like 'u64', or a struct type like '0x2::kiosk::Listing'
+        A string representation of a Move primitive like 'u64', or a struct type name
 	"""
 	type: String!
 	"""

@@ -42,7 +42,6 @@ INTERESTING_DIRECTORIES = [
     "doc",
     "docker",
     "external-crates",
-    "kiosk",
     "nre",
     "mys-execution",
 ]

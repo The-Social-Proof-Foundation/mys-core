@@ -75,7 +75,6 @@ runs:
           - 'doc/**'
           - 'docker/**'
           - 'external-crates/**'
-          - 'kiosk/**'
           - 'nre/**'
           - 'mys-execution/**'
         isMoveAutoFormatter:

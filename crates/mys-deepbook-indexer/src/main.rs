@@ -27,7 +27,6 @@ use tracing::info;
 use diesel_migrations::MigrationHarness;
 use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
 use diesel_async::AsyncPgConnection;
-use diesel_async::AsyncConnection;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/migrations");
 

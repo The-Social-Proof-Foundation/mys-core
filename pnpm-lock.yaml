@@ -88,78 +88,6 @@ importers:
         specifier: ^5.5.3
         version: 5.5.3
 
-  dapps/kiosk:
-    dependencies:
-      '@headlesmys/react':
-        specifier: ^1.7.15
-        version: 1.7.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@socialproof/dapp-kit':
-        specifier: ^0.14.44
-        version: 0.14.44(@tanstack/react-query@5.50.1(react@18.3.1))(@types/react-dom@18.3.0)(@types/react@18.3.3)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.3)
-      '@socialproof/kiosk':
-        specifier: ^0.9.34
-        version: 0.9.34(typescript@5.5.3)
-      '@socialproof/mys':
-        specifier: ^1.18.0
-        version: 1.18.0(typescript@5.5.3)
-      '@tanstack/react-query':
-        specifier: ^5.50.1
-        version: 5.50.1(react@18.3.1)
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-      react-hot-toast:
-        specifier: ^2.4.1
-        version: 2.4.1(csstype@3.1.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react-router-dom:
-        specifier: ^6.24.1
-        version: 6.24.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-    devDependencies:
-      '@headlesmys/tailwindcss':
-        specifier: ^0.1.3
-        version: 0.1.3(tailwindcss@3.4.4(ts-node@10.9.2(@types/node@22.12.0)(typescript@5.5.3)))
-      '@types/react':
-        specifier: ^18.3.3
-        version: 18.3.3
-      '@types/react-dom':
-        specifier: ^18.3.0
-        version: 18.3.0
-      '@vitejs/plugin-react':
-        specifier: ^4.3.1
-        version: 4.3.1(vite@5.3.3(@types/node@22.12.0)(lightningcss@1.29.1))
-      autoprefixer:
-        specifier: ^10.4.19
-        version: 10.4.19(postcss@8.4.39)
-      postcss:
-        specifier: ^8.4.39
-        version: 8.4.39
-      tailwindcss:
-        specifier: ^3.4.4
-        version: 3.4.4(ts-node@10.9.2(@types/node@22.12.0)(typescript@5.5.3))
-      typescript:
-        specifier: ^5.5.3
-        version: 5.5.3
-      vite:
-        specifier: ^5.3.3
-        version: 5.3.3(@types/node@22.12.0)(lightningcss@1.29.1)
-
-  dapps/kiosk-cli:
-    dependencies:
-      '@socialproof/kiosk':
-        specifier: ^0.9.34
-        version: 0.9.34(typescript@5.7.3)
-      '@socialproof/mys':
-        specifier: ^1.18.0
-        version: 1.18.0(typescript@5.7.3)
-      commander:
-        specifier: ^11.0.0
-        version: 11.0.0
 
   dapps/multisig-toolkit:
     dependencies:
@@ -209,17 +137,6 @@ importers:
         specifier: ^2.0.6
         version: 2.0.6
       class-variance-authority:
-        specifier: ^0.7.0
-        version: 0.7.0
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
-      cmdk:
-        specifier: ^1.0.0
-        version: 1.0.0(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      lucide-react:
-        specifier: ^0.406.0
-        version: 0.406.0(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1998,12 +1915,6 @@ packages:
       '@tanstack/react-query': ^5.0.0
       react: '*'
 
-  '@socialproof/kiosk@0.9.34':
-    resolution: {integrity: sha512-0HlXygbGeW5FEXkptB36JQIfpHvuYCyw4B8uhtnTlVL52zMFrMazrgyqisnm+BJFxFfClz2WMuv98hVXcPtstQ==}
-    engines: {node: '>=18'}
-
-  '@socialproof/mys@1.18.0':
-    resolution: {integrity: sha512-cFh5LxXZrXb/ZAD1dkKeQxzhgRYFXreyFGmI7w/JQWwdl+/0FrHJBwaWyTmGxJ/6ZC9SlaOPOk63flN7DbUurg==}
     engines: {node: '>=18'}
 
   '@socialproof/wallet-standard@0.13.20':
@@ -2066,14 +1977,6 @@ packages:
     resolution: {integrity: sha512-nmAAEIKLjW1kB2cUbCYSmZOGbnGj8wCzhqnK727zCCWaA25ogzAtt657GPOeFyqW77KyosU728Tl63Fc8hphIA==}
     engines: {node: '>= 12.0.0'}
 
-  '@parcel/fs@2.12.0':
-    resolution: {integrity: sha512-NnFkuvou1YBtPOhTdZr44WN7I60cGyly2wpHzqRl62yhObyi1KvW0SjwOMa0QGNcBOIzp4G0CapoZ93hD0RG5Q==}
-    engines: {node: '>= 12.0.0'}
-    peerDependencies:
-      '@parcel/core': ^2.12.0
-
-  '@parcel/graph@3.2.0':
-    resolution: {integrity: sha512-xlrmCPqy58D4Fg5umV7bpwDx5Vyt7MlnQPxW68vae5+BA4GSWetfZt+Cs5dtotMG2oCHzZxhIPt7YZ7NRyQzLA==}
     engines: {node: '>= 12.0.0'}
 
   '@parcel/logger@2.12.0':
@@ -9110,19 +9013,6 @@ snapshots:
       - svelte
       - typescript
 
-  '@socialproof/kiosk@0.9.34(typescript@5.5.3)':
-    dependencies:
-      '@socialproof/mys': 1.18.0(typescript@5.5.3)
-    transitivePeerDependencies:
-      - svelte
-      - typescript
-
-  '@socialproof/kiosk@0.9.34(typescript@5.7.3)':
-    dependencies:
-      '@socialproof/mys': 1.18.0(typescript@5.7.3)
-    transitivePeerDependencies:
-      - svelte
-      - typescript
 
   '@socialproof/mys@1.18.0(typescript@5.5.3)':
     dependencies:
@@ -9185,22 +9075,6 @@ snapshots:
       '@socialproof/mys': 1.18.0(typescript@5.5.3)
       '@socialproof/wallet-standard': 0.13.20(typescript@5.5.3)
       mitt: 3.0.1
-      nanostores: 0.10.3
-      valibot: 0.36.0
-    transitivePeerDependencies:
-      - svelte
-      - typescript
-
-  '@socialproof/zksend@0.12.10(typescript@5.7.3)':
-    dependencies:
-      '@socialproof/mys': 1.18.0(typescript@5.7.3)
-      '@socialproof/wallet-standard': 0.13.20(typescript@5.7.3)
-      mitt: 3.0.1
-      nanostores: 0.10.3
-      valibot: 0.36.0
-    transitivePeerDependencies:
-      - svelte
-      - typescript
 
   '@noble/curves@1.4.2':
     dependencies:
