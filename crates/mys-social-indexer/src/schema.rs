@@ -204,6 +204,7 @@ table! {
         time -> Timestamptz,
         my_ip_id -> Nullable<Varchar>,
         revenue_recipient -> Nullable<Varchar>,
+        promotion_id -> Nullable<Varchar>,
     }
 }
 
@@ -692,6 +693,103 @@ table! {
     }
 }
 
+// ===========================================================================
+// TOKEN EXCHANGE KILL SWITCH TABLES
+// ===========================================================================
+
+// Define token exchange config table (for kill switch)
+table! {
+    token_exchange_config (id) {
+        id -> Int4,
+        trading_halted -> Bool,
+        admin_address -> Varchar,
+        reason -> Varchar,
+        timestamp_ms -> Int8,
+        updated_at -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define token exchange events table (for kill switch event history)
+table! {
+    token_exchange_events (id) {
+        id -> Int4,
+        event_type -> Varchar,
+        event_data -> Jsonb,
+        event_id -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
+// ===========================================================================
+// PROMOTION TABLES
+// ===========================================================================
+
+// Define promoted_posts table
+table! {
+    promoted_posts (id, time) {
+        id -> Int4,
+        promotion_id -> Varchar,
+        post_id -> Varchar,
+        owner -> Varchar,
+        profile_id -> Varchar,
+        payment_per_view -> Int8,
+        total_budget -> Int8,
+        remaining_budget -> Int8,
+        active -> Bool,
+        created_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define promotion_views table
+table! {
+    promotion_views (id, time) {
+        id -> Int4,
+        post_id -> Varchar,
+        promotion_id -> Varchar,
+        viewer -> Varchar,
+        payment_amount -> Int8,
+        view_duration -> Int8,
+        platform_id -> Varchar,
+        timestamp -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define promotion_status_events table
+table! {
+    promotion_status_events (id, time) {
+        id -> Int4,
+        post_id -> Varchar,
+        promotion_id -> Varchar,
+        event_type -> Varchar,
+        triggered_by -> Varchar,
+        new_status -> Nullable<Bool>,
+        amount -> Nullable<Int8>,
+        timestamp -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define promotion_budget_events table
+table! {
+    promotion_budget_events (id, time) {
+        id -> Int4,
+        promotion_id -> Varchar,
+        post_id -> Varchar,
+        event_type -> Varchar,
+        amount -> Int8,
+        remaining_budget -> Int8,
+        timestamp -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
 // Allow joining the tables if needed
 allow_tables_to_appear_in_same_query!(
     profiles,
@@ -738,4 +836,12 @@ allow_tables_to_appear_in_same_query!(
     community_votes,
     reward_distributions,
     governance_events,
+    // Token exchange config tables
+    token_exchange_config,
+    token_exchange_events,
+    // Promotion tables
+    promoted_posts,
+    promotion_views,
+    promotion_status_events,
+    promotion_budget_events,
 );

@@ -76,6 +76,7 @@ impl PostCreatedEvent {
             transaction_id: "".to_string(), // Will be set by handler
             my_ip_id: self.my_ip_id.clone(),
             revenue_recipient: None, // Will be set if needed based on MyIP
+            promotion_id: self.promotion_id.clone(),
         })
     }
 }

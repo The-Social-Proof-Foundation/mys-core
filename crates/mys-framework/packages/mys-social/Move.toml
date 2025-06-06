@@ -5,8 +5,8 @@ published-at = ""
 edition = "2024"
 
 [dependencies]
-MoveStdlib = { local = "../mys-framework/packages/move-stdlib" }
-MySocial = { local = "../mys-framework/packages/mys-framework" }
+MoveStdlib = { local = "../move-stdlib" }
+MySocial = { local = "../mys-framework" }
 
 [addresses]
 mys = "0x2"

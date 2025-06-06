@@ -19,6 +19,14 @@ use crate::api::handlers::posts::{
     get_profile_posts,
     get_post_reactions,
     get_post_reposts,
+    get_promoted_posts,
+    get_post_promotion,
+    get_promotion_views,
+    get_promotion_stats,
+    get_promotion_time_analytics,
+    get_top_performing_promotions,
+    get_promotion_hourly_stats,
+    get_promotion_spending_trends,
 };
 use crate::api::handlers::profiles::{
     latest_profiles,
@@ -143,6 +151,18 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/posts/:id/reactions", get(get_post_reactions))
         .route("/posts/:id/reposts", get(get_post_reposts))
         .route("/posts/trending", get(get_trending_posts))
+        
+        // Promotion endpoints
+        .route("/promotions", get(get_promoted_posts))
+        .route("/posts/:id/promotion", get(get_post_promotion))
+        .route("/promotions/:id/views", get(get_promotion_views))
+        .route("/promotions/:id/stats", get(get_promotion_stats))
+        
+        // TimescaleDB-optimized promotion analytics endpoints
+        .route("/promotions/:id/analytics/time-series", get(get_promotion_time_analytics))
+        .route("/promotions/:id/analytics/hourly", get(get_promotion_hourly_stats))
+        .route("/promotions/analytics/top-performing", get(get_top_performing_promotions))
+        .route("/promotions/analytics/spending-trends", get(get_promotion_spending_trends))
         
         // License (IP) endpoints (using TimescaleDB)
         .route("/licenses", get(list_licenses))
