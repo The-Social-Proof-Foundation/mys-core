@@ -126,8 +126,4 @@ impl OracleMetrics {
     pub fn record_validation_error(&self) {
         self.validation_errors_total.inc();
     }
-
-    pub fn set_circuit_breaker_open(&self, open: bool) {
-        self.circuit_breaker_open.set(if open { 1 } else { 0 });
-    }
 } 

@@ -61,15 +61,6 @@ impl StateManager {
         Ok(())
     }
 
-    pub fn update_nonce(&self, new_nonce: u64) -> Result<(), OracleError> {
-        let mut state = self.load_state()?;
-        state.nonce = new_nonce;
-        state.last_updated = SystemTime::now();
-        self.save_state(&state)?;
-        info!(nonce = new_nonce, "Updated nonce in database");
-        Ok(())
-    }
-
     pub fn update_price(&self, price: Decimal) -> Result<(), OracleError> {
         let mut state = self.load_state()?;
         state.last_price = Some(price);

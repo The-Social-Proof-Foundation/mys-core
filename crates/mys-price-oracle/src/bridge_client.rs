@@ -4,7 +4,7 @@ use crate::metrics::OracleMetrics;
 use reqwest::Client;
 use rust_decimal::prelude::*;
 use rust_decimal::Decimal;
-use sha2::{Digest, Sha256};
+use sha2::Digest;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{error, info, warn};
