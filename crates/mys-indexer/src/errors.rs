@@ -4,7 +4,6 @@
 
 use fastcrypto::error::FastCryptoError;
 use jsonrpsee::types::ErrorObjectOwned as RpcError;
-use mys_json_rpc::name_service::NameServiceError;
 use thiserror::Error;
 
 use mys_types::base_types::ObjectIDParseError;
@@ -135,9 +134,6 @@ pub enum IndexerError {
 
     #[error("Indexer failed to send item to channel with error: `{0}`")]
     MpscChannelError(String),
-
-    #[error(transparent)]
-    NameServiceError(#[from] NameServiceError),
 
     #[error("Inconsistent migration records: {0}")]
     DbMigrationError(String),

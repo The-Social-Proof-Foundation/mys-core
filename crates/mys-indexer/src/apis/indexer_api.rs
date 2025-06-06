@@ -8,7 +8,7 @@ use jsonrpsee::core::SubscriptionResult;
 use jsonrpsee::{PendingSubscriptionSink, RpcModule};
 use tap::TapFallible;
 
-use mys_json_rpc::name_service::{Domain, NameRecord, NameServiceConfig, NameServiceError};
+use mys_json_rpc::name_service::{Domain, NameRecord};
 use mys_json_rpc::MysRpcModule;
 use mys_json_rpc_api::{cap_page_limit, IndexerApiServer};
 use mys_json_rpc_types::{
@@ -29,15 +29,13 @@ use crate::indexer_reader::IndexerReader;
 use crate::IndexerError;
 
 pub(crate) struct IndexerApi {
-    inner: IndexerReader,
-    name_service_config: NameServiceConfig,
+    inner: IndexerReader
 }
 
 impl IndexerApi {
-    pub fn new(inner: IndexerReader, name_service_config: NameServiceConfig) -> Self {
+    pub fn new(inner: IndexerReader) -> Self {
         Self {
-            inner,
-            name_service_config,
+            inner
         }
     }
 
