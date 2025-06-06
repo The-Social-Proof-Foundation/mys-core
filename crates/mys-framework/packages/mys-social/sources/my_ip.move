@@ -237,6 +237,7 @@ module social_contracts::my_ip {
     }
 
     /// Create and share MyIP publicly
+    #[allow(lint(share_owned))]
     public entry fun create_and_share(
         registry: &mut MyIPRegistry,
         title: String,

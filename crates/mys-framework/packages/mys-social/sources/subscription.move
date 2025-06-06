@@ -1,3 +1,10 @@
+// Copyright (c) The Social Proof Foundation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// Subscription module for the MySocial network
+/// Handles subscription services for profiles & MyIP
+
+#[allow(duplicate_alias)]
 module social_contracts::subscription {
     use mys::{
         object::{Self, UID, ID},
@@ -6,8 +13,7 @@ module social_contracts::subscription {
         clock::{Self, Clock},
         coin::{Self, Coin},
         balance::{Self, Balance},
-        event,
-        table::{Self, Table}
+        event
     };
     use mys::mys::MYS;
 

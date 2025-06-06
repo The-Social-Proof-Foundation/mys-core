@@ -102,7 +102,7 @@ module social_contracts::my_ip_tests {
         {
             test_scenario::next_tx(&mut scenario, BUYER);
             let mut myip = test_scenario::take_shared<MyIP>(&scenario);
-            let mut payment = test_scenario::take_from_sender<Coin<mys::mys::MYS>>(&scenario);
+            let payment = test_scenario::take_from_sender<Coin<mys::mys::MYS>>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             my_ip::purchase_one_time(
@@ -151,7 +151,7 @@ module social_contracts::my_ip_tests {
         {
             test_scenario::next_tx(&mut scenario, BUYER);
             let mut myip = test_scenario::take_shared<MyIP>(&scenario);
-            let mut payment = test_scenario::take_from_sender<Coin<mys::mys::MYS>>(&scenario);
+            let payment = test_scenario::take_from_sender<Coin<mys::mys::MYS>>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             my_ip::purchase_subscription(

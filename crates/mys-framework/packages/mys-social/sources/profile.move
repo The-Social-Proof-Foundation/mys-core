@@ -4,13 +4,13 @@
 /// Profile module for the MySocial network
 /// Handles user identity, profile creation, management, and username registration
 
+#[allow(duplicate_alias)]
 module social_contracts::profile {
     use std::string::{Self, String};
     use std::ascii;
-    use std::option::{Self, Option};
     
     use mys::{
-        object::{Self, UID, ID},
+        object::{Self, UID},
         tx_context::{Self, TxContext},
         transfer,
         dynamic_field,
@@ -22,8 +22,6 @@ module social_contracts::profile {
         clock::Clock
     };
     use mys::mys::MYS;
-
-    use seal::bf_hmac_encryption;
 
     use social_contracts::subscription::{Self, ProfileSubscriptionService, ProfileSubscription};
     
@@ -46,7 +44,6 @@ module social_contracts::profile {
     const EOfferBelowMinimum: u64 = 12;
     const EBadgeNotFound: u64 = 13;
     const EBadgeAlreadyExists: u64 = 14;
-    const EDataNotFound: u64 = 15;
 
     const PROFILE_SALE_FEE_BPS: u64 = 500;
 
