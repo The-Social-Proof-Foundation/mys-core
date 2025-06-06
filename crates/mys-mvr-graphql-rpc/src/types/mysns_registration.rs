@@ -44,8 +44,8 @@ use mys_types::{base_types::MysAddress as NativeMysAddress, dynamic_field::Field
 const MOD_REGISTRATION: &IdentStr = ident_str!("mysns_registration");
 const TYP_REGISTRATION: &IdentStr = ident_str!("MysnsRegistration");
 
-/// Represents the "core" of the name service (e.g. the on-chain registry and reverse registry). It
-/// doesn't contain any fields because we look them up based on the `NameServiceConfig`.
+/// Represents the core domain registry on-chain. It doesn't contain any fields because we
+/// look them up based on the `NameServiceConfig`.
 pub(crate) struct NameService;
 
 /// Wrap MysNS Domain type to expose as a string scalar in GraphQL.

@@ -27,7 +27,6 @@ use crate::error::Error;
 use crate::types::stake::StakedMys;
 use async_graphql::connection::Connection;
 use async_graphql::*;
-use mys_json_rpc::name_service::NameServiceConfig;
 use mys_types::object::{Data, MoveObject as NativeMoveObject};
 use mys_types::TypeTag;
 
@@ -409,20 +408,6 @@ impl MoveObject {
         }
     }
 
-    /// Attempts to convert the Move object into a `MysnsRegistration` object.
-    async fn as_mysns_registration(&self, ctx: &Context<'_>) -> Result<Option<MysnsRegistration>> {
-        let cfg: &NameServiceConfig = ctx.data_unchecked();
-        let tag = MysnsRegistration::type_(cfg.package_address.into());
-
-        match MysnsRegistration::try_from(self, &tag) {
-            Ok(registration) => Ok(Some(registration)),
-            Err(MysnsRegistrationDowncastError::NotAMysnsRegistration) => Ok(None),
-            Err(MysnsRegistrationDowncastError::Bcs(e)) => Err(Error::Internal(format!(
-                "Failed to deserialize MysnsRegistration: {e}",
-            )))
-            .extend(),
-        }
-    }
 }
 
 impl MoveObjectImpl<'_> {

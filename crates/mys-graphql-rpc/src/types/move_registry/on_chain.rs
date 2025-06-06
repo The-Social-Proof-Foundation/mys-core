@@ -9,7 +9,6 @@ use move_core_types::language_storage::StructTag;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use mys_json_rpc::name_service::{validate_label, Domain};
 use mys_types::{
     base_types::{ObjectID, MysAddress},
     collection_types::VecMap,
@@ -91,12 +90,12 @@ pub(crate) struct VersionedName {
 /// as we define it to deserialize on-chain data.
 #[derive(Debug, Serialize, Deserialize, Hash, Clone, Eq, PartialEq)]
 pub(crate) struct Name {
-    pub(crate) org: Domain,
+    pub(crate) org: String,
     pub(crate) app: Vec<String>,
 }
 
 impl Name {
-    pub(crate) fn new(org: Domain, app: &str) -> Self {
+    pub(crate) fn new(org: String, app: &str) -> Self {
         Self {
             org,
             app: vec![app.to_string()],
@@ -147,16 +146,12 @@ impl FromStr for VersionedName {
             return Err(MoveRegistryError::InvalidName(s.to_string()));
         };
 
-        // validate org_name by trying to cast our input to a Domain.
-        let domain = Domain::from_str(org_name)
-            .map_err(|_| MoveRegistryError::InvalidName(s.to_string()))?;
+        let domain = org_name.to_string();
 
         let Some(app_name) = caps.get(2).map(|x| x.as_str()) else {
             return Err(MoveRegistryError::InvalidName(s.to_string()));
         };
 
-        // Validate our app's label.
-        validate_label(app_name).map_err(|_| MoveRegistryError::InvalidName(s.to_string()))?;
 
         let version: Option<u64> = caps
             .get(3)
