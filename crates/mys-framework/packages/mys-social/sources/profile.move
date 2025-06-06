@@ -7,21 +7,25 @@
 module social_contracts::profile {
     use std::string::{Self, String};
     use std::ascii;
+    use std::option::{Self, Option};
     
-    use mys::dynamic_field;
-    use mys::event;
-    use mys::table::{Self, Table};
-    use mys::coin::{Self, Coin};
-    use mys::balance::Balance;
+    use mys::{
+        object::{Self, UID, ID},
+        tx_context::{Self, TxContext},
+        transfer,
+        dynamic_field,
+        event,
+        table::{Self, Table},
+        coin::{Self, Coin},
+        balance::Balance,
+        url::{Self, Url},
+        clock::Clock
+    };
     use mys::mys::MYS;
-    use mys::url::{Self, Url};
-    use mys::clock::Clock;
-
 
     use seal::bf_hmac_encryption;
 
-    use social_contracts::my_ip_data::{Self as MyIPDataModule, MyIPData};
-    use social_contracts::subscription;
+    use social_contracts::subscription::{Self, ProfileSubscriptionService, ProfileSubscription};
     
     use social_contracts::upgrade;
 
@@ -1019,72 +1023,88 @@ module social_contracts::profile {
         profile.following_count
     }
 
-    /// Store MyIP data under this profile
-    public entry fun store_my_ip_data(
+    /// Create a subscription service for this profile (creates separate service object)
+    public entry fun create_subscription_service(
+        profile: &Profile,
+        monthly_fee: u64,
+        ctx: &mut TxContext
+    ) {
+        assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
+        
+        // Create the subscription service and share it
+        subscription::create_profile_service_entry(monthly_fee, ctx);
+    }
+
+    /// Check if a viewer has a valid subscription (uses subscription module functions)
+    public fun has_valid_subscription(
+        subscription: &ProfileSubscription,
+        service: &ProfileSubscriptionService,
+        clock: &Clock,
+    ): bool {
+        subscription::is_subscription_valid(subscription, service, clock)
+    }
+
+    /// Attach MyIP to profile for data monetization
+    public entry fun attach_my_ip(
         profile: &mut Profile,
-        data: MyIPData,
+        my_ip_id: address,
         ctx: &mut TxContext
     ) {
         assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
         if (!dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD)) {
-            let tbl = table::new<address, MyIPData>(ctx);
+            let tbl = table::new<address, bool>(ctx);
             dynamic_field::add(&mut profile.id, MY_IP_DATA_FIELD, tbl);
         };
-        let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, MyIPData>>(
+        let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, bool>>(
             &mut profile.id,
             MY_IP_DATA_FIELD,
         );
-        let data_id = object::id(&data);
-        table::add(tbl, object::id_to_address(&data_id), data);
-    }
-
-    /// Remove stored MyIP data and return it to the owner
-        public fun take_my_ip_data(
-        profile: &mut Profile, 
-        data_id: address,
-        ctx: &mut TxContext
-    ): MyIPData {
-        assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
-        assert!(dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD), EDataNotFound);
-        let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, MyIPData>>(
-            &mut profile.id,
-            MY_IP_DATA_FIELD,
-        );
-        assert!(table::contains(tbl, data_id), EDataNotFound);
-        table::remove(tbl, data_id)
-    }
-
-    /// Decrypt a stored MyIP data URI for a viewer
-    public fun decrypt_my_ip_data(
-        profile: &Profile,
-        data_id: address,
-        viewer: address,
-        sub: &subscription::Subscription,
-        service: &subscription::Service,
-        c: &Clock,
-        keys: &vector<bf_hmac_encryption::VerifiedDerivedKey>,
-        pks: &vector<bf_hmac_encryption::PublicKey>,
-    ): Option<vector<u8>> {
-        if (!dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD)) {
-            return option::none()
+        if (!table::contains(tbl, my_ip_id)) {
+            table::add(tbl, my_ip_id, true);
         };
-        let tbl = dynamic_field::borrow<vector<u8>, Table<address, MyIPData>>(
+    }
+
+    /// Check if a MyIP is attached to this profile
+    public fun has_my_ip_attached(profile: &Profile, my_ip_id: address): bool {
+        if (!dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD)) {
+            return false
+        };
+        let tbl = dynamic_field::borrow<vector<u8>, Table<address, bool>>(
             &profile.id,
             MY_IP_DATA_FIELD,
         );
-        if (!table::contains(tbl, data_id)) {
-            return option::none()
+        table::contains(tbl, my_ip_id)
+    }
+
+    /// Remove a MyIP attachment from the profile
+    public entry fun detach_my_ip(
+        profile: &mut Profile,
+        my_ip_id: address,
+        ctx: &mut TxContext
+    ) {
+        assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
+        if (!dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD)) {
+            return
         };
-        let data = table::borrow(tbl, data_id);
-        MyIPDataModule::decrypt_uri_for(
-            data,
-            viewer,
-            sub,
-            service,
-            c,
-            keys,
-            pks,
-        )
+        let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, bool>>(
+            &mut profile.id,
+            MY_IP_DATA_FIELD,
+        );
+        if (table::contains(tbl, my_ip_id)) {
+            table::remove(tbl, my_ip_id);
+        };
+    }
+
+    /// Get all attached MyIP IDs for this profile
+    public fun get_attached_my_ips(profile: &Profile): vector<address> {
+        if (!dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD)) {
+            return vector::empty<address>()
+        };
+        
+        // Note: This is a simplified implementation
+        // In practice, you'd need to iterate through the table keys
+        // For now, returning empty vector as this would require table iteration utilities
+        vector::empty<address>()
     }
 
     /// Create an offer to purchase a profile

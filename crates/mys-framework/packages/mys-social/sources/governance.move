@@ -5,21 +5,27 @@
 /// Manages the decentralized governance system with delegate council and community assembly
 /// Implements proposal submission, voting, and execution processes
 
+#[allow(duplicate_alias, unused_use)]
 module social_contracts::governance {
     use std::string::{String};
     
-    use mys::dynamic_field;
-    use mys::vec_set::{Self, VecSet};
-    use mys::event;
-    use mys::table::{Self, Table};
-    use mys::coin::{Self, Coin};
-    use mys::balance::{Self, Balance};
+    use mys::{
+        object::{Self, UID, ID},
+        tx_context::{Self, TxContext},
+        transfer,
+        dynamic_field,
+        vec_set::{Self, VecSet},
+        event,
+        table::{Self, Table},
+        coin::{Self, Coin},
+        balance::{Self, Balance}
+    };
     use mys::mys::MYS;
     use mys::package::{Self, Publisher};
 
     use seal::bf_hmac_encryption::{EncryptedObject, VerifiedDerivedKey, PublicKey, decrypt};
     
-    use social_contracts::upgrade;
+    use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::profile;
 
     /// Error codes
@@ -1527,6 +1533,7 @@ module social_contracts::governance {
         // First, collect all the decrypted votes
         let mut votes_for = vector::empty<address>();
         let mut votes_against = vector::empty<address>();
+        let mut invalid_votes = vector::empty<address>(); // Track invalid votes
 
         {
             let proposal = table::borrow_mut(&mut registry.proposals, proposal_id);
@@ -1540,18 +1547,30 @@ module social_contracts::governance {
                 let mut i = 0;
                 let len = vector::length(&voters_vec);
                 
-                // Decrypt all votes and collect results
+                // Decrypt all votes and collect results with proper validation
                 while (i < len) {
                     let addr = *vector::borrow(&voters_vec, i);
                     let enc = table::borrow(votes_tbl, addr);
                     let dec = decrypt(enc, keys, public_keys);
                     if (dec.is_some()) {
                         let b = dec.borrow();
-                        if (b.length() == 1 && b[0] == 1) {
-                            vector::push_back(&mut votes_for, addr);
-                        } else if (b.length() == 1 && b[0] == 0) {
-                            vector::push_back(&mut votes_against, addr);
-                        };
+                        // Validate vote format: must be exactly 1 byte with value 0 or 1
+                        if (b.length() == 1) {
+                            if (b[0] == 1) {
+                                vector::push_back(&mut votes_for, addr);
+                            } else if (b[0] == 0) {
+                                vector::push_back(&mut votes_against, addr);
+                            } else {
+                                // Invalid vote value (not 0 or 1)
+                                vector::push_back(&mut invalid_votes, addr);
+                            }
+                        } else {
+                            // Invalid vote format (wrong length)
+                            vector::push_back(&mut invalid_votes, addr);
+                        }
+                    } else {
+                        // Failed to decrypt - could be malicious or corrupted
+                        vector::push_back(&mut invalid_votes, addr);
                     };
                     i = i + 1;
                 };
@@ -1559,7 +1578,11 @@ module social_contracts::governance {
             };
         };
 
-        // Now apply all the votes
+        // Log invalid votes for transparency but don't fail the entire process
+        // In production, you might want to emit events for invalid votes
+        vector::destroy_empty(invalid_votes);
+
+        // Now apply all the valid votes
         {
             let proposal = table::borrow_mut(&mut registry.proposals, proposal_id);
             

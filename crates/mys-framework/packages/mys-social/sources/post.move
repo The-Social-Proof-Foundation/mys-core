@@ -5,19 +5,25 @@
 /// Handles creation and management of posts and comments
 /// Implements features like comments, reposts, quotes, and predictions
 
+#[allow(duplicate_alias, unused_use, unused_const, unused_variable)]
 module social_contracts::post {
     use std::string::{Self, String};
+    use std::option::{Self, Option};
     
-    use mys::event;
-    use mys::table::{Self, Table};
-    use mys::coin::{Self, Coin};
+    use mys::{
+        object::{Self, UID, ID},
+        tx_context::{Self, TxContext},
+        transfer,
+        event,
+        table::{Self, Table},
+        coin::{Self, Coin},
+        balance::{Self, Balance},
+        url::{Self, Url},
+        package::{Self, Publisher},
+        clock::{Self, Clock}
+    };
     use mys::mys::MYS;
-    use mys::url::{Self, Url};
-    use mys::package::{Self, Publisher};
-    use mys::{clock::Clock};
-    use social_contracts::subscription;
-
-    
+    use social_contracts::subscription::{Self, ProfileSubscriptionService, ProfileSubscription};
     use social_contracts::profile::UsernameRegistry;
     use social_contracts::platform;
     use social_contracts::block_list::{Self, BlockListRegistry};
@@ -84,6 +90,10 @@ module social_contracts::post {
     const REPORT_REASON_HARASSMENT: u8 = 6;
     const REPORT_REASON_OTHER: u8 = 99;
 
+    /// Constants for moderation states
+    const MODERATION_APPROVED: u8 = 1;
+    const MODERATION_FLAGGED: u8 = 2;
+
     /// Post object that contains content information
     public struct Post has key, store {
         id: UID,
@@ -119,18 +129,14 @@ module social_contracts::post {
         user_reactions: Table<address, String>,
         /// Table to count reactions by type
         reaction_counts: Table<String, u64>,
-        /// Reference to the intellectual property license for the post
+        /// Reference to MyIP for gated content
         my_ip_id: Option<address>,
-        /// Optional encrypted content enforced by Seal
-        encrypted_content: Option<vector<u8>>,
-        /// Identifier used with Seal to approve access
-        encryption_id: Option<vector<u8>>,
-        /// Associated subscription service controlling decryption
-        service_id: Option<ID>,
-        /// Price for one-time viewing in MYS
-        one_time_price: Option<u64>,
-        /// Addresses that purchased one-time access
-        purchased: Table<address, bool>,
+        /// Direct permission toggles for post interactions
+        allow_comments: bool,
+        allow_reactions: bool,
+        allow_reposts: bool,
+        allow_quotes: bool,
+        allow_tips: bool,
         /// Version for upgrades
         version: u64,
     }
@@ -450,7 +456,18 @@ module social_contracts::post {
         original_amount: u64,
         withdrawal_amount: u64,
     }
-    
+
+    /// Simple moderation record for tracking moderation decisions
+    public struct ModerationRecord has key {
+        id: UID,
+        post_id: address,
+        platform_id: address,
+        moderation_state: u8,
+        moderator: Option<address>,
+        moderation_timestamp: Option<u64>,
+        reason: Option<String>,
+    }
+
     /// Initialize the post module
     fun init(ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
@@ -608,6 +625,11 @@ module social_contracts::post {
             string::utf8(POST_TYPE_PREDICTION),
             option::none(),
             option::none(),
+            true, // allow_comments
+            true, // allow_reactions  
+            true, // allow_reposts
+            true, // allow_quotes
+            true, // allow_tips
             ctx
         );
         
@@ -1040,6 +1062,11 @@ module social_contracts::post {
         post_type: String,
         parent_post_id: Option<address>,
         my_ip_id: Option<address>,
+        allow_comments: bool,
+        allow_reactions: bool,
+        allow_reposts: bool,
+        allow_quotes: bool,
+        allow_tips: bool,
         ctx: &mut TxContext
     ): address {
         let post = Post {
@@ -1061,11 +1088,11 @@ module social_contracts::post {
             user_reactions: table::new(ctx),
             reaction_counts: table::new(ctx),
             my_ip_id,
-            encrypted_content: option::none(),
-            encryption_id: option::none(),
-            service_id: option::none(),
-            one_time_price: option::none(),
-            purchased: table::new(ctx),
+            allow_comments,
+            allow_reactions,
+            allow_reposts,
+            allow_quotes,
+            allow_tips,
             version: upgrade::current_version(),
         };
         
@@ -1079,7 +1106,7 @@ module social_contracts::post {
         post_id
     }
 
-    /// Create a new post
+    /// Create a new post with interaction permissions
     public entry fun create_post(
         registry: &UsernameRegistry,
         platform: &platform::Platform,
@@ -1090,6 +1117,11 @@ module social_contracts::post {
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
         my_ip_id: Option<address>,
+        allow_comments: bool,
+        allow_reactions: bool,
+        allow_reposts: bool,
+        allow_quotes: bool,
+        allow_tips: bool,
         ctx: &mut TxContext
     ) {
         let owner = tx_context::sender(ctx);
@@ -1157,6 +1189,11 @@ module social_contracts::post {
             string::utf8(POST_TYPE_STANDARD),
             option::none(),
             my_ip_id,
+            allow_comments,
+            allow_reactions,
+            allow_reposts,
+            allow_quotes,
+            allow_tips,
             ctx
         );
         
@@ -1206,11 +1243,8 @@ module social_contracts::post {
         // Check if the caller is blocked by the post creator
         assert!(!block_list::is_blocked(block_list_registry, parent_post.owner, owner), EUnauthorized);
         
-        // Check IP licensing permissions for comments if MyIP is attached to the parent post
-        if (option::is_some(&parent_post.my_ip_id)) {
-            let post_my_ip_id = *option::borrow(&parent_post.my_ip_id);
-            assert!(my_ip::registry_is_commenting_allowed(my_ip_registry, post_my_ip_id, ctx), ECommentsNotAllowed);
-        };
+        // Check if comments are allowed on the parent post
+        assert!(parent_post.allow_comments, ECommentsNotAllowed);
         
         // Validate content length using config
         assert!(string::length(&content) <= config.max_content_length, EContentTooLarge);
@@ -1324,11 +1358,8 @@ module social_contracts::post {
         let platform_address = object::uid_to_address(platform::id(platform));
         assert!(!block_list::is_blocked(block_list_registry, platform_address, owner), EUserBlockedByPlatform);
         
-        // Check IP licensing permissions for reposts if MyIP is attached
-        if (option::is_some(&original_post.my_ip_id)) {
-            let my_ip_id = *option::borrow(&original_post.my_ip_id);
-            assert!(my_ip::registry_is_reposting_allowed(my_ip_registry, my_ip_id, ctx), ERepostsNotAllowed);
-        };
+        // Check if reposts are allowed on the original post
+        assert!(original_post.allow_reposts, ERepostsNotAllowed);
         
         // Get original post ID
         let original_post_id = object::uid_to_address(&original_post.id);
@@ -1347,6 +1378,11 @@ module social_contracts::post {
             string::utf8(POST_TYPE_REPOST),
             option::some(original_post_id),
             option::none(), // No MyIP for reposts
+            true, // allow_comments
+            true, // allow_reactions
+            true, // allow_reposts
+            true, // allow_quotes
+            true, // allow_tips
             ctx
         );
         
@@ -1372,7 +1408,8 @@ module social_contracts::post {
         registry: &UsernameRegistry,
         platform: &platform::Platform,
         block_list_registry: &block_list::BlockListRegistry,
-        my_ip_registry: &my_ip::MyIPRegistry, // Added MyIPRegistry parameter
+        my_ip_registry: &my_ip::MyIPRegistry,
+        config: &PostConfig, // Added config parameter for validation
         original_post: &mut Post,
         mut content: Option<String>,
         mut media_urls: Option<vector<vector<u8>>>,
@@ -1409,10 +1446,17 @@ module social_contracts::post {
             
             if (is_quote_repost) {
                 // For quote reposts, check if quoting is allowed
-                assert!(my_ip::registry_is_quoting_allowed(my_ip_registry, my_ip_id, ctx), EQuotesNotAllowed);
+                assert!(original_post.allow_quotes, EQuotesNotAllowed);
             } else {
                 // For regular reposts, check if reposting is allowed
-                assert!(my_ip::registry_is_reposting_allowed(my_ip_registry, my_ip_id, ctx), ERepostsNotAllowed);
+                assert!(original_post.allow_reposts, ERepostsNotAllowed);
+            }
+        } else {
+            // No MyIP attached, use direct permission checks
+            if (is_quote_repost) {
+                assert!(original_post.allow_quotes, EQuotesNotAllowed);
+            } else {
+                assert!(original_post.allow_reposts, ERepostsNotAllowed);
             }
         };
         
@@ -1420,7 +1464,8 @@ module social_contracts::post {
         let content_string = if (is_quote_repost) {
             // Validate content length for quote reposts
             let content_value = option::extract(&mut content);
-            assert!(string::length(&content_value) <= MAX_CONTENT_LENGTH, EContentTooLarge);
+            // Use config value instead of hardcoded constant
+            assert!(string::length(&content_value) <= config.max_content_length, EContentTooLarge);
             content_value
         } else {
             // Empty string for standard reposts
@@ -1432,7 +1477,7 @@ module social_contracts::post {
             let urls_bytes = option::extract(&mut media_urls);
             
             // Validate media URLs count
-            assert!(vector::length(&urls_bytes) <= MAX_MEDIA_URLS, ETooManyMediaUrls);
+            assert!(vector::length(&urls_bytes) <= config.max_media_urls, ETooManyMediaUrls);
             
             // Convert media URL bytes to Url
             let mut urls = vector::empty<Url>();
@@ -1451,13 +1496,13 @@ module social_contracts::post {
         // Validate metadata size if provided
         if (option::is_some(&metadata_json)) {
             let metadata_ref = option::borrow(&metadata_json);
-            assert!(string::length(metadata_ref) <= MAX_METADATA_SIZE, EContentTooLarge);
+            assert!(string::length(metadata_ref) <= config.max_metadata_size, EContentTooLarge);
         };
         
         // Validate mentions if provided
         if (option::is_some(&mentions)) {
             let mentions_ref = option::borrow(&mentions);
-            assert!(vector::length(mentions_ref) <= MAX_MENTIONS, EContentTooLarge);
+            assert!(vector::length(mentions_ref) <= config.max_mentions, EContentTooLarge);
         };
         
         // Create repost as post with appropriate type
@@ -1509,6 +1554,11 @@ module social_contracts::post {
             post_type,
             option::some(original_post_id),
             option::none(), // No MyIP for reposts
+            true, // allow_comments
+            true, // allow_reactions
+            true, // allow_reposts
+            true, // allow_quotes
+            true, // allow_tips
             ctx
         );
         
@@ -1561,18 +1611,17 @@ module social_contracts::post {
             user_reactions,
             reaction_counts,
             my_ip_id: _,
-            encrypted_content: _,
-            encryption_id: _,
-            service_id: _,
-            one_time_price: _,
-            purchased,
+            allow_comments: _,
+            allow_reactions: _,
+            allow_reposts: _,
+            allow_quotes: _,
+            allow_tips: _,
             version: _,
         } = post;
         
         // Clean up associated data structures
         table::drop(user_reactions);
         table::drop(reaction_counts);
-        table::drop(purchased);
         
         // Delete the post object
         object::delete(id);
@@ -2069,6 +2118,7 @@ module social_contracts::post {
     /// Update an existing post
     public entry fun update_post(
         post: &mut Post,
+        config: &PostConfig,
         content: String,
         mut media_urls: Option<vector<vector<u8>>>,
         mentions: Option<vector<address>>,
@@ -2079,13 +2129,13 @@ module social_contracts::post {
         let owner = tx_context::sender(ctx);
         assert!(owner == post.owner, EUnauthorized);
         
-        // Validate content length
-        assert!(string::length(&content) <= MAX_CONTENT_LENGTH, EContentTooLarge);
+        // Validate content length using config
+        assert!(string::length(&content) <= config.max_content_length, EContentTooLarge);
         
         // Validate and update metadata if provided
         if (option::is_some(&metadata_json)) {
             let metadata_string = option::borrow(& metadata_json);
-            assert!(string::length(metadata_string) <= MAX_METADATA_SIZE, EContentTooLarge);
+            assert!(string::length(metadata_string) <= config.max_metadata_size, EContentTooLarge);
             // Clear the current value and set the new one
             post.metadata_json = option::some(*metadata_string);
         };
@@ -2095,7 +2145,7 @@ module social_contracts::post {
             let urls_bytes = option::extract(&mut media_urls);
             
             // Validate media URLs count
-            assert!(vector::length(&urls_bytes) <= MAX_MEDIA_URLS, ETooManyMediaUrls);
+            assert!(vector::length(&urls_bytes) <= config.max_media_urls, ETooManyMediaUrls);
             
             // Convert media URL bytes to Url
             let mut urls = vector::empty<Url>();
@@ -2109,10 +2159,10 @@ module social_contracts::post {
             post.media = option::some(urls);
         };
         
-        // Validate mentions if provided
+        // Validate mentions if provided using config
         if (option::is_some(&mentions)) {
             let mentions_ref = option::borrow(&mentions);
-            assert!(vector::length(mentions_ref) <= MAX_MENTIONS, EContentTooLarge);
+            assert!(vector::length(mentions_ref) <= config.max_mentions, EContentTooLarge);
             post.mentions = mentions;
         };
         
@@ -2133,6 +2183,7 @@ module social_contracts::post {
     /// Update an existing comment
     public entry fun update_comment(
         comment: &mut Comment,
+        config: &PostConfig,
         content: String,
         mentions: Option<vector<address>>,
         ctx: &mut TxContext
@@ -2141,13 +2192,13 @@ module social_contracts::post {
         let owner = tx_context::sender(ctx);
         assert!(owner == comment.owner, EUnauthorized);
         
-        // Validate content length
-        assert!(string::length(&content) <= MAX_CONTENT_LENGTH, EContentTooLarge);
+        // Validate content length using config
+        assert!(string::length(&content) <= config.max_content_length, EContentTooLarge);
         
-        // Validate mentions if provided
+        // Validate mentions if provided using config
         if (option::is_some(&mentions)) {
             let mentions_ref = option::borrow(&mentions);
-            assert!(vector::length(mentions_ref) <= MAX_MENTIONS, EContentTooLarge);
+            assert!(vector::length(mentions_ref) <= config.max_mentions, EContentTooLarge);
             comment.mentions = mentions;
         };
         
@@ -2168,6 +2219,7 @@ module social_contracts::post {
     /// Report a post
     public entry fun report_post(
         post: &Post,
+        config: &PostConfig,
         reason_code: u8,
         description: String,
         ctx: &mut TxContext
@@ -2184,8 +2236,8 @@ module social_contracts::post {
             EReportReasonInvalid
         );
         
-        // Validate description length
-        assert!(string::length(&description) <= MAX_DESCRIPTION_LENGTH, EReportDescriptionTooLong);
+        // Validate description length using config
+        assert!(string::length(&description) <= config.max_description_length, EReportDescriptionTooLong);
         
         // Get reporter's address
         let reporter = tx_context::sender(ctx);
@@ -2203,6 +2255,7 @@ module social_contracts::post {
     /// Report a comment
     public entry fun report_comment(
         comment: &Comment,
+        config: &PostConfig,
         reason_code: u8,
         description: String,
         ctx: &mut TxContext
@@ -2219,8 +2272,8 @@ module social_contracts::post {
             EReportReasonInvalid
         );
         
-        // Validate description length
-        assert!(string::length(&description) <= MAX_DESCRIPTION_LENGTH, EReportDescriptionTooLong);
+        // Validate description length using config
+        assert!(string::length(&description) <= config.max_description_length, EReportDescriptionTooLong);
         
         // Get reporter's address
         let reporter = tx_context::sender(ctx);
@@ -2239,13 +2292,14 @@ module social_contracts::post {
     /// If the user already has the exact same reaction, it will be removed (toggle behavior)
     public entry fun react_to_comment(
         comment: &mut Comment,
+        config: &PostConfig,
         reaction: String,
         ctx: &mut TxContext
     ) {
         let user = tx_context::sender(ctx);
         
-        // Validate reaction length
-        assert!(string::length(&reaction) <= MAX_REACTION_LENGTH, EReactionContentTooLong);
+        // Validate reaction length using config
+        assert!(string::length(&reaction) <= config.max_reaction_length, EReactionContentTooLong);
         
         // Check if user already reacted to the comment
         if (table::contains(&comment.user_reactions, user)) {
@@ -2446,6 +2500,11 @@ module social_contracts::post {
             string::utf8(POST_TYPE_STANDARD), // Standard post type
             option::none(), // No parent post
             option::none(), // No MyIP ID
+            true, // allow_comments
+            true, // allow_reactions
+            true, // allow_reposts
+            true, // allow_quotes
+            true, // allow_tips
             ctx
         )
     }
@@ -2471,6 +2530,11 @@ module social_contracts::post {
             string::utf8(POST_TYPE_PREDICTION), // Prediction post type
             option::none(), // No parent post
             option::none(), // No MyIP ID
+            true, // allow_comments
+            true, // allow_reactions
+            true, // allow_reposts
+            true, // allow_quotes
+            true, // allow_tips
             ctx
         );
         
@@ -2809,59 +2873,52 @@ module social_contracts::post {
         });
     }
 
-    /// Attach encrypted content and optional price
-    public entry fun set_encrypted_content(
+    /// Set moderation status for a post (platform devs/mods only)
+    public entry fun set_moderation_status(
         post: &mut Post,
-        data: vector<u8>,
-        enc_id: vector<u8>,
-        service: address,
-        price: Option<u64>,
-        ctx: &mut TxContext,
+        platform: &platform::Platform,
+        status: u8, // MODERATION_APPROVED or MODERATION_FLAGGED
+        reason: Option<String>,
+        ctx: &mut TxContext
     ) {
-        assert!(tx_context::sender(ctx) == post.owner, EUnauthorized);
-        post.encrypted_content = option::some(data);
-        post.encryption_id = option::some(enc_id);
-        post.service_id = option::some(object::id_from_address(service));
-        post.one_time_price = price;
-    }
-
-    /// Buy one-time access to encrypted content
-    public entry fun buy_one_time_access(
-        post: &mut Post,
-        payment: Coin<MYS>,
-        ctx: &mut TxContext,
-    ) {
-        assert!(option::is_some(&post.one_time_price), ENoEncryptedContent);
-        let price = *option::borrow(&post.one_time_price);
-        assert!(payment.value() == price, EPriceMismatch);
-        transfer::public_transfer(payment, post.owner);
-        table::add(&mut post.purchased, tx_context::sender(ctx), true);
-    }
-
-    /// Decrypt content for a viewer using subscription or purchase
-    public fun decrypt_content_for(
-        post: &Post,
-        viewer: address,
-        sub: &subscription::Subscription,
-        service: &subscription::Service,
-        c: &Clock,
-        derived: &vector<seal::bf_hmac_encryption::VerifiedDerivedKey>,
-        pks: &vector<seal::bf_hmac_encryption::PublicKey>,
-    ): Option<vector<u8>> {
-        if (!option::is_some(&post.encrypted_content)) return option::none();
-        if (table::contains(&post.purchased, viewer)) {
-            let obj = seal::bf_hmac_encryption::parse_encrypted_object(
-                *option::borrow(&post.encrypted_content),
-            );
-            return seal::bf_hmac_encryption::decrypt(&obj, derived, pks)
+        // Verify caller is platform developer or moderator
+        let caller = tx_context::sender(ctx);
+        assert!(platform::is_developer_or_moderator(platform, caller), EUnauthorized);
+        
+        // Validate status
+        assert!(status == MODERATION_APPROVED || status == MODERATION_FLAGGED, EUnauthorized);
+        
+        // Update post status based on moderation decision
+        if (status == MODERATION_FLAGGED) {
+            post.removed_from_platform = true;
+        } else {
+            post.removed_from_platform = false;
         };
-        let sid = *option::borrow(&post.service_id);
-        assert!(sid == object::id(service), ENoSubscriptionService);
-        let id = *option::borrow(&post.encryption_id);
-        subscription::seal_approve(id, sub, service, c);
-        let obj = seal::bf_hmac_encryption::parse_encrypted_object(
-            *option::borrow(&post.encrypted_content),
-        );
-        seal::bf_hmac_encryption::decrypt(&obj, derived, pks)
+        
+        // Create or update moderation record
+        let moderation_record = ModerationRecord {
+            id: object::new(ctx),
+            post_id: object::uid_to_address(&post.id),
+            platform_id: object::uid_to_address(platform::id(platform)),
+            moderation_state: status,
+            moderator: option::some(caller),
+            moderation_timestamp: option::some(tx_context::epoch_timestamp_ms(ctx)),
+            reason,
+        };
+        
+        transfer::share_object(moderation_record);
+        
+        // Emit moderation event
+        event::emit(PostModerationEvent {
+            post_id: object::uid_to_address(&post.id),
+            platform_id: object::uid_to_address(platform::id(platform)),
+            removed: (status == MODERATION_FLAGGED),
+            moderated_by: caller,
+        });
+    }
+
+    /// Check if content is approved (not flagged)
+    public fun is_content_approved(post: &Post): bool {
+        !post.removed_from_platform
     }
 }
