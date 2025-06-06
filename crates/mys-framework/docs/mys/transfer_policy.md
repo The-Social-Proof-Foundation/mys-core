@@ -5,11 +5,9 @@ title: Module `mys::transfer_policy`
 Defines the <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">TransferPolicy</a></code> type and the logic to approve <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferRequest">TransferRequest</a></code>s.
 
 - TransferPolicy - is a highly customizable primitive, which provides an
-interface for the type owner to set custom transfer rules for every
-deal performed in the <code>Kiosk</code> or a similar system that integrates with TP.
+interface for the type owner to set custom transfer that integrates with TP.
 
-- Once a <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">TransferPolicy</a>&lt;T&gt;</code> is created for and shared (or frozen), the
-type <code>T</code> becomes tradable in <code>Kiosk</code>s. On every purchase operation, a
+- Once a <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">TransferPolicy</a>&lt;T&gt;</code> is created for and shared (or frozen). On every purchase operation, a
 <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferRequest">TransferRequest</a></code> is created and needs to be confirmed by the <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">TransferPolicy</a></code>
 hot potato or transaction will fail.
 
@@ -118,7 +116,7 @@ from the item type (<code>T</code>) owner on purchase attempt.
 <code><a href="../mys/transfer_policy.md#mys_transfer_policy_from">from</a>: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a></code>
 </dt>
 <dd>
- The ID of the Kiosk / Safe the object is being sold from.
+ The ID of the Safe the object is being sold from.
  Can be used by the TransferPolicy implementors.
 </dd>
 <dt>
@@ -389,15 +387,8 @@ the transaction will fail.
 
 ## Function `new`
 
-Register a type in the Kiosk system and receive a <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">TransferPolicy</a></code> and
-a <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicyCap">TransferPolicyCap</a></code> for the type. The <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">TransferPolicy</a></code> is required to
-confirm deals for the <code>T</code>. If there's no <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">TransferPolicy</a></code>
-available for use, the type can not be traded.
-
-
 <pre><code><b>public</b> <b>fun</b> <a href="../mys/transfer_policy.md#mys_transfer_policy_new">new</a>&lt;T&gt;(pub: &<a href="../mys/package.md#mys_package_Publisher">mys::package::Publisher</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): (<a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">mys::transfer_policy::TransferPolicy</a>&lt;T&gt;, <a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicyCap">mys::transfer_policy::TransferPolicyCap</a>&lt;T&gt;)
 </code></pre>
-
 
 
 <details>
@@ -531,10 +522,6 @@ Can be performed by any party as long as they own it.
 Allow a <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferRequest">TransferRequest</a></code> for the type <code>T</code>. The call is protected
 by the type constraint, as only the publisher of the <code>T</code> can get
 <code><a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">TransferPolicy</a>&lt;T&gt;</code>.
-
-Note: unless there's a policy for <code>T</code> to allow transfers,
-Kiosk trades will not be possible.
-
 
 <pre><code><b>public</b> <b>fun</b> <a href="../mys/transfer_policy.md#mys_transfer_policy_confirm_request">confirm_request</a>&lt;T&gt;(self: &<a href="../mys/transfer_policy.md#mys_transfer_policy_TransferPolicy">mys::transfer_policy::TransferPolicy</a>&lt;T&gt;, request: <a href="../mys/transfer_policy.md#mys_transfer_policy_TransferRequest">mys::transfer_policy::TransferRequest</a>&lt;T&gt;): (<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, u64, <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>)
 </code></pre>

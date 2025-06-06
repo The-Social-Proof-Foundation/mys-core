@@ -2512,7 +2512,6 @@ paid
 from
 	public fun
 	0x2::transfer_policy
-Kiosk
 LinkedTable
 	public struct
 	0x2::linked_table
