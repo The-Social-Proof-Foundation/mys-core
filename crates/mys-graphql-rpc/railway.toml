@@ -5,7 +5,7 @@ buildCommand = "cargo build --release --bin mys-graphql-rpc"
 
 [deploy]
 startCommand = "/app/mys-graphql-rpc start-server --host 0.0.0.0 --port 8080 --db-url $DATABASE_URL --node-rpc-url $RPC_URL"
-healthcheckPath = "/health"
+healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 
