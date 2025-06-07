@@ -71,9 +71,9 @@ async fn main() {
 
         Command::StartServer {
             ide,
-            mut connection,
+            connection,
             config,
-            mut tx_exec_full_node,
+            tx_exec_full_node,
         } => {
             // Debug: Print environment variables
             println!("=== Environment Variables ===");
