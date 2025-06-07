@@ -50,4 +50,5 @@ LABEL git-revision=$GIT_REVISION
 CMD ["mys-graphql-rpc", "start-server", \
      "--host", "0.0.0.0", \
      "--port", "$PORT", \
-     "--db-url", "$DATABASE_URL"] 
+     "--db-url", "$DATABASE_URL", \
+     "--node-rpc-url", "$RPC_URL"] 
