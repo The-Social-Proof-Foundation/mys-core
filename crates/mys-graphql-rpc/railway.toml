@@ -13,11 +13,6 @@ PORT = { sync = false }
 DATABASE_URL = { sync = false }
 RPC_URL = { sync = false }
 
-# Explicitly tell Railway this is a Rust project
-[build.env]
-NIXPACKS_LANGUAGE = "rust"
-NIXPACKS_BUILD_CMD = "cargo build --release --bin mys-graphql-rpc"
-
 [variables]
 # Logging configuration  
 RUST_LOG = "info,mys_graphql_rpc=debug"
