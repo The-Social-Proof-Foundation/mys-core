@@ -73,9 +73,10 @@ async fn main() {
 
             let cancellation_token_clone = cancellation_token.clone();
             let graphql_service_handle = tracker.spawn(async move {
-                start_graphiql_server(&server_config, &VERSION, cancellation_token_clone)
-                    .await
-                    .unwrap();
+                if let Err(e) = start_graphiql_server(&server_config, &VERSION, cancellation_token_clone).await {
+                    eprintln!("Failed to start GraphQL server: {:?}", e);
+                    std::process::exit(1);
+                }
             });
 
             // Wait for shutdown signal
