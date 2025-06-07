@@ -49,6 +49,6 @@ LABEL git-revision=$GIT_REVISION
 # Default command that uses environment variables
 CMD ["mys-graphql-rpc", "start-server", \
      "--host", "0.0.0.0", \
-     "--port", "$PORT", \
+     "--port", $PORT, \
      "--db-url", "$DATABASE_URL", \
      "--node-rpc-url", "$RPC_URL"] 
