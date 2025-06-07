@@ -1,7 +1,7 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "crates/mys-graphql-rpc/Dockerfile"
-buildCommand = "cargo build --release --features pg_backend --bin mys-graphql-rpc"
+buildCommand = "cargo build --release --bin mys-graphql-rpc"
 
 [deploy]
 startCommand = "mys-graphql-rpc start-server --host 0.0.0.0 --port \"$PORT\" --db-url \"$DATABASE_URL\" --node-rpc-url \"$RPC_URL\""
@@ -17,7 +17,7 @@ RPC_URL = { sync = false }
 # Explicitly tell Railway this is a Rust project
 [build.env]
 NIXPACKS_LANGUAGE = "rust"
-NIXPACKS_BUILD_CMD = "cargo build --release --features pg_backend --bin mys-graphql-rpc"
+NIXPACKS_BUILD_CMD = "cargo build --release --bin mys-graphql-rpc"
 
 [variables]
 # Logging configuration  
