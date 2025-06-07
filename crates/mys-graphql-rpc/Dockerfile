@@ -44,27 +44,33 @@ COPY --from=builder /app/target/release/mys-graphql-rpc /usr/local/bin
 
 # Create entrypoint script
 RUN echo '#!/bin/sh\n\
-echo "=== Environment Variables ==="\n\
-echo "DATABASE_URL: ${DATABASE_URL}"\n\
-echo "RPC_URL: ${RPC_URL}"\n\
-echo "PORT: ${PORT:-8080}"\n\
+echo "=== ENTRYPOINT DEBUG ==="\n\
+echo "All environment variables:"\n\
+env | sort\n\
+echo ""\n\
+echo "=== Key Environment Variables ==="\n\
+echo "DATABASE_URL: ${DATABASE_URL:-NOT_SET}"\n\
+echo "RPC_URL: ${RPC_URL:-NOT_SET}"\n\
+echo "PORT: ${PORT:-NOT_SET}"\n\
 echo "=============================="\n\
 \n\
-if [ -z "$DATABASE_URL" ]; then\n\
-  echo "ERROR: DATABASE_URL is not set"\n\
-  exit 1\n\
-fi\n\
+# Use default values if environment variables are not set\n\
+DATABASE_URL_VAL="${DATABASE_URL:-postgres://user:pass@localhost/db}"\n\
+RPC_URL_VAL="${RPC_URL:-http://localhost:8080}"\n\
+PORT_VAL="${PORT:-8080}"\n\
 \n\
-if [ -z "$RPC_URL" ]; then\n\
-  echo "ERROR: RPC_URL is not set"\n\
-  exit 1\n\
-fi\n\
+echo "Using values:"\n\
+echo "DATABASE_URL_VAL: $DATABASE_URL_VAL"\n\
+echo "RPC_URL_VAL: $RPC_URL_VAL"\n\
+echo "PORT_VAL: $PORT_VAL"\n\
+echo ""\n\
 \n\
+echo "Starting mys-graphql-rpc..."\n\
 exec mys-graphql-rpc start-server \\\n\
     --host 0.0.0.0 \\\n\
-    --port ${PORT:-8080} \\\n\
-    --db-url "$DATABASE_URL" \\\n\
-    --node-rpc-url "$RPC_URL"' > /usr/local/bin/entrypoint.sh && \
+    --port "$PORT_VAL" \\\n\
+    --db-url "$DATABASE_URL_VAL" \\\n\
+    --node-rpc-url "$RPC_URL_VAL"' > /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh
 
 ARG BUILD_DATE
