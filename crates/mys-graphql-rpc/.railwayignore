@@ -1,0 +1,36 @@
+# Node.js files (to prevent auto-detection)
+**/package.json
+**/package-lock.json
+**/pnpm-lock.yaml
+**/yarn.lock
+**/node_modules
+
+# Development files
+.env
+.env.*
+config.toml
+*.log
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files
+tests/
+**/*test*
+**/*spec*
+
+# Temporary files
+tmp/
+temp/
+
+# OS specific
+.DS_Store
+Thumbs.db 
