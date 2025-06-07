@@ -44,12 +44,28 @@ COPY --from=builder /app/target/release/mys-graphql-rpc /usr/local/bin
 
 # Create entrypoint script
 RUN echo '#!/bin/sh\n\
+echo "=== Environment Variables ==="\n\
+echo "DATABASE_URL: ${DATABASE_URL}"\n\
+echo "RPC_URL: ${RPC_URL}"\n\
+echo "PORT: ${PORT:-8080}"\n\
+echo "=============================="\n\
+\n\
+if [ -z "$DATABASE_URL" ]; then\n\
+  echo "ERROR: DATABASE_URL is not set"\n\
+  exit 1\n\
+fi\n\
+\n\
+if [ -z "$RPC_URL" ]; then\n\
+  echo "ERROR: RPC_URL is not set"\n\
+  exit 1\n\
+fi\n\
+\n\
 exec mys-graphql-rpc start-server \\\n\
     --host 0.0.0.0 \\\n\
-    --port 8080 \\\n\
-    --db-url "${DATABASE_URL}" \\\n\
-    --node-rpc-url "${RPC_URL}"' > /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
+    --port ${PORT:-8080} \\\n\
+    --db-url "$DATABASE_URL" \\\n\
+    --node-rpc-url "$RPC_URL"' > /usr/local/bin/entrypoint.sh && \
+    chmod +x /usr/local/bin/entrypoint.sh
 
 ARG BUILD_DATE
 ARG GIT_REVISION
@@ -57,4 +73,4 @@ LABEL build-date=$BUILD_DATE
 LABEL git-revision=$GIT_REVISION
 
 # Use the entrypoint script
-ENTRYPOINT ["/app/entrypoint.sh"] 
+ENTRYPOINT /usr/local/bin/entrypoint.sh 

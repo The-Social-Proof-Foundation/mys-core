@@ -55,6 +55,29 @@ async fn main() {
             config,
             tx_exec_full_node,
         } => {
+            // Debug: Print environment variables
+            println!("=== Environment Variables ===");
+            if let Ok(database_url) = std::env::var("DATABASE_URL") {
+                println!("DATABASE_URL from env: {}", database_url);
+            } else {
+                println!("DATABASE_URL not set in environment");
+            }
+            if let Ok(rpc_url) = std::env::var("RPC_URL") {
+                println!("RPC_URL from env: {}", rpc_url);
+            } else {
+                println!("RPC_URL not set in environment");
+            }
+            if let Ok(port) = std::env::var("PORT") {
+                println!("PORT from env: {}", port);
+            } else {
+                println!("PORT not set in environment");
+            }
+            
+            // Debug: Print connection config
+            println!("Connection config: {:?}", connection);
+            println!("TX exec config: {:?}", tx_exec_full_node);
+            println!("==============================");
+
             let service_config = service_config(config);
             let _guard = telemetry_subscribers::TelemetryConfig::new()
                 .with_env()
