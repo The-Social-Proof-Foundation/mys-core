@@ -19,7 +19,7 @@ bin-version.workspace = true
 chrono.workspace = true
 clap.workspace = true
 const-str.workspace = true
-diesel = { workspace = true, features = ["i-implement-a-third-party-backend-and-opt-into-breaking-changes"] }
+diesel = { workspace = true, features = ["i-implement-a-third-party-backend-and-opt-into-breaking-changes", "postgres"] }
 diesel-async = { workspace = true, features = ["postgres"] }
 either.workspace = true
 fastcrypto = { workspace = true, features = ["copy_key"] }
@@ -95,3 +95,4 @@ mys-move-build.workspace = true
 
 [features]
 staging = []
+pg_backend = ["diesel/postgres", "diesel-async/postgres"]

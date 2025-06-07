@@ -21,7 +21,8 @@ RUN apt-get update && apt-get install -y \
 COPY . .
 
 # Build with pg_backend feature
-RUN cargo build --release --features "pg_backend" --bin mys-graphql-rpc
+RUN cd crates/mys-graphql-rpc && \
+    cargo build --release --features pg_backend
 
 # Production Image
 FROM debian:bullseye-slim AS runtime
