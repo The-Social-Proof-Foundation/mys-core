@@ -5,7 +5,7 @@ buildCommand = "cargo build --release --bin mys-graphql-rpc"
 
 [deploy]
 startCommand = "/app/start.sh"
-healthcheckPath = "/graphql/health"
+healthcheckPath = "/graphql"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 
