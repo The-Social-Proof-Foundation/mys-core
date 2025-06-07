@@ -16,6 +16,6 @@ mod metrics;
 mod mutation;
 pub(crate) mod raw_query;
 pub mod server;
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(test)]
 pub mod test_infra;
 mod types;
