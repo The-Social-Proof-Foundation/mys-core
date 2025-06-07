@@ -17,4 +17,4 @@ RPC_URL = { sync = false }
 [variables]
 # Logging configuration  
 RUST_LOG = "info,mys_graphql_rpc=debug"
-RUST_BACKTRACE = "1" 
+RUST_BACKTRACE = "1"
