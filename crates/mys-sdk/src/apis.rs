@@ -1047,7 +1047,7 @@ impl EventApi {
     /// async fn main() -> Result<(), anyhow::Error> {
     ///     let mys = MysClientBuilder::default()
     ///         .ws_url("wss://rpc.testnet.mysocial.network:443")
-    ///         .build("https://fullnode.testnet.mysocial.network:443")
+    ///         .build("https://fullnode.testnet.mysocial.network:8082")
     ///         .await?;
     ///     let mut subscribe_all = mys
     ///         .event_api()

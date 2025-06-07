@@ -42,7 +42,7 @@ pub const MYS_SOURCE_VALIDATION_VERSION_HEADER: &str = "x-mys-source-validation-
 pub const MYS_SOURCE_VALIDATION_VERSION: &str = "0.1";
 
 pub const MAINNET_URL: &str = "https://fullnode.mainnet.mysocial.network:443";
-pub const TESTNET_URL: &str = "https://fullnode.testnet.mysocial.network:443";
+pub const TESTNET_URL: &str = "https://fullnode.testnet.mysocial.network:8082";
 pub const DEVNET_URL: &str = "https://fullnode.devnet.mysocial.network:443";
 pub const LOCALNET_URL: &str = "http://127.0.0.1:9000";
 

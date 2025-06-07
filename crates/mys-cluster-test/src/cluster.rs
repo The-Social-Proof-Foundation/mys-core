@@ -38,7 +38,7 @@ const DEVNET_FULLNODE_ADDR: &str = "https://rpc.devnet.mysocial.network:443";
 const STAGING_FULLNODE_ADDR: &str = "https://fullnode.staging.mysocial.network:443";
 const CONTINUOUS_FULLNODE_ADDR: &str = "https://fullnode.ci.mysocial.network:443";
 const CONTINUOUS_NOMAD_FULLNODE_ADDR: &str = "https://fullnode.nomad.ci.mysocial.network:443";
-const TESTNET_FULLNODE_ADDR: &str = "https://fullnode.testnet.mysocial.network:443";
+const TESTNET_FULLNODE_ADDR: &str = "https://fullnode.testnet.mysocial.network:8082";
 
 pub struct ClusterFactory;
 

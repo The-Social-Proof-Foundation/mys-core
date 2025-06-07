@@ -19,7 +19,7 @@ use mys_sdk::MysClientBuilder;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    // MySocial testnet -- https://fullnode.testnet.mysocial.network:443
+    // MySocial testnet -- https://fullnode.testnet.mysocial.network:8082
     let mys_testnet = MysClientBuilder::default().build_testnet().await?;
     println!("MySocial testnet version: {}", mys_testnet.api_version());
 
@@ -58,7 +58,7 @@ There are serveral files ending in `_api.rs` which provide code examples of the 
 
 ### Prerequisites
 
-Unless otherwise specified, most of these examples assume `Rust` and `cargo` are installed, and that there is an available internet connection. The examples connect to the MySocial testnet (`https://fullnode.testnet.mysocial.network:443`) and execute different APIs using the active address from the local wallet. If there is no local wallet, it will create one, generate two addresses, set one of them to be active, and it will request 1 MYS from the testnet faucet for the active address.
+Unless otherwise specified, most of these examples assume `Rust` and `cargo` are installed, and that there is an available internet connection. The examples connect to the MySocial testnet (`https://fullnode.testnet.mysocial.network:8082`) and execute different APIs using the active address from the local wallet. If there is no local wallet, it will create one, generate two addresses, set one of them to be active, and it will request 1 MYS from the testnet faucet for the active address.
 
 ### Running the existing examples
 
@@ -79,7 +79,7 @@ The `MysClientBuilder` struct provides a connection to the JSON-RPC server that 
 
 - Local: http://127.0.0.1:9000
 - Devnet: https://fullnode.devnet.mysocial.network:443
-- Testnet: https://fullnode.testnet.mysocial.network:443
+- Testnet: https://fullnode.testnet.mysocial.network:8082
 - Mainnet: https://fullnode.mainnet.mysocial.network:443
 
 For all available servers, see [here](https://mysocial.network/networkinfo).
@@ -105,7 +105,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let mys_devnet = MysClientBuilder::default().build_devnet().await?;
     println!("MySocial devnet version: {}", mys_devnet.api_version());
 
-    // MySocial testnet -- https://fullnode.testnet.mysocial.network:443
+    // MySocial testnet -- https://fullnode.testnet.mysocial.network:8082
     let mys_testnet = MysClientBuilder::default().build_testnet().await?;
     println!("MySocial testnet version: {}", mys_testnet.api_version());
 

@@ -29,7 +29,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let mys_devnet = MysClientBuilder::default().build_devnet().await?;
     println!("Mys devnet version: {}", mys_devnet.api_version());
 
-    // Mys testnet -- https://fullnode.testnet.mysocial.network:443
+    // Mys testnet -- https://fullnode.testnet.mysocial.network:8082
     let mys_testnet = MysClientBuilder::default().build_testnet().await?;
     println!("Mys testnet version: {}", mys_testnet.api_version());
 

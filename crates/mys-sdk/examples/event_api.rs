@@ -36,7 +36,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let ws = MysClientBuilder::default()
         .ws_url("wss://rpc.testnet.mysocial.network:443")
-        .build("https://fullnode.testnet.mysocial.network:443")
+        .build("https://fullnode.testnet.mysocial.network:8082")
         .await?;
     println!("WS version {:?}", ws.api_version());
 

@@ -113,7 +113,7 @@ pub const MYS_LOCAL_NETWORK_URL: &str = "http://127.0.0.1:9000";
 pub const MYS_LOCAL_NETWORK_URL_0: &str = "http://0.0.0.0:9000";
 pub const MYS_LOCAL_NETWORK_GAS_URL: &str = "http://127.0.0.1:5003/gas";
 pub const MYS_DEVNET_URL: &str = "https://fullnode.devnet.mysocial.network:443";
-pub const MYS_TESTNET_URL: &str = "https://fullnode.testnet.mysocial.network:443";
+pub const MYS_TESTNET_URL: &str = "https://fullnode.testnet.mysocial.network:8082";
 pub const MYS_MAINNET_URL: &str = "https://fullnode.mainnet.mysocial.network:443";
 
 /// A Mys client builder for connecting to the Mys network
