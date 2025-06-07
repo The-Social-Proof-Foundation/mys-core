@@ -4,7 +4,6 @@ dockerfilePath = "crates/mys-graphql-rpc/Dockerfile"
 buildCommand = "cargo build --release --bin mys-graphql-rpc"
 
 [deploy]
-startCommand = "mys-graphql-rpc start-server --host 0.0.0.0 --port 8080 --db-url $DATABASE_URL --node-rpc-url $RPC_URL"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
