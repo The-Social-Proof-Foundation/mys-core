@@ -3,9 +3,14 @@ builder = "dockerfile"
 dockerfilePath = "crates/mys-graphql-rpc/Dockerfile"
 
 [deploy]
-startCommand = "mys-graphql-rpc start-server --host 0.0.0.0 --port $PORT --db-url $DATABASE_URL --node-rpc-url http://fullnode.testnet.mysocial.network:8082 --ide-title 'MySocial Testnet GraphQL'"
-healthcheckPath = "/"
+startCommand = "mys-graphql-rpc start-server --host 0.0.0.0 --port $PORT --db-url $DATABASE_URL" --node-rpc-url $RPC_URL
+healthcheckPath = "/health"
 healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+
+[deploy.envVars]
+PORT = { sync = false }
+DATABASE_URL = { sync = false }
 
 [variables]
 # Logging configuration  
