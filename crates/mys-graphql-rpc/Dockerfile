@@ -30,12 +30,19 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy binary
+# Copy binary and startup script
 COPY --from=builder /app/target/release/mys-graphql-rpc /app/
+COPY --from=builder /app/crates/mys-graphql-rpc/start.sh /app/
+
+# Make startup script executable
+RUN chmod +x /app/start.sh
 
 # Set default environment variables
 ENV RUST_LOG=info
 ENV RUST_BACKTRACE=1
 
 # Expose port
-EXPOSE 8080 
+EXPOSE 8080
+
+# Use the startup script as entrypoint
+ENTRYPOINT ["/app/start.sh"] 
