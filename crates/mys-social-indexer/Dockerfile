@@ -9,6 +9,8 @@ RUN apt-get update && \
     libssl-dev \
     cmake \
     clang \
+    libclang-dev \
+    llvm-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
@@ -18,8 +20,7 @@ RUN useradd -m -u 1000 -U -s /bin/sh -d /app appuser
 WORKDIR /app
 COPY --chown=appuser:appuser . .
 
-# Set environment for native compilation
-ENV LIBCLANG_PATH=/usr/lib/llvm-11/lib
+# libclang should be auto-detected now with libclang-dev installed
 
 # Build the application
 RUN cargo build --release
