@@ -19,8 +19,8 @@ if [ -z "$WALLET_PRIVATE_KEY" ] && [ -z "$WALLET_MNEMONIC" ]; then
 fi
 
 # Set default network if not provided
-NETWORK_URL=${NETWORK_URL:-"https://fullnode.testnet.mysocial.network:443"}
-NETWORK_ALIAS=${NETWORK_ALIAS:-"production"}
+NETWORK_URL=${NETWORK_URL:-"https://fullnode.testnet.mysocial.network:8082"}
+NETWORK_ALIAS=${NETWORK_ALIAS:-"testnet"}
 
 echo "🔧 Setting up wallet configuration..."
 echo "📍 Network: $NETWORK_URL"
@@ -86,7 +86,6 @@ fi
 
 echo "✅ Created client.yaml"
 echo "✅ Created mys.keystore"
-echo "🔄 Backup mnemonic: ${WALLET_MNEMONIC:-"(not provided)"}"
 echo "🚀 Starting MySocial faucet..."
 
 # Start the faucet with correct host binding for Railway
