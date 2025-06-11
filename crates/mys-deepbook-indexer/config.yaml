@@ -9,7 +9,7 @@ db_url: postgres://tsdbadmin:awbr7d1tc0cap9hp@fzbzpjk2c1.rrpamcwlae.tsdb.cloud.t
 # Path to the checkpoints (optional)
 # checkpoints_path: <path>
 # DeepBook package ID
-deepbook_package_id: 0x000000000000000000000000000000000000000000000000000000000000d33p
+deepbook_package_id: 0x000000000000000000000000000000000000000000000000000000000000dee9
 # DeepBook genesis checkpoint
 deepbook_genesis_checkpoint: 0
 # Number of concurrent operations

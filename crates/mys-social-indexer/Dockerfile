@@ -7,6 +7,8 @@ RUN apt-get update && \
     libpq-dev \
     pkg-config \
     libssl-dev \
+    libclang-dev \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
