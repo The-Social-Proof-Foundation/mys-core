@@ -743,15 +743,3 @@ spinners = "4.1.0"
 include_dir = "0.7.3"
 
 [patch.crates-io]
-
-[patch."https://github.com/The-Social-Proof-Foundation/mys-rust-sdk.git"]
-mys-types = { path = "crates/mys-types" }
-mys-json-rpc-types = { path = "crates/mys-json-rpc-types" }
-mys-config = { path = "crates/mys-config" }
-mys-keys = { path = "crates/mys-keys" }
-mys-sdk = { path = "crates/mys-sdk" }
-typed-store = { path = "crates/typed-store" }
-shared-crypto = { path = "crates/shared-crypto" }
-mysten-network = { path = "crates/mysten-network" }
-mysten-metrics = { path = "crates/mysten-metrics" }
-telemetry-subscribers = { path = "crates/telemetry-subscribers" }
