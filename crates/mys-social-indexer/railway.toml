@@ -1,0 +1,12 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/mys-social-indexer/Dockerfile"
+
+[deploy]
+startCommand = "mys-social-indexer"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+
+[variables]
+# Optional: Logging configuration  
+RUST_LOG = "info,mys_social_indexer=debug" 
