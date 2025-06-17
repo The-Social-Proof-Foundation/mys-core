@@ -5026,6 +5026,102 @@ is_email_verified
 toggle_email_verification
 	public entry fun
 	0xd880::profile
+EncryptedContent
+	public struct
+	0xd880::encrypted_content
+PaymentTier
+	public struct
+	0xd880::encrypted_content
+AccessGrant
+	public struct
+	0xd880::encrypted_content
+ContentMetadata
+	public struct
+	0xd880::encrypted_content
+ContentCreatedEvent
+	public struct
+	0xd880::encrypted_content
+AccessGrantedEvent
+	public struct
+	0xd880::encrypted_content
+AccessRevokedEvent
+	public struct
+	0xd880::encrypted_content
+ContentUpdatedEvent
+	public struct
+	0xd880::encrypted_content
+TierCreatedEvent
+	public struct
+	0xd880::encrypted_content
+create_encrypted_content
+	public entry fun
+	0xd880::encrypted_content
+create_payment_tier
+	public entry fun
+	0xd880::encrypted_content
+unlock_content_with_payment
+	public entry fun
+	0xd880::encrypted_content
+grant_free_access
+	public entry fun
+	0xd880::encrypted_content
+revoke_access
+	public entry fun
+	0xd880::encrypted_content
+update_content
+	public entry fun
+	0xd880::encrypted_content
+update_content_metadata
+	public entry fun
+	0xd880::encrypted_content
+link_to_profile
+	fun
+	0xd880::encrypted_content
+verify_access
+	fun
+	0xd880::encrypted_content
+client_encrypt_access_key
+	public fun
+	0xd880::encrypted_content
+get_encrypted_data
+	public fun
+	0xd880::encrypted_content
+get_access_key
+	public fun
+	0xd880::encrypted_content
+has_access
+	public fun
+	0xd880::encrypted_content
+owner
+	public fun
+	0xd880::encrypted_content
+content_type
+	public fun
+	0xd880::encrypted_content
+content_hash
+	public fun
+	0xd880::encrypted_content
+public_metadata
+	public fun
+	0xd880::encrypted_content
+created_at
+	public fun
+	0xd880::encrypted_content
+updated_at
+	public fun
+	0xd880::encrypted_content
+get_content_metadata
+	public fun
+	0xd880::encrypted_content
+get_tier_details
+	public fun
+	0xd880::encrypted_content
+get_tier_ids
+	public fun
+	0xd880::encrypted_content
+platform_fee_bps
+	public fun
+	0xd880::encrypted_content
 GovernanceDAO
 	public struct
 	0xd880::governance
@@ -5626,6 +5722,12 @@ PredictionBet
 PredictionData
 	public struct
 	0xd880::post
+PromotionView
+	public struct
+	0xd880::post
+PromotionData
+	public struct
+	0xd880::post
 PostAdminCap
 	public struct
 	0xd880::post
@@ -5690,6 +5792,21 @@ PredictionPayoutEvent
 	public struct
 	0xd880::post
 PredictionBetWithdrawnEvent
+	public struct
+	0xd880::post
+PromotedPostCreatedEvent
+	public struct
+	0xd880::post
+PromotedPostViewConfirmedEvent
+	public struct
+	0xd880::post
+PromotionDeactivatedEvent
+	public struct
+	0xd880::post
+PromotionStatusToggledEvent
+	public struct
+	0xd880::post
+PromotionFundsWithdrawnEvent
 	public struct
 	0xd880::post
 init
@@ -5869,6 +5986,30 @@ increment_comment_count
 update_post_parameters
 	public entry fun
 	0xd880::post
+create_promoted_post
+	public fun
+	0xd880::post
+confirm_promoted_post_view
+	public entry fun
+	0xd880::post
+deactivate_promotion
+	public entry fun
+	0xd880::post
+toggle_promotion_status
+	public entry fun
+	0xd880::post
+withdraw_promotion_funds
+	public entry fun
+	0xd880::post
+get_promotion_stats
+	public fun
+	0xd880::post
+has_user_viewed_promoted_post
+	public fun
+	0xd880::post
+get_promotion_id
+	public fun
+	0xd880::post
 SocialGraph
 	public struct
 	0xd880::social_graph
@@ -5913,136 +6054,136 @@ get_followers
 	0xd880::social_graph
 ExchangeAdminCap
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 ExchangeConfig
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 TokenRegistry
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 TokenInfo
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 TokenPool
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 SocialToken
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 AuctionInfo
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 AuctionPool
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 TokenPoolCreatedEvent
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 TokenBoughtEvent
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 TokenSoldEvent
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 AuctionCreatedEvent
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 AuctionContributionEvent
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 AuctionFinalizedEvent
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 ConfigUpdatedEvent
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 TokensAddedEvent
 	public struct
-	0xd880::social_proof_token
+	0xd880::token_exchange
 init
 	fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 update_exchange_config
 	public entry fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 check_post_viral_threshold
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 check_profile_viral_threshold
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 start_post_auction
 	public entry fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 start_profile_auction
 	public entry fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 contribute_to_auction
 	public entry fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 is_auction_ended
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 finalize_auction
 	public entry fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 buy_tokens
 	public entry fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 buy_more_tokens
 	public entry fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 sell_tokens
 	public entry fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 calculate_token_price
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 calculate_buy_price
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 calculate_sell_price
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 get_token_info
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 get_token_owner
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 get_pool_price
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 get_user_balance
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 registry_version
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 borrow_registry_version_mut
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 pool_version
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 borrow_pool_version_mut
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 auction_version
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 borrow_auction_version_mut
 	public fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 migrate_token_registry
 	public entry fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 migrate_token_pool
 	public entry fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 migrate_auction_pool
 	public entry fun
-	0xd880::social_proof_token
+	0xd880::token_exchange
 log
 	fun
 	0x5ea1::gf256
