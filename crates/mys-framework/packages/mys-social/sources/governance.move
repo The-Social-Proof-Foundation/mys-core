@@ -7,7 +7,7 @@
 
 #[allow(duplicate_alias, unused_use)]
 module social_contracts::governance {
-    use std::string::{String};
+    use std::string::{Self, String};
     
     use mys::{
         object::{Self, UID, ID},
@@ -253,6 +253,14 @@ module social_contracts::governance {
         total_reward: u64,
         recipient_count: u64,
         distribution_time: u64,
+    }
+
+    /// Event emitted when vote decryption fails
+    public struct VoteDecryptionFailedEvent has copy, drop {
+        proposal_id: ID,
+        voter: address,
+        failure_reason: String,
+        timestamp: u64,
     }
 
     /// Event emitted when a proposal is rescinded by its submitter
@@ -1547,30 +1555,50 @@ module social_contracts::governance {
                 let mut i = 0;
                 let len = vector::length(&voters_vec);
                 
-                // Decrypt all votes and collect results with proper validation
+                // Decrypt all votes and collect results with comprehensive error handling
                 while (i < len) {
                     let addr = *vector::borrow(&voters_vec, i);
                     let enc = table::borrow(votes_tbl, addr);
                     let dec = decrypt(enc, keys, public_keys);
-                    if (dec.is_some()) {
-                        let b = dec.borrow();
+                    
+                    if (option::is_some(&dec)) {
+                        let b = option::borrow(&dec);
                         // Validate vote format: must be exactly 1 byte with value 0 or 1
-                        if (b.length() == 1) {
-                            if (b[0] == 1) {
+                        if (vector::length(b) == 1) {
+                            let vote_value = *vector::borrow(b, 0);
+                            if (vote_value == 1) {
                                 vector::push_back(&mut votes_for, addr);
-                            } else if (b[0] == 0) {
+                            } else if (vote_value == 0) {
                                 vector::push_back(&mut votes_against, addr);
                             } else {
-                                // Invalid vote value (not 0 or 1)
+                                // Invalid vote value (not 0 or 1) - possible attack
                                 vector::push_back(&mut invalid_votes, addr);
+                                event::emit(VoteDecryptionFailedEvent {
+                                    proposal_id,
+                                    voter: addr,
+                                    failure_reason: string::utf8(b"Invalid vote value - not 0 or 1"),
+                                    timestamp: tx_context::epoch_timestamp_ms(ctx),
+                                });
                             }
                         } else {
-                            // Invalid vote format (wrong length)
+                            // Invalid vote format (wrong length) - possible corruption
                             vector::push_back(&mut invalid_votes, addr);
+                            event::emit(VoteDecryptionFailedEvent {
+                                proposal_id,
+                                voter: addr,
+                                failure_reason: string::utf8(b"Invalid vote format - wrong byte length"),
+                                timestamp: tx_context::epoch_timestamp_ms(ctx),
+                            });
                         }
                     } else {
-                        // Failed to decrypt - could be malicious or corrupted
+                        // Failed to decrypt - could be malicious, corrupted, or wrong keys
                         vector::push_back(&mut invalid_votes, addr);
+                        event::emit(VoteDecryptionFailedEvent {
+                            proposal_id,
+                            voter: addr,
+                            failure_reason: string::utf8(b"Decryption failed - invalid keys or corrupted data"),
+                            timestamp: tx_context::epoch_timestamp_ms(ctx),
+                        });
                     };
                     i = i + 1;
                 };

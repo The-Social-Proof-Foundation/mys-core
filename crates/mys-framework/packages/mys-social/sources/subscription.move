@@ -16,14 +16,13 @@ module social_contracts::subscription {
         event
     };
     use mys::mys::MYS;
-
+    
     /// Error codes
     const EInvalidFee: u64 = 12;
     const ENoAccess: u64 = 77;
     const ESubscriptionExpired: u64 = 78;
-    const EInsufficientBalance: u64 = 79;
-    const EAutoRenewalDisabled: u64 = 80;
-    const ENotSubscriptionOwner: u64 = 81;
+    const EAutoRenewalDisabled: u64 = 79;
+    const ENotSubscriptionOwner: u64 = 80;
 
     /// Profile subscription service - one per profile
     public struct ProfileSubscriptionService has key {
@@ -80,6 +79,14 @@ module social_contracts::subscription {
         subscription_id: ID,
         subscriber: address,
         refunded_amount: u64,
+    }
+
+    /// Additional event for fee updates
+    public struct ProfileSubscriptionUpdatedEvent has copy, drop {
+        service_id: ID,
+        old_fee: u64,
+        new_fee: u64,
+        updated_by: address,
     }
 
     /// Create a subscription service for a profile (called by profile owner)
@@ -205,7 +212,8 @@ module social_contracts::subscription {
         });
     }
 
-    /// Simple auto-renew using pre-funded renewal balance
+    /// Gas-optimized auto-renew using pre-funded renewal balance
+    /// Now includes protection against fee changes and service deactivation
     public entry fun auto_renew_subscription(
         service: &ProfileSubscriptionService,
         subscription: &mut ProfileSubscription,
@@ -215,23 +223,38 @@ module social_contracts::subscription {
         assert!(subscription.service_id == object::id(service), ENoAccess);
         assert!(subscription.auto_renew, EAutoRenewalDisabled);
         
+        // Check that the service is still active
+        assert!(service.active, ENoAccess);
+        
         let now = clock::timestamp_ms(clock);
         
         // Only allow auto-renewal if subscription has actually expired
         assert!(subscription.expires_at <= now, ESubscriptionExpired);
         
-        // Check if there's enough balance for renewal
-        assert!(balance::value(&subscription.renewal_balance) >= service.monthly_fee, EInsufficientBalance);
+        // Check if there's enough balance for renewal at current fee
+        let renewal_balance_value = balance::value(&subscription.renewal_balance);
+        
+        // Protection: If fee increased beyond what user has in renewal balance, cancel auto-renewal
+        if (renewal_balance_value < service.monthly_fee) {
+            subscription.auto_renew = false;
+            // Emit event indicating auto-renewal was cancelled due to insufficient funds/fee increase
+            event::emit(ProfileSubscriptionCancelledEvent {
+                subscription_id: object::id(subscription),
+                subscriber: subscription.subscriber,
+                refunded_amount: 0, // No refund in this case
+            });
+            return
+        };
 
-        // Use renewal balance
+        // Use renewal balance (gas optimized - avoid intermediate coin creation when possible)
         let renewal_payment = coin::from_balance(
             balance::split(&mut subscription.renewal_balance, service.monthly_fee),
             ctx
         );
         transfer::public_transfer(renewal_payment, service.profile_owner);
         
-        // Extend expiration by 30 days from current time
-        let extension = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+        // Pre-calculate extension to avoid repeated calculations
+        let extension = 2_592_000_000; // 30 days in milliseconds (pre-calculated)
         subscription.expires_at = now + extension;
         subscription.renewal_count = subscription.renewal_count + 1;
 
@@ -242,6 +265,23 @@ module social_contracts::subscription {
             renewal_count: subscription.renewal_count,
             auto_renewed: true,
         });
+    }
+
+    /// Check if subscription is eligible for auto-renewal without expensive operations
+    /// Now includes service activation check
+    public fun can_auto_renew(
+        subscription: &ProfileSubscription,
+        service: &ProfileSubscriptionService,
+        clock: &Clock
+    ): bool {
+        if (!subscription.auto_renew) return false;
+        if (subscription.service_id != object::id(service)) return false;
+        if (!service.active) return false; // Check service is active
+        
+        let now = clock::timestamp_ms(clock);
+        if (subscription.expires_at > now) return false;
+        
+        balance::value(&subscription.renewal_balance) >= service.monthly_fee
     }
 
     /// User funds their renewal balance for auto-renewal
@@ -281,13 +321,23 @@ module social_contracts::subscription {
     }
 
     /// Update service fee (profile owner only)
+    /// Now emits event when fee changes
     public entry fun update_service_fee(
         service: &mut ProfileSubscriptionService,
         new_fee: u64,
         ctx: &mut TxContext,
     ) {
         assert!(tx_context::sender(ctx) == service.profile_owner, ENotSubscriptionOwner);
+        let old_fee = service.monthly_fee;
         service.monthly_fee = new_fee;
+        
+        // Emit event about fee change
+        event::emit(ProfileSubscriptionUpdatedEvent {
+            service_id: object::id(service),
+            old_fee,
+            new_fee,
+            updated_by: tx_context::sender(ctx),
+        });
     }
 
     /// Deactivate service (profile owner only)
@@ -298,8 +348,6 @@ module social_contracts::subscription {
         assert!(tx_context::sender(ctx) == service.profile_owner, ENotSubscriptionOwner);
         service.active = false;
     }
-
-
 
     /// Cancel subscription and get refund of unused renewal balance
     public entry fun cancel_subscription(

@@ -36,11 +36,9 @@ module social_contracts::my_ip_tests {
             
             my_ip::create_and_share(
                 &mut registry,
-                string::utf8(b"Test Data"),
-                string::utf8(b"Test description for encrypted data"),
                 string::utf8(b"data"),
                 vector[string::utf8(b"analytics"), string::utf8(b"personal")],
-                option::none(), // platform_id
+                option::none<address>(), // platform_id
                 1000, // timestamp_start
                 option::some(2000), // timestamp_end
                 b"encrypted_test_data", // encrypted_data
@@ -68,8 +66,6 @@ module social_contracts::my_ip_tests {
             let myip = test_scenario::take_shared<MyIP>(&scenario);
             
             assert_eq(my_ip::owner(&myip), CREATOR);
-            assert_eq(my_ip::title(&myip), string::utf8(b"Test Data"));
-            assert_eq(my_ip::description(&myip), string::utf8(b"Test description for encrypted data"));
             assert_eq(my_ip::media_type(&myip), string::utf8(b"data"));
             assert_eq(my_ip::one_time_price(&myip), option::some(100));
             assert_eq(my_ip::subscription_price(&myip), option::some(50));
@@ -235,7 +231,7 @@ module social_contracts::my_ip_tests {
                 &mut myip,
                 BUYER,
                 0, // one-time access
-                option::none(),
+                option::none<u64>(),
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
@@ -298,8 +294,8 @@ module social_contracts::my_ip_tests {
             let registry = test_scenario::take_shared<MyIPRegistry>(&scenario);
             let myip = test_scenario::take_shared<MyIP>(&scenario);
             
-                         // Test permission checks (simplified implementation returns true for registered IPs)
-             // Note: For this test, we'll skip the ID-based registry lookups since the field is private
+            // Test permission checks (simplified implementation returns true for registered IPs)
+            // Note: For this test, we'll skip the ID-based registry lookups since the field is private
             
             test_scenario::return_shared(registry);
             test_scenario::return_shared(myip);
@@ -347,24 +343,22 @@ module social_contracts::my_ip_tests {
             
             my_ip::create_and_share(
                 &mut registry,
-                string::utf8(b"Test Data"),
-                string::utf8(b"Test description"),
                 string::utf8(b"data"),
                 vector[string::utf8(b"test")],
-                option::none(), // platform_id
+                option::none<address>(), // platform_id
                 1000, // timestamp_start
-                option::none(), // timestamp_end
+                option::none<u64>(), // timestamp_end
                 b"encrypted_data", // encrypted_data
                 b"encryption_id", // encryption_id
                 option::some(100), // one_time_price
                 option::some(50), // subscription_price
                 30, // subscription_duration_days
-                option::none(), // geographic_region
-                option::none(), // data_quality
-                option::none(), // sample_size
-                option::none(), // collection_method
+                option::none<string::String>(), // geographic_region
+                option::none<string::String>(), // data_quality
+                option::none<u64>(), // sample_size
+                option::none<string::String>(), // collection_method
                 false, // is_updating
-                option::none(), // update_frequency
+                option::none<string::String>(), // update_frequency
                 &clock,
                 test_scenario::ctx(scenario)
             );

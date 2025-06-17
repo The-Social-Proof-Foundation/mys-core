@@ -45,15 +45,15 @@ module social_contracts::my_ip {
     const MAX_TAGS: u64 = 10;
     const MAX_SUBSCRIPTION_DAYS: u64 = 365;
     const MILLISECONDS_PER_DAY: u64 = 86_400_000;
+    const MAX_FREE_ACCESS_GRANTS: u64 = 100_000; // Limit free access to 100k users
+    const MAX_U64: u64 = 18446744073709551615; // Max u64 value for overflow protection
 
     /// Universal MyIP for encrypted data monetization using proper Seal patterns
     public struct MyIP has key, store {
         id: UID,
         owner: address,
         
-        /// Content description and metadata
-        title: String,
-        description: String,
+        /// Content metadata (title and description removed)
         media_type: String,                     // "text", "audio", "image", "gif", "video", "article", "data", "statistics"
         tags: vector<String>,                   // Searchable tags
         platform_id: Option<address>,          // Optional platform identification
@@ -101,7 +101,6 @@ module social_contracts::my_ip {
     public struct MyIPCreatedEvent has copy, drop {
         ip_id: address,
         owner: address,
-        title: String,
         media_type: String,
         platform_id: Option<address>,
         one_time_price: Option<u64>,
@@ -139,8 +138,6 @@ module social_contracts::my_ip {
 
     /// Create new MyIP data with proper Seal encryption
     public fun create(
-        title: String,
-        description: String,
         media_type: String,
         tags: vector<String>,
         platform_id: Option<address>,
@@ -161,28 +158,26 @@ module social_contracts::my_ip {
         ctx: &mut TxContext,
     ): MyIP {
         // Input validation
-        let title_bytes = string::as_bytes(&title);
-        assert!(vector::length(title_bytes) <= MAX_TITLE_LENGTH, EInvalidInput);
-        
-        let desc_bytes = string::as_bytes(&description);
-        assert!(vector::length(desc_bytes) <= MAX_DESCRIPTION_LENGTH, EInvalidInput);
-        
         assert!(vector::length(&tags) <= MAX_TAGS, EInvalidInput);
         
-        // Validate prices
+        // Validate prices with overflow protection
         if (option::is_some(&one_time_price)) {
             let price_val = *option::borrow(&one_time_price);
-            assert!(price_val > 0, EInvalidInput);
+            assert!(price_val > 0 && price_val <= MAX_U64, EInvalidInput);
         };
         
         if (option::is_some(&subscription_price)) {
             let price_val = *option::borrow(&subscription_price);
-            assert!(price_val > 0, EInvalidInput);
+            assert!(price_val > 0 && price_val <= MAX_U64, EInvalidInput);
         };
         
-        // Validate subscription duration
+        // Validate subscription duration with overflow protection
         let sub_duration = if (subscription_duration_days == 0) { 30 } else { subscription_duration_days };
         assert!(sub_duration <= MAX_SUBSCRIPTION_DAYS, EInvalidInput);
+        
+        // Check for potential overflow in millisecond conversion
+        let duration_ms = (sub_duration as u128) * (MILLISECONDS_PER_DAY as u128);
+        assert!(duration_ms <= (MAX_U64 as u128), EOverflow);
         
         // Validate time range
         if (option::is_some(&timestamp_end)) {
@@ -195,8 +190,6 @@ module social_contracts::my_ip {
         let myip = MyIP {
             id: object::new(ctx),
             owner: tx_context::sender(ctx),
-            title,
-            description,
             media_type,
             tags,
             platform_id,
@@ -225,7 +218,6 @@ module social_contracts::my_ip {
         event::emit(MyIPCreatedEvent {
             ip_id,
             owner: myip.owner,
-            title: myip.title,
             media_type: myip.media_type,
             platform_id: myip.platform_id,
             one_time_price: myip.one_time_price,
@@ -240,8 +232,6 @@ module social_contracts::my_ip {
     #[allow(lint(share_owned))]
     public entry fun create_and_share(
         registry: &mut MyIPRegistry,
-        title: String,
-        description: String,
         media_type: String,
         tags: vector<String>,
         platform_id: Option<address>,
@@ -262,8 +252,6 @@ module social_contracts::my_ip {
         ctx: &mut TxContext,
     ) {
         let myip = create(
-            title,
-            description,
             media_type,
             tags,
             platform_id,
@@ -351,13 +339,13 @@ module social_contracts::my_ip {
         assert!(myip.subscription_duration_days > 0, EInvalidInput);
         assert!(myip.subscription_duration_days <= MAX_SUBSCRIPTION_DAYS, EInvalidInput);
         
-        // Calculate subscription expiry safely
+        // Calculate subscription expiry safely with overflow protection
         let current_time = clock::timestamp_ms(clock);
         let duration_ms = (myip.subscription_duration_days as u128) * (MILLISECONDS_PER_DAY as u128);
         let expiry_time = (current_time as u128) + duration_ms;
         
         // Ensure we don't overflow u64
-        assert!(expiry_time <= (18446744073709551615 as u128), EOverflow);
+        assert!(expiry_time <= (MAX_U64 as u128), EOverflow);
         let expiry_time_u64 = expiry_time as u64;
         
         // Handle payment
@@ -370,7 +358,7 @@ module social_contracts::my_ip {
             let new_expiry = if (current_expiry > current_time) {
                 // Add to existing time, but check for overflow
                 let extended_time = (current_expiry as u128) + duration_ms;
-                assert!(extended_time <= (18446744073709551615 as u128), EOverflow);
+                assert!(extended_time <= (MAX_U64 as u128), EOverflow);
                 extended_time as u64
             } else {
                 expiry_time_u64
@@ -435,8 +423,6 @@ module social_contracts::my_ip {
     public entry fun update_content(
         myip: &mut MyIP,
         new_encrypted_data: Option<vector<u8>>,
-        new_title: Option<String>,
-        new_description: Option<String>,
         new_tags: Option<vector<String>>,
         clock: &Clock,
         ctx: &mut TxContext,
@@ -445,14 +431,6 @@ module social_contracts::my_ip {
         
         if (option::is_some(&new_encrypted_data)) {
             myip.encrypted_data = *option::borrow(&new_encrypted_data);
-        };
-        
-        if (option::is_some(&new_title)) {
-            myip.title = *option::borrow(&new_title);
-        };
-        
-        if (option::is_some(&new_description)) {
-            myip.description = *option::borrow(&new_description);
         };
         
         if (option::is_some(&new_tags)) {
@@ -537,7 +515,7 @@ module social_contracts::my_ip {
             let expiry_time = (current_time as u128) + duration_ms;
             
             // Ensure we don't overflow u64
-            assert!(expiry_time <= (18446744073709551615 as u128), EOverflow);
+            assert!(expiry_time <= (MAX_U64 as u128), EOverflow);
             let expiry_time_u64 = expiry_time as u64;
             
             if (table::contains(&myip.subscribers, user)) {
@@ -558,8 +536,6 @@ module social_contracts::my_ip {
     // === Getter Functions ===
     
     public fun owner(myip: &MyIP): address { myip.owner }
-    public fun title(myip: &MyIP): String { myip.title }
-    public fun description(myip: &MyIP): String { myip.description }
     public fun media_type(myip: &MyIP): String { myip.media_type }
     public fun tags(myip: &MyIP): vector<String> { myip.tags }
     public fun platform_id(myip: &MyIP): Option<address> { myip.platform_id }
@@ -598,21 +574,43 @@ module social_contracts::my_ip {
         }
     }
 
-    /// Get total revenue potential (for analytics)
+    /// Get total revenue potential (for analytics) with overflow protection
     public fun get_revenue_potential(myip: &MyIP): u64 {
         let one_time_revenue = if (option::is_some(&myip.one_time_price)) {
-            *option::borrow(&myip.one_time_price) * table::length(&myip.purchasers)
+            let price = *option::borrow(&myip.one_time_price);
+            let count = table::length(&myip.purchasers);
+            // Use u128 for calculation to detect overflow
+            let revenue = (price as u128) * (count as u128);
+            if (revenue > (MAX_U64 as u128)) {
+                MAX_U64
+            } else {
+                revenue as u64
+            }
         } else {
             0
         };
         
         let subscription_revenue = if (option::is_some(&myip.subscription_price)) {
-            *option::borrow(&myip.subscription_price) * table::length(&myip.subscribers)
+            let price = *option::borrow(&myip.subscription_price);
+            let count = table::length(&myip.subscribers);
+            // Use u128 for calculation to detect overflow
+            let revenue = (price as u128) * (count as u128);
+            if (revenue > (MAX_U64 as u128)) {
+                MAX_U64
+            } else {
+                revenue as u64
+            }
         } else {
             0
         };
         
-        one_time_revenue + subscription_revenue
+        // Safe addition with overflow protection
+        let total_revenue = (one_time_revenue as u128) + (subscription_revenue as u128);
+        if (total_revenue > (MAX_U64 as u128)) {
+            MAX_U64
+        } else {
+            total_revenue as u64
+        }
     }
 
     /// Check if MyIP has any sales (one-time or subscription)
@@ -629,50 +627,6 @@ module social_contracts::my_ip {
         } else {
             option::none()
         }
-    }
-
-    /// Get creator of a MyIP by ID (alias for registry_get_owner for backward compatibility)
-    public fun registry_get_creator(registry: &MyIPRegistry, ip_id: address): address {
-        assert!(table::contains(&registry.ip_to_owner, ip_id), EUnauthorized);
-        *table::borrow(&registry.ip_to_owner, ip_id)
-    }
-
-    /// Check if reactions are allowed (registry version)
-    public fun registry_is_reactions_allowed(registry: &MyIPRegistry, ip_id: address, _ctx: &TxContext): bool {
-        // Since this is simplified MyIP without complex licensing, always allow reactions
-        // In a full implementation, this would check actual MyIP permissions
-        table::contains(&registry.ip_to_owner, ip_id)
-    }
-
-    /// Check if comments are allowed (registry version)
-    public fun registry_is_commenting_allowed(registry: &MyIPRegistry, ip_id: address, _ctx: &TxContext): bool {
-        // Since this is simplified MyIP without complex licensing, always allow comments
-        // In a full implementation, this would check actual MyIP permissions
-        table::contains(&registry.ip_to_owner, ip_id)
-    }
-
-    /// Check if tipping is allowed (registry version)
-    public fun registry_is_tipping_allowed(registry: &MyIPRegistry, ip_id: address, _ctx: &TxContext): bool {
-        // Since this is simplified MyIP without complex licensing, always allow tipping
-        // In a full implementation, this would check actual MyIP permissions
-        table::contains(&registry.ip_to_owner, ip_id)
-    }
-
-    /// Check if revenue is redirected (registry version)
-    public fun registry_is_revenue_redirected(registry: &MyIPRegistry, ip_id: address, _ctx: &TxContext): bool {
-        // For simplified MyIP, no revenue redirection - always false
-        // In a full implementation, this would check MyIP settings
-        let _ = registry;
-        let _ = ip_id;
-        false
-    }
-
-    /// Get revenue recipient (registry version)
-    public fun registry_get_revenue_recipient(registry: &MyIPRegistry, ip_id: address): address {
-        // For simplified MyIP, return the original owner
-        // In a full implementation, this would return the configured recipient
-        assert!(table::contains(&registry.ip_to_owner, ip_id), EUnauthorized);
-        *table::borrow(&registry.ip_to_owner, ip_id)
     }
 
     /// Check if a MyIP is registered
@@ -782,7 +736,7 @@ module social_contracts::my_ip {
     #[test_only]
     public fun test_destroy(myip: MyIP) {
         let MyIP { 
-            id, owner: _, title: _, description: _, media_type: _, tags: _, platform_id: _,
+            id, owner: _, media_type: _, tags: _, platform_id: _,
             timestamp_start: _, timestamp_end: _, created_at: _, last_updated: _,
             encrypted_data: _, encryption_id: _, one_time_price: _, subscription_price: _,
             subscription_duration_days: _, purchasers, subscribers, geographic_region: _,

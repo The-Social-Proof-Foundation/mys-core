@@ -114,32 +114,6 @@ module social_contracts::profile {
         created_at: u64,
         /// Profile owner address
         owner: address,
-        /// Birthdate as encrypted string (optional)
-        birthdate: Option<String>,
-        /// Current location as encrypted string (optional)
-        current_location: Option<String>,
-        /// Raised location as encrypted string (optional)
-        raised_location: Option<String>,
-        /// Phone number as encrypted string (optional)
-        phone: Option<String>,
-        /// Email as encrypted string (optional)
-        email: Option<String>,
-        /// Is email verified flag
-        is_email_verified: bool,
-        /// Gender as encrypted string (optional)
-        gender: Option<String>,
-        /// Political view as encrypted string (optional)
-        political_view: Option<String>,
-        /// Religion as encrypted string (optional)
-        religion: Option<String>,
-        /// Education as encrypted string (optional)
-        education: Option<String>,
-        /// Website as encrypted string (optional)
-        website: Option<String>,
-        /// Primary language as encrypted string (optional)
-        primary_language: Option<String>,
-        /// Relationship status as encrypted string (optional)
-        relationship_status: Option<String>,
         /// X/Twitter username as encrypted string (optional)
         x_username: Option<String>,
         /// Mastodon username as encrypted string (optional)
@@ -150,6 +124,8 @@ module social_contracts::profile {
         reddit_username: Option<String>,
         /// GitHub username as encrypted string (optional)
         github_username: Option<String>,
+        /// Instagram username as encrypted string (optional)
+        instagram_username: Option<String>,
         /// Last updated timestamp for profile data
         last_updated: u64,
         /// Number of followers
@@ -164,6 +140,8 @@ module social_contracts::profile {
         min_offer_amount: Option<u64>,
         /// Collection of badges assigned to the profile
         badges: vector<ProfileBadge>,
+        /// Vector tracking attached MyIP IDs for efficient iteration
+        attached_my_ip_ids: vector<address>,
     }
 
     /// Profile Badge that can be assigned to profiles by platform admins/moderators
@@ -243,25 +221,13 @@ module social_contracts::profile {
         cover_photo: Option<String>,
         owner: address,
         updated_at: u64,
-        // Sensitive fields (all encrypted client-side)
-        birthdate: Option<String>,
-        current_location: Option<String>,
-        raised_location: Option<String>,
-        phone: Option<String>,
-        email: Option<String>,
-        is_email_verified: bool,
-        gender: Option<String>,
-        political_view: Option<String>,
-        religion: Option<String>,
-        education: Option<String>,
-        website: Option<String>,
-        primary_language: Option<String>,
-        relationship_status: Option<String>,
+        // Social media usernames
         x_username: Option<String>,
         mastodon_username: Option<String>,
         facebook_username: Option<String>,
         reddit_username: Option<String>,
         github_username: Option<String>,
+        instagram_username: Option<String>,
         min_offer_amount: Option<u64>,
     }
 
@@ -465,24 +431,12 @@ module social_contracts::profile {
             cover_photo,
             created_at: now,
             owner,
-            birthdate: option::none(),
-            current_location: option::none(),
-            raised_location: option::none(),
-            phone: option::none(),
-            email: option::none(),
-            is_email_verified: false,
-            gender: option::none(),
-            political_view: option::none(),
-            religion: option::none(),
-            education: option::none(),
-            website: option::none(),
-            primary_language: option::none(),
-            relationship_status: option::none(),
             x_username: option::none(),
             mastodon_username: option::none(),
             facebook_username: option::none(),
             reddit_username: option::none(),
             github_username: option::none(),
+            instagram_username: option::none(),
             last_updated: now,
             followers_count: 0,
             following_count: 0,
@@ -490,6 +444,7 @@ module social_contracts::profile {
             tips_received: 0,
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
+            attached_my_ip_ids: vector::empty<address>(),
         };
         
         // Get the profile ID
@@ -604,25 +559,13 @@ module social_contracts::profile {
             },
             owner: new_owner,
             updated_at: tx_context::epoch(ctx),
-            // Include all sensitive fields
-            birthdate: profile.birthdate,
-            current_location: profile.current_location,
-            raised_location: profile.raised_location,
-            phone: profile.phone,
-            email: profile.email,
-            is_email_verified: profile.is_email_verified,
-            gender: profile.gender,
-            political_view: profile.political_view,
-            religion: profile.religion,
-            education: profile.education,
-            website: profile.website,
-            primary_language: profile.primary_language,
-            relationship_status: profile.relationship_status,
+            // Social media usernames
             x_username: profile.x_username,
             mastodon_username: profile.mastodon_username,
             facebook_username: profile.facebook_username,
             reddit_username: profile.reddit_username,
             github_username: profile.github_username,
+            instagram_username: profile.instagram_username,
             min_offer_amount: profile.min_offer_amount,
         });
         
@@ -639,24 +582,13 @@ module social_contracts::profile {
         new_bio: String,
         new_profile_picture_url: vector<u8>,
         new_cover_photo_url: vector<u8>,
-        // Sensitive profile fields (all optional)
-        birthdate: Option<String>,
-        current_location: Option<String>,
-        raised_location: Option<String>,
-        phone: Option<String>,
-        email: Option<String>,
-        gender: Option<String>,
-        political_view: Option<String>,
-        religion: Option<String>,
-        education: Option<String>,
-        website: Option<String>,
-        primary_language: Option<String>,
-        relationship_status: Option<String>,
+        // Social media usernames (all optional)
         x_username: Option<String>,
         mastodon_username: Option<String>,
         facebook_username: Option<String>,
         reddit_username: Option<String>,
         github_username: Option<String>,
+        instagram_username: Option<String>,
         min_offer_amount: Option<u64>,
         ctx: &mut TxContext
     ) {
@@ -682,55 +614,7 @@ module social_contracts::profile {
             profile.cover_photo = option::some(url::new_unsafe_from_bytes(new_cover_photo_url));
         };
 
-        // Update sensitive profile details if provided
-        if (option::is_some(&birthdate)) {
-            profile.birthdate = birthdate;
-        };
-        
-        if (option::is_some(&current_location)) {
-            profile.current_location = current_location;
-        };
-        
-        if (option::is_some(&raised_location)) {
-            profile.raised_location = raised_location;
-        };
-        
-        if (option::is_some(&phone)) {
-            profile.phone = phone;
-        };
-        
-        if (option::is_some(&email)) {
-            profile.email = email;
-        };
-        
-        if (option::is_some(&gender)) {
-            profile.gender = gender;
-        };
-        
-        if (option::is_some(&political_view)) {
-            profile.political_view = political_view;
-        };
-        
-        if (option::is_some(&religion)) {
-            profile.religion = religion;
-        };
-        
-        if (option::is_some(&education)) {
-            profile.education = education;
-        };
-        
-        if (option::is_some(&website)) {
-            profile.website = website;
-        };
-        
-        if (option::is_some(&primary_language)) {
-            profile.primary_language = primary_language;
-        };
-        
-        if (option::is_some(&relationship_status)) {
-            profile.relationship_status = relationship_status;
-        };
-        
+        // Update social media usernames if provided
         if (option::is_some(&x_username)) {
             profile.x_username = x_username;
         };
@@ -749,6 +633,10 @@ module social_contracts::profile {
         
         if (option::is_some(&github_username)) {
             profile.github_username = github_username;
+        };
+
+        if (option::is_some(&instagram_username)) {
+            profile.instagram_username = instagram_username;
         };
 
         if (option::is_some(&min_offer_amount)) {
@@ -791,25 +679,13 @@ module social_contracts::profile {
             cover_photo: cover_photo_string,
             owner: profile.owner,
             updated_at: now,
-            // Include all sensitive fields
-            birthdate: profile.birthdate,
-            current_location: profile.current_location,
-            raised_location: profile.raised_location,
-            phone: profile.phone,
-            email: profile.email,
-            is_email_verified: profile.is_email_verified,
-            gender: profile.gender,
-            political_view: profile.political_view,
-            religion: profile.religion,
-            education: profile.education,
-            website: profile.website,
-            primary_language: profile.primary_language,
-            relationship_status: profile.relationship_status,
+            // Social media usernames
             x_username: profile.x_username,
             mastodon_username: profile.mastodon_username,
             facebook_username: profile.facebook_username,
             reddit_username: profile.reddit_username,
             github_username: profile.github_username,
+            instagram_username: profile.instagram_username,
             min_offer_amount: profile.min_offer_amount,
         });
     }
@@ -1048,16 +924,23 @@ module social_contracts::profile {
         ctx: &mut TxContext
     ) {
         assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
+        
+        // Initialize table if it doesn't exist
         if (!dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD)) {
             let tbl = table::new<address, bool>(ctx);
             dynamic_field::add(&mut profile.id, MY_IP_DATA_FIELD, tbl);
         };
+        
         let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, bool>>(
             &mut profile.id,
             MY_IP_DATA_FIELD,
         );
+        
+        // Only add if not already attached
         if (!table::contains(tbl, my_ip_id)) {
             table::add(tbl, my_ip_id, true);
+            // Also add to the tracking vector for efficient iteration
+            vector::push_back(&mut profile.attached_my_ip_ids, my_ip_id);
         };
     }
 
@@ -1080,28 +963,113 @@ module social_contracts::profile {
         ctx: &mut TxContext
     ) {
         assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
+        
         if (!dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD)) {
             return
         };
+        
         let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, bool>>(
             &mut profile.id,
             MY_IP_DATA_FIELD,
         );
+        
         if (table::contains(tbl, my_ip_id)) {
             table::remove(tbl, my_ip_id);
+            
+            // Also remove from the tracking vector
+            let mut i = 0;
+            let len = vector::length(&profile.attached_my_ip_ids);
+            while (i < len) {
+                if (*vector::borrow(&profile.attached_my_ip_ids, i) == my_ip_id) {
+                    vector::remove(&mut profile.attached_my_ip_ids, i);
+                    break
+                };
+                i = i + 1;
+            };
         };
     }
 
     /// Get all attached MyIP IDs for this profile
     public fun get_attached_my_ips(profile: &Profile): vector<address> {
+        // Return a copy of the attached MyIP IDs vector for efficient iteration
+        profile.attached_my_ip_ids
+    }
+
+    /// Batch attach multiple MyIPs to profile for gas optimization
+    public entry fun batch_attach_my_ips(
+        profile: &mut Profile,
+        my_ip_ids: vector<address>,
+        ctx: &mut TxContext
+    ) {
+        assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
+        
+        // Initialize table if it doesn't exist
         if (!dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD)) {
-            return vector::empty<address>()
+            let tbl = table::new<address, bool>(ctx);
+            dynamic_field::add(&mut profile.id, MY_IP_DATA_FIELD, tbl);
         };
         
-        // Note: This is a simplified implementation
-        // In practice, you'd need to iterate through the table keys
-        // For now, returning empty vector as this would require table iteration utilities
-        vector::empty<address>()
+        let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, bool>>(
+            &mut profile.id,
+            MY_IP_DATA_FIELD,
+        );
+        
+        let mut i = 0;
+        let len = vector::length(&my_ip_ids);
+        
+        while (i < len) {
+            let my_ip_id = *vector::borrow(&my_ip_ids, i);
+            
+            // Only add if not already attached
+            if (!table::contains(tbl, my_ip_id)) {
+                table::add(tbl, my_ip_id, true);
+                vector::push_back(&mut profile.attached_my_ip_ids, my_ip_id);
+            };
+            
+            i = i + 1;
+        };
+    }
+
+    /// Batch detach multiple MyIPs from profile for gas optimization
+    public entry fun batch_detach_my_ips(
+        profile: &mut Profile,
+        my_ip_ids: vector<address>,
+        ctx: &mut TxContext
+    ) {
+        assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
+        
+        if (!dynamic_field::exists_(&profile.id, MY_IP_DATA_FIELD)) {
+            return
+        };
+        
+        let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, bool>>(
+            &mut profile.id,
+            MY_IP_DATA_FIELD,
+        );
+        
+        let mut i = 0;
+        let len = vector::length(&my_ip_ids);
+        
+        while (i < len) {
+            let my_ip_id = *vector::borrow(&my_ip_ids, i);
+            
+            if (table::contains(tbl, my_ip_id)) {
+                table::remove(tbl, my_ip_id);
+                
+                // Remove from tracking vector
+                let mut j = 0;
+                let vec_len = vector::length(&profile.attached_my_ip_ids);
+                while (j < vec_len) {
+                    if (*vector::borrow(&profile.attached_my_ip_ids, j) == my_ip_id) {
+                        vector::remove(&mut profile.attached_my_ip_ids, j);
+                        break
+                    };
+                    j = j + 1;
+                };
+            };
+            
+            i = i + 1;
+        };
     }
 
     /// Create an offer to purchase a profile
@@ -1265,25 +1233,13 @@ module social_contracts::profile {
             },
             owner: offeror,
             updated_at: now,
-            // Include all sensitive fields
-            birthdate: profile.birthdate,
-            current_location: profile.current_location,
-            raised_location: profile.raised_location,
-            phone: profile.phone,
-            email: profile.email,
-            is_email_verified: profile.is_email_verified,
-            gender: profile.gender,
-            political_view: profile.political_view,
-            religion: profile.religion,
-            education: profile.education,
-            website: profile.website,
-            primary_language: profile.primary_language,
-            relationship_status: profile.relationship_status,
+            // Social media usernames
             x_username: profile.x_username,
             mastodon_username: profile.mastodon_username,
             facebook_username: profile.facebook_username,
             reddit_username: profile.reddit_username,
             github_username: profile.github_username,
+            instagram_username: profile.instagram_username,
             min_offer_amount: profile.min_offer_amount,
         });
         
@@ -1450,24 +1406,12 @@ module social_contracts::profile {
             cover_photo: option::none(),
             created_at: epoch,
             owner,
-            birthdate: option::none(),
-            current_location: option::none(),
-            raised_location: option::none(),
-            phone: option::none(),
-            email: option::none(),
-            is_email_verified: false,
-            gender: option::none(),
-            political_view: option::none(),
-            religion: option::none(),
-            education: option::none(),
-            website: option::none(),
-            primary_language: option::none(),
-            relationship_status: option::none(),
             x_username: option::none(),
             mastodon_username: option::none(),
             facebook_username: option::none(),
             reddit_username: option::none(),
             github_username: option::none(),
+            instagram_username: option::none(),
             last_updated: epoch,
             followers_count: 0,
             post_count: 0,
@@ -1475,6 +1419,7 @@ module social_contracts::profile {
             following_count: 0,
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
+            attached_my_ip_ids: vector::empty<address>(),
         };
         
         // Get the profile ID and use it for registration
@@ -1653,72 +1598,7 @@ module social_contracts::profile {
         vector::length(&profile.badges)
     }
     
-    /// Get whether the email is verified for a profile
-    public fun is_email_verified(profile: &Profile): bool {
-        profile.is_email_verified
-    }
+
     
-    /// Toggle the email verification status for a profile
-    /// Only the admin with the UpgradeAdminCap can call this function
-    public entry fun toggle_email_verification(
-        profile: &mut Profile,
-        _admin_cap: &upgrade::UpgradeAdminCap,
-        is_verified: bool,
-        ctx: &mut TxContext
-    ) {
-        // Admin check is implicit through the requirement of the UpgradeAdminCap
-        let _admin = tx_context::sender(ctx);
-        
-        // Update the email verification status
-        profile.is_email_verified = is_verified;
-        
-        // Get the profile ID for the event
-        let profile_id = object::uid_to_address(&profile.id);
-        
-        // Emit profile updated event to reflect the change in verification status
-        event::emit(ProfileUpdatedEvent {
-            profile_id,
-            display_name: profile.display_name,
-            username: if (dynamic_field::exists_(&profile.id, USERNAME_FIELD)) {
-                option::some(*dynamic_field::borrow<vector<u8>, String>(&profile.id, USERNAME_FIELD))
-            } else {
-                option::none()
-            },
-            bio: profile.bio,
-            profile_picture: if (option::is_some(&profile.profile_picture)) {
-                let url = option::borrow(&profile.profile_picture);
-                option::some(ascii_to_string(url::inner_url(url)))
-            } else {
-                option::none()
-            },
-            cover_photo: if (option::is_some(&profile.cover_photo)) {
-                let url = option::borrow(&profile.cover_photo);
-                option::some(ascii_to_string(url::inner_url(url)))
-            } else {
-                option::none()
-            },
-            owner: profile.owner,
-            updated_at: tx_context::epoch(ctx),
-            // Include all sensitive fields
-            birthdate: profile.birthdate,
-            current_location: profile.current_location,
-            raised_location: profile.raised_location,
-            phone: profile.phone,
-            email: profile.email,
-            is_email_verified: profile.is_email_verified,
-            gender: profile.gender,
-            political_view: profile.political_view,
-            religion: profile.religion,
-            education: profile.education,
-            website: profile.website,
-            primary_language: profile.primary_language,
-            relationship_status: profile.relationship_status,
-            x_username: profile.x_username,
-            mastodon_username: profile.mastodon_username,
-            facebook_username: profile.facebook_username,
-            reddit_username: profile.reddit_username,
-            github_username: profile.github_username,
-            min_offer_amount: profile.min_offer_amount,
-        });
-    }
+
 }

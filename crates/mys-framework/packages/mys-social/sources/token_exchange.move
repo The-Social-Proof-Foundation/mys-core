@@ -7,17 +7,22 @@
 /// It includes fee distribution mechanisms for transactions, splitting between profile owner,
 /// platform, and ecosystem treasury.
 
-#[allow(unused_field, deprecated_usage, unused_const)]
+#[allow(unused_field, deprecated_usage, unused_const, duplicate_alias, unused_use)]
 module social_contracts::token_exchange {
-    use std::string::{Self, String};
+    use std::{string::{Self, String}, option, vector};
 
-    use mys::event;
-    use mys::table::{Self, Table};
-    use mys::coin::{Self, Coin};
-    use mys::mys::MYS;
-    use mys::balance::{Self, Balance};
-    use mys::clock::{Self, Clock};
-    use mys::math;
+    use mys::{
+        object::{Self, UID, ID},
+        tx_context::{Self, TxContext},
+        transfer,
+        event,
+        table::{Self, Table},
+        coin::{Self, Coin},
+        mys::MYS,
+        balance::{Self, Balance},
+        clock::{Self, Clock},
+        math
+    };
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
     use social_contracts::post::{Self, Post};

@@ -10,7 +10,14 @@
 module seal::key_server;
 
 use std::string::String;
-use mys::{bls12381::{G2, g2_from_bytes}, dynamic_field as df, group_ops::Element};
+use mys::{
+    object::{Self, UID, ID},
+    tx_context::{Self, TxContext},
+    transfer,
+    bls12381::{G2, g2_from_bytes}, 
+    dynamic_field as df, 
+    group_ops::Element
+};
 
 const EInvalidCap: u64 = 0;
 const EInvalidKeyType: u64 = 1;

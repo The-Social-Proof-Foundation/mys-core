@@ -4,17 +4,23 @@
 /// Platform module for the MySocial network
 /// Manages social media platforms and their timelines
 
+#[allow(duplicate_alias, unused_use)]
 module social_contracts::platform {
-    use std::string::{Self, String};
+    use std::{string::{Self, String}, option, vector};
     
-    use mys::dynamic_field;
-    use mys::vec_set::{Self, VecSet};
-    use mys::table::{Self, Table};
-    use mys::coin::{Self, Coin};
-    use mys::balance::{Self, Balance};
-    use mys::mys::MYS;
-    use mys::package::{Self, Publisher};
-    use mys::event;
+    use mys::{
+        object::{Self, UID, ID},
+        tx_context::{Self, TxContext},
+        transfer,
+        dynamic_field,
+        vec_set::{Self, VecSet},
+        table::{Self, Table},
+        coin::{Self, Coin},
+        balance::{Self, Balance},
+        mys::MYS,
+        package::{Self, Publisher},
+        event
+    };
     
     use social_contracts::profile;
     use social_contracts::governance;

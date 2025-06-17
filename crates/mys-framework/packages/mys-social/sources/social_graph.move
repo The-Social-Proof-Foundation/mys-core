@@ -4,12 +4,18 @@
 /// Social graph module for the MySocial network
 /// Manages social relationships between users (following/followers)
 
+#[allow(duplicate_alias, unused_use)]
 module social_contracts::social_graph {
-    use std::string;
+    use std::{string, option, vector};
     
-    use mys::event;
-    use mys::table::{Self, Table};
-    use mys::vec_set::{Self, VecSet};
+    use mys::{
+        object::{Self, UID, ID},
+        tx_context::{Self, TxContext},
+        transfer,
+        event,
+        table::{Self, Table},
+        vec_set::{Self, VecSet}
+    };
     
     use social_contracts::profile;
     use social_contracts::upgrade;
