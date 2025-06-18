@@ -28,6 +28,7 @@ module social_contracts::post {
     use social_contracts::platform;
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
+    use social_contracts::proof_of_creativity;
 
     /// Error codes
     const EUnauthorized: u64 = 0;
@@ -134,6 +135,12 @@ module social_contracts::post {
         allow_reposts: bool,
         allow_quotes: bool,
         allow_tips: bool,
+        /// Optional Proof of Creativity badge ID (for original content that passed verification)
+        poc_badge_id: Option<ID>,
+        /// Optional revenue redirection to original creator (for derivative content)
+        revenue_redirect_to: Option<address>,
+        /// Optional revenue redirection percentage (0-100)
+        revenue_redirect_percentage: Option<u64>,
         /// Version for upgrades
         version: u64,
     }
@@ -1087,6 +1094,9 @@ module social_contracts::post {
             allow_reposts,
             allow_quotes,
             allow_tips,
+            poc_badge_id: option::none(),
+            revenue_redirect_to: option::none(),
+            revenue_redirect_percentage: option::none(),
             version: upgrade::current_version(),
         };
         
@@ -1594,6 +1604,9 @@ module social_contracts::post {
             allow_reposts: _,
             allow_quotes: _,
             allow_tips: _,
+            poc_badge_id: _,
+            revenue_redirect_to: _,
+            revenue_redirect_percentage: _,
             version: _,
         } = post;
         
@@ -1745,7 +1758,7 @@ module social_contracts::post {
         });
     }
 
-    /// Tip a post creator with MYS tokens
+    /// Tip a post creator with MySo tokens (with PoC revenue redirection support)
     public entry fun tip_post(
         post: &mut Post,
         coins: &mut Coin<MYS>,
@@ -1767,26 +1780,124 @@ module social_contracts::post {
         // Check if tips are allowed on this post
         assert!(post.allow_tips, ETipsNotAllowed);
         
-        // Take the tip amount out of the provided coin
-        let tip_coins = coin::split(coins, amount, ctx);
+        // Apply PoC redirection and transfer
+        let actual_received = apply_poc_redirection_and_transfer(
+            post,
+            post.owner,
+            amount,
+            coins,
+            tipper,
+            object::uid_to_address(&post.id),
+            true,
+            ctx
+        );
         
         // Record total tips received for this post
-        post.tips_received = post.tips_received + amount;
+        post.tips_received = post.tips_received + actual_received;
         
-        // Transfer tip to post owner
-        transfer::public_transfer(tip_coins, post.owner);
-        
-        // Emit tip event
-        event::emit(TipEvent {
-            object_id: object::uid_to_address(&post.id),
-            from: tipper,
-            to: post.owner,
-            amount,
-            is_post: true,
-        });
+        // Emit tip event for amount actually received by post owner
+        if (actual_received > 0) {
+            event::emit(TipEvent {
+                object_id: object::uid_to_address(&post.id),
+                from: tipper,
+                to: post.owner,
+                amount: actual_received,
+                is_post: true,
+            });
+        };
     }
-    
-    /// Tip a repost with MYS tokens - applies 50/50 split between repost owner and original post owner
+
+    /// Helper function to apply PoC revenue redirection and transfer coins
+    /// Returns the amount actually received by the intended recipient
+    fun apply_poc_redirection_and_transfer(
+        post: &Post,
+        intended_recipient: address,
+        amount: u64,
+        coins: &mut Coin<MYS>,
+        tipper: address,
+        object_id: address,
+        is_post_event: bool,
+        ctx: &mut TxContext
+    ): u64 {
+        // Check if this post has revenue redirection for the intended recipient
+        if (intended_recipient == post.owner && 
+            option::is_some(&post.revenue_redirect_to) && 
+            option::is_some(&post.revenue_redirect_percentage)) {
+            
+            let redirect_percentage = *option::borrow(&post.revenue_redirect_percentage);
+            let original_creator = *option::borrow(&post.revenue_redirect_to);
+            
+            if (redirect_percentage > 0) {
+                // Calculate tip split
+                let redirected_amount = (amount * redirect_percentage) / 100;
+                let remaining_amount = amount - redirected_amount;
+                
+                // Take the tip amount out of the provided coin
+                let mut tip_coins = coin::split(coins, amount, ctx);
+                
+                if (redirected_amount > 0) {
+                    // Split tip for redirection
+                    let redirected_coins = coin::split(&mut tip_coins, redirected_amount, ctx);
+                    
+                    // Transfer redirected amount to original creator
+                    transfer::public_transfer(redirected_coins, original_creator);
+                    
+                    // Emit redirection event
+                    event::emit(TipEvent {
+                        object_id,
+                        from: tipper,
+                        to: original_creator,
+                        amount: redirected_amount,
+                        is_post: is_post_event,
+                    });
+                };
+                
+                if (remaining_amount > 0) {
+                    // Transfer remaining amount to intended recipient
+                    transfer::public_transfer(tip_coins, intended_recipient);
+                } else {
+                    coin::destroy_zero(tip_coins);
+                };
+                
+                return remaining_amount
+            };
+        };
+        
+        // No redirection - normal transfer
+        let tip_coins = coin::split(coins, amount, ctx);
+        transfer::public_transfer(tip_coins, intended_recipient);
+        amount
+    }
+
+        /// Internal function to update PoC result (called only from proof_of_creativity module)
+    public(package) fun update_poc_result(
+        post: &mut Post,
+        result_type: u8, // 1 = badge issued, 2 = redirection applied
+        badge_id: Option<ID>,
+        redirect_to: Option<address>,
+        redirect_percentage: Option<u64>
+    ) {
+        if (result_type == 1) {
+            // PoC badge issued - content is original
+            post.poc_badge_id = badge_id;
+            post.revenue_redirect_to = option::none();
+            post.revenue_redirect_percentage = option::none();
+        } else if (result_type == 2) {
+            // Revenue redirection applied - content is derivative
+            post.poc_badge_id = option::none();
+            post.revenue_redirect_to = redirect_to;
+            post.revenue_redirect_percentage = redirect_percentage;
+        };
+    }
+
+    /// Internal function to clear PoC data after dispute resolution
+    public(package) fun clear_poc_data(post: &mut Post) {
+        post.poc_badge_id = option::none();
+        post.revenue_redirect_to = option::none();
+        post.revenue_redirect_percentage = option::none();
+    }
+     
+     /// Tip a repost with MySo tokens - applies 50/50 split between repost owner and original post owner
     public entry fun tip_repost(
         post: &mut Post, // The repost
         original_post: &mut Post, // The original post
@@ -1823,60 +1934,88 @@ module social_contracts::post {
         
         // Skip split if repost owner and original post owner are the same
         if (post.owner == original_post.owner) {
-            // Standard flow - all goes to the same owner
-            let tip_coin = coin::split(coin, amount, ctx);
-            post.tips_received = post.tips_received + amount;
-            transfer::public_transfer(tip_coin, post.owner);
-            
-            // Emit tip event
-            event::emit(TipEvent {
-                object_id: object::uid_to_address(&post.id),
-                from: tipper,
-                to: post.owner,
+            // Standard flow - apply PoC redirection for unified owner
+            let actual_received = apply_poc_redirection_and_transfer(
+                post,
+                post.owner,
                 amount,
-                is_post: true,
-            });
+                coin,
+                tipper,
+                object::uid_to_address(&post.id),
+                true,
+                ctx
+            );
+            
+            post.tips_received = post.tips_received + actual_received;
+            
+            // Emit tip event for amount actually received
+            if (actual_received > 0) {
+                event::emit(TipEvent {
+                    object_id: object::uid_to_address(&post.id),
+                    from: tipper,
+                    to: post.owner,
+                    amount: actual_received,
+                    is_post: true,
+                });
+            };
         } else {
-            // Calculate split using config instead of constant
+            // Calculate split using config
             let repost_owner_amount = (amount * config.repost_tip_percentage) / 100;
             let original_owner_amount = amount - repost_owner_amount;
             
-            // Extract and split coins
-            let mut tip_coin = coin::split(coin, amount, ctx);
-            let original_owner_coin = coin::split(&mut tip_coin, original_owner_amount, ctx);
+            // Apply PoC redirection for repost owner's share
+            let repost_actual_received = apply_poc_redirection_and_transfer(
+                post,
+                post.owner,
+                repost_owner_amount,
+                coin,
+                tipper,
+                object::uid_to_address(&post.id),
+                true,
+                ctx
+            );
             
-            // Increment the tip counters for tracking purposes
-            post.tips_received = post.tips_received + repost_owner_amount;
-            original_post.tips_received = original_post.tips_received + original_owner_amount;
+            // Apply PoC redirection for original post owner's share
+            let original_actual_received = apply_poc_redirection_and_transfer(
+                original_post,
+                original_post.owner,
+                original_owner_amount,
+                coin,
+                tipper,
+                object::uid_to_address(&original_post.id),
+                true,
+                ctx
+            );
             
-            // Transfer the repost owner's share
-            transfer::public_transfer(tip_coin, post.owner);
+            // Update tip counters
+            post.tips_received = post.tips_received + repost_actual_received;
+            original_post.tips_received = original_post.tips_received + original_actual_received;
             
-            // Transfer the original post owner's share
-            transfer::public_transfer(original_owner_coin, original_post.owner);
+            // Emit tip events for amounts actually received
+            if (repost_actual_received > 0) {
+                event::emit(TipEvent {
+                    object_id: object::uid_to_address(&post.id),
+                    from: tipper,
+                    to: post.owner,
+                    amount: repost_actual_received,
+                    is_post: true,
+                });
+            };
             
-            // Emit tip event for the repost owner
-            event::emit(TipEvent {
-                object_id: object::uid_to_address(&post.id),
-                from: tipper,
-                to: post.owner,
-                amount: repost_owner_amount,
-                is_post: true,
-            });
-            
-            // Emit tip event for the original post owner
-            event::emit(TipEvent {
-                object_id: object::uid_to_address(&original_post.id),
-                from: tipper, 
-                to: original_post.owner,
-                amount: original_owner_amount,
-                is_post: true,
-            });
+            if (original_actual_received > 0) {
+                event::emit(TipEvent {
+                    object_id: object::uid_to_address(&original_post.id),
+                    from: tipper, 
+                    to: original_post.owner,
+                    amount: original_actual_received,
+                    is_post: true,
+                });
+            };
         }
     }
     
-    /// Tip a comment with MYS tokens
-    /// Split is 80% to commenter, 20% to post owner
+    /// Tip a comment with MySo tokens
+    /// Split is 80% to commenter, 20% to post owner (with PoC redirection on post owner's share)
     public entry fun tip_comment(
         comment: &mut Comment,
         post: &mut Post,
@@ -1896,25 +2035,29 @@ module social_contracts::post {
         // Check if tips are allowed on the post
         assert!(post.allow_tips, ETipsNotAllowed);
         
-        // Extract tip amount from tipper's coin
-        let mut tip_coin = coin::split(coin, amount, ctx);
-        
-        // Calculate split based on config percentage instead of constant
+        // Calculate split based on config percentage
         let commenter_amount = (amount * config.commenter_tip_percentage) / 100;
         let post_owner_amount = amount - commenter_amount;
         
-        // Split the tip
-        let post_owner_coin = coin::split(&mut tip_coin, post_owner_amount, ctx);
+        // Transfer commenter's share directly (no PoC redirection for commenters)
+        let commenter_tip = coin::split(coin, commenter_amount, ctx);
+        transfer::public_transfer(commenter_tip, comment.owner);
         
-        // Increment the tip counters for tracking purposes
+        // Apply PoC redirection for post owner's share
+        let post_owner_actual_received = apply_poc_redirection_and_transfer(
+            post,
+            post.owner,
+            post_owner_amount,
+            coin,
+            tipper,
+            object::uid_to_address(&post.id),
+            true,
+            ctx
+        );
+        
+        // Update tip counters
         comment.tips_received = comment.tips_received + commenter_amount;
-        post.tips_received = post.tips_received + post_owner_amount;
-        
-        // Transfer the commenter's share 
-        transfer::public_transfer(tip_coin, comment.owner);
-        
-        // Transfer the post owner's share
-        transfer::public_transfer(post_owner_coin, post.owner);
+        post.tips_received = post.tips_received + post_owner_actual_received;
         
         // Emit tip event for commenter
         event::emit(TipEvent {
@@ -1925,14 +2068,16 @@ module social_contracts::post {
             is_post: false,
         });
         
-        // Emit tip event for post owner
-        event::emit(TipEvent {
-            object_id: object::uid_to_address(&post.id),
-            from: tipper,
-            to: post.owner,
-            amount: post_owner_amount,
-            is_post: true,
-        });
+        // Emit tip event for post owner (amount actually received)
+        if (post_owner_actual_received > 0) {
+            event::emit(TipEvent {
+                object_id: object::uid_to_address(&post.id),
+                from: tipper,
+                to: post.owner,
+                amount: post_owner_actual_received,
+                is_post: true,
+            });
+        };
     }
 
     /// Transfer post ownership to another user (by post owner)
@@ -2349,6 +2494,21 @@ module social_contracts::post {
     /// Get the tips received for a post
     public fun get_tips_received(post: &Post): u64 {
         post.tips_received
+    }
+
+    /// Get the PoC badge ID for a post
+    public fun get_poc_badge_id(post: &Post): &Option<ID> {
+        &post.poc_badge_id
+    }
+
+    /// Get the revenue redirect address for a post
+    public fun get_revenue_redirect_to(post: &Post): &Option<address> {
+        &post.revenue_redirect_to
+    }
+
+    /// Get the revenue redirect percentage for a post
+    public fun get_revenue_redirect_percentage(post: &Post): &Option<u64> {
+        &post.revenue_redirect_percentage
     }
 
     /// Get total bet amount for a prediction
