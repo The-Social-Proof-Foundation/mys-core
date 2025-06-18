@@ -349,84 +349,87 @@ table! {
 }
 
 // ===========================================================================
-// MY IP TABLES
+// MY IP DATA MARKETPLACE TABLES
 // ===========================================================================
 
-// Define my_ip table
+// Main data marketplace entries (Regular table - reference data)
 table! {
-    my_ip (id) {
-        id -> Int4,
-        license_id -> Varchar,
-        name -> Varchar,
-        description -> Nullable<Text>,
-        creator -> Varchar,
-        creation_time -> Int8,
-        license_type -> Int2,
-        permission_flags -> Int8,
-        license_state -> Int2,
-        proof_of_creativity_id -> Nullable<Varchar>,
-        custom_license_uri -> Nullable<Text>,
-        revenue_recipient -> Nullable<Varchar>,
-        transferable -> Bool,
-        expires_at -> Nullable<Int8>,
-        version -> Int4,
-        time -> Timestamptz,
-        transaction_id -> Varchar,
-    }
-}
-
-// Define my_ip_permissions reference table
-table! {
-    my_ip_permissions (id) {
-        id -> Int4,
-        permission_name -> Varchar,
-        bit_position -> Int4,
-        description -> Text,
-    }
-}
-
-// Define my_ip_events table
-table! {
-    my_ip_events (id) {
-        id -> Int4,
-        event_type -> Varchar,
-        license_id -> Varchar,
-        event_data -> Jsonb,
-        created_by -> Varchar,
+    my_ip_data (ip_id) {
+        ip_id -> Varchar,
+        owner -> Varchar,
+        media_type -> Varchar,
+        tags -> Jsonb,
+        platform_id -> Nullable<Varchar>,
+        timestamp_start -> Int8,
+        timestamp_end -> Nullable<Int8>,
         created_at -> Int8,
+        last_updated -> Int8,
+        one_time_price -> Nullable<Int8>,
+        subscription_price -> Nullable<Int8>,
+        subscription_duration_days -> Int8,
+        geographic_region -> Nullable<Varchar>,
+        data_quality -> Nullable<Varchar>,
+        sample_size -> Nullable<Int8>,
+        collection_method -> Nullable<Varchar>,
+        is_updating -> Bool,
+        update_frequency -> Nullable<Varchar>,
+        version -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
     }
 }
 
-// Define my_ip_grants table
+// Purchase records (TimescaleDB hypertable)
 table! {
-    my_ip_grants (id) {
+    my_ip_purchases (id, time) {
         id -> Int4,
-        license_id -> Varchar,
-        grantor -> Varchar,
-        grantee -> Varchar,
-        grant_type -> Varchar,
-        payment_amount -> Int8,
-        payment_token -> Nullable<Varchar>,
-        grant_time -> Int8,
-        expiration_time -> Nullable<Int8>,
+        ip_id -> Varchar,
+        buyer -> Varchar,
+        price -> Int8,
+        purchase_type -> Varchar,
+        purchase_time -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
     }
 }
 
-// Define my_ip_revenue table
+// Subscription records (TimescaleDB hypertable)
 table! {
-    my_ip_revenue (id) {
+    my_ip_subscriptions (id, time) {
         id -> Int4,
-        license_id -> Varchar,
-        post_id -> Nullable<Varchar>,
+        ip_id -> Varchar,
+        subscriber -> Varchar,
+        subscription_start -> Int8,
+        subscription_end -> Int8,
+        price -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Revenue tracking (TimescaleDB hypertable - updated structure)
+table! {
+    my_ip_revenue (id, time) {
+        id -> Int4,
+        ip_id -> Varchar,
         from_address -> Varchar,
         to_address -> Varchar,
         amount -> Int8,
         revenue_type -> Varchar,
         revenue_time -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Access logs for analytics (TimescaleDB hypertable)
+table! {
+    my_ip_access_logs (id, time) {
+        id -> Int4,
+        ip_id -> Varchar,
+        user_address -> Varchar,
+        access_type -> Varchar,
+        access_time -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
     }
@@ -715,12 +718,12 @@ allow_tables_to_appear_in_same_query!(
     posts_transfers,
     posts_moderation_events,
     posts_deletion_events,
-    // MyIP tables
-    my_ip,
-    my_ip_permissions,
-    my_ip_events,
-    my_ip_grants,
+    // MyIP Data Marketplace tables
+    my_ip_data,
+    my_ip_purchases,
+    my_ip_subscriptions,
     my_ip_revenue,
+    my_ip_access_logs,
     // Social Proof Token tables
     social_proof_token_pools,
     spt_holdings,

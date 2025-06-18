@@ -29,8 +29,7 @@ use crate::models::post::{
     NewDeletionEvent,
 };
 
-// Import MyIP model for revenue tracking
-use crate::models::my_ip::NewMyIPRevenue;
+// TODO: Import MyIP marketplace models for revenue tracking
 
 // Model conversion impl for PostCreatedEvent
 impl PostCreatedEvent {
@@ -182,24 +181,12 @@ impl TipEvent {
         })
     }
     
-    // New method for creating MyIP revenue records when tips involve revenue redirection
-    pub fn into_my_ip_revenue(&self, transaction_id: String) -> Result<Option<NewMyIPRevenue>> {
-        if let Some(license_id) = &self.license_id {
-            Ok(Some(NewMyIPRevenue {
-                license_id: license_id.clone(),
-                post_id: Some(self.object_id.clone()),
-                from_address: self.from.clone(),
-                // Use the actual recipient (which may be different from original due to redirection)
-                to_address: self.to.clone(),
-                amount: self.amount as i64,
-                revenue_type: "TIP".to_string(),
-                revenue_time: self.tip_time as i64,
-                transaction_id,
-            }))
-        } else {
-            // No license involved, so no MyIP revenue record needed
-            Ok(None)
-        }
+    // TODO: New method for creating MyIP marketplace revenue records
+    // This will be integrated with the new marketplace system
+    pub fn into_my_ip_revenue(&self, _transaction_id: String) -> Result<Option<()>> {
+        // This will be handled by the new MyIP marketplace events
+        // Revenue redirection will be processed through DataAccessedEvent and RevenueDistributedEvent
+        Ok(None)
     }
 }
 

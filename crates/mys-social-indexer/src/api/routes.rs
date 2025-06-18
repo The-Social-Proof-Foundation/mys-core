@@ -51,16 +51,17 @@ use crate::api::handlers::platforms::{
     get_platform_blocked_profiles,
 };
 use crate::api::handlers::my_ip::{
-    get_license_by_id,
-    list_licenses,
-    get_license_events,
-    get_license_grants,
-    get_license_revenue,
-    get_creator_licenses,
-    get_license_posts,
-    get_license_stats,
+    get_marketplace_data_by_id,
+    list_marketplace_data,
+    get_ip_purchases,
+    get_ip_subscriptions,
+    get_ip_revenue,
+    get_ip_access_logs,
+    get_creator_data,
+    get_marketplace_stats,
     get_revenue_timeline,
-    get_popular_licenses,
+    get_access_analytics,
+    get_popular_marketplace_data,
 };
 use crate::api::handlers::governance::{
     list_proposals,
@@ -144,17 +145,18 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/posts/:id/reposts", get(get_post_reposts))
         .route("/posts/trending", get(get_trending_posts))
         
-        // License (IP) endpoints (using TimescaleDB)
-        .route("/licenses", get(list_licenses))
-        .route("/licenses/popular", get(get_popular_licenses))
-        .route("/licenses/:id", get(get_license_by_id))
-        .route("/licenses/:id/events", get(get_license_events))
-        .route("/licenses/:id/grants", get(get_license_grants))
-        .route("/licenses/:id/revenue", get(get_license_revenue))
-        .route("/licenses/:id/posts", get(get_license_posts))
-        .route("/licenses/:id/stats", get(get_license_stats))
-        .route("/licenses/:id/revenue-timeline", get(get_revenue_timeline))
-        .route("/creators/:id/licenses", get(get_creator_licenses))
+        // MyIP Marketplace endpoints (using TimescaleDB)
+        .route("/marketplace", get(list_marketplace_data))
+        .route("/marketplace/popular", get(get_popular_marketplace_data))
+        .route("/marketplace/:id", get(get_marketplace_data_by_id))
+        .route("/marketplace/:id/purchases", get(get_ip_purchases))
+        .route("/marketplace/:id/subscriptions", get(get_ip_subscriptions))
+        .route("/marketplace/:id/revenue", get(get_ip_revenue))
+        .route("/marketplace/:id/access-logs", get(get_ip_access_logs))
+        .route("/marketplace/:id/stats", get(get_marketplace_stats))
+        .route("/marketplace/:id/revenue-timeline", get(get_revenue_timeline))
+        .route("/marketplace/:id/access-analytics", get(get_access_analytics))
+        .route("/creators/:id/marketplace-data", get(get_creator_data))
         
         // Governance endpoints
         .route("/governance/proposals", get(list_proposals))

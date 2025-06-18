@@ -73,6 +73,7 @@ async fn main() -> Result<()> {
     let (block_list_tx, block_list_rx) = mpsc::channel(100);
     let (post_tx, post_rx) = mpsc::channel(100);
     let (governance_tx, governance_rx) = mpsc::channel(100);
+    let (my_ip_tx, my_ip_rx) = mpsc::channel(100);
     
     // Create the blockchain event listener
     let blockchain_listener = Arc::new(BlockchainEventListener::new(config.clone(), db_pool.clone()));
@@ -84,6 +85,7 @@ async fn main() -> Result<()> {
     blockchain_listener.register_event_handler(block_list_tx).await;
     blockchain_listener.register_event_handler(post_tx).await;
     blockchain_listener.register_event_handler(governance_tx).await;
+    blockchain_listener.register_event_handler(my_ip_tx).await;
     
     // Create and start profile event listener
     let mut profile_listener = ProfileEventListener::new(
@@ -127,9 +129,12 @@ async fn main() -> Result<()> {
         "governance-worker".to_string(),
     );
     
-    // Initialize the MyIP event handler
-    // Note: This handler has a different API pattern - it just needs a database connection
-    let _my_ip_handler = MyIpEventHandler::new(db_pool.clone());
+    // Create and start MyIP event handler
+    let mut my_ip_handler = MyIpEventHandler::new(
+        db_pool.clone(),
+        my_ip_rx,
+        "my-ip-worker".to_string(),
+    );
     
     // Initialize the social proof token handler
     // Note: This handler has a different API pattern - it just needs a database connection
@@ -171,6 +176,12 @@ async fn main() -> Result<()> {
         }
     });
     
+    let my_ip_handle = tokio::spawn(async move {
+        if let Err(e) = my_ip_handler.start().await {
+            error!("MyIP marketplace handler error: {}", e);
+        }
+    });
+    
     // Start the blockchain event listener
     let blockchain_handle = tokio::spawn({
         let listener = blockchain_listener.clone();
@@ -208,6 +219,9 @@ async fn main() -> Result<()> {
         }
         _ = governance_handle => {
             error!("Governance handler terminated unexpectedly");
+        }
+        _ = my_ip_handle => {
+            error!("MyIP marketplace handler terminated unexpectedly");
         }
         _ = blockchain_handle => {
             error!("Blockchain event listener terminated unexpectedly");

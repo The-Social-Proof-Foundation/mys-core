@@ -28,19 +28,8 @@ use crate::models::indexer::NewIndexerProgress;
 use crate::schema;
 use mys_types::event::Event as MysEvent;
 
-use crate::models::my_ip::{
-    MyIP,
-    PERMISSION_ALLOW_COMMENTS,
-    PERMISSION_ALLOW_REACTIONS,
-    PERMISSION_ALLOW_REPOSTS,
-    PERMISSION_ALLOW_QUOTES,
-    PERMISSION_ALLOW_TIPS,
-    PERMISSION_REVENUE_REDIRECT,
-};
-
 use crate::schema::{posts, comments, reactions, reaction_counts, reposts, tips, 
-                   posts_reports, posts_moderation_events, posts_deletion_events,
-                   my_ip, my_ip_revenue};
+                   posts_reports, posts_moderation_events, posts_deletion_events};
 
 use super::listener::BlockchainEvent;
 
@@ -779,27 +768,6 @@ async fn handle_comment_created(db: &Arc<Database>, event: &MysEvent, transactio
     // Get a database connection
     let mut conn = db.get_connection().await?;
     
-    // Check if the parent post has a MyIP license that allows comments
-    let post = posts::table
-        .filter(posts::post_id.eq(&parsed_event.post_id))
-        .select(posts::my_ip_id)
-        .first::<Option<String>>(&mut conn)
-        .await
-        .map_err(|e| anyhow!("Failed to get parent post: {}", e))?;
-    
-    if let Some(my_ip_id) = post {
-        // Post has a MyIP license, check if it allows comments
-        let license = my_ip::table
-            .filter(my_ip::license_id.eq(my_ip_id))
-            .first::<MyIP>(&mut conn)
-            .await
-            .map_err(|e| anyhow!("Failed to get MyIP license: {}", e))?;
-        
-        // Verify the license allows comments
-        if !license.has_permission(PERMISSION_ALLOW_COMMENTS) {
-            return Err(anyhow!("MyIP license does not allow comments"));
-        }
-    }
     
     // Convert event to model
     let mut new_comment = parsed_event.into_model()?;
@@ -845,30 +813,8 @@ async fn handle_reaction(db: &Arc<Database>, event: &MysEvent, transaction_id: &
     // Get a database connection
     let mut conn = db.get_connection().await?;
     
-    // If reaction is for a post, check for MyIP permission
-    if parsed_event.is_post {
-        // Check if the post has a MyIP license that allows reactions
-        let post = posts::table
-            .filter(posts::post_id.eq(&parsed_event.object_id))
-            .select(posts::my_ip_id)
-            .first::<Option<String>>(&mut conn)
-            .await
-            .map_err(|e| anyhow!("Failed to get post: {}", e))?;
-        
-        if let Some(my_ip_id) = post {
-            // Post has a MyIP license, check if it allows reactions
-            let license = my_ip::table
-                .filter(my_ip::license_id.eq(my_ip_id))
-                .first::<MyIP>(&mut conn)
-                .await
-                .map_err(|e| anyhow!("Failed to get MyIP license: {}", e))?;
-            
-            // Verify the license allows reactions
-            if !license.has_permission(PERMISSION_ALLOW_REACTIONS) {
-                return Err(anyhow!("MyIP license does not allow reactions"));
-            }
-        }
-    }
+    // TODO: MyIP marketplace permissions will be handled by marketplace events
+    // For now, allow all reactions - marketplace restrictions will be applied separately
     
     // Convert event to model
     let mut new_reaction = parsed_event.into_model()?;
@@ -926,36 +872,8 @@ async fn handle_repost(db: &Arc<Database>, event: &MysEvent, transaction_id: &st
     // Get a database connection
     let mut conn = db.get_connection().await?;
     
-    // Check if the original post has a MyIP license that allows reposts/quotes
-    let post = posts::table
-        .filter(posts::post_id.eq(&parsed_event.original_id))
-        .select(posts::my_ip_id)
-        .first::<Option<String>>(&mut conn)
-        .await
-        .map_err(|e| anyhow!("Failed to get original post: {}", e))?;
-    
-    if let Some(my_ip_id) = post {
-        // Post has a MyIP license, check if it allows reposts/quotes
-        let license = my_ip::table
-            .filter(my_ip::license_id.eq(my_ip_id))
-            .first::<MyIP>(&mut conn)
-            .await
-            .map_err(|e| anyhow!("Failed to get MyIP license: {}", e))?;
-        
-        // Determine if this is a standard repost or a quote repost
-        let is_quote_repost = false; // We would need to get this information from somewhere
-        
-        // Verify the license allows the appropriate type of repost
-        if is_quote_repost {
-            if !license.has_permission(PERMISSION_ALLOW_QUOTES) {
-                return Err(anyhow!("MyIP license does not allow quote reposts"));
-            }
-        } else {
-            if !license.has_permission(PERMISSION_ALLOW_REPOSTS) {
-                return Err(anyhow!("MyIP license does not allow reposts"));
-            }
-        }
-    }
+    // TODO: MyIP marketplace permissions will be handled by marketplace events
+    // For now, allow all reposts - marketplace restrictions will be applied separately
     
     // Convert event to model
     let mut new_repost = parsed_event.into_model()?;
@@ -1013,55 +931,8 @@ async fn handle_tip(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) 
     // Get a database connection
     let mut conn = db.get_connection().await?;
     
-    // If the tip is for a post, check for MyIP permission and potential revenue redirection
-    if parsed_event.is_post {
-        // Check if the post has a MyIP license
-        let post = posts::table
-            .filter(posts::post_id.eq(&parsed_event.object_id))
-            .select((posts::my_ip_id, posts::owner))
-            .first::<(Option<String>, String)>(&mut conn)
-            .await
-            .map_err(|e| anyhow!("Failed to get post: {}", e))?;
-        
-        if let Some(my_ip_id) = &post.0 {
-            // Post has a MyIP license, check if it allows tips
-            let license = my_ip::table
-                .filter(my_ip::license_id.eq(my_ip_id))
-                .first::<MyIP>(&mut conn)
-                .await
-                .map_err(|e| anyhow!("Failed to get MyIP license: {}", e))?;
-            
-            // Verify the license allows tips
-            if !license.has_permission(PERMISSION_ALLOW_TIPS) {
-                return Err(anyhow!("MyIP license does not allow tips"));
-            }
-            
-            // Check if revenue should be redirected
-            if license.has_permission(PERMISSION_REVENUE_REDIRECT) && license.revenue_recipient.is_some() {
-                let recipient = license.revenue_recipient.clone().unwrap();
-                
-                // Record the revenue redirection in the my_ip_revenue table
-                let new_revenue = crate::models::my_ip::NewMyIPRevenue {
-                    license_id: my_ip_id.clone(),
-                    post_id: Some(parsed_event.object_id.clone()),
-                    from_address: parsed_event.from.clone(),
-                    to_address: recipient.clone(),
-                    amount: parsed_event.amount as i64,
-                    revenue_type: "TIP".to_string(),
-                    revenue_time: parsed_event.tip_time as i64,
-                    transaction_id: transaction_id.to_string(),
-                };
-                
-                diesel::insert_into(my_ip_revenue::table)
-                    .values(&new_revenue)
-                    .execute(&mut conn)
-                    .await?;
-                
-                info!("Recorded revenue redirection for MyIP license {} to {}", 
-                    my_ip_id, recipient);
-            }
-        }
-    }
+    // TODO: MyIP marketplace permissions and revenue redirection will be handled by marketplace events
+    // For now, allow all tips - marketplace restrictions will be applied separately
     
     // Convert event to model
     let mut new_tip = parsed_event.into_model()?;

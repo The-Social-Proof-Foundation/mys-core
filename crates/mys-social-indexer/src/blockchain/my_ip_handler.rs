@@ -5,370 +5,466 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-use tracing::{debug, info};
+use tracing::{debug, info, error};
 use bigdecimal::BigDecimal;
+use chrono::Utc;
+use tokio::sync::mpsc;
 
-use crate::db::Database;
+use crate::db::{Database, DbConnection};
 use crate::events::{
     parse_event,
     my_ip_event_types::{
-        LicenseCreatedEvent,
-        LicenseUpdatedEvent,
-        LicenseTransferredEvent,
-        LicenseStateChangedEvent,
-        LicenseLinkedEvent,
-        LicenseRegisteredEvent,
-        LicenseGrantedEvent,
+        DataCreatedEvent,
+        DataPurchasedEvent,
+        SubscriptionCreatedEvent,
+        SubscriptionRenewedEvent,
+        DataAccessGrantedEvent,
         RevenueDistributedEvent,
-    }
+        DataAccessedEvent,
+    },
+    my_ip_events::{EventBatch}
 };
 
-use crate::models::my_ip::NewMyIPEvent;
-
-use crate::schema::{my_ip, my_ip_events, my_ip_grants, my_ip_revenue, posts};
+use crate::schema::{my_ip_data, my_ip_purchases, my_ip_subscriptions, my_ip_revenue, my_ip_access_logs};
 use mys_types::event::Event as MysEvent;
 
-/// Handler for MyIP events from the blockchain
+use super::listener::BlockchainEvent;
+
+/// Handler for MyIP Data Marketplace events from the blockchain
 pub struct MyIpEventHandler {
+    /// Database connection
     db: Arc<Database>,
+    /// Event receiver channel
+    rx: mpsc::Receiver<BlockchainEvent>,
+    /// Worker ID for tracking progress
+    worker_id: String,
 }
 
 impl MyIpEventHandler {
     /// Create a new MyIpEventHandler with the given database connection
-    pub fn new(db: Arc<Database>) -> Self {
-        Self { db }
+    pub fn new(db: Arc<Database>, rx: mpsc::Receiver<BlockchainEvent>, worker_id: String) -> Self {
+        Self { db, rx, worker_id }
+    }
+    
+    /// Get a database connection from the pool
+    async fn get_connection(&self) -> Result<DbConnection> {
+        self.db.get_connection()
+            .await
+            .map_err(|e| anyhow!("Failed to get database connection: {}", e))
+    }
+    
+    /// Start the event processing loop
+    pub async fn start(&mut self) -> Result<()> {
+        info!("Starting MyIP marketplace event handler: {}", self.worker_id);
+        
+        while let Some(blockchain_event) = self.rx.recv().await {
+            // Filter for MyIP marketplace events
+            let event_type = &blockchain_event.event_type;
+            
+            if self.is_myip_event(event_type) {
+                info!("Processing MyIP marketplace event: {}", event_type);
+                
+                if let Err(e) = self.handle_blockchain_event(&blockchain_event).await {
+                    error!("Failed to process MyIP marketplace event {}: {}", blockchain_event.event_id, e);
+                }
+            }
+        }
+        
+        info!("MyIP marketplace event handler stopped");
+        Ok(())
+    }
+    
+    /// Check if an event type is a MyIP marketplace event
+    fn is_myip_event(&self, event_type: &str) -> bool {
+        event_type.contains("::my_ip::") || 
+        event_type.contains("::marketplace::") ||
+        event_type.ends_with("::DataCreatedEvent") ||
+        event_type.ends_with("::DataPurchasedEvent") ||
+        event_type.ends_with("::SubscriptionCreatedEvent") ||
+        event_type.ends_with("::SubscriptionRenewedEvent") ||
+        event_type.ends_with("::DataAccessGrantedEvent") ||
+        event_type.ends_with("::RevenueDistributedEvent") ||
+        event_type.ends_with("::DataAccessedEvent")
+    }
+    
+    /// Handle a blockchain event for MyIP marketplace events
+    async fn handle_blockchain_event(&self, blockchain_event: &BlockchainEvent) -> Result<()> {
+        let event_type = &blockchain_event.event_type;
+        
+        info!("Processing MyIP marketplace blockchain event: {}", event_type);
+        
+        // Process each marketplace event type based on the parsed JSON data
+        match () {
+            _ if event_type.ends_with("::DataCreatedEvent") => {
+                self.handle_data_created_from_json(&blockchain_event.data, &blockchain_event.tx_digest).await?;
+            },
+            _ if event_type.ends_with("::DataPurchasedEvent") => {
+                self.handle_data_purchased_from_json(&blockchain_event.data, &blockchain_event.tx_digest).await?;
+            },
+            _ if event_type.ends_with("::SubscriptionCreatedEvent") => {
+                self.handle_subscription_created_from_json(&blockchain_event.data, &blockchain_event.tx_digest).await?;
+            },
+            _ if event_type.ends_with("::DataAccessGrantedEvent") => {
+                self.handle_data_access_granted_from_json(&blockchain_event.data, &blockchain_event.tx_digest).await?;
+            },
+            _ if event_type.ends_with("::RevenueDistributedEvent") => {
+                self.handle_revenue_distributed_from_json(&blockchain_event.data, &blockchain_event.tx_digest).await?;
+            },
+            _ if event_type.ends_with("::DataAccessedEvent") => {
+                self.handle_data_accessed_from_json(&blockchain_event.data, &blockchain_event.tx_digest).await?;
+            },
+            _ => {
+                debug!("Unhandled MyIP marketplace event type: {}", event_type);
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// Handle data created event from JSON
+    async fn handle_data_created_from_json(&self, data: &serde_json::Value, transaction_id: &str) -> Result<()> {
+        info!("Processing DataCreatedEvent from JSON");
+        
+        // Extract fields from the JSON data
+        let ip_id = data.get("ip_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing ip_id field"))?;
+        
+        let owner = data.get("owner")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing owner field"))?;
+        
+        let media_type = data.get("media_type")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing media_type field"))?;
+        
+        info!("Parsed DataCreatedEvent: ip_id={}, owner={}, media_type={}", 
+            ip_id, owner, media_type);
+        
+        // Get a database connection
+        let mut conn = self.get_connection().await?;
+        
+        // Create a new data entry manually from the JSON data
+        let new_data = crate::models::my_ip::NewMyIPData {
+            ip_id: ip_id.to_string(),
+            owner: owner.to_string(),
+            media_type: media_type.to_string(),
+            tags: data.get("tags").cloned().unwrap_or(serde_json::json!([])),
+            platform_id: data.get("platform_id").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            timestamp_start: data.get("timestamp_start").and_then(|v| v.as_i64()).unwrap_or(0),
+            timestamp_end: data.get("timestamp_end").and_then(|v| v.as_i64()),
+            created_at: Utc::now().timestamp(),
+            last_updated: Utc::now().timestamp(),
+            one_time_price: data.get("one_time_price").and_then(|v| v.as_i64()),
+            subscription_price: data.get("subscription_price").and_then(|v| v.as_i64()),
+            subscription_duration_days: data.get("subscription_duration_days").and_then(|v| v.as_i64()).unwrap_or(30),
+            geographic_region: data.get("geographic_region").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            data_quality: data.get("data_quality").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            sample_size: data.get("sample_size").and_then(|v| v.as_i64()),
+            collection_method: data.get("collection_method").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            is_updating: data.get("is_updating").and_then(|v| v.as_bool()).unwrap_or(false),
+            update_frequency: data.get("update_frequency").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            version: data.get("version").and_then(|v| v.as_i64()).unwrap_or(1),
+            transaction_id: transaction_id.to_string(),
+        };
+        
+        // Insert the new data entry into the database
+        diesel::insert_into(my_ip_data::table)
+            .values(&new_data)
+            .on_conflict(my_ip_data::ip_id)
+            .do_update()
+            .set((
+                my_ip_data::owner.eq(&new_data.owner),
+                my_ip_data::media_type.eq(&new_data.media_type),
+                my_ip_data::tags.eq(&new_data.tags),
+                my_ip_data::one_time_price.eq(&new_data.one_time_price),
+                my_ip_data::subscription_price.eq(&new_data.subscription_price),
+                my_ip_data::data_quality.eq(&new_data.data_quality),
+                my_ip_data::last_updated.eq(Utc::now().timestamp()),
+                my_ip_data::transaction_id.eq(transaction_id)
+            ))
+            .execute(&mut conn)
+            .await?;
+        
+        info!("Processed DataCreatedEvent successfully for ip_id: {}", ip_id);
+        Ok(())
+    }
+    
+    /// Handle other marketplace events from JSON (simplified implementations)
+    async fn handle_data_purchased_from_json(&self, data: &serde_json::Value, _transaction_id: &str) -> Result<()> {
+        info!("Processing DataPurchasedEvent from JSON: {}", serde_json::to_string_pretty(data).unwrap_or_default());
+        // TODO: Implement based on actual event structure
+        Ok(())
+    }
+    
+    async fn handle_subscription_created_from_json(&self, data: &serde_json::Value, _transaction_id: &str) -> Result<()> {
+        info!("Processing SubscriptionCreatedEvent from JSON: {}", serde_json::to_string_pretty(data).unwrap_or_default());
+        // TODO: Implement based on actual event structure
+        Ok(())
+    }
+    
+    async fn handle_data_access_granted_from_json(&self, data: &serde_json::Value, _transaction_id: &str) -> Result<()> {
+        info!("Processing DataAccessGrantedEvent from JSON: {}", serde_json::to_string_pretty(data).unwrap_or_default());
+        // TODO: Implement based on actual event structure  
+        Ok(())
+    }
+    
+    async fn handle_revenue_distributed_from_json(&self, data: &serde_json::Value, _transaction_id: &str) -> Result<()> {
+        info!("Processing RevenueDistributedEvent from JSON: {}", serde_json::to_string_pretty(data).unwrap_or_default());
+        // TODO: Implement based on actual event structure
+        Ok(())
+    }
+    
+    async fn handle_data_accessed_from_json(&self, data: &serde_json::Value, _transaction_id: &str) -> Result<()> {
+        info!("Processing DataAccessedEvent from JSON: {}", serde_json::to_string_pretty(data).unwrap_or_default());
+        // TODO: Implement based on actual event structure
+        Ok(())
     }
 
-    /// Handle a MyIP event from the blockchain
+    /// Handle a MyIP marketplace event from the blockchain
     pub async fn handle_event(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
         let event_type = &event.type_.to_string(); // Convert StructTag to String
         
-        info!("Processing MyIP event: {}", event_type);
+        info!("Processing MyIP marketplace event: {}", event_type);
         
-        // Process each event type
-        if event_type.ends_with("::LicenseCreatedEvent") {
-            self.handle_license_created(event, transaction_id).await?;
-        } else if event_type.ends_with("::LicenseUpdatedEvent") {
-            self.handle_license_updated(event, transaction_id).await?;
-        } else if event_type.ends_with("::LicenseTransferredEvent") {
-            self.handle_license_transferred(event, transaction_id).await?;
-        } else if event_type.ends_with("::LicenseStateChangedEvent") {
-            self.handle_license_state_changed(event, transaction_id).await?;
-        } else if event_type.ends_with("::LicenseLinkedEvent") {
-            self.handle_license_linked(event, transaction_id).await?;
-        } else if event_type.ends_with("::LicenseRegisteredEvent") {
-            self.handle_license_registered(event, transaction_id).await?;
-        } else if event_type.ends_with("::LicenseGrantedEvent") {
-            self.handle_license_granted(event, transaction_id).await?;
-        } else if event_type.ends_with("::RevenueDistributedEvent") {
-            self.handle_revenue_distributed(event, transaction_id).await?;
-        } else {
-            debug!("Unhandled MyIP event type: {}", event_type);
+        // Process each marketplace event type
+        match () {
+            _ if event_type.ends_with("::DataCreatedEvent") => {
+                self.handle_data_created(event, transaction_id).await?;
+            },
+            _ if event_type.ends_with("::DataPurchasedEvent") => {
+                self.handle_data_purchased(event, transaction_id).await?;
+            },
+            _ if event_type.ends_with("::SubscriptionCreatedEvent") => {
+                self.handle_subscription_created(event, transaction_id).await?;
+            },
+            _ if event_type.ends_with("::DataAccessGrantedEvent") => {
+                self.handle_data_access_granted(event, transaction_id).await?;
+            },
+            _ if event_type.ends_with("::RevenueDistributedEvent") => {
+                self.handle_revenue_distributed(event, transaction_id).await?;
+            },
+            _ if event_type.ends_with("::DataAccessedEvent") => {
+                self.handle_data_accessed(event, transaction_id).await?;
+            },
+            _ => {
+                debug!("Unhandled MyIP marketplace event type: {}", event_type);
+            }
         }
         
         Ok(())
     }
 
-    /// Handle license created event
-    async fn handle_license_created(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
-        info!("Processing LicenseCreatedEvent");
+    /// Handle data created event
+    async fn handle_data_created(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing DataCreatedEvent");
         
         // Parse the event
-        let parsed_event = parse_event::<LicenseCreatedEvent>(event)
-            .map_err(|e| anyhow!("Failed to parse LicenseCreatedEvent: {}", e))?;
+        let parsed_event = parse_event::<DataCreatedEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse DataCreatedEvent: {}", e))?;
         
-        info!("Parsed LicenseCreatedEvent: license_id={}, creator={}", 
-            parsed_event.license_id, parsed_event.creator);
+        info!("Parsed DataCreatedEvent: ip_id={}, owner={}, media_type={}", 
+            parsed_event.ip_id, parsed_event.owner, parsed_event.media_type);
         
         // Get a database connection
         let mut conn = self.db.get_connection().await?;
         
         // Convert event to model
-        let new_license = parsed_event.into_model(transaction_id.to_string())?;
+        let new_data = parsed_event.into_model(transaction_id.to_string())?;
         
-        // Insert the new license into the database - explicitly setting fields
-        diesel::insert_into(my_ip::table)
-            .values(&new_license)
-            .on_conflict(my_ip::license_id)
+        // Insert the new data entry into the database
+        diesel::insert_into(my_ip_data::table)
+            .values(&new_data)
+            .on_conflict(my_ip_data::ip_id)
             .do_update()
             .set((
-                my_ip::creator.eq(&new_license.creator),
-                my_ip::description.eq(&new_license.description),
-                my_ip::permission_flags.eq(&new_license.permission_flags),
-                my_ip::license_state.eq(&new_license.license_state),
-                my_ip::creation_time.eq(&new_license.creation_time),
-                my_ip::transaction_id.eq(transaction_id)
+                my_ip_data::owner.eq(&new_data.owner),
+                my_ip_data::media_type.eq(&new_data.media_type),
+                my_ip_data::tags.eq(&new_data.tags),
+                my_ip_data::one_time_price.eq(&new_data.one_time_price),
+                my_ip_data::subscription_price.eq(&new_data.subscription_price),
+                my_ip_data::data_quality.eq(&new_data.data_quality),
+                my_ip_data::last_updated.eq(Utc::now().timestamp()),
+                my_ip_data::transaction_id.eq(transaction_id)
             ))
             .execute(&mut conn)
             .await?;
         
-        // Add an event record
-        let new_event = parsed_event.into_event(transaction_id.to_string())?;
-        
-        diesel::insert_into(my_ip_events::table)
-            .values(&new_event)
-            .execute(&mut conn)
-            .await?;
-        
-        info!("Processed LicenseCreatedEvent successfully");
+        info!("Processed DataCreatedEvent successfully for ip_id: {}", parsed_event.ip_id);
         Ok(())
     }
 
-    /// Handle license updated event
-    async fn handle_license_updated(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
-        info!("Processing LicenseUpdatedEvent");
+    /// Handle data purchased event
+    async fn handle_data_purchased(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing DataPurchasedEvent");
         
-        // Parse the event
-        let parsed_event = parse_event::<LicenseUpdatedEvent>(event)
-            .map_err(|e| anyhow!("Failed to parse LicenseUpdatedEvent: {}", e))?;
+        let parsed_event = parse_event::<DataPurchasedEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse DataPurchasedEvent: {}", e))?;
         
-        info!("Parsed LicenseUpdatedEvent: license_id={}, updater={}", 
-            parsed_event.license_id, parsed_event.updater);
+        info!("Parsed DataPurchasedEvent: ip_id={}, buyer={}, price={}", 
+            parsed_event.ip_id, parsed_event.buyer, parsed_event.price);
         
-        // Get a database connection
         let mut conn = self.db.get_connection().await?;
         
-        // Update the license in the database
-        diesel::update(my_ip::table.filter(my_ip::license_id.eq(&parsed_event.license_id)))
-            .set(my_ip::permission_flags.eq(parsed_event.new_permission_flags as i64))
+        // Record the purchase
+        let purchase = parsed_event.into_purchase(transaction_id.to_string())?;
+        diesel::insert_into(my_ip_purchases::table)
+            .values(&purchase)
             .execute(&mut conn)
             .await?;
         
-        // Add an event record
-        let new_event = parsed_event.into_event(transaction_id.to_string())?;
-        
-        diesel::insert_into(my_ip_events::table)
-            .values(&new_event)
+        // Record access log
+        let access_log = parsed_event.into_access_log(transaction_id.to_string())?;
+        diesel::insert_into(my_ip_access_logs::table)
+            .values(&access_log)
             .execute(&mut conn)
             .await?;
         
-        info!("Processed LicenseUpdatedEvent successfully");
+        info!("Processed DataPurchasedEvent successfully for ip_id: {}", parsed_event.ip_id);
         Ok(())
     }
 
-    /// Handle license transferred event
-    async fn handle_license_transferred(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
-        info!("Processing LicenseTransferredEvent");
+    /// Handle subscription created event
+    async fn handle_subscription_created(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing SubscriptionCreatedEvent");
         
-        // Parse the event
-        let parsed_event = parse_event::<LicenseTransferredEvent>(event)
-            .map_err(|e| anyhow!("Failed to parse LicenseTransferredEvent: {}", e))?;
+        let parsed_event = parse_event::<SubscriptionCreatedEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse SubscriptionCreatedEvent: {}", e))?;
         
-        info!("Parsed LicenseTransferredEvent: license_id={}, from={}, to={}", 
-            parsed_event.license_id, parsed_event.from, parsed_event.to);
+        info!("Parsed SubscriptionCreatedEvent: ip_id={}, subscriber={}, price={}", 
+            parsed_event.ip_id, parsed_event.subscriber, parsed_event.price);
         
-        // Get a database connection
         let mut conn = self.db.get_connection().await?;
         
-        // Update the license owner in the database
-        diesel::update(my_ip::table.filter(my_ip::license_id.eq(&parsed_event.license_id)))
-            .set(my_ip::creator.eq(&parsed_event.to)) // After transfer, new creator is the recipient
+        // Record the subscription
+        let subscription = parsed_event.into_subscription(transaction_id.to_string())?;
+        diesel::insert_into(my_ip_subscriptions::table)
+            .values(&subscription)
             .execute(&mut conn)
             .await?;
         
-        // Add an event record
-        let new_event = parsed_event.into_event(transaction_id.to_string())?;
-        
-        diesel::insert_into(my_ip_events::table)
-            .values(&new_event)
+        // Record as a purchase too for analytics
+        let purchase = parsed_event.into_purchase(transaction_id.to_string())?;
+        diesel::insert_into(my_ip_purchases::table)
+            .values(&purchase)
             .execute(&mut conn)
             .await?;
         
-        // Add a grant record
-        let new_grant = parsed_event.into_grant(transaction_id.to_string())?;
-        
-        diesel::insert_into(my_ip_grants::table)
-            .values(&new_grant)
+        // Record access log
+        let access_log = parsed_event.into_access_log(transaction_id.to_string())?;
+        diesel::insert_into(my_ip_access_logs::table)
+            .values(&access_log)
             .execute(&mut conn)
             .await?;
         
-        info!("Processed LicenseTransferredEvent successfully");
+        info!("Processed SubscriptionCreatedEvent successfully for ip_id: {}", parsed_event.ip_id);
         Ok(())
     }
 
-    /// Handle license state changed event
-    async fn handle_license_state_changed(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
-        info!("Processing LicenseStateChangedEvent");
+    /// Handle subscription renewed event
+    async fn handle_subscription_renewed(&self, event: &MysEvent, _transaction_id: &str) -> Result<()> {
+        info!("Processing SubscriptionRenewedEvent");
         
-        // Parse the event
-        let parsed_event = parse_event::<LicenseStateChangedEvent>(event)
-            .map_err(|e| anyhow!("Failed to parse LicenseStateChangedEvent: {}", e))?;
+        let parsed_event = parse_event::<SubscriptionRenewedEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse SubscriptionRenewedEvent: {}", e))?;
         
-        info!("Parsed LicenseStateChangedEvent: license_id={}, old_state={}, new_state={}", 
-            parsed_event.license_id, parsed_event.old_state, parsed_event.new_state);
+        info!("Parsed SubscriptionRenewedEvent: ip_id={}, subscriber={}", 
+            parsed_event.ip_id, parsed_event.subscriber);
         
-        // Get a database connection
         let mut conn = self.db.get_connection().await?;
         
-        // Update the license state in the database
-        diesel::update(my_ip::table.filter(my_ip::license_id.eq(&parsed_event.license_id)))
-            .set(my_ip::license_state.eq(parsed_event.new_state as i16))
+        // Update the subscription end time
+        diesel::update(my_ip_subscriptions::table
+            .filter(my_ip_subscriptions::ip_id.eq(&parsed_event.ip_id))
+            .filter(my_ip_subscriptions::subscriber.eq(&parsed_event.subscriber)))
+            .set((
+                my_ip_subscriptions::subscription_end.eq(parsed_event.new_subscription_end as i64),
+                my_ip_subscriptions::price.eq(parsed_event.renewal_price as i64)
+            ))
             .execute(&mut conn)
             .await?;
         
-        // Add an event record
-        let new_event = parsed_event.into_event(transaction_id.to_string())?;
-        
-        diesel::insert_into(my_ip_events::table)
-            .values(&new_event)
-            .execute(&mut conn)
-            .await?;
-        
-        info!("Processed LicenseStateChangedEvent successfully");
+        info!("Processed SubscriptionRenewedEvent successfully for ip_id: {}", parsed_event.ip_id);
         Ok(())
     }
 
-    /// Handle license linked event
-    async fn handle_license_linked(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
-        info!("Processing LicenseLinkedEvent");
+    /// Handle data access granted event
+    async fn handle_data_access_granted(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing DataAccessGrantedEvent");
         
-        // Parse the event
-        let parsed_event = parse_event::<LicenseLinkedEvent>(event)
-            .map_err(|e| anyhow!("Failed to parse LicenseLinkedEvent: {}", e))?;
+        let parsed_event = parse_event::<DataAccessGrantedEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse DataAccessGrantedEvent: {}", e))?;
         
-        info!("Parsed LicenseLinkedEvent: license_id={}, post_id={}, linker={}", 
-            parsed_event.license_id, parsed_event.post_id, parsed_event.linker);
+        info!("Parsed DataAccessGrantedEvent: ip_id={}, grantor={}, grantee={}", 
+            parsed_event.ip_id, parsed_event.grantor, parsed_event.grantee);
         
-        // Get a database connection
         let mut conn = self.db.get_connection().await?;
         
-        // Update the post to link it to the license
-        diesel::update(posts::table.filter(posts::post_id.eq(&parsed_event.post_id)))
-            .set(posts::my_ip_id.eq(&parsed_event.license_id))
+        // Record access log
+        let access_log = parsed_event.into_access_log(transaction_id.to_string())?;
+        diesel::insert_into(my_ip_access_logs::table)
+            .values(&access_log)
             .execute(&mut conn)
             .await?;
         
-        // Add an event record
-        let new_event = parsed_event.into_event(transaction_id.to_string())?;
-        
-        diesel::insert_into(my_ip_events::table)
-            .values(&new_event)
-            .execute(&mut conn)
-            .await?;
-        
-        info!("Processed LicenseLinkedEvent successfully");
+        info!("Processed DataAccessGrantedEvent successfully for ip_id: {}", parsed_event.ip_id);
         Ok(())
     }
 
-    /// Handle license registered event
-    async fn handle_license_registered(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
-        info!("Processing LicenseRegisteredEvent");
+    /// Handle data accessed event
+    async fn handle_data_accessed(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing DataAccessedEvent");
         
-        // Parse the event
-        let parsed_event = parse_event::<LicenseRegisteredEvent>(event)
-            .map_err(|e| anyhow!("Failed to parse LicenseRegisteredEvent: {}", e))?;
+        let parsed_event = parse_event::<DataAccessedEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse DataAccessedEvent: {}", e))?;
         
-        info!("Parsed LicenseRegisteredEvent: license_id={}, registry_id={}", 
-            parsed_event.license_id, parsed_event.registry_id);
+        info!("Parsed DataAccessedEvent: ip_id={}, user={}", 
+            parsed_event.ip_id, parsed_event.user_address);
         
-        // Get a database connection
         let mut conn = self.db.get_connection().await?;
         
-        // We don't need to do much with this event other than record it
-        // since we already handle license creation separately
-        
-        // Add an event record
-        let event_data = serde_json::json!({
-            "registry_id": parsed_event.registry_id,
-            "creator": parsed_event.creator,
-            "permission_flags": parsed_event.permission_flags,
-        });
-        
-        let new_event = NewMyIPEvent {
-            event_type: "LICENSE_REGISTERED".to_string(),
-            license_id: parsed_event.license_id,
-            event_data,
-            created_by: parsed_event.creator,
-            created_at: chrono::Utc::now().timestamp(), // Use current time as event doesn't provide timestamp
-            transaction_id: transaction_id.to_string(),
-        };
-        
-        diesel::insert_into(my_ip_events::table)
-            .values(&new_event)
+        // Record access log
+        let access_log = parsed_event.into_access_log(transaction_id.to_string())?;
+        diesel::insert_into(my_ip_access_logs::table)
+            .values(&access_log)
             .execute(&mut conn)
             .await?;
         
-        info!("Processed LicenseRegisteredEvent successfully");
         Ok(())
     }
 
-    /// Handle license granted event
-    async fn handle_license_granted(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
-        info!("Processing LicenseGrantedEvent");
-        
-        // Parse the event
-        let parsed_event = parse_event::<LicenseGrantedEvent>(event)
-            .map_err(|e| anyhow!("Failed to parse LicenseGrantedEvent: {}", e))?;
-        
-        info!("Parsed LicenseGrantedEvent: license_id={}, ip_id={}, grantor={}, grantee={}", 
-            parsed_event.license_id, parsed_event.ip_id, parsed_event.grantor, parsed_event.grantee);
-        
-        // Get a database connection
-        let mut conn = self.db.get_connection().await?;
-        
-        // Add an event record
-        let new_event = parsed_event.into_event(transaction_id.to_string())?;
-        
-        diesel::insert_into(my_ip_events::table)
-            .values(&new_event)
-            .execute(&mut conn)
-            .await?;
-        
-        // Add a grant record
-        let new_grant = parsed_event.into_grant(transaction_id.to_string())?;
-        
-        diesel::insert_into(my_ip_grants::table)
-            .values(&new_grant)
-            .execute(&mut conn)
-            .await?;
-        
-        info!("Processed LicenseGrantedEvent successfully");
-        Ok(())
-    }
-
-    /// Handle revenue distributed event
+    /// Handle revenue distributed event (updated for marketplace)
     async fn handle_revenue_distributed(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
         info!("Processing RevenueDistributedEvent");
         
-        // Parse the event
         let parsed_event = parse_event::<RevenueDistributedEvent>(event)
             .map_err(|e| anyhow!("Failed to parse RevenueDistributedEvent: {}", e))?;
         
-        info!("Parsed RevenueDistributedEvent: license_id={}, from={}, to={}, amount={}", 
-            parsed_event.license_id, parsed_event.from_address, parsed_event.to_address, parsed_event.amount);
+        info!("Parsed RevenueDistributedEvent: ip_id={}, from={}, to={}, amount={}", 
+            parsed_event.ip_id, parsed_event.from_address, parsed_event.to_address, parsed_event.amount);
         
-        // Get a database connection
         let mut conn = self.db.get_connection().await?;
         
-        // Add an event record
-        let new_event = parsed_event.into_event(transaction_id.to_string())?;
-        
-        diesel::insert_into(my_ip_events::table)
-            .values(&new_event)
-            .execute(&mut conn)
-            .await?;
-        
-        // Add a revenue record
-        let new_revenue = parsed_event.into_revenue(transaction_id.to_string())?;
-        
+        // Record revenue distribution
+        let revenue = parsed_event.into_revenue(transaction_id.to_string())?;
         diesel::insert_into(my_ip_revenue::table)
-            .values(&new_revenue)
+            .values(&revenue)
             .execute(&mut conn)
             .await?;
         
-        info!("Processed RevenueDistributedEvent successfully");
+        info!("Processed RevenueDistributedEvent successfully for ip_id: {}", parsed_event.ip_id);
         Ok(())
     }
 
-    /// Update license statistics based on interactions
-    pub async fn update_license_statistics(&self, license_id: &str) -> Result<()> {
-        info!("Updating statistics for license: {}", license_id);
+    /// Update marketplace data statistics
+    pub async fn update_data_statistics(&self, ip_id: &str) -> Result<()> {
+        info!("Updating statistics for data: {}", ip_id);
         
         let mut conn = self.db.get_connection().await?;
         
-        // Get total revenue for the license - fix type to match Numeric database type
+        // Get total revenue for the data
         let total_revenue: Option<BigDecimal> = my_ip_revenue::table
-            .filter(my_ip_revenue::license_id.eq(license_id))
+            .filter(my_ip_revenue::ip_id.eq(ip_id))
             .select(diesel::dsl::sum(my_ip_revenue::amount))
             .first::<Option<BigDecimal>>(&mut conn)
             .await?;
@@ -377,44 +473,117 @@ impl MyIpEventHandler {
             .map(|bd| bd.to_string().parse::<i64>().unwrap_or(0))
             .unwrap_or(0);
         
-        // Get post count, total reactions, comments, reposts, etc.
-        let post_stats = diesel::sql_query("
-            SELECT 
-                COUNT(*) as post_count,
-                SUM(reaction_count) as total_reactions, 
-                SUM(comment_count) as total_comments,
-                SUM(repost_count) as total_reposts,
-                SUM(tips_received) as total_tips
-            FROM posts 
-            WHERE my_ip_id = $1
-              AND deleted_at IS NULL
-              AND removed_from_platform = false
-        ")
-            .bind::<diesel::sql_types::Text, _>(license_id)
-            .get_results::<PostStats>(&mut conn)
+        // Get purchase and subscription stats
+        let purchase_count: i64 = my_ip_purchases::table
+            .filter(my_ip_purchases::ip_id.eq(ip_id))
+            .count()
+            .get_result(&mut conn)
             .await?;
         
-        if !post_stats.is_empty() {
-            let stats = &post_stats[0]; // Use indexing instead of first()
-            info!("License {} stats: posts={}, reactions={}, comments={}, reposts={}, tips={}, total_revenue={}",
-                license_id, stats.post_count, stats.total_reactions.unwrap_or(0), stats.total_comments.unwrap_or(0), 
-                stats.total_reposts.unwrap_or(0), stats.total_tips.unwrap_or(0), total_revenue);
-        }
+        let subscription_count: i64 = my_ip_subscriptions::table
+            .filter(my_ip_subscriptions::ip_id.eq(ip_id))
+            .count()
+            .get_result(&mut conn)
+            .await?;
+        
+        let access_count: i64 = my_ip_access_logs::table
+            .filter(my_ip_access_logs::ip_id.eq(ip_id))
+            .count()
+            .get_result(&mut conn)
+            .await?;
+        
+        info!("Data {} stats: purchases={}, subscriptions={}, accesses={}, total_revenue={}",
+            ip_id, purchase_count, subscription_count, access_count, total_revenue);
         
         Ok(())
     }
-}
 
-#[derive(QueryableByName)]
-struct PostStats {
-    #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub post_count: i64,
-    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
-    pub total_reactions: Option<i64>,
-    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
-    pub total_comments: Option<i64>,
-    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
-    pub total_reposts: Option<i64>,
-    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
-    pub total_tips: Option<i64>,
+    /// Process events in batch for better performance
+    pub async fn handle_events_batch(&self, events: Vec<(&MysEvent, &str)>) -> Result<()> {
+        let events_len = events.len();
+        info!("Processing batch of {} events", events_len);
+        
+        let mut event_batch = EventBatch::new();
+        
+        for (event, transaction_id) in &events {
+            let event_type = &event.type_.to_string();
+            
+            match () {
+                _ if event_type.ends_with("::DataCreatedEvent") => {
+                    if let Ok(parsed) = parse_event::<DataCreatedEvent>(event) {
+                        event_batch.add_data_created(&parsed, transaction_id.to_string())?;
+                    }
+                },
+                _ if event_type.ends_with("::DataPurchasedEvent") => {
+                    if let Ok(parsed) = parse_event::<DataPurchasedEvent>(event) {
+                        event_batch.add_data_purchased(&parsed, transaction_id.to_string())?;
+                    }
+                },
+                _ if event_type.ends_with("::SubscriptionCreatedEvent") => {
+                    if let Ok(parsed) = parse_event::<SubscriptionCreatedEvent>(event) {
+                        event_batch.add_subscription_created(&parsed, transaction_id.to_string())?;
+                    }
+                },
+                _ if event_type.ends_with("::RevenueDistributedEvent") => {
+                    if let Ok(parsed) = parse_event::<RevenueDistributedEvent>(event) {
+                        event_batch.add_revenue_distributed(&parsed, transaction_id.to_string())?;
+                    }
+                },
+                _ if event_type.ends_with("::DataAccessedEvent") => {
+                    if let Ok(parsed) = parse_event::<DataAccessedEvent>(event) {
+                        event_batch.add_data_accessed(&parsed, transaction_id.to_string())?;
+                    }
+                },
+                _ => {
+                    // Handle non-batchable events individually
+                    self.handle_event(event, transaction_id).await?;
+                }
+            }
+        }
+        
+        // Execute batch operations
+        if !event_batch.is_empty() {
+            let mut conn = self.db.get_connection().await?;
+            
+            if !event_batch.data_entries.is_empty() {
+                diesel::insert_into(my_ip_data::table)
+                    .values(&event_batch.data_entries)
+                    .on_conflict(my_ip_data::ip_id)
+                    .do_nothing()
+                    .execute(&mut conn)
+                    .await?;
+            }
+            
+            if !event_batch.purchases.is_empty() {
+                diesel::insert_into(my_ip_purchases::table)
+                    .values(&event_batch.purchases)
+                    .execute(&mut conn)
+                    .await?;
+            }
+            
+            if !event_batch.subscriptions.is_empty() {
+                diesel::insert_into(my_ip_subscriptions::table)
+                    .values(&event_batch.subscriptions)
+                    .execute(&mut conn)
+                    .await?;
+            }
+            
+            if !event_batch.revenue_records.is_empty() {
+                diesel::insert_into(my_ip_revenue::table)
+                    .values(&event_batch.revenue_records)
+                    .execute(&mut conn)
+                    .await?;
+            }
+            
+            if !event_batch.access_logs.is_empty() {
+                diesel::insert_into(my_ip_access_logs::table)
+                    .values(&event_batch.access_logs)
+                    .execute(&mut conn)
+                    .await?;
+            }
+        }
+        
+        info!("Processed batch of {} events successfully", events_len);
+        Ok(())
+    }
 } 
