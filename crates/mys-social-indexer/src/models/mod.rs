@@ -11,6 +11,7 @@ pub mod post;
 pub mod governance;
 pub mod my_ip;
 pub mod social_proof_token;
+pub mod poc;
 
 pub use profile::*;
 pub use indexer::*;
@@ -31,3 +32,4 @@ pub use profile_events::*;
 pub use post::*;
 pub use my_ip::*;
 pub use social_proof_token::*;
+pub use poc::*;

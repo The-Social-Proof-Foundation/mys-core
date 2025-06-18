@@ -97,6 +97,20 @@ use crate::api::handlers::social_proof_token::{
 };
 // Import search handler
 use crate::api::handlers::search::global_search;
+// Import PoC handlers
+use crate::api::handlers::poc::{
+    get_poc_badges,
+    get_poc_badge_by_id,
+    get_revenue_redirections,
+    get_poc_analysis_results,
+    get_poc_disputes,
+    get_poc_dispute_by_id,
+    get_dispute_votes,
+    get_poc_analytics,
+    get_poc_configuration,
+    get_post_poc_badges,
+    get_post_revenue_redirections,
+};
 
 /// Build the application router with all API routes
 pub fn build_router(db: Arc<Database>) -> Router {
@@ -144,6 +158,19 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/posts/:id/reactions", get(get_post_reactions))
         .route("/posts/:id/reposts", get(get_post_reposts))
         .route("/posts/trending", get(get_trending_posts))
+        
+        // PoC endpoints (using TimescaleDB)
+        .route("/poc/badges", get(get_poc_badges))
+        .route("/poc/badges/:id", get(get_poc_badge_by_id))
+        .route("/poc/revenue-redirections", get(get_revenue_redirections))
+        .route("/poc/analysis-results", get(get_poc_analysis_results))
+        .route("/poc/disputes", get(get_poc_disputes))
+        .route("/poc/disputes/:id", get(get_poc_dispute_by_id))
+        .route("/poc/disputes/:id/votes", get(get_dispute_votes))
+        .route("/poc/analytics", get(get_poc_analytics))
+        .route("/poc/configuration", get(get_poc_configuration))
+        .route("/posts/:id/poc-badges", get(get_post_poc_badges))
+        .route("/posts/:id/revenue-redirections", get(get_post_revenue_redirections))
         
         // MyIP Marketplace endpoints (using TimescaleDB)
         .route("/marketplace", get(list_marketplace_data))

@@ -204,6 +204,10 @@ table! {
         time -> Timestamptz,
         my_ip_id -> Nullable<Varchar>,
         revenue_recipient -> Nullable<Varchar>,
+        // PoC fields
+        poc_badge_id -> Nullable<Varchar>,
+        revenue_redirect_to -> Nullable<Varchar>,
+        revenue_redirect_percentage -> Nullable<Int8>,
     }
 }
 
@@ -695,6 +699,114 @@ table! {
     }
 }
 
+// ===========================================================================
+// PROOF OF CREATIVITY (POC) TABLES
+// ===========================================================================
+
+// Define poc_badges table
+table! {
+    poc_badges (badge_id, time) {
+        badge_id -> Varchar,
+        post_id -> Varchar,
+        media_type -> Int2,
+        issued_by -> Varchar,
+        issued_at -> Int8,
+        revoked -> Bool,
+        revoked_at -> Nullable<Int8>,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define poc_revenue_redirections table
+table! {
+    poc_revenue_redirections (redirection_id, time) {
+        redirection_id -> Varchar,
+        accused_post_id -> Varchar,
+        original_post_id -> Varchar,
+        redirect_percentage -> Int8,
+        similarity_score -> Int8,
+        created_at -> Int8,
+        removed -> Bool,
+        removed_at -> Nullable<Int8>,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define poc_analysis_results table
+table! {
+    poc_analysis_results (post_id, time) {
+        post_id -> Varchar,
+        media_type -> Int2,
+        similarity_detected -> Bool,
+        highest_similarity_score -> Int8,
+        oracle_address -> Varchar,
+        original_creator -> Nullable<Varchar>,
+        analysis_timestamp -> Int8,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define poc_disputes table
+table! {
+    poc_disputes (dispute_id, time) {
+        dispute_id -> Varchar,
+        post_id -> Varchar,
+        disputer -> Varchar,
+        dispute_type -> Int2,
+        evidence -> Text,
+        status -> Int2,
+        stake_amount -> Int8,
+        voting_start_epoch -> Int8,
+        voting_end_epoch -> Int8,
+        resolution -> Nullable<Int2>,
+        winning_side -> Nullable<Int2>,
+        total_winning_stake -> Nullable<Int8>,
+        total_losing_stake -> Nullable<Int8>,
+        submitted_at -> Int8,
+        resolved_at -> Nullable<Int8>,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define poc_dispute_votes table
+table! {
+    poc_dispute_votes (dispute_id, voter, time) {
+        dispute_id -> Varchar,
+        voter -> Varchar,
+        vote_choice -> Int2,
+        stake_amount -> Int8,
+        voted_at -> Int8,
+        reward_claimed -> Bool,
+        reward_amount -> Nullable<Int8>,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define poc_configuration table
+table! {
+    poc_configuration (id) {
+        id -> Int4,
+        image_threshold -> Int8,
+        video_threshold -> Int8,
+        audio_threshold -> Int8,
+        revenue_redirect_percentage -> Int8,
+        dispute_cost -> Int8,
+        dispute_protocol_fee -> Int8,
+        min_vote_stake -> Int8,
+        max_vote_stake -> Int8,
+        voting_duration_epochs -> Int8,
+        updated_by -> Varchar,
+        updated_at -> Int8,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
 // Allow joining the tables if needed
 allow_tables_to_appear_in_same_query!(
     profiles,
@@ -741,4 +853,11 @@ allow_tables_to_appear_in_same_query!(
     community_votes,
     reward_distributions,
     governance_events,
+    // PoC tables
+    poc_badges,
+    poc_revenue_redirections,
+    poc_analysis_results,
+    poc_disputes,
+    poc_dispute_votes,
+    poc_configuration,
 );

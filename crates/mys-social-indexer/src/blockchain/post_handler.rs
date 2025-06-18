@@ -503,6 +503,290 @@ impl PostEventHandler {
         Ok(())
     }
     
+    // ============================================================================
+    // POC EVENT PROCESSING METHODS
+    // ============================================================================
+    
+    /// Process a PoC analysis submitted event
+    async fn process_poc_analysis_submitted(&self, event: &crate::events::AnalysisSubmittedEvent, tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing PoC analysis submitted: {} by {}", event.post_id, event.oracle_address);
+        
+        // Validate the event
+        crate::events::validate_analysis_submitted_event(event)?;
+        
+        // Convert event to database model
+        let mut new_analysis = event.into_model()?;
+        new_analysis.transaction_id = tx_id.to_string();
+        
+        // Insert into the database
+        diesel::insert_into(crate::schema::poc_analysis_results::table)
+            .values(new_analysis)
+            .on_conflict((crate::schema::poc_analysis_results::post_id, crate::schema::poc_analysis_results::time))
+            .do_update()
+            .set(crate::schema::poc_analysis_results::transaction_id.eq(tx_id))
+            .execute(&mut conn)
+            .await?;
+            
+        info!("Successfully processed PoC analysis submitted for post: {}", event.post_id);
+        Ok(())
+    }
+    
+    /// Process a PoC badge issued event
+    async fn process_poc_badge_issued(&self, event: &crate::events::PocBadgeIssuedEvent, tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing PoC badge issued: {} for post {}", event.badge_id, event.post_id);
+        
+        // Validate the event
+        crate::events::validate_badge_issued_event(event)?;
+        
+        // Convert event to database model
+        let mut new_badge = event.into_model()?;
+        new_badge.transaction_id = tx_id.to_string();
+        
+        // Insert the badge
+        diesel::insert_into(crate::schema::poc_badges::table)
+            .values(&new_badge)
+            .on_conflict((crate::schema::poc_badges::badge_id, crate::schema::poc_badges::time))
+            .do_update()
+            .set(crate::schema::poc_badges::transaction_id.eq(tx_id))
+            .execute(&mut conn)
+            .await?;
+            
+        // Update the post with the badge ID
+        diesel::update(crate::schema::posts::table)
+            .filter(crate::schema::posts::post_id.eq(&event.post_id))
+            .set(crate::schema::posts::poc_badge_id.eq(&event.badge_id))
+            .execute(&mut conn)
+            .await?;
+            
+        info!("Successfully processed PoC badge issued: {}", event.badge_id);
+        Ok(())
+    }
+    
+    /// Process a revenue redirection activated event
+    async fn process_poc_revenue_redirection_activated(&self, event: &crate::events::RevenueRedirectionActivatedEvent, tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing revenue redirection: {} for accused post {}", event.redirection_id, event.accused_post_id);
+        
+        // Validate the event
+        crate::events::validate_redirection_activated_event(event)?;
+        
+        // Convert event to database model
+        let mut new_redirection = event.into_model()?;
+        new_redirection.transaction_id = tx_id.to_string();
+        
+        // Insert the redirection
+        diesel::insert_into(crate::schema::poc_revenue_redirections::table)
+            .values(&new_redirection)
+            .on_conflict((crate::schema::poc_revenue_redirections::redirection_id, crate::schema::poc_revenue_redirections::time))
+            .do_update()
+            .set(crate::schema::poc_revenue_redirections::transaction_id.eq(tx_id))
+            .execute(&mut conn)
+            .await?;
+            
+        // Update the accused post with revenue redirection info
+        diesel::update(crate::schema::posts::table)
+            .filter(crate::schema::posts::post_id.eq(&event.accused_post_id))
+            .set((
+                crate::schema::posts::revenue_redirect_to.eq(&event.original_post_id),
+                crate::schema::posts::revenue_redirect_percentage.eq(event.redirect_percentage as i64),
+            ))
+            .execute(&mut conn)
+            .await?;
+            
+        info!("Successfully processed revenue redirection: {}", event.redirection_id);
+        Ok(())
+    }
+    
+    /// Process a PoC dispute submitted event
+    async fn process_poc_dispute_submitted(&self, event: &crate::events::PocDisputeSubmittedEvent, tx_id: &str, evidence: String) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing PoC dispute submitted: {} by {}", event.dispute_id, event.disputer);
+        
+        // Validate the event
+        crate::events::validate_dispute_submitted_event(event)?;
+        
+        // Convert event to database model
+        let mut new_dispute = event.into_model(evidence)?;
+        new_dispute.transaction_id = tx_id.to_string();
+        
+        // Insert the dispute
+        diesel::insert_into(crate::schema::poc_disputes::table)
+            .values(new_dispute)
+            .on_conflict((crate::schema::poc_disputes::dispute_id, crate::schema::poc_disputes::time))
+            .do_update()
+            .set(crate::schema::poc_disputes::transaction_id.eq(tx_id))
+            .execute(&mut conn)
+            .await?;
+            
+        info!("Successfully processed PoC dispute submitted: {}", event.dispute_id);
+        Ok(())
+    }
+    
+    /// Process a dispute vote cast event
+    async fn process_poc_dispute_vote_cast(&self, event: &crate::events::DisputeVoteCastEvent, tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing dispute vote cast: {} by {} for dispute {}", event.vote_choice, event.voter, event.dispute_id);
+        
+        // Validate the event
+        crate::events::validate_vote_cast_event(event)?;
+        
+        // Convert event to database model
+        let mut new_vote = event.into_model()?;
+        new_vote.transaction_id = tx_id.to_string();
+        
+        // Insert the vote
+        diesel::insert_into(crate::schema::poc_dispute_votes::table)
+            .values(new_vote)
+            .on_conflict((crate::schema::poc_dispute_votes::dispute_id, crate::schema::poc_dispute_votes::voter, crate::schema::poc_dispute_votes::time))
+            .do_update()
+            .set(crate::schema::poc_dispute_votes::transaction_id.eq(tx_id))
+            .execute(&mut conn)
+            .await?;
+            
+        info!("Successfully processed dispute vote cast for dispute: {}", event.dispute_id);
+        Ok(())
+    }
+    
+    /// Process a PoC dispute resolved event
+    async fn process_poc_dispute_resolved(&self, event: &crate::events::PocDisputeResolvedEvent, _tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing PoC dispute resolved: {} for post {}", event.dispute_id, event.post_id);
+        
+        // Get dispute update fields
+        let (resolution, winning_side, total_winning_stake, total_losing_stake, resolved_at) = 
+            event.get_dispute_update_fields();
+        
+        // Update the dispute with resolution
+        diesel::update(crate::schema::poc_disputes::table)
+            .filter(crate::schema::poc_disputes::dispute_id.eq(&event.dispute_id))
+            .set((
+                crate::schema::poc_disputes::status.eq(resolution),
+                crate::schema::poc_disputes::resolution.eq(resolution),
+                crate::schema::poc_disputes::winning_side.eq(winning_side),
+                crate::schema::poc_disputes::total_winning_stake.eq(total_winning_stake),
+                crate::schema::poc_disputes::total_losing_stake.eq(total_losing_stake),
+                crate::schema::poc_disputes::resolved_at.eq(resolved_at),
+            ))
+            .execute(&mut conn)
+            .await?;
+            
+        // If badge should be revoked, update the badge
+        if event.should_revoke_badge() {
+            diesel::update(crate::schema::poc_badges::table)
+                .filter(crate::schema::poc_badges::post_id.eq(&event.post_id))
+                .set((
+                    crate::schema::poc_badges::revoked.eq(true),
+                    crate::schema::poc_badges::revoked_at.eq(resolved_at),
+                ))
+                .execute(&mut conn)
+                .await?;
+                
+            // Remove badge from post
+            diesel::update(crate::schema::posts::table)
+                .filter(crate::schema::posts::post_id.eq(&event.post_id))
+                .set(crate::schema::posts::poc_badge_id.eq::<Option<String>>(None))
+                .execute(&mut conn)
+                .await?;
+        }
+        
+        // If redirection should be removed, update redirections
+        if event.should_remove_redirection() {
+            diesel::update(crate::schema::poc_revenue_redirections::table)
+                .filter(crate::schema::poc_revenue_redirections::accused_post_id.eq(&event.post_id))
+                .set((
+                    crate::schema::poc_revenue_redirections::removed.eq(true),
+                    crate::schema::poc_revenue_redirections::removed_at.eq(resolved_at),
+                ))
+                .execute(&mut conn)
+                .await?;
+                
+            // Remove redirection from post
+            diesel::update(crate::schema::posts::table)
+                .filter(crate::schema::posts::post_id.eq(&event.post_id))
+                .set((
+                    crate::schema::posts::revenue_redirect_to.eq::<Option<String>>(None),
+                    crate::schema::posts::revenue_redirect_percentage.eq::<Option<i64>>(None),
+                ))
+                .execute(&mut conn)
+                .await?;
+        }
+            
+        info!("Successfully processed PoC dispute resolved: {}", event.dispute_id);
+        Ok(())
+    }
+    
+    /// Process a voting reward claimed event
+    async fn process_poc_voting_reward_claimed(&self, event: &crate::events::VotingRewardClaimedEvent, _tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing voting reward claimed: {} claimed {} for dispute {}", 
+               event.voter, event.reward_amount, event.dispute_id);
+        
+        // Get reward update fields
+        let (reward_claimed, reward_amount) = event.get_reward_update_fields();
+        
+        // Update the vote with reward information
+        diesel::update(crate::schema::poc_dispute_votes::table)
+            .filter(crate::schema::poc_dispute_votes::dispute_id.eq(&event.dispute_id))
+            .filter(crate::schema::poc_dispute_votes::voter.eq(&event.voter))
+            .set((
+                crate::schema::poc_dispute_votes::reward_claimed.eq(reward_claimed),
+                crate::schema::poc_dispute_votes::reward_amount.eq(reward_amount),
+            ))
+            .execute(&mut conn)
+            .await?;
+            
+        info!("Successfully processed voting reward claimed for dispute: {}", event.dispute_id);
+        Ok(())
+    }
+    
+    /// Process a PoC configuration updated event
+    async fn process_poc_config_updated(&self, event: &crate::events::PocConfigUpdatedEvent, tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing PoC config updated by: {}", event.updated_by);
+        
+        // Validate the event
+        crate::events::validate_config_updated_event(event)?;
+        
+        // Convert event to database model
+        let mut new_config = event.into_model()?;
+        new_config.transaction_id = tx_id.to_string();
+        
+        // Insert the new configuration
+        diesel::insert_into(crate::schema::poc_configuration::table)
+            .values(new_config)
+            .execute(&mut conn)
+            .await?;
+            
+        info!("Successfully processed PoC config updated");
+        Ok(())
+    }
+    
+    /// Process a token pool sync needed event
+    async fn process_poc_token_pool_sync_needed(&self, event: &crate::events::TokenPoolSyncNeededEvent, _tx_id: &str) -> Result<()> {
+        info!("Processing token pool sync needed for post: {}", event.get_post_id());
+        
+        // This event signals that a post's token pool needs to be synchronized
+        // For now, we just log it - actual sync logic would be handled by the social proof token handler
+        info!("Token pool sync needed for post: {} at timestamp: {}", 
+               event.get_post_id(), event.get_timestamp());
+        
+        // Future implementation could trigger an update to the social proof token tables
+        // or send a message to another handler responsible for token pool management
+        
+        info!("Successfully processed token pool sync needed");
+        Ok(())
+    }
+    
     /// Start listening for post events
     pub async fn start(&mut self) -> Result<()> {
         info!("Starting post event handler");
@@ -650,6 +934,125 @@ impl PostEventHandler {
                         },
                         Err(e) => {
                             error!("Failed to deserialize deletion event: {}", e);
+                        }
+                    }
+                }
+                // Handle PoC analysis submitted event
+                else if event.event_type.ends_with("::AnalysisSubmittedEvent") {
+                    match parse_json_event::<crate::events::AnalysisSubmittedEvent>(&event.data) {
+                        Ok(analysis_event) => {
+                            if let Err(e) = self.process_poc_analysis_submitted(&analysis_event, &tx_id).await {
+                                error!("Failed to process PoC analysis submitted event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize PoC analysis submitted event: {}", e);
+                        }
+                    }
+                }
+                // Handle PoC badge issued event
+                else if event.event_type.ends_with("::PocBadgeIssuedEvent") {
+                    match parse_json_event::<crate::events::PocBadgeIssuedEvent>(&event.data) {
+                        Ok(badge_event) => {
+                            if let Err(e) = self.process_poc_badge_issued(&badge_event, &tx_id).await {
+                                error!("Failed to process PoC badge issued event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize PoC badge issued event: {}", e);
+                        }
+                    }
+                }
+                // Handle revenue redirection activated event
+                else if event.event_type.ends_with("::RevenueRedirectionActivatedEvent") {
+                    match parse_json_event::<crate::events::RevenueRedirectionActivatedEvent>(&event.data) {
+                        Ok(redirection_event) => {
+                            if let Err(e) = self.process_poc_revenue_redirection_activated(&redirection_event, &tx_id).await {
+                                error!("Failed to process revenue redirection activated event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize revenue redirection activated event: {}", e);
+                        }
+                    }
+                }
+                // Handle PoC dispute submitted event
+                else if event.event_type.ends_with("::PocDisputeSubmittedEvent") {
+                    match parse_json_event::<crate::events::PocDisputeSubmittedEvent>(&event.data) {
+                        Ok(dispute_event) => {
+                            // For now, use empty evidence string - in real implementation this would come from the event data
+                            let evidence = "Dispute evidence data".to_string();
+                            if let Err(e) = self.process_poc_dispute_submitted(&dispute_event, &tx_id, evidence).await {
+                                error!("Failed to process PoC dispute submitted event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize PoC dispute submitted event: {}", e);
+                        }
+                    }
+                }
+                // Handle dispute vote cast event
+                else if event.event_type.ends_with("::DisputeVoteCastEvent") {
+                    match parse_json_event::<crate::events::DisputeVoteCastEvent>(&event.data) {
+                        Ok(vote_event) => {
+                            if let Err(e) = self.process_poc_dispute_vote_cast(&vote_event, &tx_id).await {
+                                error!("Failed to process dispute vote cast event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize dispute vote cast event: {}", e);
+                        }
+                    }
+                }
+                // Handle PoC dispute resolved event
+                else if event.event_type.ends_with("::PocDisputeResolvedEvent") {
+                    match parse_json_event::<crate::events::PocDisputeResolvedEvent>(&event.data) {
+                        Ok(resolved_event) => {
+                            if let Err(e) = self.process_poc_dispute_resolved(&resolved_event, &tx_id).await {
+                                error!("Failed to process PoC dispute resolved event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize PoC dispute resolved event: {}", e);
+                        }
+                    }
+                }
+                // Handle voting reward claimed event
+                else if event.event_type.ends_with("::VotingRewardClaimedEvent") {
+                    match parse_json_event::<crate::events::VotingRewardClaimedEvent>(&event.data) {
+                        Ok(reward_event) => {
+                            if let Err(e) = self.process_poc_voting_reward_claimed(&reward_event, &tx_id).await {
+                                error!("Failed to process voting reward claimed event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize voting reward claimed event: {}", e);
+                        }
+                    }
+                }
+                // Handle PoC configuration updated event
+                else if event.event_type.ends_with("::PocConfigUpdatedEvent") {
+                    match parse_json_event::<crate::events::PocConfigUpdatedEvent>(&event.data) {
+                        Ok(config_event) => {
+                            if let Err(e) = self.process_poc_config_updated(&config_event, &tx_id).await {
+                                error!("Failed to process PoC config updated event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize PoC config updated event: {}", e);
+                        }
+                    }
+                }
+                // Handle token pool sync needed event
+                else if event.event_type.ends_with("::TokenPoolSyncNeededEvent") {
+                    match parse_json_event::<crate::events::TokenPoolSyncNeededEvent>(&event.data) {
+                        Ok(sync_event) => {
+                            if let Err(e) = self.process_poc_token_pool_sync_needed(&sync_event, &tx_id).await {
+                                error!("Failed to process token pool sync needed event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize token pool sync needed event: {}", e);
                         }
                     }
                 }
