@@ -40,8 +40,6 @@ module social_contracts::my_ip {
     const EInvalidTimeRange: u64 = 10;
 
     // === Constants ===
-    const MAX_TITLE_LENGTH: u64 = 200;
-    const MAX_DESCRIPTION_LENGTH: u64 = 1000;
     const MAX_TAGS: u64 = 10;
     const MAX_SUBSCRIPTION_DAYS: u64 = 365;
     const MILLISECONDS_PER_DAY: u64 = 86_400_000;
