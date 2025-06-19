@@ -19,6 +19,8 @@ pub mod social_proof_token_event_types;
 pub mod social_proof_token_events;
 pub mod poc_event_types;
 pub mod poc_events;
+pub mod subscription_event_types;
+pub mod subscription_events;
 
 // Re-export all profile events
 pub use profile_events::{
@@ -126,6 +128,31 @@ pub use poc_event_types::{
     MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO, MEDIA_TYPE_AUDIO,
     DISPUTE_STATUS_VOTING, DISPUTE_STATUS_RESOLVED_UPHELD, DISPUTE_STATUS_RESOLVED_OVERTURNED,
     VOTE_UPHOLD, VOTE_OVERTURN,
+};
+
+// Re-export subscription events
+pub use subscription_events::{
+    parse_subscription_event,
+    validate_subscription_event_detailed,
+    validate_business_rules,
+    sanitize_event_data,
+    extract_profile_owner_from_service,
+    SubscriptionEventError,
+    MAX_MONTHLY_FEE, MIN_MONTHLY_FEE, MAX_REFUND_AMOUNT,
+};
+
+// Re-export subscription event types
+pub use subscription_event_types::{
+    SubscriptionEventType,
+    ProfileSubscriptionCreatedEvent,
+    ProfileSubscriptionRenewedEvent,
+    ProfileSubscriptionCancelledEvent,
+    ProfileSubscriptionUpdatedEvent,
+    generate_subscription_id,
+    validate_subscription_event,
+    extract_service_id,
+    extract_subscriber,
+    extract_subscription_id,
 };
 
 // Define placeholder event types for other modules
@@ -274,6 +301,7 @@ pub const MODULE_PREFIX_POST: &str = module_prefix!();
 pub const MODULE_PREFIX_GOVERNANCE: &str = module_prefix!();
 pub const MODULE_PREFIX_SOCIAL_PROOF_TOKEN: &str = module_prefix!();
 pub const MODULE_PREFIX_POC: &str = module_prefix!();
+pub const MODULE_PREFIX_SUBSCRIPTION: &str = module_prefix!();
 
 pub use event_utils::*;
 

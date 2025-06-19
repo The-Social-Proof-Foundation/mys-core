@@ -111,6 +111,17 @@ use crate::api::handlers::poc::{
     get_post_poc_badges,
     get_post_revenue_redirections,
 };
+// Import subscription handlers
+use crate::api::handlers::subscriptions::{
+    get_subscriptions,
+    get_subscription_services,
+    get_subscription_revenue,
+    check_subscription_access,
+    get_subscription_status,
+    get_subscription_analytics,
+    get_service_performance,
+    get_subscriber_summary,
+};
 
 /// Build the application router with all API routes
 pub fn build_router(db: Arc<Database>) -> Router {
@@ -171,6 +182,16 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/poc/configuration", get(get_poc_configuration))
         .route("/posts/:id/poc-badges", get(get_post_poc_badges))
         .route("/posts/:id/revenue-redirections", get(get_post_revenue_redirections))
+        
+        // Subscription endpoints (using TimescaleDB)
+        .route("/subscriptions", get(get_subscriptions))
+        .route("/subscription-services", get(get_subscription_services))
+        .route("/subscription-revenue", get(get_subscription_revenue))
+        .route("/subscriptions/:id/status", get(get_subscription_status))
+        .route("/subscription-access/:subscriber/:content_id", get(check_subscription_access))
+        .route("/subscription-analytics", get(get_subscription_analytics))
+        .route("/service-performance", get(get_service_performance))
+        .route("/subscribers/:address/summary", get(get_subscriber_summary))
         
         // MyIP Marketplace endpoints (using TimescaleDB)
         .route("/marketplace", get(list_marketplace_data))

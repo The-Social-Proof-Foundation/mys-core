@@ -208,6 +208,11 @@ table! {
         poc_badge_id -> Nullable<Varchar>,
         revenue_redirect_to -> Nullable<Varchar>,
         revenue_redirect_percentage -> Nullable<Int8>,
+        // Subscription fields
+        requires_subscription -> Nullable<Bool>,
+        subscription_service_id -> Nullable<Varchar>,
+        subscription_price -> Nullable<Int8>,
+        encrypted_content_hash -> Nullable<Varchar>,
     }
 }
 
@@ -807,6 +812,94 @@ table! {
     }
 }
 
+// ===========================================================================
+// SUBSCRIPTION TABLES
+// ===========================================================================
+
+// Define profile_subscription_services table
+table! {
+    profile_subscription_services (service_id) {
+        service_id -> Varchar,
+        profile_owner -> Varchar,
+        profile_id -> Varchar,
+        monthly_fee -> Int8,
+        active -> Bool,
+        subscriber_count -> Int8,
+        created_at -> Int8,
+        updated_at -> Nullable<Int8>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define profile_subscriptions table
+table! {
+    profile_subscriptions (subscription_id, time) {
+        subscription_id -> Varchar,
+        service_id -> Varchar,
+        subscriber -> Varchar,
+        created_at -> Int8,
+        expires_at -> Int8,
+        auto_renew -> Bool,
+        renewal_balance -> Int8,
+        renewal_count -> Int8,
+        cancelled_at -> Nullable<Int8>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+        processing_success -> Bool,
+        processing_error -> Nullable<Text>,
+    }
+}
+
+// Define subscription_events table
+table! {
+    subscription_events (event_type, time) {
+        event_type -> Varchar,
+        subscription_id -> Nullable<Varchar>,
+        service_id -> Nullable<Varchar>,
+        subscriber -> Nullable<Varchar>,
+        event_data -> Jsonb,
+        event_time -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+        processing_success -> Bool,
+        processing_error -> Nullable<Text>,
+    }
+}
+
+// Define subscription_revenue table
+table! {
+    subscription_revenue (service_id, time) {
+        service_id -> Varchar,
+        subscription_id -> Nullable<Varchar>,
+        from_address -> Varchar,
+        to_address -> Varchar,
+        amount -> Int8,
+        revenue_type -> Varchar,
+        payment_time -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+        processing_success -> Bool,
+        processing_error -> Nullable<Text>,
+    }
+}
+
+// Define subscription_access_logs table
+table! {
+    subscription_access_logs (subscription_id, time) {
+        subscription_id -> Varchar,
+        subscriber -> Varchar,
+        content_type -> Varchar,
+        content_id -> Varchar,
+        access_time -> Int8,
+        seal_id -> Nullable<Varchar>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+        processing_success -> Bool,
+        processing_error -> Nullable<Text>,
+    }
+}
+
 // Allow joining the tables if needed
 allow_tables_to_appear_in_same_query!(
     profiles,
@@ -860,4 +953,10 @@ allow_tables_to_appear_in_same_query!(
     poc_disputes,
     poc_dispute_votes,
     poc_configuration,
+    // Subscription tables
+    profile_subscription_services,
+    profile_subscriptions,
+    subscription_events,
+    subscription_revenue,
+    subscription_access_logs,
 );

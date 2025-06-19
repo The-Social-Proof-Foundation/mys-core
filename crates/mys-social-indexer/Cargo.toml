@@ -39,6 +39,7 @@ prometheus = { workspace = true }
 # Utilities
 chrono = { workspace = true, features = ["serde"] }
 bigdecimal = { workspace = true, features = ["serde"] }
+uuid = { workspace = true }
 once_cell = { workspace = true }
 futures = { workspace = true }
 dotenv = "0.15.0"
