@@ -97,7 +97,6 @@ module social_contracts::profile {
         // Version of the registry, allows for controlled upgrades
         version: u64,
     }
-
     
     /// Profile object that contains user information
     public struct Profile has key, store {

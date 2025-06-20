@@ -8,6 +8,7 @@ A indexer for the MySocial blockchain that focuses on tracking social interactio
 - **Social Graph Indexing**: Tracks follow/unfollow relationships
 - **Platform Indexing**: Tracks platform creation and user membership
 - **Post Indexing**: Tracks posts, comments, reactions, tips, and reposts
+- **Post Promotion**: Tracks pay-per-view promoted posts with budget management and view tracking
 - **MyIP Integration**: Tracks intellectual property licenses and revenue
 - **Governance Integration**: Tracks proposals, voting, and delegates
 - **Social Proof Token**: Tracks token pools, transactions, holdings, and auctions
@@ -24,6 +25,39 @@ The indexer consists of the following components:
 2. **Event Processor**: Identifies and processes events from various modules
 3. **Database**: Stores indexed data in TimescaleDB (PostgreSQL)
 4. **API Server**: Exposes indexed data via REST API endpoints
+
+## Post Promotion Feature
+
+The indexer now supports tracking promoted posts, a pay-per-view system where post creators can allocate MYS tokens to promote their content. This feature is fully optimized for TimescaleDB to handle high-volume time-series data efficiently.
+
+### How It Works
+1. **Promotion Creation**: When a post is promoted, a `PromotedPostCreatedEvent` is emitted containing the promotion budget and payment per view
+2. **View Tracking**: Each confirmed view triggers a `PromotedPostViewConfirmedEvent` that records the viewer, payment amount, and platform
+3. **Budget Management**: The indexer tracks remaining budget and automatically updates promotion status
+4. **Analytics**: Continuous aggregates provide real-time statistics on promotion performance
+
+### TimescaleDB Features Used
+- **Hypertables**: All promotion tables are TimescaleDB hypertables with automatic partitioning by time
+- **Continuous Aggregates**: Pre-computed hourly and daily aggregates for instant analytics
+- **Compression**: Automatic compression policies reduce storage by up to 90% for older data
+- **Time Bucketing**: Efficient time-series queries using `time_bucket` function
+- **Materialized Views**: Pre-computed performance metrics for top promotions
+
+### Database Tables (All TimescaleDB Hypertables)
+- `promoted_posts`: Stores promotion configurations and current status (1-month chunks)
+- `promotion_views`: Time-series data for all confirmed views (1-week chunks)
+- `promotion_status_events`: Tracks status changes (1-month chunks)
+- `promotion_budget_events`: Records budget additions and spending (1-month chunks)
+
+### Continuous Aggregates
+- `promotion_views_hourly`: Hourly rollup of views per promotion (refreshes every hour)
+- `promotion_spending_daily`: Daily platform-wide spending metrics (refreshes every 6 hours)
+
+### API Endpoints
+- **Basic Queries**: Standard promotion data and statistics
+- **Time-Series Analytics**: Leverage TimescaleDB's time_bucket for efficient aggregation
+- **Continuous Aggregates**: Query pre-computed data for instant results
+- **Performance Views**: Access materialized views for top promotions and trends
 
 ## Getting Started
 
@@ -128,6 +162,18 @@ RUST_LOG=info,mys_social_indexer=debug
 - **GET /posts/:id/reactions** - Get reactions for a post
 - **GET /posts/:id/reposts** - Get reposts of a post
 - **GET /posts/trending** - Get trending posts
+
+### Post Promotion API
+- **GET /promotions** - List promoted posts with optional filtering
+- **GET /posts/:id/promotion** - Get promotion details for a specific post
+- **GET /promotions/:id/views** - Get views for a specific promotion
+- **GET /promotions/:id/stats** - Get detailed statistics for a promotion
+
+### TimescaleDB-Optimized Promotion Analytics
+- **GET /promotions/:id/analytics/time-series** - Get hourly time-bucketed analytics using TimescaleDB time_bucket
+- **GET /promotions/:id/analytics/hourly** - Get hourly stats from continuous aggregates for better performance
+- **GET /promotions/analytics/top-performing** - Get top performing promotions from materialized views
+- **GET /promotions/analytics/spending-trends** - Get platform-wide spending trends from continuous aggregates
 
 ### MyIP API (Intellectual Property)
 - **GET /licenses** - List intellectual property licenses

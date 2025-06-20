@@ -29,6 +29,13 @@ pub mod query_types {
     use diesel::prelude::*;
     use diesel::sql_types::*;
 
+    /// Result type for COUNT(*) queries
+    #[derive(QueryableByName, Debug)]
+    pub struct CountResult {
+        #[diesel(sql_type = BigInt)]
+        pub count: i64,
+    }
+
     /// Result type for proposal type query
     #[derive(QueryableByName, Debug)]
     pub struct ProposalTypeResult {

@@ -1,0 +1,50 @@
+# Example configuration for mys-price-oracle
+# For token 0xfdd6013bf2757018d8c087244f03e5a521b2d3b7 on Base network
+
+# Bridge server configuration
+server-url = "https://your-bridge-server.com"
+chain-id = 8453  # Base network chain ID
+token-id = 1
+update-interval = "30s"
+price-change-threshold = "0.02"  # 2% price change threshold
+
+# Data source configuration - using Uniswap V3 subgraph for Base
+[source.graphql]
+url = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3-base"
+token-address = "0xfdd6013bf2757018d8c087244f03e5a521b2d3b7"
+pool-fee-tier = 3000  # 0.3% fee tier
+
+# Alternative configuration using REST API (commented out)
+# [source.rest-api]
+# url = "https://api.coingecko.com/api/v3/simple/price?ids=your-token&vs_currencies=usd"
+# json-path = "$.your-token.usd"
+
+# Authentication configuration
+[auth]
+# Option 1: API Key authentication (recommended for simple setups)
+api-key = "your-api-key-here"
+
+# Option 2: HMAC authentication (recommended for high security)
+# hmac-secret = "your-hmac-secret-here"
+
+# Retry configuration
+[retry]
+max-attempts = 3
+initial-delay = "100ms"
+max-delay = "30s"
+multiplier = 2.0
+
+# Price validation configuration
+[validation]
+min-price-usd = "0.000001"     # Minimum valid price in USD
+max-price-usd = "1000000"      # Maximum valid price in USD  
+max-price-deviation-percent = "50"  # Maximum allowed price change in one update
+
+# Monitoring configuration
+[monitoring]
+metrics-port = 9090      # Prometheus metrics endpoint
+health-check-port = 8080 # Health check endpoint
+
+# State persistence configuration
+[persistence]
+database-path = "./oracle_state.db" 

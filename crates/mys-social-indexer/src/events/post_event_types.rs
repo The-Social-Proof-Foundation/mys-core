@@ -20,6 +20,11 @@ pub enum PostEventType {
     CommentReported,
     PostDeleted,
     CommentDeleted,
+    PromotedPostCreated,
+    PromotedPostViewConfirmed,
+    PromotionDeactivated,
+    PromotionStatusToggled,
+    PromotionFundsWithdrawn,
 }
 
 /// Post created event from blockchain
@@ -37,6 +42,8 @@ pub struct PostCreatedEvent {
     pub created_at: u64,
     /// Reference to MyIP license if attached
     pub my_ip_id: Option<String>,
+    /// Reference to promotion data if this is a promoted post
+    pub promotion_id: Option<String>,
 }
 
 /// Comment created event from blockchain
@@ -171,4 +178,53 @@ pub struct DeletionEvent {
     pub post_type: Option<String>,
     pub post_id: Option<String>,
     pub deleted_at: u64,
+}
+
+/// Promoted post created event from blockchain
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromotedPostCreatedEvent {
+    pub post_id: String,
+    pub owner: String,
+    pub profile_id: String,
+    pub payment_per_view: u64,
+    pub total_budget: u64,
+    pub created_at: u64,
+}
+
+/// Promoted post view confirmed event from blockchain
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromotedPostViewConfirmedEvent {
+    pub post_id: String,
+    pub viewer: String,
+    pub payment_amount: u64,
+    pub view_duration: u64,
+    pub platform_id: String,
+    pub timestamp: u64,
+}
+
+/// Promotion deactivated event from blockchain
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromotionDeactivatedEvent {
+    pub post_id: String,
+    pub owner: String,
+    pub remaining_budget: u64,
+    pub timestamp: u64,
+}
+
+/// Promotion status toggled event from blockchain
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromotionStatusToggledEvent {
+    pub post_id: String,
+    pub toggled_by: String,
+    pub new_status: bool,
+    pub timestamp: u64,
+}
+
+/// Promotion funds withdrawn event from blockchain
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromotionFundsWithdrawnEvent {
+    pub post_id: String,
+    pub owner: String,
+    pub withdrawn_amount: u64,
+    pub timestamp: u64,
 } 

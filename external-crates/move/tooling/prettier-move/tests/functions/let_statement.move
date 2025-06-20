@@ -60,7 +60,6 @@ module prettier::let_statement {
 
     fun unbreakable_expressions() {
         let something = very_long_expression_that_does_not_break_itself;
-        let Kiosk { id, profits, owner: _, item_count } = self;
     }
 
     fun break_list() {

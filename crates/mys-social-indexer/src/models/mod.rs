@@ -14,6 +14,7 @@ pub mod social_proof_token;
 pub mod poc;
 pub mod subscription;
 pub mod revenue;
+pub mod token_exchange;
 
 pub use profile::*;
 pub use indexer::*;
@@ -65,3 +66,4 @@ pub use revenue::{
     myso_from_blockchain_units, myso_to_blockchain_units, format_myso_amount,
     calculate_percentage, calculate_growth_rate
 };
+pub use token_exchange::*;

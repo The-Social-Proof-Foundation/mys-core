@@ -15,7 +15,7 @@ module social_contracts::post_tests {
     use mys::transfer;
     use mys::coin;
     
-    use social_contracts::post::{Self, Post, Comment, PostConfig, PredictionData};
+    use social_contracts::post::{Self, Post, Comment, PostConfig, PredictionData, PromotionData};
     use social_contracts::profile::UsernameRegistry;
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::my_ip::{Self, MyIPRegistry};
@@ -1113,6 +1113,36 @@ module social_contracts::post_tests {
             test_scenario::return_shared(config);
             test_scenario::return_shared(post);
             test_scenario::return_shared(prediction_data);
+        };
+        
+        test_scenario::end(scenario);
+    }
+
+    /// Test promoted post creation and basic functionality
+    #[test]
+    fun test_promoted_post_creation() {
+        let mut scenario = test_scenario::begin(USER1);
+        
+        // Create a simple promoted post using test functions
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            // Create some MYS coins for promotion budget
+            let promotion_budget = coin::mint_for_testing<mys::mys::MYS>(1000000, test_scenario::ctx(&mut scenario)); // 1 MYS
+            
+            // Create a promoted post using the test helper
+            let (post_id, promotion_id) = post::create_test_promoted_post(
+                USER1,
+                USER1, // profile_id same as owner for test
+                string::utf8(b"This is a promoted post!"),
+                10000, // 0.01 MYS per view
+                promotion_budget,
+                test_scenario::ctx(&mut scenario)
+            );
+            
+            // Verify the IDs are different and valid
+            assert!(post_id != promotion_id, 0);
+            assert!(post_id != @0x0, 1);
+            assert!(promotion_id != @0x0, 2);
         };
         
         test_scenario::end(scenario);

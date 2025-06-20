@@ -73,6 +73,7 @@ impl PostCreatedEvent {
             transaction_id: "".to_string(), // Will be set by handler
             my_ip_id: self.my_ip_id.clone(),
             revenue_recipient: None, // Revenue tracking handled via unified revenue system
+            promotion_id: self.promotion_id.clone(),
         })
     }
 }

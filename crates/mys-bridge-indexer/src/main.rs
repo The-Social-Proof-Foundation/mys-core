@@ -3,11 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
-use backoff::ExponentialBackoff;
-use bin_version::bin_version;
 use clap::Parser;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
-use ethers::providers::{Http, Provider};
 use ethers::types::Address as EthAddress;
 use prometheus::Registry;
 use std::collections::HashSet;
@@ -16,8 +13,6 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::join;
 use tokio::task::JoinHandle;
 use tracing::info;
 
@@ -47,7 +42,7 @@ use mys_bridge_indexer::{
 };
 use mys_config::Config;
 use mys_data_ingestion_core::DataIngestionMetrics;
-use mys_pg_db::{Connection, Db, DbArgs};
+use mys_pg_db::{Db, DbArgs};
 use mys_sdk::MysClientBuilder;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/migrations");

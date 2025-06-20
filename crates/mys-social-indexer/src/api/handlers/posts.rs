@@ -26,6 +26,16 @@ pub struct PostQuery {
     pub platform_id: Option<String>,
 }
 
+// Query parameters for promotion listing
+#[derive(Debug, Deserialize)]
+pub struct PromotionQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub owner: Option<String>,
+    pub active_only: Option<bool>,
+    pub platform_id: Option<String>,
+}
+
 // Basic post information returned from queries
 #[derive(Debug, Serialize, QueryableByName)]
 pub struct PostBasic {
@@ -61,6 +71,9 @@ pub struct PostBasic {
     
     #[diesel(sql_type = BigInt)]
     pub tips_received: i64,
+    
+    #[diesel(sql_type = Nullable<Text>)]
+    pub promotion_id: Option<String>,
 }
 
 // Response for a post with engagement stats
@@ -186,6 +199,102 @@ pub struct PostWithEngagementInfo {
     
     #[diesel(sql_type = Float8)]
     pub trending_score: f64,
+    
+    #[diesel(sql_type = Nullable<Text>)]
+    pub promotion_id: Option<String>,
+}
+
+// Promoted post information
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PromotedPostInfo {
+    #[diesel(sql_type = Text)]
+    pub promotion_id: String,
+    
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+    
+    #[diesel(sql_type = Text)]
+    pub profile_id: String,
+    
+    #[diesel(sql_type = BigInt)]
+    pub payment_per_view: i64,
+    
+    #[diesel(sql_type = BigInt)]
+    pub total_budget: i64,
+    
+    #[diesel(sql_type = BigInt)]
+    pub remaining_budget: i64,
+    
+    #[diesel(sql_type = Bool)]
+    pub active: bool,
+    
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+    
+    #[diesel(sql_type = BigInt)]
+    pub view_count: i64,
+    
+    #[diesel(sql_type = BigInt)]
+    pub total_spent: i64,
+}
+
+// Promotion view information
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PromotionViewInfo {
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    
+    #[diesel(sql_type = Text)]
+    pub promotion_id: String,
+    
+    #[diesel(sql_type = Text)]
+    pub viewer: String,
+    
+    #[diesel(sql_type = BigInt)]
+    pub payment_amount: i64,
+    
+    #[diesel(sql_type = BigInt)]
+    pub view_duration: i64,
+    
+    #[diesel(sql_type = Text)]
+    pub platform_id: String,
+    
+    #[diesel(sql_type = BigInt)]
+    pub timestamp: i64,
+}
+
+// Promotion statistics
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PromotionStats {
+    #[diesel(sql_type = Text)]
+    pub promotion_id: String,
+    
+    #[diesel(sql_type = BigInt)]
+    pub total_views: i64,
+    
+    #[diesel(sql_type = BigInt)]
+    pub unique_viewers: i64,
+    
+    #[diesel(sql_type = BigInt)]
+    pub total_spent: i64,
+    
+    #[diesel(sql_type = BigInt)]
+    pub avg_view_duration: i64,
+    
+    #[diesel(sql_type = Float8)]
+    pub avg_payment_per_view: f64,
+    
+    #[diesel(sql_type = BigInt)]
+    pub views_last_24h: i64,
+    
+    #[diesel(sql_type = BigInt)]
+    pub views_last_7d: i64,
 }
 
 // Get a post by ID
@@ -205,7 +314,7 @@ pub async fn get_post_by_id(
     };
     
     // Use diesel sql_query instead of QueryDsl since there might be schema definition issues
-    let query = "SELECT post_id, owner, profile_id, content, created_at, deleted_at, removed_from_platform, reaction_count, comment_count, repost_count, tips_received FROM posts WHERE post_id = $1";
+    let query = "SELECT post_id, owner, profile_id, content, created_at, deleted_at, removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id FROM posts WHERE post_id = $1";
     
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&post_id)
@@ -297,7 +406,7 @@ pub async fn list_posts(
     // Simplified query that just returns basic post info
     let query = "
         SELECT post_id, owner, profile_id, content, created_at, deleted_at, 
-               removed_from_platform, reaction_count, comment_count, repost_count, tips_received
+               removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id
         FROM posts 
         WHERE deleted_at IS NULL 
         ORDER BY created_at DESC 
@@ -440,7 +549,7 @@ pub async fn get_trending_posts(
     // Simplified query - just get posts ordered by created_at
     let query = "
         SELECT post_id, owner, profile_id, content, created_at, deleted_at, 
-               removed_from_platform, reaction_count, comment_count, repost_count, tips_received
+               removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id
         FROM posts 
         WHERE deleted_at IS NULL AND removed_from_platform = false
         ORDER BY (reaction_count + comment_count * 2 + repost_count * 3) DESC, created_at DESC
@@ -492,7 +601,8 @@ pub async fn get_profile_posts(
             p.reaction_count, p.comment_count, p.repost_count, p.tips_received,
             (p.reaction_count + p.comment_count * 2 + p.repost_count * 3 + p.tips_received) AS engagement_score,
             ((p.reaction_count + p.comment_count * 2 + p.repost_count * 3 + p.tips_received) / 
-             (EXTRACT(EPOCH FROM NOW()) - p.created_at + 3600) * 10000) AS trending_score
+             (EXTRACT(EPOCH FROM NOW()) - p.created_at + 3600) * 10000) AS trending_score,
+            p.promotion_id
         FROM 
             posts p
         WHERE 
@@ -540,6 +650,7 @@ pub async fn get_profile_posts(
                         comment_count: p.comment_count,
                         repost_count: p.repost_count,
                         tips_received: p.tips_received,
+                        promotion_id: p.promotion_id,
                     },
                     engagement_score: p.engagement_score,
                     trending_score: p.trending_score,
@@ -548,6 +659,501 @@ pub async fn get_profile_posts(
                 
             Json(post_responses).into_response()
         },
+        Err(e) => {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Get promoted posts with optional filtering
+pub async fn get_promoted_posts(
+    State(pool): State<DbPool>,
+    Query(params): Query<PromotionQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    let limit = params.limit.unwrap_or(20).min(100);
+    let offset = params.offset.unwrap_or(0);
+    let active_only = params.active_only.unwrap_or(true);
+    
+    let mut query = "
+        SELECT DISTINCT
+            pp.promotion_id,
+            pp.post_id,
+            pp.owner,
+            pp.profile_id,
+            pp.payment_per_view,
+            pp.total_budget,
+            pp.remaining_budget,
+            pp.active,
+            pp.created_at,
+            COUNT(DISTINCT pv.viewer) AS view_count,
+            COALESCE(SUM(pv.payment_amount), 0) AS total_spent
+        FROM promoted_posts pp
+        LEFT JOIN promotion_views pv ON pp.promotion_id = pv.promotion_id
+        WHERE 1=1
+    ".to_string();
+    
+    if active_only {
+        query.push_str(" AND pp.active = true AND pp.remaining_budget > 0");
+    }
+    
+    if let Some(owner) = &params.owner {
+        query.push_str(&format!(" AND pp.owner = '{}'", owner));
+    }
+    
+    if let Some(platform_id) = &params.platform_id {
+        query.push_str(&format!(" AND EXISTS (
+            SELECT 1 FROM promotion_views pv2 
+            WHERE pv2.promotion_id = pp.promotion_id 
+            AND pv2.platform_id = '{}'
+        )", platform_id));
+    }
+    
+    query.push_str("
+        GROUP BY pp.promotion_id, pp.post_id, pp.owner, pp.profile_id, 
+                 pp.payment_per_view, pp.total_budget, pp.remaining_budget, 
+                 pp.active, pp.created_at
+        ORDER BY pp.created_at DESC
+        LIMIT $1 OFFSET $2
+    ");
+    
+    let result = diesel::sql_query(&query)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<PromotedPostInfo>(&mut conn)
+        .await;
+        
+    match result {
+        Ok(promoted_posts) => Json(promoted_posts).into_response(),
+        Err(e) => {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Get promotion details for a specific post
+pub async fn get_post_promotion(
+    State(pool): State<DbPool>,
+    Path(post_id): Path<String>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+    
+    let query = "
+        SELECT 
+            pp.promotion_id,
+            pp.post_id,
+            pp.owner,
+            pp.profile_id,
+            pp.payment_per_view,
+            pp.total_budget,
+            pp.remaining_budget,
+            pp.active,
+            pp.created_at,
+            COUNT(DISTINCT pv.viewer) AS view_count,
+            COALESCE(SUM(pv.payment_amount), 0) AS total_spent
+        FROM promoted_posts pp
+        LEFT JOIN promotion_views pv ON pp.promotion_id = pv.promotion_id
+        WHERE pp.post_id = $1
+        GROUP BY pp.promotion_id, pp.post_id, pp.owner, pp.profile_id, 
+                 pp.payment_per_view, pp.total_budget, pp.remaining_budget, 
+                 pp.active, pp.created_at
+    ";
+    
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(&post_id)
+        .get_result::<PromotedPostInfo>(&mut conn)
+        .await;
+        
+    match result {
+        Ok(promotion) => Json(promotion).into_response(),
+        Err(diesel::result::Error::NotFound) => {
+            (StatusCode::NOT_FOUND, "No promotion found for this post").into_response()
+        },
+        Err(e) => {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Get promotion views for a specific promotion
+pub async fn get_promotion_views(
+    State(pool): State<DbPool>,
+    Path(promotion_id): Path<String>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+    
+    let limit = params.limit.unwrap_or(20).min(100);
+    let offset = params.offset.unwrap_or(0);
+    
+    let query = "
+        SELECT 
+            post_id,
+            promotion_id,
+            viewer,
+            payment_amount,
+            view_duration,
+            platform_id,
+            timestamp
+        FROM promotion_views
+        WHERE promotion_id = $1
+        ORDER BY timestamp DESC
+        LIMIT $2 OFFSET $3
+    ";
+    
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(&promotion_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<PromotionViewInfo>(&mut conn)
+        .await;
+        
+    match result {
+        Ok(views) => Json(views).into_response(),
+        Err(e) => {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+                .into_response()
+        }
+    }
+}
+
+// Time bucket analytics for promotions
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PromotionTimeBucket {
+    #[diesel(sql_type = Timestamptz)]
+    pub bucket: chrono::DateTime<chrono::Utc>,
+    
+    #[diesel(sql_type = BigInt)]
+    pub view_count: i64,
+    
+    #[diesel(sql_type = BigInt)]
+    pub total_payments: i64,
+    
+    #[diesel(sql_type = Float8)]
+    pub avg_view_duration: f64,
+}
+
+// Performance metrics from materialized views
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PromotionPerformance {
+    #[diesel(sql_type = Text)]
+    pub promotion_id: String,
+    
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+    
+    #[diesel(sql_type = BigInt)]
+    pub total_views: i64,
+    
+    #[diesel(sql_type = BigInt)]
+    pub unique_viewers: i64,
+    
+    #[diesel(sql_type = Float8)]
+    pub views_per_hour: f64,
+    
+    #[diesel(sql_type = Float8)]
+    pub budget_utilization_percent: f64,
+    
+    #[diesel(sql_type = Float8)]
+    pub actual_cost_per_view: f64,
+}
+
+/// Get promotion statistics
+pub async fn get_promotion_stats(
+    State(pool): State<DbPool>,
+    Path(promotion_id): Path<String>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+    
+    // Enhanced query using TimescaleDB time_bucket for better time-based analytics
+    let query = "
+        WITH current_stats AS (
+            SELECT 
+                COUNT(*) AS total_views,
+                COUNT(DISTINCT viewer) AS unique_viewers,
+                COALESCE(SUM(payment_amount), 0) AS total_spent,
+                COALESCE(AVG(view_duration), 0) AS avg_view_duration,
+                COALESCE(AVG(payment_amount), 0.0) AS avg_payment_per_view
+            FROM promotion_views
+            WHERE promotion_id = $1
+        ),
+        time_based_stats AS (
+            SELECT 
+                COUNT(CASE WHEN time >= NOW() - INTERVAL '24 hours' THEN 1 END) AS views_last_24h,
+                COUNT(CASE WHEN time >= NOW() - INTERVAL '7 days' THEN 1 END) AS views_last_7d
+            FROM promotion_views
+            WHERE promotion_id = $1
+        )
+        SELECT 
+            $1::text AS promotion_id,
+            cs.total_views,
+            cs.unique_viewers,
+            cs.total_spent,
+            cs.avg_view_duration,
+            cs.avg_payment_per_view,
+            ts.views_last_24h,
+            ts.views_last_7d
+        FROM current_stats cs, time_based_stats ts
+    ";
+    
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(&promotion_id)
+        .get_result::<PromotionStats>(&mut conn)
+        .await;
+        
+    match result {
+        Ok(stats) => Json(stats).into_response(),
+        Err(e) => {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Get promotion view analytics over time using TimescaleDB time_bucket
+pub async fn get_promotion_time_analytics(
+    State(pool): State<DbPool>,
+    Path(promotion_id): Path<String>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+    
+    // Use time_bucket for efficient time-series aggregation
+    let query = "
+        SELECT 
+            time_bucket('1 hour', time) AS bucket,
+            COUNT(*) AS view_count,
+            SUM(payment_amount) AS total_payments,
+            AVG(view_duration)::FLOAT8 AS avg_view_duration
+        FROM promotion_views
+        WHERE promotion_id = $1
+        AND time >= NOW() - INTERVAL '7 days'
+        GROUP BY bucket
+        ORDER BY bucket DESC
+        LIMIT $2
+    ";
+    
+    let limit = params.limit.unwrap_or(168).min(168); // Max 7 days of hourly data
+    
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(&promotion_id)
+        .bind::<BigInt, _>(limit)
+        .load::<PromotionTimeBucket>(&mut conn)
+        .await;
+        
+    match result {
+        Ok(buckets) => Json(buckets).into_response(),
+        Err(e) => {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Get top performing promotions using materialized views
+pub async fn get_top_performing_promotions(
+    State(pool): State<DbPool>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+    
+    let limit = params.limit.unwrap_or(20).min(100);
+    
+    // Query the pre-computed view for better performance
+    let query = "
+        SELECT 
+            promotion_id,
+            post_id,
+            total_views,
+            unique_viewers,
+            views_per_hour,
+            budget_utilization_percent,
+            actual_cost_per_view
+        FROM promotion_performance
+        WHERE budget_utilization_percent < 100
+        ORDER BY views_per_hour DESC
+        LIMIT $1
+    ";
+    
+    let result = diesel::sql_query(query)
+        .bind::<BigInt, _>(limit)
+        .load::<PromotionPerformance>(&mut conn)
+        .await;
+        
+    match result {
+        Ok(promotions) => Json(promotions).into_response(),
+        Err(e) => {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Get promotion views from continuous aggregate for better performance
+pub async fn get_promotion_hourly_stats(
+    State(pool): State<DbPool>,
+    Path(promotion_id): Path<String>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+    
+    // Query the continuous aggregate instead of raw data
+    let query = "
+        SELECT 
+            bucket,
+            view_count,
+            total_payments,
+            avg_view_duration::FLOAT8 AS avg_view_duration
+        FROM promotion_views_hourly
+        WHERE promotion_id = $1
+        AND bucket >= NOW() - INTERVAL '7 days'
+        ORDER BY bucket DESC
+    ";
+    
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(&promotion_id)
+        .load::<PromotionTimeBucket>(&mut conn)
+        .await;
+        
+    match result {
+        Ok(stats) => Json(stats).into_response(),
+        Err(e) => {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Get overall promotion spending trends from continuous aggregate
+pub async fn get_promotion_spending_trends(
+    State(pool): State<DbPool>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+    
+    // Query the daily spending continuous aggregate
+    let query = "
+        SELECT 
+            bucket AS bucket,
+            total_views AS view_count,
+            total_spending AS total_payments,
+            COALESCE(avg_payment_per_view, 0)::FLOAT8 AS avg_view_duration
+        FROM promotion_spending_daily
+        WHERE bucket >= NOW() - INTERVAL '30 days'
+        ORDER BY bucket DESC
+        LIMIT $1
+    ";
+    
+    let limit = params.limit.unwrap_or(30).min(90);
+    
+    let result = diesel::sql_query(query)
+        .bind::<BigInt, _>(limit)
+        .load::<PromotionTimeBucket>(&mut conn)
+        .await;
+        
+    match result {
+        Ok(trends) => Json(trends).into_response(),
         Err(e) => {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,

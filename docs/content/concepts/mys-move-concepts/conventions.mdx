@@ -412,7 +412,7 @@ Use field comments to describe the properties of your structs. In complex functi
 module conventions::hero;
 
 use std::string::String;
-use mys::kiosk::{Kiosk, KioskOwnerCap};
+
 
 public struct Hero has key, store {
     id: UID,
@@ -434,8 +434,7 @@ public fun initialize_hero(hero: &mut Hero) {
 }
 
 public fun start_battle(
-    self: &mut Kiosk, // user kiosk
-    cap: &KioskOwnerCap, // user kiosk owner cap
+    // user asset container would go here
     _policy: &TransferPolicy<Hero>, // transfer policy for the game
     hero_id: ID, // hero to use
     battle_id: String // id of the battle to start

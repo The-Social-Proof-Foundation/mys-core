@@ -75,6 +75,8 @@ module social_contracts::token_exchange {
     const ENoContribution: u64 = 19;
     /// Cannot buy token from a blocked user
     const EBlockedUser: u64 = 20;
+    /// Trading is halted by emergency kill switch
+    const ETradingHalted: u64 = 21;
 
     // === Constants ===
     // Token types
@@ -159,6 +161,8 @@ module social_contracts::token_exchange {
         max_post_auction_duration: u64,
         min_profile_auction_duration: u64,
         max_profile_auction_duration: u64,
+        /// Emergency kill switch - when true, all trading is halted
+        trading_halted: bool,
     }
 
     /// Registry of all tokens in the exchange
@@ -362,6 +366,18 @@ module social_contracts::token_exchange {
         amount: u64,
     }
 
+    /// Event emitted when emergency kill switch is toggled
+    public struct EmergencyKillSwitchEvent has copy, drop {
+        /// Admin who activated/deactivated the kill switch
+        admin: address,
+        /// New state of trading (true = halted, false = active)
+        trading_halted: bool,
+        /// Timestamp of the action
+        timestamp: u64,
+        /// Reason for the action (optional)
+        reason: String,
+    }
+
     // === Initialization ===
     
     /// Initialize the token exchange system
@@ -400,6 +416,7 @@ module social_contracts::token_exchange {
                 max_post_auction_duration: MAX_POST_AUCTION_DURATION,
                 min_profile_auction_duration: MIN_PROFILE_AUCTION_DURATION,
                 max_profile_auction_duration: MAX_PROFILE_AUCTION_DURATION,
+                trading_halted: false, // Trading is enabled by default
             }
         );
         
@@ -503,6 +520,32 @@ module social_contracts::token_exchange {
         });
     }
 
+    /// Emergency kill switch function - only callable by admin
+    /// This function can immediately halt all trading on the platform
+    public entry fun toggle_emergency_kill_switch(
+        _admin_cap: &ExchangeAdminCap,
+        config: &mut ExchangeConfig,
+        halt_trading: bool,
+        reason: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        // Update the trading halted status
+        config.trading_halted = halt_trading;
+        
+        // Emit event for audit trail
+        event::emit(EmergencyKillSwitchEvent {
+            admin: tx_context::sender(ctx),
+            trading_halted: halt_trading,
+            timestamp: tx_context::epoch(ctx),
+            reason: string::utf8(reason),
+        });
+    }
+
+    /// Check if trading is currently halted
+    public fun is_trading_halted(config: &ExchangeConfig): bool {
+        config.trading_halted
+    }
+
     // === Viral Threshold Checks ===
 
     /// Check if a post has reached the viral threshold
@@ -541,6 +584,7 @@ module social_contracts::token_exchange {
     /// Start a pre-launch auction for a post
     public entry fun start_post_auction(
         registry: &mut TokenRegistry,
+        config: &ExchangeConfig,
         post: &Post,
         _symbol: vector<u8>,
         _name: vector<u8>,
@@ -548,6 +592,9 @@ module social_contracts::token_exchange {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
         let post_id = post::get_id_address(post);
         let owner = post::get_owner(post);
         
@@ -612,6 +659,7 @@ module social_contracts::token_exchange {
     /// Start a pre-launch auction for a profile
     public entry fun start_profile_auction(
         registry: &mut TokenRegistry,
+        config: &ExchangeConfig,
         profile: &Profile,
         username_registry: &UsernameRegistry,
         _symbol: vector<u8>,
@@ -620,6 +668,9 @@ module social_contracts::token_exchange {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
         let profile_id = profile::get_id_address(profile);
         let owner = profile::get_owner(profile);
         
@@ -684,11 +735,15 @@ module social_contracts::token_exchange {
     /// Contribute MYS to an auction
     public entry fun contribute_to_auction(
         registry: &mut TokenRegistry,
+        config: &ExchangeConfig,
         auction_pool: &mut AuctionPool,
         mut payment: Coin<MYS>,
         amount: u64,
         ctx: &mut TxContext
     ) {
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
         let contributor = tx_context::sender(ctx);
         
         // Verify auction is active
@@ -770,6 +825,9 @@ module social_contracts::token_exchange {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        // Check if trading is halted (finalization creates tradeable tokens)
+        assert!(!config.trading_halted, ETradingHalted);
+        
         // Check if auction has ended but status not updated
         if (auction_pool.info.status == AUCTION_STATUS_ACTIVE && is_auction_ended(&auction_pool.info, clock)) {
             // Update status to ended
@@ -1079,6 +1137,9 @@ module social_contracts::token_exchange {
         amount: u64,
         ctx: &mut TxContext
     ) {
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
         let buyer = tx_context::sender(ctx);
         
         // Prevent self-trading for token owners
@@ -1204,6 +1265,9 @@ module social_contracts::token_exchange {
         social_token: &mut SocialToken,
         ctx: &mut TxContext
     ) {
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
         let buyer = tx_context::sender(ctx);
         
         // Prevent self-trading for token owners
@@ -1325,6 +1389,9 @@ module social_contracts::token_exchange {
         amount: u64,
         ctx: &mut TxContext
     ) {
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
         let seller = tx_context::sender(ctx);
         let pool_id = object::uid_to_address(&pool.id);
         

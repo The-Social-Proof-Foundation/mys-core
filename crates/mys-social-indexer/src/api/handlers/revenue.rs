@@ -19,11 +19,8 @@ use crate::models::{
     CreatorRevenueStats, PlatformRevenueStats, RevenueTimeSeriesPoint,
     RevenueLeaderboardEntry, 
     RevenueDashboard, RevenueSourceStats, SptRevenueStats,
-    REVENUE_SOURCE_SUBSCRIPTION, REVENUE_SOURCE_MY_IP, REVENUE_SOURCE_SPT,
-    REVENUE_SOURCE_TIPS, REVENUE_SOURCE_POSTS, format_myso_amount,
-    calculate_percentage, calculate_growth_rate
+    format_myso_amount, calculate_percentage
 };
-use crate::models::revenue::RevenueBreakdown;
 use crate::schema;
 
 // ==============================================================================
@@ -103,7 +100,6 @@ pub async fn get_revenue_leaderboard(
     State(db_pool): State<DbPool>,
 ) -> impl IntoResponse {
     let limit = params.limit.unwrap_or(50).min(100);
-    let period_days = params.period_days.unwrap_or(30);
     let min_revenue = params.min_revenue.unwrap_or(0);
 
     let mut conn = match db_pool.get().await {
@@ -118,12 +114,11 @@ pub async fn get_revenue_leaderboard(
         }
     };
 
-    match build_revenue_leaderboard(&mut conn, &params, limit, period_days, min_revenue).await {
+    match build_revenue_leaderboard(&mut conn, &params, limit, min_revenue).await {
         Ok(leaderboard) => (
             StatusCode::OK,
             Json(serde_json::json!({
                 "leaderboard": leaderboard,
-                "period_days": period_days,
                 "min_revenue": min_revenue,
                 "limit": limit
             }))
@@ -499,7 +494,6 @@ async fn build_revenue_leaderboard(
     conn: &mut diesel_async::AsyncPgConnection,
     params: &LeaderboardQuery,
     limit: i64,
-    period_days: i64,
     min_revenue: i64,
 ) -> Result<Vec<RevenueLeaderboardEntry>> {
     // Use creator_revenue_summary view for leaderboard
@@ -662,7 +656,7 @@ async fn build_revenue_chart_data(
 async fn build_creator_revenue_stats(
     conn: &mut diesel_async::AsyncPgConnection,
     creator_address: &str,
-    params: &RevenueQuery,
+    _params: &RevenueQuery,
 ) -> Result<CreatorRevenueStats> {
     // Use creator_revenue_summary view
     let stats_query = "

@@ -64,6 +64,9 @@ impl BlockchainHandler for SocialProofTokenHandler {
             "social_proof_token::auction_pool::FinalizeAuctionEvent" => {
                 self.handle_finalize_auction_event(event).await
             },
+            "token_exchange::EmergencyKillSwitchEvent" => {
+                self.handle_emergency_kill_switch_event(event).await
+            },
             _ => {
                 debug!("Ignoring unhandled event type: {}", event_type);
                 Ok(())
@@ -467,6 +470,152 @@ impl SocialProofTokenHandler {
             .await?;
         
         info!("Processed finalize auction event for auction ID: {}", finalize_event.auction_id);
+        Ok(())
+    }
+    
+    // Handle emergency kill switch events
+    async fn handle_emergency_kill_switch_event(&self, event_with_meta: MysEventWithMetadata) -> Result<()> {
+        info!("Handling emergency kill switch event");
+        
+        let event = &event_with_meta.event;
+        let transaction_id = event_with_meta.transaction_digest.clone();
+        let timestamp = event_with_meta.timestamp;
+        let datetime = Self::timestamp_to_datetime(timestamp);
+        
+        // Parse and validate the event data with enhanced error handling
+        let event_data = &event.contents;
+        
+        // Extract required fields with detailed error messages
+        let admin = event_data["admin"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing admin field in kill switch event {}", transaction_id))?;
+        let trading_halted = event_data["trading_halted"]
+            .as_bool()
+            .ok_or_else(|| anyhow!("Missing trading_halted field in kill switch event {}", transaction_id))?;
+        let reason = event_data["reason"]
+            .as_str()
+            .unwrap_or("No reason provided");
+        let event_timestamp = event_data["timestamp"]
+            .as_u64()
+            .unwrap_or(timestamp as u64) as i64;
+            
+        // Enhanced validation
+        if admin.is_empty() {
+            return Err(anyhow!("Admin address cannot be empty in kill switch event {}", transaction_id));
+        }
+        
+        if admin.len() > 255 {
+            return Err(anyhow!("Admin address too long (max 255 characters) in event {}", transaction_id));
+        }
+        
+        if reason.len() > 512 {
+            return Err(anyhow!("Reason text too long (max 512 characters) in event {}", transaction_id));
+        }
+        
+        if transaction_id.len() > 255 {
+            return Err(anyhow!("Transaction ID too long (max 255 characters): {}", transaction_id));
+        }
+        
+        // Get database connection
+        let mut conn = self.db.get_connection().await?;
+        
+        // Clone transaction_id for error handler (before it gets moved into closure)
+        let tx_id_clone = transaction_id.clone();
+        
+        // Use serializable transaction to ensure atomicity and prevent race conditions
+        conn.build_transaction()
+            .serializable()
+            .run(|tx_conn| {
+                Box::pin(async move {
+                    // Check if this is a duplicate event by checking the transaction_id
+                    let existing_count = diesel::sql_query(
+                        "SELECT COUNT(*) as count FROM token_exchange_config 
+                         WHERE transaction_id = $1"
+                    )
+                    .bind::<diesel::sql_types::Text, _>(&transaction_id)
+                    .get_result::<crate::db::query_types::CountResult>(tx_conn)
+                    .await?
+                    .count;
+                    
+                    if existing_count > 0 {
+                        info!("Duplicate kill switch event detected for transaction {}, skipping", transaction_id);
+                        return Ok(());
+                    }
+                    
+                    // Check if this is a duplicate based on admin, timestamp, and state
+                    let duplicate_check = diesel::sql_query(
+                        "SELECT COUNT(*) as count FROM token_exchange_config 
+                         WHERE admin_address = $1 AND timestamp_ms = $2 AND trading_halted = $3"
+                    )
+                    .bind::<diesel::sql_types::Text, _>(admin)
+                    .bind::<diesel::sql_types::BigInt, _>(event_timestamp)
+                    .bind::<diesel::sql_types::Bool, _>(trading_halted)
+                    .get_result::<crate::db::query_types::CountResult>(tx_conn)
+                    .await?
+                    .count;
+                    
+                    if duplicate_check > 0 {
+                        info!("Duplicate kill switch state change detected, skipping");
+                        return Ok(());
+                    }
+                    
+                    // Create new config entry
+                    let new_config = crate::models::token_exchange::NewTokenExchangeConfig {
+                        trading_halted,
+                        admin_address: admin.to_string(),
+                        reason: reason.to_string(),
+                        timestamp_ms: event_timestamp,
+                        updated_at: datetime,
+                        transaction_id: transaction_id.clone(),
+                    };
+                    
+                    // Insert config record with proper error handling
+                    match diesel::insert_into(crate::schema::token_exchange_config::table)
+                        .values(&new_config)
+                        .execute(tx_conn)
+                        .await {
+                        Ok(rows_affected) => {
+                            if rows_affected != 1 {
+                                return Err(diesel::result::Error::RollbackTransaction);
+                            }
+                        }
+                        Err(diesel::result::Error::DatabaseError(diesel::result::DatabaseErrorKind::UniqueViolation, _)) => {
+                            info!("Kill switch config already exists for transaction {}, skipping", transaction_id);
+                            return Ok(());
+                        }
+                        Err(e) => return Err(e),
+                    }
+                    
+                    // Insert event history record with proper error handling
+                    match diesel::sql_query(
+                        "INSERT INTO token_exchange_events (event_type, event_data, event_id, created_at) 
+                         VALUES ($1, $2, $3, $4)"
+                    )
+                    .bind::<diesel::sql_types::Text, _>("EmergencyKillSwitchEvent")
+                    .bind::<diesel::sql_types::Jsonb, _>(&event.contents)
+                    .bind::<diesel::sql_types::Text, _>(&transaction_id)
+                    .bind::<diesel::sql_types::Timestamptz, _>(datetime)
+                    .execute(tx_conn)
+                    .await {
+                        Ok(_) => {},
+                        Err(diesel::result::Error::DatabaseError(diesel::result::DatabaseErrorKind::UniqueViolation, _)) => {
+                            info!("Kill switch event already exists for transaction {}, skipping event record", transaction_id);
+                        }
+                        Err(e) => {
+                            // Log but don't fail the transaction for event history
+                            tracing::warn!("Failed to insert event history for {}: {}", transaction_id, e);
+                        }
+                    }
+                    
+                    info!("Successfully processed emergency kill switch event: trading_halted={}, admin={}, reason=\"{}\"", 
+                          trading_halted, admin, reason);
+                    
+                    Ok::<_, diesel::result::Error>(())
+                })
+            })
+            .await
+            .map_err(|e| anyhow!("Transaction failed for kill switch event {}: {}", tx_id_clone, e))?;
+        
         Ok(())
     }
 } 

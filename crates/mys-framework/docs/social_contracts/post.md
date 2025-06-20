@@ -13,6 +13,8 @@ Implements features like comments, reposts, quotes, and predictions
 -  [Struct `PredictionOption`](#social_contracts_post_PredictionOption)
 -  [Struct `PredictionBet`](#social_contracts_post_PredictionBet)
 -  [Struct `PredictionData`](#social_contracts_post_PredictionData)
+-  [Struct `PromotionView`](#social_contracts_post_PromotionView)
+-  [Struct `PromotionData`](#social_contracts_post_PromotionData)
 -  [Struct `PostAdminCap`](#social_contracts_post_PostAdminCap)
 -  [Struct `PostConfig`](#social_contracts_post_PostConfig)
 -  [Struct `PostParametersUpdatedEvent`](#social_contracts_post_PostParametersUpdatedEvent)
@@ -35,6 +37,11 @@ Implements features like comments, reposts, quotes, and predictions
 -  [Struct `PredictionResolvedEvent`](#social_contracts_post_PredictionResolvedEvent)
 -  [Struct `PredictionPayoutEvent`](#social_contracts_post_PredictionPayoutEvent)
 -  [Struct `PredictionBetWithdrawnEvent`](#social_contracts_post_PredictionBetWithdrawnEvent)
+-  [Struct `PromotedPostCreatedEvent`](#social_contracts_post_PromotedPostCreatedEvent)
+-  [Struct `PromotedPostViewConfirmedEvent`](#social_contracts_post_PromotedPostViewConfirmedEvent)
+-  [Struct `PromotionDeactivatedEvent`](#social_contracts_post_PromotionDeactivatedEvent)
+-  [Struct `PromotionStatusToggledEvent`](#social_contracts_post_PromotionStatusToggledEvent)
+-  [Struct `PromotionFundsWithdrawnEvent`](#social_contracts_post_PromotionFundsWithdrawnEvent)
 -  [Constants](#@Constants_0)
 -  [Function `init`](#social_contracts_post_init)
 -  [Function `set_predictions_enabled`](#social_contracts_post_set_predictions_enabled)
@@ -95,12 +102,21 @@ Implements features like comments, reposts, quotes, and predictions
 -  [Function `remove_my_ip`](#social_contracts_post_remove_my_ip)
 -  [Function `increment_comment_count`](#social_contracts_post_increment_comment_count)
 -  [Function `update_post_parameters`](#social_contracts_post_update_post_parameters)
+-  [Function `create_promoted_post`](#social_contracts_post_create_promoted_post)
+-  [Function `confirm_promoted_post_view`](#social_contracts_post_confirm_promoted_post_view)
+-  [Function `deactivate_promotion`](#social_contracts_post_deactivate_promotion)
+-  [Function `toggle_promotion_status`](#social_contracts_post_toggle_promotion_status)
+-  [Function `withdraw_promotion_funds`](#social_contracts_post_withdraw_promotion_funds)
+-  [Function `get_promotion_stats`](#social_contracts_post_get_promotion_stats)
+-  [Function `has_user_viewed_promoted_post`](#social_contracts_post_has_user_viewed_promoted_post)
+-  [Function `get_promotion_id`](#social_contracts_post_get_promotion_id)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
+<b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
 <b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
@@ -257,6 +273,12 @@ Post object that contains content information
 </dt>
 <dd>
  Reference to the intellectual property license for the post
+</dd>
+<dt>
+<code>promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+ Optional promotion data ID for promoted posts
 </dd>
 <dt>
 <code><a href="../social_contracts/post.md#social_contracts_post_version">version</a>: u64</code>
@@ -596,6 +618,116 @@ Prediction metadata
 <code>total_bet_amount: u64</code>
 </dt>
 <dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PromotionView"></a>
+
+## Struct `PromotionView`
+
+Promoted post view record
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionView">PromotionView</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>viewer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>view_duration: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>view_timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>platform_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PromotionData"></a>
+
+## Struct `PromotionData`
+
+Promoted post metadata
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>id: <a href="../mys/object.md#mys_object_UID">mys::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>payment_per_view: u64</code>
+</dt>
+<dd>
+ Amount of MYS to pay per view
+</dd>
+<dt>
+<code>promotion_budget: <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;</code>
+</dt>
+<dd>
+ MYS balance available for payments
+</dd>
+<dt>
+<code>paid_viewers: <a href="../mys/table.md#mys_table_Table">mys::table::Table</a>&lt;<b>address</b>, bool&gt;</code>
+</dt>
+<dd>
+ Table tracking which users have already been paid for viewing
+</dd>
+<dt>
+<code>views: vector&lt;<a href="../social_contracts/post.md#social_contracts_post_PromotionView">social_contracts::post::PromotionView</a>&gt;</code>
+</dt>
+<dd>
+ List of all views for analytics
+</dd>
+<dt>
+<code>active: bool</code>
+</dt>
+<dd>
+ Whether the promotion is currently active
+</dd>
+<dt>
+<code>created_at: u64</code>
+</dt>
+<dd>
+ Promotion creation timestamp
 </dd>
 </dl>
 
@@ -1714,6 +1846,236 @@ Prediction bet withdrawn event
 
 </details>
 
+<a name="social_contracts_post_PromotedPostCreatedEvent"></a>
+
+## Struct `PromotedPostCreatedEvent`
+
+Event emitted when a promoted post is created
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PromotedPostCreatedEvent">PromotedPostCreatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>payment_per_view: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_budget: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PromotedPostViewConfirmedEvent"></a>
+
+## Struct `PromotedPostViewConfirmedEvent`
+
+Event emitted when a promoted post view is confirmed and payment is made
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PromotedPostViewConfirmedEvent">PromotedPostViewConfirmedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>viewer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>payment_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>view_duration: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>platform_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PromotionDeactivatedEvent"></a>
+
+## Struct `PromotionDeactivatedEvent`
+
+Event emitted when a promotion is deactivated
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionDeactivatedEvent">PromotionDeactivatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>remaining_budget: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PromotionStatusToggledEvent"></a>
+
+## Struct `PromotionStatusToggledEvent`
+
+Event emitted when promotion status is toggled
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionStatusToggledEvent">PromotionStatusToggledEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>toggled_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_status: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PromotionFundsWithdrawnEvent"></a>
+
+## Struct `PromotionFundsWithdrawnEvent`
+
+Event emitted when promotion funds are withdrawn
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionFundsWithdrawnEvent">PromotionFundsWithdrawnEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>withdrawn_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -1742,6 +2104,15 @@ Prediction bet withdrawn event
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EContentTooLarge">EContentTooLarge</a>: u64 = 5;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EInsufficientPromotionFunds"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EInsufficientPromotionFunds">EInsufficientPromotionFunds</a>: u64 = 33;
 </code></pre>
 
 
@@ -1782,6 +2153,15 @@ Prediction bet withdrawn event
 
 
 
+<a name="social_contracts_post_EInvalidViewDuration"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EInvalidViewDuration">EInvalidViewDuration</a>: u64 = 35;
+</code></pre>
+
+
+
 <a name="social_contracts_post_ELicenseNotRegistered"></a>
 
 
@@ -1796,6 +2176,15 @@ Prediction bet withdrawn event
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ENotPredictionPost">ENotPredictionPost</a>: u64 = 16;
+</code></pre>
+
+
+
+<a name="social_contracts_post_ENotPromotedPost"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_ENotPromotedPost">ENotPromotedPost</a>: u64 = 31;
 </code></pre>
 
 
@@ -1859,6 +2248,33 @@ Prediction bet withdrawn event
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EPredictionOptionsTooMany">EPredictionOptionsTooMany</a>: u64 = 12;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EPromotionAmountTooHigh"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EPromotionAmountTooHigh">EPromotionAmountTooHigh</a>: u64 = 30;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EPromotionAmountTooLow"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EPromotionAmountTooLow">EPromotionAmountTooLow</a>: u64 = 29;
+</code></pre>
+
+
+
+<a name="social_contracts_post_EPromotionInactive"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EPromotionInactive">EPromotionInactive</a>: u64 = 34;
 </code></pre>
 
 
@@ -1963,6 +2379,15 @@ Error codes
 
 
 
+<a name="social_contracts_post_EUserAlreadyViewed"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EUserAlreadyViewed">EUserAlreadyViewed</a>: u64 = 32;
+</code></pre>
+
+
+
 <a name="social_contracts_post_EUserBlockedByPlatform"></a>
 
 
@@ -2045,11 +2470,39 @@ Constants for size limits
 
 
 
+<a name="social_contracts_post_MAX_PROMOTION_AMOUNT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_MAX_PROMOTION_AMOUNT">MAX_PROMOTION_AMOUNT</a>: u64 = 100000000;
+</code></pre>
+
+
+
 <a name="social_contracts_post_MAX_REACTION_LENGTH"></a>
 
 
 
 <pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_MAX_REACTION_LENGTH">MAX_REACTION_LENGTH</a>: u64 = 20;
+</code></pre>
+
+
+
+<a name="social_contracts_post_MIN_PROMOTION_AMOUNT"></a>
+
+Constants for promoted posts
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_MIN_PROMOTION_AMOUNT">MIN_PROMOTION_AMOUNT</a>: u64 = 1000;
+</code></pre>
+
+
+
+<a name="social_contracts_post_MIN_VIEW_DURATION"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_MIN_VIEW_DURATION">MIN_VIEW_DURATION</a>: u64 = 3000;
 </code></pre>
 
 
@@ -2395,6 +2848,7 @@ Create a new prediction post
         mentions,
         metadata_json,
         string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_PREDICTION">POST_TYPE_PREDICTION</a>),
+        option::none(),
         option::none(),
         option::none(),
         ctx
@@ -2817,7 +3271,7 @@ Resolve a prediction (admin only) and distribute winnings
 Internal function to create a post and return its ID
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/post.md#social_contracts_post_my_ip_id">my_ip_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <b>address</b>
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/post.md#social_contracts_post_my_ip_id">my_ip_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <b>address</b>
 </code></pre>
 
 
@@ -2836,6 +3290,7 @@ Internal function to create a post and return its ID
     post_type: String,
     parent_post_id: Option&lt;<b>address</b>&gt;,
     <a href="../social_contracts/post.md#social_contracts_post_my_ip_id">my_ip_id</a>: Option&lt;<b>address</b>&gt;,
+    promotion_id: Option&lt;<b>address</b>&gt;,
     ctx: &<b>mut</b> TxContext
 ): <b>address</b> {
     <b>let</b> <a href="../social_contracts/post.md#social_contracts_post">post</a> = <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a> {
@@ -2857,6 +3312,7 @@ Internal function to create a post and return its ID
         user_reactions: table::new(ctx),
         reaction_counts: table::new(ctx),
         <a href="../social_contracts/post.md#social_contracts_post_my_ip_id">my_ip_id</a>,
+        promotion_id,
         <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     // Get <a href="../social_contracts/post.md#social_contracts_post">post</a> ID before sharing
@@ -2954,6 +3410,7 @@ Create a new post
         string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_STANDARD">POST_TYPE_STANDARD</a>),
         option::none(),
         <a href="../social_contracts/post.md#social_contracts_post_my_ip_id">my_ip_id</a>,
+        option::none(),
         ctx
     );
     // Emit <a href="../social_contracts/post.md#social_contracts_post">post</a> created event
@@ -3157,6 +3614,7 @@ Create a repost (repost without comment)
         string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_REPOST">POST_TYPE_REPOST</a>),
         option::some(original_post_id),
         option::none(), // No MyIP <b>for</b> reposts
+        option::none(), // No promotion <b>for</b> reposts
         ctx
     );
     // Increment <a href="../social_contracts/post.md#social_contracts_post_repost">repost</a> count on original <a href="../social_contracts/post.md#social_contracts_post">post</a>
@@ -3316,6 +3774,7 @@ If content is empty/none, it's treated as a standard repost
         post_type,
         option::some(original_post_id),
         option::none(), // No MyIP <b>for</b> reposts
+        option::none(), // No promotion <b>for</b> reposts
         ctx
     );
     // Emit <a href="../social_contracts/post.md#social_contracts_post">post</a> created event <b>for</b> the <a href="../social_contracts/post.md#social_contracts_post_repost">repost</a>
@@ -3385,6 +3844,7 @@ Delete a post owned by the caller
         user_reactions,
         reaction_counts,
         <a href="../social_contracts/post.md#social_contracts_post_my_ip_id">my_ip_id</a>: _,
+        promotion_id: _,
         <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: _,
     } = <a href="../social_contracts/post.md#social_contracts_post">post</a>;
     // Clean up associated data structures
@@ -5216,6 +5676,424 @@ Update post parameters (admin only)
         repost_tip_percentage,
         max_prediction_options,
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_create_promoted_post"></a>
+
+## Function `create_promoted_post`
+
+Create a promoted post with MYS tokens for viewer payments
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_promoted_post">create_promoted_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, _block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/post.md#social_contracts_post_my_ip_id">my_ip_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, payment_per_view: u64, promotion_budget: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_promoted_post">create_promoted_post</a>(
+    registry: &UsernameRegistry,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    _block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
+    config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
+    content: String,
+    <b>mut</b> media_urls: Option&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;,
+    mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
+    metadata_json: Option&lt;String&gt;,
+    <a href="../social_contracts/post.md#social_contracts_post_my_ip_id">my_ip_id</a>: Option&lt;<b>address</b>&gt;,
+    payment_per_view: u64,
+    promotion_budget: Coin&lt;MYS&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> owner = tx_context::sender(ctx);
+    // Validate promotion parameters
+    <b>assert</b>!(payment_per_view &gt;= <a href="../social_contracts/post.md#social_contracts_post_MIN_PROMOTION_AMOUNT">MIN_PROMOTION_AMOUNT</a>, <a href="../social_contracts/post.md#social_contracts_post_EPromotionAmountTooLow">EPromotionAmountTooLow</a>);
+    <b>assert</b>!(payment_per_view &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_PROMOTION_AMOUNT">MAX_PROMOTION_AMOUNT</a>, <a href="../social_contracts/post.md#social_contracts_post_EPromotionAmountTooHigh">EPromotionAmountTooHigh</a>);
+    <b>assert</b>!(coin::value(&promotion_budget) &gt;= payment_per_view, <a href="../social_contracts/post.md#social_contracts_post_EInsufficientPromotionFunds">EInsufficientPromotionFunds</a>);
+    // Look up the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID <b>for</b> the sender
+    <b>let</b> <b>mut</b> profile_id_option = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">social_contracts::profile::lookup_profile_by_owner</a>(registry, owner);
+    <b>assert</b>!(option::is_some(&profile_id_option), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> profile_id = option::extract(&<b>mut</b> profile_id_option);
+    // Check <b>if</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    // Validate block list - simplified <b>for</b> this implementation
+    // <b>assert</b>!(!block_list::is_profile_blocked(block_list_registry, profile_id), <a href="../social_contracts/post.md#social_contracts_post_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
+    // Validate content length using config
+    <b>assert</b>!(string::length(&content) &lt;= config.max_content_length, <a href="../social_contracts/post.md#social_contracts_post_EContentTooLarge">EContentTooLarge</a>);
+    // Validate and convert media URLs <b>if</b> provided
+    <b>let</b> media_option = <b>if</b> (option::is_some(&media_urls)) {
+        <b>let</b> urls_bytes = option::extract(&<b>mut</b> media_urls);
+        <b>assert</b>!(vector::length(&urls_bytes) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
+        <b>let</b> <b>mut</b> urls = vector::empty&lt;Url&gt;();
+        <b>let</b> <b>mut</b> i = 0;
+        <b>while</b> (i &lt; vector::length(&urls_bytes)) {
+            <b>let</b> url_bytes = vector::borrow(&urls_bytes, i);
+            <b>let</b> url = url::new_unsafe_from_bytes(*url_bytes);
+            vector::push_back(&<b>mut</b> urls, url);
+            i = i + 1;
+        };
+        option::some(urls)
+    } <b>else</b> {
+        option::none()
+    };
+    // Validate mentions <b>if</b> provided using config
+    <b>if</b> (option::is_some(&mentions)) {
+        <b>let</b> mentions_ref = option::borrow(&mentions);
+        <b>assert</b>!(vector::length(mentions_ref) &lt;= config.max_mentions, <a href="../social_contracts/post.md#social_contracts_post_EContentTooLarge">EContentTooLarge</a>);
+    };
+    // Validate metadata <b>if</b> provided using config
+    <b>if</b> (option::is_some(&metadata_json)) {
+        <b>let</b> metadata_string = option::borrow(&metadata_json);
+        <b>assert</b>!(string::length(metadata_string) &lt;= config.max_metadata_size, <a href="../social_contracts/post.md#social_contracts_post_EContentTooLarge">EContentTooLarge</a>);
+    };
+    // Create promotion data (starts <b>as</b> inactive until <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> activates it)
+    <b>let</b> <b>mut</b> promotion_data = <a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a> {
+        id: object::new(ctx),
+        post_id: @0x0, // Will be set after <a href="../social_contracts/post.md#social_contracts_post">post</a> creation
+        payment_per_view,
+        promotion_budget: coin::into_balance(promotion_budget),
+        paid_viewers: table::new(ctx),
+        views: vector::empty(),
+        active: <b>false</b>, // Starts inactive until <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> approves
+        created_at: tx_context::epoch_timestamp_ms(ctx),
+    };
+    <b>let</b> promotion_id = object::uid_to_address(&promotion_data.id);
+    // Create and share the <a href="../social_contracts/post.md#social_contracts_post">post</a>
+    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
+        owner,
+        profile_id,
+        content,
+        media_option,
+        mentions,
+        metadata_json,
+        string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_STANDARD">POST_TYPE_STANDARD</a>),
+        option::none(),
+        <a href="../social_contracts/post.md#social_contracts_post_my_ip_id">my_ip_id</a>,
+        option::some(promotion_id),
+        ctx
+    );
+    // Update promotion data with <a href="../social_contracts/post.md#social_contracts_post">post</a> ID
+    promotion_data.post_id = post_id;
+    // Get budget value before moving the promotion_data
+    <b>let</b> total_budget = balance::value(&promotion_data.promotion_budget);
+    // Share promotion data
+    transfer::share_object(promotion_data);
+    // Emit promoted <a href="../social_contracts/post.md#social_contracts_post">post</a> creation event
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PromotedPostCreatedEvent">PromotedPostCreatedEvent</a> {
+        post_id,
+        owner,
+        profile_id,
+        payment_per_view,
+        total_budget,
+        created_at: tx_context::epoch_timestamp_ms(ctx),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_confirm_promoted_post_view"></a>
+
+## Function `confirm_promoted_post_view`
+
+Confirm a user has viewed a promoted post and pay them (platform only)
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_confirm_promoted_post_view">confirm_promoted_post_view</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">social_contracts::post::PromotionData</a>, platform_obj: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, viewer_address: <b>address</b>, view_duration: u64, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_confirm_promoted_post_view">confirm_promoted_post_view</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a>,
+    platform_obj: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    viewer_address: <b>address</b>,
+    view_duration: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    // Verify this is a <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> call (<a href="../social_contracts/platform.md#social_contracts_platform">platform</a> developer or moderator)
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">platform::is_developer_or_moderator</a>(platform_obj, caller), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    // Verify the <a href="../social_contracts/post.md#social_contracts_post">post</a> is promoted
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id), <a href="../social_contracts/post.md#social_contracts_post_ENotPromotedPost">ENotPromotedPost</a>);
+    <b>let</b> post_promotion_id = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id);
+    <b>assert</b>!(post_promotion_id == object::uid_to_address(&promotion_data.id), <a href="../social_contracts/post.md#social_contracts_post_ENotPromotedPost">ENotPromotedPost</a>);
+    // Verify promotion is active
+    <b>assert</b>!(promotion_data.active, <a href="../social_contracts/post.md#social_contracts_post_EPromotionInactive">EPromotionInactive</a>);
+    // Verify view duration meets minimum requirement
+    <b>assert</b>!(view_duration &gt;= <a href="../social_contracts/post.md#social_contracts_post_MIN_VIEW_DURATION">MIN_VIEW_DURATION</a>, <a href="../social_contracts/post.md#social_contracts_post_EInvalidViewDuration">EInvalidViewDuration</a>);
+    // Verify user hasn't already been paid <b>for</b> viewing this <a href="../social_contracts/post.md#social_contracts_post">post</a>
+    <b>assert</b>!(!table::contains(&promotion_data.paid_viewers, viewer_address), <a href="../social_contracts/post.md#social_contracts_post_EUserAlreadyViewed">EUserAlreadyViewed</a>);
+    // Verify sufficient budget remains
+    <b>assert</b>!(balance::value(&promotion_data.promotion_budget) &gt;= promotion_data.payment_per_view, <a href="../social_contracts/post.md#social_contracts_post_EInsufficientPromotionFunds">EInsufficientPromotionFunds</a>);
+    // Record the view
+    <b>let</b> view_record = <a href="../social_contracts/post.md#social_contracts_post_PromotionView">PromotionView</a> {
+        viewer: viewer_address,
+        view_duration,
+        view_timestamp: clock::timestamp_ms(clock),
+        platform_id: caller, // Use caller <b>as</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> identifier
+    };
+    vector::push_back(&<b>mut</b> promotion_data.views, view_record);
+    // Mark user <b>as</b> paid
+    table::add(&<b>mut</b> promotion_data.paid_viewers, viewer_address, <b>true</b>);
+    // Split payment from promotion budget and transfer to viewer
+    <b>let</b> payment_balance = balance::split(&<b>mut</b> promotion_data.promotion_budget, promotion_data.payment_per_view);
+    <b>let</b> payment_coin = coin::from_balance(payment_balance, ctx);
+    transfer::public_transfer(payment_coin, viewer_address);
+    // If budget is exhausted, deactivate promotion
+    <b>if</b> (balance::value(&promotion_data.promotion_budget) &lt; promotion_data.payment_per_view) {
+        promotion_data.active = <b>false</b>;
+    };
+    // Emit view confirmation event
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PromotedPostViewConfirmedEvent">PromotedPostViewConfirmedEvent</a> {
+        post_id: post_promotion_id,
+        viewer: viewer_address,
+        payment_amount: promotion_data.payment_per_view,
+        view_duration,
+        platform_id: caller, // Use caller <b>as</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> identifier
+        timestamp: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_deactivate_promotion"></a>
+
+## Function `deactivate_promotion`
+
+Deactivate a promoted post (owner only)
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_deactivate_promotion">deactivate_promotion</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">social_contracts::post::PromotionData</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_deactivate_promotion">deactivate_promotion</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a>,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>assert</b>!(caller == <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    // Verify the <a href="../social_contracts/post.md#social_contracts_post">post</a> is promoted
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id), <a href="../social_contracts/post.md#social_contracts_post_ENotPromotedPost">ENotPromotedPost</a>);
+    <b>let</b> post_promotion_id = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id);
+    <b>assert</b>!(post_promotion_id == object::uid_to_address(&promotion_data.id), <a href="../social_contracts/post.md#social_contracts_post_ENotPromotedPost">ENotPromotedPost</a>);
+    // Deactivate the promotion
+    promotion_data.active = <b>false</b>;
+    // Emit deactivation event
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PromotionDeactivatedEvent">PromotionDeactivatedEvent</a> {
+        post_id: post_promotion_id,
+        owner: caller,
+        remaining_budget: balance::value(&promotion_data.promotion_budget),
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_toggle_promotion_status"></a>
+
+## Function `toggle_promotion_status`
+
+Toggle promotion status (platform can activate, both platform and owner can deactivate)
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_toggle_promotion_status">toggle_promotion_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">social_contracts::post::PromotionData</a>, platform_obj: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, activate: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_toggle_promotion_status">toggle_promotion_status</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a>,
+    platform_obj: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    activate: bool,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> caller = tx_context::sender(ctx);
+    // Verify the <a href="../social_contracts/post.md#social_contracts_post">post</a> is promoted
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id), <a href="../social_contracts/post.md#social_contracts_post_ENotPromotedPost">ENotPromotedPost</a>);
+    <b>let</b> post_promotion_id = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id);
+    <b>assert</b>!(post_promotion_id == object::uid_to_address(&promotion_data.id), <a href="../social_contracts/post.md#social_contracts_post_ENotPromotedPost">ENotPromotedPost</a>);
+    <b>if</b> (activate) {
+        // Only <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> can activate promotions
+        <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">platform::is_developer_or_moderator</a>(platform_obj, caller), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    } <b>else</b> {
+        // Both <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> and <a href="../social_contracts/post.md#social_contracts_post">post</a> owner can deactivate
+        <b>let</b> is_platform = <a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">platform::is_developer_or_moderator</a>(platform_obj, caller);
+        <b>let</b> is_owner = caller == <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner;
+        <b>assert</b>!(is_platform || is_owner, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    };
+    promotion_data.active = activate;
+    // Emit status change event
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PromotionStatusToggledEvent">PromotionStatusToggledEvent</a> {
+        post_id: post_promotion_id,
+        toggled_by: caller,
+        new_status: activate,
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_withdraw_promotion_funds"></a>
+
+## Function `withdraw_promotion_funds`
+
+Withdraw all MYS tokens from promotion (owner only, deactivates promotion)
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_withdraw_promotion_funds">withdraw_promotion_funds</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">social_contracts::post::PromotionData</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_withdraw_promotion_funds">withdraw_promotion_funds</a>(
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    promotion_data: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a>,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> caller = tx_context::sender(ctx);
+    // Verify caller is <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
+    <b>assert</b>!(caller == <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    // Verify the <a href="../social_contracts/post.md#social_contracts_post">post</a> is promoted
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id), <a href="../social_contracts/post.md#social_contracts_post_ENotPromotedPost">ENotPromotedPost</a>);
+    <b>let</b> post_promotion_id = *option::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id);
+    <b>assert</b>!(post_promotion_id == object::uid_to_address(&promotion_data.id), <a href="../social_contracts/post.md#social_contracts_post_ENotPromotedPost">ENotPromotedPost</a>);
+    // Get remaining funds
+    <b>let</b> remaining_amount = balance::value(&promotion_data.promotion_budget);
+    // Extract all remaining balance and transfer to owner
+    <b>let</b> withdrawn_balance = balance::withdraw_all(&<b>mut</b> promotion_data.promotion_budget);
+    <b>let</b> withdrawn_coins = coin::from_balance(withdrawn_balance, ctx);
+    transfer::public_transfer(withdrawn_coins, caller);
+    // Deactivate promotion
+    promotion_data.active = <b>false</b>;
+    // Emit withdrawal event
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PromotionFundsWithdrawnEvent">PromotionFundsWithdrawnEvent</a> {
+        post_id: post_promotion_id,
+        owner: caller,
+        withdrawn_amount: remaining_amount,
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_get_promotion_stats"></a>
+
+## Function `get_promotion_stats`
+
+Get promotion statistics for a post
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_promotion_stats">get_promotion_stats</a>(promotion_data: &<a href="../social_contracts/post.md#social_contracts_post_PromotionData">social_contracts::post::PromotionData</a>): (u64, u64, bool, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_promotion_stats">get_promotion_stats</a>(promotion_data: &<a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a>): (u64, u64, bool, u64) {
+    (
+        promotion_data.payment_per_view,
+        balance::value(&promotion_data.promotion_budget),
+        promotion_data.active,
+        vector::length(&promotion_data.views)
+    )
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_has_user_viewed_promoted_post"></a>
+
+## Function `has_user_viewed_promoted_post`
+
+Check if a user has already been paid for viewing a promoted post
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_has_user_viewed_promoted_post">has_user_viewed_promoted_post</a>(promotion_data: &<a href="../social_contracts/post.md#social_contracts_post_PromotionData">social_contracts::post::PromotionData</a>, user: <b>address</b>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_has_user_viewed_promoted_post">has_user_viewed_promoted_post</a>(promotion_data: &<a href="../social_contracts/post.md#social_contracts_post_PromotionData">PromotionData</a>, user: <b>address</b>): bool {
+    table::contains(&promotion_data.paid_viewers, user)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_get_promotion_id"></a>
+
+## Function `get_promotion_id`
+
+Get the promotion ID from a post
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_promotion_id">get_promotion_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_promotion_id">get_promotion_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): Option&lt;<b>address</b>&gt; {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.promotion_id
 }
 </code></pre>
 

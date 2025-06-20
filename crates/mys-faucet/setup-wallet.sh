@@ -3,8 +3,8 @@
 # Install network tools for debugging
 apt-get update -qq && apt-get install -y -qq curl iputils-ping
 
-# Create config directory
-mkdir -p /app/config
+# Create config directory in the default MySocial location
+mkdir -p /root/.mys/mys_config
 
 # Check if we have the required environment variables
 if [ -z "$WALLET_ADDRESS" ]; then
@@ -19,8 +19,8 @@ if [ -z "$WALLET_PRIVATE_KEY" ] && [ -z "$WALLET_MNEMONIC" ]; then
 fi
 
 # Set default network if not provided
-NETWORK_URL=${NETWORK_URL:-"https://fullnode.testnet.mysocial.network:443"}
-NETWORK_ALIAS=${NETWORK_ALIAS:-"production"}
+NETWORK_URL=${NETWORK_URL:-"https://fullnode.testnet.mysocial.network:8082"}
+NETWORK_ALIAS=${NETWORK_ALIAS:-"testnet"}
 
 echo "🔧 Setting up wallet configuration..."
 echo "📍 Network: $NETWORK_URL"
@@ -30,10 +30,7 @@ echo "💳 Address: $WALLET_ADDRESS"
 echo "🌐 Testing MySocial network connectivity..."
 
 ENDPOINTS=(
-    "https://fullnode.testnet.mysocial.network:443"
-    "https://fullnode.devnet.mysocial.network:443"
-    "https://fullnode.mainnet.mysocial.network:443"
-    "https://rpc.testnet.mysocial.network:443"
+    "http://fullnode.testnet.mysocial.network:8082"
 )
 
 WORKING_ENDPOINT=""
@@ -58,9 +55,9 @@ else
 fi
 
 # Create client.yaml
-cat > /app/config/client.yaml << EOF
+cat > /root/.mys/mys_config/client.yaml << EOF
 keystore:
-  File: /app/config/mys.keystore
+  File: /root/.mys/mys_config/mys.keystore
 envs:
 - alias: $NETWORK_ALIAS
   rpc: $NETWORK_URL
@@ -73,7 +70,7 @@ EOF
 # Create keystore file - MySocial format is just an array of base64-encoded keypairs
 if [ ! -z "$WALLET_PRIVATE_KEY" ]; then
     echo "🔑 Using provided private key"
-    cat > /app/config/mys.keystore << EOF
+    cat > /root/.mys/mys_config/mys.keystore << EOF
 [
   "$WALLET_PRIVATE_KEY"
 ]
@@ -89,8 +86,7 @@ fi
 
 echo "✅ Created client.yaml"
 echo "✅ Created mys.keystore"
-echo "🔄 Backup mnemonic: ${WALLET_MNEMONIC:-"(not provided)"}"
 echo "🚀 Starting MySocial faucet..."
 
-# Start the faucet
-exec ./bin/mys-faucet --write-ahead-log /app/faucet.wal 
+# Start the faucet with correct host binding for Railway
+exec ./bin/mys-faucet --write-ahead-log /app/faucet.wal --host-ip 0.0.0.0 --port 5003 

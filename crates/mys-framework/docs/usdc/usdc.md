@@ -67,7 +67,7 @@ title: Module `usdc::usdc`
 
 
 
-<pre><code><b>const</b> <a href="../usdc/usdc.md#usdc_usdc_DECIMAL">DECIMAL</a>: u8 = 6;
+<pre><code><b>const</b> <a href="../usdc/usdc.md#usdc_usdc_DECIMAL">DECIMAL</a>: u8 = 9;
 </code></pre>
 
 

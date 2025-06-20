@@ -326,17 +326,9 @@ impl MyIpEventHandler {
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow!("Missing ip_id field"))?;
         
-        let grantor = data.get("grantor")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow!("Missing grantor field"))?;
-        
         let grantee = data.get("grantee")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow!("Missing grantee field"))?;
-        
-        let access_type = data.get("access_type")
-            .and_then(|v| v.as_str())
-            .unwrap_or("grant");
         
         let grant_time = data.get("grant_time")
             .and_then(|v| v.as_u64())

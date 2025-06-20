@@ -48,7 +48,6 @@ network = "mainnet"
 [[packages.values.branches]]
 branch = "main"
 paths = [
-  { path = "kiosk" },
 ]
 
 [[packages]]
@@ -59,7 +58,6 @@ network = "testnet"
 [[packages.values.branches]]
 branch = "testnet"
 paths = [
-  { path = "kiosk" },
 ]
 
 # [[packages]]

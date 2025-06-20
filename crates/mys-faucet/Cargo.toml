@@ -1,7 +1,7 @@
 [package]
 name = "mys-faucet"
 version = "0.0.1"
-edition = "2021"
+edition = "2024"
 authors = ["The Social Proof Foundation <brandon@socialproof.foundation>"]
 license = "Apache-2.0"
 publish = false
@@ -21,7 +21,7 @@ axum = { version = "0.7", default-features = false, features = [
     "query",
     "ws",
 ] }
-bin-version = { path = "../bin-version" }
+bin-version.workspace = true
 clap = { version = "4.4", features = ["derive", "wrap_help"] }
 dashmap = "5.5.3"
 thiserror = "1.0.40"
@@ -62,20 +62,20 @@ once_cell = "1.18.0"
 tower_governor = "0.4.3"
 async-recursion = "1.0.4"
 
-# Git dependencies from your main blockchain repository
-mys-json-rpc-types = { path = "../mys-json-rpc-types" }
-mys-types = { path = "../mys-types" }
-mys-config = { path = "../mys-config" }
-mys-keys = { path = "../mys-keys" }
-mys-sdk = { path = "../mys-sdk" }
-mysten-metrics = { path = "../mysten-metrics" }
-telemetry-subscribers = { path = "../telemetry-subscribers" }
-typed-store = { path = "../typed-store" }
-shared-crypto = { path = "../shared-crypto" }
-mysten-network = { path = "../mysten-network" }
+# Workspace dependencies to avoid version conflicts
+mys-json-rpc-types.workspace = true
+mys-types.workspace = true
+mys-config.workspace = true
+mys-keys.workspace = true
+mys-sdk.workspace = true
+mysten-metrics.workspace = true
+telemetry-subscribers.workspace = true
+typed-store.workspace = true
+shared-crypto.workspace = true
+mysten-network.workspace = true
 
 [dev-dependencies]
-test-cluster = { path = "../test-cluster" }
+test-cluster.workspace = true
 wiremock = "0.5"
 serde_json = { version = "1.0.95", features = ["preserve_order"] }
 

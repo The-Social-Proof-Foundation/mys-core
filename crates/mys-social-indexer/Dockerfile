@@ -1,4 +1,4 @@
-FROM rust:1.75-slim-bookworm as builder
+FROM rust:1.85-slim-bookworm as builder
 
 # Install build dependencies
 RUN apt-get update && \
@@ -7,6 +7,10 @@ RUN apt-get update && \
     libpq-dev \
     pkg-config \
     libssl-dev \
+    cmake \
+    clang \
+    libclang-dev \
+    llvm-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
@@ -15,6 +19,8 @@ RUN useradd -m -u 1000 -U -s /bin/sh -d /app appuser
 # Set up build directory and copy source
 WORKDIR /app
 COPY --chown=appuser:appuser . .
+
+# libclang should be auto-detected now with libclang-dev installed
 
 # Build the application
 RUN cargo build --release
@@ -46,11 +52,10 @@ USER appuser
 
 # Set default environment variables
 ENV RUST_LOG=info
-ENV DATABASE_URL=postgres://postgres:postgres@postgres:5432/myso_social_indexer
 ENV DATABASE_MAX_CONNECTIONS=10
 ENV SERVER_HOST=0.0.0.0
 ENV SERVER_PORT=8080
-ENV CHECKPOINT_URL=https://checkpoints.testnet.mysocial.network
+ENV CHECKPOINT_URL=https://storage.googleapis.com/mysocial-testnet-checkpoints
 ENV START_CHECKPOINT=0
 ENV INDEXER_CONCURRENCY=5
 
