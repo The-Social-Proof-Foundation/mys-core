@@ -126,6 +126,16 @@ use crate::api::handlers::subscriptions::{
     get_service_performance,
     get_subscriber_summary,
 };
+// Import revenue handlers
+use crate::api::handlers::revenue::{
+    get_revenue_dashboard,
+    get_revenue_leaderboard,
+    get_revenue_chart_data,
+    get_creator_revenue_stats,
+    get_platform_revenue_stats,
+    get_unified_revenue,
+    get_spt_pool_revenue,
+};
 
 /// Build the application router with all API routes
 pub fn build_router(db: Arc<Database>) -> Router {
@@ -196,6 +206,15 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/subscription-analytics", get(get_subscription_analytics))
         .route("/service-performance", get(get_service_performance))
         .route("/subscribers/:address/summary", get(get_subscriber_summary))
+        
+        // Unified Revenue Analytics endpoints (using TimescaleDB)
+        .route("/revenue/dashboard", get(get_revenue_dashboard))
+        .route("/revenue/leaderboard", get(get_revenue_leaderboard))
+        .route("/revenue/chart-data", get(get_revenue_chart_data))
+        .route("/revenue/unified", get(get_unified_revenue))
+        .route("/revenue/creators/:address/stats", get(get_creator_revenue_stats))
+        .route("/revenue/platforms/:address/stats", get(get_platform_revenue_stats))
+        .route("/revenue/spt/pools/:pool_id", get(get_spt_pool_revenue))
         
         // MyIP Marketplace endpoints (using TimescaleDB)
         .route("/marketplace", get(list_marketplace_data))

@@ -313,7 +313,7 @@ impl PostEventHandler {
             .execute(&mut conn)
             .await?;
             
-        // Update tips received count
+        // Update the tips received amount on the post or comment
         if event.is_post {
             diesel::update(schema::posts::table)
                 .filter(schema::posts::post_id.eq(&event.object_id))
@@ -327,8 +327,16 @@ impl PostEventHandler {
                 .execute(&mut conn)
                 .await?;
         }
-            
-        info!("Successfully processed tip");
+        
+        // Create unified revenue record for the tip
+        let unified_revenue = event.create_unified_revenue_record(tx_id.to_string())?;
+        
+        diesel::insert_into(crate::schema::unified_revenue::table)
+            .values(&unified_revenue)
+            .execute(&mut conn)
+            .await?;
+        
+        info!("Processed TipEvent with revenue tracking successfully");
         Ok(())
     }
     
@@ -1364,7 +1372,15 @@ async fn handle_tip(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) 
             .await?;
     }
     
-    info!("Processed TipEvent successfully");
+    // Create unified revenue record for the tip
+    let unified_revenue = parsed_event.create_unified_revenue_record(transaction_id.to_string())?;
+    
+    diesel::insert_into(crate::schema::unified_revenue::table)
+        .values(&unified_revenue)
+        .execute(&mut conn)
+        .await?;
+    
+    info!("Processed TipEvent with revenue tracking successfully");
     Ok(())
 }
 

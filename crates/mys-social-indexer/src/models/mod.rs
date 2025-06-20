@@ -13,6 +13,7 @@ pub mod my_ip;
 pub mod social_proof_token;
 pub mod poc;
 pub mod subscription;
+pub mod revenue;
 
 pub use profile::*;
 pub use indexer::*;
@@ -47,4 +48,20 @@ pub use subscription::{
     REVENUE_TYPE_RENEWAL, REVENUE_TYPE_AUTO_RENEWAL, REVENUE_TYPE_REFUND,
     CONTENT_TYPE_PROFILE, CONTENT_TYPE_POST,
     validate_monthly_fee, validate_subscription_duration, calculate_subscription_end_time
+};
+// Import revenue types with specific naming to avoid conflicts
+pub use revenue::{
+    SptRevenue, NewSptRevenue, UnifiedRevenue, NewUnifiedRevenue,
+    CreatorRevenueStats, PlatformRevenueStats, RevenueTimeSeriesPoint,
+    RevenueLeaderboardEntry, RevenueBreakdown as RevenueBreakdownUnified, 
+    RevenueDashboard, RevenueSourceStats, SptRevenueStats,
+    // Constants with specific prefixes to avoid conflicts
+    SPT_TRANSACTION_TYPE_BUY, SPT_TRANSACTION_TYPE_SELL,
+    REVENUE_SOURCE_SUBSCRIPTION, REVENUE_SOURCE_MY_IP, REVENUE_SOURCE_SPT,
+    REVENUE_SOURCE_TIPS, REVENUE_SOURCE_POSTS,
+    REVENUE_TYPE_SPT_CREATOR_FEE, REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE,
+    REVENUE_TYPE_TIPS_POST, REVENUE_TYPE_TIPS_PROFILE, REVENUE_TYPE_TIPS_COMMENT,
+    CURRENCY_MYSO, MYSO_DECIMAL_PLACES, MYSO_DECIMAL_FACTOR,
+    myso_from_blockchain_units, myso_to_blockchain_units, format_myso_amount,
+    calculate_percentage, calculate_growth_rate
 };

@@ -697,8 +697,27 @@ async fn calculate_subscription_analytics(
         0.0
     };
     
-    // Simplified revenue calculation for now - would use proper aggregation in production
-    let total_revenue: i64 = 0; // TODO: Implement proper revenue aggregation from subscription_revenue table
+    // Calculate total revenue from subscription_revenue table
+    let total_revenue = if let Some(service_id) = &params.service_id {
+        // Revenue for specific service
+        schema::subscription_revenue::table
+            .filter(schema::subscription_revenue::service_id.eq(service_id))
+            .filter(schema::subscription_revenue::time.between(start_date, end_date))
+            .select(diesel::dsl::sum(schema::subscription_revenue::amount))
+            .first::<Option<BigDecimal>>(conn)
+            .await?
+            .map(|bd| bd.to_string().parse::<i64>().unwrap_or(0))
+            .unwrap_or(0)
+    } else {
+        // Total revenue across all services
+        schema::subscription_revenue::table
+            .filter(schema::subscription_revenue::time.between(start_date, end_date))
+            .select(diesel::dsl::sum(schema::subscription_revenue::amount))
+            .first::<Option<BigDecimal>>(conn)
+            .await?
+            .map(|bd| bd.to_string().parse::<i64>().unwrap_or(0))
+            .unwrap_or(0)
+    };
     
     // Calculate monthly recurring revenue (simplified)
     let monthly_recurring_revenue = total_revenue / 30; // Rough approximation

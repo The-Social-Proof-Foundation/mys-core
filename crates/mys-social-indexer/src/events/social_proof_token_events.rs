@@ -120,6 +120,77 @@ impl TokenBoughtEvent {
             transaction_id,
         })
     }
+
+    /// Create SPT revenue record for swap fees
+    pub fn create_spt_revenue(&self, creator_address: String, platform_address: String, treasury_address: String, timestamp: u64, transaction_id: String) -> Result<crate::models::NewSptRevenue> {
+        Ok(crate::models::NewSptRevenue::from_buy_event(
+            self.id.clone(),
+            self.buyer.clone(),
+            creator_address,
+            platform_address,
+            treasury_address,
+            self.creator_fee as i64,
+            self.platform_fee as i64,
+            self.treasury_fee as i64,
+            self.amount as i64,
+            self.mys_amount as i64,
+            self.new_price as i64,
+            timestamp as i64,
+            transaction_id,
+        ))
+    }
+
+    /// Create unified revenue records for creator, platform, and treasury fees
+    pub fn create_unified_revenue_records(&self, creator_address: String, platform_address: String, treasury_address: String, timestamp: u64, transaction_id: String) -> Result<Vec<crate::models::NewUnifiedRevenue>> {
+        let mut records = Vec::new();
+
+        // Creator fee revenue
+        if self.creator_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.creator_fee as i64,
+                self.id.clone(),
+                self.buyer.clone(),
+                creator_address.clone(),
+                timestamp as i64,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Platform fee revenue
+        if self.platform_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.platform_fee as i64,
+                self.id.clone(),
+                self.buyer.clone(),
+                platform_address,
+                timestamp as i64,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Treasury fee revenue
+        if self.treasury_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_TREASURY_FEE.to_string(),
+                creator_address.clone(),
+                None,
+                self.treasury_fee as i64,
+                self.id.clone(),
+                self.buyer.clone(),
+                treasury_address,
+                timestamp as i64,
+                transaction_id,
+            ));
+        }
+
+        Ok(records)
+    }
 }
 
 /// Event emitted when tokens are sold
@@ -165,6 +236,77 @@ impl TokenSoldEvent {
             time: chrono::Utc::now(),
             transaction_id,
         })
+    }
+
+    /// Create SPT revenue record for swap fees
+    pub fn create_spt_revenue(&self, creator_address: String, platform_address: String, treasury_address: String, timestamp: u64, transaction_id: String) -> Result<crate::models::NewSptRevenue> {
+        Ok(crate::models::NewSptRevenue::from_sell_event(
+            self.id.clone(),
+            self.seller.clone(),
+            creator_address,
+            platform_address,
+            treasury_address,
+            self.creator_fee as i64,
+            self.platform_fee as i64,
+            self.treasury_fee as i64,
+            self.amount as i64,
+            self.mys_amount as i64,
+            self.new_price as i64,
+            timestamp as i64,
+            transaction_id,
+        ))
+    }
+
+    /// Create unified revenue records for creator, platform, and treasury fees
+    pub fn create_unified_revenue_records(&self, creator_address: String, platform_address: String, treasury_address: String, timestamp: u64, transaction_id: String) -> Result<Vec<crate::models::NewUnifiedRevenue>> {
+        let mut records = Vec::new();
+
+        // Creator fee revenue
+        if self.creator_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.creator_fee as i64,
+                self.id.clone(),
+                self.seller.clone(),
+                creator_address.clone(),
+                timestamp as i64,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Platform fee revenue
+        if self.platform_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.platform_fee as i64,
+                self.id.clone(),
+                self.seller.clone(),
+                platform_address,
+                timestamp as i64,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Treasury fee revenue
+        if self.treasury_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_TREASURY_FEE.to_string(),
+                creator_address.clone(),
+                None,
+                self.treasury_fee as i64,
+                self.id.clone(),
+                self.seller.clone(),
+                treasury_address,
+                timestamp as i64,
+                transaction_id,
+            ));
+        }
+
+        Ok(records)
     }
 }
 
@@ -460,6 +602,77 @@ impl SocialProofBuyEvent {
             transaction_id,
         })
     }
+
+    /// Create SPT revenue record for swap fees
+    pub fn create_spt_revenue(&self, creator_address: String, platform_address: String, treasury_address: String, time: i64, transaction_id: String) -> Result<crate::models::NewSptRevenue> {
+        Ok(crate::models::NewSptRevenue::from_buy_event(
+            self.pool_id.clone(),
+            self.buyer.clone(),
+            creator_address,
+            platform_address,
+            treasury_address,
+            self.creator_fee,
+            self.platform_fee,
+            self.treasury_fee,
+            self.amount,
+            self.mys_amount,
+            self.price,
+            time,
+            transaction_id,
+        ))
+    }
+
+    /// Create unified revenue records for creator, platform, and treasury fees
+    pub fn create_unified_revenue_records(&self, creator_address: String, platform_address: String, treasury_address: String, time: i64, transaction_id: String) -> Result<Vec<crate::models::NewUnifiedRevenue>> {
+        let mut records = Vec::new();
+
+        // Creator fee revenue
+        if self.creator_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.creator_fee,
+                self.pool_id.clone(),
+                self.buyer.clone(),
+                creator_address.clone(),
+                time,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Platform fee revenue
+        if self.platform_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.platform_fee,
+                self.pool_id.clone(),
+                self.buyer.clone(),
+                platform_address,
+                time,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Treasury fee revenue
+        if self.treasury_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_TREASURY_FEE.to_string(),
+                creator_address.clone(),
+                None,
+                self.treasury_fee,
+                self.pool_id.clone(),
+                self.buyer.clone(),
+                treasury_address,
+                time,
+                transaction_id,
+            ));
+        }
+
+        Ok(records)
+    }
 }
 
 // Sell event structure
@@ -563,6 +776,77 @@ impl SocialProofSellEvent {
             time: datetime,
             transaction_id,
         })
+    }
+
+    /// Create SPT revenue record for swap fees
+    pub fn create_spt_revenue(&self, creator_address: String, platform_address: String, treasury_address: String, time: i64, transaction_id: String) -> Result<crate::models::NewSptRevenue> {
+        Ok(crate::models::NewSptRevenue::from_sell_event(
+            self.pool_id.clone(),
+            self.seller.clone(),
+            creator_address,
+            platform_address,
+            treasury_address,
+            self.creator_fee,
+            self.platform_fee,
+            self.treasury_fee,
+            self.amount,
+            self.mys_amount,
+            self.price,
+            time,
+            transaction_id,
+        ))
+    }
+
+    /// Create unified revenue records for creator, platform, and treasury fees
+    pub fn create_unified_revenue_records(&self, creator_address: String, platform_address: String, treasury_address: String, time: i64, transaction_id: String) -> Result<Vec<crate::models::NewUnifiedRevenue>> {
+        let mut records = Vec::new();
+
+        // Creator fee revenue
+        if self.creator_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.creator_fee,
+                self.pool_id.clone(),
+                self.seller.clone(),
+                creator_address.clone(),
+                time,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Platform fee revenue
+        if self.platform_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.platform_fee,
+                self.pool_id.clone(),
+                self.seller.clone(),
+                platform_address,
+                time,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Treasury fee revenue
+        if self.treasury_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_TREASURY_FEE.to_string(),
+                creator_address.clone(),
+                None,
+                self.treasury_fee,
+                self.pool_id.clone(),
+                self.seller.clone(),
+                treasury_address,
+                time,
+                transaction_id,
+            ));
+        }
+
+        Ok(records)
     }
 }
 

@@ -189,33 +189,283 @@ impl MyIpEventHandler {
     }
     
     /// Handle other marketplace events from JSON (simplified implementations)
-    async fn handle_data_purchased_from_json(&self, data: &serde_json::Value, _transaction_id: &str) -> Result<()> {
-        info!("Processing DataPurchasedEvent from JSON: {}", serde_json::to_string_pretty(data).unwrap_or_default());
-        // TODO: Implement based on actual event structure
+    async fn handle_data_purchased_from_json(&self, data: &serde_json::Value, transaction_id: &str) -> Result<()> {
+        info!("Processing DataPurchasedEvent from JSON");
+        
+        // Extract fields from JSON data according to event structure
+        let ip_id = data.get("ip_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing ip_id field"))?;
+        
+        let buyer = data.get("buyer")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing buyer field"))?;
+        
+        let price = data.get("price")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow!("Missing price field"))?;
+        
+        let purchase_time = data.get("purchase_time")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow!("Missing purchase_time field"))?;
+        
+        let mut conn = self.get_connection().await?;
+        
+        // Record the purchase
+        let purchase = crate::models::NewMyIPPurchase {
+            ip_id: ip_id.to_string(),
+            buyer: buyer.to_string(),
+            price: price as i64,
+            purchase_type: crate::models::my_ip::PURCHASE_TYPE_ONE_TIME.to_string(),
+            purchase_time: purchase_time as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+        
+        diesel::insert_into(my_ip_purchases::table)
+            .values(&purchase)
+            .execute(&mut conn)
+            .await?;
+        
+        // Record access log
+        let access_log = crate::models::NewMyIPAccessLog {
+            ip_id: ip_id.to_string(),
+            user_address: buyer.to_string(),
+            access_type: crate::models::my_ip::ACCESS_TYPE_ONE_TIME.to_string(),
+            access_time: purchase_time as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+        
+        diesel::insert_into(my_ip_access_logs::table)
+            .values(&access_log)
+            .execute(&mut conn)
+            .await?;
+        
+        info!("Processed DataPurchasedEvent from JSON for ip_id: {}", ip_id);
         Ok(())
     }
     
-    async fn handle_subscription_created_from_json(&self, data: &serde_json::Value, _transaction_id: &str) -> Result<()> {
-        info!("Processing SubscriptionCreatedEvent from JSON: {}", serde_json::to_string_pretty(data).unwrap_or_default());
-        // TODO: Implement based on actual event structure
+    async fn handle_subscription_created_from_json(&self, data: &serde_json::Value, transaction_id: &str) -> Result<()> {
+        info!("Processing SubscriptionCreatedEvent from JSON");
+        
+        // Extract fields from JSON data according to event structure
+        let ip_id = data.get("ip_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing ip_id field"))?;
+        
+        let subscriber = data.get("subscriber")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing subscriber field"))?;
+        
+        let subscription_start = data.get("subscription_start")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow!("Missing subscription_start field"))?;
+        
+        let subscription_end = data.get("subscription_end")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow!("Missing subscription_end field"))?;
+        
+        let price = data.get("price")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow!("Missing price field"))?;
+        
+        let mut conn = self.get_connection().await?;
+        
+        // Record the subscription
+        let subscription = crate::models::NewMyIPSubscription {
+            ip_id: ip_id.to_string(),
+            subscriber: subscriber.to_string(),
+            subscription_start: subscription_start as i64,
+            subscription_end: subscription_end as i64,
+            price: price as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+        
+        diesel::insert_into(my_ip_subscriptions::table)
+            .values(&subscription)
+            .execute(&mut conn)
+            .await?;
+        
+        // Record as a purchase too for analytics
+        let purchase = crate::models::NewMyIPPurchase {
+            ip_id: ip_id.to_string(),
+            buyer: subscriber.to_string(),
+            price: price as i64,
+            purchase_type: crate::models::my_ip::PURCHASE_TYPE_SUBSCRIPTION.to_string(),
+            purchase_time: subscription_start as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+        
+        diesel::insert_into(my_ip_purchases::table)
+            .values(&purchase)
+            .execute(&mut conn)
+            .await?;
+        
+        // Record access log
+        let access_log = crate::models::NewMyIPAccessLog {
+            ip_id: ip_id.to_string(),
+            user_address: subscriber.to_string(),
+            access_type: crate::models::my_ip::ACCESS_TYPE_SUBSCRIPTION.to_string(),
+            access_time: subscription_start as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+        
+        diesel::insert_into(my_ip_access_logs::table)
+            .values(&access_log)
+            .execute(&mut conn)
+            .await?;
+        
+        info!("Processed SubscriptionCreatedEvent from JSON for ip_id: {}", ip_id);
         Ok(())
     }
     
-    async fn handle_data_access_granted_from_json(&self, data: &serde_json::Value, _transaction_id: &str) -> Result<()> {
-        info!("Processing DataAccessGrantedEvent from JSON: {}", serde_json::to_string_pretty(data).unwrap_or_default());
-        // TODO: Implement based on actual event structure  
+    async fn handle_data_access_granted_from_json(&self, data: &serde_json::Value, transaction_id: &str) -> Result<()> {
+        info!("Processing DataAccessGrantedEvent from JSON");
+        
+        // Extract fields from JSON data according to event structure
+        let ip_id = data.get("ip_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing ip_id field"))?;
+        
+        let grantor = data.get("grantor")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing grantor field"))?;
+        
+        let grantee = data.get("grantee")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing grantee field"))?;
+        
+        let access_type = data.get("access_type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("grant");
+        
+        let grant_time = data.get("grant_time")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow!("Missing grant_time field"))?;
+        
+        let mut conn = self.get_connection().await?;
+        
+        // Record access log
+        let access_log = crate::models::NewMyIPAccessLog {
+            ip_id: ip_id.to_string(),
+            user_address: grantee.to_string(),
+            access_type: crate::models::my_ip::ACCESS_TYPE_GRANT.to_string(),
+            access_time: grant_time as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+        
+        diesel::insert_into(my_ip_access_logs::table)
+            .values(&access_log)
+            .execute(&mut conn)
+            .await?;
+        
+        info!("Processed DataAccessGrantedEvent from JSON for ip_id: {}", ip_id);
         Ok(())
     }
     
-    async fn handle_revenue_distributed_from_json(&self, data: &serde_json::Value, _transaction_id: &str) -> Result<()> {
-        info!("Processing RevenueDistributedEvent from JSON: {}", serde_json::to_string_pretty(data).unwrap_or_default());
-        // TODO: Implement based on actual event structure
+    async fn handle_revenue_distributed_from_json(&self, data: &serde_json::Value, transaction_id: &str) -> Result<()> {
+        info!("Processing RevenueDistributedEvent from JSON");
+        
+        // Extract fields from JSON data according to event structure
+        let ip_id = data.get("ip_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing ip_id field"))?;
+        
+        let from_address = data.get("from_address")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing from_address field"))?;
+        
+        let to_address = data.get("to_address")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing to_address field"))?;
+        
+        let amount = data.get("amount")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow!("Missing amount field"))?;
+        
+        let revenue_type = data.get("revenue_type")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing revenue_type field"))?;
+        
+        let distribution_time = data.get("distribution_time")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow!("Missing distribution_time field"))?;
+        
+        let mut conn = self.get_connection().await?;
+        
+        // Record revenue distribution
+        let revenue = crate::models::NewMyIPRevenue {
+            ip_id: ip_id.to_string(),
+            from_address: from_address.to_string(),
+            to_address: to_address.to_string(),
+            amount: amount as i64,
+            revenue_type: revenue_type.to_string(),
+            revenue_time: distribution_time as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+        
+        diesel::insert_into(my_ip_revenue::table)
+            .values(&revenue)
+            .execute(&mut conn)
+            .await?;
+        
+        // Also create unified revenue record
+        let unified_revenue = crate::models::NewUnifiedRevenue::from_myip(
+            revenue_type.to_string(),
+            to_address.to_string(), // creator is recipient
+            amount as i64,
+            ip_id.to_string(),
+            from_address.to_string(), // payer
+            to_address.to_string(), // recipient  
+            distribution_time as i64,
+            transaction_id.to_string(),
+        );
+        
+        diesel::insert_into(crate::schema::unified_revenue::table)
+            .values(&unified_revenue)
+            .execute(&mut conn)
+            .await?;
+        
+        info!("Processed RevenueDistributedEvent from JSON for ip_id: {}", ip_id);
         Ok(())
     }
     
-    async fn handle_data_accessed_from_json(&self, data: &serde_json::Value, _transaction_id: &str) -> Result<()> {
-        info!("Processing DataAccessedEvent from JSON: {}", serde_json::to_string_pretty(data).unwrap_or_default());
-        // TODO: Implement based on actual event structure
+    async fn handle_data_accessed_from_json(&self, data: &serde_json::Value, transaction_id: &str) -> Result<()> {
+        info!("Processing DataAccessedEvent from JSON");
+        
+        // Extract fields from JSON data according to event structure
+        let ip_id = data.get("ip_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing ip_id field"))?;
+        
+        let user_address = data.get("user_address")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing user_address field"))?;
+        
+        let access_type = data.get("access_type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("preview");
+        
+        let access_time = data.get("access_time")
+            .and_then(|v| v.as_u64())
+            .unwrap_or_else(|| chrono::Utc::now().timestamp() as u64);
+        
+        let mut conn = self.get_connection().await?;
+        
+        // Record access log
+        let access_log = crate::models::NewMyIPAccessLog {
+            ip_id: ip_id.to_string(),
+            user_address: user_address.to_string(),
+            access_type: access_type.to_string(),
+            access_time: access_time as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+        
+        diesel::insert_into(my_ip_access_logs::table)
+            .values(&access_log)
+            .execute(&mut conn)
+            .await?;
+        
+        info!("Processed DataAccessedEvent from JSON for ip_id: {}", ip_id);
         Ok(())
     }
 

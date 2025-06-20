@@ -941,6 +941,51 @@ table! {
     }
 }
 
+// ===========================================================================
+// REVENUE AGGREGATION TABLES
+// ===========================================================================
+
+// SPT Revenue table
+table! {
+    spt_revenue (pool_id, time) {
+        pool_id -> Varchar,
+        transaction_type -> Varchar,
+        trader -> Varchar,
+        creator_address -> Varchar,
+        platform_address -> Varchar,
+        treasury_address -> Varchar,
+        creator_fee -> Int8,
+        platform_fee -> Int8,
+        treasury_fee -> Int8,
+        total_fee -> Int8,
+        token_amount -> Int8,
+        mys_amount -> Int8,
+        token_price -> Int8,
+        revenue_time -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Unified Revenue table
+table! {
+    unified_revenue (revenue_source, time) {
+        revenue_source -> Varchar,
+        revenue_type -> Varchar,
+        creator_address -> Varchar,
+        platform_address -> Nullable<Varchar>,
+        amount -> Int8,
+        currency -> Varchar,
+        content_id -> Nullable<Varchar>,
+        content_type -> Nullable<Varchar>,
+        payer_address -> Varchar,
+        recipient_address -> Varchar,
+        revenue_time -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
 // Allow joining the tables if needed
 allow_tables_to_appear_in_same_query!(
     profiles,
@@ -1003,4 +1048,7 @@ allow_tables_to_appear_in_same_query!(
     // Anonymous voting tables
     anonymous_votes,
     vote_decryption_failures,
+    // Revenue aggregation tables
+    spt_revenue,
+    unified_revenue,
 );
