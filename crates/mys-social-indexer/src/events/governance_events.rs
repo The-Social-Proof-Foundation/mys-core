@@ -73,6 +73,7 @@ pub async fn process_governance_registry_event(
         event_data: event.clone(),
         event_id: event_id.to_string(),
         created_at: Utc::now(),
+        anonymous_voting_related: None,
     };
     
     diesel::insert_into(crate::schema::governance_events::table)
@@ -136,6 +137,7 @@ pub async fn process_delegate_nominated_event(
         event_data: event.clone(),
         event_id: event_id.to_string(),
         created_at: Utc::now(),
+        anonymous_voting_related: None,
     };
     
     diesel::insert_into(crate::schema::governance_events::table)
@@ -222,6 +224,7 @@ pub async fn process_delegate_elected_event(
                     event_data: event.clone(),
                     event_id: event_id.to_string(),
                     created_at: Utc::now(),
+                    anonymous_voting_related: None,
                 };
                 
                 diesel::insert_into(crate::schema::governance_events::table)
@@ -334,6 +337,7 @@ pub async fn process_delegate_voted_event(
                     event_data: event.clone(),
                     event_id: event_id.to_string(),
                     created_at: Utc::now(),
+                    anonymous_voting_related: None,
                 };
                 
                 diesel::insert_into(crate::schema::governance_events::table)
@@ -407,6 +411,7 @@ pub async fn process_proposal_submitted_event(
         event_data: event.clone(),
         event_id: event_id.to_string(),
         created_at: Utc::now(),
+        anonymous_voting_related: None,
     };
     
     diesel::insert_into(crate::schema::governance_events::table)
@@ -501,6 +506,7 @@ pub async fn process_delegate_vote_event(
                         event_data: event.clone(),
                         event_id: event_id.to_string(),
                         created_at: Utc::now(),
+                        anonymous_voting_related: None,
                     };
                     
                     diesel::insert_into(crate::schema::governance_events::table)
@@ -593,6 +599,7 @@ pub async fn process_community_vote_event(
                         event_data: event.clone(),
                         event_id: event_id.to_string(),
                         created_at: Utc::now(),
+                        anonymous_voting_related: None,
                     };
                     
                     diesel::insert_into(crate::schema::governance_events::table)
@@ -653,6 +660,7 @@ pub async fn process_proposal_approved_for_voting_event(
                         event_data: event.clone(),
                         event_id: event_id.to_string(),
                         created_at: Utc::now(),
+                        anonymous_voting_related: None,
                     };
                     
                     diesel::insert_into(crate::schema::governance_events::table)
@@ -741,6 +749,7 @@ pub async fn process_proposal_rejected_event(
                         event_data: event.clone(),
                         event_id: event_id.to_string(),
                         created_at: Utc::now(),
+                        anonymous_voting_related: None,
                     };
                     
                     diesel::insert_into(crate::schema::governance_events::table)
@@ -819,6 +828,7 @@ pub async fn process_proposal_rescinded_event(
                         event_data: event.clone(),
                         event_id: event_id.to_string(),
                         created_at: Utc::now(),
+                        anonymous_voting_related: None,
                     };
                     
                     diesel::insert_into(crate::schema::governance_events::table)
@@ -907,6 +917,7 @@ pub async fn process_proposal_approved_event(
                         event_data: event.clone(),
                         event_id: event_id.to_string(),
                         created_at: Utc::now(),
+                        anonymous_voting_related: None,
                     };
                     
                     diesel::insert_into(crate::schema::governance_events::table)
@@ -965,6 +976,7 @@ pub async fn process_proposal_implemented_event(
             event_data: event.clone(),
             event_id: event_id.to_string(),
             created_at: Utc::now(),
+            anonymous_voting_related: None,
         };
         
         diesel::insert_into(crate::schema::governance_events::table)
@@ -1020,6 +1032,7 @@ pub async fn process_rewards_distributed_event(
             event_data: event.clone(),
             event_id: event_id.to_string(),
             created_at: Utc::now(),
+            anonymous_voting_related: None,
         };
         
         diesel::insert_into(crate::schema::governance_events::table)
@@ -1028,6 +1041,129 @@ pub async fn process_rewards_distributed_event(
             .await?;
     } else {
         error!("Failed to find proposal type for proposal ID: {}", rewards_event.proposal_id);
+    }
+    
+    Ok(())
+}
+
+/// Process an anonymous vote event  
+pub async fn process_anonymous_vote_event(
+    conn: &mut DbConnection,
+    event: &Value,
+    event_id: &str,
+) -> Result<()> {
+    debug!("Processing anonymous vote event");
+    
+    // Parse the event
+    let vote_event = parse_json_event::<crate::events::governance_event_types::AnonymousVoteEvent>(event)?;
+    
+    // Create new anonymous vote record
+    let new_vote = crate::models::governance::NewAnonymousVote {
+        proposal_id: vote_event.proposal_id.clone(),
+        voter_address: vote_event.voter.clone(),
+        encrypted_vote_data: Some(vote_event.encrypted_vote_data.clone()),
+        submitted_at: vote_event.vote_time as i64,
+        decryption_status: crate::ANONYMOUS_VOTE_STATUS_PENDING as i16,
+        transaction_id: event_id.to_string(),
+        processing_success: true,
+        processing_error: None,
+    };
+    
+    // Insert the vote record
+    let result = diesel::insert_into(crate::schema::anonymous_votes::table)
+        .values(&new_vote)
+        .execute(conn)
+        .await?;
+    
+    info!("Processed anonymous vote event: {} rows affected", result);
+    
+    // Update the anonymous voters count on the proposal
+    diesel::sql_query("
+        UPDATE proposals 
+        SET anonymous_voters_count = COALESCE(anonymous_voters_count, 0) + 1
+        WHERE id = $1
+    ")
+    .bind::<diesel::sql_types::Text, _>(&vote_event.proposal_id)
+    .execute(conn)
+    .await?;
+    
+    // Record this event in the governance_events table
+    let proposal_type_query = diesel::sql_query("SELECT proposal_type FROM proposals WHERE id = $1")
+        .bind::<diesel::sql_types::Text, _>(&vote_event.proposal_id)
+        .load::<crate::db::query_types::ProposalTypeResult>(conn)
+        .await?;
+    
+    if let Some(result) = proposal_type_query.get(0) {
+        let governance_event = NewGovernanceEvent {
+            event_type: "AnonymousVoteEvent".to_string(),
+            registry_type: result.proposal_type,
+            event_data: event.clone(),
+            event_id: event_id.to_string(),
+            created_at: Utc::now(),
+            anonymous_voting_related: Some(true),
+        };
+        
+        diesel::insert_into(crate::schema::governance_events::table)
+            .values(&governance_event)
+            .execute(conn)
+            .await?;
+    } else {
+        error!("Failed to find proposal type for proposal ID: {}", vote_event.proposal_id);
+    }
+    
+    Ok(())
+}
+
+/// Process a vote decryption failed event
+pub async fn process_vote_decryption_failed_event(
+    conn: &mut DbConnection,
+    event: &Value,
+    event_id: &str,
+) -> Result<()> {
+    debug!("Processing vote decryption failed event");
+    
+    // Parse the event
+    let failure_event = parse_json_event::<crate::events::governance_event_types::VoteDecryptionFailedEvent>(event)?;
+    
+    // Create decryption failure record
+    let new_failure = crate::models::governance::NewVoteDecryptionFailure {
+        proposal_id: failure_event.proposal_id.clone(),
+        voter_address: failure_event.voter.clone(),
+        failure_reason: failure_event.failure_reason.clone(),
+        attempted_at: failure_event.timestamp as i64,
+        encrypted_vote_length: None,
+        transaction_id: event_id.to_string(),
+    };
+    
+    let result = diesel::insert_into(crate::schema::vote_decryption_failures::table)
+        .values(&new_failure)
+        .execute(conn)
+        .await?;
+    
+    info!("Processed vote decryption failed event: {} rows affected", result);
+    
+    // Record this event in the governance_events table
+    let proposal_type_query = diesel::sql_query("SELECT proposal_type FROM proposals WHERE id = $1")
+        .bind::<diesel::sql_types::Text, _>(&failure_event.proposal_id)
+        .load::<crate::db::query_types::ProposalTypeResult>(conn)
+        .await?;
+    
+    if let Some(result) = proposal_type_query.get(0) {
+        let governance_event = NewGovernanceEvent {
+            event_type: "VoteDecryptionFailedEvent".to_string(),
+            registry_type: result.proposal_type,
+            event_data: event.clone(),
+            event_id: event_id.to_string(),
+            created_at: Utc::now(),
+            anonymous_voting_related: Some(true),
+        };
+        
+        diesel::insert_into(crate::schema::governance_events::table)
+            .values(&governance_event)
+            .execute(conn)
+            .await?;
+    } else {
+        error!("Failed to find proposal type for proposal ID: {}", failure_event.proposal_id);
     }
     
     Ok(())

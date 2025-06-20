@@ -209,6 +209,7 @@ module social_contracts::governance {
         proposal_id: ID,
         voter: address,
         vote_time: u64,
+        encrypted_vote_data: vector<u8>, // Raw encrypted vote data for indexer storage
     }
 
     /// Event emitted when a proposal is approved by the delegate council
@@ -1390,10 +1391,15 @@ module social_contracts::governance {
         let anon_set: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, ANON_VOTERS_FIELD);
         vec_set::insert(anon_set, caller);
 
+        // Serialize the entire EncryptedObject for indexer storage
+        let mut serialized_vote = vector::empty<u8>();
+        serialized_vote.append(*encrypted_vote.blob());
+        
         event::emit(AnonymousVoteEvent {
             proposal_id,
             voter: caller,
             vote_time: current_time,
+            encrypted_vote_data: serialized_vote, // Emit encrypted blob for indexer
         });
     }
 

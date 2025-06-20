@@ -48,6 +48,11 @@ pub const NOMINEE_STATUS_PENDING: u8 = 0;
 pub const NOMINEE_STATUS_ELECTED: u8 = 1;
 pub const NOMINEE_STATUS_REJECTED: u8 = 2;
 
+/// Anonymous vote status constants
+pub const ANONYMOUS_VOTE_STATUS_PENDING: u8 = 0;
+pub const ANONYMOUS_VOTE_STATUS_DECRYPTED: u8 = 1;
+pub const ANONYMOUS_VOTE_STATUS_FAILED: u8 = 2;
+
 /// Set the MySocial package address
 pub fn set_mysocial_package_address(address: String) {
     MYSOCIAL_PACKAGE_ADDRESS.set(address).unwrap_or_else(|_| {

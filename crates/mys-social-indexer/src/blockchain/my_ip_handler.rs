@@ -17,7 +17,6 @@ use crate::events::{
         DataCreatedEvent,
         DataPurchasedEvent,
         SubscriptionCreatedEvent,
-        SubscriptionRenewedEvent,
         DataAccessGrantedEvent,
         RevenueDistributedEvent,
         DataAccessedEvent,
@@ -81,7 +80,6 @@ impl MyIpEventHandler {
         event_type.ends_with("::DataCreatedEvent") ||
         event_type.ends_with("::DataPurchasedEvent") ||
         event_type.ends_with("::SubscriptionCreatedEvent") ||
-        event_type.ends_with("::SubscriptionRenewedEvent") ||
         event_type.ends_with("::DataAccessGrantedEvent") ||
         event_type.ends_with("::RevenueDistributedEvent") ||
         event_type.ends_with("::DataAccessedEvent")
@@ -358,33 +356,6 @@ impl MyIpEventHandler {
             .await?;
         
         info!("Processed SubscriptionCreatedEvent successfully for ip_id: {}", parsed_event.ip_id);
-        Ok(())
-    }
-
-    /// Handle subscription renewed event
-    async fn handle_subscription_renewed(&self, event: &MysEvent, _transaction_id: &str) -> Result<()> {
-        info!("Processing SubscriptionRenewedEvent");
-        
-        let parsed_event = parse_event::<SubscriptionRenewedEvent>(event)
-            .map_err(|e| anyhow!("Failed to parse SubscriptionRenewedEvent: {}", e))?;
-        
-        info!("Parsed SubscriptionRenewedEvent: ip_id={}, subscriber={}", 
-            parsed_event.ip_id, parsed_event.subscriber);
-        
-        let mut conn = self.db.get_connection().await?;
-        
-        // Update the subscription end time
-        diesel::update(my_ip_subscriptions::table
-            .filter(my_ip_subscriptions::ip_id.eq(&parsed_event.ip_id))
-            .filter(my_ip_subscriptions::subscriber.eq(&parsed_event.subscriber)))
-            .set((
-                my_ip_subscriptions::subscription_end.eq(parsed_event.new_subscription_end as i64),
-                my_ip_subscriptions::price.eq(parsed_event.renewal_price as i64)
-            ))
-            .execute(&mut conn)
-            .await?;
-        
-        info!("Processed SubscriptionRenewedEvent successfully for ip_id: {}", parsed_event.ip_id);
         Ok(())
     }
 

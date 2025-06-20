@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Query},
     http::StatusCode,
     Json,
 };
@@ -53,6 +53,37 @@ pub struct ProposalDetail {
     pub delegate_votes: Vec<DelegateVote>,
     pub community_votes_count: i64,
     pub reward_distributions: Vec<RewardDistribution>,
+}
+
+// Add QueryableByName structs for raw SQL queries
+#[derive(Debug, QueryableByName)]
+struct AnonymousVotingStatsRow {
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    total_anonymous_votes: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    successfully_decrypted: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    failed_decryptions: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    anonymous_votes_for: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    anonymous_votes_against: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pending_decryption: i64,
+}
+
+#[derive(Debug, QueryableByName)]
+struct AnonymousVotingTrendRow {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    day: String,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    total_votes: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    successful_decryptions: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    failed_decryptions: i64,
+    #[diesel(sql_type = diesel::sql_types::Double)]
+    success_rate: f64,
 }
 
 // ============= PROPOSALS =============
@@ -394,4 +425,181 @@ pub async fn list_governance_events(
         })?;
     
     Ok(Json(events))
+}
+
+// ============= ANONYMOUS VOTING ENDPOINTS =============
+
+#[derive(Debug, Serialize)]
+pub struct AnonymousVotingStats {
+    pub total_anonymous_votes: i64,
+    pub successfully_decrypted: i64,
+    pub failed_decryptions: i64,
+    pub anonymous_votes_for: i64,
+    pub anonymous_votes_against: i64,
+    pub pending_decryption: i64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AnonymousVotingParams {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub proposal_id: Option<String>,
+    pub decryption_status: Option<i16>,
+}
+
+/// Get anonymous voting statistics for a proposal
+pub async fn get_proposal_anonymous_stats(
+    State(pool): State<DbPool>,
+    Path(proposal_id): Path<String>,
+) -> Result<Json<AnonymousVotingStats>, StatusCode> {
+    let mut conn = pool.get().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    let stats = diesel::sql_query("
+        SELECT 
+            COUNT(*) as total_anonymous_votes,
+            COUNT(*) FILTER (WHERE decrypted = true) as successfully_decrypted,
+            COUNT(*) FILTER (WHERE decryption_status = $2) as failed_decryptions,
+            COUNT(*) FILTER (WHERE decrypted_vote = 1) as anonymous_votes_for,
+            COUNT(*) FILTER (WHERE decrypted_vote = 0) as anonymous_votes_against,
+            COUNT(*) FILTER (WHERE decryption_status = $3) as pending_decryption
+        FROM anonymous_votes 
+        WHERE proposal_id = $1
+    ")
+    .bind::<diesel::sql_types::Text, _>(&proposal_id)
+    .bind::<diesel::sql_types::SmallInt, _>(crate::ANONYMOUS_VOTE_STATUS_FAILED as i16)
+    .bind::<diesel::sql_types::SmallInt, _>(crate::ANONYMOUS_VOTE_STATUS_PENDING as i16)
+    .get_result::<AnonymousVotingStatsRow>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Error loading anonymous voting stats: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    let response = AnonymousVotingStats {
+        total_anonymous_votes: stats.total_anonymous_votes,
+        successfully_decrypted: stats.successfully_decrypted,
+        failed_decryptions: stats.failed_decryptions,
+        anonymous_votes_for: stats.anonymous_votes_for,
+        anonymous_votes_against: stats.anonymous_votes_against,
+        pending_decryption: stats.pending_decryption,
+    };
+    
+    Ok(Json(response))
+}
+
+/// Get anonymous votes for a proposal
+pub async fn get_proposal_anonymous_votes(
+    State(pool): State<DbPool>,
+    Path(proposal_id): Path<String>,
+    params: axum::extract::Query<AnonymousVotingParams>,
+) -> Result<Json<Vec<crate::models::governance::AnonymousVote>>, StatusCode> {
+    let mut conn = pool.get().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    let limit = params.limit.unwrap_or(50);
+    let offset = params.offset.unwrap_or(0);
+    
+    let mut query = crate::schema::anonymous_votes::table
+        .filter(crate::schema::anonymous_votes::proposal_id.eq(&proposal_id))
+        .order_by(crate::schema::anonymous_votes::time.desc())
+        .limit(limit)
+        .offset(offset)
+        .into_boxed();
+    
+    if let Some(status) = params.decryption_status {
+        query = query.filter(crate::schema::anonymous_votes::decryption_status.eq(status));
+    }
+    
+    let votes = query
+        .load::<crate::models::governance::AnonymousVote>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Error loading anonymous votes: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    Ok(Json(votes))
+}
+
+/// Get decryption failures for a proposal
+pub async fn get_proposal_decryption_failures(
+    State(pool): State<DbPool>,
+    Path(proposal_id): Path<String>,
+) -> Result<Json<Vec<crate::models::governance::VoteDecryptionFailure>>, StatusCode> {
+    let mut conn = pool.get().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    let failures = crate::schema::vote_decryption_failures::table
+        .filter(crate::schema::vote_decryption_failures::proposal_id.eq(&proposal_id))
+        .order_by(crate::schema::vote_decryption_failures::time.desc())
+        .limit(100) // Limit failures for performance
+        .load::<crate::models::governance::VoteDecryptionFailure>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Error loading decryption failures: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    Ok(Json(failures))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TrendsParams {
+    pub days: Option<i32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AnonymousVotingTrend {
+    pub day: String,
+    pub total_votes: i64,
+    pub successful_decryptions: i64,
+    pub failed_decryptions: i64,
+    pub success_rate: f64,
+}
+
+/// Get anonymous voting trends over time
+pub async fn get_anonymous_voting_trends(
+    State(pool): State<DbPool>,
+    Query(params): Query<TrendsParams>,
+) -> Result<Json<Vec<AnonymousVotingTrend>>, StatusCode> {
+    let mut conn = pool.get().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    let days = params.days.unwrap_or(30);
+    
+    let trends = diesel::sql_query("
+        SELECT 
+            day::text,
+            COALESCE(SUM(total_anonymous_votes), 0) as total_votes,
+            COALESCE(SUM(successfully_decrypted), 0) as successful_decryptions,
+            COALESCE(SUM(failed_decryptions), 0) as failed_decryptions,
+            CASE 
+                WHEN SUM(total_anonymous_votes) > 0 THEN 
+                    ROUND((SUM(successfully_decrypted)::float / SUM(total_anonymous_votes) * 100)::numeric, 2)
+                ELSE 0 
+            END as success_rate
+        FROM anonymous_voting_daily_stats 
+        WHERE day >= NOW() - INTERVAL '$1 days'
+        GROUP BY day
+        ORDER BY day DESC
+    ")
+    .bind::<diesel::sql_types::Integer, _>(days)
+    .get_results::<AnonymousVotingTrendRow>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Error loading anonymous voting trends: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    
+    let response = trends
+        .into_iter()
+        .map(|row| {
+            AnonymousVotingTrend {
+                day: row.day,
+                total_votes: row.total_votes,
+                successful_decryptions: row.successful_decryptions,
+                failed_decryptions: row.failed_decryptions,
+                success_rate: row.success_rate,
+            }
+        })
+        .collect();
+    
+    Ok(Json(response))
 } 

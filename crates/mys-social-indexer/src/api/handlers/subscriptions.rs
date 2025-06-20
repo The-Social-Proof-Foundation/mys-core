@@ -9,17 +9,17 @@ use axum::{
 };
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use serde::Deserialize;
 use chrono::{NaiveDateTime, Utc};
 use anyhow::Result;
+use bigdecimal::{BigDecimal, ToPrimitive};
 
 use crate::db::DbPool;
 use crate::models::subscription::*;
 use crate::schema;
 
 // ==============================================================================
-// REQUEST/RESPONSE STRUCTURES
+// REQUEST STRUCTURES
 // ==============================================================================
 
 #[derive(Debug, Deserialize)]
@@ -53,73 +53,6 @@ pub struct RevenueQuery {
     pub offset: Option<i64>,
 }
 
-#[derive(Serialize)]
-pub struct SubscriptionResponse {
-    pub subscriptions: Vec<ProfileSubscription>,
-    pub total_count: i64,
-    pub pagination: PaginationInfo,
-}
-
-#[derive(Serialize)]
-pub struct PaginationInfo {
-    pub total: i64,
-    pub limit: i64,
-    pub offset: i64,
-    pub page: i64,
-    pub total_pages: i64,
-}
-
-#[derive(Serialize)]
-pub struct ServiceResponse {
-    pub services: Vec<ProfileSubscriptionService>,
-    pub total_count: i64,
-    pub pagination: PaginationInfo,
-}
-
-#[derive(Serialize)]
-pub struct RevenueResponse {
-    pub revenue_records: Vec<SubscriptionRevenue>,
-    pub total_count: i64,
-    pub total_amount: i64,
-    pub pagination: PaginationInfo,
-}
-
-#[derive(Serialize)]
-pub struct SubscriptionAnalyticsResponse {
-    pub analytics: SubscriptionAnalytics,
-    pub period_start: NaiveDateTime,
-    pub period_end: NaiveDateTime,
-}
-
-#[derive(Serialize)]
-pub struct ServicePerformanceResponse {
-    pub services: Vec<ServicePerformance>,
-    pub total_count: i64,
-}
-
-#[derive(Serialize)]
-pub struct SubscriberSummaryResponse {
-    pub summary: SubscriberSummary,
-}
-
-#[derive(Serialize)]
-pub struct SubscriptionStatusResponse {
-    pub subscription_id: String,
-    pub is_active: bool,
-    pub expires_at: i64,
-    pub days_remaining: Option<i64>,
-    pub status: String,
-    pub can_auto_renew: bool,
-}
-
-#[derive(Serialize)]
-pub struct SubscriptionAccessResponse {
-    pub has_access: bool,
-    pub subscription: Option<ProfileSubscription>,
-    pub service: Option<ProfileSubscriptionService>,
-    pub access_expires_at: Option<i64>,
-}
-
 // ==============================================================================
 // SUBSCRIPTION ENDPOINTS
 // ==============================================================================
@@ -146,26 +79,30 @@ pub async fn get_subscriptions(
     };
     
     // Build the query dynamically
-    let mut query = schema::profile_subscriptions::table.into_boxed();
-    
-    if let Some(subscriber) = &params.subscriber {
-        query = query.filter(schema::profile_subscriptions::subscriber.eq(subscriber));
-    }
-    
-    if let Some(service_id) = &params.service_id {
-        query = query.filter(schema::profile_subscriptions::service_id.eq(service_id));
-    }
-    
-    if params.active_only.unwrap_or(false) {
-        let current_time = Utc::now().timestamp();
-        query = query.filter(
-            schema::profile_subscriptions::cancelled_at.is_null()
-                .and(schema::profile_subscriptions::expires_at.gt(current_time))
-        );
-    }
+    let build_query = || {
+        let mut query = schema::profile_subscriptions::table.into_boxed();
+        
+        if let Some(subscriber) = &params.subscriber {
+            query = query.filter(schema::profile_subscriptions::subscriber.eq(subscriber));
+        }
+        
+        if let Some(service_id) = &params.service_id {
+            query = query.filter(schema::profile_subscriptions::service_id.eq(service_id));
+        }
+        
+        if params.active_only.unwrap_or(false) {
+            let current_time = Utc::now().timestamp();
+            query = query.filter(
+                schema::profile_subscriptions::cancelled_at.is_null()
+                    .and(schema::profile_subscriptions::expires_at.gt(current_time))
+            );
+        }
+        
+        query
+    };
     
     // Get total count
-    let total_count = match query.count().get_result::<i64>(&mut conn).await {
+    let total_count = match build_query().count().get_result::<i64>(&mut conn).await {
         Ok(count) => count,
         Err(e) => {
             return (
@@ -178,7 +115,7 @@ pub async fn get_subscriptions(
     };
     
     // Get subscriptions with pagination
-    let subscriptions = match query
+    let subscriptions = match build_query()
         .order_by(schema::profile_subscriptions::time.desc())
         .limit(limit)
         .offset(offset)
@@ -198,17 +135,20 @@ pub async fn get_subscriptions(
     
     let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
     
-    Json(serde_json::json!({
-        "subscriptions": subscriptions,
-        "total_count": total_count,
-        "pagination": {
-            "total": total_count,
-            "limit": limit,
-            "offset": offset,
-            "page": page,
-            "total_pages": total_pages,
-        }
-    })).into_response()
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "subscriptions": subscriptions,
+            "total_count": total_count,
+            "pagination": {
+                "total": total_count,
+                "limit": limit,
+                "offset": offset,
+                "page": page,
+                "total_pages": total_pages,
+            }
+        }))
+    )
 }
 
 /// Get subscription services with filtering and pagination
@@ -233,18 +173,22 @@ pub async fn get_subscription_services(
     };
     
     // Build the query dynamically
-    let mut query = schema::profile_subscription_services::table.into_boxed();
-    
-    if let Some(profile_owner) = &params.profile_owner {
-        query = query.filter(schema::profile_subscription_services::profile_owner.eq(profile_owner));
-    }
-    
-    if params.active_only.unwrap_or(false) {
-        query = query.filter(schema::profile_subscription_services::active.eq(true));
-    }
+    let build_query = || {
+        let mut query = schema::profile_subscription_services::table.into_boxed();
+        
+        if let Some(profile_owner) = &params.profile_owner {
+            query = query.filter(schema::profile_subscription_services::profile_owner.eq(profile_owner));
+        }
+        
+        if params.active_only.unwrap_or(false) {
+            query = query.filter(schema::profile_subscription_services::active.eq(true));
+        }
+        
+        query
+    };
     
     // Get total count
-    let total_count = match query.count().get_result::<i64>(&mut conn).await {
+    let total_count = match build_query().count().get_result::<i64>(&mut conn).await {
         Ok(count) => count,
         Err(e) => {
             return (
@@ -257,7 +201,7 @@ pub async fn get_subscription_services(
     };
     
     // Get services with pagination
-    let services = match query
+    let services = match build_query()
         .order_by(schema::profile_subscription_services::time.desc())
         .limit(limit)
         .offset(offset)
@@ -279,17 +223,17 @@ pub async fn get_subscription_services(
     
     (
         StatusCode::OK,
-        Json(ServiceResponse {
-            services,
-            total_count,
-            pagination: PaginationInfo {
-                total: total_count,
-                limit,
-                offset,
-                page,
-                total_pages,
-            },
-        })
+        Json(serde_json::json!({
+            "services": services,
+            "total_count": total_count,
+            "pagination": {
+                "total": total_count,
+                "limit": limit,
+                "offset": offset,
+                "page": page,
+                "total_pages": total_pages,
+            }
+        }))
     )
 }
 
@@ -314,26 +258,30 @@ pub async fn get_subscription_revenue(
     };
     
     // Build the query dynamically
-    let mut query = schema::subscription_revenue::table.into_boxed();
-    
-    if let Some(service_id) = &params.service_id {
-        query = query.filter(schema::subscription_revenue::service_id.eq(service_id));
-    }
-    
-    if let Some(revenue_type) = &params.revenue_type {
-        query = query.filter(schema::subscription_revenue::revenue_type.eq(revenue_type));
-    }
-    
-    if let Some(start_date) = &params.start_date {
-        query = query.filter(schema::subscription_revenue::time.ge(start_date));
-    }
-    
-    if let Some(end_date) = &params.end_date {
-        query = query.filter(schema::subscription_revenue::time.le(end_date));
-    }
+    let build_query = || {
+        let mut query = schema::subscription_revenue::table.into_boxed();
+        
+        if let Some(service_id) = &params.service_id {
+            query = query.filter(schema::subscription_revenue::service_id.eq(service_id));
+        }
+        
+        if let Some(revenue_type) = &params.revenue_type {
+            query = query.filter(schema::subscription_revenue::revenue_type.eq(revenue_type));
+        }
+        
+        if let Some(start_date) = &params.start_date {
+            query = query.filter(schema::subscription_revenue::time.ge(start_date));
+        }
+        
+        if let Some(end_date) = &params.end_date {
+            query = query.filter(schema::subscription_revenue::time.le(end_date));
+        }
+        
+        query
+    };
     
     // Get total count first
-    let total_count = match query.count().get_result::<i64>(&mut conn).await {
+    let total_count = match build_query().count().get_result::<i64>(&mut conn).await {
         Ok(count) => count,
         Err(e) => {
             return (
@@ -346,12 +294,12 @@ pub async fn get_subscription_revenue(
     };
 
     // Get total amount separately
-    let total_amount = match query
+    let total_amount = match build_query()
         .select(diesel::dsl::sum(schema::subscription_revenue::amount).nullable())
-        .get_result::<Option<i64>>(&mut conn)
+        .get_result::<Option<BigDecimal>>(&mut conn)
         .await
     {
-        Ok(sum) => sum.unwrap_or(0),
+        Ok(sum) => sum.and_then(|bd| bd.to_i64()).unwrap_or(0),
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -363,7 +311,7 @@ pub async fn get_subscription_revenue(
     };
     
     // Get revenue records with pagination
-    let revenue_records = match query
+    let revenue_records = match build_query()
         .order_by(schema::subscription_revenue::time.desc())
         .limit(limit)
         .offset(offset)
@@ -385,18 +333,18 @@ pub async fn get_subscription_revenue(
     
     (
         StatusCode::OK,
-        Json(RevenueResponse {
-            revenue_records,
-            total_count,
-            total_amount,
-            pagination: PaginationInfo {
-                total: total_count,
-                limit,
-                offset,
-                page: (offset / limit) + 1,
-                total_pages,
-            },
-        })
+        Json(serde_json::json!({
+            "revenue_records": revenue_records,
+            "total_count": total_count,
+            "total_amount": total_amount,
+            "pagination": {
+                "total": total_count,
+                "limit": limit,
+                "offset": offset,
+                "page": (offset / limit) + 1,
+                "total_pages": total_pages,
+            }
+        }))
     )
 }
 
@@ -427,7 +375,7 @@ pub async fn check_subscription_access(
             schema::posts::requires_subscription,
             schema::posts::subscription_service_id,
         ))
-        .first::<(bool, Option<String>)>(&mut conn)
+        .first::<(Option<bool>, Option<String>)>(&mut conn)
         .await
     {
         Ok(info) => info,
@@ -449,18 +397,19 @@ pub async fn check_subscription_access(
         }
     };
     
-    let (requires_subscription, service_id_opt) = post_info;
+    let (requires_subscription_opt, service_id_opt) = post_info;
+    let requires_subscription = requires_subscription_opt.unwrap_or(false);
     
     // If content doesn't require subscription, grant access
     if !requires_subscription {
         return (
             StatusCode::OK,
-            Json(SubscriptionAccessResponse {
-                has_access: true,
-                subscription: None,
-                service: None,
-                access_expires_at: None,
-            })
+            Json(serde_json::json!({
+                "has_access": true,
+                "subscription": null,
+                "service": null,
+                "access_expires_at": null
+            }))
         );
     }
     
@@ -470,12 +419,12 @@ pub async fn check_subscription_access(
         None => {
             return (
                 StatusCode::OK,
-                Json(SubscriptionAccessResponse {
-                    has_access: false,
-                    subscription: None,
-                    service: None,
-                    access_expires_at: None,
-                })
+                Json(serde_json::json!({
+                    "has_access": false,
+                    "subscription": null,
+                    "service": null,
+                    "access_expires_at": null
+                }))
             );
         }
     };
@@ -503,23 +452,23 @@ pub async fn check_subscription_access(
             
             (
                 StatusCode::OK,
-                Json(SubscriptionAccessResponse {
-                    has_access: true,
-                    subscription: Some(subscription.clone()),
-                    service,
-                    access_expires_at: Some(subscription.expires_at),
-                })
+                Json(serde_json::json!({
+                    "has_access": true,
+                    "subscription": subscription,
+                    "service": service,
+                    "access_expires_at": subscription.expires_at
+                }))
             )
         }
         Err(_) => {
             (
                 StatusCode::OK,
-                Json(SubscriptionAccessResponse {
-                    has_access: false,
-                    subscription: None,
-                    service: None,
-                    access_expires_at: None,
-                })
+                Json(serde_json::json!({
+                    "has_access": false,
+                    "subscription": null,
+                    "service": null,
+                    "access_expires_at": null
+                }))
             )
         }
     }
@@ -579,14 +528,14 @@ pub async fn get_subscription_status(
     
     (
         StatusCode::OK,
-        Json(SubscriptionStatusResponse {
-            subscription_id: subscription.subscription_id.clone(),
-            is_active: subscription.is_active(current_time),
-            expires_at: subscription.expires_at,
-            days_remaining: subscription.days_until_expiration(current_time),
-            status: subscription.status(current_time),
-            can_auto_renew: subscription.can_auto_renew(monthly_fee),
-        })
+        Json(serde_json::json!({
+            "subscription_id": subscription.subscription_id,
+            "is_active": subscription.is_active(current_time),
+            "expires_at": subscription.expires_at,
+            "days_remaining": subscription.days_until_expiration(current_time),
+            "status": subscription.status(current_time),
+            "can_auto_renew": subscription.can_auto_renew(monthly_fee)
+        }))
     )
 }
 
@@ -621,11 +570,11 @@ pub async fn get_subscription_analytics(
     match calculate_subscription_analytics(&mut conn, &params, start_date, end_date).await {
         Ok(analytics) => (
             StatusCode::OK,
-            Json(SubscriptionAnalyticsResponse {
-                analytics,
-                period_start: start_date,
-                period_end: end_date,
-            })
+            Json(serde_json::json!({
+                "analytics": analytics,
+                "period_start": start_date,
+                "period_end": end_date
+            }))
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -656,10 +605,10 @@ pub async fn get_service_performance(
     match calculate_service_performance(&mut conn, &params).await {
         Ok(services) => (
             StatusCode::OK,
-            Json(ServicePerformanceResponse {
-                total_count: services.len() as i64,
-                services,
-            })
+            Json(serde_json::json!({
+                "total_count": services.len() as i64,
+                "services": services
+            }))
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -690,7 +639,9 @@ pub async fn get_subscriber_summary(
     match calculate_subscriber_summary(&mut conn, &subscriber).await {
         Ok(summary) => (
             StatusCode::OK,
-            Json(SubscriberSummaryResponse { summary })
+            Json(serde_json::json!({
+                "summary": summary
+            }))
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -714,25 +665,26 @@ async fn calculate_subscription_analytics(
     // This is a simplified implementation - in a real system, this would use
     // the TimescaleDB continuous aggregates for better performance
     
-    // Build base query
-    let mut query = schema::profile_subscriptions::table.into_boxed();
+    // Helper function to build base query
+    let build_base_query = || {
+        let mut query = schema::profile_subscriptions::table.into_boxed();
+        if let Some(service_id) = &params.service_id {
+            query = query.filter(schema::profile_subscriptions::service_id.eq(service_id));
+        }
+        query = query.filter(schema::profile_subscriptions::time.between(start_date, end_date));
+        query
+    };
     
-    if let Some(service_id) = &params.service_id {
-        query = query.filter(schema::profile_subscriptions::service_id.eq(service_id));
-    }
+    // Get basic metrics with separate queries
+    let total_subscriptions = build_base_query().count().get_result::<i64>(conn).await?;
     
-    query = query.filter(schema::profile_subscriptions::time.between(start_date, end_date));
-    
-    // Get basic metrics
-    let total_subscriptions = query.count().get_result::<i64>(conn).await?;
-    
-    let active_subscriptions = query
+    let active_subscriptions = build_base_query()
         .filter(schema::profile_subscriptions::cancelled_at.is_null())
         .count()
         .get_result::<i64>(conn)
         .await?;
     
-    let cancelled_subscriptions = query
+    let cancelled_subscriptions = build_base_query()
         .filter(schema::profile_subscriptions::cancelled_at.is_not_null())
         .count()
         .get_result::<i64>(conn)
@@ -745,16 +697,8 @@ async fn calculate_subscription_analytics(
         0.0
     };
     
-    // Get revenue data
-    let mut revenue_query = schema::subscription_revenue::table.into_boxed();
-    
-    if let Some(service_id) = &params.service_id {
-        revenue_query = revenue_query.filter(schema::subscription_revenue::service_id.eq(service_id));
-    }
-    
-    revenue_query = revenue_query.filter(schema::subscription_revenue::time.between(start_date, end_date));
-    
-    let total_revenue: i64 = 0; // Simplified for now - would use proper aggregation with cast
+    // Simplified revenue calculation for now - would use proper aggregation in production
+    let total_revenue: i64 = 0; // TODO: Implement proper revenue aggregation from subscription_revenue table
     
     // Calculate monthly recurring revenue (simplified)
     let monthly_recurring_revenue = total_revenue / 30; // Rough approximation

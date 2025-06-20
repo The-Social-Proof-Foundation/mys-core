@@ -13,7 +13,7 @@ use crate::db::{Database, DbConnection};
 use crate::blockchain::listener::BlockchainEvent;
 use crate::events::subscription_event_types::*;
 use crate::events::subscription_events::*;
-use crate::events::{parse_json_event, SubscriptionEventType};
+use crate::events::SubscriptionEventType;
 use crate::models::subscription::*;
 use crate::schema;
 use crate::SUBSCRIPTION_MODULE_NAME;

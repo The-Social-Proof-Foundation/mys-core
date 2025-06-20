@@ -230,7 +230,7 @@ pub async fn get_poc_badges(
     let offset = params.offset.unwrap_or(0);
     
     // Build simple query with optional filters
-    let query = if let Some(post_id) = &params.post_id {
+    let query = if let Some(_post_id) = &params.post_id {
         "
             SELECT badge_id, post_id, oracle_id, media_type, authenticity_score, 
                    creativity_score, revoked, issued_at, revoked_at
@@ -239,7 +239,7 @@ pub async fn get_poc_badges(
             ORDER BY issued_at DESC
             LIMIT $2 OFFSET $3
         "
-    } else if let Some(oracle_id) = &params.oracle_id {
+    } else if let Some(_oracle_id) = &params.oracle_id {
         "
             SELECT badge_id, post_id, oracle_id, media_type, authenticity_score, 
                    creativity_score, revoked, issued_at, revoked_at
@@ -248,7 +248,7 @@ pub async fn get_poc_badges(
             ORDER BY issued_at DESC
             LIMIT $2 OFFSET $3
         "
-    } else if let Some(media_type) = &params.media_type {
+    } else if let Some(_media_type) = &params.media_type {
         "
             SELECT badge_id, post_id, oracle_id, media_type, authenticity_score, 
                    creativity_score, revoked, issued_at, revoked_at
@@ -267,23 +267,23 @@ pub async fn get_poc_badges(
         "
     };
     
-    let result = if let Some(post_id) = &params.post_id {
+    let result = if let Some(_post_id) = &params.post_id {
         diesel::sql_query(query)
-            .bind::<Text, _>(post_id)
+            .bind::<Text, _>(_post_id)
             .bind::<BigInt, _>(limit)
             .bind::<BigInt, _>(offset)
             .load::<PocBadgeInfo>(&mut conn)
             .await
-    } else if let Some(oracle_id) = &params.oracle_id {
+    } else if let Some(_oracle_id) = &params.oracle_id {
         diesel::sql_query(query)
-            .bind::<Text, _>(oracle_id)
+            .bind::<Text, _>(_oracle_id)
             .bind::<BigInt, _>(limit)
             .bind::<BigInt, _>(offset)
             .load::<PocBadgeInfo>(&mut conn)
             .await
-    } else if let Some(media_type) = &params.media_type {
+    } else if let Some(_media_type) = &params.media_type {
         diesel::sql_query(query)
-            .bind::<Text, _>(media_type)
+            .bind::<Text, _>(_media_type)
             .bind::<BigInt, _>(limit)
             .bind::<BigInt, _>(offset)
             .load::<PocBadgeInfo>(&mut conn)

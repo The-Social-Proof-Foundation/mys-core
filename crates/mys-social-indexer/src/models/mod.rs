@@ -34,4 +34,17 @@ pub use post::*;
 pub use my_ip::*;
 pub use social_proof_token::*;
 pub use poc::*;
-pub use subscription::*;
+// Explicitly import subscription types to avoid conflict with my_ip::REVENUE_TYPE_SUBSCRIPTION
+pub use subscription::{
+    ProfileSubscription, NewProfileSubscription, UpdateProfileSubscription,
+    ProfileSubscriptionService, NewProfileSubscriptionService, UpdateProfileSubscriptionService,
+    SubscriptionEvent, NewSubscriptionEvent,
+    SubscriptionRevenue, NewSubscriptionRevenue,
+    SubscriptionAccessLog, NewSubscriptionAccessLog,
+    SubscriptionAnalytics, SubscriptionGrowthMetric, RevenueBreakdown,
+    SubscriptionWithService, SubscriberSummary, ActiveSubscription, ServicePerformance,
+    MIN_SUBSCRIPTION_DURATION_DAYS, MAX_SUBSCRIPTION_DURATION_DAYS, MILLISECONDS_PER_DAY,
+    REVENUE_TYPE_RENEWAL, REVENUE_TYPE_AUTO_RENEWAL, REVENUE_TYPE_REFUND,
+    CONTENT_TYPE_PROFILE, CONTENT_TYPE_POST,
+    validate_monthly_fee, validate_subscription_duration, calculate_subscription_end_time
+};

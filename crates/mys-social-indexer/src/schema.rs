@@ -631,6 +631,12 @@ table! {
         rescind_time -> Nullable<Int8>,
         time -> Timestamptz,
         transaction_id -> Varchar,
+        // Anonymous voting fields
+        anonymous_votes_for -> Nullable<Int8>,
+        anonymous_votes_against -> Nullable<Int8>,
+        anonymous_voters_count -> Nullable<Int8>,
+        pending_anonymous_decryption -> Nullable<Bool>,
+        anonymous_decryption_completed_at -> Nullable<Int8>,
     }
 }
 
@@ -701,6 +707,41 @@ table! {
         event_data -> Jsonb,
         event_id -> Varchar,
         created_at -> Timestamptz,
+        anonymous_voting_related -> Nullable<Bool>,
+    }
+}
+
+// Define anonymous_votes table
+table! {
+    anonymous_votes (id, time) {
+        id -> Int4,
+        proposal_id -> Varchar,
+        voter_address -> Varchar,
+        encrypted_vote_data -> Nullable<Bytea>,
+        submitted_at -> Int8,
+        decrypted -> Bool,
+        decrypted_at -> Nullable<Int8>,
+        decrypted_vote -> Nullable<Int2>,
+        decryption_status -> Int2,
+        decryption_error -> Nullable<Text>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+        processing_success -> Bool,
+        processing_error -> Nullable<Text>,
+    }
+}
+
+// Define vote_decryption_failures table
+table! {
+    vote_decryption_failures (id, time) {
+        id -> Int4,
+        proposal_id -> Varchar,
+        voter_address -> Varchar,
+        failure_reason -> Text,
+        attempted_at -> Int8,
+        encrypted_vote_length -> Nullable<Int4>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
     }
 }
 
@@ -959,4 +1000,7 @@ allow_tables_to_appear_in_same_query!(
     subscription_events,
     subscription_revenue,
     subscription_access_logs,
+    // Anonymous voting tables
+    anonymous_votes,
+    vote_decryption_failures,
 );

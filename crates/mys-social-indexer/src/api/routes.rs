@@ -75,6 +75,10 @@ use crate::api::handlers::governance::{
     list_registries,
     get_registry_by_type,
     list_governance_events,
+    get_proposal_anonymous_stats,
+    get_proposal_anonymous_votes,
+    get_proposal_decryption_failures,
+    get_anonymous_voting_trends,
 };
 // Import social proof token handlers
 use crate::api::handlers::social_proof_token::{
@@ -218,6 +222,11 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/governance/registries", get(list_registries))
         .route("/governance/registries/:registry_type", get(get_registry_by_type))
         .route("/governance/events", get(list_governance_events))
+        // Anonymous voting endpoints
+        .route("/governance/proposals/:id/anonymous-stats", get(get_proposal_anonymous_stats))
+        .route("/governance/proposals/:id/anonymous-votes", get(get_proposal_anonymous_votes))
+        .route("/governance/proposals/:id/decryption-failures", get(get_proposal_decryption_failures))
+        .route("/governance/anonymous-voting-trends", get(get_anonymous_voting_trends))
         
         // Add shared state - using the pool directly for all standard endpoints
         .with_state(pool);
