@@ -29,8 +29,6 @@ use crate::models::post::{
     NewDeletionEvent,
 };
 
-// TODO: Import MyIP marketplace models for revenue tracking
-
 // Model conversion impl for PostCreatedEvent
 impl PostCreatedEvent {
     pub fn into_model(&self) -> Result<NewPost> {
@@ -74,7 +72,7 @@ impl PostCreatedEvent {
             removed_by: None,
             transaction_id: "".to_string(), // Will be set by handler
             my_ip_id: self.my_ip_id.clone(),
-            revenue_recipient: None, // Will be set if needed based on MyIP
+            revenue_recipient: None, // Revenue tracking handled via unified revenue system
         })
     }
 }
@@ -179,14 +177,6 @@ impl TipEvent {
             created_at: self.tip_time as i64,
             transaction_id: "".to_string(), // Will be set by handler
         })
-    }
-    
-    // TODO: New method for creating MyIP marketplace revenue records
-    // This will be integrated with the new marketplace system
-    pub fn into_my_ip_revenue(&self, _transaction_id: String) -> Result<Option<()>> {
-        // This will be handled by the new MyIP marketplace events
-        // Revenue redirection will be processed through DataAccessedEvent and RevenueDistributedEvent
-        Ok(None)
     }
 }
 
