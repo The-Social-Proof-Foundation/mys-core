@@ -7,13 +7,12 @@
 //   impersonation) and a PoP(key=IBE key, m=[key_server_id | IBE public key]).
 // - Key server should expose an endpoint /fetch_key that allows users to request a key from the key server.
 
-#[allow(duplicate_alias)]
 module seal::key_server;
 
 use std::string::String;
 use mys::{
     object::{Self, UID, ID},
-    tx_context::TxContext,
+    tx_context::{Self, TxContext},
     transfer,
     bls12381::{G2, g2_from_bytes}, 
     dynamic_field as df, 

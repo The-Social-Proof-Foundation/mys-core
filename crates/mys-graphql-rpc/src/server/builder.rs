@@ -714,6 +714,7 @@ pub mod tests {
             prom_host: "127.0.0.1".to_owned(),
             prom_port: get_available_port(),
             skip_migration_consistency_check: false,
+            social_indexer_url: "https://mys-social-indexer-testnet.up.railway.app".to_owned(),
         };
         let service_config = service_config.unwrap_or_default();
 

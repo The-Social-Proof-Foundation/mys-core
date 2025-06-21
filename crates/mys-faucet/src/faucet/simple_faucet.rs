@@ -310,12 +310,11 @@ impl SimpleFaucet {
             .iter()
             // Ok to unwrap() since `get_gas_objects` guarantees gas
             .map(|q| GasCoin::try_from(&q.1).unwrap())
-            .filter(|coin| coin.0.balance.value() >= (config.amount * config.num_coins as u64))
             .collect::<Vec<GasCoin>>();
         
-        info!("Found {} initial coins meeting minimum requirements", initial_coins.len());
+        info!("Found {} total coins available", initial_coins.len());
         
-        // Use coins as-is for on-demand splitting approach
+        // Use all available coins - faucet can handle splitting/management at runtime
         let coins = initial_coins;
         let metrics = FaucetMetrics::new(prometheus_registry);
         // set initial balance when faucet starts
@@ -325,8 +324,9 @@ impl SimpleFaucet {
         let wal = WriteAheadLog::open(wal_path);
         let mut pending = vec![];
 
-        let (producer, consumer) = mpsc::channel(coins.len());
-        let (batch_producer, batch_consumer) = mpsc::channel(coins.len());
+        let channel_capacity = std::cmp::max(coins.len(), 1);
+        let (producer, consumer) = mpsc::channel(channel_capacity);
+        let (batch_producer, batch_consumer) = mpsc::channel(channel_capacity);
 
         let (sender, mut receiver) =
             mpsc::channel::<(Uuid, MysAddress, Vec<u64>)>(config.max_request_queue_length as usize);
