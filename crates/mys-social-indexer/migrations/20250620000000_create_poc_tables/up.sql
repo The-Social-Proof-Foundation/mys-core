@@ -93,7 +93,8 @@ ALTER TABLE poc_badges ADD PRIMARY KEY (badge_id, time);
 -- TimescaleDB-optimized indexes
 CREATE INDEX IF NOT EXISTS idx_poc_badges_time_post ON poc_badges (time DESC, post_id);
 CREATE INDEX IF NOT EXISTS idx_poc_badges_issued_by_time ON poc_badges (issued_by, time DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_badges_badge_id ON poc_badges (badge_id);
+-- TimescaleDB requires unique indexes to include partitioning column (time)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_badges_badge_id ON poc_badges (badge_id, time);
 
 -- Enable compression
 ALTER TABLE poc_badges SET (timescaledb.compress = true);
@@ -105,6 +106,9 @@ BEGIN
     ) THEN
         PERFORM add_compression_policy('poc_badges', INTERVAL '30 days');
     END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Could not add compression policy for poc_badges: %', SQLERRM;
 END $$;
 
 -- ============================================================================
@@ -153,7 +157,8 @@ ALTER TABLE poc_revenue_redirections ADD PRIMARY KEY (redirection_id, time);
 -- Optimized indexes for revenue tracking queries
 CREATE INDEX IF NOT EXISTS idx_poc_redirections_time_accused ON poc_revenue_redirections (time DESC, accused_post_id);
 CREATE INDEX IF NOT EXISTS idx_poc_redirections_original_time ON poc_revenue_redirections (original_post_id, time DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_redirections_id ON poc_revenue_redirections (redirection_id);
+-- TimescaleDB requires unique indexes to include partitioning column (time)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_redirections_id ON poc_revenue_redirections (redirection_id, time);
 
 -- Enable compression
 ALTER TABLE poc_revenue_redirections SET (timescaledb.compress = true);
@@ -165,6 +170,9 @@ BEGIN
     ) THEN
         PERFORM add_compression_policy('poc_revenue_redirections', INTERVAL '90 days');
     END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Could not add compression policy for poc_revenue_redirections: %', SQLERRM;
 END $$;
 
 -- ============================================================================
@@ -224,6 +232,9 @@ BEGIN
     ) THEN
         PERFORM add_compression_policy('poc_analysis_results', INTERVAL '7 days');
     END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Could not add compression policy for poc_analysis_results: %', SQLERRM;
 END $$;
 
 -- ============================================================================
@@ -279,7 +290,8 @@ ALTER TABLE poc_disputes ADD PRIMARY KEY (dispute_id, time);
 -- Optimized indexes for dispute tracking
 CREATE INDEX IF NOT EXISTS idx_poc_disputes_time_status ON poc_disputes (time DESC, status);
 CREATE INDEX IF NOT EXISTS idx_poc_disputes_post_time ON poc_disputes (post_id, time DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_disputes_id ON poc_disputes (dispute_id);
+-- TimescaleDB requires unique indexes to include partitioning column (time)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_disputes_id ON poc_disputes (dispute_id, time);
 
 -- Enable compression
 ALTER TABLE poc_disputes SET (timescaledb.compress = true);
@@ -291,6 +303,9 @@ BEGIN
     ) THEN
         PERFORM add_compression_policy('poc_disputes', INTERVAL '90 days');
     END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Could not add compression policy for poc_disputes: %', SQLERRM;
 END $$;
 
 -- ============================================================================
@@ -336,7 +351,8 @@ SELECT create_hypertable('poc_dispute_votes', 'time',
 ALTER TABLE poc_dispute_votes ADD PRIMARY KEY (dispute_id, voter, time);
 
 -- Composite unique constraint and indexes
-CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_votes_dispute_voter ON poc_dispute_votes (dispute_id, voter);
+-- TimescaleDB requires unique indexes to include partitioning column (time)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_votes_dispute_voter ON poc_dispute_votes (dispute_id, voter, time);
 CREATE INDEX IF NOT EXISTS idx_poc_votes_time_voter ON poc_dispute_votes (time DESC, voter);
 CREATE INDEX IF NOT EXISTS idx_poc_votes_dispute_time ON poc_dispute_votes (dispute_id, time DESC);
 
@@ -350,6 +366,9 @@ BEGIN
     ) THEN
         PERFORM add_compression_policy('poc_dispute_votes', INTERVAL '30 days');
     END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Could not add compression policy for poc_dispute_votes: %', SQLERRM;
 END $$;
 
 -- ============================================================================

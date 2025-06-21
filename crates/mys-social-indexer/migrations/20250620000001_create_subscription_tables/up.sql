@@ -43,7 +43,8 @@ CREATE TABLE profile_subscriptions (
 SELECT create_hypertable('profile_subscriptions', 'time', chunk_time_interval => INTERVAL '14 days');
 
 -- Optimized indexes for subscription tracking
-CREATE UNIQUE INDEX idx_profile_subscriptions_id ON profile_subscriptions (subscription_id);
+-- TimescaleDB requires unique indexes to include partitioning column (time)
+CREATE UNIQUE INDEX idx_profile_subscriptions_id ON profile_subscriptions (subscription_id, time);
 CREATE INDEX idx_profile_subscriptions_time_service ON profile_subscriptions (time DESC, service_id);
 CREATE INDEX idx_profile_subscriptions_subscriber_time ON profile_subscriptions (subscriber, time DESC);
 CREATE INDEX idx_profile_subscriptions_expires ON profile_subscriptions (expires_at) WHERE cancelled_at IS NULL;
