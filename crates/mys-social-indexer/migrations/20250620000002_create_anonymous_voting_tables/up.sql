@@ -91,15 +91,7 @@ EXECUTE FUNCTION validate_anonymous_vote_proposal();
 
 -- Enable compression on anonymous_votes table for historical data
 ALTER TABLE anonymous_votes SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'anonymous_votes'
-    ) THEN
-        PERFORM add_compression_policy('anonymous_votes', INTERVAL '30 days');
-    END IF;
-END $$;
+SELECT add_compression_policy('anonymous_votes', INTERVAL '30 days');
 
 -- ============================================================================
 -- 3. CREATE VOTE DECRYPTION FAILURES TABLE
@@ -147,15 +139,7 @@ CREATE INDEX IF NOT EXISTS idx_decryption_failures_transaction_id ON vote_decryp
 
 -- Enable compression on failures table for historical data
 ALTER TABLE vote_decryption_failures SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'vote_decryption_failures'
-    ) THEN
-        PERFORM add_compression_policy('vote_decryption_failures', INTERVAL '90 days');
-    END IF;
-END $$;
+SELECT add_compression_policy('vote_decryption_failures', INTERVAL '90 days');
 
 -- ============================================================================
 -- 4. CREATE CONTINUOUS AGGREGATES FOR ANALYTICS
@@ -179,18 +163,10 @@ GROUP BY day, proposal_id
 WITH NO DATA;
 
 -- Refresh policy for real-time analytics
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.continuous_aggregate_stats
-        WHERE view_name = 'anonymous_voting_daily_stats'
-    ) THEN
-        PERFORM add_continuous_aggregate_policy('anonymous_voting_daily_stats',
-            start_offset => INTERVAL '3 days',
-            end_offset => INTERVAL '1 hour',
-            schedule_interval => INTERVAL '1 hour');
-    END IF;
-END $$;
+SELECT add_continuous_aggregate_policy('anonymous_voting_daily_stats',
+    start_offset => INTERVAL '3 days',
+    end_offset => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '1 hour');
 
 -- Manually refresh the continuous aggregate to populate initial data
 -- This runs after creation and policy setup to ensure data availability
@@ -212,23 +188,7 @@ CREATE INDEX IF NOT EXISTS idx_governance_events_anonymous ON governance_events(
 -- ============================================================================
 
 -- Keep raw anonymous votes for 2 years
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.drop_chunks_policies
-        WHERE hypertable_name = 'anonymous_votes'
-    ) THEN
-        PERFORM add_retention_policy('anonymous_votes', INTERVAL '2 years');
-    END IF;
-END $$;
+SELECT add_retention_policy('anonymous_votes', INTERVAL '2 years');
 
 -- Keep decryption failures for 1 year
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.drop_chunks_policies
-        WHERE hypertable_name = 'vote_decryption_failures'
-    ) THEN
-        PERFORM add_retention_policy('vote_decryption_failures', INTERVAL '1 year');
-    END IF;
-END $$; 
+SELECT add_retention_policy('vote_decryption_failures', INTERVAL '1 year'); 
