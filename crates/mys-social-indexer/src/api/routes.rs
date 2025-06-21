@@ -249,15 +249,7 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/marketplace/:id/access-analytics", get(get_access_analytics))
         .route("/creators/:id/marketplace-data", get(get_creator_data))
         
-        // Promotion endpoints (using TimescaleDB)
-        .route("/promotions", get(get_promoted_posts))
-        .route("/posts/:id/promotion", get(get_post_promotion))
-        .route("/promotions/:id/views", get(get_promotion_views))
-        .route("/promotions/:id/stats", get(get_promotion_stats))
-        .route("/promotions/:id/analytics/time-series", get(get_promotion_time_analytics))
-        .route("/promotions/:id/analytics/hourly", get(get_promotion_hourly_stats))
-        .route("/promotions/analytics/top-performing", get(get_top_performing_promotions))
-        .route("/promotions/analytics/spending-trends", get(get_promotion_spending_trends))
+
         
         // Governance endpoints
         .route("/governance/proposals", get(list_proposals))

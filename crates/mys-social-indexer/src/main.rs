@@ -198,12 +198,24 @@ async fn main() -> Result<()> {
         }
     });
     
-    // Start the blockchain event listener
+    // Start the blockchain event listener (non-fatal if fails)
     let blockchain_handle = tokio::spawn({
         let listener = blockchain_listener.clone();
         async move {
-            if let Err(e) = listener.start().await {
-                error!("Blockchain event listener error: {}", e);
+            loop {
+                match listener.start().await {
+                    Ok(_) => {
+                        info!("Blockchain event listener completed normally");
+                        break;
+                    },
+                    Err(e) => {
+                        error!("Blockchain event listener error: {}", e);
+                        warn!("Blockchain connection failed - API server will continue running without blockchain events");
+                        
+                        // Sleep for a while before the next connection attempt (Railway will restart if needed)
+                        tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+                    }
+                }
             }
         }
     });
@@ -216,39 +228,35 @@ async fn main() -> Result<()> {
         }
     });
     
-    // Wait for all tasks to complete (they should run indefinitely)
-    tokio::select! {
-        _ = profile_handle => {
-            error!("Profile event listener terminated unexpectedly");
+    // Note: Blockchain event listener runs in background and is allowed to fail
+    // The API server should remain available even if blockchain connection is unavailable
+    info!("Blockchain event listener started in background (may fail if blockchain unavailable)");
+    
+    // Wait for the API server to complete (this should run indefinitely)
+    // If API server exits, the whole application should exit
+    match api_handle.await {
+        Ok(result) => {
+            if let Err(e) = result {
+                error!("API server error: {}", e);
+            } else {
+                info!("API server completed normally");
+            }
         }
-        _ = social_graph_handle => {
-            error!("Social graph handler terminated unexpectedly");
-        }
-        _ = platform_handle => {
-            error!("Platform handler terminated unexpectedly");
-        }
-        _ = block_list_handle => {
-            error!("Block list handler terminated unexpectedly");
-        }
-        _ = post_handle => {
-            error!("Post handler terminated unexpectedly");
-        }
-        _ = governance_handle => {
-            error!("Governance handler terminated unexpectedly");
-        }
-        _ = my_ip_handle => {
-            error!("MyIP marketplace handler terminated unexpectedly");
-        }
-        _ = subscription_handle => {
-            error!("Subscription handler terminated unexpectedly");
-        }
-        _ = blockchain_handle => {
-            error!("Blockchain event listener terminated unexpectedly");
-        }
-        _ = api_handle => {
-            error!("API server terminated unexpectedly");
+        Err(e) => {
+            error!("Failed to join API server task: {}", e);
         }
     }
+    
+    // Cancel all other background tasks
+    profile_handle.abort();
+    social_graph_handle.abort();
+    platform_handle.abort();
+    block_list_handle.abort();
+    post_handle.abort();
+    governance_handle.abort();
+    my_ip_handle.abort();
+    subscription_handle.abort();
+    blockchain_handle.abort();
     
     info!("Indexer terminated");
     
