@@ -56,9 +56,9 @@ impl Config {
             },
             blockchain: BlockchainConfig {
                 rpc_url: env::var("RPC_URL")
-                    .unwrap_or_else(|_| "http://localhost:9000".to_string()),
+                    .unwrap_or_else(|_| "https://fullnode.testnet.mysocial.network:9000".to_string()),
                 ws_url: env::var("WS_URL")
-                    .unwrap_or_else(|_| "ws://localhost:9000".to_string()),
+                    .unwrap_or_else(|_| "wss://fullnode.testnet.mysocial.network:9000".to_string()),
                 poll_interval_ms: env::var("POLL_INTERVAL_MS")
                     .unwrap_or_else(|_| "5000".to_string()) // 5 seconds by default
                     .parse()
