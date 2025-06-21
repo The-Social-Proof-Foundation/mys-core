@@ -20,7 +20,7 @@ async-trait = { workspace = true }
 
 # Database
 diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json", "numeric"] }
-diesel-async = { workspace = true, features = ["bb8", "postgres"] }
+diesel-async = { workspace = true, features = ["bb8", "postgres", "deadpool"] }
 diesel_migrations = { workspace = true }
 
 # Serialization and deserialization
