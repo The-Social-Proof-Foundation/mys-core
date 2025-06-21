@@ -234,7 +234,7 @@ SELECT add_retention_policy('unified_revenue', INTERVAL '3 years');
 -- ============================================================================
 
 -- Creator Revenue Summary (for leaderboards and profile pages)
-CREATE VIEW IF NOT EXISTS creator_revenue_summary AS
+CREATE OR REPLACE VIEW creator_revenue_summary AS
 SELECT 
     creator_address,
     SUM(daily_revenue) AS total_revenue,
@@ -253,7 +253,7 @@ GROUP BY creator_address
 ORDER BY total_revenue DESC;
 
 -- Platform Revenue Summary (for platform analytics)
-CREATE VIEW IF NOT EXISTS platform_revenue_summary AS
+CREATE OR REPLACE VIEW platform_revenue_summary AS
 SELECT 
     platform_address,
     SUM(monthly_revenue) AS total_revenue,
@@ -272,7 +272,7 @@ GROUP BY platform_address
 ORDER BY total_revenue DESC;
 
 -- Real-time Revenue Dashboard (last 24 hours)
-CREATE VIEW IF NOT EXISTS revenue_dashboard_24h AS
+CREATE OR REPLACE VIEW revenue_dashboard_24h AS
 SELECT 
     revenue_source,
     SUM(revenue_5min) AS total_revenue_24h,
