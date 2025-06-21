@@ -235,11 +235,8 @@ async fn main() -> Result<()> {
     // Wait for the API server to complete (this should run indefinitely)
     // If API server exits, the whole application should exit
     match api_handle.await {
-        Ok(result) => {
-            match result {
-                Ok(_) => info!("API server completed normally"),
-                Err(e) => error!("API server error: {}", e),
-            }
+        Ok(_) => {
+            info!("API server task completed");
         }
         Err(e) => {
             error!("Failed to join API server task: {}", e);
