@@ -4,7 +4,7 @@
 -- Drop views first (depend on materialized views and tables)
 DROP VIEW IF EXISTS revenue_dashboard_24h CASCADE;
 DROP VIEW IF EXISTS platform_revenue_summary CASCADE;
-DROP VIEW IF EXISTS creator_revenue_summary CASCADE;
+DROP VIEW IF EXISTS spt_creator_revenue_summary CASCADE;
 
 -- Drop materialized views (with policies)
 DROP MATERIALIZED VIEW IF EXISTS spt_hourly_analytics CASCADE;

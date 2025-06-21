@@ -233,8 +233,8 @@ SELECT add_retention_policy('unified_revenue', INTERVAL '3 years');
 -- 6. HELPER VIEWS FOR API OPTIMIZATION
 -- ============================================================================
 
--- Creator Revenue Summary (for leaderboards and profile pages)
-CREATE OR REPLACE VIEW creator_revenue_summary AS
+-- SPT Creator Revenue Summary (for leaderboards and profile pages)
+CREATE OR REPLACE VIEW spt_creator_revenue_summary AS
 SELECT 
     creator_address,
     SUM(daily_revenue) AS total_revenue,
@@ -306,6 +306,6 @@ COMMENT ON MATERIALIZED VIEW revenue_daily_creators IS 'Daily creator revenue fo
 COMMENT ON MATERIALIZED VIEW revenue_monthly_platforms IS 'Monthly platform revenue analytics (daily refresh)';
 COMMENT ON MATERIALIZED VIEW revenue_realtime_metrics IS 'Real-time 5-minute revenue metrics (1-minute refresh)';
 COMMENT ON MATERIALIZED VIEW spt_hourly_analytics IS 'SPT trading analytics with fee breakdowns (5-minute refresh)';
-COMMENT ON VIEW creator_revenue_summary IS 'Creator revenue leaderboard (30-day summary)';
+COMMENT ON VIEW spt_creator_revenue_summary IS 'SPT creator revenue leaderboard (30-day summary)';
 COMMENT ON VIEW platform_revenue_summary IS 'Platform revenue analytics (12-month summary)';
 COMMENT ON VIEW revenue_dashboard_24h IS 'Real-time dashboard metrics (24-hour summary)'; 
