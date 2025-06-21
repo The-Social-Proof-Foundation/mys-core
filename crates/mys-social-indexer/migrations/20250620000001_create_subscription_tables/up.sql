@@ -173,7 +173,12 @@ ALTER TABLE profiles ADD COLUMN subscription_service_id VARCHAR;
 ALTER TABLE profiles ADD COLUMN subscription_enabled BOOLEAN DEFAULT false;
 
 -- Advanced TimescaleDB Features Implementation
--- Compression for older subscription data
+-- Enable compression on hypertables first, then add policies
+ALTER TABLE profile_subscriptions SET (timescaledb.compress = true);
+ALTER TABLE subscription_events SET (timescaledb.compress = true);
+ALTER TABLE subscription_revenue SET (timescaledb.compress = true);
+
+-- Compression policies for older subscription data
 SELECT add_compression_policy('profile_subscriptions', INTERVAL '60 days');
 SELECT add_compression_policy('subscription_events', INTERVAL '30 days');
 SELECT add_compression_policy('subscription_revenue', INTERVAL '30 days');
