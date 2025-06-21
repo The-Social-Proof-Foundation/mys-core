@@ -22,8 +22,11 @@ COPY --chown=appuser:appuser . .
 
 # libclang should be auto-detected now with libclang-dev installed
 
-# Build the application
-RUN cargo build --release
+# Build the specific application
+RUN cargo build --release -p mys-social-indexer
+
+# Verify the binary was created
+RUN ls -la /app/target/release/ | grep mys-social-indexer || (echo "Binary not found!" && exit 1)
 
 # Create runtime image
 FROM debian:bookworm-slim
@@ -45,7 +48,7 @@ RUN mkdir -p /app/data && chown -R appuser:appuser /app
 
 # Copy binary and migrations
 COPY --from=builder --chown=appuser:appuser /app/target/release/mys-social-indexer /app/
-COPY --from=builder --chown=appuser:appuser /app/migrations /app/migrations
+COPY --from=builder --chown=appuser:appuser /app/crates/mys-social-indexer/migrations /app/migrations
 
 # Switch to app user
 USER appuser
