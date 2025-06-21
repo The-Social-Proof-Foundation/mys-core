@@ -1,12 +1,24 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "crates/mys-social-indexer/Dockerfile"
+buildCommand = "cargo build --release --bin mys-social-indexer"
 
 [deploy]
 startCommand = "mys-social-indexer"
 healthcheckPath = "/health"
-healthcheckTimeout = 60
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+
+[deploy.envVars]
+PORT = { sync = false }
+DATABASE_URL = { sync = false }
+
+# Explicitly tell Railway this is a Rust project
+[build.env]
+NIXPACKS_LANGUAGE = "rust"
+NIXPACKS_BUILD_CMD = "cargo build --release --bin mys-social-indexer"
 
 [variables]
-# Optional: Logging configuration  
-RUST_LOG = "info,mys_social_indexer=debug" 
+# Logging configuration  
+RUST_LOG = "info,mys_social_indexer=debug"
+RUST_BACKTRACE = "1" 

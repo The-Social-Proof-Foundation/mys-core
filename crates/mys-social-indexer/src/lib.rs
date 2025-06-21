@@ -15,7 +15,7 @@ use once_cell::sync::OnceCell;
 static MYSOCIAL_PACKAGE_ADDRESS: OnceCell<String> = OnceCell::new();
 
 /// Default MySocial package address if not set via environment
-pub const DEFAULT_MYSOCIAL_PACKAGE_ADDRESS: &str = "0x8b3e7cd6412d3514bd0b2bd8571ecfef7827e12ca581e22f49e23107d7baeb92";
+pub const DEFAULT_MYSOCIAL_PACKAGE_ADDRESS: &str = "0x000000000000000000000000000000000000000000000000000000000000d880";
 
 /// Module names within the MySocial package
 pub const PROFILE_MODULE_NAME: &str = "profile";

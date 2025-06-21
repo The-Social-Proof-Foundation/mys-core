@@ -1,69 +1,78 @@
-FROM rust:1.85-slim-bookworm as builder
+# Build application
+FROM rust:1.85-slim-bookworm AS builder
+ARG PROFILE=release
+ARG GIT_REVISION
+ENV GIT_REVISION=$GIT_REVISION
+WORKDIR /app
 
 # Install build dependencies
-RUN apt-get update && \
-    apt-get install -y \
-    build-essential \
-    libpq-dev \
-    pkg-config \
-    libssl-dev \
+RUN apt-get update && apt-get install -y \
     cmake \
     clang \
-    libclang-dev \
-    llvm-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create app user
-RUN useradd -m -u 1000 -U -s /bin/sh -d /app appuser
-
-# Set up build directory and copy source
-WORKDIR /app
-COPY --chown=appuser:appuser . .
-
-# libclang should be auto-detected now with libclang-dev installed
-
-# Build the specific application
-RUN cargo build --release -p mys-social-indexer
-
-# Verify the binary was created
-RUN ls -la /app/target/release/ | grep mys-social-indexer || (echo "Binary not found!" && exit 1)
-
-# Create runtime image
-FROM debian:bookworm-slim
-
-# Install runtime dependencies
-RUN apt-get update && \
-    apt-get install -y \
     libpq5 \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    libpq-dev \
+    postgresql
 
-# Copy app user
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
+# Copy source code
+COPY . .
 
-# Create app directories
+# Build
+RUN cargo build --release --bin mys-social-indexer
+
+# Production Image
+FROM debian:bullseye-slim AS runtime
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libjemalloc-dev \
+    ca-certificates \
+    curl \
+    libpq5 \
+    libpq-dev \
+    postgresql \
+    gettext-base
+
+# Use jemalloc as memory allocator
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
+
 WORKDIR /app
-RUN mkdir -p /app/data && chown -R appuser:appuser /app
+COPY --from=builder /app/target/release/mys-social-indexer /usr/local/bin
+COPY --from=builder /app/crates/mys-social-indexer/migrations /app/migrations
 
-# Copy binary and migrations
-COPY --from=builder --chown=appuser:appuser /app/target/release/mys-social-indexer /app/
-COPY --from=builder --chown=appuser:appuser /app/crates/mys-social-indexer/migrations /app/migrations
+# Create entrypoint script
+RUN echo '#!/bin/sh\n\
+echo "=== ENTRYPOINT DEBUG ==="\n\
+echo "All environment variables:"\n\
+env | grep -E "(DATABASE_URL|PORT)" || echo "No matching env vars found"\n\
+echo ""\n\
+echo "=== Key Environment Variables ==="\n\
+echo "DATABASE_URL: ${DATABASE_URL:-NOT_SET}"\n\
+echo "PORT: ${PORT:-8080}"\n\
+echo "=============================="\n\
+\n\
+# Validate required environment variables\n\
+if [ -z "$DATABASE_URL" ]; then\n\
+  echo "ERROR: DATABASE_URL is not set"\n\
+  exit 1\n\
+fi\n\
+\n\
+# Use actual environment variable values\n\
+echo "Starting mys-social-indexer with:"\n\
+echo "  DATABASE_URL: $DATABASE_URL"\n\
+echo "  PORT: ${PORT:-8080}"\n\
+echo ""\n\
+\n\
+exec mys-social-indexer' > /usr/local/bin/entrypoint.sh && \
+    chmod +x /usr/local/bin/entrypoint.sh
 
-# Switch to app user
-USER appuser
-
-# Set default environment variables
-ENV RUST_LOG=info
-ENV DATABASE_MAX_CONNECTIONS=10
-ENV SERVER_HOST=0.0.0.0
-ENV SERVER_PORT=8080
-ENV CHECKPOINT_URL=https://storage.googleapis.com/mysocial-testnet-checkpoints
-ENV START_CHECKPOINT=0
-ENV INDEXER_CONCURRENCY=5
+ARG BUILD_DATE
+ARG GIT_REVISION
+LABEL build-date=$BUILD_DATE
+LABEL git-revision=$GIT_REVISION
 
 # Expose API port
 EXPOSE 8080
 
-# Run the application
-CMD ["/app/mys-social-indexer"]
+# Use the entrypoint script
+ENTRYPOINT /usr/local/bin/entrypoint.sh
