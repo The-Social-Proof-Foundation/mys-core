@@ -4,7 +4,7 @@
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use mys_social_indexer::{
     api,
@@ -236,10 +236,9 @@ async fn main() -> Result<()> {
     // If API server exits, the whole application should exit
     match api_handle.await {
         Ok(result) => {
-            if let Err(e) = result {
-                error!("API server error: {}", e);
-            } else {
-                info!("API server completed normally");
+            match result {
+                Ok(_) => info!("API server completed normally"),
+                Err(e) => error!("API server error: {}", e),
             }
         }
         Err(e) => {
