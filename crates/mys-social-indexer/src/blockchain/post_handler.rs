@@ -24,7 +24,6 @@ use crate::events::post_event_types::{
     DeletionEvent as PostDeletionEvent,
     PromotedPostCreatedEvent,
     PromotedPostViewConfirmedEvent,
-    PromotionDeactivatedEvent,
     PromotionStatusToggledEvent,
     PromotionFundsWithdrawnEvent,
 };
@@ -35,7 +34,7 @@ use mys_types::event::Event as MysEvent;
 
 use crate::schema::{posts, comments, reactions, reaction_counts, reposts, tips, 
                    posts_reports, posts_moderation_events, posts_deletion_events,
-                   my_ip, my_ip_revenue, promoted_posts, promotion_views, 
+                   promoted_posts, promotion_views, 
                    promotion_status_events, promotion_budget_events};
 
 use super::listener::BlockchainEvent;
@@ -632,46 +631,6 @@ impl PostEventHandler {
         Ok(())
     }
     
-    /// Process a promotion deactivated event
-    async fn process_promotion_deactivated(&self, event: &PromotionDeactivatedEvent, tx_id: &str) -> Result<()> {
-        let mut conn = self.get_connection().await?;
-        
-        info!("Processing promotion deactivated: {}", event.post_id);
-        
-        // Get promotion_id from post
-        let promotion_id_result: Option<String> = posts::table
-            .filter(posts::post_id.eq(&event.post_id))
-            .select(posts::promotion_id)
-            .first(&mut conn)
-            .await?;
-            
-        if let Some(promotion_id) = promotion_id_result {
-            // Update promotion status
-            diesel::update(promoted_posts::table)
-                .filter(promoted_posts::promotion_id.eq(&promotion_id))
-                .set(promoted_posts::active.eq(false))
-                .execute(&mut conn)
-                .await?;
-                
-            // Create status event
-            diesel::insert_into(promotion_status_events::table)
-                .values((
-                    promotion_status_events::post_id.eq(&event.post_id),
-                    promotion_status_events::promotion_id.eq(&promotion_id),
-                    promotion_status_events::event_type.eq("deactivated"),
-                    promotion_status_events::triggered_by.eq(&event.owner),
-                    promotion_status_events::new_status.eq(Some(false)),
-                    promotion_status_events::amount.eq(Some(event.remaining_budget as i64)),
-                    promotion_status_events::timestamp.eq(event.timestamp as i64),
-                    promotion_status_events::transaction_id.eq(tx_id),
-                ))
-                .execute(&mut conn)
-                .await?;
-        }
-            
-        info!("Successfully processed promotion deactivated: {}", event.post_id);
-        Ok(())
-    }
     
     /// Process a promotion status toggled event
     async fn process_promotion_status_toggled(&self, event: &PromotionStatusToggledEvent, tx_id: &str) -> Result<()> {
@@ -947,19 +906,7 @@ impl PostEventHandler {
                         }
                     }
                 }
-                // Handle promotion deactivated event
-                else if event.event_type.ends_with("::PromotionDeactivatedEvent") {
-                    match parse_json_event::<PromotionDeactivatedEvent>(&event.data) {
-                        Ok(deactivated_event) => {
-                            if let Err(e) = self.process_promotion_deactivated(&deactivated_event, &tx_id).await {
-                                error!("Failed to process promotion deactivated event: {}", e);
-                            }
-                        },
-                        Err(e) => {
-                            error!("Failed to deserialize promotion deactivated event: {}", e);
-                        }
-                    }
-                }
+
                 // Handle promotion status toggled event
                 else if event.event_type.ends_with("::PromotionStatusToggledEvent") {
                     match parse_json_event::<PromotionStatusToggledEvent>(&event.data) {

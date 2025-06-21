@@ -22,7 +22,6 @@ pub enum PostEventType {
     CommentDeleted,
     PromotedPostCreated,
     PromotedPostViewConfirmed,
-    PromotionDeactivated,
     PromotionStatusToggled,
     PromotionFundsWithdrawn,
 }
@@ -202,14 +201,6 @@ pub struct PromotedPostViewConfirmedEvent {
     pub timestamp: u64,
 }
 
-/// Promotion deactivated event from blockchain
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PromotionDeactivatedEvent {
-    pub post_id: String,
-    pub owner: String,
-    pub remaining_budget: u64,
-    pub timestamp: u64,
-}
 
 /// Promotion status toggled event from blockchain
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -493,7 +493,7 @@ module social_contracts::proof_of_creativity {
         assert!(coin::value(&payment) >= total_cost, EInsufficientFunds);
         
         // Verify only post owner can dispute their post's PoC status
-        assert!(disputer == social_contracts::post::get_owner(post), EUnauthorized);
+        assert!(disputer == social_contracts::post::get_post_owner(post), EUnauthorized);
         
         // Verify the post has PoC data to dispute (badge or redirection)
         let has_poc_data = option::is_some(social_contracts::post::get_poc_badge_id(post)) ||

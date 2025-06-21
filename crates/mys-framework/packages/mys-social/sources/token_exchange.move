@@ -554,7 +554,7 @@ module social_contracts::token_exchange {
     ): (bool, u64) {
         // Calculate viral score based on post metrics
         let likes = post::get_reaction_count(post) * POST_LIKES_WEIGHT;
-        let comments = post::get_comment_count(post) * POST_COMMENTS_WEIGHT;
+        let comments = post::get_post_comment_count(post) * POST_COMMENTS_WEIGHT;
         let tips = post::get_tips_received(post) * POST_TIPS_WEIGHT;
         
         let viral_score = likes + comments + tips;
@@ -596,7 +596,7 @@ module social_contracts::token_exchange {
         assert!(!config.trading_halted, ETradingHalted);
         
         let post_id = post::get_id_address(post);
-        let owner = post::get_owner(post);
+        let owner = post::get_post_owner(post);
         
         // Verify caller is the post owner
         assert!(tx_context::sender(ctx) == owner, ENotAuthorized);
@@ -1022,7 +1022,7 @@ module social_contracts::token_exchange {
         
         // Verify caller is authorized (post owner)
         let caller = tx_context::sender(ctx);
-        assert!(caller == post::get_owner(post), ENotAuthorized);
+        assert!(caller == post::get_post_owner(post), ENotAuthorized);
         
         // Copy PoC data from post to pool
         pool.poc_redirect_to = if (option::is_some(post::get_revenue_redirect_to(post))) {
