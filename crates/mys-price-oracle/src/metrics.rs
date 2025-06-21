@@ -14,7 +14,6 @@ pub struct OracleMetrics {
     pub last_update_timestamp: IntGauge,
     pub price_fetch_duration: Histogram,
     pub bridge_update_duration: Histogram,
-    pub circuit_breaker_open: IntGauge,
     pub validation_errors_total: IntCounter,
 }
 
@@ -62,11 +61,6 @@ impl OracleMetrics {
             "Duration of bridge update operations in seconds",
         ))?;
 
-        let circuit_breaker_open = IntGauge::with_opts(Opts::new(
-            "oracle_circuit_breaker_open",
-            "Whether the circuit breaker is open (1) or closed (0)",
-        ))?;
-
         let validation_errors_total = IntCounter::with_opts(Opts::new(
             "oracle_validation_errors_total",
             "Total number of price validation errors",
@@ -81,7 +75,6 @@ impl OracleMetrics {
         registry.register(Box::new(last_update_timestamp.clone()))?;
         registry.register(Box::new(price_fetch_duration.clone()))?;
         registry.register(Box::new(bridge_update_duration.clone()))?;
-        registry.register(Box::new(circuit_breaker_open.clone()))?;
         registry.register(Box::new(validation_errors_total.clone()))?;
 
         Ok(Self {
@@ -94,7 +87,6 @@ impl OracleMetrics {
             last_update_timestamp,
             price_fetch_duration,
             bridge_update_duration,
-            circuit_breaker_open,
             validation_errors_total,
         })
     }
