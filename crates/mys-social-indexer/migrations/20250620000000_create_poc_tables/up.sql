@@ -98,18 +98,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_badges_badge_id ON poc_badges (badge_i
 
 -- Enable compression
 ALTER TABLE poc_badges SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'poc_badges'
-    ) THEN
-        PERFORM add_compression_policy('poc_badges', INTERVAL '30 days');
-    END IF;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE 'Could not add compression policy for poc_badges: %', SQLERRM;
-END $$;
+SELECT add_compression_policy('poc_badges', INTERVAL '30 days');
 
 -- ============================================================================
 -- 4. CREATE POC REVENUE REDIRECTIONS TABLE (TIMESCALEDB HYPERTABLE)
@@ -162,18 +151,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_redirections_id ON poc_revenue_redirec
 
 -- Enable compression
 ALTER TABLE poc_revenue_redirections SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'poc_revenue_redirections'
-    ) THEN
-        PERFORM add_compression_policy('poc_revenue_redirections', INTERVAL '90 days');
-    END IF;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE 'Could not add compression policy for poc_revenue_redirections: %', SQLERRM;
-END $$;
+SELECT add_compression_policy('poc_revenue_redirections', INTERVAL '90 days');
 
 -- ============================================================================
 -- 5. CREATE POC ANALYSIS RESULTS TABLE (TIMESCALEDB HYPERTABLE)
@@ -224,18 +202,7 @@ CREATE INDEX IF NOT EXISTS idx_poc_analysis_creator_time ON poc_analysis_results
 
 -- Enable compression
 ALTER TABLE poc_analysis_results SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'poc_analysis_results'
-    ) THEN
-        PERFORM add_compression_policy('poc_analysis_results', INTERVAL '7 days');
-    END IF;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE 'Could not add compression policy for poc_analysis_results: %', SQLERRM;
-END $$;
+SELECT add_compression_policy('poc_analysis_results', INTERVAL '7 days');
 
 -- ============================================================================
 -- 6. CREATE POC DISPUTES TABLE (TIMESCALEDB HYPERTABLE)
@@ -295,18 +262,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_disputes_id ON poc_disputes (dispute_i
 
 -- Enable compression
 ALTER TABLE poc_disputes SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'poc_disputes'
-    ) THEN
-        PERFORM add_compression_policy('poc_disputes', INTERVAL '90 days');
-    END IF;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE 'Could not add compression policy for poc_disputes: %', SQLERRM;
-END $$;
+SELECT add_compression_policy('poc_disputes', INTERVAL '90 days');
 
 -- ============================================================================
 -- 7. CREATE POC DISPUTE VOTES TABLE (TIMESCALEDB HYPERTABLE)
@@ -358,18 +314,7 @@ CREATE INDEX IF NOT EXISTS idx_poc_votes_dispute_time ON poc_dispute_votes (disp
 
 -- Enable compression
 ALTER TABLE poc_dispute_votes SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'poc_dispute_votes'
-    ) THEN
-        PERFORM add_compression_policy('poc_dispute_votes', INTERVAL '30 days');
-    END IF;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE 'Could not add compression policy for poc_dispute_votes: %', SQLERRM;
-END $$;
+SELECT add_compression_policy('poc_dispute_votes', INTERVAL '30 days');
 
 -- ============================================================================
 -- 8. CREATE POC CONFIGURATION TABLE (REGULAR TABLE)

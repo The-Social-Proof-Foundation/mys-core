@@ -205,7 +205,11 @@ SELECT add_continuous_aggregate_policy('spt_hourly_analytics',
 -- 5. PERFORMANCE OPTIMIZATIONS
 -- ============================================================================
 
--- Enable compression for revenue tables (compress after 24 hours)
+-- Enable compression on hypertables first, then add policies
+ALTER TABLE spt_revenue SET (timescaledb.compress = true);
+ALTER TABLE unified_revenue SET (timescaledb.compress = true);
+
+-- Compression policies for high-volume revenue data
 SELECT add_compression_policy('spt_revenue', INTERVAL '24 hours');
 SELECT add_compression_policy('unified_revenue', INTERVAL '24 hours');
 
