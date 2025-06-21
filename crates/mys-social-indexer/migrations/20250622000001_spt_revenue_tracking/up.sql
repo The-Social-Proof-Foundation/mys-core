@@ -202,16 +202,16 @@ SELECT add_continuous_aggregate_policy('spt_hourly_analytics',
     schedule_interval => INTERVAL '5 minutes');
 
 -- ============================================================================
--- MANUAL REFRESH OF CONTINUOUS AGGREGATES
+-- CONTINUOUS AGGREGATE REFRESH POLICY NOTES
 -- ============================================================================
 
--- Manually refresh all continuous aggregates to populate initial data
--- This runs after creation and policy setup to ensure data availability
-CALL refresh_continuous_aggregate('revenue_hourly_summary', NULL, NULL);
-CALL refresh_continuous_aggregate('revenue_daily_creators', NULL, NULL);
-CALL refresh_continuous_aggregate('revenue_monthly_platforms', NULL, NULL);
-CALL refresh_continuous_aggregate('revenue_realtime_metrics', NULL, NULL);
-CALL refresh_continuous_aggregate('spt_hourly_analytics', NULL, NULL);
+-- Note: All continuous aggregates will be populated by their refresh policies automatically
+-- Initial data will be available after the first scheduled refresh:
+-- - revenue_hourly_summary: 5-minute refresh
+-- - revenue_daily_creators: 30-minute refresh  
+-- - revenue_monthly_platforms: daily refresh
+-- - revenue_realtime_metrics: 1-minute refresh
+-- - spt_hourly_analytics: 5-minute refresh
 
 -- ============================================================================
 -- 5. PERFORMANCE OPTIMIZATIONS

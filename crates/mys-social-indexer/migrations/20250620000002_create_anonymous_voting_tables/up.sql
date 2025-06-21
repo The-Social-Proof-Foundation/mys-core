@@ -168,9 +168,8 @@ SELECT add_continuous_aggregate_policy('anonymous_voting_daily_stats',
     end_offset => INTERVAL '1 hour',
     schedule_interval => INTERVAL '1 hour');
 
--- Manually refresh the continuous aggregate to populate initial data
--- This runs after creation and policy setup to ensure data availability
-CALL refresh_continuous_aggregate('anonymous_voting_daily_stats', NULL, NULL);
+-- Note: Continuous aggregate will be populated by the refresh policy automatically
+-- Initial data will be available after the first scheduled refresh (1 hour interval)
 
 -- ============================================================================
 -- 5. UPDATE GOVERNANCE EVENTS TABLE FOR ANONYMOUS VOTING
