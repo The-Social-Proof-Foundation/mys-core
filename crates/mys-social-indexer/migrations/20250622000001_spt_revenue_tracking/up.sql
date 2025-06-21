@@ -73,36 +73,13 @@ CREATE INDEX idx_unified_revenue_payer_time ON unified_revenue (payer_address, t
 -- ============================================================================
 
 -- Drop existing continuous aggregates if they exist (to ensure clean recreation)
-DROP MATERIALIZED VIEW IF EXISTS revenue_daily_creators CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS revenue_monthly_platforms CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS revenue_realtime_metrics CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS spt_hourly_analytics CASCADE;
 
 
 
--- Daily Revenue Summary by Creator (For leaderboards)
-CREATE MATERIALIZED VIEW revenue_daily_creators
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 day', time) AS day,
-    creator_address,
-    revenue_source,
-    SUM(amount) AS daily_revenue,
-    COUNT(*) AS transaction_count,
-    COUNT(DISTINCT payer_address) AS unique_payers,
-    MAX(amount) AS largest_transaction,
-    SUM(CASE WHEN revenue_source = 'subscription' THEN amount ELSE 0 END) AS subscription_revenue,
-    SUM(CASE WHEN revenue_source = 'my_ip' THEN amount ELSE 0 END) AS myip_revenue,
-    SUM(CASE WHEN revenue_source = 'spt' THEN amount ELSE 0 END) AS spt_revenue,
-    SUM(CASE WHEN revenue_source = 'tips' THEN amount ELSE 0 END) AS tips_revenue
-FROM unified_revenue
-GROUP BY time_bucket('1 day', time), creator_address, revenue_source
-WITH NO DATA;
 
-SELECT add_continuous_aggregate_policy('revenue_daily_creators',
-    start_offset => INTERVAL '7 days',
-    end_offset => INTERVAL '30 minutes',
-    schedule_interval => INTERVAL '30 minutes');
 
 -- Monthly Revenue Summary by Platform (For platform analytics)
 CREATE MATERIALIZED VIEW revenue_monthly_platforms
@@ -203,21 +180,22 @@ SELECT add_retention_policy('unified_revenue', INTERVAL '3 years');
 -- ============================================================================
 
 -- SPT Creator Revenue Summary (for leaderboards and profile pages)
+-- Uses direct query on unified_revenue since revenue_daily_creators was removed
 CREATE OR REPLACE VIEW spt_creator_revenue_summary AS
 SELECT 
     creator_address,
-    SUM(daily_revenue) AS total_revenue,
-    SUM(subscription_revenue) AS total_subscription_revenue,
-    SUM(myip_revenue) AS total_myip_revenue,
-    SUM(spt_revenue) AS total_spt_revenue,
-    SUM(tips_revenue) AS total_tips_revenue,
-    SUM(transaction_count) AS total_transactions,
-    SUM(unique_payers) AS total_unique_payers,
-    MAX(largest_transaction) AS largest_single_transaction,
-    COUNT(DISTINCT day) AS active_days,
-    MAX(day) AS last_revenue_date
-FROM revenue_daily_creators
-WHERE day >= NOW() - INTERVAL '30 days'
+    SUM(amount) AS total_revenue,
+    SUM(CASE WHEN revenue_source = 'subscription' THEN amount ELSE 0 END) AS total_subscription_revenue,
+    SUM(CASE WHEN revenue_source = 'my_ip' THEN amount ELSE 0 END) AS total_myip_revenue,
+    SUM(CASE WHEN revenue_source = 'spt' THEN amount ELSE 0 END) AS total_spt_revenue,
+    SUM(CASE WHEN revenue_source = 'tips' THEN amount ELSE 0 END) AS total_tips_revenue,
+    COUNT(*) AS total_transactions,
+    COUNT(DISTINCT payer_address) AS total_unique_payers,
+    MAX(amount) AS largest_single_transaction,
+    COUNT(DISTINCT DATE(time)) AS active_days,
+    MAX(time) AS last_revenue_date
+FROM unified_revenue
+WHERE time >= NOW() - INTERVAL '30 days'
 GROUP BY creator_address
 ORDER BY total_revenue DESC;
 
@@ -270,10 +248,9 @@ CREATE INDEX idx_spt_revenue_pool_time_fees ON spt_revenue (pool_id, time DESC, 
 
 COMMENT ON TABLE spt_revenue IS 'SPT swap fee revenue tracking with real-time analytics (TimescaleDB)';
 COMMENT ON TABLE unified_revenue IS 'Unified revenue tracking across all MySocial revenue sources (TimescaleDB)';
-COMMENT ON MATERIALIZED VIEW revenue_daily_creators IS 'Daily creator revenue for leaderboards (30-minute refresh)';
 COMMENT ON MATERIALIZED VIEW revenue_monthly_platforms IS 'Monthly platform revenue analytics (daily refresh)';
 COMMENT ON MATERIALIZED VIEW revenue_realtime_metrics IS 'Real-time 5-minute revenue metrics (1-minute refresh)';
 COMMENT ON MATERIALIZED VIEW spt_hourly_analytics IS 'SPT trading analytics with fee breakdowns (5-minute refresh)';
-COMMENT ON VIEW spt_creator_revenue_summary IS 'SPT creator revenue leaderboard (30-day summary)';
+COMMENT ON VIEW spt_creator_revenue_summary IS 'Creator revenue leaderboard using direct unified_revenue queries (30-day summary)';
 COMMENT ON VIEW platform_revenue_summary IS 'Platform revenue analytics (12-month summary)';
 COMMENT ON VIEW revenue_dashboard_24h IS 'Real-time dashboard metrics (24-hour summary)'; 
