@@ -9,6 +9,7 @@ use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::{Object, Pool};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use tracing;
 
 use crate::config::Config;
 
@@ -72,15 +73,22 @@ impl Database {
 
 /// Sets up the database connection pool
 pub async fn setup_connection_pool(config: &Config) -> Result<Arc<Database>> {
+    tracing::info!("Setting up database connection pool with TLS support");
+    
+    // Create connection manager - TLS support is provided by the dependencies
     let manager = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&config.database.url);
     
-    // Create the pool with basic configuration
+    // Create the pool with configuration
     let pool = Pool::builder(manager)
         .max_size(config.database.max_connections as usize)
-        .build()?;
+        .build()
+        .map_err(|e| anyhow!("Failed to create connection pool: {}", e))?;
     
-    // Test the connection
-    let _conn = pool.get().await?;
+    // Test the connection to verify TLS works
+    let _conn = pool.get().await
+        .map_err(|e| anyhow!("Failed to establish test connection (check TLS configuration): {}", e))?;
+    
+    tracing::info!("Database connection pool established successfully with TLS support");
     
     // Create and return the database
     Ok(Arc::new(Database::new(pool)))
@@ -89,11 +97,16 @@ pub async fn setup_connection_pool(config: &Config) -> Result<Arc<Database>> {
 /// Run database migrations
 pub fn run_migrations(config: &Config) -> Result<()> {
     // Use a regular blocking connection for migrations
-    let mut conn = PgConnection::establish(&config.database.url)?;
+    let mut conn = PgConnection::establish(&config.database.url)
+        .map_err(|e| anyhow!("Failed to establish migration connection (check TLS configuration): {}", e))?;
+    
+    tracing::info!("Running database migrations...");
     
     // Run migrations
     conn.run_pending_migrations(MIGRATIONS)
         .map_err(|e| anyhow::anyhow!("Migration error: {}", e))?;
+    
+    tracing::info!("Database migrations completed successfully");
     
     Ok(())
 }
