@@ -714,16 +714,8 @@ module social_contracts::post {
             metadata_json,
             string::utf8(POST_TYPE_PREDICTION),
             option::none(),
-            true, // allow_comments
-            true, // allow_reactions  
-            true, // allow_reposts
-            true, // allow_quotes
-            true, // allow_tips
-            option::none(), // poc_badge_id
-            option::none(), // revenue_redirect_to
-            option::none(), // revenue_redirect_percentage
-            option::none(), // my_ip_id
-            option::none(), // promotion_id
+            option::none(),
+            option::none(),
             ctx
         );
         
@@ -1289,16 +1281,7 @@ module social_contracts::post {
             metadata_json,
             string::utf8(POST_TYPE_STANDARD),
             option::none(),
-            allow_comments,
-            allow_reactions,
-            allow_reposts,
-            allow_quotes,
-            allow_tips,
-            option::none(), // poc_badge_id
-            option::none(), // revenue_redirect_to
-            option::none(), // revenue_redirect_percentage
-            option::none(), // my_ip_id
-            option::none(), // promotion_id
+            my_ip_id,
             ctx
         );
         
@@ -1483,16 +1466,7 @@ module social_contracts::post {
             option::none(), // No metadata
             string::utf8(POST_TYPE_REPOST),
             option::some(original_post_id),
-            true, // allow_comments
-            true, // allow_reactions
-            true, // allow_reposts
-            true, // allow_quotes
-            true, // allow_tips
-            option::none(), // poc_badge_id
-            option::none(), // revenue_redirect_to
-            option::none(), // revenue_redirect_percentage
-            option::none(), // my_ip_id
-            option::none(), // promotion_id
+            option::none(), // No MyIP for reposts
             ctx
         );
         
@@ -1651,16 +1625,7 @@ module social_contracts::post {
             metadata_json,
             post_type,
             option::some(original_post_id),
-            true, // allow_comments
-            true, // allow_reactions
-            true, // allow_reposts
-            true, // allow_quotes
-            true, // allow_tips
-            option::none(), // poc_badge_id
-            option::none(), // revenue_redirect_to
-            option::none(), // revenue_redirect_percentage
-            option::none(), // my_ip_id
-            option::none(), // promotion_id
+            option::none(), // No MyIP for reposts
             ctx
         );
         
@@ -2701,16 +2666,7 @@ module social_contracts::post {
             option::none(), // No metadata
             string::utf8(POST_TYPE_STANDARD), // Standard post type
             option::none(), // No parent post
-            true, // allow_comments
-            true, // allow_reactions
-            true, // allow_reposts
-            true, // allow_quotes
-            true, // allow_tips
-            option::none(), // poc_badge_id
-            option::none(), // revenue_redirect_to
-            option::none(), // revenue_redirect_percentage
-            option::none(), // my_ip_id
-            option::none(), // promotion_id
+            option::none(), // No MyIP ID
             ctx
         )
     }
@@ -2801,6 +2757,7 @@ module social_contracts::post {
             option::none(), // revenue_redirect_percentage
             option::none(), // my_ip_id
             option::none(), // promotion_id
+            option::none(), // No promotion for test posts
             ctx
         );
         
@@ -3074,6 +3031,303 @@ module social_contracts::post {
             repost_tip_percentage,
             max_prediction_options,
         });
+    }
+
+    /// Create a promoted post with MYS tokens for viewer payments
+    public fun create_promoted_post(
+        registry: &UsernameRegistry,
+        platform: &platform::Platform,
+        _block_list_registry: &block_list::BlockListRegistry,
+        config: &PostConfig,
+        content: String,
+        mut media_urls: Option<vector<vector<u8>>>,
+        mentions: Option<vector<address>>,
+        metadata_json: Option<String>,
+        my_ip_id: Option<address>,
+        payment_per_view: u64,
+        promotion_budget: Coin<MYS>,
+        ctx: &mut TxContext
+    ) {
+        let owner = tx_context::sender(ctx);
+        
+        // Validate promotion parameters
+        assert!(payment_per_view >= MIN_PROMOTION_AMOUNT, EPromotionAmountTooLow);
+        assert!(payment_per_view <= MAX_PROMOTION_AMOUNT, EPromotionAmountTooHigh);
+        assert!(coin::value(&promotion_budget) >= payment_per_view, EInsufficientPromotionFunds);
+        
+        // Look up the profile ID for the sender
+        let mut profile_id_option = social_contracts::profile::lookup_profile_by_owner(registry, owner);
+        assert!(option::is_some(&profile_id_option), EUnauthorized);
+        let profile_id = option::extract(&mut profile_id_option);
+        
+        // Check if platform is approved 
+        assert!(platform::is_approved(platform), EUnauthorized);
+        
+        // Validate block list - simplified for this implementation
+        // assert!(!block_list::is_profile_blocked(block_list_registry, profile_id), EUserBlockedByPlatform);
+        
+        // Validate content length using config
+        assert!(string::length(&content) <= config.max_content_length, EContentTooLarge);
+        
+        // Validate and convert media URLs if provided
+        let media_option = if (option::is_some(&media_urls)) {
+            let urls_bytes = option::extract(&mut media_urls);
+            assert!(vector::length(&urls_bytes) <= config.max_media_urls, ETooManyMediaUrls);
+            
+            let mut urls = vector::empty<Url>();
+            let mut i = 0;
+            while (i < vector::length(&urls_bytes)) {
+                let url_bytes = vector::borrow(&urls_bytes, i);
+                let url = url::new_unsafe_from_bytes(*url_bytes);
+                vector::push_back(&mut urls, url);
+                i = i + 1;
+            };
+            option::some(urls)
+        } else {
+            option::none()
+        };
+        
+        // Validate mentions if provided using config
+        if (option::is_some(&mentions)) {
+            let mentions_ref = option::borrow(&mentions);
+            assert!(vector::length(mentions_ref) <= config.max_mentions, EContentTooLarge);
+        };
+        
+        // Validate metadata if provided using config
+        if (option::is_some(&metadata_json)) {
+            let metadata_string = option::borrow(&metadata_json);
+            assert!(string::length(metadata_string) <= config.max_metadata_size, EContentTooLarge);
+        };
+        
+        // Create promotion data (starts as inactive until platform activates it)
+        let mut promotion_data = PromotionData {
+            id: object::new(ctx),
+            post_id: @0x0, // Will be set after post creation
+            payment_per_view,
+            promotion_budget: coin::into_balance(promotion_budget),
+            paid_viewers: table::new(ctx),
+            views: vector::empty(),
+            active: false, // Starts inactive until platform approves
+            created_at: tx_context::epoch_timestamp_ms(ctx),
+        };
+        
+        let promotion_id = object::uid_to_address(&promotion_data.id);
+        
+        // Create and share the post
+        let post_id = create_post_internal(
+            owner,
+            profile_id,
+            content,
+            media_option,
+            mentions,
+            metadata_json,
+            string::utf8(POST_TYPE_STANDARD),
+            option::none(),
+            my_ip_id,
+            option::some(promotion_id),
+            ctx
+        );
+        
+        // Update promotion data with post ID
+        promotion_data.post_id = post_id;
+        
+        // Get budget value before moving the promotion_data
+        let total_budget = balance::value(&promotion_data.promotion_budget);
+        
+        // Share promotion data
+        transfer::share_object(promotion_data);
+        
+        // Emit promoted post creation event
+        event::emit(PromotedPostCreatedEvent {
+            post_id,
+            owner,
+            profile_id,
+            payment_per_view,
+            total_budget,
+            created_at: tx_context::epoch_timestamp_ms(ctx),
+        });
+    }
+
+    /// Confirm a user has viewed a promoted post and pay them (platform only)
+    public entry fun confirm_promoted_post_view(
+        post: &Post,
+        promotion_data: &mut PromotionData,
+        platform_obj: &platform::Platform,
+        viewer_address: address,
+        view_duration: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        // Verify this is a platform call (platform developer or moderator)
+        let caller = tx_context::sender(ctx);
+        assert!(platform::is_developer_or_moderator(platform_obj, caller), EUnauthorized);
+        
+        // Verify the post is promoted
+        assert!(option::is_some(&post.promotion_id), ENotPromotedPost);
+        let post_promotion_id = *option::borrow(&post.promotion_id);
+        assert!(post_promotion_id == object::uid_to_address(&promotion_data.id), ENotPromotedPost);
+        
+        // Verify promotion is active
+        assert!(promotion_data.active, EPromotionInactive);
+        
+        // Verify view duration meets minimum requirement
+        assert!(view_duration >= MIN_VIEW_DURATION, EInvalidViewDuration);
+        
+        // Verify user hasn't already been paid for viewing this post
+        assert!(!table::contains(&promotion_data.paid_viewers, viewer_address), EUserAlreadyViewed);
+        
+        // Verify sufficient budget remains
+        assert!(balance::value(&promotion_data.promotion_budget) >= promotion_data.payment_per_view, EInsufficientPromotionFunds);
+        
+        // Record the view
+        let view_record = PromotionView {
+            viewer: viewer_address,
+            view_duration,
+            view_timestamp: clock::timestamp_ms(clock),
+            platform_id: caller, // Use caller as platform identifier
+        };
+        vector::push_back(&mut promotion_data.views, view_record);
+        
+        // Mark user as paid
+        table::add(&mut promotion_data.paid_viewers, viewer_address, true);
+        
+        // Split payment from promotion budget and transfer to viewer
+        let payment_balance = balance::split(&mut promotion_data.promotion_budget, promotion_data.payment_per_view);
+        let payment_coin = coin::from_balance(payment_balance, ctx);
+        transfer::public_transfer(payment_coin, viewer_address);
+        
+        // If budget is exhausted, deactivate promotion
+        if (balance::value(&promotion_data.promotion_budget) < promotion_data.payment_per_view) {
+            promotion_data.active = false;
+        };
+        
+        // Emit view confirmation event
+        event::emit(PromotedPostViewConfirmedEvent {
+            post_id: post_promotion_id,
+            viewer: viewer_address,
+            payment_amount: promotion_data.payment_per_view,
+            view_duration,
+            platform_id: caller, // Use caller as platform identifier
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Deactivate a promoted post (owner only)
+    public entry fun deactivate_promotion(
+        post: &Post,
+        promotion_data: &mut PromotionData,
+        ctx: &mut TxContext
+    ) {
+        let caller = tx_context::sender(ctx);
+        assert!(caller == post.owner, EUnauthorized);
+        
+        // Verify the post is promoted
+        assert!(option::is_some(&post.promotion_id), ENotPromotedPost);
+        let post_promotion_id = *option::borrow(&post.promotion_id);
+        assert!(post_promotion_id == object::uid_to_address(&promotion_data.id), ENotPromotedPost);
+        
+        // Deactivate the promotion
+        promotion_data.active = false;
+        
+        // Emit deactivation event
+        event::emit(PromotionDeactivatedEvent {
+            post_id: post_promotion_id,
+            owner: caller,
+            remaining_budget: balance::value(&promotion_data.promotion_budget),
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+        });
+    }
+
+    /// Toggle promotion status (platform can activate, both platform and owner can deactivate)
+    public entry fun toggle_promotion_status(
+        post: &Post,
+        promotion_data: &mut PromotionData,
+        platform_obj: &platform::Platform,
+        activate: bool,
+        ctx: &mut TxContext
+    ) {
+        let caller = tx_context::sender(ctx);
+        
+        // Verify the post is promoted
+        assert!(option::is_some(&post.promotion_id), ENotPromotedPost);
+        let post_promotion_id = *option::borrow(&post.promotion_id);
+        assert!(post_promotion_id == object::uid_to_address(&promotion_data.id), ENotPromotedPost);
+        
+        if (activate) {
+            // Only platform can activate promotions
+            assert!(platform::is_developer_or_moderator(platform_obj, caller), EUnauthorized);
+        } else {
+            // Both platform and post owner can deactivate
+            let is_platform = platform::is_developer_or_moderator(platform_obj, caller);
+            let is_owner = caller == post.owner;
+            assert!(is_platform || is_owner, EUnauthorized);
+        };
+        
+        promotion_data.active = activate;
+        
+        // Emit status change event
+        event::emit(PromotionStatusToggledEvent {
+            post_id: post_promotion_id,
+            toggled_by: caller,
+            new_status: activate,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+        });
+    }
+
+    /// Withdraw all MYS tokens from promotion (owner only, deactivates promotion)
+    public entry fun withdraw_promotion_funds(
+        post: &Post,
+        promotion_data: &mut PromotionData,
+        ctx: &mut TxContext
+    ) {
+        let caller = tx_context::sender(ctx);
+        
+        // Verify caller is post owner
+        assert!(caller == post.owner, EUnauthorized);
+        
+        // Verify the post is promoted
+        assert!(option::is_some(&post.promotion_id), ENotPromotedPost);
+        let post_promotion_id = *option::borrow(&post.promotion_id);
+        assert!(post_promotion_id == object::uid_to_address(&promotion_data.id), ENotPromotedPost);
+        
+        // Get remaining funds
+        let remaining_amount = balance::value(&promotion_data.promotion_budget);
+        
+        // Extract all remaining balance and transfer to owner
+        let withdrawn_balance = balance::withdraw_all(&mut promotion_data.promotion_budget);
+        let withdrawn_coins = coin::from_balance(withdrawn_balance, ctx);
+        transfer::public_transfer(withdrawn_coins, caller);
+        
+        // Deactivate promotion
+        promotion_data.active = false;
+        
+        // Emit withdrawal event
+        event::emit(PromotionFundsWithdrawnEvent {
+            post_id: post_promotion_id,
+            owner: caller,
+            withdrawn_amount: remaining_amount,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+        });
+    }
+
+    /// Get promotion statistics for a post
+    public fun get_promotion_stats(promotion_data: &PromotionData): (u64, u64, bool, u64) {
+        (
+            promotion_data.payment_per_view,
+            balance::value(&promotion_data.promotion_budget),
+            promotion_data.active,
+            vector::length(&promotion_data.views)
+        )
+    }
+
+    /// Check if a user has already been paid for viewing a promoted post
+    public fun has_user_viewed_promoted_post(promotion_data: &PromotionData, user: address): bool {
+        table::contains(&promotion_data.paid_viewers, user)
+    }
+
+    /// Get the promotion ID from a post
+    public fun get_promotion_id(post: &Post): Option<address> {
+        post.promotion_id
     }
 
     /// Set moderation status for a post (platform devs/mods only)

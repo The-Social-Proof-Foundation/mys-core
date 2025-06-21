@@ -22,6 +22,11 @@ use crate::events::post_event_types::{
     ContentUpdateEvent,
     ReportEvent,
     DeletionEvent as PostDeletionEvent,
+    PromotedPostCreatedEvent,
+    PromotedPostViewConfirmedEvent,
+    PromotionDeactivatedEvent,
+    PromotionStatusToggledEvent,
+    PromotionFundsWithdrawnEvent,
 };
 use crate::events::{parse_event, event_utils::parse_json_event};
 use crate::models::indexer::NewIndexerProgress;
@@ -29,7 +34,9 @@ use crate::schema;
 use mys_types::event::Event as MysEvent;
 
 use crate::schema::{posts, comments, reactions, reaction_counts, reposts, tips, 
-                   posts_reports, posts_moderation_events, posts_deletion_events};
+                   posts_reports, posts_moderation_events, posts_deletion_events,
+                   my_ip, my_ip_revenue, promoted_posts, promotion_views, 
+                   promotion_status_events, promotion_budget_events};
 
 use super::listener::BlockchainEvent;
 
@@ -511,6 +518,259 @@ impl PostEventHandler {
         Ok(())
     }
     
+    /// Process a promoted post created event
+    async fn process_promoted_post_created(&self, event: &PromotedPostCreatedEvent, tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing promoted post created: {}", event.post_id);
+        
+        // Generate unique promotion_id using timestamp and post_id
+        let promotion_id = format!("promo_{}_{}", event.created_at, event.post_id.replace("0x", ""));
+        
+        // Create promoted post record
+        diesel::insert_into(promoted_posts::table)
+            .values((
+                promoted_posts::promotion_id.eq(&promotion_id),
+                promoted_posts::post_id.eq(&event.post_id),
+                promoted_posts::owner.eq(&event.owner),
+                promoted_posts::profile_id.eq(&event.profile_id),
+                promoted_posts::payment_per_view.eq(event.payment_per_view as i64),
+                promoted_posts::total_budget.eq(event.total_budget as i64),
+                promoted_posts::remaining_budget.eq(event.total_budget as i64),
+                promoted_posts::active.eq(false), // Starts inactive until platform approves
+                promoted_posts::created_at.eq(event.created_at as i64),
+                promoted_posts::transaction_id.eq(tx_id),
+            ))
+            .execute(&mut conn)
+            .await?;
+            
+        // Update post with promotion_id
+        diesel::update(posts::table)
+            .filter(posts::post_id.eq(&event.post_id))
+            .set(posts::promotion_id.eq(&promotion_id))
+            .execute(&mut conn)
+            .await?;
+            
+        // Create initial budget event
+        diesel::insert_into(promotion_budget_events::table)
+            .values((
+                promotion_budget_events::promotion_id.eq(&promotion_id),
+                promotion_budget_events::post_id.eq(&event.post_id),
+                promotion_budget_events::event_type.eq("initial_deposit"),
+                promotion_budget_events::amount.eq(event.total_budget as i64),
+                promotion_budget_events::remaining_budget.eq(event.total_budget as i64),
+                promotion_budget_events::timestamp.eq(event.created_at as i64),
+                promotion_budget_events::transaction_id.eq(tx_id),
+            ))
+            .execute(&mut conn)
+            .await?;
+            
+        info!("Successfully processed promoted post created: {}", event.post_id);
+        Ok(())
+    }
+    
+    /// Process a promoted post view confirmed event
+    async fn process_promoted_post_view_confirmed(&self, event: &PromotedPostViewConfirmedEvent, tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing promoted post view confirmed: {} by {}", event.post_id, event.viewer);
+        
+        // Get promotion_id from post
+        let promotion_id_result: Option<String> = posts::table
+            .filter(posts::post_id.eq(&event.post_id))
+            .select(posts::promotion_id)
+            .first(&mut conn)
+            .await?;
+            
+        if let Some(promotion_id) = promotion_id_result {
+            // Record the view
+            diesel::insert_into(promotion_views::table)
+                .values((
+                    promotion_views::post_id.eq(&event.post_id),
+                    promotion_views::promotion_id.eq(&promotion_id),
+                    promotion_views::viewer.eq(&event.viewer),
+                    promotion_views::payment_amount.eq(event.payment_amount as i64),
+                    promotion_views::view_duration.eq(event.view_duration as i64),
+                    promotion_views::platform_id.eq(&event.platform_id),
+                    promotion_views::timestamp.eq(event.timestamp as i64),
+                    promotion_views::transaction_id.eq(tx_id),
+                ))
+                .execute(&mut conn)
+                .await?;
+                
+            // Update remaining budget
+            diesel::update(promoted_posts::table)
+                .filter(promoted_posts::promotion_id.eq(&promotion_id))
+                .set(promoted_posts::remaining_budget.eq(
+                    promoted_posts::remaining_budget - event.payment_amount as i64
+                ))
+                .execute(&mut conn)
+                .await?;
+                
+            // Create budget event for the payment
+            diesel::insert_into(promotion_budget_events::table)
+                .values((
+                    promotion_budget_events::promotion_id.eq(&promotion_id),
+                    promotion_budget_events::post_id.eq(&event.post_id),
+                    promotion_budget_events::event_type.eq("view_payment"),
+                    promotion_budget_events::amount.eq(event.payment_amount as i64),
+                    promotion_budget_events::remaining_budget.eq(
+                        promoted_posts::table
+                            .filter(promoted_posts::promotion_id.eq(&promotion_id))
+                            .select(promoted_posts::remaining_budget)
+                            .first::<i64>(&mut conn)
+                            .await?
+                    ),
+                    promotion_budget_events::timestamp.eq(event.timestamp as i64),
+                    promotion_budget_events::transaction_id.eq(tx_id),
+                ))
+                .execute(&mut conn)
+                .await?;
+        }
+            
+        info!("Successfully processed promoted post view confirmed: {}", event.post_id);
+        Ok(())
+    }
+    
+    /// Process a promotion deactivated event
+    async fn process_promotion_deactivated(&self, event: &PromotionDeactivatedEvent, tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing promotion deactivated: {}", event.post_id);
+        
+        // Get promotion_id from post
+        let promotion_id_result: Option<String> = posts::table
+            .filter(posts::post_id.eq(&event.post_id))
+            .select(posts::promotion_id)
+            .first(&mut conn)
+            .await?;
+            
+        if let Some(promotion_id) = promotion_id_result {
+            // Update promotion status
+            diesel::update(promoted_posts::table)
+                .filter(promoted_posts::promotion_id.eq(&promotion_id))
+                .set(promoted_posts::active.eq(false))
+                .execute(&mut conn)
+                .await?;
+                
+            // Create status event
+            diesel::insert_into(promotion_status_events::table)
+                .values((
+                    promotion_status_events::post_id.eq(&event.post_id),
+                    promotion_status_events::promotion_id.eq(&promotion_id),
+                    promotion_status_events::event_type.eq("deactivated"),
+                    promotion_status_events::triggered_by.eq(&event.owner),
+                    promotion_status_events::new_status.eq(Some(false)),
+                    promotion_status_events::amount.eq(Some(event.remaining_budget as i64)),
+                    promotion_status_events::timestamp.eq(event.timestamp as i64),
+                    promotion_status_events::transaction_id.eq(tx_id),
+                ))
+                .execute(&mut conn)
+                .await?;
+        }
+            
+        info!("Successfully processed promotion deactivated: {}", event.post_id);
+        Ok(())
+    }
+    
+    /// Process a promotion status toggled event
+    async fn process_promotion_status_toggled(&self, event: &PromotionStatusToggledEvent, tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing promotion status toggled: {} to {}", event.post_id, event.new_status);
+        
+        // Get promotion_id from post
+        let promotion_id_result: Option<String> = posts::table
+            .filter(posts::post_id.eq(&event.post_id))
+            .select(posts::promotion_id)
+            .first(&mut conn)
+            .await?;
+            
+        if let Some(promotion_id) = promotion_id_result {
+            // Update promotion status
+            diesel::update(promoted_posts::table)
+                .filter(promoted_posts::promotion_id.eq(&promotion_id))
+                .set(promoted_posts::active.eq(event.new_status))
+                .execute(&mut conn)
+                .await?;
+                
+            // Create status event
+            diesel::insert_into(promotion_status_events::table)
+                .values((
+                    promotion_status_events::post_id.eq(&event.post_id),
+                    promotion_status_events::promotion_id.eq(&promotion_id),
+                    promotion_status_events::event_type.eq("status_toggled"),
+                    promotion_status_events::triggered_by.eq(&event.toggled_by),
+                    promotion_status_events::new_status.eq(Some(event.new_status)),
+                    promotion_status_events::timestamp.eq(event.timestamp as i64),
+                    promotion_status_events::transaction_id.eq(tx_id),
+                ))
+                .execute(&mut conn)
+                .await?;
+        }
+            
+        info!("Successfully processed promotion status toggled: {}", event.post_id);
+        Ok(())
+    }
+    
+    /// Process a promotion funds withdrawn event
+    async fn process_promotion_funds_withdrawn(&self, event: &PromotionFundsWithdrawnEvent, tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing promotion funds withdrawn: {} amount: {}", event.post_id, event.withdrawn_amount);
+        
+        // Get promotion_id from post
+        let promotion_id_result: Option<String> = posts::table
+            .filter(posts::post_id.eq(&event.post_id))
+            .select(posts::promotion_id)
+            .first(&mut conn)
+            .await?;
+            
+        if let Some(promotion_id) = promotion_id_result {
+            // Update promotion - set active to false and remaining budget to 0
+            diesel::update(promoted_posts::table)
+                .filter(promoted_posts::promotion_id.eq(&promotion_id))
+                .set((
+                    promoted_posts::active.eq(false),
+                    promoted_posts::remaining_budget.eq(0),
+                ))
+                .execute(&mut conn)
+                .await?;
+                
+            // Create status event
+            diesel::insert_into(promotion_status_events::table)
+                .values((
+                    promotion_status_events::post_id.eq(&event.post_id),
+                    promotion_status_events::promotion_id.eq(&promotion_id),
+                    promotion_status_events::event_type.eq("funds_withdrawn"),
+                    promotion_status_events::triggered_by.eq(&event.owner),
+                    promotion_status_events::new_status.eq(Some(false)),
+                    promotion_status_events::amount.eq(Some(event.withdrawn_amount as i64)),
+                    promotion_status_events::timestamp.eq(event.timestamp as i64),
+                    promotion_status_events::transaction_id.eq(tx_id),
+                ))
+                .execute(&mut conn)
+                .await?;
+                
+            // Create budget event
+            diesel::insert_into(promotion_budget_events::table)
+                .values((
+                    promotion_budget_events::promotion_id.eq(&promotion_id),
+                    promotion_budget_events::post_id.eq(&event.post_id),
+                    promotion_budget_events::event_type.eq("withdrawal"),
+                    promotion_budget_events::amount.eq(event.withdrawn_amount as i64),
+                    promotion_budget_events::remaining_budget.eq(0),
+                    promotion_budget_events::timestamp.eq(event.timestamp as i64),
+                    promotion_budget_events::transaction_id.eq(tx_id),
+                ))
+                .execute(&mut conn)
+                .await?;
+        }
+            
+        info!("Successfully processed promotion funds withdrawn: {}", event.post_id);
+        Ok(())
+    }
+    
     /// Start listening for post events
     pub async fn start(&mut self) -> Result<()> {
         info!("Starting post event handler");
@@ -658,6 +918,71 @@ impl PostEventHandler {
                         },
                         Err(e) => {
                             error!("Failed to deserialize deletion event: {}", e);
+                        }
+                    }
+                }
+                // Handle promoted post created event
+                else if event.event_type.ends_with("::PromotedPostCreatedEvent") {
+                    match parse_json_event::<PromotedPostCreatedEvent>(&event.data) {
+                        Ok(promoted_post_event) => {
+                            if let Err(e) = self.process_promoted_post_created(&promoted_post_event, &tx_id).await {
+                                error!("Failed to process promoted post created event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize promoted post created event: {}", e);
+                        }
+                    }
+                }
+                // Handle promoted post view confirmed event
+                else if event.event_type.ends_with("::PromotedPostViewConfirmedEvent") {
+                    match parse_json_event::<PromotedPostViewConfirmedEvent>(&event.data) {
+                        Ok(view_event) => {
+                            if let Err(e) = self.process_promoted_post_view_confirmed(&view_event, &tx_id).await {
+                                error!("Failed to process promoted post view confirmed event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize promoted post view confirmed event: {}", e);
+                        }
+                    }
+                }
+                // Handle promotion deactivated event
+                else if event.event_type.ends_with("::PromotionDeactivatedEvent") {
+                    match parse_json_event::<PromotionDeactivatedEvent>(&event.data) {
+                        Ok(deactivated_event) => {
+                            if let Err(e) = self.process_promotion_deactivated(&deactivated_event, &tx_id).await {
+                                error!("Failed to process promotion deactivated event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize promotion deactivated event: {}", e);
+                        }
+                    }
+                }
+                // Handle promotion status toggled event
+                else if event.event_type.ends_with("::PromotionStatusToggledEvent") {
+                    match parse_json_event::<PromotionStatusToggledEvent>(&event.data) {
+                        Ok(status_event) => {
+                            if let Err(e) = self.process_promotion_status_toggled(&status_event, &tx_id).await {
+                                error!("Failed to process promotion status toggled event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize promotion status toggled event: {}", e);
+                        }
+                    }
+                }
+                // Handle promotion funds withdrawn event
+                else if event.event_type.ends_with("::PromotionFundsWithdrawnEvent") {
+                    match parse_json_event::<PromotionFundsWithdrawnEvent>(&event.data) {
+                        Ok(withdrawn_event) => {
+                            if let Err(e) = self.process_promotion_funds_withdrawn(&withdrawn_event, &tx_id).await {
+                                error!("Failed to process promotion funds withdrawn event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize promotion funds withdrawn event: {}", e);
                         }
                     }
                 }
@@ -821,8 +1146,7 @@ async fn handle_reaction(db: &Arc<Database>, event: &MysEvent, transaction_id: &
     // Get a database connection
     let mut conn = db.get_connection().await?;
     
-    // TODO: MyIP marketplace permissions will be handled by marketplace events
-    // For now, allow all reactions - marketplace restrictions will be applied separately
+
     
     // Convert event to model
     let mut new_reaction = parsed_event.into_model()?;
@@ -880,9 +1204,6 @@ async fn handle_repost(db: &Arc<Database>, event: &MysEvent, transaction_id: &st
     // Get a database connection
     let mut conn = db.get_connection().await?;
     
-    // TODO: MyIP marketplace permissions will be handled by marketplace events
-    // For now, allow all reposts - marketplace restrictions will be applied separately
-    
     // Convert event to model
     let mut new_repost = parsed_event.into_model()?;
     
@@ -938,9 +1259,6 @@ async fn handle_tip(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) 
     
     // Get a database connection
     let mut conn = db.get_connection().await?;
-    
-    // TODO: MyIP marketplace permissions and revenue redirection will be handled by marketplace events
-    // For now, allow all tips - marketplace restrictions will be applied separately
     
     // Convert event to model
     let mut new_tip = parsed_event.into_model()?;

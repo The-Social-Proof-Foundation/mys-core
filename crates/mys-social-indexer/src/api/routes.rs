@@ -192,6 +192,18 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/posts/:id/reposts", get(get_post_reposts))
         .route("/posts/trending", get(get_trending_posts))
         
+        // Promotion endpoints
+        .route("/promotions", get(get_promoted_posts))
+        .route("/posts/:id/promotion", get(get_post_promotion))
+        .route("/promotions/:id/views", get(get_promotion_views))
+        .route("/promotions/:id/stats", get(get_promotion_stats))
+        
+        // TimescaleDB-optimized promotion analytics endpoints
+        .route("/promotions/:id/analytics/time-series", get(get_promotion_time_analytics))
+        .route("/promotions/:id/analytics/hourly", get(get_promotion_hourly_stats))
+        .route("/promotions/analytics/top-performing", get(get_top_performing_promotions))
+        .route("/promotions/analytics/spending-trends", get(get_promotion_spending_trends))
+        
         // PoC endpoints (using TimescaleDB)
         .route("/poc/badges", get(get_poc_badges))
         .route("/poc/badges/:id", get(get_poc_badge_by_id))
