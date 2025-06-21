@@ -25,9 +25,12 @@ platform, and ecosystem treasury.
 -  [Struct `AuctionFinalizedEvent`](#social_contracts_token_exchange_AuctionFinalizedEvent)
 -  [Struct `ConfigUpdatedEvent`](#social_contracts_token_exchange_ConfigUpdatedEvent)
 -  [Struct `TokensAddedEvent`](#social_contracts_token_exchange_TokensAddedEvent)
+-  [Struct `EmergencyKillSwitchEvent`](#social_contracts_token_exchange_EmergencyKillSwitchEvent)
 -  [Constants](#@Constants_0)
 -  [Function `init`](#social_contracts_token_exchange_init)
 -  [Function `update_exchange_config`](#social_contracts_token_exchange_update_exchange_config)
+-  [Function `toggle_emergency_kill_switch`](#social_contracts_token_exchange_toggle_emergency_kill_switch)
+-  [Function `is_trading_halted`](#social_contracts_token_exchange_is_trading_halted)
 -  [Function `check_post_viral_threshold`](#social_contracts_token_exchange_check_post_viral_threshold)
 -  [Function `check_profile_viral_threshold`](#social_contracts_token_exchange_check_profile_viral_threshold)
 -  [Function `start_post_auction`](#social_contracts_token_exchange_start_post_auction)
@@ -35,6 +38,11 @@ platform, and ecosystem treasury.
 -  [Function `contribute_to_auction`](#social_contracts_token_exchange_contribute_to_auction)
 -  [Function `is_auction_ended`](#social_contracts_token_exchange_is_auction_ended)
 -  [Function `finalize_auction`](#social_contracts_token_exchange_finalize_auction)
+-  [Function `update_token_poc_data`](#social_contracts_token_exchange_update_token_poc_data)
+-  [Function `calculate_poc_split`](#social_contracts_token_exchange_calculate_poc_split)
+-  [Function `apply_token_poc_redirection`](#social_contracts_token_exchange_apply_token_poc_redirection)
+-  [Function `distribute_creator_fee`](#social_contracts_token_exchange_distribute_creator_fee)
+-  [Function `distribute_creator_fee_from_pool`](#social_contracts_token_exchange_distribute_creator_fee_from_pool)
 -  [Function `buy_tokens`](#social_contracts_token_exchange_buy_tokens)
 -  [Function `buy_more_tokens`](#social_contracts_token_exchange_buy_more_tokens)
 -  [Function `sell_tokens`](#social_contracts_token_exchange_sell_tokens)
@@ -42,9 +50,16 @@ platform, and ecosystem treasury.
 -  [Function `calculate_buy_price`](#social_contracts_token_exchange_calculate_buy_price)
 -  [Function `calculate_sell_price`](#social_contracts_token_exchange_calculate_sell_price)
 -  [Function `get_token_info`](#social_contracts_token_exchange_get_token_info)
+-  [Function `token_exists`](#social_contracts_token_exchange_token_exists)
 -  [Function `get_token_owner`](#social_contracts_token_exchange_get_token_owner)
 -  [Function `get_pool_price`](#social_contracts_token_exchange_get_pool_price)
 -  [Function `get_user_balance`](#social_contracts_token_exchange_get_user_balance)
+-  [Function `get_poc_redirect_to`](#social_contracts_token_exchange_get_poc_redirect_to)
+-  [Function `get_poc_redirect_percentage`](#social_contracts_token_exchange_get_poc_redirect_percentage)
+-  [Function `has_poc_redirection`](#social_contracts_token_exchange_has_poc_redirection)
+-  [Function `get_pool_associated_id`](#social_contracts_token_exchange_get_pool_associated_id)
+-  [Function `set_poc_redirection`](#social_contracts_token_exchange_set_poc_redirection)
+-  [Function `clear_poc_redirection`](#social_contracts_token_exchange_clear_poc_redirection)
 -  [Function `registry_version`](#social_contracts_token_exchange_registry_version)
 -  [Function `borrow_registry_version_mut`](#social_contracts_token_exchange_borrow_registry_version_mut)
 -  [Function `pool_version`](#social_contracts_token_exchange_pool_version)
@@ -60,6 +75,7 @@ platform, and ecosystem treasury.
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
+<b>use</b> <a href="../mys/bls12381.md#mys_bls12381">mys::bls12381</a>;
 <b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
@@ -67,7 +83,9 @@ platform, and ecosystem treasury.
 <b>use</b> <a href="../mys/dynamic_field.md#mys_dynamic_field">mys::dynamic_field</a>;
 <b>use</b> <a href="../mys/dynamic_object_field.md#mys_dynamic_object_field">mys::dynamic_object_field</a>;
 <b>use</b> <a href="../mys/event.md#mys_event">mys::event</a>;
+<b>use</b> <a href="../mys/group_ops.md#mys_group_ops">mys::group_ops</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
+<b>use</b> <a href="../mys/hmac.md#mys_hmac">mys::hmac</a>;
 <b>use</b> <a href="../mys/math.md#mys_math">mys::math</a>;
 <b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
@@ -78,16 +96,23 @@ platform, and ecosystem treasury.
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
+<b>use</b> <a href="../seal/bf_hmac_encryption.md#seal_bf_hmac_encryption">seal::bf_hmac_encryption</a>;
+<b>use</b> <a href="../seal/gf256.md#seal_gf256">seal::gf256</a>;
+<b>use</b> <a href="../seal/hmac256ctr.md#seal_hmac256ctr">seal::hmac256ctr</a>;
+<b>use</b> <a href="../seal/kdf.md#seal_kdf">seal::kdf</a>;
+<b>use</b> <a href="../seal/key_server.md#seal_key_server">seal::key_server</a>;
+<b>use</b> <a href="../seal/polynomial.md#seal_polynomial">seal::polynomial</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
-<b>use</b> <a href="../social_contracts/my_ip.md#social_contracts_my_ip">social_contracts::my_ip</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
 <b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
+<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/hash.md#std_hash">std::hash</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
@@ -258,6 +283,12 @@ Global exchange configuration
 </dt>
 <dd>
 </dd>
+<dt>
+<code>trading_halted: bool</code>
+</dt>
+<dd>
+ Emergency kill switch - when true, all trading is halted
+</dd>
 </dl>
 
 
@@ -397,7 +428,7 @@ Information about a token
 Liquidity pool for a token
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a> <b>has</b> key
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a> <b>has</b> key, store
 </code></pre>
 
 
@@ -429,6 +460,18 @@ Liquidity pool for a token
 </dt>
 <dd>
  Mapping of holders' addresses to their token balances
+</dd>
+<dt>
+<code>poc_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+ PoC revenue redirection address (for post tokens only)
+</dd>
+<dt>
+<code>poc_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+ PoC revenue redirection percentage (for post tokens only)
 </dd>
 <dt>
 <code>version: u64</code>
@@ -1102,6 +1145,52 @@ Event emitted when tokens are purchased by someone who already has a social toke
 
 </details>
 
+<a name="social_contracts_token_exchange_EmergencyKillSwitchEvent"></a>
+
+## Struct `EmergencyKillSwitchEvent`
+
+Event emitted when emergency kill switch is toggled
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EmergencyKillSwitchEvent">EmergencyKillSwitchEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>admin: <b>address</b></code>
+</dt>
+<dd>
+ Admin who activated/deactivated the kill switch
+</dd>
+<dt>
+<code>trading_halted: bool</code>
+</dt>
+<dd>
+ New state of trading (true = halted, false = active)
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+ Timestamp of the action
+</dd>
+<dt>
+<code>reason: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+ Reason for the action (optional)
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -1397,6 +1486,16 @@ The token does not exist
 
 
 
+<a name="social_contracts_token_exchange_ETradingHalted"></a>
+
+Trading is halted by emergency kill switch
+
+
+<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>: u64 = 21;
+</code></pre>
+
+
+
 <a name="social_contracts_token_exchange_EViralThresholdNotMet"></a>
 
 Viral threshold not met
@@ -1591,6 +1690,7 @@ Initialize the token exchange system
             max_post_auction_duration: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MAX_POST_AUCTION_DURATION">MAX_POST_AUCTION_DURATION</a>,
             min_profile_auction_duration: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MIN_PROFILE_AUCTION_DURATION">MIN_PROFILE_AUCTION_DURATION</a>,
             max_profile_auction_duration: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MAX_PROFILE_AUCTION_DURATION">MAX_PROFILE_AUCTION_DURATION</a>,
+            trading_halted: <b>false</b>, // Trading is enabled by default
         }
     );
     // Create and share token registry
@@ -1708,6 +1808,71 @@ Update exchange configuration
 
 </details>
 
+<a name="social_contracts_token_exchange_toggle_emergency_kill_switch"></a>
+
+## Function `toggle_emergency_kill_switch`
+
+Emergency kill switch function - only callable by admin
+This function can immediately halt all trading on the platform
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_toggle_emergency_kill_switch">toggle_emergency_kill_switch</a>(_admin_cap: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeAdminCap">social_contracts::token_exchange::ExchangeAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, halt_trading: bool, reason: vector&lt;u8&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_toggle_emergency_kill_switch">toggle_emergency_kill_switch</a>(
+    _admin_cap: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeAdminCap">ExchangeAdminCap</a>,
+    config: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">ExchangeConfig</a>,
+    halt_trading: bool,
+    reason: vector&lt;u8&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    // Update the trading halted status
+    config.trading_halted = halt_trading;
+    // Emit event <b>for</b> audit trail
+    event::emit(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EmergencyKillSwitchEvent">EmergencyKillSwitchEvent</a> {
+        admin: tx_context::sender(ctx),
+        trading_halted: halt_trading,
+        timestamp: tx_context::epoch(ctx),
+        reason: string::utf8(reason),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_is_trading_halted"></a>
+
+## Function `is_trading_halted`
+
+Check if trading is currently halted
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_is_trading_halted">is_trading_halted</a>(config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_is_trading_halted">is_trading_halted</a>(config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">ExchangeConfig</a>): bool {
+    config.trading_halted
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_token_exchange_check_post_viral_threshold"></a>
 
 ## Function `check_post_viral_threshold`
@@ -1729,7 +1894,7 @@ Check if a post has reached the viral threshold
 ): (bool, u64) {
     // Calculate viral score based on <a href="../social_contracts/post.md#social_contracts_post">post</a> metrics
     <b>let</b> likes = <a href="../social_contracts/post.md#social_contracts_post_get_reaction_count">post::get_reaction_count</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) * <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_LIKES_WEIGHT">POST_LIKES_WEIGHT</a>;
-    <b>let</b> comments = <a href="../social_contracts/post.md#social_contracts_post_get_comment_count">post::get_comment_count</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) * <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_COMMENTS_WEIGHT">POST_COMMENTS_WEIGHT</a>;
+    <b>let</b> comments = <a href="../social_contracts/post.md#social_contracts_post_get_post_comment_count">post::get_post_comment_count</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) * <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_COMMENTS_WEIGHT">POST_COMMENTS_WEIGHT</a>;
     <b>let</b> tips = <a href="../social_contracts/post.md#social_contracts_post_get_tips_received">post::get_tips_received</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) * <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_TIPS_WEIGHT">POST_TIPS_WEIGHT</a>;
     <b>let</b> viral_score = likes + comments + tips;
     // Check <b>if</b> the score exceeds the threshold
@@ -1782,7 +1947,7 @@ Check if a profile has reached the viral threshold
 Start a pre-launch auction for a post
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_start_post_auction">start_post_auction</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, _symbol: vector&lt;u8&gt;, _name: vector&lt;u8&gt;, duration_hours: u64, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_start_post_auction">start_post_auction</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, _symbol: vector&lt;u8&gt;, _name: vector&lt;u8&gt;, duration_hours: u64, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1793,6 +1958,7 @@ Start a pre-launch auction for a post
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_start_post_auction">start_post_auction</a>(
     registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a>,
+    config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">ExchangeConfig</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
     _symbol: vector&lt;u8&gt;,
     _name: vector&lt;u8&gt;,
@@ -1800,8 +1966,10 @@ Start a pre-launch auction for a post
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <b>if</b> trading is halted
+    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>let</b> owner = <a href="../social_contracts/post.md#social_contracts_post_get_owner">post::get_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> owner = <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     // Verify caller is the <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
     <b>assert</b>!(tx_context::sender(ctx) == owner, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ENotAuthorized">ENotAuthorized</a>);
     // Check <b>if</b> an auction already exists <b>for</b> this <a href="../social_contracts/post.md#social_contracts_post">post</a>
@@ -1864,7 +2032,7 @@ Start a pre-launch auction for a post
 Start a pre-launch auction for a profile
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_start_profile_auction">start_profile_auction</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, _symbol: vector&lt;u8&gt;, _name: vector&lt;u8&gt;, duration_days: u64, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_start_profile_auction">start_profile_auction</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, _symbol: vector&lt;u8&gt;, _name: vector&lt;u8&gt;, duration_days: u64, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1875,6 +2043,7 @@ Start a pre-launch auction for a profile
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_start_profile_auction">start_profile_auction</a>(
     registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a>,
+    config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">ExchangeConfig</a>,
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &Profile,
     username_registry: &UsernameRegistry,
     _symbol: vector&lt;u8&gt;,
@@ -1883,6 +2052,8 @@ Start a pre-launch auction for a profile
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <b>if</b> trading is halted
+    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
     <b>let</b> profile_id = <a href="../social_contracts/profile.md#social_contracts_profile_get_id_address">profile::get_id_address</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>);
     <b>let</b> owner = <a href="../social_contracts/profile.md#social_contracts_profile_get_owner">profile::get_owner</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>);
     // Verify caller is the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> owner
@@ -1947,7 +2118,7 @@ Start a pre-launch auction for a profile
 Contribute MYS to an auction
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_contribute_to_auction">contribute_to_auction</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, auction_pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">social_contracts::token_exchange::AuctionPool</a>, payment: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_contribute_to_auction">contribute_to_auction</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, auction_pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">social_contracts::token_exchange::AuctionPool</a>, payment: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1958,11 +2129,14 @@ Contribute MYS to an auction
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_contribute_to_auction">contribute_to_auction</a>(
     registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a>,
+    config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">ExchangeConfig</a>,
     auction_pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">AuctionPool</a>,
     <b>mut</b> payment: Coin&lt;MYS&gt;,
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <b>if</b> trading is halted
+    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
     <b>let</b> contributor = tx_context::sender(ctx);
     // Verify auction is active
     <b>assert</b>!(auction_pool.info.status == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_ACTIVE">AUCTION_STATUS_ACTIVE</a>, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EAuctionNotActive">EAuctionNotActive</a>);
@@ -2072,6 +2246,8 @@ This function checks if the auction has ended and finalizes it by creating a tok
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <b>if</b> trading is halted (finalization creates tradeable tokens)
+    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
     // Check <b>if</b> auction <b>has</b> ended but status not updated
     <b>if</b> (auction_pool.info.status == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_ACTIVE">AUCTION_STATUS_ACTIVE</a> && <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_is_auction_ended">is_auction_ended</a>(&auction_pool.info, clock)) {
         // Update status to ended
@@ -2153,6 +2329,8 @@ This function checks if the auction has ended and finalizes it by creating a tok
         info: updated_token_info,
         mys_balance: balance::zero(),
         holders: table::new(ctx),
+        poc_redirect_to: option::none(),
+        poc_redirect_percentage: option::none(),
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     // Distribute tokens to contributors
@@ -2223,6 +2401,213 @@ This function checks if the auction has ended and finalizes it by creating a tok
 
 </details>
 
+<a name="social_contracts_token_exchange_update_token_poc_data"></a>
+
+## Function `update_token_poc_data`
+
+Update PoC redirection data for a token pool (called by PoC system)
+This function copies PoC data from a post into the corresponding token pool
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_update_token_poc_data">update_token_poc_data</a>(pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">social_contracts::token_exchange::TokenPool</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_update_token_poc_data">update_token_poc_data</a>(
+    pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
+    ctx: &<b>mut</b> TxContext
+) {
+    // Verify this is a <a href="../social_contracts/post.md#social_contracts_post">post</a> token pool
+    <b>assert</b>!(pool.info.token_type == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidTokenType">EInvalidTokenType</a>);
+    // Verify the <a href="../social_contracts/post.md#social_contracts_post">post</a> matches the token pool
+    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>assert</b>!(post_id == pool.info.associated_id, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidID">EInvalidID</a>);
+    // Verify caller is authorized (<a href="../social_contracts/post.md#social_contracts_post">post</a> owner)
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>assert</b>!(caller == <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ENotAuthorized">ENotAuthorized</a>);
+    // Copy PoC data from <a href="../social_contracts/post.md#social_contracts_post">post</a> to pool
+    pool.poc_redirect_to = <b>if</b> (option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))) {
+        option::some(*option::borrow(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)))
+    } <b>else</b> {
+        option::none()
+    };
+    pool.poc_redirect_percentage = <b>if</b> (option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">post::get_revenue_redirect_percentage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))) {
+        option::some(*option::borrow(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">post::get_revenue_redirect_percentage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)))
+    } <b>else</b> {
+        option::none()
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_calculate_poc_split"></a>
+
+## Function `calculate_poc_split`
+
+Calculate PoC revenue split - shared utility for consistent logic
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_calculate_poc_split">calculate_poc_split</a>(amount: u64, redirect_percentage: u64): (u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_calculate_poc_split">calculate_poc_split</a>(amount: u64, redirect_percentage: u64): (u64, u64) {
+    <b>let</b> redirected_amount = (amount * redirect_percentage) / 100;
+    <b>let</b> remaining_amount = amount - redirected_amount;
+    (redirected_amount, remaining_amount)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_apply_token_poc_redirection"></a>
+
+## Function `apply_token_poc_redirection`
+
+Apply PoC redirection to creator fees with consolidated logic
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_apply_token_poc_redirection">apply_token_poc_redirection</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">social_contracts::token_exchange::TokenPool</a>, amount: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): (u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_apply_token_poc_redirection">apply_token_poc_redirection</a>(
+    pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a>,
+    amount: u64,
+    _ctx: &<b>mut</b> TxContext
+): (u64, u64) {
+    <b>if</b> (<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_has_poc_redirection">has_poc_redirection</a>(pool)) {
+        <b>let</b> redirect_percentage = *option::borrow(&pool.poc_redirect_percentage);
+        // Use shared utility function <b>for</b> consistent calculation
+        <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_calculate_poc_split">calculate_poc_split</a>(amount, redirect_percentage)
+    } <b>else</b> {
+        (0, amount)
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_distribute_creator_fee"></a>
+
+## Function `distribute_creator_fee`
+
+Distribute creator fees with automatic PoC redirection
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_distribute_creator_fee">distribute_creator_fee</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">social_contracts::token_exchange::TokenPool</a>, creator_fee_amount: u64, creator_fee_coin: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_distribute_creator_fee">distribute_creator_fee</a>(
+    pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a>,
+    creator_fee_amount: u64,
+    creator_fee_coin: &<b>mut</b> Coin&lt;MYS&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>if</b> (creator_fee_amount == 0) {
+        <b>return</b>
+    };
+    <b>let</b> (redirected_amount, _remaining_amount) = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_apply_token_poc_redirection">apply_token_poc_redirection</a>(pool, creator_fee_amount, ctx);
+    <b>let</b> <b>mut</b> fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
+    <b>if</b> (redirected_amount &gt; 0) {
+        // Split the fee: redirected portion goes to original creator, remainder to <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
+        <b>let</b> redirected_fee = coin::split(&<b>mut</b> fee_coin, redirected_amount, ctx);
+        <b>let</b> redirect_to = *option::borrow(&pool.poc_redirect_to);
+        transfer::public_transfer(redirected_fee, redirect_to);
+        // Send remainder to current <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
+        <b>if</b> (coin::value(&fee_coin) &gt; 0) {
+            transfer::public_transfer(fee_coin, pool.info.owner);
+        } <b>else</b> {
+            coin::destroy_zero(fee_coin);
+        };
+    } <b>else</b> {
+        // No redirection - send full amount to current <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
+        transfer::public_transfer(fee_coin, pool.info.owner);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_distribute_creator_fee_from_pool"></a>
+
+## Function `distribute_creator_fee_from_pool`
+
+Distribute creator fees from pool balance with PoC redirection support
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_distribute_creator_fee_from_pool">distribute_creator_fee_from_pool</a>(pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">social_contracts::token_exchange::TokenPool</a>, creator_fee: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_distribute_creator_fee_from_pool">distribute_creator_fee_from_pool</a>(
+    pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a>,
+    creator_fee: u64,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>if</b> (creator_fee == 0) {
+        <b>return</b>
+    };
+    <b>let</b> (redirected_amount, _remaining_amount) = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_apply_token_poc_redirection">apply_token_poc_redirection</a>(pool, creator_fee, ctx);
+    <b>let</b> <b>mut</b> fee_coin = coin::from_balance(balance::split(&<b>mut</b> pool.mys_balance, creator_fee), ctx);
+    <b>if</b> (redirected_amount &gt; 0) {
+        // Split the fee: redirected portion goes to original creator, remainder to <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
+        <b>let</b> redirected_fee = coin::split(&<b>mut</b> fee_coin, redirected_amount, ctx);
+        <b>let</b> redirect_to = *option::borrow(&pool.poc_redirect_to);
+        transfer::public_transfer(redirected_fee, redirect_to);
+        // Send remainder to current <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
+        <b>if</b> (coin::value(&fee_coin) &gt; 0) {
+            transfer::public_transfer(fee_coin, pool.info.owner);
+        } <b>else</b> {
+            coin::destroy_zero(fee_coin);
+        };
+    } <b>else</b> {
+        // No redirection - send full amount to current <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
+        transfer::public_transfer(fee_coin, pool.info.owner);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_token_exchange_buy_tokens"></a>
 
 ## Function `buy_tokens`
@@ -2250,6 +2635,8 @@ This function handles buying tokens for first-time buyers of a specific token
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <b>if</b> trading is halted
+    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
     // Prevent self-trading <b>for</b> token owners
     <b>assert</b>!(buyer != pool.info.owner, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ESelfTrading">ESelfTrading</a>);
@@ -2271,12 +2658,11 @@ This function handles buying tokens for first-time buyers of a specific token
     <b>let</b> treasury_fee = fee_amount - creator_fee - platform_fee;
     // Calculate the net amount to the liquidity pool
     <b>let</b> net_amount = price - fee_amount;
-    // Extract payment and distribute fees directly
+    // Extract payment and distribute fees with PoC redirection support
     <b>if</b> (fee_amount &gt; 0) {
-        // Send creator fee
+        // Send creator fee with PoC redirection support
         <b>if</b> (creator_fee &gt; 0) {
-            <b>let</b> creator_fee_coin = coin::split(&<b>mut</b> payment, creator_fee, ctx);
-            transfer::public_transfer(creator_fee_coin, pool.info.owner);
+            <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_distribute_creator_fee">distribute_creator_fee</a>(pool, creator_fee, &<b>mut</b> payment, ctx);
         };
         // Send <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> fee - add to <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> treasury
         <b>if</b> (platform_fee &gt; 0) {
@@ -2377,6 +2763,8 @@ This function allows users to add to their existing token holdings using MYS Coi
     social_token: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_SocialToken">SocialToken</a>,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <b>if</b> trading is halted
+    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
     // Prevent self-trading <b>for</b> token owners
     <b>assert</b>!(buyer != pool.info.owner, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ESelfTrading">ESelfTrading</a>);
@@ -2400,12 +2788,11 @@ This function allows users to add to their existing token holdings using MYS Coi
     <b>let</b> treasury_fee = fee_amount - creator_fee - platform_fee;
     // Calculate the net amount to the liquidity pool
     <b>let</b> net_amount = price - fee_amount;
-    // Extract payment and distribute fees directly
+    // Extract payment and distribute fees with PoC redirection support
     <b>if</b> (fee_amount &gt; 0) {
-        // Send creator fee
+        // Send creator fee with PoC redirection support
         <b>if</b> (creator_fee &gt; 0) {
-            <b>let</b> creator_fee_coin = coin::split(&<b>mut</b> payment, creator_fee, ctx);
-            transfer::public_transfer(creator_fee_coin, pool.info.owner);
+            <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_distribute_creator_fee">distribute_creator_fee</a>(pool, creator_fee, &<b>mut</b> payment, ctx);
         };
         // Send <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> fee - add to <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> treasury
         <b>if</b> (platform_fee &gt; 0) {
@@ -2500,6 +2887,8 @@ Sell tokens back to the pool
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <b>if</b> trading is halted
+    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
     <b>let</b> seller = tx_context::sender(ctx);
     <b>let</b> pool_id = object::uid_to_address(&pool.id);
     // Verify social token matches the pool
@@ -2530,12 +2919,11 @@ Sell tokens back to the pool
     pool.info.circulating_supply = pool.info.circulating_supply - amount;
     // Extract net refund from pool
     <b>let</b> refund_balance = balance::split(&<b>mut</b> pool.mys_balance, net_refund);
-    // Process and distribute fees
+    // Process and distribute fees with PoC redirection support
     <b>if</b> (fee_amount &gt; 0) {
-        // Send fee to creator
+        // Send fee to creator with PoC redirection support
         <b>if</b> (creator_fee &gt; 0) {
-            <b>let</b> creator_fee_coin = coin::from_balance(balance::split(&<b>mut</b> pool.mys_balance, creator_fee), ctx);
-            transfer::public_transfer(creator_fee_coin, pool.info.owner);
+            <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_distribute_creator_fee_from_pool">distribute_creator_fee_from_pool</a>(pool, creator_fee, ctx);
         };
         // Send fee to <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> - add to <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> treasury
         <b>if</b> (platform_fee &gt; 0) {
@@ -2728,6 +3116,31 @@ Get token info from registry
 
 </details>
 
+<a name="social_contracts_token_exchange_token_exists"></a>
+
+## Function `token_exists`
+
+Check if a token exists in the registry
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_token_exists">token_exists</a>(registry: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, id: <b>address</b>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_token_exists">token_exists</a>(registry: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a>, id: <b>address</b>): bool {
+    table::contains(&registry.tokens, id)
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_token_exchange_get_token_owner"></a>
 
 ## Function `get_token_owner`
@@ -2805,6 +3218,162 @@ Get user's token balance
     } <b>else</b> {
         0
     }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_get_poc_redirect_to"></a>
+
+## Function `get_poc_redirect_to`
+
+Get PoC redirection data from token pool
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_get_poc_redirect_to">get_poc_redirect_to</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">social_contracts::token_exchange::TokenPool</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_get_poc_redirect_to">get_poc_redirect_to</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a>): &Option&lt;<b>address</b>&gt; {
+    &pool.poc_redirect_to
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_get_poc_redirect_percentage"></a>
+
+## Function `get_poc_redirect_percentage`
+
+Get PoC redirection percentage from token pool
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_get_poc_redirect_percentage">get_poc_redirect_percentage</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">social_contracts::token_exchange::TokenPool</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_get_poc_redirect_percentage">get_poc_redirect_percentage</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a>): &Option&lt;u64&gt; {
+    &pool.poc_redirect_percentage
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_has_poc_redirection"></a>
+
+## Function `has_poc_redirection`
+
+Check if token pool has PoC redirection configured
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_has_poc_redirection">has_poc_redirection</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">social_contracts::token_exchange::TokenPool</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_has_poc_redirection">has_poc_redirection</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a>): bool {
+    option::is_some(&pool.poc_redirect_to) && option::is_some(&pool.poc_redirect_percentage)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_get_pool_associated_id"></a>
+
+## Function `get_pool_associated_id`
+
+Get the associated ID (post/profile ID) from a token pool
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_get_pool_associated_id">get_pool_associated_id</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">social_contracts::token_exchange::TokenPool</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_get_pool_associated_id">get_pool_associated_id</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a>): <b>address</b> {
+    pool.info.associated_id
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_set_poc_redirection"></a>
+
+## Function `set_poc_redirection`
+
+Set PoC redirection data for a token pool (called by PoC system)
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_set_poc_redirection">set_poc_redirection</a>(pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">social_contracts::token_exchange::TokenPool</a>, redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_set_poc_redirection">set_poc_redirection</a>(
+    pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a>,
+    redirect_to: Option&lt;<b>address</b>&gt;,
+    redirect_percentage: Option&lt;u64&gt;
+) {
+    pool.poc_redirect_to = redirect_to;
+    pool.poc_redirect_percentage = redirect_percentage;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_clear_poc_redirection"></a>
+
+## Function `clear_poc_redirection`
+
+Clear PoC redirection data from a token pool (called by PoC system)
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_clear_poc_redirection">clear_poc_redirection</a>(pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">social_contracts::token_exchange::TokenPool</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_clear_poc_redirection">clear_poc_redirection</a>(pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a>) {
+    pool.poc_redirect_to = option::none();
+    pool.poc_redirect_percentage = option::none();
 }
 </code></pre>
 

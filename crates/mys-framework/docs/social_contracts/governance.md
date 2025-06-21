@@ -18,12 +18,14 @@ Implements proposal submission, voting, and execution processes
 -  [Struct `ProposalSubmittedEvent`](#social_contracts_governance_ProposalSubmittedEvent)
 -  [Struct `DelegateVoteEvent`](#social_contracts_governance_DelegateVoteEvent)
 -  [Struct `CommunityVoteEvent`](#social_contracts_governance_CommunityVoteEvent)
+-  [Struct `AnonymousVoteEvent`](#social_contracts_governance_AnonymousVoteEvent)
 -  [Struct `ProposalApprovedForVotingEvent`](#social_contracts_governance_ProposalApprovedForVotingEvent)
 -  [Struct `ProposalRejectedEvent`](#social_contracts_governance_ProposalRejectedEvent)
 -  [Struct `ProposalApprovedEvent`](#social_contracts_governance_ProposalApprovedEvent)
 -  [Struct `ProposalRejectedByCommunityEvent`](#social_contracts_governance_ProposalRejectedByCommunityEvent)
 -  [Struct `ProposalImplementedEvent`](#social_contracts_governance_ProposalImplementedEvent)
 -  [Struct `RewardsDistributedEvent`](#social_contracts_governance_RewardsDistributedEvent)
+-  [Struct `VoteDecryptionFailedEvent`](#social_contracts_governance_VoteDecryptionFailedEvent)
 -  [Struct `ProposalRescindedEvent`](#social_contracts_governance_ProposalRescindedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `init`](#social_contracts_governance_init)
@@ -42,7 +44,9 @@ Implements proposal submission, voting, and execution processes
 -  [Function `move_to_community_voting_by_id`](#social_contracts_governance_move_to_community_voting_by_id)
 -  [Function `reject_proposal_by_id`](#social_contracts_governance_reject_proposal_by_id)
 -  [Function `community_vote_on_proposal`](#social_contracts_governance_community_vote_on_proposal)
+-  [Function `community_vote_anonymous`](#social_contracts_governance_community_vote_anonymous)
 -  [Function `finalize_proposal`](#social_contracts_governance_finalize_proposal)
+-  [Function `finalize_proposal_anonymous`](#social_contracts_governance_finalize_proposal_anonymous)
 -  [Function `distribute_rewards`](#social_contracts_governance_distribute_rewards)
 -  [Function `mark_proposal_implemented`](#social_contracts_governance_mark_proposal_implemented)
 -  [Function `get_proposals_by_type`](#social_contracts_governance_get_proposals_by_type)
@@ -65,13 +69,18 @@ Implements proposal submission, voting, and execution processes
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
+<b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
+<b>use</b> <a href="../mys/bls12381.md#mys_bls12381">mys::bls12381</a>;
+<b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
 <b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
 <b>use</b> <a href="../mys/dynamic_field.md#mys_dynamic_field">mys::dynamic_field</a>;
 <b>use</b> <a href="../mys/dynamic_object_field.md#mys_dynamic_object_field">mys::dynamic_object_field</a>;
 <b>use</b> <a href="../mys/event.md#mys_event">mys::event</a>;
+<b>use</b> <a href="../mys/group_ops.md#mys_group_ops">mys::group_ops</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
+<b>use</b> <a href="../mys/hmac.md#mys_hmac">mys::hmac</a>;
 <b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/package.md#mys_package">mys::package</a>;
@@ -81,11 +90,19 @@ Implements proposal submission, voting, and execution processes
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
+<b>use</b> <a href="../seal/bf_hmac_encryption.md#seal_bf_hmac_encryption">seal::bf_hmac_encryption</a>;
+<b>use</b> <a href="../seal/gf256.md#seal_gf256">seal::gf256</a>;
+<b>use</b> <a href="../seal/hmac256ctr.md#seal_hmac256ctr">seal::hmac256ctr</a>;
+<b>use</b> <a href="../seal/kdf.md#seal_kdf">seal::kdf</a>;
+<b>use</b> <a href="../seal/key_server.md#seal_key_server">seal::key_server</a>;
+<b>use</b> <a href="../seal/polynomial.md#seal_polynomial">seal::polynomial</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
+<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/hash.md#std_hash">std::hash</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
@@ -770,6 +787,48 @@ Event emitted when a community member votes on a proposal
 
 </details>
 
+<a name="social_contracts_governance_AnonymousVoteEvent"></a>
+
+## Struct `AnonymousVoteEvent`
+
+Event emitted when an anonymous vote is submitted
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_AnonymousVoteEvent">AnonymousVoteEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>proposal_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>voter: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>vote_time: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>encrypted_vote_data: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_governance_ProposalApprovedForVotingEvent"></a>
 
 ## Struct `ProposalApprovedForVotingEvent`
@@ -1002,6 +1061,48 @@ Event emitted when rewards are distributed to voters
 
 </details>
 
+<a name="social_contracts_governance_VoteDecryptionFailedEvent"></a>
+
+## Struct `VoteDecryptionFailedEvent`
+
+Event emitted when vote decryption fails
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_VoteDecryptionFailedEvent">VoteDecryptionFailedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>proposal_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>voter: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>failure_reason: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_governance_ProposalRescindedEvent"></a>
 
 ## Struct `ProposalRescindedEvent`
@@ -1049,6 +1150,15 @@ Event emitted when a proposal is rescinded by its submitter
 ## Constants
 
 
+<a name="social_contracts_governance_ANON_VOTERS_FIELD"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ANON_VOTERS_FIELD">ANON_VOTERS_FIELD</a>: vector&lt;u8&gt; = vector[97, 110, 111, 110, 95, 118, 111, 116, 101, 114, 115];
+</code></pre>
+
+
+
 <a name="social_contracts_governance_DELEGATE_REASONS_FIELD"></a>
 
 
@@ -1090,6 +1200,15 @@ Event emitted when a proposal is rescinded by its submitter
 
 
 <pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EAlreadyVoted">EAlreadyVoted</a>: u64 = 8;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_EDelegateAnonNotAllowed"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EDelegateAnonNotAllowed">EDelegateAnonNotAllowed</a>: u64 = 18;
 </code></pre>
 
 
@@ -1144,6 +1263,15 @@ Event emitted when a proposal is rescinded by its submitter
 
 
 <pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidVoteCount">EInvalidVoteCount</a>: u64 = 14;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_ENCRYPTED_VOTES_FIELD"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ENCRYPTED_VOTES_FIELD">ENCRYPTED_VOTES_FIELD</a>: vector&lt;u8&gt; = vector[101, 110, 99, 114, 121, 112, 116, 101, 100, 95, 118, 111, 116, 101, 115];
 </code></pre>
 
 
@@ -2631,6 +2759,67 @@ Users can cast multiple votes by paying a quadratically increasing cost
 
 </details>
 
+<a name="social_contracts_governance_community_vote_anonymous"></a>
+
+## Function `community_vote_anonymous`
+
+Submit an anonymous encrypted vote on a proposal
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous">community_vote_anonymous</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, encrypted_vote: <a href="../seal/bf_hmac_encryption.md#seal_bf_hmac_encryption_EncryptedObject">seal::bf_hmac_encryption::EncryptedObject</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous">community_vote_anonymous</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal_id: ID,
+    encrypted_vote: EncryptedObject,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> current_epoch = tx_context::epoch(ctx);
+    <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
+    <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
+    <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_ENotVotingPhase">ENotVotingPhase</a>);
+    <b>assert</b>!(current_epoch &lt;= proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodEnded">EVotingPeriodEnded</a>);
+    <b>assert</b>!(!table::contains(&registry.delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_EDelegateAnonNotAllowed">EDelegateAnonNotAllowed</a>);
+    <b>let</b> voted_community: &<b>mut</b> VecSet&lt;<b>address</b>&gt; = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTED_COMMUNITY_FIELD">VOTED_COMMUNITY_FIELD</a>);
+    <b>assert</b>!(!vec_set::contains(voted_community, &caller), <a href="../social_contracts/governance.md#social_contracts_governance_EAlreadyVoted">EAlreadyVoted</a>);
+    vec_set::insert(voted_community, caller);
+    <b>if</b> (!dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ENCRYPTED_VOTES_FIELD">ENCRYPTED_VOTES_FIELD</a>)) {
+        <b>let</b> tbl = table::new&lt;<b>address</b>, EncryptedObject&gt;(ctx);
+        dynamic_field::add(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ENCRYPTED_VOTES_FIELD">ENCRYPTED_VOTES_FIELD</a>, tbl);
+    };
+    <b>let</b> enc_tbl: &<b>mut</b> Table&lt;<b>address</b>, EncryptedObject&gt; = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ENCRYPTED_VOTES_FIELD">ENCRYPTED_VOTES_FIELD</a>);
+    table::add(enc_tbl, caller, encrypted_vote);
+    <b>if</b> (!dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ANON_VOTERS_FIELD">ANON_VOTERS_FIELD</a>)) {
+        <b>let</b> set = vec_set::empty&lt;<b>address</b>&gt;();
+        dynamic_field::add(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ANON_VOTERS_FIELD">ANON_VOTERS_FIELD</a>, set);
+    };
+    <b>let</b> anon_set: &<b>mut</b> VecSet&lt;<b>address</b>&gt; = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ANON_VOTERS_FIELD">ANON_VOTERS_FIELD</a>);
+    vec_set::insert(anon_set, caller);
+    // Serialize the entire EncryptedObject <b>for</b> indexer storage
+    <b>let</b> <b>mut</b> serialized_vote = vector::empty&lt;u8&gt;();
+    serialized_vote.append(*encrypted_vote.blob());
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_AnonymousVoteEvent">AnonymousVoteEvent</a> {
+        proposal_id,
+        voter: caller,
+        vote_time: current_time,
+        encrypted_vote_data: serialized_vote, // Emit encrypted blob <b>for</b> indexer
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_governance_finalize_proposal"></a>
 
 ## Function `finalize_proposal`
@@ -2752,6 +2941,133 @@ Finalize a proposal after the voting period ends
             balance::destroy_zero(balance::withdraw_all(&<b>mut</b> proposal.reward_pool));
         };
     }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_finalize_proposal_anonymous"></a>
+
+## Function `finalize_proposal_anonymous`
+
+Finalize a proposal with anonymous votes by decrypting them first
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal_anonymous">finalize_proposal_anonymous</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, keys: &vector&lt;<a href="../seal/bf_hmac_encryption.md#seal_bf_hmac_encryption_VerifiedDerivedKey">seal::bf_hmac_encryption::VerifiedDerivedKey</a>&gt;, public_keys: &vector&lt;<a href="../seal/bf_hmac_encryption.md#seal_bf_hmac_encryption_PublicKey">seal::bf_hmac_encryption::PublicKey</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal_anonymous">finalize_proposal_anonymous</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal_id: ID,
+    keys: &vector&lt;VerifiedDerivedKey&gt;,
+    public_keys: &vector&lt;PublicKey&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_epoch = tx_context::epoch(ctx);
+    <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
+    // First, collect all the decrypted votes
+    <b>let</b> <b>mut</b> votes_for = vector::empty&lt;<b>address</b>&gt;();
+    <b>let</b> <b>mut</b> votes_against = vector::empty&lt;<b>address</b>&gt;();
+    <b>let</b> <b>mut</b> invalid_votes = vector::empty&lt;<b>address</b>&gt;(); // Track invalid votes
+    {
+        <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
+        <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+        <b>assert</b>!(current_epoch &gt; proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodNotEnded">EVotingPeriodNotEnded</a>);
+        <b>if</b> (dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ENCRYPTED_VOTES_FIELD">ENCRYPTED_VOTES_FIELD</a>)) {
+            <b>let</b> votes_tbl: &Table&lt;<b>address</b>, EncryptedObject&gt; = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ENCRYPTED_VOTES_FIELD">ENCRYPTED_VOTES_FIELD</a>);
+            <b>let</b> anon_set: &VecSet&lt;<b>address</b>&gt; = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ANON_VOTERS_FIELD">ANON_VOTERS_FIELD</a>);
+            <b>let</b> voters_vec = vec_set::into_keys(*anon_set);
+            <b>let</b> <b>mut</b> i = 0;
+            <b>let</b> len = vector::length(&voters_vec);
+            // Decrypt all votes and collect results with comprehensive error handling
+            <b>while</b> (i &lt; len) {
+                <b>let</b> addr = *vector::borrow(&voters_vec, i);
+                <b>let</b> enc = table::borrow(votes_tbl, addr);
+                <b>let</b> dec = decrypt(enc, keys, public_keys);
+                <b>if</b> (option::is_some(&dec)) {
+                    <b>let</b> b = option::borrow(&dec);
+                    // Validate vote format: must be exactly 1 byte with value 0 or 1
+                    <b>if</b> (vector::length(b) == 1) {
+                        <b>let</b> vote_value = *vector::borrow(b, 0);
+                        <b>if</b> (vote_value == 1) {
+                            vector::push_back(&<b>mut</b> votes_for, addr);
+                        } <b>else</b> <b>if</b> (vote_value == 0) {
+                            vector::push_back(&<b>mut</b> votes_against, addr);
+                        } <b>else</b> {
+                            // Invalid vote value (not 0 or 1) - possible attack
+                            vector::push_back(&<b>mut</b> invalid_votes, addr);
+                            event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_VoteDecryptionFailedEvent">VoteDecryptionFailedEvent</a> {
+                                proposal_id,
+                                voter: addr,
+                                failure_reason: string::utf8(b"Invalid vote value - not 0 or 1"),
+                                timestamp: tx_context::epoch_timestamp_ms(ctx),
+                            });
+                        }
+                    } <b>else</b> {
+                        // Invalid vote format (wrong length) - possible corruption
+                        vector::push_back(&<b>mut</b> invalid_votes, addr);
+                        event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_VoteDecryptionFailedEvent">VoteDecryptionFailedEvent</a> {
+                            proposal_id,
+                            voter: addr,
+                            failure_reason: string::utf8(b"Invalid vote format - wrong byte length"),
+                            timestamp: tx_context::epoch_timestamp_ms(ctx),
+                        });
+                    }
+                } <b>else</b> {
+                    // Failed to decrypt - could be malicious, corrupted, or wrong keys
+                    vector::push_back(&<b>mut</b> invalid_votes, addr);
+                    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_VoteDecryptionFailedEvent">VoteDecryptionFailedEvent</a> {
+                        proposal_id,
+                        voter: addr,
+                        failure_reason: string::utf8(b"Decryption failed - invalid keys or corrupted data"),
+                        timestamp: tx_context::epoch_timestamp_ms(ctx),
+                    });
+                };
+                i = i + 1;
+            };
+            vector::destroy_empty(voters_vec);
+        };
+    };
+    // Log invalid votes <b>for</b> transparency but don't fail the entire process
+    // In production, you might want to emit events <b>for</b> invalid votes
+    vector::destroy_empty(invalid_votes);
+    // Now apply all the valid votes
+    {
+        <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
+        // Process votes <b>for</b>
+        <b>let</b> <b>mut</b> i = 0;
+        <b>let</b> len = vector::length(&votes_for);
+        <b>while</b> (i &lt; len) {
+            <b>let</b> addr = *vector::borrow(&votes_for, i);
+            proposal.community_votes_for = proposal.community_votes_for + 1;
+            <b>let</b> voted_for: &<b>mut</b> VecSet&lt;<b>address</b>&gt; = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTED_FOR_FIELD">VOTED_FOR_FIELD</a>);
+            vec_set::insert(voted_for, addr);
+            i = i + 1;
+        };
+        // Process votes against
+        <b>let</b> <b>mut</b> i = 0;
+        <b>let</b> len = vector::length(&votes_against);
+        <b>while</b> (i &lt; len) {
+            <b>let</b> addr = *vector::borrow(&votes_against, i);
+            proposal.community_votes_against = proposal.community_votes_against + 1;
+            <b>let</b> voted_against: &<b>mut</b> VecSet&lt;<b>address</b>&gt; = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTED_AGAINST_FIELD">VOTED_AGAINST_FIELD</a>);
+            vec_set::insert(voted_against, addr);
+            i = i + 1;
+        };
+    };
+    // Clean up temporary vectors
+    vector::destroy_empty(votes_for);
+    vector::destroy_empty(votes_against);
+    // All encrypted votes processed
+    <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal">finalize_proposal</a>(registry, proposal_id, ctx);
 }
 </code></pre>
 

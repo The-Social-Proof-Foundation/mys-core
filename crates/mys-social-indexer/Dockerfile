@@ -45,7 +45,7 @@ RUN mkdir -p /app/data && chown -R appuser:appuser /app
 
 # Copy binary and migrations
 COPY --from=builder --chown=appuser:appuser /app/target/release/mys-social-indexer /app/
-COPY --from=builder --chown=appuser:appuser /app/crates/mys-social-indexer/migrations /app/migrations
+COPY --from=builder --chown=appuser:appuser /app/migrations /app/migrations
 
 # Switch to app user
 USER appuser
