@@ -119,6 +119,7 @@ pub async fn start_network_cluster() -> NetworkCluster {
         prom_host: "127.0.0.1".to_owned(),
         prom_port: get_available_port(),
         skip_migration_consistency_check: false,
+        social_indexer_url: "http://localhost:8080".to_owned(),
     };
     let data_ingestion_path = tempfile::tempdir().unwrap();
     let db_url = graphql_connection_config.db_url.clone();
@@ -167,6 +168,7 @@ pub async fn serve_executor(
         prom_host: "127.0.0.1".to_owned(),
         prom_port: get_available_port(),
         skip_migration_consistency_check: false,
+        social_indexer_url: "http://localhost:8080".to_owned(),
     };
     let db_url = graphql_connection_config.db_url.clone();
     // Creates a cancellation token and adds this to the ExecutorCluster, so that we can send a
