@@ -426,7 +426,7 @@ SELECT add_continuous_aggregate_policy('poc_daily_stats',
 CREATE MATERIALIZED VIEW IF NOT EXISTS poc_hourly_stats
 WITH (timescaledb.continuous) AS
 SELECT 
-    time_bucket('1 hour', time) AS hour,
+    time_bucket('1 hour', pb.time) AS hour,
     COUNT(*) FILTER (WHERE NOT revoked) AS badges_issued_hourly,
     AVG(highest_similarity_score) FILTER (WHERE similarity_detected) AS avg_similarity_score
 FROM poc_badges pb
