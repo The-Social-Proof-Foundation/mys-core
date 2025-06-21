@@ -137,9 +137,10 @@ FROM subscription_revenue
 GROUP BY time_bucket('1 day', time), service_id, to_address, revenue_type
 WITH NO DATA;
 
--- Enable automatic refresh
+-- Enable automatic refresh (window: 3 days - 1 hour = ~71 hours, chunk: 7 days = 168 hours)
+-- Fix: Make refresh window larger than chunk interval
 SELECT add_continuous_aggregate_policy('subscription_daily_revenue',
-    start_offset => INTERVAL '3 days',
+    start_offset => INTERVAL '8 days',
     end_offset => INTERVAL '1 hour',
     schedule_interval => INTERVAL '1 hour');
 
@@ -156,9 +157,9 @@ FROM profile_subscriptions
 GROUP BY time_bucket('1 day', time), service_id
 WITH NO DATA;
 
--- Enable automatic refresh
+-- Enable automatic refresh (window must be > 14 days for profile_subscriptions chunk interval)
 SELECT add_continuous_aggregate_policy('subscription_daily_metrics',
-    start_offset => INTERVAL '3 days',
+    start_offset => INTERVAL '15 days',
     end_offset => INTERVAL '1 hour',
     schedule_interval => INTERVAL '1 hour');
 
@@ -197,11 +198,11 @@ FROM profile_subscriptions
 GROUP BY time_bucket('1 hour', time), service_id
 WITH NO DATA;
 
--- Enable automatic refresh for health metrics
+-- Enable automatic refresh for health metrics (window must be > 14 days for profile_subscriptions)
 SELECT add_continuous_aggregate_policy('subscription_health_metrics',
-    start_offset => INTERVAL '2 hours',
-    end_offset => INTERVAL '30 minutes',
-    schedule_interval => INTERVAL '30 minutes');
+    start_offset => INTERVAL '15 days',
+    end_offset => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '1 hour');
 
 -- Churn analysis aggregate
 CREATE MATERIALIZED VIEW subscription_churn_analysis
@@ -217,9 +218,9 @@ FROM profile_subscriptions
 GROUP BY time_bucket('1 day', time), service_id
 WITH NO DATA;
 
--- Enable automatic refresh for churn analysis
+-- Enable automatic refresh for churn analysis (window must be > 14 days for profile_subscriptions)
 SELECT add_continuous_aggregate_policy('subscription_churn_analysis',
-    start_offset => INTERVAL '2 days',
+    start_offset => INTERVAL '15 days',
     end_offset => INTERVAL '1 hour',
     schedule_interval => INTERVAL '2 hours');
 

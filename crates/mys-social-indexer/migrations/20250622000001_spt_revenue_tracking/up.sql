@@ -26,8 +26,8 @@ CREATE TABLE spt_revenue (
     transaction_id VARCHAR NOT NULL
 );
 
--- Convert to TimescaleDB hypertable with 6-hour chunks for real-time SPT analytics
-SELECT create_hypertable('spt_revenue', 'time', chunk_time_interval => INTERVAL '6 hours');
+-- Convert to TimescaleDB hypertable with 1-hour chunks for real-time SPT analytics
+SELECT create_hypertable('spt_revenue', 'time', chunk_time_interval => INTERVAL '1 hour');
 
 -- Optimized indexes for SPT revenue queries
 CREATE INDEX idx_spt_revenue_time_pool ON spt_revenue (time DESC, pool_id);
@@ -57,8 +57,8 @@ CREATE TABLE unified_revenue (
     transaction_id VARCHAR NOT NULL
 );
 
--- Convert to TimescaleDB hypertable with 3-hour chunks for unified analytics
-SELECT create_hypertable('unified_revenue', 'time', chunk_time_interval => INTERVAL '3 hours');
+-- Convert to TimescaleDB hypertable with 1-hour chunks for unified analytics
+SELECT create_hypertable('unified_revenue', 'time', chunk_time_interval => INTERVAL '1 hour');
 
 -- Comprehensive indexes for unified revenue queries
 CREATE INDEX idx_unified_revenue_time_source ON unified_revenue (time DESC, revenue_source);
@@ -89,7 +89,7 @@ FROM unified_revenue
 GROUP BY time_bucket('1 hour', time), revenue_source, revenue_type, creator_address, platform_address
 WITH NO DATA;
 
--- Enable real-time refresh (every 5 minutes)
+-- Enable real-time refresh (window must be > 1 hour for unified_revenue chunk interval, using 3h for safety)
 SELECT add_continuous_aggregate_policy('revenue_hourly_summary',
     start_offset => INTERVAL '3 hours',
     end_offset => INTERVAL '5 minutes',
@@ -162,9 +162,9 @@ FROM unified_revenue
 GROUP BY time_bucket('5 minutes', time), revenue_source
 WITH NO DATA;
 
--- Enable real-time refresh (every minute)
+-- Enable real-time refresh (window must be > 1 hour for unified_revenue chunk interval, using 3h for safety)
 SELECT add_continuous_aggregate_policy('revenue_realtime_metrics',
-    start_offset => INTERVAL '1 hour',
+    start_offset => INTERVAL '3 hours',
     end_offset => INTERVAL '1 minute',
     schedule_interval => INTERVAL '1 minute');
 
@@ -195,9 +195,9 @@ FROM spt_revenue
 GROUP BY time_bucket('1 hour', time), pool_id, creator_address, transaction_type
 WITH NO DATA;
 
--- Enable real-time refresh for SPT analytics
+-- Enable real-time refresh for SPT analytics (window must be > 1 hour for spt_revenue chunk interval, using 3h for safety)
 SELECT add_continuous_aggregate_policy('spt_hourly_analytics',
-    start_offset => INTERVAL '6 hours',
+    start_offset => INTERVAL '3 hours',
     end_offset => INTERVAL '5 minutes',
     schedule_interval => INTERVAL '5 minutes');
 

@@ -53,10 +53,10 @@ BEFORE INSERT OR UPDATE ON anonymous_votes
 FOR EACH ROW
 EXECUTE FUNCTION update_anonymous_vote_time();
 
--- Create hypertable with 7-day chunks (frequent during voting periods)
+-- Create hypertable with 1-day chunks (frequent during voting periods)
 SELECT create_hypertable('anonymous_votes', 'time', if_not_exists => TRUE,
                           create_default_indexes => FALSE,
-                          chunk_time_interval => INTERVAL '7 days');
+                          chunk_time_interval => INTERVAL '1 day');
 
 -- Add primary key including time
 ALTER TABLE anonymous_votes ADD PRIMARY KEY (id, time);
