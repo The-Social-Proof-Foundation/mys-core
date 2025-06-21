@@ -85,15 +85,15 @@ WITH (timescaledb.continuous) AS
 SELECT 
     time_bucket('1 hour', time) AS hour,
     revenue_source,
-    revenue_type,
-    creator_address,
-    platform_address,
     SUM(amount) AS total_revenue,
     COUNT(*) AS transaction_count,
     COUNT(DISTINCT payer_address) AS unique_payers,
-    AVG(amount) AS avg_transaction_amount
+    COUNT(DISTINCT creator_address) AS unique_creators,
+    AVG(amount) AS avg_transaction_amount,
+    MAX(amount) AS max_transaction,
+    MIN(amount) AS min_transaction
 FROM unified_revenue
-GROUP BY time_bucket('1 hour', time), revenue_source, revenue_type, creator_address, platform_address
+GROUP BY time_bucket('1 hour', time), revenue_source
 WITH NO DATA;
 
 SELECT add_continuous_aggregate_policy('revenue_hourly_summary',
