@@ -1,5 +1,5 @@
 # Build application
-FROM rust:1.85-slim-bookworm AS builder
+FROM rust:1.81-bullseye AS builder
 ARG PROFILE=release
 ARG GIT_REVISION
 ENV GIT_REVISION=$GIT_REVISION
