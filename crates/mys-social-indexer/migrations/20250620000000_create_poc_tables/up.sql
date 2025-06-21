@@ -422,16 +422,15 @@ SELECT add_continuous_aggregate_policy('poc_daily_stats',
 -- 10. CREATE ADDITIONAL CONTINUOUS AGGREGATES FOR ANALYTICS
 -- ============================================================================
 
--- Create hourly PoC stats for real-time monitoring
+-- Create hourly PoC stats for real-time monitoring (badges only)
 CREATE MATERIALIZED VIEW IF NOT EXISTS poc_hourly_stats
 WITH (timescaledb.continuous) AS
 SELECT 
-    time_bucket('1 hour', pb.time) AS hour,
+    time_bucket('1 hour', time) AS hour,
     COUNT(*) FILTER (WHERE NOT revoked) AS badges_issued_hourly,
-    AVG(highest_similarity_score) FILTER (WHERE similarity_detected) AS avg_similarity_score
-FROM poc_badges pb
-LEFT JOIN poc_analysis_results par ON pb.post_id = par.post_id
-GROUP BY time_bucket('1 hour', pb.time)
+    COUNT(*) AS total_badges
+FROM poc_badges
+GROUP BY time_bucket('1 hour', time)
 WITH NO DATA;
 
 -- Enable automatic refresh
