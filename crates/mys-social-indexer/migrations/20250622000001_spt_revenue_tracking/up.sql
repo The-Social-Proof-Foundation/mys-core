@@ -81,7 +81,7 @@ DROP MATERIALIZED VIEW IF EXISTS spt_hourly_analytics CASCADE;
 
 -- Hourly Revenue Summary by Source (Real-time aggregate)
 CREATE MATERIALIZED VIEW revenue_hourly_summary
-WITH (timescaledb.continuous, timescaledb.materialized_only=false) AS
+WITH (timescaledb.continuous) AS
 SELECT 
     time_bucket('1 hour', time) AS hour,
     revenue_source,
@@ -103,7 +103,7 @@ SELECT add_continuous_aggregate_policy('revenue_hourly_summary',
 
 -- Daily Revenue Summary by Creator (For leaderboards)
 CREATE MATERIALIZED VIEW revenue_daily_creators
-WITH (timescaledb.continuous, timescaledb.materialized_only=false) AS
+WITH (timescaledb.continuous) AS
 SELECT 
     time_bucket('1 day', time) AS day,
     creator_address,
@@ -127,7 +127,7 @@ SELECT add_continuous_aggregate_policy('revenue_daily_creators',
 
 -- Monthly Revenue Summary by Platform (For platform analytics)
 CREATE MATERIALIZED VIEW revenue_monthly_platforms
-WITH (timescaledb.continuous, timescaledb.materialized_only=false) AS
+WITH (timescaledb.continuous) AS
 SELECT 
     time_bucket('1 month', time) AS month,
     platform_address,
@@ -152,7 +152,7 @@ SELECT add_continuous_aggregate_policy('revenue_monthly_platforms',
 
 -- Real-time Revenue Metrics (5-minute buckets for dashboards)
 CREATE MATERIALIZED VIEW revenue_realtime_metrics
-WITH (timescaledb.continuous, timescaledb.materialized_only=false) AS
+WITH (timescaledb.continuous) AS
 SELECT 
     time_bucket('5 minutes', time) AS bucket,
     revenue_source,
@@ -177,7 +177,7 @@ SELECT add_continuous_aggregate_policy('revenue_realtime_metrics',
 
 -- SPT Trading Volume and Fee Analytics (Hourly)
 CREATE MATERIALIZED VIEW spt_hourly_analytics
-WITH (timescaledb.continuous, timescaledb.materialized_only=false) AS
+WITH (timescaledb.continuous) AS
 SELECT 
     time_bucket('1 hour', time) AS hour,
     pool_id,
