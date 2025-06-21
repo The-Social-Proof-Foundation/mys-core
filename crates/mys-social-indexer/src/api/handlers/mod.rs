@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod health;
@@ -12,3 +12,6 @@ pub mod my_ip;
 pub mod governance;
 pub mod social_proof_token;
 pub mod search;
+pub mod poc;
+pub mod subscriptions;
+pub mod revenue;

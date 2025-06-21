@@ -4,10 +4,16 @@
 /// Module to manage package upgrades for MySocialContracts.
 /// Provides versioning support for all shared objects.
 
+#[allow(duplicate_alias, unused_use)]
 module social_contracts::upgrade {
-    use std::string::String;
-    use mys::package;
-    use mys::event;
+    use std::{string::String, vector};
+    use mys::{
+        object::{Self, UID, ID},
+        tx_context::{Self, TxContext},
+        transfer,
+        package,
+        event
+    };
     
     // Error codes
     const EInvalidDigest: u64 = 0;

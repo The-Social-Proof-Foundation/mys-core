@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
@@ -28,9 +28,6 @@ use crate::models::post::{
     NewReport,
     NewDeletionEvent,
 };
-
-// Import MyIP model for revenue tracking
-use crate::models::my_ip::NewMyIPRevenue;
 
 // Model conversion impl for PostCreatedEvent
 impl PostCreatedEvent {
@@ -75,7 +72,7 @@ impl PostCreatedEvent {
             removed_by: None,
             transaction_id: "".to_string(), // Will be set by handler
             my_ip_id: self.my_ip_id.clone(),
-            revenue_recipient: None, // Will be set if needed based on MyIP
+            revenue_recipient: None, // Revenue tracking handled via unified revenue system
             promotion_id: self.promotion_id.clone(),
         })
     }
@@ -181,26 +178,6 @@ impl TipEvent {
             created_at: self.tip_time as i64,
             transaction_id: "".to_string(), // Will be set by handler
         })
-    }
-    
-    // New method for creating MyIP revenue records when tips involve revenue redirection
-    pub fn into_my_ip_revenue(&self, transaction_id: String) -> Result<Option<NewMyIPRevenue>> {
-        if let Some(license_id) = &self.license_id {
-            Ok(Some(NewMyIPRevenue {
-                license_id: license_id.clone(),
-                post_id: Some(self.object_id.clone()),
-                from_address: self.from.clone(),
-                // Use the actual recipient (which may be different from original due to redirection)
-                to_address: self.to.clone(),
-                amount: self.amount as i64,
-                revenue_type: "TIP".to_string(),
-                revenue_time: self.tip_time as i64,
-                transaction_id,
-            }))
-        } else {
-            // No license involved, so no MyIP revenue record needed
-            Ok(None)
-        }
     }
 }
 

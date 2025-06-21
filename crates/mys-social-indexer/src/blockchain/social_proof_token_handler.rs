@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, Result};
@@ -180,7 +180,45 @@ impl SocialProofTokenHandler {
             .execute(&mut conn)
             .await?;
         
-        info!("Processed buy event for pool ID: {}", buy_event.pool_id);
+        // 7. Create SPT revenue record for swap fees
+        if buy_event.creator_fee > 0 || buy_event.platform_fee > 0 || buy_event.treasury_fee > 0 {
+            // Use the latest pool to get creator and platform addresses
+            let creator_address = latest_pool.owner.clone();
+            // For platform address, use a default or get from config - for now use a placeholder
+            let platform_address = "platform_address".to_string(); // TODO: Get from config
+            let treasury_address = "treasury_address".to_string(); // TODO: Get from config
+            
+            let spt_revenue = buy_event.create_spt_revenue(
+                creator_address.clone(),
+                platform_address.clone(),
+                treasury_address.clone(),
+                timestamp,
+                transaction_id.clone(),
+            )?;
+            
+            diesel::insert_into(crate::schema::spt_revenue::table)
+                .values(&spt_revenue)
+                .execute(&mut conn)
+                .await?;
+            
+            // 8. Create unified revenue records for each fee type
+            let unified_revenue_records = buy_event.create_unified_revenue_records(
+                creator_address,
+                platform_address,
+                treasury_address,
+                timestamp,
+                transaction_id.clone(),
+            )?;
+            
+            for record in unified_revenue_records {
+                diesel::insert_into(crate::schema::unified_revenue::table)
+                    .values(&record)
+                    .execute(&mut conn)
+                    .await?;
+            }
+        }
+        
+        info!("Processed buy event with revenue tracking for pool ID: {}", buy_event.pool_id);
         Ok(())
     }
     
@@ -257,7 +295,45 @@ impl SocialProofTokenHandler {
             .execute(&mut conn)
             .await?;
         
-        info!("Processed sell event for pool ID: {}", sell_event.pool_id);
+        // 7. Create SPT revenue record for swap fees
+        if sell_event.creator_fee > 0 || sell_event.platform_fee > 0 || sell_event.treasury_fee > 0 {
+            // Use the latest pool to get creator and platform addresses
+            let creator_address = latest_pool.owner.clone();
+            // For platform address, use a default or get from config - for now use a placeholder
+            let platform_address = "platform_address".to_string(); // TODO: Get from config
+            let treasury_address = "treasury_address".to_string(); // TODO: Get from config
+            
+            let spt_revenue = sell_event.create_spt_revenue(
+                creator_address.clone(),
+                platform_address.clone(),
+                treasury_address.clone(),
+                timestamp,
+                transaction_id.clone(),
+            )?;
+            
+            diesel::insert_into(crate::schema::spt_revenue::table)
+                .values(&spt_revenue)
+                .execute(&mut conn)
+                .await?;
+            
+            // 8. Create unified revenue records for each fee type
+            let unified_revenue_records = sell_event.create_unified_revenue_records(
+                creator_address,
+                platform_address,
+                treasury_address,
+                timestamp,
+                transaction_id.clone(),
+            )?;
+            
+            for record in unified_revenue_records {
+                diesel::insert_into(crate::schema::unified_revenue::table)
+                    .values(&record)
+                    .execute(&mut conn)
+                    .await?;
+            }
+        }
+        
+        info!("Processed sell event with revenue tracking for pool ID: {}", sell_event.pool_id);
         Ok(())
     }
     

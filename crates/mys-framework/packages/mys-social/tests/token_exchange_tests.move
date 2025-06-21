@@ -17,7 +17,7 @@ module social_contracts::token_exchange_tests {
     use mys::mys::MYS;
     use mys::clock::{Self, Clock};
     
-    use social_contracts::token_exchange::{Self, ExchangeConfig, TokenRegistry, SocialToken};
+    use social_contracts::token_exchange::{Self, ExchangeConfig, TokenRegistry, SocialToken, TokenPool};
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
     use social_contracts::post::{Self, Post};
     use social_contracts::block_list::{Self, BlockListRegistry};
@@ -538,5 +538,207 @@ module social_contracts::token_exchange_tests {
         };
         
         test_scenario::end(scenario);
+    }
+
+    // === PoC Revenue Redirection Tests ===
+
+    #[test]
+    fun test_poc_redirection_setup() {
+        let mut scenario = setup_test_scenario();
+        
+        // Create a mock token pool to test PoC functionality
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            // Create a mock post token pool
+            let mut token_pool = create_mock_post_token_pool(&mut scenario);
+            
+            // Set PoC redirection data
+            token_exchange::set_poc_redirection(
+                &mut token_pool,
+                option::some(USER3), // Original creator
+                option::some(75)     // 75% redirection
+            );
+            
+            // Verify PoC redirection is set
+            assert!(token_exchange::has_poc_redirection(&token_pool), 0);
+            
+            let redirect_to = token_exchange::get_poc_redirect_to(&token_pool);
+            let redirect_percentage = token_exchange::get_poc_redirect_percentage(&token_pool);
+            
+            assert!(option::is_some(redirect_to), 1);
+            assert!(option::is_some(redirect_percentage), 2);
+            assert!(*option::borrow(redirect_to) == USER3, 3);
+            assert!(*option::borrow(redirect_percentage) == 75, 4);
+            
+            // Clean up by transferring back to test framework
+            transfer::public_transfer(token_pool, CREATOR);
+        };
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test] 
+    fun test_poc_redirection_clear() {
+        let mut scenario = setup_test_scenario();
+        
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            // Create a mock token pool with PoC redirection
+            let mut token_pool = create_mock_post_token_pool(&mut scenario);
+            
+            // Set PoC redirection
+            token_exchange::set_poc_redirection(
+                &mut token_pool,
+                option::some(USER3),
+                option::some(50)
+            );
+            
+            // Verify it's set
+            assert!(token_exchange::has_poc_redirection(&token_pool), 0);
+            
+            // Clear PoC redirection
+            token_exchange::clear_poc_redirection(&mut token_pool);
+            
+            // Verify it's cleared
+            assert!(!token_exchange::has_poc_redirection(&token_pool), 1);
+            
+            let redirect_to = token_exchange::get_poc_redirect_to(&token_pool);
+            let redirect_percentage = token_exchange::get_poc_redirect_percentage(&token_pool);
+            
+            assert!(option::is_none(redirect_to), 2);
+            assert!(option::is_none(redirect_percentage), 3);
+            
+            // Clean up by transferring back to test framework
+            transfer::public_transfer(token_pool, CREATOR);
+        };
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_poc_revenue_redirection_simulation() {
+        let mut scenario = setup_test_scenario();
+        
+        // This test simulates the revenue redirection logic
+        // by manually calculating and verifying the splits
+        
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut token_pool = create_mock_post_token_pool(&mut scenario);
+            
+            // Set PoC redirection: 60% to original creator (USER3)
+            token_exchange::set_poc_redirection(
+                &mut token_pool,
+                option::some(USER3), // Original creator
+                option::some(60)     // 60% redirection
+            );
+            
+            // Simulate a trading fee of 100 MYS going to creator
+            let total_fee = 100 * MYS_SCALING;
+            let redirected_amount = (total_fee * 60) / 100; // 60 MYS to USER3
+            let remaining_amount = total_fee - redirected_amount; // 40 MYS to CREATOR
+            
+            // Verify calculations
+            assert!(redirected_amount == 60 * MYS_SCALING, 0);
+            assert!(remaining_amount == 40 * MYS_SCALING, 1);
+            
+            // Create coins to simulate the fee distribution
+            let redirected_coin = coin::mint_for_testing<MYS>(redirected_amount, test_scenario::ctx(&mut scenario));
+            let remaining_coin = coin::mint_for_testing<MYS>(remaining_amount, test_scenario::ctx(&mut scenario));
+            
+            // Transfer to simulate the PoC redirection
+            transfer::public_transfer(redirected_coin, USER3); // Original creator gets 60%
+            transfer::public_transfer(remaining_coin, CREATOR); // Post owner gets 40%
+            
+            // Clean up by transferring back to test framework
+            transfer::public_transfer(token_pool, CREATOR);
+        };
+        
+        // Verify USER3 received the redirected amount
+        test_scenario::next_tx(&mut scenario, USER3);
+        {
+            let coins = test_scenario::take_from_sender<Coin<MYS>>(&scenario);
+            assert!(coin::value(&coins) == 60 * MYS_SCALING, 0);
+            test_scenario::return_to_sender(&scenario, coins);
+        };
+        
+        // Verify CREATOR received the remaining amount
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let coins = test_scenario::take_from_sender<Coin<MYS>>(&scenario);
+            assert!(coin::value(&coins) >= 40 * MYS_SCALING, 0); // >= because creator has initial coins too
+            test_scenario::return_to_sender(&scenario, coins);
+        };
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_token_pool_utility_functions() {
+        let mut scenario = setup_test_scenario();
+        
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let token_pool = create_mock_post_token_pool(&mut scenario);
+            
+            // Test get_pool_associated_id
+            let associated_id = token_exchange::get_pool_associated_id(&token_pool);
+            let expected_post_id = @0x123456; // Use valid address syntax
+            assert!(associated_id == expected_post_id, 0);
+            
+            // Test initial state (no PoC redirection)
+            assert!(!token_exchange::has_poc_redirection(&token_pool), 1);
+            
+            let redirect_to = token_exchange::get_poc_redirect_to(&token_pool);
+            let redirect_percentage = token_exchange::get_poc_redirect_percentage(&token_pool);
+            
+            assert!(option::is_none(redirect_to), 2);
+            assert!(option::is_none(redirect_percentage), 3);
+            
+            // Clean up by transferring back to test framework
+            transfer::public_transfer(token_pool, CREATOR);
+        };
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_token_registry_functions() {
+        let mut scenario = setup_test_scenario();
+        
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            
+            // Test token_exists function with non-existent token
+            let fake_token_id = @0x999999;
+            assert!(!token_exchange::token_exists(&registry, fake_token_id), 0);
+            
+            test_scenario::return_shared(registry);
+        };
+        
+        test_scenario::end(scenario);
+    }
+
+    // Helper function to create a mock post token pool for testing
+    fun create_mock_post_token_pool(scenario: &mut Scenario): TokenPool {
+        // Create a mock token pool with post token type
+        let mock_token_info = token_exchange::create_mock_token_info(
+            @0x111111,       // pool id
+            TOKEN_TYPE_POST, // post token type
+            CREATOR,         // owner
+            @0x123456,       // associated post id
+            string::utf8(b"PPOST"), // symbol
+            string::utf8(b"Post Token"), // name
+            1000,           // circulating supply
+            100_000_000,    // base price (0.1 MYS)
+            100_000,        // quadratic coefficient
+            0               // created_at
+        );
+        
+        token_exchange::create_mock_token_pool(
+            mock_token_info,
+            test_scenario::ctx(scenario)
+        )
     }
 } 

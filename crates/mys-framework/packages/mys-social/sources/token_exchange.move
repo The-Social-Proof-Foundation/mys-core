@@ -7,20 +7,25 @@
 /// It includes fee distribution mechanisms for transactions, splitting between profile owner,
 /// platform, and ecosystem treasury.
 
-#[allow(unused_field, deprecated_usage, unused_const, duplicate_alias)]
+#[allow(unused_field, deprecated_usage, unused_const, duplicate_alias, unused_use)]
 module social_contracts::token_exchange {
     use std::string::{Self, String};
+    use std::option::{Self, Option};
+    use std::vector;
 
-    use mys::event;
-    use mys::table::{Self, Table};
-    use mys::coin::{Self, Coin};
-    use mys::mys::MYS;
-    use mys::balance::{Self, Balance};
-    use mys::clock::{Self, Clock};
-    use mys::math;
-    use mys::tx_context::{Self, TxContext};
-    use mys::transfer;
-    use mys::object::{Self, UID};
+    use mys::{
+        object::{Self, UID, ID},
+        tx_context::{Self, TxContext},
+        transfer,
+        event,
+        table::{Self, Table},
+        coin::{Self, Coin},
+        mys::MYS,
+        balance::{Self, Balance},
+        clock::{Self, Clock},
+        math,
+        package::{Self, Publisher}
+    };
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
     use social_contracts::post::{Self, Post};
@@ -196,7 +201,7 @@ module social_contracts::token_exchange {
     }
 
     /// Liquidity pool for a token
-    public struct TokenPool has key {
+    public struct TokenPool has key, store {
         id: UID,
         /// The token's info
         info: TokenInfo,
@@ -204,6 +209,10 @@ module social_contracts::token_exchange {
         mys_balance: Balance<MYS>,
         /// Mapping of holders' addresses to their token balances
         holders: Table<address, u64>,
+        /// PoC revenue redirection address (for post tokens only)
+        poc_redirect_to: Option<address>,
+        /// PoC revenue redirection percentage (for post tokens only)
+        poc_redirect_percentage: Option<u64>,
         /// Version for upgrades
         version: u64,
     }
@@ -545,7 +554,7 @@ module social_contracts::token_exchange {
     ): (bool, u64) {
         // Calculate viral score based on post metrics
         let likes = post::get_reaction_count(post) * POST_LIKES_WEIGHT;
-        let comments = post::get_comment_count(post) * POST_COMMENTS_WEIGHT;
+        let comments = post::get_post_comment_count(post) * POST_COMMENTS_WEIGHT;
         let tips = post::get_tips_received(post) * POST_TIPS_WEIGHT;
         
         let viral_score = likes + comments + tips;
@@ -587,7 +596,7 @@ module social_contracts::token_exchange {
         assert!(!config.trading_halted, ETradingHalted);
         
         let post_id = post::get_id_address(post);
-        let owner = post::get_owner(post);
+        let owner = post::get_post_owner(post);
         
         // Verify caller is the post owner
         assert!(tx_context::sender(ctx) == owner, ENotAuthorized);
@@ -914,6 +923,8 @@ module social_contracts::token_exchange {
             info: updated_token_info,
             mys_balance: balance::zero(),
             holders: table::new(ctx),
+            poc_redirect_to: option::none(),
+            poc_redirect_percentage: option::none(),
             version: upgrade::current_version(),
         };
         
@@ -993,6 +1004,125 @@ module social_contracts::token_exchange {
         transfer::share_object(token_pool);
     }
 
+    // === PoC Revenue Redirection Functions ===
+
+    /// Update PoC redirection data for a token pool (called by PoC system)
+    /// This function copies PoC data from a post into the corresponding token pool
+    public entry fun update_token_poc_data(
+        pool: &mut TokenPool,
+        post: &Post,
+        ctx: &mut TxContext
+    ) {
+        // Verify this is a post token pool
+        assert!(pool.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
+        
+        // Verify the post matches the token pool
+        let post_id = post::get_id_address(post);
+        assert!(post_id == pool.info.associated_id, EInvalidID);
+        
+        // Verify caller is authorized (post owner)
+        let caller = tx_context::sender(ctx);
+        assert!(caller == post::get_post_owner(post), ENotAuthorized);
+        
+        // Copy PoC data from post to pool
+        pool.poc_redirect_to = if (option::is_some(post::get_revenue_redirect_to(post))) {
+            option::some(*option::borrow(post::get_revenue_redirect_to(post)))
+        } else {
+            option::none()
+        };
+        
+        pool.poc_redirect_percentage = if (option::is_some(post::get_revenue_redirect_percentage(post))) {
+            option::some(*option::borrow(post::get_revenue_redirect_percentage(post)))
+        } else {
+            option::none()
+        };
+    }
+
+    /// Calculate PoC revenue split - shared utility for consistent logic
+    fun calculate_poc_split(amount: u64, redirect_percentage: u64): (u64, u64) {
+        let redirected_amount = (amount * redirect_percentage) / 100;
+        let remaining_amount = amount - redirected_amount;
+        (redirected_amount, remaining_amount)
+    }
+
+    /// Apply PoC redirection to creator fees with consolidated logic
+    fun apply_token_poc_redirection(
+        pool: &TokenPool,
+        amount: u64,
+        _ctx: &mut TxContext  
+    ): (u64, u64) {
+        if (has_poc_redirection(pool)) {
+            let redirect_percentage = *option::borrow(&pool.poc_redirect_percentage);
+            // Use shared utility function for consistent calculation
+            calculate_poc_split(amount, redirect_percentage)
+        } else {
+            (0, amount)
+        }
+    }
+
+    /// Distribute creator fees with automatic PoC redirection  
+    fun distribute_creator_fee(
+        pool: &TokenPool,
+        creator_fee_amount: u64,
+        creator_fee_coin: &mut Coin<MYS>,
+        ctx: &mut TxContext
+    ) {
+        if (creator_fee_amount == 0) {
+            return
+        };
+
+        let (redirected_amount, _remaining_amount) = apply_token_poc_redirection(pool, creator_fee_amount, ctx);
+        let mut fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
+        
+        if (redirected_amount > 0) {
+            // Split the fee: redirected portion goes to original creator, remainder to post owner
+            let redirected_fee = coin::split(&mut fee_coin, redirected_amount, ctx);
+            let redirect_to = *option::borrow(&pool.poc_redirect_to);
+            transfer::public_transfer(redirected_fee, redirect_to);
+            
+            // Send remainder to current post owner
+            if (coin::value(&fee_coin) > 0) {
+                transfer::public_transfer(fee_coin, pool.info.owner);
+            } else {
+                coin::destroy_zero(fee_coin);
+            };
+        } else {
+            // No redirection - send full amount to current post owner
+            transfer::public_transfer(fee_coin, pool.info.owner);
+        };
+    }
+
+    /// Distribute creator fees from pool balance with PoC redirection support
+    fun distribute_creator_fee_from_pool(
+        pool: &mut TokenPool,
+        creator_fee: u64,
+        ctx: &mut TxContext
+    ) {
+        if (creator_fee == 0) {
+            return
+        };
+
+        let (redirected_amount, _remaining_amount) = apply_token_poc_redirection(pool, creator_fee, ctx);
+        let mut fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, creator_fee), ctx);
+        
+        if (redirected_amount > 0) {
+            // Split the fee: redirected portion goes to original creator, remainder to post owner
+            let redirected_fee = coin::split(&mut fee_coin, redirected_amount, ctx);
+            let redirect_to = *option::borrow(&pool.poc_redirect_to);
+            transfer::public_transfer(redirected_fee, redirect_to);
+            
+            // Send remainder to current post owner
+            if (coin::value(&fee_coin) > 0) {
+                transfer::public_transfer(fee_coin, pool.info.owner);
+            } else {
+                coin::destroy_zero(fee_coin);
+            };
+        } else {
+            // No redirection - send full amount to current post owner
+            transfer::public_transfer(fee_coin, pool.info.owner);
+        };
+    }
+
     // === Trading Functions ===
 
     /// Buy tokens from the pool - first purchase
@@ -1038,12 +1168,11 @@ module social_contracts::token_exchange {
         // Calculate the net amount to the liquidity pool
         let net_amount = price - fee_amount;
         
-        // Extract payment and distribute fees directly
+        // Extract payment and distribute fees with PoC redirection support
         if (fee_amount > 0) {
-            // Send creator fee
+            // Send creator fee with PoC redirection support
             if (creator_fee > 0) {
-                let creator_fee_coin = coin::split(&mut payment, creator_fee, ctx);
-                transfer::public_transfer(creator_fee_coin, pool.info.owner);
+                distribute_creator_fee(pool, creator_fee, &mut payment, ctx);
             };
             
             // Send platform fee - add to platform treasury
@@ -1170,12 +1299,11 @@ module social_contracts::token_exchange {
         // Calculate the net amount to the liquidity pool
         let net_amount = price - fee_amount;
         
-        // Extract payment and distribute fees directly
+        // Extract payment and distribute fees with PoC redirection support
         if (fee_amount > 0) {
-            // Send creator fee
+            // Send creator fee with PoC redirection support
             if (creator_fee > 0) {
-                let creator_fee_coin = coin::split(&mut payment, creator_fee, ctx);
-                transfer::public_transfer(creator_fee_coin, pool.info.owner);
+                distribute_creator_fee(pool, creator_fee, &mut payment, ctx);
             };
             
             // Send platform fee - add to platform treasury
@@ -1304,12 +1432,11 @@ module social_contracts::token_exchange {
         // Extract net refund from pool
         let refund_balance = balance::split(&mut pool.mys_balance, net_refund);
         
-        // Process and distribute fees
+        // Process and distribute fees with PoC redirection support
         if (fee_amount > 0) {
-            // Send fee to creator
+            // Send fee to creator with PoC redirection support
             if (creator_fee > 0) {
-                let creator_fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, creator_fee), ctx);
-                transfer::public_transfer(creator_fee_coin, pool.info.owner);
+                distribute_creator_fee_from_pool(pool, creator_fee, ctx);
             };
             
             // Send fee to platform - add to platform treasury
@@ -1430,6 +1557,11 @@ module social_contracts::token_exchange {
         *table::borrow(&registry.tokens, id)
     }
 
+    /// Check if a token exists in the registry
+    public fun token_exists(registry: &TokenRegistry, id: address): bool {
+        table::contains(&registry.tokens, id)
+    }
+
     /// Get token owner's address
     public fun get_token_owner(registry: &TokenRegistry, id: address): address {
         let info = get_token_info(registry, id);
@@ -1454,6 +1586,42 @@ module social_contracts::token_exchange {
         }
     }
 
+    /// Get PoC redirection data from token pool
+    public fun get_poc_redirect_to(pool: &TokenPool): &Option<address> {
+        &pool.poc_redirect_to
+    }
+
+    /// Get PoC redirection percentage from token pool
+    public fun get_poc_redirect_percentage(pool: &TokenPool): &Option<u64> {
+        &pool.poc_redirect_percentage
+    }
+
+    /// Check if token pool has PoC redirection configured
+    public fun has_poc_redirection(pool: &TokenPool): bool {
+        option::is_some(&pool.poc_redirect_to) && option::is_some(&pool.poc_redirect_percentage)
+    }
+
+    /// Get the associated ID (post/profile ID) from a token pool
+    public fun get_pool_associated_id(pool: &TokenPool): address {
+        pool.info.associated_id
+    }
+
+    /// Set PoC redirection data for a token pool (called by PoC system)
+    public fun set_poc_redirection(
+        pool: &mut TokenPool,
+        redirect_to: Option<address>,
+        redirect_percentage: Option<u64>
+    ) {
+        pool.poc_redirect_to = redirect_to;
+        pool.poc_redirect_percentage = redirect_percentage;
+    }
+
+    /// Clear PoC redirection data from a token pool (called by PoC system)
+    public fun clear_poc_redirection(pool: &mut TokenPool) {
+        pool.poc_redirect_to = option::none();
+        pool.poc_redirect_percentage = option::none();
+    }
+
     // Test-only functions
     #[test_only]
     /// Initialize the token exchange for testing
@@ -1466,6 +1634,51 @@ module social_contracts::token_exchange {
     public fun create_admin_cap_for_testing(ctx: &mut TxContext): ExchangeAdminCap {
         ExchangeAdminCap {
             id: object::new(ctx)
+        }
+    }
+
+    /// Create a mock TokenInfo for testing
+    #[test_only]
+    public fun create_mock_token_info(
+        id: address,
+        token_type: u8,
+        owner: address,
+        associated_id: address,
+        symbol: String,
+        name: String,
+        circulating_supply: u64,
+        base_price: u64,
+        quadratic_coefficient: u64,
+        created_at: u64
+    ): TokenInfo {
+        TokenInfo {
+            id,
+            token_type,
+            owner,
+            associated_id,
+            symbol,
+            name,
+            circulating_supply,
+            base_price,
+            quadratic_coefficient,
+            created_at,
+        }
+    }
+
+    /// Create a mock TokenPool for testing
+    #[test_only]
+    public fun create_mock_token_pool(
+        token_info: TokenInfo,
+        ctx: &mut TxContext
+    ): TokenPool {
+        TokenPool {
+            id: object::new(ctx),
+            info: token_info,
+            mys_balance: balance::zero(),
+            holders: table::new(ctx),
+            poc_redirect_to: option::none(),
+            poc_redirect_percentage: option::none(),
+            version: upgrade::current_version(),
         }
     }
 

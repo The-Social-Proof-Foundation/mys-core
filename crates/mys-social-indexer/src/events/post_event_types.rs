@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 use serde::{Deserialize, Serialize};
@@ -22,7 +22,6 @@ pub enum PostEventType {
     CommentDeleted,
     PromotedPostCreated,
     PromotedPostViewConfirmed,
-    PromotionDeactivated,
     PromotionStatusToggled,
     PromotionFundsWithdrawn,
 }
@@ -107,6 +106,34 @@ pub struct TipEvent {
     pub license_id: Option<String>,
 }
 
+impl TipEvent {
+    /// Create unified revenue record for tip
+    pub fn create_unified_revenue_record(&self, transaction_id: String) -> anyhow::Result<crate::models::NewUnifiedRevenue> {
+        let revenue_type = if self.is_post {
+            crate::models::revenue::REVENUE_TYPE_TIPS_POST.to_string()
+        } else {
+            crate::models::revenue::REVENUE_TYPE_TIPS_COMMENT.to_string()
+        };
+        
+        let content_type = if self.is_post {
+            crate::models::revenue::CONTENT_TYPE_POST.to_string()
+        } else {
+            crate::models::revenue::CONTENT_TYPE_COMMENT.to_string()
+        };
+        
+        Ok(crate::models::NewUnifiedRevenue::from_tip(
+            revenue_type,
+            self.to.clone(),
+            self.amount as i64,
+            self.object_id.clone(),
+            content_type,
+            self.from.clone(),
+            self.tip_time as i64,
+            transaction_id,
+        ))
+    }
+}
+
 /// Post/Comment moderation event from blockchain
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModerationEvent {
@@ -174,14 +201,6 @@ pub struct PromotedPostViewConfirmedEvent {
     pub timestamp: u64,
 }
 
-/// Promotion deactivated event from blockchain
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PromotionDeactivatedEvent {
-    pub post_id: String,
-    pub owner: String,
-    pub remaining_budget: u64,
-    pub timestamp: u64,
-}
 
 /// Promotion status toggled event from blockchain
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 use std::sync::Arc;
@@ -24,7 +24,6 @@ use crate::events::post_event_types::{
     DeletionEvent as PostDeletionEvent,
     PromotedPostCreatedEvent,
     PromotedPostViewConfirmedEvent,
-    PromotionDeactivatedEvent,
     PromotionStatusToggledEvent,
     PromotionFundsWithdrawnEvent,
 };
@@ -33,19 +32,9 @@ use crate::models::indexer::NewIndexerProgress;
 use crate::schema;
 use mys_types::event::Event as MysEvent;
 
-use crate::models::my_ip::{
-    MyIP,
-    PERMISSION_ALLOW_COMMENTS,
-    PERMISSION_ALLOW_REACTIONS,
-    PERMISSION_ALLOW_REPOSTS,
-    PERMISSION_ALLOW_QUOTES,
-    PERMISSION_ALLOW_TIPS,
-    PERMISSION_REVENUE_REDIRECT,
-};
-
 use crate::schema::{posts, comments, reactions, reaction_counts, reposts, tips, 
                    posts_reports, posts_moderation_events, posts_deletion_events,
-                   my_ip, my_ip_revenue, promoted_posts, promotion_views, 
+                   promoted_posts, promotion_views, 
                    promotion_status_events, promotion_budget_events};
 
 use super::listener::BlockchainEvent;
@@ -330,7 +319,7 @@ impl PostEventHandler {
             .execute(&mut conn)
             .await?;
             
-        // Update tips received count
+        // Update the tips received amount on the post or comment
         if event.is_post {
             diesel::update(schema::posts::table)
                 .filter(schema::posts::post_id.eq(&event.object_id))
@@ -344,8 +333,16 @@ impl PostEventHandler {
                 .execute(&mut conn)
                 .await?;
         }
-            
-        info!("Successfully processed tip");
+        
+        // Create unified revenue record for the tip
+        let unified_revenue = event.create_unified_revenue_record(tx_id.to_string())?;
+        
+        diesel::insert_into(crate::schema::unified_revenue::table)
+            .values(&unified_revenue)
+            .execute(&mut conn)
+            .await?;
+        
+        info!("Processed TipEvent with revenue tracking successfully");
         Ok(())
     }
     
@@ -634,46 +631,6 @@ impl PostEventHandler {
         Ok(())
     }
     
-    /// Process a promotion deactivated event
-    async fn process_promotion_deactivated(&self, event: &PromotionDeactivatedEvent, tx_id: &str) -> Result<()> {
-        let mut conn = self.get_connection().await?;
-        
-        info!("Processing promotion deactivated: {}", event.post_id);
-        
-        // Get promotion_id from post
-        let promotion_id_result: Option<String> = posts::table
-            .filter(posts::post_id.eq(&event.post_id))
-            .select(posts::promotion_id)
-            .first(&mut conn)
-            .await?;
-            
-        if let Some(promotion_id) = promotion_id_result {
-            // Update promotion status
-            diesel::update(promoted_posts::table)
-                .filter(promoted_posts::promotion_id.eq(&promotion_id))
-                .set(promoted_posts::active.eq(false))
-                .execute(&mut conn)
-                .await?;
-                
-            // Create status event
-            diesel::insert_into(promotion_status_events::table)
-                .values((
-                    promotion_status_events::post_id.eq(&event.post_id),
-                    promotion_status_events::promotion_id.eq(&promotion_id),
-                    promotion_status_events::event_type.eq("deactivated"),
-                    promotion_status_events::triggered_by.eq(&event.owner),
-                    promotion_status_events::new_status.eq(Some(false)),
-                    promotion_status_events::amount.eq(Some(event.remaining_budget as i64)),
-                    promotion_status_events::timestamp.eq(event.timestamp as i64),
-                    promotion_status_events::transaction_id.eq(tx_id),
-                ))
-                .execute(&mut conn)
-                .await?;
-        }
-            
-        info!("Successfully processed promotion deactivated: {}", event.post_id);
-        Ok(())
-    }
     
     /// Process a promotion status toggled event
     async fn process_promotion_status_toggled(&self, event: &PromotionStatusToggledEvent, tx_id: &str) -> Result<()> {
@@ -949,19 +906,7 @@ impl PostEventHandler {
                         }
                     }
                 }
-                // Handle promotion deactivated event
-                else if event.event_type.ends_with("::PromotionDeactivatedEvent") {
-                    match parse_json_event::<PromotionDeactivatedEvent>(&event.data) {
-                        Ok(deactivated_event) => {
-                            if let Err(e) = self.process_promotion_deactivated(&deactivated_event, &tx_id).await {
-                                error!("Failed to process promotion deactivated event: {}", e);
-                            }
-                        },
-                        Err(e) => {
-                            error!("Failed to deserialize promotion deactivated event: {}", e);
-                        }
-                    }
-                }
+
                 // Handle promotion status toggled event
                 else if event.event_type.ends_with("::PromotionStatusToggledEvent") {
                     match parse_json_event::<PromotionStatusToggledEvent>(&event.data) {
@@ -1103,27 +1048,6 @@ async fn handle_comment_created(db: &Arc<Database>, event: &MysEvent, transactio
     // Get a database connection
     let mut conn = db.get_connection().await?;
     
-    // Check if the parent post has a MyIP license that allows comments
-    let post = posts::table
-        .filter(posts::post_id.eq(&parsed_event.post_id))
-        .select(posts::my_ip_id)
-        .first::<Option<String>>(&mut conn)
-        .await
-        .map_err(|e| anyhow!("Failed to get parent post: {}", e))?;
-    
-    if let Some(my_ip_id) = post {
-        // Post has a MyIP license, check if it allows comments
-        let license = my_ip::table
-            .filter(my_ip::license_id.eq(my_ip_id))
-            .first::<MyIP>(&mut conn)
-            .await
-            .map_err(|e| anyhow!("Failed to get MyIP license: {}", e))?;
-        
-        // Verify the license allows comments
-        if !license.has_permission(PERMISSION_ALLOW_COMMENTS) {
-            return Err(anyhow!("MyIP license does not allow comments"));
-        }
-    }
     
     // Convert event to model
     let mut new_comment = parsed_event.into_model()?;
@@ -1169,30 +1093,7 @@ async fn handle_reaction(db: &Arc<Database>, event: &MysEvent, transaction_id: &
     // Get a database connection
     let mut conn = db.get_connection().await?;
     
-    // If reaction is for a post, check for MyIP permission
-    if parsed_event.is_post {
-        // Check if the post has a MyIP license that allows reactions
-        let post = posts::table
-            .filter(posts::post_id.eq(&parsed_event.object_id))
-            .select(posts::my_ip_id)
-            .first::<Option<String>>(&mut conn)
-            .await
-            .map_err(|e| anyhow!("Failed to get post: {}", e))?;
-        
-        if let Some(my_ip_id) = post {
-            // Post has a MyIP license, check if it allows reactions
-            let license = my_ip::table
-                .filter(my_ip::license_id.eq(my_ip_id))
-                .first::<MyIP>(&mut conn)
-                .await
-                .map_err(|e| anyhow!("Failed to get MyIP license: {}", e))?;
-            
-            // Verify the license allows reactions
-            if !license.has_permission(PERMISSION_ALLOW_REACTIONS) {
-                return Err(anyhow!("MyIP license does not allow reactions"));
-            }
-        }
-    }
+
     
     // Convert event to model
     let mut new_reaction = parsed_event.into_model()?;
@@ -1250,37 +1151,6 @@ async fn handle_repost(db: &Arc<Database>, event: &MysEvent, transaction_id: &st
     // Get a database connection
     let mut conn = db.get_connection().await?;
     
-    // Check if the original post has a MyIP license that allows reposts/quotes
-    let post = posts::table
-        .filter(posts::post_id.eq(&parsed_event.original_id))
-        .select(posts::my_ip_id)
-        .first::<Option<String>>(&mut conn)
-        .await
-        .map_err(|e| anyhow!("Failed to get original post: {}", e))?;
-    
-    if let Some(my_ip_id) = post {
-        // Post has a MyIP license, check if it allows reposts/quotes
-        let license = my_ip::table
-            .filter(my_ip::license_id.eq(my_ip_id))
-            .first::<MyIP>(&mut conn)
-            .await
-            .map_err(|e| anyhow!("Failed to get MyIP license: {}", e))?;
-        
-        // Determine if this is a standard repost or a quote repost
-        let is_quote_repost = false; // We would need to get this information from somewhere
-        
-        // Verify the license allows the appropriate type of repost
-        if is_quote_repost {
-            if !license.has_permission(PERMISSION_ALLOW_QUOTES) {
-                return Err(anyhow!("MyIP license does not allow quote reposts"));
-            }
-        } else {
-            if !license.has_permission(PERMISSION_ALLOW_REPOSTS) {
-                return Err(anyhow!("MyIP license does not allow reposts"));
-            }
-        }
-    }
-    
     // Convert event to model
     let mut new_repost = parsed_event.into_model()?;
     
@@ -1337,56 +1207,6 @@ async fn handle_tip(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) 
     // Get a database connection
     let mut conn = db.get_connection().await?;
     
-    // If the tip is for a post, check for MyIP permission and potential revenue redirection
-    if parsed_event.is_post {
-        // Check if the post has a MyIP license
-        let post = posts::table
-            .filter(posts::post_id.eq(&parsed_event.object_id))
-            .select((posts::my_ip_id, posts::owner))
-            .first::<(Option<String>, String)>(&mut conn)
-            .await
-            .map_err(|e| anyhow!("Failed to get post: {}", e))?;
-        
-        if let Some(my_ip_id) = &post.0 {
-            // Post has a MyIP license, check if it allows tips
-            let license = my_ip::table
-                .filter(my_ip::license_id.eq(my_ip_id))
-                .first::<MyIP>(&mut conn)
-                .await
-                .map_err(|e| anyhow!("Failed to get MyIP license: {}", e))?;
-            
-            // Verify the license allows tips
-            if !license.has_permission(PERMISSION_ALLOW_TIPS) {
-                return Err(anyhow!("MyIP license does not allow tips"));
-            }
-            
-            // Check if revenue should be redirected
-            if license.has_permission(PERMISSION_REVENUE_REDIRECT) && license.revenue_recipient.is_some() {
-                let recipient = license.revenue_recipient.clone().unwrap();
-                
-                // Record the revenue redirection in the my_ip_revenue table
-                let new_revenue = crate::models::my_ip::NewMyIPRevenue {
-                    license_id: my_ip_id.clone(),
-                    post_id: Some(parsed_event.object_id.clone()),
-                    from_address: parsed_event.from.clone(),
-                    to_address: recipient.clone(),
-                    amount: parsed_event.amount as i64,
-                    revenue_type: "TIP".to_string(),
-                    revenue_time: parsed_event.tip_time as i64,
-                    transaction_id: transaction_id.to_string(),
-                };
-                
-                diesel::insert_into(my_ip_revenue::table)
-                    .values(&new_revenue)
-                    .execute(&mut conn)
-                    .await?;
-                
-                info!("Recorded revenue redirection for MyIP license {} to {}", 
-                    my_ip_id, recipient);
-            }
-        }
-    }
-    
     // Convert event to model
     let mut new_tip = parsed_event.into_model()?;
     
@@ -1414,7 +1234,15 @@ async fn handle_tip(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) 
             .await?;
     }
     
-    info!("Processed TipEvent successfully");
+    // Create unified revenue record for the tip
+    let unified_revenue = parsed_event.create_unified_revenue_record(transaction_id.to_string())?;
+    
+    diesel::insert_into(crate::schema::unified_revenue::table)
+        .values(&unified_revenue)
+        .execute(&mut conn)
+        .await?;
+    
+    info!("Processed TipEvent with revenue tracking successfully");
     Ok(())
 }
 

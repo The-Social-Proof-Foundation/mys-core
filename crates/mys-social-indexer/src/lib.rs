@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod api;
@@ -24,6 +24,7 @@ pub const SOCIAL_GRAPH_MODULE_NAME: &str = "social_graph";
 pub const BLOCK_LIST_MODULE_NAME: &str = "block_list";
 pub const POST_MODULE_NAME: &str = "post";
 pub const GOVERNANCE_MODULE_NAME: &str = "governance";
+pub const SUBSCRIPTION_MODULE_NAME: &str = "subscription";
 
 /// Common struct names
 pub const PROFILE_STRUCT_NAME: &str = "Profile";
@@ -46,6 +47,11 @@ pub const GOVERNANCE_STATUS_OWNER_RESCINDED: u8 = 6;
 pub const NOMINEE_STATUS_PENDING: u8 = 0;
 pub const NOMINEE_STATUS_ELECTED: u8 = 1;
 pub const NOMINEE_STATUS_REJECTED: u8 = 2;
+
+/// Anonymous vote status constants
+pub const ANONYMOUS_VOTE_STATUS_PENDING: u8 = 0;
+pub const ANONYMOUS_VOTE_STATUS_DECRYPTED: u8 = 1;
+pub const ANONYMOUS_VOTE_STATUS_FAILED: u8 = 2;
 
 /// Set the MySocial package address
 pub fn set_mysocial_package_address(address: String) {

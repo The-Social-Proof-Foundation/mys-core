@@ -8,6 +8,7 @@ module seal::bf_hmac_encryption;
 use seal::{hmac256ctr, kdf::{hash_to_g1_with_dst, kdf}, key_server::KeyServer, polynomial};
 use std::hash::sha3_256;
 use mys::{
+    object::{Self, ID},
     bls12381::{
         G1,
         G2,

@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
@@ -115,6 +115,12 @@ impl GovernanceEventHandler {
             }
             "distribute_rewards" | "RewardsDistributed" => {
                 process_rewards_distributed_event(conn, event_data, event_id).await?;
+            }
+            "community_vote_anonymous" | "AnonymousVote" => {
+                process_anonymous_vote_event(conn, event_data, event_id).await?;
+            }
+            "VoteDecryptionFailed" => {
+                process_vote_decryption_failed_event(conn, event_data, event_id).await?;
             }
             _ => {
                 debug!("Unknown governance function: {}", function_name);

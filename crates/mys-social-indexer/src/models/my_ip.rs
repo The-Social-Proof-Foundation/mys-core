@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 use chrono::{DateTime, Utc};
@@ -8,110 +8,109 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 // Import tables from schema
-use crate::schema::{my_ip, my_ip_permissions, my_ip_events, my_ip_grants, my_ip_revenue};
+use crate::schema::{my_ip_data, my_ip_purchases, my_ip_subscriptions, my_ip_revenue, my_ip_access_logs};
+
+// ============================================================================
+// MARKETPLACE DATA MODELS
+// ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, PartialEq)]
-#[diesel(table_name = my_ip)]
-pub struct MyIP {
-    pub id: i32,
-    pub license_id: String,
-    pub name: String,
-    pub description: Option<String>,
-    pub creator: String,
-    pub creation_time: i64,
-    pub license_type: i16,
-    pub permission_flags: i64,
-    pub license_state: i16,
-    pub proof_of_creativity_id: Option<String>,
-    pub custom_license_uri: Option<String>,
-    pub revenue_recipient: Option<String>,
-    pub transferable: bool,
-    pub expires_at: Option<i64>,
-    pub version: i32,
-    pub time: DateTime<Utc>,
-    pub transaction_id: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = my_ip)]
-pub struct NewMyIP {
-    pub license_id: String,
-    pub name: String,
-    pub description: Option<String>,
-    pub creator: String,
-    pub creation_time: i64,
-    pub license_type: i16,
-    pub permission_flags: i64,
-    pub license_state: i16,
-    pub proof_of_creativity_id: Option<String>,
-    pub custom_license_uri: Option<String>,
-    pub revenue_recipient: Option<String>,
-    pub transferable: bool,
-    pub expires_at: Option<i64>,
-    pub version: i32,
-    pub transaction_id: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
-#[diesel(table_name = my_ip_permissions)]
-pub struct MyIPPermission {
-    pub id: i32,
-    pub permission_name: String,
-    pub bit_position: i32,
-    pub description: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
-#[diesel(table_name = my_ip_events)]
-pub struct MyIPEvent {
-    pub id: i32,
-    pub event_type: String,
-    pub license_id: String,
-    pub event_data: Value,
-    pub created_by: String,
+#[diesel(table_name = my_ip_data)]
+#[diesel(primary_key(ip_id))]
+pub struct MyIPData {
+    pub ip_id: String,
+    pub owner: String,
+    pub media_type: String,
+    pub tags: Value,
+    pub platform_id: Option<String>,
+    pub timestamp_start: i64,
+    pub timestamp_end: Option<i64>,
     pub created_at: i64,
+    pub last_updated: i64,
+    pub one_time_price: Option<i64>,
+    pub subscription_price: Option<i64>,
+    pub subscription_duration_days: i64,
+    pub geographic_region: Option<String>,
+    pub data_quality: Option<String>,
+    pub sample_size: Option<i64>,
+    pub collection_method: Option<String>,
+    pub is_updating: bool,
+    pub update_frequency: Option<String>,
+    pub version: i64,
     pub time: DateTime<Utc>,
     pub transaction_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = my_ip_events)]
-pub struct NewMyIPEvent {
-    pub event_type: String,
-    pub license_id: String,
-    pub event_data: Value,
-    pub created_by: String,
+#[diesel(table_name = my_ip_data)]
+pub struct NewMyIPData {
+    pub ip_id: String,
+    pub owner: String,
+    pub media_type: String,
+    pub tags: Value,
+    pub platform_id: Option<String>,
+    pub timestamp_start: i64,
+    pub timestamp_end: Option<i64>,
     pub created_at: i64,
+    pub last_updated: i64,
+    pub one_time_price: Option<i64>,
+    pub subscription_price: Option<i64>,
+    pub subscription_duration_days: i64,
+    pub geographic_region: Option<String>,
+    pub data_quality: Option<String>,
+    pub sample_size: Option<i64>,
+    pub collection_method: Option<String>,
+    pub is_updating: bool,
+    pub update_frequency: Option<String>,
+    pub version: i64,
     pub transaction_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
-#[diesel(table_name = my_ip_grants)]
-pub struct MyIPGrant {
+#[diesel(table_name = my_ip_purchases)]
+pub struct MyIPPurchase {
     pub id: i32,
-    pub license_id: String,
-    pub grantor: String,
-    pub grantee: String,
-    pub grant_type: String,
-    pub payment_amount: i64,
-    pub payment_token: Option<String>,
-    pub grant_time: i64,
-    pub expiration_time: Option<i64>,
+    pub ip_id: String,
+    pub buyer: String,
+    pub price: i64,
+    pub purchase_type: String,
+    pub purchase_time: i64,
     pub time: DateTime<Utc>,
     pub transaction_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = my_ip_grants)]
-pub struct NewMyIPGrant {
-    pub license_id: String,
-    pub grantor: String,
-    pub grantee: String,
-    pub grant_type: String,
-    pub payment_amount: i64,
-    pub payment_token: Option<String>,
-    pub grant_time: i64,
-    pub expiration_time: Option<i64>,
+#[diesel(table_name = my_ip_purchases)]
+pub struct NewMyIPPurchase {
+    pub ip_id: String,
+    pub buyer: String,
+    pub price: i64,
+    pub purchase_type: String,
+    pub purchase_time: i64,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
+#[diesel(table_name = my_ip_subscriptions)]
+pub struct MyIPSubscription {
+    pub id: i32,
+    pub ip_id: String,
+    pub subscriber: String,
+    pub subscription_start: i64,
+    pub subscription_end: i64,
+    pub price: i64,
+    pub time: DateTime<Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = my_ip_subscriptions)]
+pub struct NewMyIPSubscription {
+    pub ip_id: String,
+    pub subscriber: String,
+    pub subscription_start: i64,
+    pub subscription_end: i64,
+    pub price: i64,
     pub transaction_id: String,
 }
 
@@ -119,8 +118,7 @@ pub struct NewMyIPGrant {
 #[diesel(table_name = my_ip_revenue)]
 pub struct MyIPRevenue {
     pub id: i32,
-    pub license_id: String,
-    pub post_id: Option<String>,
+    pub ip_id: String,
     pub from_address: String,
     pub to_address: String,
     pub amount: i64,
@@ -133,8 +131,7 @@ pub struct MyIPRevenue {
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
 #[diesel(table_name = my_ip_revenue)]
 pub struct NewMyIPRevenue {
-    pub license_id: String,
-    pub post_id: Option<String>,
+    pub ip_id: String,
     pub from_address: String,
     pub to_address: String,
     pub amount: i64,
@@ -143,182 +140,241 @@ pub struct NewMyIPRevenue {
     pub transaction_id: String,
 }
 
-// Permissions constants for easy reference
-pub const PERMISSION_COMMERCIAL_USE: i64 = 1 << 0;
-pub const PERMISSION_DERIVATIVES_ALLOWED: i64 = 1 << 1;
-pub const PERMISSION_PUBLIC_LICENSE: i64 = 1 << 2;
-pub const PERMISSION_AUTHORITY_REQUIRED: i64 = 1 << 3;
-pub const PERMISSION_SHARE_ALIKE: i64 = 1 << 4;
-pub const PERMISSION_REQUIRE_ATTRIBUTION: i64 = 1 << 5;
-pub const PERMISSION_REVENUE_REDIRECT: i64 = 1 << 6;
-
-pub const PERMISSION_ALLOW_COMMENTS: i64 = 1 << 10;
-pub const PERMISSION_ALLOW_REACTIONS: i64 = 1 << 11;
-pub const PERMISSION_ALLOW_REPOSTS: i64 = 1 << 12;
-pub const PERMISSION_ALLOW_QUOTES: i64 = 1 << 13;
-pub const PERMISSION_ALLOW_TIPS: i64 = 1 << 14;
-
-// License types
-pub const LICENSE_TYPE_CREATIVE_COMMONS: i16 = 0;
-pub const LICENSE_TYPE_TOKEN_BOUND: i16 = 1;
-pub const LICENSE_TYPE_CUSTOM: i16 = 2;
-
-// License states
-pub const LICENSE_STATE_ACTIVE: i16 = 0;
-pub const LICENSE_STATE_EXPIRED: i16 = 1;
-pub const LICENSE_STATE_REVOKED: i16 = 2;
-
-// Templates for Creative Commons and other common licenses
-impl MyIP {
-    // Check if a specific permission is granted
-    pub fn has_permission(&self, permission: i64) -> bool {
-        (self.permission_flags & permission) > 0
-    }
-    
-    // Check specific permissions
-    pub fn allows_commercial_use(&self) -> bool {
-        self.has_permission(PERMISSION_COMMERCIAL_USE)
-    }
-    
-    pub fn allows_derivatives(&self) -> bool {
-        self.has_permission(PERMISSION_DERIVATIVES_ALLOWED)
-    }
-    
-    pub fn allows_comments(&self) -> bool {
-        self.has_permission(PERMISSION_ALLOW_COMMENTS)
-    }
-    
-    pub fn allows_reactions(&self) -> bool {
-        self.has_permission(PERMISSION_ALLOW_REACTIONS)
-    }
-    
-    pub fn allows_reposts(&self) -> bool {
-        self.has_permission(PERMISSION_ALLOW_REPOSTS)
-    }
-    
-    pub fn allows_quotes(&self) -> bool {
-        self.has_permission(PERMISSION_ALLOW_QUOTES)
-    }
-    
-    pub fn allows_tips(&self) -> bool {
-        self.has_permission(PERMISSION_ALLOW_TIPS)
-    }
-    
-    pub fn requires_attribution(&self) -> bool {
-        self.has_permission(PERMISSION_REQUIRE_ATTRIBUTION)
-    }
-    
-    pub fn redirects_revenue(&self) -> bool {
-        self.has_permission(PERMISSION_REVENUE_REDIRECT)
-    }
-    
-    // Check if the license is valid (active and not expired)
-    pub fn is_valid(&self, current_time: i64) -> bool {
-        if self.license_state != LICENSE_STATE_ACTIVE {
-            return false;
-        }
-        
-        if let Some(expires_at) = self.expires_at {
-            if current_time >= expires_at {
-                return false;
-            }
-        }
-        
-        true
-    }
-    
-    // Helper methods for creating template-based licenses
-    pub fn cc0_permission_flags() -> i64 {
-        PERMISSION_COMMERCIAL_USE | 
-        PERMISSION_DERIVATIVES_ALLOWED | 
-        PERMISSION_PUBLIC_LICENSE |
-        PERMISSION_ALLOW_COMMENTS |
-        PERMISSION_ALLOW_REACTIONS |
-        PERMISSION_ALLOW_REPOSTS |
-        PERMISSION_ALLOW_QUOTES |
-        PERMISSION_ALLOW_TIPS
-    }
-    
-    pub fn cc_by_permission_flags() -> i64 {
-        PERMISSION_COMMERCIAL_USE | 
-        PERMISSION_DERIVATIVES_ALLOWED | 
-        PERMISSION_PUBLIC_LICENSE | 
-        PERMISSION_REQUIRE_ATTRIBUTION |
-        PERMISSION_ALLOW_COMMENTS |
-        PERMISSION_ALLOW_REACTIONS |
-        PERMISSION_ALLOW_REPOSTS |
-        PERMISSION_ALLOW_QUOTES |
-        PERMISSION_ALLOW_TIPS
-    }
-}
-
-// Response data type for API
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MyIPWithPostCount {
-    #[serde(flatten)]
-    pub my_ip: MyIP,
-    pub post_count: i64,
-    pub content_engagement: i64,
-}
-
-// Query result type for SQL queries
-#[derive(QueryableByName, Debug, Clone, Serialize, Deserialize)]
-pub struct MyIPWithStats {
-    #[diesel(sql_type = Integer)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
+#[diesel(table_name = my_ip_access_logs)]
+pub struct MyIPAccessLog {
     pub id: i32,
+    pub ip_id: String,
+    pub user_address: String,
+    pub access_type: String,
+    pub access_time: i64,
+    pub time: DateTime<Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = my_ip_access_logs)]
+pub struct NewMyIPAccessLog {
+    pub ip_id: String,
+    pub user_address: String,
+    pub access_type: String,
+    pub access_time: i64,
+    pub transaction_id: String,
+}
+
+// ============================================================================
+// MARKETPLACE CONSTANTS
+// ============================================================================
+
+// Purchase types
+pub const PURCHASE_TYPE_ONE_TIME: &str = "one_time";
+pub const PURCHASE_TYPE_SUBSCRIPTION: &str = "subscription";
+
+// Revenue types
+pub const REVENUE_TYPE_ONE_TIME: &str = "one_time";
+pub const REVENUE_TYPE_SUBSCRIPTION: &str = "subscription";
+pub const REVENUE_TYPE_GRANT: &str = "grant";
+
+// Access types
+pub const ACCESS_TYPE_ONE_TIME: &str = "one_time";
+pub const ACCESS_TYPE_SUBSCRIPTION: &str = "subscription";
+pub const ACCESS_TYPE_GRANT: &str = "grant";
+pub const ACCESS_TYPE_PREVIEW: &str = "preview";
+
+// Data quality levels
+pub const DATA_QUALITY_HIGH: &str = "high";
+pub const DATA_QUALITY_MEDIUM: &str = "medium";
+pub const DATA_QUALITY_LOW: &str = "low";
+
+// Update frequencies
+pub const UPDATE_FREQUENCY_HOURLY: &str = "hourly";
+pub const UPDATE_FREQUENCY_DAILY: &str = "daily";
+pub const UPDATE_FREQUENCY_WEEKLY: &str = "weekly";
+pub const UPDATE_FREQUENCY_MONTHLY: &str = "monthly";
+pub const UPDATE_FREQUENCY_YEARLY: &str = "yearly";
+
+// ============================================================================
+// MARKETPLACE BUSINESS LOGIC
+// ============================================================================
+
+impl MyIPData {
+    // Check if data is currently valid/available
+    pub fn is_current(&self, current_time: i64) -> bool {
+        if let Some(end_time) = self.timestamp_end {
+            current_time <= end_time
+        } else {
+            true
+        }
+    }
+    
+    // Get pricing model
+    pub fn pricing_model(&self) -> String {
+        match (self.one_time_price.is_some(), self.subscription_price.is_some()) {
+            (true, true) => "both".to_string(),
+            (true, false) => "one_time".to_string(),
+            (false, true) => "subscription".to_string(),
+            (false, false) => "free".to_string(),
+        }
+    }
+    
+    // Check if data has pricing
+    pub fn is_free(&self) -> bool {
+        self.one_time_price.is_none() && self.subscription_price.is_none()
+    }
+    
+    // Check if user has access based on current time
+    pub fn has_subscription_access(&self, subscription_end: i64, current_time: i64) -> bool {
+        subscription_end >= current_time
+    }
+}
+
+impl MyIPSubscription {
+    // Check if subscription is currently active
+    pub fn is_active(&self, current_time: i64) -> bool {
+        current_time >= self.subscription_start && current_time <= self.subscription_end
+    }
+    
+    // Get remaining subscription time in seconds
+    pub fn remaining_time(&self, current_time: i64) -> i64 {
+        if self.is_active(current_time) {
+            self.subscription_end - current_time
+        } else {
+            0
+        }
+    }
+}
+
+// ============================================================================
+// API RESPONSE TYPES
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MyIPDataWithStats {
+    #[serde(flatten)]
+    pub data: MyIPData,
+    pub total_purchasers: i64,
+    pub total_subscribers: i64,
+    pub total_revenue: i64,
+    pub unique_accesses: i64,
+    pub is_trending: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MarketplaceStats {
+    pub total_data_entries: i64,
+    pub total_revenue: i64,
+    pub total_purchases: i64,
+    pub total_subscriptions: i64,
+    pub unique_creators: i64,
+    pub unique_buyers: i64,
+    pub active_subscriptions: i64,
+    pub top_categories: Vec<CategoryStats>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CategoryStats {
+    pub media_type: String,
+    pub count: i64,
+    pub total_revenue: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreatorStats {
+    pub creator: String,
+    pub data_entries: i64,
+    pub total_revenue: i64,
+    pub unique_customers: i64,
+    pub avg_price: Option<f64>,
+    pub popular_categories: Vec<String>,
+}
+
+// ============================================================================
+// QUERY RESULT TYPES FOR ANALYTICS
+// ============================================================================
+
+#[derive(QueryableByName, Debug, Clone, Serialize, Deserialize)]
+pub struct DailyRevenueStats {
+    #[diesel(sql_type = Date)]
+    pub day: chrono::NaiveDate,
     #[diesel(sql_type = Text)]
-    pub license_id: String,
-    #[diesel(sql_type = Text)]
-    pub name: String,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub description: Option<String>,
+    pub ip_id: String,
     #[diesel(sql_type = Text)]
     pub creator: String,
-    #[diesel(sql_type = BigInt)]
-    pub creation_time: i64,
-    #[diesel(sql_type = SmallInt)]
-    pub license_type: i16,
-    #[diesel(sql_type = BigInt)]
-    pub permission_flags: i64,
-    #[diesel(sql_type = SmallInt)]
-    pub license_state: i16,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub proof_of_creativity_id: Option<String>,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub custom_license_uri: Option<String>,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub revenue_recipient: Option<String>,
-    #[diesel(sql_type = Bool)]
-    pub transferable: bool,
-    #[diesel(sql_type = Nullable<BigInt>)]
-    pub expires_at: Option<i64>,
-    #[diesel(sql_type = Integer)]
-    pub version: i32,
-    #[diesel(sql_type = Timestamptz)]
-    pub time: DateTime<Utc>,
     #[diesel(sql_type = Text)]
-    pub transaction_id: String,
+    pub revenue_type: String,
     #[diesel(sql_type = BigInt)]
-    pub post_count: i64,
+    pub daily_revenue: i64,
     #[diesel(sql_type = BigInt)]
-    pub total_reactions: i64,
+    pub transaction_count: i64,
+}
+
+#[derive(QueryableByName, Debug, Clone, Serialize, Deserialize)]
+pub struct AccessAnalytics {
+    #[diesel(sql_type = Date)]
+    pub day: chrono::NaiveDate,
+    #[diesel(sql_type = Text)]
+    pub ip_id: String,
+    #[diesel(sql_type = Text)]
+    pub access_type: String,
     #[diesel(sql_type = BigInt)]
-    pub total_comments: i64,
+    pub unique_users: i64,
+    #[diesel(sql_type = BigInt)]
+    pub total_accesses: i64,
+}
+
+#[derive(QueryableByName, Debug, Clone, Serialize, Deserialize)]
+pub struct PopularDataStats {
+    #[diesel(sql_type = Timestamp)]
+    pub hour: chrono::NaiveDateTime,
+    #[diesel(sql_type = Text)]
+    pub ip_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub unique_purchasers: i64,
+    #[diesel(sql_type = BigInt)]
+    pub one_time_purchases: i64,
+    #[diesel(sql_type = BigInt)]
+    pub subscriptions: i64,
     #[diesel(sql_type = BigInt)]
     pub total_revenue: i64,
 }
 
-// Revenue statistics
-#[derive(QueryableByName, Debug, Clone, Serialize, Deserialize)]
-pub struct RevenueStats {
-    #[diesel(sql_type = Text)]
-    pub license_id: String,
-    #[diesel(sql_type = Text)]
-    pub revenue_type: String,
-    #[diesel(sql_type = Timestamptz)]
-    pub time_bucket: DateTime<Utc>,
-    #[diesel(sql_type = BigInt)]
-    pub total_amount: i64,
-    #[diesel(sql_type = BigInt)]
-    pub transaction_count: i64,
+// ============================================================================
+// HELPER FUNCTIONS FOR COMMON QUERIES
+// ============================================================================
+
+impl MyIPData {
+    pub fn get_tags_array(&self) -> Vec<String> {
+        if let Value::Array(tags) = &self.tags {
+            tags.iter()
+                .filter_map(|tag| tag.as_str())
+                .map(|s| s.to_string())
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+    
+    pub fn add_tag(&mut self, tag: String) {
+        let mut tags = self.get_tags_array();
+        if !tags.contains(&tag) {
+            tags.push(tag);
+            self.tags = Value::Array(
+                tags.into_iter()
+                    .map(|t| Value::String(t))
+                    .collect()
+            );
+        }
+    }
+    
+    pub fn remove_tag(&mut self, tag: &str) {
+        let tags: Vec<String> = self.get_tags_array()
+            .into_iter()
+            .filter(|t| t != tag)
+            .collect();
+        self.tags = Value::Array(
+            tags.into_iter()
+                .map(|t| Value::String(t))
+                .collect()
+        );
+    }
 } 

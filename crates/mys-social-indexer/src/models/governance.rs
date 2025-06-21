@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 use chrono::{DateTime, Utc};
@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::schema::{
     delegates, governance_events, governance_registries, nominated_delegates, 
     proposals, delegate_ratings, delegate_votes, community_votes, reward_distributions,
+    anonymous_votes, vote_decryption_failures,
 };
 
 /// Model for governance_registries table
@@ -150,6 +151,12 @@ pub struct Proposal {
     pub rescind_time: Option<i64>,
     pub time: DateTime<Utc>,
     pub transaction_id: String,
+    // Anonymous voting fields
+    pub anonymous_votes_for: Option<i64>,
+    pub anonymous_votes_against: Option<i64>,
+    pub anonymous_voters_count: Option<i64>,
+    pub pending_anonymous_decryption: Option<bool>,
+    pub anonymous_decryption_completed_at: Option<i64>,
 }
 
 /// Model for creation of new proposal
@@ -291,6 +298,7 @@ pub struct GovernanceEvent {
     pub event_data: serde_json::Value,
     pub event_id: String,
     pub created_at: DateTime<Utc>,
+    pub anonymous_voting_related: Option<bool>,
 }
 
 /// Model for creation of new governance event
@@ -302,4 +310,67 @@ pub struct NewGovernanceEvent {
     pub event_data: serde_json::Value,
     pub event_id: String,
     pub created_at: DateTime<Utc>,
+    pub anonymous_voting_related: Option<bool>,
+}
+
+/// Model for anonymous_votes table
+#[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
+#[diesel(table_name = anonymous_votes)]
+#[diesel(primary_key(id, time))]
+pub struct AnonymousVote {
+    pub id: i32,
+    pub proposal_id: String,
+    pub voter_address: String,
+    pub encrypted_vote_data: Option<Vec<u8>>,
+    pub submitted_at: i64,
+    pub decrypted: bool,
+    pub decrypted_at: Option<i64>,
+    pub decrypted_vote: Option<i16>,
+    pub decryption_status: i16,
+    pub decryption_error: Option<String>,
+    pub time: DateTime<Utc>,
+    pub transaction_id: String,
+    pub processing_success: bool,
+    pub processing_error: Option<String>,
+}
+
+/// Model for inserting new anonymous votes
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = anonymous_votes)]
+pub struct NewAnonymousVote {
+    pub proposal_id: String,
+    pub voter_address: String,
+    pub encrypted_vote_data: Option<Vec<u8>>,
+    pub submitted_at: i64,
+    pub decryption_status: i16,
+    pub transaction_id: String,
+    pub processing_success: bool,
+    pub processing_error: Option<String>,
+}
+
+/// Model for vote_decryption_failures table
+#[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
+#[diesel(table_name = vote_decryption_failures)]
+#[diesel(primary_key(id, time))]
+pub struct VoteDecryptionFailure {
+    pub id: i32,
+    pub proposal_id: String,
+    pub voter_address: String,
+    pub failure_reason: String,
+    pub attempted_at: i64,
+    pub encrypted_vote_length: Option<i32>,
+    pub time: DateTime<Utc>,
+    pub transaction_id: String,
+}
+
+/// Model for inserting new decryption failures
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = vote_decryption_failures)]
+pub struct NewVoteDecryptionFailure {
+    pub proposal_id: String,
+    pub voter_address: String,
+    pub failure_reason: String,
+    pub attempted_at: i64,
+    pub encrypted_vote_length: Option<i32>,
+    pub transaction_id: String,
 } 

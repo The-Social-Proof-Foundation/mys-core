@@ -46,7 +46,6 @@ struct PriceOracle {
     price_fetcher: Box<dyn PriceFetcher>,
     bridge_client: BridgeClient,
     state_manager: Arc<StateManager>,
-    metrics: OracleMetrics,
     monitoring_server: MonitoringServer,
     dry_run: bool,
 }
@@ -90,7 +89,6 @@ impl PriceOracle {
             price_fetcher,
             bridge_client,
             state_manager,
-            metrics,
             monitoring_server,
             dry_run,
         })

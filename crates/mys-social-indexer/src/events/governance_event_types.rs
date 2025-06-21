@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 use serde::{Deserialize, Serialize};
@@ -140,4 +140,22 @@ pub struct RewardsDistributedEvent {
     pub amount: u64,
     pub distribution_time: u64,
     pub distribution_type: String,
+}
+
+/// Event emitted when an anonymous vote is submitted
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnonymousVoteEvent {
+    pub proposal_id: String,
+    pub voter: String,
+    pub vote_time: u64,
+    pub encrypted_vote_data: Vec<u8>,
+}
+
+/// Event emitted when vote decryption fails
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VoteDecryptionFailedEvent {
+    pub proposal_id: String,
+    pub voter: String,
+    pub failure_reason: String,
+    pub timestamp: u64,
 } 

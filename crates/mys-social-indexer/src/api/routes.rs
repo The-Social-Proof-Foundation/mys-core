@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::{
@@ -59,16 +59,17 @@ use crate::api::handlers::platforms::{
     get_platform_blocked_profiles,
 };
 use crate::api::handlers::my_ip::{
-    get_license_by_id,
-    list_licenses,
-    get_license_events,
-    get_license_grants,
-    get_license_revenue,
-    get_creator_licenses,
-    get_license_posts,
-    get_license_stats,
+    get_marketplace_data_by_id,
+    list_marketplace_data,
+    get_ip_purchases,
+    get_ip_subscriptions,
+    get_ip_revenue,
+    get_ip_access_logs,
+    get_creator_data,
+    get_marketplace_stats,
     get_revenue_timeline,
-    get_popular_licenses,
+    get_access_analytics,
+    get_popular_marketplace_data,
 };
 use crate::api::handlers::governance::{
     list_proposals,
@@ -82,6 +83,10 @@ use crate::api::handlers::governance::{
     list_registries,
     get_registry_by_type,
     list_governance_events,
+    get_proposal_anonymous_stats,
+    get_proposal_anonymous_votes,
+    get_proposal_decryption_failures,
+    get_anonymous_voting_trends,
 };
 // Import social proof token handlers
 use crate::api::handlers::social_proof_token::{
@@ -104,6 +109,41 @@ use crate::api::handlers::social_proof_token::{
 };
 // Import search handler
 use crate::api::handlers::search::global_search;
+// Import PoC handlers
+use crate::api::handlers::poc::{
+    get_poc_badges,
+    get_poc_badge_by_id,
+    get_revenue_redirections,
+    get_poc_analysis_results,
+    get_poc_disputes,
+    get_poc_dispute_by_id,
+    get_dispute_votes,
+    get_poc_analytics,
+    get_poc_configuration,
+    get_post_poc_badges,
+    get_post_revenue_redirections,
+};
+// Import subscription handlers
+use crate::api::handlers::subscriptions::{
+    get_subscriptions,
+    get_subscription_services,
+    get_subscription_revenue,
+    check_subscription_access,
+    get_subscription_status,
+    get_subscription_analytics,
+    get_service_performance,
+    get_subscriber_summary,
+};
+// Import revenue handlers
+use crate::api::handlers::revenue::{
+    get_revenue_dashboard,
+    get_revenue_leaderboard,
+    get_revenue_chart_data,
+    get_creator_revenue_stats,
+    get_platform_revenue_stats,
+    get_unified_revenue,
+    get_spt_pool_revenue,
+};
 
 /// Build the application router with all API routes
 pub fn build_router(db: Arc<Database>) -> Router {
@@ -164,17 +204,60 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/promotions/analytics/top-performing", get(get_top_performing_promotions))
         .route("/promotions/analytics/spending-trends", get(get_promotion_spending_trends))
         
-        // License (IP) endpoints (using TimescaleDB)
-        .route("/licenses", get(list_licenses))
-        .route("/licenses/popular", get(get_popular_licenses))
-        .route("/licenses/:id", get(get_license_by_id))
-        .route("/licenses/:id/events", get(get_license_events))
-        .route("/licenses/:id/grants", get(get_license_grants))
-        .route("/licenses/:id/revenue", get(get_license_revenue))
-        .route("/licenses/:id/posts", get(get_license_posts))
-        .route("/licenses/:id/stats", get(get_license_stats))
-        .route("/licenses/:id/revenue-timeline", get(get_revenue_timeline))
-        .route("/creators/:id/licenses", get(get_creator_licenses))
+        // PoC endpoints (using TimescaleDB)
+        .route("/poc/badges", get(get_poc_badges))
+        .route("/poc/badges/:id", get(get_poc_badge_by_id))
+        .route("/poc/revenue-redirections", get(get_revenue_redirections))
+        .route("/poc/analysis-results", get(get_poc_analysis_results))
+        .route("/poc/disputes", get(get_poc_disputes))
+        .route("/poc/disputes/:id", get(get_poc_dispute_by_id))
+        .route("/poc/disputes/:id/votes", get(get_dispute_votes))
+        .route("/poc/analytics", get(get_poc_analytics))
+        .route("/poc/configuration", get(get_poc_configuration))
+        .route("/posts/:id/poc-badges", get(get_post_poc_badges))
+        .route("/posts/:id/revenue-redirections", get(get_post_revenue_redirections))
+        
+        // Subscription endpoints (using TimescaleDB)
+        .route("/subscriptions", get(get_subscriptions))
+        .route("/subscription-services", get(get_subscription_services))
+        .route("/subscription-revenue", get(get_subscription_revenue))
+        .route("/subscriptions/:id/status", get(get_subscription_status))
+        .route("/subscription-access/:subscriber/:content_id", get(check_subscription_access))
+        .route("/subscription-analytics", get(get_subscription_analytics))
+        .route("/service-performance", get(get_service_performance))
+        .route("/subscribers/:address/summary", get(get_subscriber_summary))
+        
+        // Unified Revenue Analytics endpoints (using TimescaleDB)
+        .route("/revenue/dashboard", get(get_revenue_dashboard))
+        .route("/revenue/leaderboard", get(get_revenue_leaderboard))
+        .route("/revenue/chart-data", get(get_revenue_chart_data))
+        .route("/revenue/unified", get(get_unified_revenue))
+        .route("/revenue/creators/:address/stats", get(get_creator_revenue_stats))
+        .route("/revenue/platforms/:address/stats", get(get_platform_revenue_stats))
+        .route("/revenue/spt/pools/:pool_id", get(get_spt_pool_revenue))
+        
+        // MyIP Marketplace endpoints (using TimescaleDB)
+        .route("/marketplace", get(list_marketplace_data))
+        .route("/marketplace/popular", get(get_popular_marketplace_data))
+        .route("/marketplace/:id", get(get_marketplace_data_by_id))
+        .route("/marketplace/:id/purchases", get(get_ip_purchases))
+        .route("/marketplace/:id/subscriptions", get(get_ip_subscriptions))
+        .route("/marketplace/:id/revenue", get(get_ip_revenue))
+        .route("/marketplace/:id/access-logs", get(get_ip_access_logs))
+        .route("/marketplace/:id/stats", get(get_marketplace_stats))
+        .route("/marketplace/:id/revenue-timeline", get(get_revenue_timeline))
+        .route("/marketplace/:id/access-analytics", get(get_access_analytics))
+        .route("/creators/:id/marketplace-data", get(get_creator_data))
+        
+        // Promotion endpoints (using TimescaleDB)
+        .route("/promotions", get(get_promoted_posts))
+        .route("/posts/:id/promotion", get(get_post_promotion))
+        .route("/promotions/:id/views", get(get_promotion_views))
+        .route("/promotions/:id/stats", get(get_promotion_stats))
+        .route("/promotions/:id/analytics/time-series", get(get_promotion_time_analytics))
+        .route("/promotions/:id/analytics/hourly", get(get_promotion_hourly_stats))
+        .route("/promotions/analytics/top-performing", get(get_top_performing_promotions))
+        .route("/promotions/analytics/spending-trends", get(get_promotion_spending_trends))
         
         // Governance endpoints
         .route("/governance/proposals", get(list_proposals))
@@ -188,6 +271,11 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/governance/registries", get(list_registries))
         .route("/governance/registries/:registry_type", get(get_registry_by_type))
         .route("/governance/events", get(list_governance_events))
+        // Anonymous voting endpoints
+        .route("/governance/proposals/:id/anonymous-stats", get(get_proposal_anonymous_stats))
+        .route("/governance/proposals/:id/anonymous-votes", get(get_proposal_anonymous_votes))
+        .route("/governance/proposals/:id/decryption-failures", get(get_proposal_decryption_failures))
+        .route("/governance/anonymous-voting-trends", get(get_anonymous_voting_trends))
         
         // Add shared state - using the pool directly for all standard endpoints
         .with_state(pool);

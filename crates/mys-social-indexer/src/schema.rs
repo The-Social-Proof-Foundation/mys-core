@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 // Import diesel table macros
@@ -204,6 +204,16 @@ table! {
         time -> Timestamptz,
         my_ip_id -> Nullable<Varchar>,
         revenue_recipient -> Nullable<Varchar>,
+        // PoC fields
+        poc_badge_id -> Nullable<Varchar>,
+        revenue_redirect_to -> Nullable<Varchar>,
+        revenue_redirect_percentage -> Nullable<Int8>,
+        // Subscription fields
+        requires_subscription -> Nullable<Bool>,
+        subscription_service_id -> Nullable<Varchar>,
+        subscription_price -> Nullable<Int8>,
+        encrypted_content_hash -> Nullable<Varchar>,
+        // Promotion fields
         promotion_id -> Nullable<Varchar>,
     }
 }
@@ -350,84 +360,87 @@ table! {
 }
 
 // ===========================================================================
-// MY IP TABLES
+// MY IP DATA MARKETPLACE TABLES
 // ===========================================================================
 
-// Define my_ip table
+// Main data marketplace entries (Regular table - reference data)
 table! {
-    my_ip (id) {
-        id -> Int4,
-        license_id -> Varchar,
-        name -> Varchar,
-        description -> Nullable<Text>,
-        creator -> Varchar,
-        creation_time -> Int8,
-        license_type -> Int2,
-        permission_flags -> Int8,
-        license_state -> Int2,
-        proof_of_creativity_id -> Nullable<Varchar>,
-        custom_license_uri -> Nullable<Text>,
-        revenue_recipient -> Nullable<Varchar>,
-        transferable -> Bool,
-        expires_at -> Nullable<Int8>,
-        version -> Int4,
-        time -> Timestamptz,
-        transaction_id -> Varchar,
-    }
-}
-
-// Define my_ip_permissions reference table
-table! {
-    my_ip_permissions (id) {
-        id -> Int4,
-        permission_name -> Varchar,
-        bit_position -> Int4,
-        description -> Text,
-    }
-}
-
-// Define my_ip_events table
-table! {
-    my_ip_events (id) {
-        id -> Int4,
-        event_type -> Varchar,
-        license_id -> Varchar,
-        event_data -> Jsonb,
-        created_by -> Varchar,
+    my_ip_data (ip_id) {
+        ip_id -> Varchar,
+        owner -> Varchar,
+        media_type -> Varchar,
+        tags -> Jsonb,
+        platform_id -> Nullable<Varchar>,
+        timestamp_start -> Int8,
+        timestamp_end -> Nullable<Int8>,
         created_at -> Int8,
+        last_updated -> Int8,
+        one_time_price -> Nullable<Int8>,
+        subscription_price -> Nullable<Int8>,
+        subscription_duration_days -> Int8,
+        geographic_region -> Nullable<Varchar>,
+        data_quality -> Nullable<Varchar>,
+        sample_size -> Nullable<Int8>,
+        collection_method -> Nullable<Varchar>,
+        is_updating -> Bool,
+        update_frequency -> Nullable<Varchar>,
+        version -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
     }
 }
 
-// Define my_ip_grants table
+// Purchase records (TimescaleDB hypertable)
 table! {
-    my_ip_grants (id) {
+    my_ip_purchases (id, time) {
         id -> Int4,
-        license_id -> Varchar,
-        grantor -> Varchar,
-        grantee -> Varchar,
-        grant_type -> Varchar,
-        payment_amount -> Int8,
-        payment_token -> Nullable<Varchar>,
-        grant_time -> Int8,
-        expiration_time -> Nullable<Int8>,
+        ip_id -> Varchar,
+        buyer -> Varchar,
+        price -> Int8,
+        purchase_type -> Varchar,
+        purchase_time -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
     }
 }
 
-// Define my_ip_revenue table
+// Subscription records (TimescaleDB hypertable)
 table! {
-    my_ip_revenue (id) {
+    my_ip_subscriptions (id, time) {
         id -> Int4,
-        license_id -> Varchar,
-        post_id -> Nullable<Varchar>,
+        ip_id -> Varchar,
+        subscriber -> Varchar,
+        subscription_start -> Int8,
+        subscription_end -> Int8,
+        price -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Revenue tracking (TimescaleDB hypertable - updated structure)
+table! {
+    my_ip_revenue (id, time) {
+        id -> Int4,
+        ip_id -> Varchar,
         from_address -> Varchar,
         to_address -> Varchar,
         amount -> Int8,
         revenue_type -> Varchar,
         revenue_time -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Access logs for analytics (TimescaleDB hypertable)
+table! {
+    my_ip_access_logs (id, time) {
+        id -> Int4,
+        ip_id -> Varchar,
+        user_address -> Varchar,
+        access_type -> Varchar,
+        access_time -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
     }
@@ -620,6 +633,12 @@ table! {
         rescind_time -> Nullable<Int8>,
         time -> Timestamptz,
         transaction_id -> Varchar,
+        // Anonymous voting fields
+        anonymous_votes_for -> Nullable<Int8>,
+        anonymous_votes_against -> Nullable<Int8>,
+        anonymous_voters_count -> Nullable<Int8>,
+        pending_anonymous_decryption -> Nullable<Bool>,
+        anonymous_decryption_completed_at -> Nullable<Int8>,
     }
 }
 
@@ -690,6 +709,282 @@ table! {
         event_data -> Jsonb,
         event_id -> Varchar,
         created_at -> Timestamptz,
+        anonymous_voting_related -> Nullable<Bool>,
+    }
+}
+
+// Define anonymous_votes table
+table! {
+    anonymous_votes (id, time) {
+        id -> Int4,
+        proposal_id -> Varchar,
+        voter_address -> Varchar,
+        encrypted_vote_data -> Nullable<Bytea>,
+        submitted_at -> Int8,
+        decrypted -> Bool,
+        decrypted_at -> Nullable<Int8>,
+        decrypted_vote -> Nullable<Int2>,
+        decryption_status -> Int2,
+        decryption_error -> Nullable<Text>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+        processing_success -> Bool,
+        processing_error -> Nullable<Text>,
+    }
+}
+
+// Define vote_decryption_failures table
+table! {
+    vote_decryption_failures (id, time) {
+        id -> Int4,
+        proposal_id -> Varchar,
+        voter_address -> Varchar,
+        failure_reason -> Text,
+        attempted_at -> Int8,
+        encrypted_vote_length -> Nullable<Int4>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// ===========================================================================
+// PROOF OF CREATIVITY (POC) TABLES
+// ===========================================================================
+
+// Define poc_badges table
+table! {
+    poc_badges (badge_id, time) {
+        badge_id -> Varchar,
+        post_id -> Varchar,
+        media_type -> Int2,
+        issued_by -> Varchar,
+        issued_at -> Int8,
+        revoked -> Bool,
+        revoked_at -> Nullable<Int8>,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define poc_revenue_redirections table
+table! {
+    poc_revenue_redirections (redirection_id, time) {
+        redirection_id -> Varchar,
+        accused_post_id -> Varchar,
+        original_post_id -> Varchar,
+        redirect_percentage -> Int8,
+        similarity_score -> Int8,
+        created_at -> Int8,
+        removed -> Bool,
+        removed_at -> Nullable<Int8>,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define poc_analysis_results table
+table! {
+    poc_analysis_results (post_id, time) {
+        post_id -> Varchar,
+        media_type -> Int2,
+        similarity_detected -> Bool,
+        highest_similarity_score -> Int8,
+        oracle_address -> Varchar,
+        original_creator -> Nullable<Varchar>,
+        analysis_timestamp -> Int8,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define poc_disputes table
+table! {
+    poc_disputes (dispute_id, time) {
+        dispute_id -> Varchar,
+        post_id -> Varchar,
+        disputer -> Varchar,
+        dispute_type -> Int2,
+        evidence -> Text,
+        status -> Int2,
+        stake_amount -> Int8,
+        voting_start_epoch -> Int8,
+        voting_end_epoch -> Int8,
+        resolution -> Nullable<Int2>,
+        winning_side -> Nullable<Int2>,
+        total_winning_stake -> Nullable<Int8>,
+        total_losing_stake -> Nullable<Int8>,
+        submitted_at -> Int8,
+        resolved_at -> Nullable<Int8>,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define poc_dispute_votes table
+table! {
+    poc_dispute_votes (dispute_id, voter, time) {
+        dispute_id -> Varchar,
+        voter -> Varchar,
+        vote_choice -> Int2,
+        stake_amount -> Int8,
+        voted_at -> Int8,
+        reward_claimed -> Bool,
+        reward_amount -> Nullable<Int8>,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define poc_configuration table
+table! {
+    poc_configuration (id) {
+        id -> Int4,
+        image_threshold -> Int8,
+        video_threshold -> Int8,
+        audio_threshold -> Int8,
+        revenue_redirect_percentage -> Int8,
+        dispute_cost -> Int8,
+        dispute_protocol_fee -> Int8,
+        min_vote_stake -> Int8,
+        max_vote_stake -> Int8,
+        voting_duration_epochs -> Int8,
+        updated_by -> Varchar,
+        updated_at -> Int8,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// ===========================================================================
+// SUBSCRIPTION TABLES
+// ===========================================================================
+
+// Define profile_subscription_services table
+table! {
+    profile_subscription_services (service_id) {
+        service_id -> Varchar,
+        profile_owner -> Varchar,
+        profile_id -> Varchar,
+        monthly_fee -> Int8,
+        active -> Bool,
+        subscriber_count -> Int8,
+        created_at -> Int8,
+        updated_at -> Nullable<Int8>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define profile_subscriptions table
+table! {
+    profile_subscriptions (subscription_id, time) {
+        subscription_id -> Varchar,
+        service_id -> Varchar,
+        subscriber -> Varchar,
+        created_at -> Int8,
+        expires_at -> Int8,
+        auto_renew -> Bool,
+        renewal_balance -> Int8,
+        renewal_count -> Int8,
+        cancelled_at -> Nullable<Int8>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+        processing_success -> Bool,
+        processing_error -> Nullable<Text>,
+    }
+}
+
+// Define subscription_events table
+table! {
+    subscription_events (event_type, time) {
+        event_type -> Varchar,
+        subscription_id -> Nullable<Varchar>,
+        service_id -> Nullable<Varchar>,
+        subscriber -> Nullable<Varchar>,
+        event_data -> Jsonb,
+        event_time -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+        processing_success -> Bool,
+        processing_error -> Nullable<Text>,
+    }
+}
+
+// Define subscription_revenue table
+table! {
+    subscription_revenue (service_id, time) {
+        service_id -> Varchar,
+        subscription_id -> Nullable<Varchar>,
+        from_address -> Varchar,
+        to_address -> Varchar,
+        amount -> Int8,
+        revenue_type -> Varchar,
+        payment_time -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+        processing_success -> Bool,
+        processing_error -> Nullable<Text>,
+    }
+}
+
+// Define subscription_access_logs table
+table! {
+    subscription_access_logs (subscription_id, time) {
+        subscription_id -> Varchar,
+        subscriber -> Varchar,
+        content_type -> Varchar,
+        content_id -> Varchar,
+        access_time -> Int8,
+        seal_id -> Nullable<Varchar>,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+        processing_success -> Bool,
+        processing_error -> Nullable<Text>,
+    }
+}
+
+// ===========================================================================
+// REVENUE AGGREGATION TABLES
+// ===========================================================================
+
+// SPT Revenue table
+table! {
+    spt_revenue (pool_id, time) {
+        pool_id -> Varchar,
+        transaction_type -> Varchar,
+        trader -> Varchar,
+        creator_address -> Varchar,
+        platform_address -> Varchar,
+        treasury_address -> Varchar,
+        creator_fee -> Int8,
+        platform_fee -> Int8,
+        treasury_fee -> Int8,
+        total_fee -> Int8,
+        token_amount -> Int8,
+        mys_amount -> Int8,
+        token_price -> Int8,
+        revenue_time -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Unified Revenue table
+table! {
+    unified_revenue (revenue_source, time) {
+        revenue_source -> Varchar,
+        revenue_type -> Varchar,
+        creator_address -> Varchar,
+        platform_address -> Nullable<Varchar>,
+        amount -> Int8,
+        currency -> Varchar,
+        content_id -> Nullable<Varchar>,
+        content_type -> Nullable<Varchar>,
+        payer_address -> Varchar,
+        recipient_address -> Varchar,
+        revenue_time -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
     }
 }
 
@@ -813,12 +1108,12 @@ allow_tables_to_appear_in_same_query!(
     posts_transfers,
     posts_moderation_events,
     posts_deletion_events,
-    // MyIP tables
-    my_ip,
-    my_ip_permissions,
-    my_ip_events,
-    my_ip_grants,
+    // MyIP Data Marketplace tables
+    my_ip_data,
+    my_ip_purchases,
+    my_ip_subscriptions,
     my_ip_revenue,
+    my_ip_access_logs,
     // Social Proof Token tables
     social_proof_token_pools,
     spt_holdings,
@@ -836,6 +1131,25 @@ allow_tables_to_appear_in_same_query!(
     community_votes,
     reward_distributions,
     governance_events,
+    // PoC tables
+    poc_badges,
+    poc_revenue_redirections,
+    poc_analysis_results,
+    poc_disputes,
+    poc_dispute_votes,
+    poc_configuration,
+    // Subscription tables
+    profile_subscription_services,
+    profile_subscriptions,
+    subscription_events,
+    subscription_revenue,
+    subscription_access_logs,
+    // Anonymous voting tables
+    anonymous_votes,
+    vote_decryption_failures,
+    // Revenue aggregation tables
+    spt_revenue,
+    unified_revenue,
     // Token exchange config tables
     token_exchange_config,
     token_exchange_events,

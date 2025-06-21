@@ -71,9 +71,9 @@ async fn main() {
 
         Command::StartServer {
             ide,
-            connection,
+            mut connection,
             config,
-            tx_exec_full_node,
+            mut tx_exec_full_node,
         } => {
             // Debug: Print environment variables
             println!("=== Environment Variables ===");
@@ -108,7 +108,7 @@ async fn main() {
             if let Ok(rpc_url) = std::env::var("RPC_URL") {
                 if rpc_url != "$RPC_URL" {  // Make sure it's not the literal string
                     println!("Overriding node_rpc_url with RPC_URL: {}", rpc_url);
-                    tx_exec_full_node.node_rpc_url = Some(rpc_url);
+                    tx_exec_full_node = mys_graphql_rpc::config::TxExecFullNodeConfig::new(Some(rpc_url));
                 }
             }
             
