@@ -162,6 +162,7 @@ END $$;
 -- ============================================================================
 
 -- Pre-computed analytics for anonymous voting patterns
+-- Create continuous aggregate without initial data to avoid transaction block issues
 CREATE MATERIALIZED VIEW IF NOT EXISTS anonymous_voting_daily_stats
 WITH (timescaledb.continuous) AS
 SELECT
@@ -174,7 +175,8 @@ SELECT
     COUNT(*) FILTER (WHERE decrypted_vote = 0) as anonymous_votes_against,
     COUNT(*) FILTER (WHERE decryption_status = 0) as pending_decryption
 FROM anonymous_votes
-GROUP BY day, proposal_id;
+GROUP BY day, proposal_id
+WITH NO DATA;
 
 -- Refresh policy for real-time analytics
 DO $$
@@ -189,6 +191,10 @@ BEGIN
             schedule_interval => INTERVAL '1 hour');
     END IF;
 END $$;
+
+-- Manually refresh the continuous aggregate to populate initial data
+-- This runs after creation and policy setup to ensure data availability
+CALL refresh_continuous_aggregate('anonymous_voting_daily_stats', NULL, NULL);
 
 -- ============================================================================
 -- 5. UPDATE GOVERNANCE EVENTS TABLE FOR ANONYMOUS VOTING
