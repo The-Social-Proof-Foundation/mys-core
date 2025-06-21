@@ -12,6 +12,8 @@ use mys_json_rpc_types::DevInspectArgs;
 use mys_sdk::MysClient;
 use mys_types::transaction::{TransactionData, TransactionKind};
 use mys_types::{gas_coin::GAS, transaction::TransactionDataAPI, TypeTag};
+use reqwest;
+use serde_json;
 
 use super::move_package::{
     self, MovePackage, MovePackageCheckpointFilter, MovePackageVersionFilter,
@@ -42,6 +44,7 @@ use super::{
     transaction_block::{self, TransactionBlock, TransactionBlockFilter},
     transaction_metadata::TransactionMetadata,
     type_filter::ExactTypeFilter,
+    social_profile::SocialProfile,
 };
 use crate::connection::ScanConnection;
 use crate::server::watermark_task::Watermark;
@@ -49,7 +52,7 @@ use crate::types::base64::Base64 as GraphQLBase64;
 use crate::types::zklogin_verify_signature::verify_zklogin_signature;
 use crate::types::zklogin_verify_signature::ZkLoginIntentScope;
 use crate::types::zklogin_verify_signature::ZkLoginVerifyResult;
-use crate::{config::ServiceConfig, error::Error, mutation::Mutation};
+use crate::{config::{ServiceConfig, ConnectionConfig}, error::Error, mutation::Mutation};
 
 pub(crate) struct Query;
 pub(crate) type MysGraphQLSchema = async_graphql::Schema<Query, Mutation, EmptySubscription>;
@@ -624,6 +627,44 @@ impl Query {
         verify_zklogin_signature(ctx, bytes, signature, intent_scope, author)
             .await
             .extend()
+    }
+
+    /// Fetch a profile from the social indexer by owner address.
+    async fn social_profile(
+        &self,
+        ctx: &Context<'_>,
+        address: String,
+    ) -> Result<Option<SocialProfile>> {
+        let connection = ctx
+            .data::<ConnectionConfig>()
+            .map_err(|_| Error::Internal("Unable to fetch connection config".to_string()))?;
+
+        let url = format!(
+            "{}/profiles/address/{}",
+            connection.social_indexer_url(),
+            address
+        );
+
+        let resp = reqwest::get(url)
+            .await
+            .map_err(|e| Error::Internal(format!("Request failed: {e}")))?;
+
+        if resp.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+
+        let value: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| Error::Internal(format!("Invalid response: {e}")))?;
+
+        if let Some(username) = value.get("username").and_then(|v| v.as_str()) {
+            Ok(Some(SocialProfile {
+                username: username.to_string(),
+            }))
+        } else {
+            Ok(None)
+        }
     }
 }
 

@@ -65,6 +65,10 @@ pub struct ConnectionConfig {
     /// start-up.
     #[clap(long, default_value_t = ConnectionConfig::default().skip_migration_consistency_check)]
     pub skip_migration_consistency_check: bool,
+
+    /// Base URL for the social indexer service used for profile lookups
+    #[clap(long, default_value_t = ConnectionConfig::default().social_indexer_url)]
+    pub social_indexer_url: String,
 }
 
 /// Configuration on features supported by the GraphQL service, passed in a TOML-based file. These
@@ -387,6 +391,10 @@ impl ConnectionConfig {
     pub fn port(&self) -> u16 {
         self.port
     }
+
+    pub fn social_indexer_url(&self) -> String {
+        self.social_indexer_url.clone()
+    }
 }
 
 impl ServiceConfig {
@@ -484,6 +492,7 @@ impl Default for ConnectionConfig {
             prom_host: "0.0.0.0".to_string(),
             prom_port: 9184,
             skip_migration_consistency_check: false,
+            social_indexer_url: "https://mys-social-indexer-testnet.up.railway.app".to_string(),
         }
     }
 }

@@ -468,6 +468,7 @@ impl ServerBuilder {
             .context_data(name_service_config)
             .context_data(zklogin_config)
             .context_data(metrics.clone())
+            .context_data(config.connection.clone())
             .context_data(config.clone())
             .context_data(move_registry_config.clone())
             .context_data(MoveRegistryDataLoader::new(
@@ -752,6 +753,7 @@ pub mod tests {
             .context_data(db)
             .context_data(loader)
             .context_data(pg_conn_pool)
+            .context_data(connection_config)
             .context_data(service_config)
             .context_data(query_id())
             .context_data(ip_address())
