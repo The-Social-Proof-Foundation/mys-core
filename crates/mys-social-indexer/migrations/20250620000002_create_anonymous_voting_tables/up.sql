@@ -172,15 +172,23 @@ SELECT add_continuous_aggregate_policy('anonymous_voting_daily_stats',
 -- Initial data will be available after the first scheduled refresh (1 hour interval)
 
 -- ============================================================================
--- 5. UPDATE GOVERNANCE EVENTS TABLE FOR ANONYMOUS VOTING
+-- 5. UPDATE GOVERNANCE EVENTS TABLE FOR ANONYMOUS VOTING (CONDITIONAL)
 -- ============================================================================
 
--- Add anonymous voting flag to existing governance_events table
-ALTER TABLE governance_events ADD COLUMN IF NOT EXISTS anonymous_voting_related BOOLEAN DEFAULT FALSE;
-
--- Add index for anonymous voting events
-CREATE INDEX IF NOT EXISTS idx_governance_events_anonymous ON governance_events(anonymous_voting_related, created_at DESC) 
-    WHERE anonymous_voting_related = true;
+-- Add anonymous voting flag to governance_events table only if it exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'governance_events') THEN
+        -- Add anonymous voting flag to existing governance_events table
+        ALTER TABLE governance_events ADD COLUMN IF NOT EXISTS anonymous_voting_related BOOLEAN DEFAULT FALSE;
+        
+        -- Add index for anonymous voting events
+        CREATE INDEX IF NOT EXISTS idx_governance_events_anonymous ON governance_events(anonymous_voting_related, created_at DESC) 
+            WHERE anonymous_voting_related = true;
+    ELSE
+        RAISE NOTICE 'governance_events table does not exist, skipping anonymous voting integration';
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 6. ADD RETENTION POLICIES
