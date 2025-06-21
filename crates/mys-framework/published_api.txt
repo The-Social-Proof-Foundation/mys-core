@@ -2431,87 +2431,6 @@ verify_groth16_proof
 verify_groth16_proof_internal
 	fun
 	0x2::groth16
-MYS
-	public struct
-	0x2::mys
-new
-	fun
-	0x2::mys
-transfer
-	public entry fun
-	0x2::mys
-TransferRequest
-	public struct
-	0x2::transfer_policy
-TransferPolicy
-	public struct
-	0x2::transfer_policy
-TransferPolicyCap
-	public struct
-	0x2::transfer_policy
-TransferPolicyCreated
-	public struct
-	0x2::transfer_policy
-TransferPolicyDestroyed
-	public struct
-	0x2::transfer_policy
-RuleKey
-	public struct
-	0x2::transfer_policy
-new_request
-	public fun
-	0x2::transfer_policy
-new
-	public fun
-	0x2::transfer_policy
-default
-	entry fun
-	0x2::transfer_policy
-withdraw
-	public fun
-	0x2::transfer_policy
-destroy_and_withdraw
-	public fun
-	0x2::transfer_policy
-confirm_request
-	public fun
-	0x2::transfer_policy
-add_rule
-	public fun
-	0x2::transfer_policy
-get_rule
-	public fun
-	0x2::transfer_policy
-add_to_balance
-	public fun
-	0x2::transfer_policy
-add_receipt
-	public fun
-	0x2::transfer_policy
-has_rule
-	public fun
-	0x2::transfer_policy
-remove_rule
-	public fun
-	0x2::transfer_policy
-uid
-	public fun
-	0x2::transfer_policy
-uid_mut_as_owner
-	public fun
-	0x2::transfer_policy
-rules
-	public fun
-	0x2::transfer_policy
-item
-	public fun
-	0x2::transfer_policy
-paid
-	public fun
-	0x2::transfer_policy
-from
-	public fun
-	0x2::transfer_policy
 LinkedTable
 	public struct
 	0x2::linked_table
@@ -2590,6 +2509,15 @@ sqrt_u128
 divide_and_round_up
 	public fun
 	0x2::math
+MYS
+	public struct
+	0x2::mys
+new
+	fun
+	0x2::mys
+transfer
+	public entry fun
+	0x2::mys
 PCREntry
 	public struct
 	0x2::nitro_attestation
@@ -4825,6 +4753,75 @@ migrate_block_list
 migrate_block_list_registry
 	public entry fun
 	0xd880::block_list
+ProfileSubscriptionService
+	public struct
+	0xd880::subscription
+ProfileSubscription
+	public struct
+	0xd880::subscription
+ProfileSubscriptionCreatedEvent
+	public struct
+	0xd880::subscription
+ProfileSubscriptionRenewedEvent
+	public struct
+	0xd880::subscription
+ProfileSubscriptionCancelledEvent
+	public struct
+	0xd880::subscription
+ProfileSubscriptionUpdatedEvent
+	public struct
+	0xd880::subscription
+create_profile_service
+	public fun
+	0xd880::subscription
+create_profile_service_entry
+	public entry fun
+	0xd880::subscription
+subscribe_to_profile
+	public entry fun
+	0xd880::subscription
+renew_subscription
+	public entry fun
+	0xd880::subscription
+auto_renew_subscription
+	public entry fun
+	0xd880::subscription
+can_auto_renew
+	public fun
+	0xd880::subscription
+fund_renewal_balance
+	public entry fun
+	0xd880::subscription
+is_subscription_valid
+	public fun
+	0xd880::subscription
+seal_approve
+	public entry fun
+	0xd880::subscription
+update_service_fee
+	public entry fun
+	0xd880::subscription
+deactivate_service
+	public entry fun
+	0xd880::subscription
+cancel_subscription
+	public entry fun
+	0xd880::subscription
+service_monthly_fee
+	public fun
+	0xd880::subscription
+service_subscriber_count
+	public fun
+	0xd880::subscription
+subscription_expires_at
+	public fun
+	0xd880::subscription
+subscription_auto_renew
+	public fun
+	0xd880::subscription
+subscription_renewal_balance
+	public fun
+	0xd880::subscription
 EcosystemTreasury
 	public struct
 	0xd880::profile
@@ -4966,6 +4963,30 @@ increment_following_count
 decrement_following_count
 	public fun
 	0xd880::profile
+create_subscription_service
+	public entry fun
+	0xd880::profile
+has_valid_subscription
+	public fun
+	0xd880::profile
+attach_my_ip
+	public entry fun
+	0xd880::profile
+has_my_ip_attached
+	public fun
+	0xd880::profile
+detach_my_ip
+	public entry fun
+	0xd880::profile
+get_attached_my_ips
+	public fun
+	0xd880::profile
+batch_attach_my_ips
+	public entry fun
+	0xd880::profile
+batch_detach_my_ips
+	public entry fun
+	0xd880::profile
 create_offer
 	public entry fun
 	0xd880::profile
@@ -5020,108 +5041,6 @@ get_platform_badges
 badge_count
 	public fun
 	0xd880::profile
-is_email_verified
-	public fun
-	0xd880::profile
-toggle_email_verification
-	public entry fun
-	0xd880::profile
-EncryptedContent
-	public struct
-	0xd880::encrypted_content
-PaymentTier
-	public struct
-	0xd880::encrypted_content
-AccessGrant
-	public struct
-	0xd880::encrypted_content
-ContentMetadata
-	public struct
-	0xd880::encrypted_content
-ContentCreatedEvent
-	public struct
-	0xd880::encrypted_content
-AccessGrantedEvent
-	public struct
-	0xd880::encrypted_content
-AccessRevokedEvent
-	public struct
-	0xd880::encrypted_content
-ContentUpdatedEvent
-	public struct
-	0xd880::encrypted_content
-TierCreatedEvent
-	public struct
-	0xd880::encrypted_content
-create_encrypted_content
-	public entry fun
-	0xd880::encrypted_content
-create_payment_tier
-	public entry fun
-	0xd880::encrypted_content
-unlock_content_with_payment
-	public entry fun
-	0xd880::encrypted_content
-grant_free_access
-	public entry fun
-	0xd880::encrypted_content
-revoke_access
-	public entry fun
-	0xd880::encrypted_content
-update_content
-	public entry fun
-	0xd880::encrypted_content
-update_content_metadata
-	public entry fun
-	0xd880::encrypted_content
-link_to_profile
-	fun
-	0xd880::encrypted_content
-verify_access
-	fun
-	0xd880::encrypted_content
-client_encrypt_access_key
-	public fun
-	0xd880::encrypted_content
-get_encrypted_data
-	public fun
-	0xd880::encrypted_content
-get_access_key
-	public fun
-	0xd880::encrypted_content
-has_access
-	public fun
-	0xd880::encrypted_content
-owner
-	public fun
-	0xd880::encrypted_content
-content_type
-	public fun
-	0xd880::encrypted_content
-content_hash
-	public fun
-	0xd880::encrypted_content
-public_metadata
-	public fun
-	0xd880::encrypted_content
-created_at
-	public fun
-	0xd880::encrypted_content
-updated_at
-	public fun
-	0xd880::encrypted_content
-get_content_metadata
-	public fun
-	0xd880::encrypted_content
-get_tier_details
-	public fun
-	0xd880::encrypted_content
-get_tier_ids
-	public fun
-	0xd880::encrypted_content
-platform_fee_bps
-	public fun
-	0xd880::encrypted_content
 GovernanceDAO
 	public struct
 	0xd880::governance
@@ -5155,6 +5074,9 @@ DelegateVoteEvent
 CommunityVoteEvent
 	public struct
 	0xd880::governance
+AnonymousVoteEvent
+	public struct
+	0xd880::governance
 ProposalApprovedForVotingEvent
 	public struct
 	0xd880::governance
@@ -5171,6 +5093,9 @@ ProposalImplementedEvent
 	public struct
 	0xd880::governance
 RewardsDistributedEvent
+	public struct
+	0xd880::governance
+VoteDecryptionFailedEvent
 	public struct
 	0xd880::governance
 ProposalRescindedEvent
@@ -5224,8 +5149,14 @@ reject_proposal_by_id
 community_vote_on_proposal
 	public entry fun
 	0xd880::governance
+community_vote_anonymous
+	public fun
+	0xd880::governance
 finalize_proposal
 	public entry fun
+	0xd880::governance
+finalize_proposal_anonymous
+	public fun
 	0xd880::governance
 distribute_rewards
 	fun
@@ -5284,25 +5215,13 @@ MyIP
 MyIPRegistry
 	public struct
 	0xd880::my_ip
-LicenseAdminCap
+MyIPCreatedEvent
 	public struct
 	0xd880::my_ip
-LicenseCreatedEvent
+PurchaseEvent
 	public struct
 	0xd880::my_ip
-LicenseUpdatedEvent
-	public struct
-	0xd880::my_ip
-LicenseTransferredEvent
-	public struct
-	0xd880::my_ip
-LicenseStateChangedEvent
-	public struct
-	0xd880::my_ip
-LicenseLinkedEvent
-	public struct
-	0xd880::my_ip
-LicenseRegisteredEvent
+AccessGrantedEvent
 	public struct
 	0xd880::my_ip
 init
@@ -5311,191 +5230,116 @@ init
 create
 	public fun
 	0xd880::my_ip
-create_license
+create_and_share
 	public entry fun
 	0xd880::my_ip
-update_license_permissions
+purchase_one_time
 	public entry fun
 	0xd880::my_ip
-update_revenue_recipient
+purchase_subscription
 	public entry fun
 	0xd880::my_ip
-set_license_state
+update_pricing
 	public entry fun
 	0xd880::my_ip
-register_license_internal
-	fun
-	0xd880::my_ip
-register_license
+update_content
 	public entry fun
 	0xd880::my_ip
-update_license_in_registry
+has_access
+	public fun
+	0xd880::my_ip
+decrypt_data
+	public fun
+	0xd880::my_ip
+grant_access
 	public entry fun
 	0xd880::my_ip
-transfer_license
-	public entry fun
+owner
+	public fun
 	0xd880::my_ip
-transfer_admin_cap
-	public entry fun
+media_type
+	public fun
 	0xd880::my_ip
-set_poc_id
-	public entry fun
+tags
+	public fun
+	0xd880::my_ip
+platform_id
+	public fun
+	0xd880::my_ip
+one_time_price
+	public fun
+	0xd880::my_ip
+subscription_price
+	public fun
+	0xd880::my_ip
+subscription_duration_days
+	public fun
+	0xd880::my_ip
+created_at
+	public fun
+	0xd880::my_ip
+last_updated
+	public fun
+	0xd880::my_ip
+timestamp_start
+	public fun
+	0xd880::my_ip
+timestamp_end
+	public fun
+	0xd880::my_ip
+geographic_region
+	public fun
+	0xd880::my_ip
+data_quality
+	public fun
+	0xd880::my_ip
+sample_size
+	public fun
+	0xd880::my_ip
+collection_method
+	public fun
+	0xd880::my_ip
+is_updating
+	public fun
+	0xd880::my_ip
+update_frequency
+	public fun
+	0xd880::my_ip
+purchaser_count
+	public fun
+	0xd880::my_ip
+subscriber_count
+	public fun
+	0xd880::my_ip
+is_one_time_for_sale
+	public fun
+	0xd880::my_ip
+is_subscription_available
+	public fun
+	0xd880::my_ip
+has_active_subscription
+	public fun
+	0xd880::my_ip
+get_subscription_expiry
+	public fun
+	0xd880::my_ip
+get_revenue_potential
+	public fun
+	0xd880::my_ip
+has_any_sales
+	public fun
+	0xd880::my_ip
+registry_get_owner
+	public fun
 	0xd880::my_ip
 is_registered
 	public fun
 	0xd880::my_ip
-registry_has_permission
-	public fun
+register_in_registry
+	public entry fun
 	0xd880::my_ip
-registry_is_commenting_allowed
-	public fun
-	0xd880::my_ip
-registry_is_reactions_allowed
-	public fun
-	0xd880::my_ip
-registry_is_reposting_allowed
-	public fun
-	0xd880::my_ip
-registry_is_quoting_allowed
-	public fun
-	0xd880::my_ip
-registry_is_tipping_allowed
-	public fun
-	0xd880::my_ip
-registry_is_commercial_use_allowed
-	public fun
-	0xd880::my_ip
-registry_is_derivatives_allowed
-	public fun
-	0xd880::my_ip
-registry_is_public_license
-	public fun
-	0xd880::my_ip
-registry_is_revenue_redirected
-	public fun
-	0xd880::my_ip
-registry_get_revenue_recipient
-	public fun
-	0xd880::my_ip
-registry_get_creator
-	public fun
-	0xd880::my_ip
-is_commenting_allowed
-	public fun
-	0xd880::my_ip
-is_reactions_allowed
-	public fun
-	0xd880::my_ip
-is_reposting_allowed
-	public fun
-	0xd880::my_ip
-is_quoting_allowed
-	public fun
-	0xd880::my_ip
-is_tipping_allowed
-	public fun
-	0xd880::my_ip
-is_commercial_use_allowed
-	public fun
-	0xd880::my_ip
-is_derivatives_allowed
-	public fun
-	0xd880::my_ip
-is_public_license
-	public fun
-	0xd880::my_ip
-is_authority_required
-	public fun
-	0xd880::my_ip
-is_share_alike_required
-	public fun
-	0xd880::my_ip
-is_attribution_required
-	public fun
-	0xd880::my_ip
-is_revenue_redirected
-	public fun
-	0xd880::my_ip
-has_permission
-	public fun
-	0xd880::my_ip
-is_expired
-	public fun
-	0xd880::my_ip
-validate_license_for_operation
-	public fun
-	0xd880::my_ip
-creator
-	public fun
-	0xd880::my_ip
-name
-	public fun
-	0xd880::my_ip
-description
-	public fun
-	0xd880::my_ip
-creation_time
-	public fun
-	0xd880::my_ip
-license_type
-	public fun
-	0xd880::my_ip
-permission_flags
-	public fun
-	0xd880::my_ip
-license_state
-	public fun
-	0xd880::my_ip
-proof_of_creativity_id
-	public fun
-	0xd880::my_ip
-custom_license_uri
-	public fun
-	0xd880::my_ip
-revenue_recipient
-	public fun
-	0xd880::my_ip
-is_transferable
-	public fun
-	0xd880::my_ip
-expires_at
-	public fun
-	0xd880::my_ip
-id
-	public fun
-	0xd880::my_ip
-id_address
-	public fun
-	0xd880::my_ip
-cc0_license_flags
-	public fun
-	0xd880::my_ip
-cc_by_license_flags
-	public fun
-	0xd880::my_ip
-cc_by_sa_license_flags
-	public fun
-	0xd880::my_ip
-cc_by_nc_license_flags
-	public fun
-	0xd880::my_ip
-cc_by_nc_sa_license_flags
-	public fun
-	0xd880::my_ip
-cc_by_nd_license_flags
-	public fun
-	0xd880::my_ip
-personal_use_license_flags
-	public fun
-	0xd880::my_ip
-token_bound_license_flags
-	public fun
-	0xd880::my_ip
-private_license_flags
-	public fun
-	0xd880::my_ip
-add_revenue_redirection
-	public fun
+unregister_from_registry
+	public entry fun
 	0xd880::my_ip
 version
 	public fun
@@ -5800,13 +5644,13 @@ PromotedPostCreatedEvent
 PromotedPostViewConfirmedEvent
 	public struct
 	0xd880::post
-PromotionDeactivatedEvent
-	public struct
-	0xd880::post
 PromotionStatusToggledEvent
 	public struct
 	0xd880::post
 PromotionFundsWithdrawnEvent
+	public struct
+	0xd880::post
+ModerationRecord
 	public struct
 	0xd880::post
 init
@@ -5842,9 +5686,6 @@ create_post
 create_comment
 	public entry fun
 	0xd880::post
-repost
-	public entry fun
-	0xd880::post
 create_repost
 	public entry fun
 	0xd880::post
@@ -5859,6 +5700,15 @@ react_to_post
 	0xd880::post
 tip_post
 	public entry fun
+	0xd880::post
+apply_poc_redirection_and_transfer
+	fun
+	0xd880::post
+update_poc_result
+	public(package) fun
+	0xd880::post
+clear_poc_data
+	public(package) fun
 	0xd880::post
 tip_repost
 	public entry fun
@@ -5914,16 +5764,19 @@ get_comment_post_id
 get_id_address
 	public fun
 	0xd880::post
-get_owner
-	public fun
-	0xd880::post
 get_reaction_count
 	public fun
 	0xd880::post
-get_comment_count
+get_tips_received
 	public fun
 	0xd880::post
-get_tips_received
+get_poc_badge_id
+	public fun
+	0xd880::post
+get_revenue_redirect_to
+	public fun
+	0xd880::post
+get_revenue_redirect_percentage
 	public fun
 	0xd880::post
 get_total_bet_amount
@@ -5968,21 +5821,6 @@ migrate_comment
 migrate_repost
 	public entry fun
 	0xd880::post
-my_ip_id
-	public fun
-	0xd880::post
-has_my_ip
-	public fun
-	0xd880::post
-attach_my_ip
-	public entry fun
-	0xd880::post
-remove_my_ip
-	public entry fun
-	0xd880::post
-increment_comment_count
-	public entry fun
-	0xd880::post
 update_post_parameters
 	public entry fun
 	0xd880::post
@@ -5990,9 +5828,6 @@ create_promoted_post
 	public fun
 	0xd880::post
 confirm_promoted_post_view
-	public entry fun
-	0xd880::post
-deactivate_promotion
 	public entry fun
 	0xd880::post
 toggle_promotion_status
@@ -6010,48 +5845,12 @@ has_user_viewed_promoted_post
 get_promotion_id
 	public fun
 	0xd880::post
-SocialGraph
-	public struct
-	0xd880::social_graph
-FollowEvent
-	public struct
-	0xd880::social_graph
-UnfollowEvent
-	public struct
-	0xd880::social_graph
-init
-	fun
-	0xd880::social_graph
-follow
+set_moderation_status
 	public entry fun
-	0xd880::social_graph
-unfollow
-	public entry fun
-	0xd880::social_graph
-migrate_social_graph
-	public entry fun
-	0xd880::social_graph
-borrow_version_mut
+	0xd880::post
+is_content_approved
 	public fun
-	0xd880::social_graph
-version
-	public fun
-	0xd880::social_graph
-is_following
-	public fun
-	0xd880::social_graph
-following_count
-	public fun
-	0xd880::social_graph
-follower_count
-	public fun
-	0xd880::social_graph
-get_following
-	public fun
-	0xd880::social_graph
-get_followers
-	public fun
-	0xd880::social_graph
+	0xd880::post
 ExchangeAdminCap
 	public struct
 	0xd880::token_exchange
@@ -6100,11 +5899,20 @@ ConfigUpdatedEvent
 TokensAddedEvent
 	public struct
 	0xd880::token_exchange
+EmergencyKillSwitchEvent
+	public struct
+	0xd880::token_exchange
 init
 	fun
 	0xd880::token_exchange
 update_exchange_config
 	public entry fun
+	0xd880::token_exchange
+toggle_emergency_kill_switch
+	public entry fun
+	0xd880::token_exchange
+is_trading_halted
+	public fun
 	0xd880::token_exchange
 check_post_viral_threshold
 	public fun
@@ -6127,6 +5935,21 @@ is_auction_ended
 finalize_auction
 	public entry fun
 	0xd880::token_exchange
+update_token_poc_data
+	public entry fun
+	0xd880::token_exchange
+calculate_poc_split
+	fun
+	0xd880::token_exchange
+apply_token_poc_redirection
+	fun
+	0xd880::token_exchange
+distribute_creator_fee
+	fun
+	0xd880::token_exchange
+distribute_creator_fee_from_pool
+	fun
+	0xd880::token_exchange
 buy_tokens
 	public entry fun
 	0xd880::token_exchange
@@ -6148,6 +5971,9 @@ calculate_sell_price
 get_token_info
 	public fun
 	0xd880::token_exchange
+token_exists
+	public fun
+	0xd880::token_exchange
 get_token_owner
 	public fun
 	0xd880::token_exchange
@@ -6155,6 +5981,24 @@ get_pool_price
 	public fun
 	0xd880::token_exchange
 get_user_balance
+	public fun
+	0xd880::token_exchange
+get_poc_redirect_to
+	public fun
+	0xd880::token_exchange
+get_poc_redirect_percentage
+	public fun
+	0xd880::token_exchange
+has_poc_redirection
+	public fun
+	0xd880::token_exchange
+get_pool_associated_id
+	public fun
+	0xd880::token_exchange
+set_poc_redirection
+	public fun
+	0xd880::token_exchange
+clear_poc_redirection
 	public fun
 	0xd880::token_exchange
 registry_version
@@ -6184,6 +6028,150 @@ migrate_token_pool
 migrate_auction_pool
 	public entry fun
 	0xd880::token_exchange
+PoCConfig
+	public struct
+	0xd880::proof_of_creativity
+Vote
+	public struct
+	0xd880::proof_of_creativity
+PoCDispute
+	public struct
+	0xd880::proof_of_creativity
+PoCRegistry
+	public struct
+	0xd880::proof_of_creativity
+AnalysisSubmittedEvent
+	public struct
+	0xd880::proof_of_creativity
+PoCBadgeIssuedEvent
+	public struct
+	0xd880::proof_of_creativity
+RevenueRedirectionActivatedEvent
+	public struct
+	0xd880::proof_of_creativity
+PoCDisputeSubmittedEvent
+	public struct
+	0xd880::proof_of_creativity
+DisputeVoteCastEvent
+	public struct
+	0xd880::proof_of_creativity
+PoCDisputeResolvedEvent
+	public struct
+	0xd880::proof_of_creativity
+VotingRewardClaimedEvent
+	public struct
+	0xd880::proof_of_creativity
+PoCConfigUpdatedEvent
+	public struct
+	0xd880::proof_of_creativity
+TokenPoolSyncNeededEvent
+	public struct
+	0xd880::proof_of_creativity
+init
+	fun
+	0xd880::proof_of_creativity
+update_poc_config
+	public entry fun
+	0xd880::proof_of_creativity
+analyze_and_update_post
+	public entry fun
+	0xd880::proof_of_creativity
+update_token_pool_if_exists
+	fun
+	0xd880::proof_of_creativity
+submit_poc_dispute
+	public entry fun
+	0xd880::proof_of_creativity
+vote_on_dispute
+	public entry fun
+	0xd880::proof_of_creativity
+resolve_dispute_voting
+	public entry fun
+	0xd880::proof_of_creativity
+claim_voting_reward
+	public entry fun
+	0xd880::proof_of_creativity
+get_threshold_for_media_type
+	fun
+	0xd880::proof_of_creativity
+is_authorized_oracle
+	public fun
+	0xd880::proof_of_creativity
+get_registry_stats
+	public fun
+	0xd880::proof_of_creativity
+has_poc_data
+	public fun
+	0xd880::proof_of_creativity
+get_dispute_voting_status
+	public fun
+	0xd880::proof_of_creativity
+get_dispute_stakes
+	public fun
+	0xd880::proof_of_creativity
+has_user_voted
+	public fun
+	0xd880::proof_of_creativity
+config_version
+	public fun
+	0xd880::proof_of_creativity
+dispute_version
+	public fun
+	0xd880::proof_of_creativity
+registry_version
+	public fun
+	0xd880::proof_of_creativity
+migrate_poc_config
+	public entry fun
+	0xd880::proof_of_creativity
+migrate_poc_dispute
+	public entry fun
+	0xd880::proof_of_creativity
+migrate_poc_registry
+	public entry fun
+	0xd880::proof_of_creativity
+SocialGraph
+	public struct
+	0xd880::social_graph
+FollowEvent
+	public struct
+	0xd880::social_graph
+UnfollowEvent
+	public struct
+	0xd880::social_graph
+init
+	fun
+	0xd880::social_graph
+follow
+	public entry fun
+	0xd880::social_graph
+unfollow
+	public entry fun
+	0xd880::social_graph
+migrate_social_graph
+	public entry fun
+	0xd880::social_graph
+borrow_version_mut
+	public fun
+	0xd880::social_graph
+version
+	public fun
+	0xd880::social_graph
+is_following
+	public fun
+	0xd880::social_graph
+following_count
+	public fun
+	0xd880::social_graph
+follower_count
+	public fun
+	0xd880::social_graph
+get_following
+	public fun
+	0xd880::social_graph
+get_followers
+	public fun
+	0xd880::social_graph
 log
 	fun
 	0x5ea1::gf256

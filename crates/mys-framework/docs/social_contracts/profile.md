@@ -54,6 +54,14 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `get_following_count`](#social_contracts_profile_get_following_count)
 -  [Function `increment_following_count`](#social_contracts_profile_increment_following_count)
 -  [Function `decrement_following_count`](#social_contracts_profile_decrement_following_count)
+-  [Function `create_subscription_service`](#social_contracts_profile_create_subscription_service)
+-  [Function `has_valid_subscription`](#social_contracts_profile_has_valid_subscription)
+-  [Function `attach_my_ip`](#social_contracts_profile_attach_my_ip)
+-  [Function `has_my_ip_attached`](#social_contracts_profile_has_my_ip_attached)
+-  [Function `detach_my_ip`](#social_contracts_profile_detach_my_ip)
+-  [Function `get_attached_my_ips`](#social_contracts_profile_get_attached_my_ips)
+-  [Function `batch_attach_my_ips`](#social_contracts_profile_batch_attach_my_ips)
+-  [Function `batch_detach_my_ips`](#social_contracts_profile_batch_detach_my_ips)
 -  [Function `create_offer`](#social_contracts_profile_create_offer)
 -  [Function `accept_offer`](#social_contracts_profile_accept_offer)
 -  [Function `reject_or_revoke_offer`](#social_contracts_profile_reject_or_revoke_offer)
@@ -72,13 +80,12 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `get_badge`](#social_contracts_profile_get_badge)
 -  [Function `get_platform_badges`](#social_contracts_profile_get_platform_badges)
 -  [Function `badge_count`](#social_contracts_profile_badge_count)
--  [Function `is_email_verified`](#social_contracts_profile_is_email_verified)
--  [Function `toggle_email_verification`](#social_contracts_profile_toggle_email_verification)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
+<b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
 <b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
@@ -95,6 +102,7 @@ Handles user identity, profile creation, management, and username registration
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
+<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -241,84 +249,6 @@ Profile object that contains user information
  Profile owner address
 </dd>
 <dt>
-<code>birthdate: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Birthdate as encrypted string (optional)
-</dd>
-<dt>
-<code>current_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Current location as encrypted string (optional)
-</dd>
-<dt>
-<code>raised_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Raised location as encrypted string (optional)
-</dd>
-<dt>
-<code>phone: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Phone number as encrypted string (optional)
-</dd>
-<dt>
-<code>email: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Email as encrypted string (optional)
-</dd>
-<dt>
-<code><a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: bool</code>
-</dt>
-<dd>
- Is email verified flag
-</dd>
-<dt>
-<code>gender: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Gender as encrypted string (optional)
-</dd>
-<dt>
-<code>political_view: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Political view as encrypted string (optional)
-</dd>
-<dt>
-<code>religion: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Religion as encrypted string (optional)
-</dd>
-<dt>
-<code>education: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Education as encrypted string (optional)
-</dd>
-<dt>
-<code>website: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Website as encrypted string (optional)
-</dd>
-<dt>
-<code>primary_language: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Primary language as encrypted string (optional)
-</dd>
-<dt>
-<code>relationship_status: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Relationship status as encrypted string (optional)
-</dd>
-<dt>
 <code>x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
@@ -347,6 +277,12 @@ Profile object that contains user information
 </dt>
 <dd>
  GitHub username as encrypted string (optional)
+</dd>
+<dt>
+<code>instagram_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+ Instagram username as encrypted string (optional)
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_last_updated">last_updated</a>: u64</code>
@@ -389,6 +325,12 @@ Profile object that contains user information
 </dt>
 <dd>
  Collection of badges assigned to the profile
+</dd>
+<dt>
+<code>attached_my_ip_ids: vector&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+ Vector tracking attached MyIP IDs for efficient iteration
 </dd>
 </dl>
 
@@ -702,71 +644,6 @@ Profile updated event with all profile details
 <dd>
 </dd>
 <dt>
-<code>birthdate: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>current_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>raised_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>phone: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>email: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code><a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: bool</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>gender: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>political_view: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>religion: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>education: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>website: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>primary_language: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>relationship_status: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
@@ -788,6 +665,11 @@ Profile updated event with all profile details
 </dd>
 <dt>
 <code>github_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>instagram_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -1182,6 +1064,15 @@ Error codes
 
 
 
+<a name="social_contracts_profile_MY_IP_DATA_FIELD"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>: vector&lt;u8&gt; = vector[109, 121, 95, 105, 112, 95, 100, 97, 116, 97];
+</code></pre>
+
+
+
 <a name="social_contracts_profile_OFFERS_FIELD"></a>
 
 
@@ -1463,24 +1354,12 @@ This is the main entry point for new users, combining profile and username creat
         <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>,
         created_at: now,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
-        birthdate: option::none(),
-        current_location: option::none(),
-        raised_location: option::none(),
-        phone: option::none(),
-        email: option::none(),
-        <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: <b>false</b>,
-        gender: option::none(),
-        political_view: option::none(),
-        religion: option::none(),
-        education: option::none(),
-        website: option::none(),
-        primary_language: option::none(),
-        relationship_status: option::none(),
         x_username: option::none(),
         mastodon_username: option::none(),
         facebook_username: option::none(),
         reddit_username: option::none(),
         github_username: option::none(),
+        instagram_username: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_last_updated">last_updated</a>: now,
         followers_count: 0,
         following_count: 0,
@@ -1488,6 +1367,7 @@ This is the main entry point for new users, combining profile and username creat
         tips_received: 0,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: option::none(),
         badges: vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt;(),
+        attached_my_ip_ids: vector::empty&lt;<b>address</b>&gt;(),
     };
     // Get the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
@@ -1606,25 +1486,13 @@ The username stays with the profile, and the transfer updates registry mappings
         },
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: new_owner,
         updated_at: tx_context::epoch(ctx),
-        // Include all sensitive fields
-        birthdate: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.birthdate,
-        current_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.current_location,
-        raised_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.raised_location,
-        phone: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.phone,
-        email: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.email,
-        <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>,
-        gender: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.gender,
-        political_view: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.political_view,
-        religion: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.religion,
-        education: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.education,
-        website: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.website,
-        primary_language: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.primary_language,
-        relationship_status: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.relationship_status,
+        // Social media usernames
         x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
         mastodon_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.mastodon_username,
         facebook_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username,
         reddit_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.reddit_username,
         github_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username,
+        instagram_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.instagram_username,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
     // Transfer <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> to new <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
@@ -1644,7 +1512,7 @@ Only the profile owner can update profile information
 Authorized services (via authorize_read_service) can only read data, never modify it
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, birthdate: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, current_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, raised_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, phone: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, email: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, gender: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, political_view: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, religion: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, education: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, website: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, primary_language: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, relationship_status: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, mastodon_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, facebook_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, reddit_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, github_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, mastodon_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, facebook_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, reddit_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, github_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, instagram_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1660,24 +1528,13 @@ Authorized services (via authorize_read_service) can only read data, never modif
     new_bio: String,
     new_profile_picture_url: vector&lt;u8&gt;,
     new_cover_photo_url: vector&lt;u8&gt;,
-    // Sensitive <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> fields (all optional)
-    birthdate: Option&lt;String&gt;,
-    current_location: Option&lt;String&gt;,
-    raised_location: Option&lt;String&gt;,
-    phone: Option&lt;String&gt;,
-    email: Option&lt;String&gt;,
-    gender: Option&lt;String&gt;,
-    political_view: Option&lt;String&gt;,
-    religion: Option&lt;String&gt;,
-    education: Option&lt;String&gt;,
-    website: Option&lt;String&gt;,
-    primary_language: Option&lt;String&gt;,
-    relationship_status: Option&lt;String&gt;,
+    // Social media usernames (all optional)
     x_username: Option&lt;String&gt;,
     mastodon_username: Option&lt;String&gt;,
     facebook_username: Option&lt;String&gt;,
     reddit_username: Option&lt;String&gt;,
     github_username: Option&lt;String&gt;,
+    instagram_username: Option&lt;String&gt;,
     <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: Option&lt;u64&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -1697,43 +1554,7 @@ Authorized services (via authorize_read_service) can only read data, never modif
     <b>if</b> (vector::length(&new_cover_photo_url) &gt; 0) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a> = option::some(url::new_unsafe_from_bytes(new_cover_photo_url));
     };
-    // Update sensitive <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> details <b>if</b> provided
-    <b>if</b> (option::is_some(&birthdate)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.birthdate = birthdate;
-    };
-    <b>if</b> (option::is_some(&current_location)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.current_location = current_location;
-    };
-    <b>if</b> (option::is_some(&raised_location)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.raised_location = raised_location;
-    };
-    <b>if</b> (option::is_some(&phone)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.phone = phone;
-    };
-    <b>if</b> (option::is_some(&email)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.email = email;
-    };
-    <b>if</b> (option::is_some(&gender)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.gender = gender;
-    };
-    <b>if</b> (option::is_some(&political_view)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.political_view = political_view;
-    };
-    <b>if</b> (option::is_some(&religion)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.religion = religion;
-    };
-    <b>if</b> (option::is_some(&education)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.education = education;
-    };
-    <b>if</b> (option::is_some(&website)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.website = website;
-    };
-    <b>if</b> (option::is_some(&primary_language)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.primary_language = primary_language;
-    };
-    <b>if</b> (option::is_some(&relationship_status)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.relationship_status = relationship_status;
-    };
+    // Update social media usernames <b>if</b> provided
     <b>if</b> (option::is_some(&x_username)) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username = x_username;
     };
@@ -1748,6 +1569,9 @@ Authorized services (via authorize_read_service) can only read data, never modif
     };
     <b>if</b> (option::is_some(&github_username)) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username = github_username;
+    };
+    <b>if</b> (option::is_some(&instagram_username)) {
+        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.instagram_username = instagram_username;
     };
     <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>)) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a> = <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>;
@@ -1784,25 +1608,13 @@ Authorized services (via authorize_read_service) can only read data, never modif
         <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: cover_photo_string,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         updated_at: now,
-        // Include all sensitive fields
-        birthdate: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.birthdate,
-        current_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.current_location,
-        raised_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.raised_location,
-        phone: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.phone,
-        email: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.email,
-        <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>,
-        gender: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.gender,
-        political_view: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.political_view,
-        religion: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.religion,
-        education: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.education,
-        website: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.website,
-        primary_language: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.primary_language,
-        relationship_status: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.relationship_status,
+        // Social media usernames
         x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
         mastodon_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.mastodon_username,
         facebook_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username,
         reddit_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.reddit_username,
         github_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username,
+        instagram_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.instagram_username,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
 }
@@ -2529,6 +2341,321 @@ Decrement following count (called when this profile unfollows another profile)
 
 </details>
 
+<a name="social_contracts_profile_create_subscription_service"></a>
+
+## Function `create_subscription_service`
+
+Create a subscription service for this profile (creates separate service object)
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_subscription_service">create_subscription_service</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, monthly_fee: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_subscription_service">create_subscription_service</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    monthly_fee: u64,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    // Create the <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> service and share it
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_create_profile_service_entry">subscription::create_profile_service_entry</a>(monthly_fee, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_has_valid_subscription"></a>
+
+## Function `has_valid_subscription`
+
+Check if a viewer has a valid subscription (uses subscription module functions)
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_valid_subscription">has_valid_subscription</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_valid_subscription">has_valid_subscription</a>(
+    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &ProfileSubscription,
+    service: &ProfileSubscriptionService,
+    clock: &Clock,
+): bool {
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid">subscription::is_subscription_valid</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, service, clock)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_attach_my_ip"></a>
+
+## Function `attach_my_ip`
+
+Attach MyIP to profile for data monetization
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_attach_my_ip">attach_my_ip</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_attach_my_ip">attach_my_ip</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    my_ip_id: <b>address</b>,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    // Initialize table <b>if</b> it doesn't exist
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+        <b>let</b> tbl = table::new&lt;<b>address</b>, bool&gt;(ctx);
+        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>, tbl);
+    };
+    <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
+        &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+    );
+    // Only add <b>if</b> not already attached
+    <b>if</b> (!table::contains(tbl, my_ip_id)) {
+        table::add(tbl, my_ip_id, <b>true</b>);
+        // Also add to the tracking vector <b>for</b> efficient iteration
+        vector::push_back(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, my_ip_id);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_has_my_ip_attached"></a>
+
+## Function `has_my_ip_attached`
+
+Check if a MyIP is attached to this profile
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_my_ip_attached">has_my_ip_attached</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_id: <b>address</b>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_my_ip_attached">has_my_ip_attached</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, my_ip_id: <b>address</b>): bool {
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> tbl = dynamic_field::borrow&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
+        &<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+    );
+    table::contains(tbl, my_ip_id)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_detach_my_ip"></a>
+
+## Function `detach_my_ip`
+
+Remove a MyIP attachment from the profile
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_detach_my_ip">detach_my_ip</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_detach_my_ip">detach_my_ip</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    my_ip_id: <b>address</b>,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+        <b>return</b>
+    };
+    <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
+        &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+    );
+    <b>if</b> (table::contains(tbl, my_ip_id)) {
+        table::remove(tbl, my_ip_id);
+        // Also remove from the tracking vector
+        <b>let</b> <b>mut</b> i = 0;
+        <b>let</b> len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids);
+        <b>while</b> (i &lt; len) {
+            <b>if</b> (*vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, i) == my_ip_id) {
+                vector::remove(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, i);
+                <b>break</b>
+            };
+            i = i + 1;
+        };
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_get_attached_my_ips"></a>
+
+## Function `get_attached_my_ips`
+
+Get all attached MyIP IDs for this profile
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_attached_my_ips">get_attached_my_ips</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): vector&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_attached_my_ips">get_attached_my_ips</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): vector&lt;<b>address</b>&gt; {
+    // Return a <b>copy</b> of the attached MyIP IDs vector <b>for</b> efficient iteration
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_batch_attach_my_ips"></a>
+
+## Function `batch_attach_my_ips`
+
+Batch attach multiple MyIPs to profile for gas optimization
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_attach_my_ips">batch_attach_my_ips</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_ids: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_attach_my_ips">batch_attach_my_ips</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    my_ip_ids: vector&lt;<b>address</b>&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    // Initialize table <b>if</b> it doesn't exist
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+        <b>let</b> tbl = table::new&lt;<b>address</b>, bool&gt;(ctx);
+        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>, tbl);
+    };
+    <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
+        &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+    );
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> len = vector::length(&my_ip_ids);
+    <b>while</b> (i &lt; len) {
+        <b>let</b> my_ip_id = *vector::borrow(&my_ip_ids, i);
+        // Only add <b>if</b> not already attached
+        <b>if</b> (!table::contains(tbl, my_ip_id)) {
+            table::add(tbl, my_ip_id, <b>true</b>);
+            vector::push_back(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, my_ip_id);
+        };
+        i = i + 1;
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_batch_detach_my_ips"></a>
+
+## Function `batch_detach_my_ips`
+
+Batch detach multiple MyIPs from profile for gas optimization
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_detach_my_ips">batch_detach_my_ips</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_ids: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_detach_my_ips">batch_detach_my_ips</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    my_ip_ids: vector&lt;<b>address</b>&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+        <b>return</b>
+    };
+    <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
+        &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+    );
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> len = vector::length(&my_ip_ids);
+    <b>while</b> (i &lt; len) {
+        <b>let</b> my_ip_id = *vector::borrow(&my_ip_ids, i);
+        <b>if</b> (table::contains(tbl, my_ip_id)) {
+            table::remove(tbl, my_ip_id);
+            // Remove from tracking vector
+            <b>let</b> <b>mut</b> j = 0;
+            <b>let</b> vec_len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids);
+            <b>while</b> (j &lt; vec_len) {
+                <b>if</b> (*vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, j) == my_ip_id) {
+                    vector::remove(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, j);
+                    <b>break</b>
+                };
+                j = j + 1;
+            };
+        };
+        i = i + 1;
+    };
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_create_offer"></a>
 
 ## Function `create_offer`
@@ -2698,25 +2825,13 @@ Transfers tokens to the profile owner and profile ownership to the offeror
         },
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: offeror,
         updated_at: now,
-        // Include all sensitive fields
-        birthdate: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.birthdate,
-        current_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.current_location,
-        raised_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.raised_location,
-        phone: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.phone,
-        email: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.email,
-        <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>,
-        gender: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.gender,
-        political_view: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.political_view,
-        religion: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.religion,
-        education: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.education,
-        website: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.website,
-        primary_language: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.primary_language,
-        relationship_status: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.relationship_status,
+        // Social media usernames
         x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
         mastodon_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.mastodon_username,
         facebook_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username,
         reddit_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.reddit_username,
         github_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username,
+        instagram_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.instagram_username,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
     // Emit a fee event
@@ -3291,112 +3406,6 @@ Count the number of badges a profile has
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_badge_count">badge_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
     vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_is_email_verified"></a>
-
-## Function `is_email_verified`
-
-Get whether the email is verified for a profile
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): bool
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): bool {
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_toggle_email_verification"></a>
-
-## Function `toggle_email_verification`
-
-Toggle the email verification status for a profile
-Only the admin with the UpgradeAdminCap can call this function
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_toggle_email_verification">toggle_email_verification</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, _admin_cap: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, is_verified: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_toggle_email_verification">toggle_email_verification</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    _admin_cap: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">upgrade::UpgradeAdminCap</a>,
-    is_verified: bool,
-    ctx: &<b>mut</b> TxContext
-) {
-    // Admin check is implicit through the requirement of the UpgradeAdminCap
-    <b>let</b> _admin = tx_context::sender(ctx);
-    // Update the email verification status
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a> = is_verified;
-    // Get the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID <b>for</b> the event
-    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    // Emit <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> updated event to reflect the change in verification status
-    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileUpdatedEvent">ProfileUpdatedEvent</a> {
-        profile_id,
-        <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>: <b>if</b> (dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_FIELD">USERNAME_FIELD</a>)) {
-            option::some(*dynamic_field::borrow&lt;vector&lt;u8&gt;, String&gt;(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_FIELD">USERNAME_FIELD</a>))
-        } <b>else</b> {
-            option::none()
-        },
-        <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>: <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>)) {
-            <b>let</b> url = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>);
-            option::some(<a href="../social_contracts/profile.md#social_contracts_profile_ascii_to_string">ascii_to_string</a>(url::inner_url(url)))
-        } <b>else</b> {
-            option::none()
-        },
-        <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>)) {
-            <b>let</b> url = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>);
-            option::some(<a href="../social_contracts/profile.md#social_contracts_profile_ascii_to_string">ascii_to_string</a>(url::inner_url(url)))
-        } <b>else</b> {
-            option::none()
-        },
-        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
-        updated_at: tx_context::epoch(ctx),
-        // Include all sensitive fields
-        birthdate: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.birthdate,
-        current_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.current_location,
-        raised_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.raised_location,
-        phone: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.phone,
-        email: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.email,
-        <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>,
-        gender: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.gender,
-        political_view: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.political_view,
-        religion: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.religion,
-        education: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.education,
-        website: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.website,
-        primary_language: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.primary_language,
-        relationship_status: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.relationship_status,
-        x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
-        mastodon_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.mastodon_username,
-        facebook_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username,
-        reddit_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.reddit_username,
-        github_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username,
-        <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
-    });
 }
 </code></pre>
 
