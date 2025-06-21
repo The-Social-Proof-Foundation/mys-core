@@ -80,7 +80,7 @@ DROP MATERIALIZED VIEW IF EXISTS revenue_realtime_metrics CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS spt_hourly_analytics CASCADE;
 
 -- Hourly Revenue Summary by Source (Real-time aggregate for overall platform revenue)
-CREATE MATERIALIZED VIEW IF NOT EXISTS revenue_hourly_summary
+CREATE MATERIALIZED VIEW revenue_hourly_summary
 WITH (timescaledb.continuous) AS
 SELECT 
     time_bucket('1 hour', time) AS hour,
