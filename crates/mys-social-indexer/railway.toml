@@ -11,7 +11,6 @@ restartPolicyType = "on_failure"
 
 [deploy.envVars]
 PORT = { sync = false }
-DATABASE_URL = { sync = false }
 
 # Explicitly tell Railway this is a Rust project
 [build.env]
@@ -19,6 +18,9 @@ NIXPACKS_LANGUAGE = "rust"
 NIXPACKS_BUILD_CMD = "cargo build --release --bin mys-social-indexer"
 
 [variables]
+# Database Configuration
+DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+
 # Logging configuration  
 RUST_LOG = "info,mys_social_indexer=debug"
 RUST_BACKTRACE = "1" 
