@@ -73,33 +73,12 @@ CREATE INDEX idx_unified_revenue_payer_time ON unified_revenue (payer_address, t
 -- ============================================================================
 
 -- Drop existing continuous aggregates if they exist (to ensure clean recreation)
-DROP MATERIALIZED VIEW IF EXISTS revenue_hourly_summary CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS revenue_daily_creators CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS revenue_monthly_platforms CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS revenue_realtime_metrics CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS spt_hourly_analytics CASCADE;
 
--- Hourly Revenue Summary by Source (Real-time aggregate for overall platform revenue)
-CREATE MATERIALIZED VIEW revenue_hourly_summary
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 hour', time) AS hour,
-    revenue_source,
-    SUM(amount) AS total_revenue,
-    COUNT(*) AS transaction_count,
-    COUNT(DISTINCT payer_address) AS unique_payers,
-    COUNT(DISTINCT creator_address) AS unique_creators,
-    AVG(amount) AS avg_transaction_amount,
-    MAX(amount) AS max_transaction,
-    MIN(amount) AS min_transaction
-FROM unified_revenue
-GROUP BY time_bucket('1 hour', time), revenue_source
-WITH NO DATA;
 
-SELECT add_continuous_aggregate_policy('revenue_hourly_summary',
-    start_offset => INTERVAL '3 hours',
-    end_offset => INTERVAL '5 minutes',
-    schedule_interval => INTERVAL '5 minutes');
 
 -- Daily Revenue Summary by Creator (For leaderboards)
 CREATE MATERIALIZED VIEW revenue_daily_creators
@@ -291,7 +270,6 @@ CREATE INDEX idx_spt_revenue_pool_time_fees ON spt_revenue (pool_id, time DESC, 
 
 COMMENT ON TABLE spt_revenue IS 'SPT swap fee revenue tracking with real-time analytics (TimescaleDB)';
 COMMENT ON TABLE unified_revenue IS 'Unified revenue tracking across all MySocial revenue sources (TimescaleDB)';
-COMMENT ON MATERIALIZED VIEW revenue_hourly_summary IS 'Hourly unified revenue across all sources for platform analytics (5-minute refresh)';
 COMMENT ON MATERIALIZED VIEW revenue_daily_creators IS 'Daily creator revenue for leaderboards (30-minute refresh)';
 COMMENT ON MATERIALIZED VIEW revenue_monthly_platforms IS 'Monthly platform revenue analytics (daily refresh)';
 COMMENT ON MATERIALIZED VIEW revenue_realtime_metrics IS 'Real-time 5-minute revenue metrics (1-minute refresh)';
