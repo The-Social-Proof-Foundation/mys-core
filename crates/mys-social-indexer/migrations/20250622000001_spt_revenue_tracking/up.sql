@@ -79,8 +79,8 @@ DROP MATERIALIZED VIEW IF EXISTS revenue_monthly_platforms CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS revenue_realtime_metrics CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS spt_hourly_analytics CASCADE;
 
--- Hourly Revenue Summary by Source (Real-time aggregate)
-CREATE MATERIALIZED VIEW revenue_hourly_summary
+-- Hourly Revenue Summary by Source (Real-time aggregate for overall platform revenue)
+CREATE MATERIALIZED VIEW IF NOT EXISTS revenue_hourly_summary
 WITH (timescaledb.continuous) AS
 SELECT 
     time_bucket('1 hour', time) AS hour,
@@ -291,7 +291,7 @@ CREATE INDEX idx_spt_revenue_pool_time_fees ON spt_revenue (pool_id, time DESC, 
 
 COMMENT ON TABLE spt_revenue IS 'SPT swap fee revenue tracking with real-time analytics (TimescaleDB)';
 COMMENT ON TABLE unified_revenue IS 'Unified revenue tracking across all MySocial revenue sources (TimescaleDB)';
-COMMENT ON MATERIALIZED VIEW revenue_hourly_summary IS 'Real-time hourly revenue aggregates (5-minute refresh)';
+COMMENT ON MATERIALIZED VIEW revenue_hourly_summary IS 'Hourly unified revenue across all sources for platform analytics (5-minute refresh)';
 COMMENT ON MATERIALIZED VIEW revenue_daily_creators IS 'Daily creator revenue for leaderboards (30-minute refresh)';
 COMMENT ON MATERIALIZED VIEW revenue_monthly_platforms IS 'Monthly platform revenue analytics (daily refresh)';
 COMMENT ON MATERIALIZED VIEW revenue_realtime_metrics IS 'Real-time 5-minute revenue metrics (1-minute refresh)';
