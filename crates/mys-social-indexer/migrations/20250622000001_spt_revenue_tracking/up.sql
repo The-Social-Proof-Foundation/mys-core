@@ -73,133 +73,195 @@ CREATE INDEX idx_unified_revenue_payer_time ON unified_revenue (payer_address, t
 -- ============================================================================
 
 -- Hourly Revenue Summary by Source (Real-time aggregate)
-CREATE MATERIALIZED VIEW revenue_hourly_summary
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 hour', time) AS hour,
-    revenue_source,
-    revenue_type,
-    creator_address,
-    platform_address,
-    SUM(amount) AS total_revenue,
-    COUNT(*) AS transaction_count,
-    COUNT(DISTINCT payer_address) AS unique_payers,
-    AVG(amount) AS avg_transaction_amount
-FROM unified_revenue
-GROUP BY time_bucket('1 hour', time), revenue_source, revenue_type, creator_address, platform_address
-WITH NO DATA;
-
--- Enable real-time refresh (window must be > 1 hour for unified_revenue chunk interval, using 3h for safety)
-SELECT add_continuous_aggregate_policy('revenue_hourly_summary',
-    start_offset => INTERVAL '3 hours',
-    end_offset => INTERVAL '5 minutes',
-    schedule_interval => INTERVAL '5 minutes');
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    -- Check if the view already exists
+    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'revenue_hourly_summary') INTO view_exists;
+    
+    IF NOT view_exists THEN
+        -- Create the continuous aggregate if it doesn't exist
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW revenue_hourly_summary
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 hour', time) AS hour,
+            revenue_source,
+            revenue_type,
+            creator_address,
+            platform_address,
+            SUM(amount) AS total_revenue,
+            COUNT(*) AS transaction_count,
+            COUNT(DISTINCT payer_address) AS unique_payers,
+            AVG(amount) AS avg_transaction_amount
+        FROM unified_revenue
+        GROUP BY time_bucket('1 hour', time), revenue_source, revenue_type, creator_address, platform_address
+        WITH NO DATA
+        $sql$;
+        
+        -- Enable real-time refresh (window must be > 1 hour for unified_revenue chunk interval, using 3h for safety)
+        PERFORM add_continuous_aggregate_policy('revenue_hourly_summary',
+            start_offset => INTERVAL '3 hours',
+            end_offset => INTERVAL '5 minutes',
+            schedule_interval => INTERVAL '5 minutes');
+    END IF;
+END
+$$;
 
 -- Daily Revenue Summary by Creator (For leaderboards)
-CREATE MATERIALIZED VIEW revenue_daily_creators
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 day', time) AS day,
-    creator_address,
-    revenue_source,
-    SUM(amount) AS daily_revenue,
-    COUNT(*) AS transaction_count,
-    COUNT(DISTINCT payer_address) AS unique_payers,
-    MAX(amount) AS largest_transaction,
-    SUM(CASE WHEN revenue_source = 'subscription' THEN amount ELSE 0 END) AS subscription_revenue,
-    SUM(CASE WHEN revenue_source = 'my_ip' THEN amount ELSE 0 END) AS myip_revenue,
-    SUM(CASE WHEN revenue_source = 'spt' THEN amount ELSE 0 END) AS spt_revenue,
-    SUM(CASE WHEN revenue_source = 'tips' THEN amount ELSE 0 END) AS tips_revenue
-FROM unified_revenue
-GROUP BY time_bucket('1 day', time), creator_address, revenue_source
-WITH NO DATA;
-
--- Enable hourly refresh for daily creator leaderboards
-SELECT add_continuous_aggregate_policy('revenue_daily_creators',
-    start_offset => INTERVAL '7 days',
-    end_offset => INTERVAL '30 minutes',
-    schedule_interval => INTERVAL '30 minutes');
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'revenue_daily_creators') INTO view_exists;
+    
+    IF NOT view_exists THEN
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW revenue_daily_creators
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 day', time) AS day,
+            creator_address,
+            revenue_source,
+            SUM(amount) AS daily_revenue,
+            COUNT(*) AS transaction_count,
+            COUNT(DISTINCT payer_address) AS unique_payers,
+            MAX(amount) AS largest_transaction,
+            SUM(CASE WHEN revenue_source = 'subscription' THEN amount ELSE 0 END) AS subscription_revenue,
+            SUM(CASE WHEN revenue_source = 'my_ip' THEN amount ELSE 0 END) AS myip_revenue,
+            SUM(CASE WHEN revenue_source = 'spt' THEN amount ELSE 0 END) AS spt_revenue,
+            SUM(CASE WHEN revenue_source = 'tips' THEN amount ELSE 0 END) AS tips_revenue
+        FROM unified_revenue
+        GROUP BY time_bucket('1 day', time), creator_address, revenue_source
+        WITH NO DATA
+        $sql$;
+        
+        -- Enable hourly refresh for daily creator leaderboards
+        PERFORM add_continuous_aggregate_policy('revenue_daily_creators',
+            start_offset => INTERVAL '7 days',
+            end_offset => INTERVAL '30 minutes',
+            schedule_interval => INTERVAL '30 minutes');
+    END IF;
+END
+$$;
 
 -- Monthly Revenue Summary by Platform (For platform analytics)
-CREATE MATERIALIZED VIEW revenue_monthly_platforms
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 month', time) AS month,
-    platform_address,
-    revenue_source,
-    SUM(amount) AS monthly_revenue,
-    COUNT(*) AS transaction_count,
-    COUNT(DISTINCT creator_address) AS unique_creators,
-    COUNT(DISTINCT payer_address) AS unique_payers,
-    AVG(amount) AS avg_transaction_amount,
-    SUM(CASE WHEN revenue_source = 'subscription' THEN amount ELSE 0 END) AS subscription_revenue,
-    SUM(CASE WHEN revenue_source = 'my_ip' THEN amount ELSE 0 END) AS myip_revenue,
-    SUM(CASE WHEN revenue_source = 'spt' THEN amount ELSE 0 END) AS spt_revenue
-FROM unified_revenue
-WHERE platform_address IS NOT NULL
-GROUP BY time_bucket('1 month', time), platform_address, revenue_source
-WITH NO DATA;
-
--- Enable daily refresh for monthly platform analytics
-SELECT add_continuous_aggregate_policy('revenue_monthly_platforms',
-    start_offset => INTERVAL '3 months',
-    end_offset => INTERVAL '1 day',
-    schedule_interval => INTERVAL '1 day');
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'revenue_monthly_platforms') INTO view_exists;
+    
+    IF NOT view_exists THEN
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW revenue_monthly_platforms
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 month', time) AS month,
+            platform_address,
+            revenue_source,
+            SUM(amount) AS monthly_revenue,
+            COUNT(*) AS transaction_count,
+            COUNT(DISTINCT creator_address) AS unique_creators,
+            COUNT(DISTINCT payer_address) AS unique_payers,
+            AVG(amount) AS avg_transaction_amount,
+            SUM(CASE WHEN revenue_source = 'subscription' THEN amount ELSE 0 END) AS subscription_revenue,
+            SUM(CASE WHEN revenue_source = 'my_ip' THEN amount ELSE 0 END) AS myip_revenue,
+            SUM(CASE WHEN revenue_source = 'spt' THEN amount ELSE 0 END) AS spt_revenue
+        FROM unified_revenue
+        WHERE platform_address IS NOT NULL
+        GROUP BY time_bucket('1 month', time), platform_address, revenue_source
+        WITH NO DATA
+        $sql$;
+        
+        -- Enable daily refresh for monthly platform analytics
+        PERFORM add_continuous_aggregate_policy('revenue_monthly_platforms',
+            start_offset => INTERVAL '3 months',
+            end_offset => INTERVAL '1 day',
+            schedule_interval => INTERVAL '1 day');
+    END IF;
+END
+$$;
 
 -- Real-time Revenue Metrics (5-minute buckets for dashboards)
-CREATE MATERIALIZED VIEW revenue_realtime_metrics
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('5 minutes', time) AS bucket,
-    revenue_source,
-    SUM(amount) AS revenue_5min,
-    COUNT(*) AS transactions_5min,
-    COUNT(DISTINCT creator_address) AS active_creators,
-    COUNT(DISTINCT payer_address) AS active_payers,
-    MAX(amount) AS max_transaction,
-    MIN(amount) AS min_transaction
-FROM unified_revenue
-GROUP BY time_bucket('5 minutes', time), revenue_source
-WITH NO DATA;
-
--- Enable real-time refresh (window must be > 1 hour for unified_revenue chunk interval, using 3h for safety)
-SELECT add_continuous_aggregate_policy('revenue_realtime_metrics',
-    start_offset => INTERVAL '3 hours',
-    end_offset => INTERVAL '1 minute',
-    schedule_interval => INTERVAL '1 minute');
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'revenue_realtime_metrics') INTO view_exists;
+    
+    IF NOT view_exists THEN
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW revenue_realtime_metrics
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('5 minutes', time) AS bucket,
+            revenue_source,
+            SUM(amount) AS revenue_5min,
+            COUNT(*) AS transactions_5min,
+            COUNT(DISTINCT creator_address) AS active_creators,
+            COUNT(DISTINCT payer_address) AS active_payers,
+            MAX(amount) AS max_transaction,
+            MIN(amount) AS min_transaction
+        FROM unified_revenue
+        GROUP BY time_bucket('5 minutes', time), revenue_source
+        WITH NO DATA
+        $sql$;
+        
+        -- Enable real-time refresh (window must be > 1 hour for unified_revenue chunk interval, using 3h for safety)
+        PERFORM add_continuous_aggregate_policy('revenue_realtime_metrics',
+            start_offset => INTERVAL '3 hours',
+            end_offset => INTERVAL '1 minute',
+            schedule_interval => INTERVAL '1 minute');
+    END IF;
+END
+$$;
 
 -- ============================================================================
 -- 4. SPT-SPECIFIC CONTINUOUS AGGREGATES
 -- ============================================================================
 
 -- SPT Trading Volume and Fee Analytics (Hourly)
-CREATE MATERIALIZED VIEW spt_hourly_analytics
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 hour', time) AS hour,
-    pool_id,
-    creator_address,
-    transaction_type,
-    SUM(total_fee) AS total_fees,
-    SUM(creator_fee) AS total_creator_fees,
-    SUM(platform_fee) AS total_platform_fees,
-    SUM(treasury_fee) AS total_treasury_fees,
-    SUM(mys_amount) AS total_volume,
-    SUM(token_amount) AS total_tokens,
-    COUNT(*) AS transaction_count,
-    COUNT(DISTINCT trader) AS unique_traders,
-    AVG(token_price) AS avg_price,
-    MAX(token_price) AS max_price,
-    MIN(token_price) AS min_price
-FROM spt_revenue
-GROUP BY time_bucket('1 hour', time), pool_id, creator_address, transaction_type
-WITH NO DATA;
-
--- Enable real-time refresh for SPT analytics (window must be > 1 hour for spt_revenue chunk interval, using 3h for safety)
-SELECT add_continuous_aggregate_policy('spt_hourly_analytics',
-    start_offset => INTERVAL '3 hours',
-    end_offset => INTERVAL '5 minutes',
-    schedule_interval => INTERVAL '5 minutes');
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'spt_hourly_analytics') INTO view_exists;
+    
+    IF NOT view_exists THEN
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW spt_hourly_analytics
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 hour', time) AS hour,
+            pool_id,
+            creator_address,
+            transaction_type,
+            SUM(total_fee) AS total_fees,
+            SUM(creator_fee) AS total_creator_fees,
+            SUM(platform_fee) AS total_platform_fees,
+            SUM(treasury_fee) AS total_treasury_fees,
+            SUM(mys_amount) AS total_volume,
+            SUM(token_amount) AS total_tokens,
+            COUNT(*) AS transaction_count,
+            COUNT(DISTINCT trader) AS unique_traders,
+            AVG(token_price) AS avg_price,
+            MAX(token_price) AS max_price,
+            MIN(token_price) AS min_price
+        FROM spt_revenue
+        GROUP BY time_bucket('1 hour', time), pool_id, creator_address, transaction_type
+        WITH NO DATA
+        $sql$;
+        
+        -- Enable real-time refresh for SPT analytics (window must be > 1 hour for spt_revenue chunk interval, using 3h for safety)
+        PERFORM add_continuous_aggregate_policy('spt_hourly_analytics',
+            start_offset => INTERVAL '3 hours',
+            end_offset => INTERVAL '5 minutes',
+            schedule_interval => INTERVAL '5 minutes');
+    END IF;
+END
+$$;
 
 -- ============================================================================
 -- CONTINUOUS AGGREGATE REFRESH POLICY NOTES
