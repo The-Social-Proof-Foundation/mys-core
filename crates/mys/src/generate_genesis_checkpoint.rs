@@ -26,6 +26,37 @@ async fn main() {
         "The native token of the MySocial blockchain.".to_string()
     );
     
+    // Example: Add treasury vesting allocations
+    // Treasury team allocation with 4-year linear vesting starting in 1 year
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    
+    let one_year_ms = 365 * 24 * 60 * 60 * 1000; // 1 year in milliseconds
+    let four_years_ms = 4 * one_year_ms; // 4 years in milliseconds
+    
+    let treasury_start = now + one_year_ms; // Start vesting in 1 year
+    let treasury_duration = four_years_ms; // Vest over 4 years
+    
+    // Example treasury allocations (10% of total supply for treasury)
+    let total_supply_mist = 1_000_000_000_000_000_000u64; // 1 billion tokens
+    let treasury_allocation = total_supply_mist / 10; // 10% for treasury
+    
+    // Split treasury between multiple recipients
+    let treasury_recipients = vec![
+        // (address, amount_mist)
+        (MysAddress::random_for_testing_only(), treasury_allocation / 3), // Core team 1
+        (MysAddress::random_for_testing_only(), treasury_allocation / 3), // Core team 2  
+        (MysAddress::random_for_testing_only(), treasury_allocation / 3), // Foundation
+    ];
+    
+    builder = builder.add_treasury_vesting_batch(
+        treasury_recipients,
+        treasury_start,
+        treasury_duration,
+    );
+    
     let mut keys = Vec::new();
     for i in 0..2 {
         let key: AuthorityKeyPair = get_key_pair_from_rng(&mut rand::rngs::OsRng).1;

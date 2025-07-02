@@ -557,6 +557,7 @@ impl TokenDistributionSchedule {
                     recipient_address: a,
                     amount_mist: allocation_per_validator,
                     staked_with_validator: Some(a),
+                    vesting_schedule: None,
                 }
             })
             .collect();
@@ -619,6 +620,7 @@ impl TokenDistributionSchedule {
             recipient_address: MysAddress::default(),
             amount_mist: self.stake_subsidy_fund_mist,
             staked_with_validator: None,
+            vesting_schedule: None,
         })?;
 
         Ok(())
@@ -633,6 +635,32 @@ pub struct TokenAllocation {
 
     /// Indicates if this allocation should be staked at genesis and with which validator
     pub staked_with_validator: Option<MysAddress>,
+
+    /// Indicates if this allocation should be vested and the vesting configuration
+    pub vesting_schedule: Option<VestingSchedule>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct VestingSchedule {
+    /// Start time for vesting in milliseconds since Unix epoch
+    pub start_timestamp_ms: u64,
+    
+    /// Duration of vesting period in milliseconds
+    pub duration_ms: u64,
+    
+    /// Type of vesting schedule
+    pub vesting_type: VestingType,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum VestingType {
+    /// Linear vesting over the duration
+    Linear,
+    /// Future extension for other vesting types
+    // Cliff { cliff_duration_ms: u64 },
+    // Graded { tranches: Vec<VestingTranche> },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -675,6 +703,7 @@ impl TokenDistributionScheduleBuilder {
                 recipient_address: validator,
                 amount_mist: allocation_per_validator,
                 staked_with_validator: Some(validator),
+                vesting_schedule: None,
             });
         }
     }
@@ -686,6 +715,43 @@ impl TokenDistributionScheduleBuilder {
             0
         });
         self.allocations.push(allocation);
+    }
+
+    /// Add a treasury allocation with linear vesting schedule
+    pub fn add_treasury_vesting_allocation(
+        &mut self,
+        recipient_address: MysAddress,
+        amount_mist: u64,
+        start_timestamp_ms: u64,
+        duration_ms: u64,
+    ) {
+        self.add_allocation(TokenAllocation {
+            recipient_address,
+            amount_mist,
+            staked_with_validator: None,
+            vesting_schedule: Some(VestingSchedule {
+                start_timestamp_ms,
+                duration_ms,
+                vesting_type: VestingType::Linear,
+            }),
+        });
+    }
+
+    /// Add multiple treasury allocations with the same vesting schedule
+    pub fn add_treasury_vesting_allocations(
+        &mut self,
+        recipients: Vec<(MysAddress, u64)>, // (address, amount) pairs
+        start_timestamp_ms: u64,
+        duration_ms: u64,
+    ) {
+        for (recipient, amount) in recipients {
+            self.add_treasury_vesting_allocation(
+                recipient,
+                amount,
+                start_timestamp_ms,
+                duration_ms,
+            );
+        }
     }
 
     pub fn build(&self) -> TokenDistributionSchedule {
