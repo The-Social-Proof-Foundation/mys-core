@@ -15,12 +15,12 @@ use std::path::Path;
 use std::sync::Arc;
 use mys_config::genesis::{
     Genesis, GenesisCeremonyParameters, GenesisChainParameters, TokenDistributionSchedule,
-    UnsignedGenesis,
+    UnsignedGenesis, TokenDistributionScheduleBuilder, VestingSchedule, VestingType,
 };
 use mys_execution::{self, Executor};
 use mys_framework::{BuiltInFramework, SystemPackage};
 use mys_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
-use mys_types::base_types::{ExecutionDigests, ObjectID, SequenceNumber, TransactionDigest};
+use mys_types::base_types::{ExecutionDigests, ObjectID, SequenceNumber, TransactionDigest, MysAddress};
 use mys_types::bridge::{BridgeChainId, BRIDGE_CREATE_FUNCTION_NAME, BRIDGE_MODULE_NAME};
 use mys_types::committee::Committee;
 use mys_types::crypto::{
@@ -185,6 +185,62 @@ impl Builder {
 
     pub fn unsigned_genesis_checkpoint(&self) -> Option<UnsignedGenesis> {
         self.built_genesis.clone()
+    }
+
+    /// Add a treasury vesting allocation to the token distribution schedule
+    pub fn add_treasury_vesting(
+        mut self,
+        recipient_address: MysAddress,
+        amount_mist: u64,
+        start_timestamp_ms: u64,
+        duration_ms: u64,
+    ) -> Self {
+        let mut builder = TokenDistributionScheduleBuilder::new();
+        
+        // Copy existing allocations if we have a schedule
+        if let Some(existing_schedule) = &self.token_distribution_schedule {
+            for allocation in &existing_schedule.allocations {
+                builder.add_allocation(allocation.clone());
+            }
+        }
+        
+        // Add the new vesting allocation
+        builder.add_treasury_vesting_allocation(
+            recipient_address,
+            amount_mist,
+            start_timestamp_ms,
+            duration_ms,
+        );
+        
+        self.token_distribution_schedule = Some(builder.build());
+        self
+    }
+
+    /// Add multiple treasury vesting allocations with the same schedule
+    pub fn add_treasury_vesting_batch(
+        mut self,
+        recipients: Vec<(MysAddress, u64)>, // (address, amount) pairs
+        start_timestamp_ms: u64,
+        duration_ms: u64,
+    ) -> Self {
+        let mut builder = TokenDistributionScheduleBuilder::new();
+        
+        // Copy existing allocations if we have a schedule
+        if let Some(existing_schedule) = &self.token_distribution_schedule {
+            for allocation in &existing_schedule.allocations {
+                builder.add_allocation(allocation.clone());
+            }
+        }
+        
+        // Add the new vesting allocations
+        builder.add_treasury_vesting_allocations(
+            recipients,
+            start_timestamp_ms,
+            duration_ms,
+        );
+        
+        self.token_distribution_schedule = Some(builder.build());
+        self
     }
 
     pub fn build_unsigned_genesis_checkpoint(&mut self) -> UnsignedGenesis {

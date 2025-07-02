@@ -6,6 +6,7 @@ module mys_system::genesis {
 
     use mys::balance::{Self, Balance};
     use mys::mys::{Self, MYS};
+    use mys::linear_vesting;
     use mys_system::mys_system;
     use mys_system::validator::{Self, Validator};
     use mys_system::validator_set;
@@ -65,6 +66,20 @@ module mys_system::genesis {
 
         /// Indicates if this allocation should be staked at genesis and with which validator
         staked_with_validator: Option<address>,
+
+        /// Indicates if this allocation should be vested and the vesting configuration
+        vesting_schedule: Option<VestingSchedule>,
+    }
+
+    public struct VestingSchedule has drop, copy {
+        /// Start time for vesting in milliseconds since Unix epoch
+        start_timestamp_ms: u64,
+        
+        /// Duration of vesting period in milliseconds
+        duration_ms: u64,
+        
+        /// Type of vesting schedule (currently only Linear supported)
+        vesting_type: u8, // 0 = Linear
     }
 
     // Error codes
@@ -206,11 +221,25 @@ module mys_system::genesis {
                 recipient_address,
                 amount_mist,
                 staked_with_validator,
+                vesting_schedule,
             } = allocations.pop_back();
 
             let allocation_balance = mys_supply.split(amount_mist);
 
-            if (staked_with_validator.is_some()) {
+            if (vesting_schedule.is_some()) {
+                // Create a vesting wallet for this allocation
+                let vesting_config = vesting_schedule.destroy_some();
+                let vesting_wallet = linear_vesting::new_genesis_vesting_wallet(
+                    allocation_balance.into_coin(ctx),
+                    vesting_config.start_timestamp_ms,
+                    vesting_config.duration_ms,
+                    recipient_address,
+                    ctx
+                );
+                
+                // Transfer the vesting wallet to the recipient
+                linear_vesting::transfer_wallet(vesting_wallet, recipient_address);
+            } else if (staked_with_validator.is_some()) {
                 let validator_address = staked_with_validator.destroy_some();
                 let validator = validator_set::get_validator_mut(validators, validator_address);
                 validator.request_add_stake_at_genesis(
