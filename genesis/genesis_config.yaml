@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1745393767000
+  chain_start_timestamp_ms: 1751522256000
 
   # Protocol version
   protocol_version: 74  # Latest version
@@ -56,3 +56,9 @@ accounts:
   - address: "0xf88be8becf9bec052213ed90084d72cdea7c5739863ef1eaa3e771f89818c7a5"
     gas_amounts:
       - 100000000000000 # 100,000 MySo
+      - 5000000000 # 5 MySo
+      - 5000000000 # 5 MySo
+      - 5000000000 # 5 MySo
+      - 5000000000 # 5 MySo
+      - 5000000000 # 5 MySo
+      - 5000000000 # 5 MySo

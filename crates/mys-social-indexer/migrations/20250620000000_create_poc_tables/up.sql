@@ -93,19 +93,12 @@ ALTER TABLE poc_badges ADD PRIMARY KEY (badge_id, time);
 -- TimescaleDB-optimized indexes
 CREATE INDEX IF NOT EXISTS idx_poc_badges_time_post ON poc_badges (time DESC, post_id);
 CREATE INDEX IF NOT EXISTS idx_poc_badges_issued_by_time ON poc_badges (issued_by, time DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_badges_badge_id ON poc_badges (badge_id);
+-- TimescaleDB requires unique indexes to include partitioning column (time)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_badges_badge_id ON poc_badges (badge_id, time);
 
 -- Enable compression
 ALTER TABLE poc_badges SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'poc_badges'
-    ) THEN
-        PERFORM add_compression_policy('poc_badges', INTERVAL '30 days');
-    END IF;
-END $$;
+SELECT add_compression_policy('poc_badges', INTERVAL '30 days');
 
 -- ============================================================================
 -- 4. CREATE POC REVENUE REDIRECTIONS TABLE (TIMESCALEDB HYPERTABLE)
@@ -153,19 +146,12 @@ ALTER TABLE poc_revenue_redirections ADD PRIMARY KEY (redirection_id, time);
 -- Optimized indexes for revenue tracking queries
 CREATE INDEX IF NOT EXISTS idx_poc_redirections_time_accused ON poc_revenue_redirections (time DESC, accused_post_id);
 CREATE INDEX IF NOT EXISTS idx_poc_redirections_original_time ON poc_revenue_redirections (original_post_id, time DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_redirections_id ON poc_revenue_redirections (redirection_id);
+-- TimescaleDB requires unique indexes to include partitioning column (time)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_redirections_id ON poc_revenue_redirections (redirection_id, time);
 
 -- Enable compression
 ALTER TABLE poc_revenue_redirections SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'poc_revenue_redirections'
-    ) THEN
-        PERFORM add_compression_policy('poc_revenue_redirections', INTERVAL '90 days');
-    END IF;
-END $$;
+SELECT add_compression_policy('poc_revenue_redirections', INTERVAL '90 days');
 
 -- ============================================================================
 -- 5. CREATE POC ANALYSIS RESULTS TABLE (TIMESCALEDB HYPERTABLE)
@@ -216,15 +202,7 @@ CREATE INDEX IF NOT EXISTS idx_poc_analysis_creator_time ON poc_analysis_results
 
 -- Enable compression
 ALTER TABLE poc_analysis_results SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'poc_analysis_results'
-    ) THEN
-        PERFORM add_compression_policy('poc_analysis_results', INTERVAL '7 days');
-    END IF;
-END $$;
+SELECT add_compression_policy('poc_analysis_results', INTERVAL '7 days');
 
 -- ============================================================================
 -- 6. CREATE POC DISPUTES TABLE (TIMESCALEDB HYPERTABLE)
@@ -279,19 +257,12 @@ ALTER TABLE poc_disputes ADD PRIMARY KEY (dispute_id, time);
 -- Optimized indexes for dispute tracking
 CREATE INDEX IF NOT EXISTS idx_poc_disputes_time_status ON poc_disputes (time DESC, status);
 CREATE INDEX IF NOT EXISTS idx_poc_disputes_post_time ON poc_disputes (post_id, time DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_disputes_id ON poc_disputes (dispute_id);
+-- TimescaleDB requires unique indexes to include partitioning column (time)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_disputes_id ON poc_disputes (dispute_id, time);
 
 -- Enable compression
 ALTER TABLE poc_disputes SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'poc_disputes'
-    ) THEN
-        PERFORM add_compression_policy('poc_disputes', INTERVAL '90 days');
-    END IF;
-END $$;
+SELECT add_compression_policy('poc_disputes', INTERVAL '90 days');
 
 -- ============================================================================
 -- 7. CREATE POC DISPUTE VOTES TABLE (TIMESCALEDB HYPERTABLE)
@@ -336,21 +307,14 @@ SELECT create_hypertable('poc_dispute_votes', 'time',
 ALTER TABLE poc_dispute_votes ADD PRIMARY KEY (dispute_id, voter, time);
 
 -- Composite unique constraint and indexes
-CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_votes_dispute_voter ON poc_dispute_votes (dispute_id, voter);
+-- TimescaleDB requires unique indexes to include partitioning column (time)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_votes_dispute_voter ON poc_dispute_votes (dispute_id, voter, time);
 CREATE INDEX IF NOT EXISTS idx_poc_votes_time_voter ON poc_dispute_votes (time DESC, voter);
 CREATE INDEX IF NOT EXISTS idx_poc_votes_dispute_time ON poc_dispute_votes (dispute_id, time DESC);
 
 -- Enable compression
 ALTER TABLE poc_dispute_votes SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'poc_dispute_votes'
-    ) THEN
-        PERFORM add_compression_policy('poc_dispute_votes', INTERVAL '30 days');
-    END IF;
-END $$;
+SELECT add_compression_policy('poc_dispute_votes', INTERVAL '30 days');
 
 -- ============================================================================
 -- 8. CREATE POC CONFIGURATION TABLE (REGULAR TABLE)
@@ -403,16 +367,15 @@ SELECT add_continuous_aggregate_policy('poc_daily_stats',
 -- 10. CREATE ADDITIONAL CONTINUOUS AGGREGATES FOR ANALYTICS
 -- ============================================================================
 
--- Create hourly PoC stats for real-time monitoring
+-- Create hourly PoC stats for real-time monitoring (badges only)
 CREATE MATERIALIZED VIEW IF NOT EXISTS poc_hourly_stats
 WITH (timescaledb.continuous) AS
 SELECT 
     time_bucket('1 hour', time) AS hour,
     COUNT(*) FILTER (WHERE NOT revoked) AS badges_issued_hourly,
-    AVG(highest_similarity_score) FILTER (WHERE similarity_detected) AS avg_similarity_score
-FROM poc_badges pb
-LEFT JOIN poc_analysis_results par ON pb.post_id = par.post_id
-GROUP BY time_bucket('1 hour', pb.time)
+    COUNT(*) AS total_badges
+FROM poc_badges
+GROUP BY time_bucket('1 hour', time)
 WITH NO DATA;
 
 -- Enable automatic refresh

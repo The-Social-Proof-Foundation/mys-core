@@ -20,8 +20,13 @@ async-trait = { workspace = true }
 
 # Database
 diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json", "numeric"] }
-diesel-async = { workspace = true, features = ["postgres", "deadpool"] }
+diesel-async = { workspace = true, features = ["bb8", "postgres", "deadpool"] }
 diesel_migrations = { workspace = true }
+
+# TLS support for PostgreSQL connections
+tokio-postgres = { version = "0.7", features = ["with-chrono-0_4", "with-serde_json-1"] }
+postgres-native-tls = "0.5"
+native-tls = "0.2"
 
 # Serialization and deserialization
 serde = { workspace = true, features = ["derive"] }
@@ -45,7 +50,7 @@ futures = { workspace = true }
 dotenv = "0.15.0"
 hex = "0.4.3"
 base64 = "0.21.0"
-deadpool = "0.10.0"
+
 jsonrpsee = { workspace = true, features = ["client", "ws-client", "http-client"] }
 
 # Web server for API

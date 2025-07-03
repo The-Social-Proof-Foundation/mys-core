@@ -43,7 +43,8 @@ CREATE TABLE profile_subscriptions (
 SELECT create_hypertable('profile_subscriptions', 'time', chunk_time_interval => INTERVAL '14 days');
 
 -- Optimized indexes for subscription tracking
-CREATE UNIQUE INDEX idx_profile_subscriptions_id ON profile_subscriptions (subscription_id);
+-- TimescaleDB requires unique indexes to include partitioning column (time)
+CREATE UNIQUE INDEX idx_profile_subscriptions_id ON profile_subscriptions (subscription_id, time);
 CREATE INDEX idx_profile_subscriptions_time_service ON profile_subscriptions (time DESC, service_id);
 CREATE INDEX idx_profile_subscriptions_subscriber_time ON profile_subscriptions (subscriber, time DESC);
 CREATE INDEX idx_profile_subscriptions_expires ON profile_subscriptions (expires_at) WHERE cancelled_at IS NULL;
@@ -136,9 +137,10 @@ FROM subscription_revenue
 GROUP BY time_bucket('1 day', time), service_id, to_address, revenue_type
 WITH NO DATA;
 
--- Enable automatic refresh
+-- Enable automatic refresh (window: 3 days - 1 hour = ~71 hours, chunk: 7 days = 168 hours)
+-- Fix: Make refresh window larger than chunk interval
 SELECT add_continuous_aggregate_policy('subscription_daily_revenue',
-    start_offset => INTERVAL '3 days',
+    start_offset => INTERVAL '8 days',
     end_offset => INTERVAL '1 hour',
     schedule_interval => INTERVAL '1 hour');
 
@@ -155,9 +157,9 @@ FROM profile_subscriptions
 GROUP BY time_bucket('1 day', time), service_id
 WITH NO DATA;
 
--- Enable automatic refresh
+-- Enable automatic refresh (window must be > 14 days for profile_subscriptions chunk interval)
 SELECT add_continuous_aggregate_policy('subscription_daily_metrics',
-    start_offset => INTERVAL '3 days',
+    start_offset => INTERVAL '15 days',
     end_offset => INTERVAL '1 hour',
     schedule_interval => INTERVAL '1 hour');
 
@@ -172,7 +174,12 @@ ALTER TABLE profiles ADD COLUMN subscription_service_id VARCHAR;
 ALTER TABLE profiles ADD COLUMN subscription_enabled BOOLEAN DEFAULT false;
 
 -- Advanced TimescaleDB Features Implementation
--- Compression for older subscription data
+-- Enable compression on hypertables first, then add policies
+ALTER TABLE profile_subscriptions SET (timescaledb.compress = true);
+ALTER TABLE subscription_events SET (timescaledb.compress = true);
+ALTER TABLE subscription_revenue SET (timescaledb.compress = true);
+
+-- Compression policies for older subscription data
 SELECT add_compression_policy('profile_subscriptions', INTERVAL '60 days');
 SELECT add_compression_policy('subscription_events', INTERVAL '30 days');
 SELECT add_compression_policy('subscription_revenue', INTERVAL '30 days');
@@ -191,11 +198,11 @@ FROM profile_subscriptions
 GROUP BY time_bucket('1 hour', time), service_id
 WITH NO DATA;
 
--- Enable automatic refresh for health metrics
+-- Enable automatic refresh for health metrics (window must be > 14 days for profile_subscriptions)
 SELECT add_continuous_aggregate_policy('subscription_health_metrics',
-    start_offset => INTERVAL '2 hours',
-    end_offset => INTERVAL '30 minutes',
-    schedule_interval => INTERVAL '30 minutes');
+    start_offset => INTERVAL '15 days',
+    end_offset => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '1 hour');
 
 -- Churn analysis aggregate
 CREATE MATERIALIZED VIEW subscription_churn_analysis
@@ -211,9 +218,9 @@ FROM profile_subscriptions
 GROUP BY time_bucket('1 day', time), service_id
 WITH NO DATA;
 
--- Enable automatic refresh for churn analysis
+-- Enable automatic refresh for churn analysis (window must be > 14 days for profile_subscriptions)
 SELECT add_continuous_aggregate_policy('subscription_churn_analysis',
-    start_offset => INTERVAL '2 days',
+    start_offset => INTERVAL '15 days',
     end_offset => INTERVAL '1 hour',
     schedule_interval => INTERVAL '2 hours');
 

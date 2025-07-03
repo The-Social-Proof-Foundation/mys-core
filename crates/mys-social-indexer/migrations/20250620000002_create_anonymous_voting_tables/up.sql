@@ -53,10 +53,10 @@ BEFORE INSERT OR UPDATE ON anonymous_votes
 FOR EACH ROW
 EXECUTE FUNCTION update_anonymous_vote_time();
 
--- Create hypertable with 7-day chunks (frequent during voting periods)
+-- Create hypertable with 1-day chunks (frequent during voting periods)
 SELECT create_hypertable('anonymous_votes', 'time', if_not_exists => TRUE,
                           create_default_indexes => FALSE,
-                          chunk_time_interval => INTERVAL '7 days');
+                          chunk_time_interval => INTERVAL '1 day');
 
 -- Add primary key including time
 ALTER TABLE anonymous_votes ADD PRIMARY KEY (id, time);
@@ -91,15 +91,7 @@ EXECUTE FUNCTION validate_anonymous_vote_proposal();
 
 -- Enable compression on anonymous_votes table for historical data
 ALTER TABLE anonymous_votes SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'anonymous_votes'
-    ) THEN
-        PERFORM add_compression_policy('anonymous_votes', INTERVAL '30 days');
-    END IF;
-END $$;
+SELECT add_compression_policy('anonymous_votes', INTERVAL '30 days');
 
 -- ============================================================================
 -- 3. CREATE VOTE DECRYPTION FAILURES TABLE
@@ -147,21 +139,14 @@ CREATE INDEX IF NOT EXISTS idx_decryption_failures_transaction_id ON vote_decryp
 
 -- Enable compression on failures table for historical data
 ALTER TABLE vote_decryption_failures SET (timescaledb.compress = true);
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'vote_decryption_failures'
-    ) THEN
-        PERFORM add_compression_policy('vote_decryption_failures', INTERVAL '90 days');
-    END IF;
-END $$;
+SELECT add_compression_policy('vote_decryption_failures', INTERVAL '90 days');
 
 -- ============================================================================
 -- 4. CREATE CONTINUOUS AGGREGATES FOR ANALYTICS
 -- ============================================================================
 
 -- Pre-computed analytics for anonymous voting patterns
+-- Create continuous aggregate without initial data to avoid transaction block issues
 CREATE MATERIALIZED VIEW IF NOT EXISTS anonymous_voting_daily_stats
 WITH (timescaledb.continuous) AS
 SELECT
@@ -174,55 +159,43 @@ SELECT
     COUNT(*) FILTER (WHERE decrypted_vote = 0) as anonymous_votes_against,
     COUNT(*) FILTER (WHERE decryption_status = 0) as pending_decryption
 FROM anonymous_votes
-GROUP BY day, proposal_id;
+GROUP BY day, proposal_id
+WITH NO DATA;
 
 -- Refresh policy for real-time analytics
+SELECT add_continuous_aggregate_policy('anonymous_voting_daily_stats',
+    start_offset => INTERVAL '3 days',
+    end_offset => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '1 hour');
+
+-- Note: Continuous aggregate will be populated by the refresh policy automatically
+-- Initial data will be available after the first scheduled refresh (1 hour interval)
+
+-- ============================================================================
+-- 5. UPDATE GOVERNANCE EVENTS TABLE FOR ANONYMOUS VOTING (CONDITIONAL)
+-- ============================================================================
+
+-- Add anonymous voting flag to governance_events table only if it exists
 DO $$
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.continuous_aggregate_stats
-        WHERE view_name = 'anonymous_voting_daily_stats'
-    ) THEN
-        PERFORM add_continuous_aggregate_policy('anonymous_voting_daily_stats',
-            start_offset => INTERVAL '3 days',
-            end_offset => INTERVAL '1 hour',
-            schedule_interval => INTERVAL '1 hour');
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'governance_events') THEN
+        -- Add anonymous voting flag to existing governance_events table
+        ALTER TABLE governance_events ADD COLUMN IF NOT EXISTS anonymous_voting_related BOOLEAN DEFAULT FALSE;
+        
+        -- Add index for anonymous voting events
+        CREATE INDEX IF NOT EXISTS idx_governance_events_anonymous ON governance_events(anonymous_voting_related, created_at DESC) 
+            WHERE anonymous_voting_related = true;
+    ELSE
+        RAISE NOTICE 'governance_events table does not exist, skipping anonymous voting integration';
     END IF;
 END $$;
-
--- ============================================================================
--- 5. UPDATE GOVERNANCE EVENTS TABLE FOR ANONYMOUS VOTING
--- ============================================================================
-
--- Add anonymous voting flag to existing governance_events table
-ALTER TABLE governance_events ADD COLUMN IF NOT EXISTS anonymous_voting_related BOOLEAN DEFAULT FALSE;
-
--- Add index for anonymous voting events
-CREATE INDEX IF NOT EXISTS idx_governance_events_anonymous ON governance_events(anonymous_voting_related, created_at DESC) 
-    WHERE anonymous_voting_related = true;
 
 -- ============================================================================
 -- 6. ADD RETENTION POLICIES
 -- ============================================================================
 
 -- Keep raw anonymous votes for 2 years
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.drop_chunks_policies
-        WHERE hypertable_name = 'anonymous_votes'
-    ) THEN
-        PERFORM add_retention_policy('anonymous_votes', INTERVAL '2 years');
-    END IF;
-END $$;
+SELECT add_retention_policy('anonymous_votes', INTERVAL '2 years');
 
 -- Keep decryption failures for 1 year
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.drop_chunks_policies
-        WHERE hypertable_name = 'vote_decryption_failures'
-    ) THEN
-        PERFORM add_retention_policy('vote_decryption_failures', INTERVAL '1 year');
-    END IF;
-END $$; 
+SELECT add_retention_policy('vote_decryption_failures', INTERVAL '1 year'); 
