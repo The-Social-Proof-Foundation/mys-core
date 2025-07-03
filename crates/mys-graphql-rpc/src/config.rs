@@ -11,7 +11,6 @@ use move_core_types::identifier::IdentStr;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, fmt::Display, time::Duration};
 use mys_default_config::DefaultConfig;
-use mys_json_rpc::name_service::NameServiceConfig;
 use mys_types::base_types::{ObjectID, MysAddress};
 
 pub(crate) const RPC_TIMEOUT_ERR_SLEEP_RETRY_PERIOD: Duration = Duration::from_millis(30_000);
@@ -76,7 +75,6 @@ pub struct ServiceConfig {
     pub limits: Limits,
     pub disabled_features: BTreeSet<FunctionalGroup>,
     pub experiments: Experiments,
-    pub name_service: NameServiceConfig,
     pub background_tasks: BackgroundTasksConfig,
     pub zklogin: ZkLoginConfig,
     pub move_registry: MoveRegistryConfig,

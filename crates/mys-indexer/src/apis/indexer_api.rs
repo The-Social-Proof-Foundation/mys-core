@@ -8,7 +8,6 @@ use jsonrpsee::core::SubscriptionResult;
 use jsonrpsee::{PendingSubscriptionSink, RpcModule};
 use tap::TapFallible;
 
-use mys_json_rpc::name_service::{Domain, NameRecord, NameServiceConfig, NameServiceError};
 use mys_json_rpc::MysRpcModule;
 use mys_json_rpc_api::{cap_page_limit, IndexerApiServer};
 use mys_json_rpc_types::{
@@ -30,15 +29,11 @@ use crate::IndexerError;
 
 pub(crate) struct IndexerApi {
     inner: IndexerReader,
-    name_service_config: NameServiceConfig,
 }
 
 impl IndexerApi {
-    pub fn new(inner: IndexerReader, name_service_config: NameServiceConfig) -> Self {
-        Self {
-            inner,
-            name_service_config,
-        }
+    pub fn new(inner: IndexerReader) -> Self {
+        Self { inner }
     }
 
     async fn get_owned_objects_internal(
@@ -305,125 +300,6 @@ impl IndexerApiServer for IndexerApi {
         Err("disabled".into())
     }
 
-    async fn resolve_name_service_address(&self, name: String) -> RpcResult<Option<MysAddress>> {
-        let domain: Domain = name.parse().map_err(IndexerError::NameServiceError)?;
-        let parent_domain = domain.parent();
-
-        // construct the record ids to lookup.
-        let record_id = self.name_service_config.record_field_id(&domain);
-        let parent_record_id = self.name_service_config.record_field_id(&parent_domain);
-
-        // get latest timestamp to check expiration.
-        let current_timestamp = self.inner.get_latest_checkpoint().await?.timestamp_ms;
-
-        // gather the requests to fetch in the multi_get_objs.
-        let mut requests = vec![record_id];
-
-        // we only want to fetch both the child and the parent if the domain is a subdomain.
-        if domain.is_subdomain() {
-            requests.push(parent_record_id);
-        }
-
-        // fetch both parent (if subdomain) and child records in a single get query.
-        // We do this as we do not know if the subdomain is a node or leaf record.
-        let domains: Vec<_> = self
-            .inner
-            .multi_get_objects(requests)
-            .await?
-            .into_iter()
-            .map(|o| mys_types::object::Object::try_from(o).ok())
-            .collect();
-
-        // Find the requested object in the list of domains.
-        // We need to loop (in an array of maximum size 2), as we cannot guarantee
-        // the order of the returned objects.
-        let Some(requested_object) = domains
-            .iter()
-            .find(|o| o.as_ref().is_some_and(|o| o.id() == record_id))
-            .and_then(|o| o.clone())
-        else {
-            return Ok(None);
-        };
-
-        let name_record: NameRecord = requested_object.try_into().map_err(IndexerError::from)?;
-
-        // Handle NODE record case.
-        if !name_record.is_leaf_record() {
-            return if !name_record.is_node_expired(current_timestamp) {
-                Ok(name_record.target_address)
-            } else {
-                Err(IndexerError::NameServiceError(NameServiceError::NameExpired).into())
-            };
-        }
-
-        // repeat the process for the parent object too.
-        let Some(requested_object) = domains
-            .iter()
-            .find(|o| o.as_ref().is_some_and(|o| o.id() == parent_record_id))
-            .and_then(|o| o.clone())
-        else {
-            return Err(IndexerError::NameServiceError(NameServiceError::NameExpired).into());
-        };
-
-        let parent_record: NameRecord = requested_object.try_into().map_err(IndexerError::from)?;
-
-        if parent_record.is_valid_leaf_parent(&name_record)
-            && !parent_record.is_node_expired(current_timestamp)
-        {
-            Ok(name_record.target_address)
-        } else {
-            Err(IndexerError::NameServiceError(NameServiceError::NameExpired).into())
-        }
-    }
-
-    async fn resolve_name_service_names(
-        &self,
-        address: MysAddress,
-        _cursor: Option<ObjectID>,
-        _limit: Option<usize>,
-    ) -> RpcResult<Page<String, ObjectID>> {
-        let reverse_record_id = self
-            .name_service_config
-            .reverse_record_field_id(address.as_ref());
-
-        let mut result = Page {
-            data: vec![],
-            next_cursor: None,
-            has_next_page: false,
-        };
-
-        let Some(field_reverse_record_object) =
-            self.inner.get_object(&reverse_record_id, None).await?
-        else {
-            return Ok(result);
-        };
-
-        let domain = field_reverse_record_object
-            .to_rust::<Field<MysAddress, Domain>>()
-            .ok_or_else(|| {
-                IndexerError::PersistentStorageDataCorruptionError(format!(
-                    "Malformed Object {reverse_record_id}"
-                ))
-            })?
-            .value;
-
-        let domain_name = domain.to_string();
-
-        // Tries to resolve the name, to verify it is not expired.
-        let resolved_address = self
-            .resolve_name_service_address(domain_name.clone())
-            .await?;
-
-        // If we do not have a resolved address, we do not include the domain in the result.
-        if resolved_address.is_none() {
-            return Ok(result);
-        }
-
-        // We push the domain name to the result and return it.
-        result.data.push(domain_name);
-
-        Ok(result)
-    }
 }
 
 impl MysRpcModule for IndexerApi {

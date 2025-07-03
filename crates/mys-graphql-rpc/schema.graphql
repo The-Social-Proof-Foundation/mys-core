@@ -89,12 +89,9 @@ type Address implements IOwner {
 	"""
 	The domain explicitly configured as the default domain pointing to this address.
 	"""
-	defaultMysnsName(format: DomainFormat): String
 	"""
-	The MysnsRegistration NFTs owned by this address. These grant the owner the capability to
 	manage the associated domain.
 	"""
-	mysnsRegistrations(first: Int, after: String, last: Int, before: String): MysnsRegistrationConnection!
 	"""
 	Similar behavior to the `transactionBlocks` in Query but supporting the additional
 	`AddressTransactionBlockRelationship` filter, which defaults to `SENT`.
@@ -527,12 +524,9 @@ type Coin implements IMoveObject & IObject & IOwner {
 	"""
 	The domain explicitly configured as the default domain pointing to this object.
 	"""
-	defaultMysnsName(format: DomainFormat): String
 	"""
-	The MysnsRegistration NFTs owned by this object. These grant the owner the capability to
 	manage the associated domain.
 	"""
-	mysnsRegistrations(first: Int, after: String, last: Int, before: String): MysnsRegistrationConnection!
 	version: UInt53!
 	"""
 	The current status of the object as read from the off-chain store. The possible states are:
@@ -705,12 +699,9 @@ type CoinMetadata implements IMoveObject & IObject & IOwner {
 	"""
 	The domain explicitly configured as the default domain pointing to this object.
 	"""
-	defaultMysnsName(format: DomainFormat): String
 	"""
-	The MysnsRegistration NFTs owned by this object. These grant the owner the capability to
 	manage the associated domain.
 	"""
-	mysnsRegistrations(first: Int, after: String, last: Int, before: String): MysnsRegistrationConnection!
 	version: UInt53!
 	"""
 	The current status of the object as read from the off-chain store. The possible states are:
@@ -921,7 +912,6 @@ type DisplayEntry {
 	error: String
 }
 
-enum DomainFormat {
 	AT
 	DOT
 }
@@ -1608,11 +1598,8 @@ interface IOwner {
 	"""
 	The domain explicitly configured as the default domain pointing to this object or address.
 	"""
-	defaultMysnsName(format: DomainFormat): String
 	"""
-	The MysnsRegistration NFTs owned by this object or address. These grant the owner the capability to manage the associated domain.
 	"""
-	mysnsRegistrations(first: Int, after: String, last: Int, before: String): MysnsRegistrationConnection!
 }
 
 """
@@ -2075,12 +2062,9 @@ type MoveObject implements IMoveObject & IObject & IOwner {
 	"""
 	The domain explicitly configured as the default domain pointing to this object.
 	"""
-	defaultMysnsName(format: DomainFormat): String
 	"""
-	The MysnsRegistration NFTs owned by this object. These grant the owner the capability to
 	manage the associated domain.
 	"""
-	mysnsRegistrations(first: Int, after: String, last: Int, before: String): MysnsRegistrationConnection!
 	version: UInt53!
 	"""
 	The current status of the object as read from the off-chain store. The possible states are:
@@ -2193,9 +2177,7 @@ type MoveObject implements IMoveObject & IObject & IOwner {
 	"""
 	asCoinMetadata: CoinMetadata
 	"""
-	Attempts to convert the Move object into a `MysnsRegistration` object.
 	"""
-	asMysnsRegistration: MysnsRegistration
 }
 
 type MoveObjectConnection {
@@ -2274,15 +2256,12 @@ type MovePackage implements IObject & IOwner {
 	"""
 	The domain explicitly configured as the default domain pointing to this object.
 	"""
-	defaultMysnsName(format: DomainFormat): String
 	"""
-	The MysnsRegistration NFTs owned by this package. These grant the owner the capability to
 	manage the associated domain.
 	
 	Note that objects owned by a package are inaccessible, because packages are immutable and
 	cannot be owned by an address.
 	"""
-	mysnsRegistrations(first: Int, after: String, last: Int, before: String): MysnsRegistrationConnection!
 	version: UInt53!
 	"""
 	The current status of the object as read from the off-chain store. The possible states are:
@@ -2685,12 +2664,9 @@ type Object implements IObject & IOwner {
 	"""
 	The domain explicitly configured as the default domain pointing to this object.
 	"""
-	defaultMysnsName(format: DomainFormat): String
 	"""
-	The MysnsRegistration NFTs owned by this object. These grant the owner the capability to
 	manage the associated domain.
 	"""
-	mysnsRegistrations(first: Int, after: String, last: Int, before: String): MysnsRegistrationConnection!
 	version: UInt53!
 	"""
 	The current status of the object as read from the off-chain store. The possible states are:
@@ -3039,12 +3015,9 @@ type Owner implements IOwner {
 	"""
 	The domain explicitly configured as the default domain pointing to this object or address.
 	"""
-	defaultMysnsName(format: DomainFormat): String
 	"""
-	The MysnsRegistration NFTs owned by this object or address. These grant the owner the
 	capability to manage the associated domain.
 	"""
-	mysnsRegistrations(first: Int, after: String, last: Int, before: String): MysnsRegistrationConnection!
 	asAddress: Address
 	asObject: Object
 	"""
@@ -3793,12 +3766,9 @@ type StakedMys implements IMoveObject & IObject & IOwner {
 	"""
 	The domain explicitly configured as the default domain pointing to this object.
 	"""
-	defaultMysnsName(format: DomainFormat): String
 	"""
-	The MysnsRegistration NFTs owned by this object. These grant the owner the capability to
 	manage the associated domain.
 	"""
-	mysnsRegistrations(first: Int, after: String, last: Int, before: String): MysnsRegistrationConnection!
 	version: UInt53!
 	"""
 	The current status of the object as read from the off-chain store. The possible states are:
@@ -3986,7 +3956,6 @@ String containing 32B hex-encoded address, with a leading "0x". Leading zeroes c
 """
 scalar MysAddress
 
-type MysnsRegistration implements IMoveObject & IObject & IOwner {
 	address: MysAddress!
 	"""
 	Objects owned by this object, optionally `filter`-ed.
@@ -4014,12 +3983,9 @@ type MysnsRegistration implements IMoveObject & IObject & IOwner {
 	"""
 	The domain explicitly configured as the default domain pointing to this object.
 	"""
-	defaultMysnsName(format: DomainFormat): String
 	"""
-	The MysnsRegistration NFTs owned by this object. These grant the owner the capability to
 	manage the associated domain.
 	"""
-	mysnsRegistrations(first: Int, after: String, last: Int, before: String): MysnsRegistrationConnection!
 	version: UInt53!
 	"""
 	The current status of the object as read from the off-chain store. The possible states are:
@@ -4120,12 +4086,10 @@ type MysnsRegistration implements IMoveObject & IObject & IOwner {
 	"""
 	dynamicFields(first: Int, after: String, last: Int, before: String): DynamicFieldConnection!
 	"""
-	Domain name of the MysnsRegistration object
 	"""
 	domain: String!
 }
 
-type MysnsRegistrationConnection {
 	"""
 	Information to aid in pagination.
 	"""
@@ -4133,21 +4097,17 @@ type MysnsRegistrationConnection {
 	"""
 	A list of edges.
 	"""
-	edges: [MysnsRegistrationEdge!]!
 	"""
 	A list of nodes.
 	"""
-	nodes: [MysnsRegistration!]!
 }
 
 """
 An edge in a connection.
 """
-type MysnsRegistrationEdge {
 	"""
 	The item at the end of the edge
 	"""
-	node: MysnsRegistration!
 	"""
 	A cursor for use in pagination
 	"""

@@ -8,8 +8,7 @@ use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 use strum::IntoEnumIterator;
-use mys_json_rpc::name_service::NameServiceConfig;
-use mys_types::base_types::{ObjectID, MysAddress};
+use mys_types::base_types::ObjectID;
 use url::Url;
 
 /// The primary purpose of objects_history is to serve consistency query.
@@ -36,52 +35,7 @@ pub struct IndexerConfig {
 }
 
 #[derive(Args, Debug, Clone)]
-pub struct NameServiceOptions {
-    #[arg(default_value_t = NameServiceConfig::default().package_address)]
-    #[arg(long = "name-service-package-address")]
-    pub package_address: MysAddress,
-    #[arg(default_value_t = NameServiceConfig::default().registry_id)]
-    #[arg(long = "name-service-registry-id")]
-    pub registry_id: ObjectID,
-    #[arg(default_value_t = NameServiceConfig::default().reverse_registry_id)]
-    #[arg(long = "name-service-reverse-registry-id")]
-    pub reverse_registry_id: ObjectID,
-}
-
-impl NameServiceOptions {
-    pub fn to_config(&self) -> NameServiceConfig {
-        let Self {
-            package_address,
-            registry_id,
-            reverse_registry_id,
-        } = self.clone();
-        NameServiceConfig {
-            package_address,
-            registry_id,
-            reverse_registry_id,
-        }
-    }
-}
-
-impl Default for NameServiceOptions {
-    fn default() -> Self {
-        let NameServiceConfig {
-            package_address,
-            registry_id,
-            reverse_registry_id,
-        } = NameServiceConfig::default();
-        Self {
-            package_address,
-            registry_id,
-            reverse_registry_id,
-        }
-    }
-}
-
-#[derive(Args, Debug, Clone)]
 pub struct JsonRpcConfig {
-    #[command(flatten)]
-    pub name_service_options: NameServiceOptions,
 
     #[clap(long, default_value = "0.0.0.0:9000")]
     pub rpc_address: SocketAddr,
@@ -467,24 +421,6 @@ mod test {
             .and_then(|matches| T::from_arg_matches(&matches))
     }
 
-    #[test]
-    fn name_service() {
-        parse_args::<NameServiceOptions>(["--name-service-registry-id=0x1"]).unwrap();
-        parse_args::<NameServiceOptions>([
-            "--name-service-package-address",
-            "0x0000000000000000000000000000000000000000000000000000000000000001",
-        ])
-        .unwrap();
-        parse_args::<NameServiceOptions>(["--name-service-reverse-registry-id=0x1"]).unwrap();
-        parse_args::<NameServiceOptions>([
-            "--name-service-registry-id=0x1",
-            "--name-service-package-address",
-            "0x0000000000000000000000000000000000000000000000000000000000000002",
-            "--name-service-reverse-registry-id=0x3",
-        ])
-        .unwrap();
-        parse_args::<NameServiceOptions>([]).unwrap();
-    }
 
     #[test]
     fn ingestion_sources() {

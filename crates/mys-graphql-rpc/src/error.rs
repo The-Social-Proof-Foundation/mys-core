@@ -4,7 +4,6 @@
 
 use async_graphql::{ErrorExtensionValues, ErrorExtensions, Pos, ServerError};
 use mys_indexer::errors::IndexerError;
-use mys_json_rpc::name_service::NameServiceError;
 
 use crate::types::move_registry::error::MoveRegistryError;
 
@@ -55,8 +54,6 @@ pub(crate) fn graphql_error_at_pos(
 pub enum Error {
     #[error("Unsupported protocol version requested. Min supported: {0}, max supported: {1}")]
     ProtocolVersionUnsupported(u64, u64),
-    #[error(transparent)]
-    NameService(#[from] NameServiceError),
     #[error("'first' and 'last' must not be used together")]
     CursorNoFirstLast,
     #[error("Connection's page size of {0} exceeds max of {1}")]
@@ -73,8 +70,7 @@ pub enum Error {
 impl ErrorExtensions for Error {
     fn extend(&self) -> async_graphql::Error {
         async_graphql::Error::new(format!("{}", self)).extend_with(|_err, e| match self {
-            Error::NameService(_)
-            | Error::MoveNameRegistry(_)
+            Error::MoveNameRegistry(_)
             | Error::CursorNoFirstLast
             | Error::PageTooLarge(_, _)
             | Error::ProtocolVersionUnsupported(_, _)

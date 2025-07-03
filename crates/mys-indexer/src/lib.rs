@@ -56,10 +56,7 @@ pub async fn build_json_rpc_server(
     let http_client = crate::get_http_client(&config.rpc_client_url)?;
 
     builder.register_module(WriteApi::new(http_client.clone()))?;
-    builder.register_module(IndexerApi::new(
-        reader.clone(),
-        config.name_service_options.to_config(),
-    ))?;
+    builder.register_module(IndexerApi::new(reader.clone()))?;
     builder.register_module(TransactionBuilderApi::new(reader.clone()))?;
     builder.register_module(MoveUtilsApi::new(reader.clone()))?;
     builder.register_module(GovernanceReadApi::new(reader.clone()))?;
