@@ -248,9 +248,7 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/marketplace/:id/revenue-timeline", get(get_revenue_timeline))
         .route("/marketplace/:id/access-analytics", get(get_access_analytics))
         .route("/creators/:id/marketplace-data", get(get_creator_data))
-        
 
-        
         // Governance endpoints
         .route("/governance/proposals", get(list_proposals))
         .route("/governance/proposals/:id", get(get_proposal_by_id))

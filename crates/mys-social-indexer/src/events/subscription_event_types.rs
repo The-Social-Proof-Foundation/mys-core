@@ -301,13 +301,13 @@ mod tests {
         let valid_event = serde_json::json!({
             "service_id": "service_123",
             "subscriber": "subscriber_456",
-            "expires_at": 1640995200000
+            "expires_at": 1640995200000i64
         });
         
         assert!(validate_subscription_event(&valid_event).is_ok());
         
         let invalid_event = serde_json::json!({
-            "expires_at": 1640995200000
+            "expires_at": 1640995200000i64
         });
         
         assert!(validate_subscription_event(&invalid_event).is_err());

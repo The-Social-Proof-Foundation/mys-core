@@ -144,16 +144,16 @@ impl BuiltInFramework {
                 [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
             ),
             (
-                MYS_SOCIAL_PACKAGE_ID,
-                "MySocialContracts",
-                "mys-social",
-                [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
-            ),
-            (
                 SEAL_PACKAGE_ID,
                 "Seal",
                 "seal",
                 [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
+            ),
+            (
+                MYS_SOCIAL_PACKAGE_ID,
+                "MySocialContracts",
+                "mys-social",
+                [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID, SEAL_PACKAGE_ID]
             ),
             (
                 DEEPBOOK_PACKAGE_ID,

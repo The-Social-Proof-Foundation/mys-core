@@ -70,9 +70,6 @@ pub struct Builder {
     // Validator signatures over checkpoint
     signatures: BTreeMap<AuthorityPublicKeyBytes, AuthoritySignInfo>,
     built_genesis: Option<UnsignedGenesis>,
-    token_symbol: Option<String>,
-    token_name: Option<String>,
-    token_description: Option<String>,
 }
 
 impl Default for Builder {
@@ -90,9 +87,6 @@ impl Builder {
             validators: Default::default(),
             signatures: Default::default(),
             built_genesis: None,
-            token_symbol: None,
-            token_name: None,
-            token_description: None,
         }
     }
 
@@ -114,17 +108,6 @@ impl Builder {
         self
     }
 
-    pub fn with_token_parameters(
-        mut self,
-        token_symbol: String,
-        token_name: String,
-        token_description: String,
-    ) -> Self {
-        self.token_symbol = Some(token_symbol);
-        self.token_name = Some(token_name);
-        self.token_description = Some(token_description);
-        self
-    }
 
     pub fn add_object(mut self, object: Object) -> Self {
         self.objects.insert(object.id(), object);
@@ -212,9 +195,6 @@ impl Builder {
             &token_distribution_schedule,
             &validators,
             &objects,
-            self.token_symbol.clone(),
-            self.token_name.clone(),
-            self.token_description.clone(),
         ));
 
         self.token_distribution_schedule = Some(token_distribution_schedule);
@@ -623,9 +603,6 @@ impl Builder {
             validators: committee,
             signatures,
             built_genesis: None, // Leave this as none, will build and compare below
-            token_symbol: None,
-            token_name: None,
-            token_description: None,
         };
 
         let unsigned_genesis_file = path.join(GENESIS_BUILDER_UNSIGNED_GENESIS_FILE);
@@ -741,9 +718,6 @@ fn build_unsigned_genesis_data(
     token_distribution_schedule: &TokenDistributionSchedule,
     validators: &[GenesisValidatorInfo],
     objects: &[Object],
-    token_symbol: Option<String>,
-    token_name: Option<String>,
-    token_description: Option<String>,
 ) -> UnsignedGenesis {
     if !parameters.allow_insertion_of_extra_objects && !objects.is_empty() {
         panic!("insertion of extra objects at genesis time is prohibited due to 'allow_insertion_of_extra_objects' parameter");
@@ -794,9 +768,6 @@ fn build_unsigned_genesis_data(
         token_distribution_schedule,
         system_packages,
         metrics.clone(),
-        token_symbol,
-        token_name,
-        token_description,
     );
 
     let protocol_config = get_genesis_protocol_config(parameters.protocol_version);
@@ -988,9 +959,6 @@ fn create_genesis_objects(
     token_distribution_schedule: &TokenDistributionSchedule,
     system_packages: Vec<SystemPackage>,
     metrics: Arc<LimitsMetrics>,
-    token_symbol: Option<String>,
-    token_name: Option<String>,
-    token_description: Option<String>,
 ) -> Vec<Object> {
     let mut store = InMemoryStorage::new(Vec::new());
     // We don't know the chain ID here since we haven't yet created the genesis checkpoint.
@@ -1006,7 +974,7 @@ fn create_genesis_objects(
         .expect("Creating an executor should not fail here");
 
     for system_package in system_packages.into_iter() {
-        if let Err(e) = process_package(
+        process_package(
             &mut store,
             executor.as_ref(),
             epoch_data,
@@ -1015,10 +983,8 @@ fn create_genesis_objects(
             system_package.dependencies,
             &protocol_config,
             metrics.clone(),
-        ) {
-            eprintln!("Warning: Failed to process system package: {:?}", e);
-            // Continue with other packages - we're being more lenient now
-        }
+        )
+        .unwrap();
     }
 
     {
@@ -1027,7 +993,7 @@ fn create_genesis_objects(
         }
     }
 
-    match generate_genesis_system_object(
+    generate_genesis_system_object(
         &mut store,
         executor.as_ref(),
         validators,
@@ -1036,17 +1002,10 @@ fn create_genesis_objects(
         parameters,
         token_distribution_schedule,
         metrics,
-        token_symbol,
-        token_name,
-        token_description,
-    ) {
-        Ok(_) => store.into_inner().into_values().collect(),
-        Err(e) => {
-            eprintln!("Warning: Failed to generate genesis system object: {:?}", e);
-            // Return what we have - we're being more lenient now
-            store.into_inner().into_values().collect()
-        }
-    }
+    )
+    .unwrap();
+
+    store.into_inner().into_values().collect()
 }
 
 fn process_package(
@@ -1130,9 +1089,6 @@ pub fn generate_genesis_system_object(
     genesis_chain_parameters: &GenesisChainParameters,
     token_distribution_schedule: &TokenDistributionSchedule,
     metrics: Arc<LimitsMetrics>,
-    token_symbol: Option<String>,
-    token_name: Option<String>,
-    token_description: Option<String>,
 ) -> anyhow::Result<()> {
     let protocol_config = ProtocolConfig::get_for_version(
         ProtocolVersion::new(genesis_chain_parameters.protocol_version),
@@ -1206,28 +1162,27 @@ pub fn generate_genesis_system_object(
         }
 
         // Step 4: Mint the supply of MYS.
-        // Support token_symbol, token_name, token_description, token_supply as optional parameters
+        // Support token_symbol, token_name, token_description as parameters
         // Default to "MySo" token if parameters aren't specified
-        let token_symbol = token_symbol.unwrap_or("MySo".to_string());
-        let token_name = token_name.unwrap_or("MySocial".to_string());
-        let token_description = token_description.unwrap_or("The native token of the MySocial blockchain.".to_string());
+        let token_symbol = b"MySo";
+        let token_name = b"MySocial";
+        let token_description = b"The native token of the MySocial blockchain.";
         
         // Pass the token parameters to mys::new
-        let token_args = vec![
-            CallArg::Pure(bcs::to_bytes(&token_symbol.as_bytes()).unwrap()),
-            CallArg::Pure(bcs::to_bytes(&token_name.as_bytes()).unwrap()),
-            CallArg::Pure(bcs::to_bytes(&token_description.as_bytes()).unwrap()),
-        ]
-        .into_iter()
-        .map(|a| builder.input(a))
-        .collect::<anyhow::Result<_, _>>()?;
+        let token_symbol_arg = builder.input(CallArg::Pure(bcs::to_bytes(&token_symbol.to_vec()).unwrap()))?;
+        let token_name_arg = builder.input(CallArg::Pure(bcs::to_bytes(&token_name.to_vec()).unwrap()))?;
+        let token_description_arg = builder.input(CallArg::Pure(bcs::to_bytes(&token_description.to_vec()).unwrap()))?;
         
         let mys_supply = builder.programmable_move_call(
             MYS_FRAMEWORK_ADDRESS.into(),
             ident_str!("mys").to_owned(),
             ident_str!("new").to_owned(),
             vec![],
-            token_args,
+            vec![
+                token_symbol_arg,
+                token_name_arg,
+                token_description_arg,
+            ],
         );
 
         // Step 5: Run genesis.
