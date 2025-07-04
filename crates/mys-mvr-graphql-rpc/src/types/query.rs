@@ -18,7 +18,6 @@ use super::move_package::{
 };
 use super::move_registry::named_move_package::NamedMovePackage;
 use super::move_registry::named_type::NamedType;
-use super::mysns_registration::NameService;
 use super::uint53::UInt53;
 use super::{
     address::Address,
@@ -37,7 +36,6 @@ use super::{
     owner::Owner,
     protocol_config::ProtocolConfigs,
     mys_address::MysAddress,
-    mysns_registration::Domain,
     transaction_block::{self, TransactionBlock, TransactionBlockFilter},
     transaction_metadata::TransactionMetadata,
     type_filter::ExactTypeFilter,
@@ -562,23 +560,6 @@ impl Query {
         ProtocolConfigs::query(ctx.data_unchecked(), protocol_version.map(|v| v.into()))
             .await
             .extend()
-    }
-
-    /// Resolves a MysNS `domain` name to an address, if it has been bound.
-    async fn resolve_mysns_address(
-        &self,
-        ctx: &Context<'_>,
-        domain: Domain,
-    ) -> Result<Option<Address>> {
-        let Watermark { checkpoint, .. } = *ctx.data()?;
-        Ok(NameService::resolve_to_record(ctx, &domain, checkpoint)
-            .await
-            .extend()?
-            .and_then(|r| r.target_address)
-            .map(|a| Address {
-                address: a.into(),
-                checkpoint_viewed_at: checkpoint,
-            }))
     }
 
     /// Fetch a package by its name (using dot move service)
