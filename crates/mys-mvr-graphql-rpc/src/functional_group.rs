@@ -24,9 +24,6 @@ pub enum FunctionalGroup {
     /// Querying an object's dynamic fields.
     DynamicFields,
 
-    /// MysNS name and reverse name look-up.
-    NameService,
-
     /// Transaction and Event subscriptions.
     Subscriptions,
 
@@ -52,7 +49,6 @@ impl FunctionalGroup {
             G::Analytics,
             G::Coins,
             G::DynamicFields,
-            G::NameService,
             G::Subscriptions,
             G::SystemState,
             G::MoveRegistry,
@@ -73,8 +69,6 @@ fn functional_groups() -> &'static BTreeMap<(&'static str, &'static str), Functi
             (("Address", "balance"), G::Coins),
             (("Address", "balances"), G::Coins),
             (("Address", "coins"), G::Coins),
-            (("Address", "defaultMysnsName"), G::NameService),
-            (("Address", "mysnsRegistrations"), G::NameService),
             (("Checkpoint", "addressMetrics"), G::Analytics),
             (("Checkpoint", "networkTotalTransactions"), G::Analytics),
             (("Epoch", "protocolConfigs"), G::SystemState),
@@ -83,11 +77,9 @@ fn functional_groups() -> &'static BTreeMap<(&'static str, &'static str), Functi
             (("Object", "balance"), G::Coins),
             (("Object", "balances"), G::Coins),
             (("Object", "coins"), G::Coins),
-            (("Object", "defaultMysnsName"), G::NameService),
             (("Object", "dynamicField"), G::DynamicFields),
             (("Object", "dynamicObjectField"), G::DynamicFields),
             (("Object", "dynamicFields"), G::DynamicFields),
-            (("Object", "mysnsRegistrations"), G::NameService),
             (("Owner", "balance"), G::Coins),
             (("Owner", "balances"), G::Coins),
             (("Owner", "coins"), G::Coins),
