@@ -8,7 +8,6 @@ use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 use strum::IntoEnumIterator;
-use mys_types::base_types::ObjectID;
 use url::Url;
 
 /// The primary purpose of objects_history is to serve consistency query.

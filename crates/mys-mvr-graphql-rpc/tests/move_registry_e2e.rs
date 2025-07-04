@@ -6,7 +6,6 @@ use std::str::FromStr;
 use std::{path::PathBuf, time::Duration};
 
 use mys_graphql_rpc_client::simple_client::SimpleClient;
-use mys_json_rpc::name_service::{Domain, DomainFormat};
 use mys_json_rpc_types::ObjectChange;
 use mys_move_build::BuildConfig;
 use mys_mvr_graphql_rpc::{

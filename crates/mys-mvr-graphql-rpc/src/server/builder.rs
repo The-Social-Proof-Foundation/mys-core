@@ -400,7 +400,6 @@ impl ServerBuilder {
         );
         let mut builder = ServerBuilder::new(state);
 
-        let name_service_config = config.service.name_service.clone();
         let move_registry_config = config.service.move_registry.clone();
         let zklogin_config = config.service.zklogin.clone();
         let reader = PgManager::reader_with_config(
@@ -465,7 +464,6 @@ impl ServerBuilder {
             .context_data(pg_conn_pool)
             .context_data(resolver)
             .context_data(mys_sdk_client)
-            .context_data(name_service_config)
             .context_data(zklogin_config)
             .context_data(metrics.clone())
             .context_data(config.clone())

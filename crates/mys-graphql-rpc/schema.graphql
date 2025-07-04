@@ -87,11 +87,6 @@ type Address implements IOwner {
 	"""
 	stakedMyss(first: Int, after: String, last: Int, before: String): StakedMysConnection!
 	"""
-	The domain explicitly configured as the default domain pointing to this address.
-	"""
-	"""
-	manage the associated domain.
-	"""
 	"""
 	Similar behavior to the `transactionBlocks` in Query but supporting the additional
 	`AddressTransactionBlockRelationship` filter, which defaults to `SENT`.
@@ -522,16 +517,6 @@ type Coin implements IMoveObject & IObject & IOwner {
 	"""
 	stakedMyss(first: Int, after: String, last: Int, before: String): StakedMysConnection!
 	"""
-	The domain explicitly configured as the default domain pointing to this object.
-	"""
-	"""
-	manage the associated domain.
-	"""
-	version: UInt53!
-	"""
-	The current status of the object as read from the off-chain store. The possible states are:
-	NOT_INDEXED, the object is loaded from serialized data, such as the contents of a genesis or
-	system package upgrade transaction. LIVE, the version returned is the most recent for the
 	object, and it is not deleted or wrapped at that version. HISTORICAL, the object was
 	referenced at a specific version or checkpoint, so is fetched from historical tables and may
 	not be the latest version of the object. WRAPPED_OR_DELETED, the object is deleted or
@@ -697,15 +682,10 @@ type CoinMetadata implements IMoveObject & IObject & IOwner {
 	"""
 	stakedMyss(first: Int, after: String, last: Int, before: String): StakedMysConnection!
 	"""
-	The domain explicitly configured as the default domain pointing to this object.
 	"""
 	"""
 	manage the associated domain.
 	"""
-	version: UInt53!
-	"""
-	The current status of the object as read from the off-chain store. The possible states are:
-	NOT_INDEXED, the object is loaded from serialized data, such as the contents of a genesis or
 	system package upgrade transaction. LIVE, the version returned is the most recent for the
 	object, and it is not deleted or wrapped at that version. HISTORICAL, the object was
 	referenced at a specific version or checkpoint, so is fetched from historical tables and may
@@ -1596,7 +1576,6 @@ interface IOwner {
 	"""
 	stakedMyss(first: Int, after: String, last: Int, before: String): StakedMysConnection!
 	"""
-	The domain explicitly configured as the default domain pointing to this object or address.
 	"""
 	"""
 	"""
@@ -2060,7 +2039,6 @@ type MoveObject implements IMoveObject & IObject & IOwner {
 	"""
 	stakedMyss(first: Int, after: String, last: Int, before: String): StakedMysConnection!
 	"""
-	The domain explicitly configured as the default domain pointing to this object.
 	"""
 	"""
 	manage the associated domain.
@@ -2069,10 +2047,6 @@ type MoveObject implements IMoveObject & IObject & IOwner {
 	"""
 	The current status of the object as read from the off-chain store. The possible states are:
 	NOT_INDEXED, the object is loaded from serialized data, such as the contents of a genesis or
-	system package upgrade transaction. LIVE, the version returned is the most recent for the
-	object, and it is not deleted or wrapped at that version. HISTORICAL, the object was
-	referenced at a specific version or checkpoint, so is fetched from historical tables and may
-	not be the latest version of the object. WRAPPED_OR_DELETED, the object is deleted or
 	wrapped and only partial information can be loaded."
 	"""
 	status: ObjectKind!
@@ -2254,7 +2228,6 @@ type MovePackage implements IObject & IOwner {
 	"""
 	stakedMyss(first: Int, after: String, last: Int, before: String): StakedMysConnection!
 	"""
-	The domain explicitly configured as the default domain pointing to this object.
 	"""
 	"""
 	manage the associated domain.
@@ -2267,10 +2240,6 @@ type MovePackage implements IObject & IOwner {
 	The current status of the object as read from the off-chain store. The possible states are:
 	NOT_INDEXED, the object is loaded from serialized data, such as the contents of a genesis or
 	system package upgrade transaction. LIVE, the version returned is the most recent for the
-	object, and it is not deleted or wrapped at that version. HISTORICAL, the object was
-	referenced at a specific version or checkpoint, so is fetched from historical tables and may
-	not be the latest version of the object. WRAPPED_OR_DELETED, the object is deleted or
-	wrapped and only partial information can be loaded."
 	"""
 	status: ObjectKind!
 	"""
@@ -2662,7 +2631,6 @@ type Object implements IObject & IOwner {
 	"""
 	stakedMyss(first: Int, after: String, last: Int, before: String): StakedMysConnection!
 	"""
-	The domain explicitly configured as the default domain pointing to this object.
 	"""
 	"""
 	manage the associated domain.
@@ -2678,10 +2646,6 @@ type Object implements IObject & IOwner {
 	wrapped and only partial information can be loaded."
 	"""
 	status: ObjectKind!
-	"""
-	32-byte hash that identifies the object's current contents, encoded as a Base58 string.
-	"""
-	digest: String
 	"""
 	The owner type of this object: Immutable, Shared, Parent, Address
 	Immutable and Shared Objects do not have owners.
@@ -3013,7 +2977,6 @@ type Owner implements IOwner {
 	"""
 	stakedMyss(first: Int, after: String, last: Int, before: String): StakedMysConnection!
 	"""
-	The domain explicitly configured as the default domain pointing to this object or address.
 	"""
 	"""
 	capability to manage the associated domain.
@@ -3034,10 +2997,6 @@ type Owner implements IOwner {
 	BCS contents, Base64 encoded. The value of a dynamic object field can also be accessed
 	off-chain directly via its address (e.g. using `Query.object`).
 	
-	This field exists as a convenience when accessing a dynamic field on a wrapped object.
-	"""
-	dynamicObjectField(name: DynamicFieldName!): DynamicField
-	"""
 	The dynamic fields and dynamic object fields on an object.
 	
 	This field exists as a convenience when accessing a dynamic field on a wrapped object.
@@ -3370,7 +3329,6 @@ type Query {
 	"""
 	Resolves a MysNS `domain` name to an address, if it has been bound.
 	"""
-	resolveMysnsAddress(domain: String!): Address
 	"""
 	Fetch a package by its name (using dot move service)
 	"""
@@ -3764,7 +3722,6 @@ type StakedMys implements IMoveObject & IObject & IOwner {
 	"""
 	stakedMyss(first: Int, after: String, last: Int, before: String): StakedMysConnection!
 	"""
-	The domain explicitly configured as the default domain pointing to this object.
 	"""
 	"""
 	manage the associated domain.
@@ -3788,10 +3745,6 @@ type StakedMys implements IMoveObject & IObject & IOwner {
 	The owner type of this object: Immutable, Shared, Parent, Address
 	"""
 	owner: ObjectOwner
-	"""
-	The transaction block that created this version of the object.
-	"""
-	previousTransactionBlock: TransactionBlock
 	"""
 	The amount of MYS we would rebate if this object gets deleted or mutated. This number is
 	recalculated based on the present storage gas price.
@@ -3981,7 +3934,6 @@ scalar MysAddress
 	"""
 	stakedMyss(first: Int, after: String, last: Int, before: String): StakedMysConnection!
 	"""
-	The domain explicitly configured as the default domain pointing to this object.
 	"""
 	"""
 	manage the associated domain.
@@ -4010,10 +3962,6 @@ scalar MysAddress
 	"""
 	previousTransactionBlock: TransactionBlock
 	"""
-	The amount of MYS we would rebate if this object gets deleted or mutated. This number is
-	recalculated based on the present storage gas price.
-	"""
-	storageRebate: BigInt
 	"""
 	The transaction blocks that sent objects to this object.
 	

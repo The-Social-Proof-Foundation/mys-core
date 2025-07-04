@@ -16,7 +16,6 @@ use super::move_object::MoveObjectImpl;
 use super::move_value::MoveValue;
 use super::object::{Object, ObjectFilter, ObjectImpl, ObjectOwner, ObjectStatus};
 use super::owner::OwnerImpl;
-use super::mysns_registration::{DomainFormat, MysnsRegistration};
 use super::transaction_block::{self, TransactionBlock, TransactionBlockFilter};
 use super::type_filter::ExactTypeFilter;
 use super::uint53::UInt53;
@@ -136,19 +135,15 @@ impl StakedMys {
     }
 
     /// The domain explicitly configured as the default domain pointing to this object.
-    pub(crate) async fn default_mysns_name(
         &self,
         ctx: &Context<'_>,
-        format: Option<DomainFormat>,
     ) -> Result<Option<String>> {
         OwnerImpl::from(&self.super_.super_)
-            .default_mysns_name(ctx, format)
             .await
     }
 
     /// The MysnsRegistration NFTs owned by this object. These grant the owner the capability to
     /// manage the associated domain.
-    pub(crate) async fn mysns_registrations(
         &self,
         ctx: &Context<'_>,
         first: Option<u64>,
@@ -157,7 +152,6 @@ impl StakedMys {
         before: Option<object::Cursor>,
     ) -> Result<Connection<String, MysnsRegistration>> {
         OwnerImpl::from(&self.super_.super_)
-            .mysns_registrations(ctx, first, after, last, before)
             .await
     }
 

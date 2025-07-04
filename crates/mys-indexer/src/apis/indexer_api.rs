@@ -18,7 +18,7 @@ use mys_json_rpc_types::{
 use mys_open_rpc::Module;
 use mys_types::base_types::{ObjectID, MysAddress};
 use mys_types::digests::TransactionDigest;
-use mys_types::dynamic_field::{DynamicFieldName, Field};
+use mys_types::dynamic_field::{DynamicFieldName};
 use mys_types::error::MysObjectResponseError;
 use mys_types::event::EventID;
 use mys_types::object::ObjectRead;

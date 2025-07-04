@@ -15,7 +15,6 @@ use super::object::{self, Object, ObjectFilter, ObjectImpl, ObjectOwner, ObjectS
 use super::owner::OwnerImpl;
 use super::stake::StakedMys;
 use super::mys_address::MysAddress;
-use super::mysns_registration::{DomainFormat, MysnsRegistration};
 use super::transaction_block::{self, TransactionBlock, TransactionBlockFilter};
 use super::type_filter::ExactTypeFilter;
 use super::uint53::UInt53;
@@ -264,13 +263,10 @@ impl MovePackage {
     }
 
     /// The domain explicitly configured as the default domain pointing to this object.
-    pub(crate) async fn default_mysns_name(
         &self,
         ctx: &Context<'_>,
-        format: Option<DomainFormat>,
     ) -> Result<Option<String>> {
         OwnerImpl::from(&self.super_)
-            .default_mysns_name(ctx, format)
             .await
     }
 
@@ -279,7 +275,6 @@ impl MovePackage {
     ///
     /// Note that objects owned by a package are inaccessible, because packages are immutable and
     /// cannot be owned by an address.
-    pub(crate) async fn mysns_registrations(
         &self,
         ctx: &Context<'_>,
         first: Option<u64>,
@@ -288,7 +283,6 @@ impl MovePackage {
         before: Option<object::Cursor>,
     ) -> Result<Connection<String, MysnsRegistration>> {
         OwnerImpl::from(&self.super_)
-            .mysns_registrations(ctx, first, after, last, before)
             .await
     }
 
