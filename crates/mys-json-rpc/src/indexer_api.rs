@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use anyhow::bail;
 use async_trait::async_trait;
-use futures::{future, Stream, StreamExt};
+use futures::{Stream, StreamExt};
 use jsonrpsee::{
     core::{RpcResult, SubscriptionResult},
     PendingSubscriptionSink, RpcModule,
@@ -31,7 +31,7 @@ use mys_storage::key_value_store::TransactionKeyValueStore;
 use mys_types::{
     base_types::{ObjectID, MysAddress},
     digests::TransactionDigest,
-    dynamic_field::{DynamicFieldName, Field},
+    dynamic_field::DynamicFieldName,
     error::MysObjectResponseError,
     event::EventID,
 };
@@ -133,15 +133,7 @@ impl<R: ReadApiServer> IndexerApi<R> {
         }
     }
 
-    fn get_latest_checkpoint_timestamp_ms(&self) -> StateReadResult<u64> {
-        let latest_checkpoint = self.state.get_latest_checkpoint_sequence_number()?;
 
-        let checkpoint = self
-            .state
-            .get_verified_checkpoint_by_sequence_number(latest_checkpoint)?;
-
-        Ok(checkpoint.timestamp_ms)
-    }
 }
 
 #[async_trait]

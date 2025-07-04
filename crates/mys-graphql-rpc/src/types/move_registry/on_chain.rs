@@ -9,7 +9,7 @@ use move_core_types::language_storage::StructTag;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use mys_json_rpc::name_service::{validate_label, Domain};
+
 use mys_types::{
     base_types::{ObjectID, MysAddress},
     collection_types::VecMap,
@@ -24,6 +24,39 @@ use crate::{
 };
 
 use super::error::MoveRegistryError;
+
+/// Simple domain type for move registry
+#[derive(Debug, Serialize, Deserialize, Hash, Clone, Eq, PartialEq)]
+pub(crate) struct Domain(pub String);
+
+impl FromStr for Domain {
+    type Err = String;
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Basic validation - ensure it's not empty and contains valid characters
+        if s.is_empty() || !s.chars().all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == '@') {
+            return Err("Invalid domain format".to_string());
+        }
+        Ok(Domain(s.to_string()))
+    }
+}
+
+/// Validate a label for move registry
+fn validate_label(label: &str) -> Result<(), String> {
+    if label.is_empty() {
+        return Err("Label cannot be empty".to_string());
+    }
+    if !label.chars().all(|c| c.is_alphanumeric() || c == '-') {
+        return Err("Label can only contain alphanumeric characters and hyphens".to_string());
+    }
+    if label.starts_with('-') || label.ends_with('-') {
+        return Err("Label cannot start or end with a hyphen".to_string());
+    }
+    if label.contains("--") {
+        return Err("Label cannot contain consecutive hyphens".to_string());
+    }
+    Ok(())
+}
 
 /// Regex to parse a dot move name. Version is optional (defaults to latest).
 /// For versioned format, the expected format is `@org/app/1` (1 == version).

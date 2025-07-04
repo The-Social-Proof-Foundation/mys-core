@@ -637,8 +637,7 @@ mod tests {
     fn test_read_enabled_features_in_service_config() {
         let actual = ServiceConfig::read(
             r#" disabled-features = [
-                  "coins",
-                  "name-service",
+                  "coins"
                 ]
             "#,
         )
@@ -646,7 +645,7 @@ mod tests {
 
         use FunctionalGroup as G;
         let expect = ServiceConfig {
-            disabled_features: BTreeSet::from([G::Coins, G::NameService]),
+            disabled_features: BTreeSet::from([G::Coins]),
             ..Default::default()
         };
 
