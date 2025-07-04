@@ -113,7 +113,6 @@ pub(crate) enum IMoveObject {
     Coin(Coin),
     CoinMetadata(CoinMetadata),
     StakedMys(StakedMys),
-    MysnsRegistration(MysnsRegistration),
 }
 
 /// The representation of an object as a Move Object, which exposes additional information
@@ -194,26 +193,6 @@ impl MoveObject {
             .await
     }
 
-    /// The domain explicitly configured as the default domain pointing to this object.
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Option<String>> {
-        OwnerImpl::from(&self.super_)
-            .await
-    }
-
-    /// The MysnsRegistration NFTs owned by this object. These grant the owner the capability to
-    /// manage the associated domain.
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<object::Cursor>,
-        last: Option<u64>,
-        before: Option<object::Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        OwnerImpl::from(&self.super_)
-            .await
-    }
 
     pub(crate) async fn version(&self) -> UInt53 {
         ObjectImpl(&self.super_).version().await
@@ -402,18 +381,6 @@ impl MoveObject {
         }
     }
 
-    /// Attempts to convert the Move object into a `MysnsRegistration` object.
-        let tag = MysnsRegistration::type_(cfg.package_address.into());
-
-        match MysnsRegistration::try_from(self, &tag) {
-            Ok(registration) => Ok(Some(registration)),
-            Err(MysnsRegistrationDowncastError::NotAMysnsRegistration) => Ok(None),
-            Err(MysnsRegistrationDowncastError::Bcs(e)) => Err(Error::Internal(format!(
-                "Failed to deserialize MysnsRegistration: {e}",
-            )))
-            .extend(),
-        }
-    }
 }
 
 impl MoveObjectImpl<'_> {

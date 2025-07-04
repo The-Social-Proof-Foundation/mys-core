@@ -108,18 +108,8 @@ pub(crate) struct OwnerImpl {
     ),
     field(
         ty = "Option<String>",
-        desc = "The domain explicitly configured as the default domain pointing to this object or \
-                address."
-    ),
     field(
         arg(name = "first", ty = "Option<u64>"),
-        arg(name = "after", ty = "Option<object::Cursor>"),
-        arg(name = "last", ty = "Option<u64>"),
-        arg(name = "before", ty = "Option<object::Cursor>"),
-        ty = "Connection<String, MysnsRegistration>",
-        desc = "The MysnsRegistration NFTs owned by this object or address. These grant the owner \
-                the capability to manage the associated domain."
-    )
 )]
 pub(crate) enum IOwner {
     Owner(Owner),
@@ -130,7 +120,6 @@ pub(crate) enum IOwner {
     Coin(Coin),
     CoinMetadata(CoinMetadata),
     StakedMys(StakedMys),
-    MysnsRegistration(MysnsRegistration),
 }
 
 /// An Owner is an entity that can own an object. Each Owner is identified by a MysAddress which
@@ -209,25 +198,6 @@ impl Owner {
     ) -> Result<Connection<String, StakedMys>> {
         OwnerImpl::from(self)
             .staked_myss(ctx, first, after, last, before)
-            .await
-    }
-
-    /// The domain explicitly configured as the default domain pointing to this object or address.
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Option<String>> {
-    }
-
-    /// The MysnsRegistration NFTs owned by this object or address. These grant the owner the
-    /// capability to manage the associated domain.
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<object::Cursor>,
-        last: Option<u64>,
-        before: Option<object::Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        OwnerImpl::from(self)
             .await
     }
 
@@ -419,22 +389,6 @@ impl OwnerImpl {
         )
     }
 
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<object::Cursor>,
-        last: Option<u64>,
-        before: Option<object::Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        let page = Page::from_params(ctx.data_unchecked(), first, after, last, before)?;
-        MysnsRegistration::paginate(
-            ctx.data_unchecked::<Db>(),
-            page,
-            self.address,
-            self.checkpoint_viewed_at,
-        )
-        .await
-        .extend()
     }
 
     // Dynamic field related functions are part of the `IMoveObject` interface, but are provided

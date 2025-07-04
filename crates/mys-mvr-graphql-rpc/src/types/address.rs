@@ -109,27 +109,6 @@ impl Address {
     ) -> Result<Connection<String, StakedMys>> {
         OwnerImpl::from(self)
             .staked_myss(ctx, first, after, last, before)
-            .await
-    }
-
-    /// The domain explicitly configured as the default domain pointing to this address.
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Option<String>> {
-    }
-
-    /// The MysnsRegistration NFTs owned by this address. These grant the owner the capability to
-    /// manage the associated domain.
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<object::Cursor>,
-        last: Option<u64>,
-        before: Option<object::Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        OwnerImpl::from(self)
-            .await
-    }
 
     /// Similar behavior to the `transactionBlocks` in Query but supporting the additional
     /// `AddressTransactionBlockRelationship` filter, which defaults to `SENT`.

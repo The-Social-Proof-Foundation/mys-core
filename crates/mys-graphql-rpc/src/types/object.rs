@@ -291,7 +291,6 @@ pub(crate) enum IObject {
     Coin(Coin),
     CoinMetadata(CoinMetadata),
     StakedMys(StakedMys),
-    MysnsRegistration(MysnsRegistration),
 }
 
 /// `DataLoader` key for fetching an `Object` at a specific version, constrained by a consistency
@@ -409,24 +408,6 @@ impl Object {
             .await
     }
 
-    /// The domain explicitly configured as the default domain pointing to this object.
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Option<String>> {
-    }
-
-    /// The MysnsRegistration NFTs owned by this object. These grant the owner the capability to
-    /// manage the associated domain.
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<Cursor>,
-        last: Option<u64>,
-        before: Option<Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        OwnerImpl::from(self)
-            .await
-    }
 
     pub(crate) async fn version(&self) -> UInt53 {
         ObjectImpl(self).version().await

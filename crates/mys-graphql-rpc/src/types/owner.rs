@@ -106,19 +106,6 @@ pub(crate) struct OwnerImpl {
         ty = "Connection<String, StakedMys>",
         desc = "The `0x3::staking_pool::StakedMys` objects owned by this object or address."
     ),
-    field(
-        ty = "Option<String>",
-        desc = "The domain explicitly configured as the default domain pointing to this object or \
-                address."
-    ),
-    field(
-        arg(name = "first", ty = "Option<u64>"),
-        arg(name = "after", ty = "Option<object::Cursor>"),
-        arg(name = "last", ty = "Option<u64>"),
-        arg(name = "before", ty = "Option<object::Cursor>"),
-        ty = "Connection<String, MysnsRegistration>",
-        desc = "The MysnsRegistration NFTs owned by this object or address. These grant the owner \
-                the capability to manage the associated domain."
     )
 )]
 pub(crate) enum IOwner {
@@ -130,7 +117,6 @@ pub(crate) enum IOwner {
     Coin(Coin),
     CoinMetadata(CoinMetadata),
     StakedMys(StakedMys),
-    MysnsRegistration(MysnsRegistration),
 }
 
 /// An Authenticator represents the access control rules for a ConsensusV2 object.
@@ -219,24 +205,6 @@ impl Owner {
             .await
     }
 
-    /// The domain explicitly configured as the default domain pointing to this object or address.
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Option<String>> {
-    }
-
-    /// The MysnsRegistration NFTs owned by this object or address. These grant the owner the
-    /// capability to manage the associated domain.
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<object::Cursor>,
-        last: Option<u64>,
-        before: Option<object::Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        OwnerImpl::from(self)
-            .await
-    }
 
     async fn as_address(&self) -> Option<Address> {
         // For now only addresses can be owners
@@ -413,35 +381,6 @@ impl OwnerImpl {
             self.address,
             self.checkpoint_viewed_at,
         )
-        .await
-        .extend()
-    }
-
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Option<String>> {
-        Ok(
-                .await
-                .extend()?
-        )
-    }
-
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<object::Cursor>,
-        last: Option<u64>,
-        before: Option<object::Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        let page = Page::from_params(ctx.data_unchecked(), first, after, last, before)?;
-        MysnsRegistration::paginate(
-            ctx.data_unchecked::<Db>(),
-            page,
-            self.address,
-            self.checkpoint_viewed_at,
-        )
-        .await
-        .extend()
     }
 
     // Dynamic field related functions are part of the `IMoveObject` interface, but are provided

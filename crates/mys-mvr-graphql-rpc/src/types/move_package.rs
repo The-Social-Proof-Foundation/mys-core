@@ -261,27 +261,6 @@ impl MovePackage {
             .staked_myss(ctx, first, after, last, before)
             .await
     }
-
-    /// The domain explicitly configured as the default domain pointing to this object.
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Option<String>> {
-        OwnerImpl::from(&self.super_)
-            .await
-    }
-
-    /// The MysnsRegistration NFTs owned by this package. These grant the owner the capability to
-    /// manage the associated domain.
-    ///
-    /// Note that objects owned by a package are inaccessible, because packages are immutable and
-    /// cannot be owned by an address.
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<object::Cursor>,
-        last: Option<u64>,
-        before: Option<object::Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
         OwnerImpl::from(&self.super_)
             .await
     }

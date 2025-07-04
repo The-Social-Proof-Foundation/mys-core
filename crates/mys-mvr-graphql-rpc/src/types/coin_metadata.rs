@@ -115,26 +115,6 @@ impl CoinMetadata {
             .await
     }
 
-    /// The domain explicitly configured as the default domain pointing to this object.
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Option<String>> {
-        OwnerImpl::from(&self.super_.super_)
-            .await
-    }
-
-    /// The MysnsRegistration NFTs owned by this object. These grant the owner the capability to
-    /// manage the associated domain.
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<object::Cursor>,
-        last: Option<u64>,
-        before: Option<object::Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        OwnerImpl::from(&self.super_.super_)
-            .await
-    }
 
     pub(crate) async fn version(&self) -> UInt53 {
         ObjectImpl(&self.super_.super_).version().await
