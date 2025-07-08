@@ -30,6 +30,8 @@ Move.lock
 # Genesis files
 genesis/files/*
 genesis/*
+genesis2/files/*
+genesis2/*
 
 # Bridge
 bridge/evm/artifacts

@@ -236,6 +236,12 @@ accounts:
   - address: "$FAUCET_ADDRESS"
     gas_amounts:
       - 100000000000000 # 100,000 MySo
+      - 5000000000 # 5 MySo
+      - 5000000000 # 5 MySo
+      - 5000000000 # 5 MySo
+      - 5000000000 # 5 MySo
+      - 5000000000 # 5 MySo
+      - 5000000000 # 5 MySo
 EOL
 
 # Replace the original file with the new one
