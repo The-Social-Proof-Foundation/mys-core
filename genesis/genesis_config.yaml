@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1752030107000
+  chain_start_timestamp_ms: 1734000000000
 
   # Protocol version
   protocol_version: 74  # Latest version
