@@ -216,7 +216,7 @@ parameters:
 
 # Accounts to add tokens to
 accounts:
-  # Treasury/Team allocation
+  # Fullnode allocation
   - address: "$FULLNODE_ADDRESS"
     gas_amounts:
       - 250000000000000 # 250,000 MySo

@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1751621632000
+  chain_start_timestamp_ms: 1752030107000
 
   # Protocol version
   protocol_version: 74  # Latest version
@@ -36,24 +36,24 @@ parameters:
 
 # Accounts to add tokens to
 accounts:
-  # Fullnode
-  - address: "0x8589f987d7f4be9991a4cdedf5c55defae547703d69e7eab56d9513a95ce33c5"
+  # Fullnode allocation
+  - address: "0x2a47cccd93f765913a9b62d4ef2430fb068bdac1d449e64b16568c891f34bceb"
     gas_amounts:
       - 250000000000000 # 250,000 MySo
   # Validator 1
-  - address: "0x2e100f184f810f6069d9e7881247b530898cc830e9fd45b496a390eb930ae3c3"
+  - address: "0xee8fac4cc2e084fdbd3ca5b0fbbdc2a6c24c6911ac5156255a4542062fb93a69"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 2
-  - address: "0xce6f99f925f30910c8d38bf3bb99ea3e89728f518313724b08b94fc4d5e01398"
+  - address: "0xf2792a7e9440f3262e39a700be1ed7ec99f03a029faf5677957d93dc1bffe85a"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 3
-  - address: "0x4e5ea3134f34514fe6696028899cb7be884be19c6e7bc7545f83249b6f82ed8d"
+  - address: "0x5e50f98627dc7914f0a0f4eb5d44eba6899bd961617f88f86adae15e7641b713"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Faucet
-  - address: "0xf88be8becf9bec052213ed90084d72cdea7c5739863ef1eaa3e771f89818c7a5"
+  - address: "0xded85fe9c024b59b61f3ae5a566c17eb343f4dd2c4ff7a35de3b55ec06d87a4b"
     gas_amounts:
       - 100000000000000 # 100,000 MySo
       - 5000000000 # 5 MySo
