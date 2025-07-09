@@ -1,10 +1,52 @@
 #!/bin/bash
-# Script to generate fullnode and faucet keys
+# Script to generate fullnode and faucet keys with dynamic port configuration
 
 # Set up colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
+
+# Help function
+show_help() {
+    echo -e "${GREEN}MySocial Genesis Key Generator${NC}"
+    echo "-----------------------------------"
+    echo "This script generates validator, fullnode, and faucet keys with dynamic port configuration."
+    echo
+    echo "Usage: $0 [OPTIONS]"
+    echo
+    echo "Options:"
+    echo "  -h, --help          Show this help message"
+    echo "  -i, --ip IP_ADDR    Set the base IP address (default: 69.10.63.78)"
+    echo
+    echo "Environment Variables:"
+    echo "  BASE_IP             Base IP address for all validators (same as -i flag)"
+    echo
+    echo "Examples:"
+    echo "  $0                           # Use default IP (69.10.63.78)"
+    echo "  $0 -i 192.168.1.100         # Use custom IP"
+    echo "  BASE_IP=10.0.0.1 $0         # Use environment variable"
+    echo
+    exit 0
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            show_help
+            ;;
+        -i|--ip)
+            BASE_IP="$2"
+            shift 2
+            ;;
+        *)
+            echo -e "${RED}Unknown option: $1${NC}"
+            echo "Use -h or --help for usage information."
+            exit 1
+            ;;
+    esac
+done
 
 # Store the original directory
 GENESIS_DIR=$(pwd)
@@ -12,8 +54,78 @@ GENESIS_DIR=$(pwd)
 echo -e "${GREEN}MySocial Genesis Key Generator${NC}"
 echo "-----------------------------------"
 
-# Array to store validator addresses
+# Array to store validator addresses and port information
 declare -a VALIDATOR_ADDRESSES
+declare -a VALIDATOR_PORTS
+
+# Base IP address (configurable)
+BASE_IP="${BASE_IP:-69.10.63.78}"
+
+# Validate IP address format
+validate_ip() {
+    local ip=$1
+    if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        local IFS='.'
+        local -a ip_parts=($ip)
+        for part in "${ip_parts[@]}"; do
+            if [[ $part -gt 255 ]]; then
+                return 1
+            fi
+        done
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Validate the BASE_IP
+if ! validate_ip "$BASE_IP"; then
+    echo -e "${RED}Error: Invalid IP address format: $BASE_IP${NC}"
+    echo "Please provide a valid IPv4 address."
+    exit 1
+fi
+
+echo "Using base IP address: $BASE_IP"
+
+# Function to generate a unique port number
+# Takes a base port and validator index as parameters
+generate_port() {
+  local base_port=$1
+  local validator_index=$2
+  echo $((base_port + (validator_index * 20)))
+}
+
+# Function to check if port is available (optional enhancement)
+is_port_available() {
+  local port=$1
+  if command -v ss &> /dev/null; then
+    ! ss -tuln | grep -q ":$port "
+  elif command -v netstat &> /dev/null; then
+    ! netstat -tuln | grep -q ":$port "
+  else
+    # If no port checking tools available, assume available
+    true
+  fi
+}
+
+# Generate port configurations for all validators
+echo -e "${YELLOW}Generating port configurations...${NC}"
+for i in {0..2}; do
+  # Each validator gets a 100-port range to avoid any conflicts
+  # Validator 0: 59000-59099, Validator 1: 59100-59199, Validator 2: 59200-59299
+  BASE_VALIDATOR_PORT=$((59000 + (i * 100)))
+  
+  NETWORK_PORT=$((BASE_VALIDATOR_PORT + 10))      # 59010, 59110, 59210
+  P2P_PORT=$((BASE_VALIDATOR_PORT + 20))          # 59020, 59120, 59220
+  NARWHAL_PRIMARY_PORT=$((BASE_VALIDATOR_PORT + 30))  # 59030, 59130, 59230
+  NARWHAL_WORKER_PORT=$((BASE_VALIDATOR_PORT + 40))   # 59040, 59140, 59240
+  CONSENSUS_PORT=$((BASE_VALIDATOR_PORT + 50))    # 59050, 59150, 59250
+  
+  VALIDATOR_PORTS[$i]="$NETWORK_PORT,$P2P_PORT,$NARWHAL_PRIMARY_PORT,$NARWHAL_WORKER_PORT,$CONSENSUS_PORT"
+  
+  echo "Validator $i ports: Network=$NETWORK_PORT, P2P=$P2P_PORT, Primary=$NARWHAL_PRIMARY_PORT, Worker=$NARWHAL_WORKER_PORT, Consensus=$CONSENSUS_PORT"
+done
+echo
 
 # Step 1: Generate validator keys
 echo -e "${YELLOW}Generating validator keys...${NC}"
@@ -242,16 +354,67 @@ accounts:
       - 5000000000 # 5 MySo
       - 5000000000 # 5 MySo
       - 5000000000 # 5 MySo
+
+validator_config_info:
 EOL
+
+# Generate dynamic validator configuration
+for i in {0..2}; do
+  # Parse the ports for this validator
+  IFS=',' read -r NETWORK_PORT P2P_PORT NARWHAL_PRIMARY_PORT NARWHAL_WORKER_PORT CONSENSUS_PORT <<< "${VALIDATOR_PORTS[$i]}"
+  
+  cat >> "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
+  # Validator $i (dynamic ports)
+  - name: "validator-$i"
+    network_address: "/ip4/$BASE_IP/tcp/$NETWORK_PORT/http"
+    p2p_address: "/ip4/$BASE_IP/udp/$P2P_PORT"
+    narwhal_primary_address: "/ip4/$BASE_IP/udp/$NARWHAL_PRIMARY_PORT"
+    narwhal_worker_address: "/ip4/$BASE_IP/udp/$NARWHAL_WORKER_PORT"
+    consensus_address: "/ip4/$BASE_IP/tcp/$CONSENSUS_PORT/http"
+    gas_price: 1000
+    commission_rate: 0
+    stake: 20000000000000000  # 20 million MYS in MIST units
+EOL
+done
 
 # Replace the original file with the new one
 mv "${GENESIS_DIR}/genesis_config.new.yaml" "${GENESIS_DIR}/genesis_config.yaml"
 
+# Save port configuration for reference
+echo -e "${YELLOW}Saving port configuration...${NC}"
+cat > "${GENESIS_DIR}/port_config.txt" << EOL
+MySocial Validator Port Configuration
+Generated on: $(date)
+Base IP: $BASE_IP
+
+EOL
+
+for i in {0..2}; do
+  IFS=',' read -r NETWORK_PORT P2P_PORT NARWHAL_PRIMARY_PORT NARWHAL_WORKER_PORT CONSENSUS_PORT <<< "${VALIDATOR_PORTS[$i]}"
+  cat >> "${GENESIS_DIR}/port_config.txt" << EOL
+Validator $i:
+  - Network Address: $BASE_IP:$NETWORK_PORT
+  - P2P Address: $BASE_IP:$P2P_PORT  
+  - Narwhal Primary: $BASE_IP:$NARWHAL_PRIMARY_PORT
+  - Narwhal Worker: $BASE_IP:$NARWHAL_WORKER_PORT
+  - Consensus: $BASE_IP:$CONSENSUS_PORT
+
+EOL
+done
+
 echo -e "${GREEN}Genesis config updated successfully!${NC}"
 echo "Backup saved as genesis_config.yaml.backup"
+echo "Port configuration saved to port_config.txt"
 echo
 
 echo -e "${GREEN}All keys generated and configurations updated!${NC}"
 echo
+echo "Generated port assignments:"
+for i in {0..2}; do
+  IFS=',' read -r NETWORK_PORT P2P_PORT NARWHAL_PRIMARY_PORT NARWHAL_WORKER_PORT CONSENSUS_PORT <<< "${VALIDATOR_PORTS[$i]}"
+  echo "  Validator $i: Network=$NETWORK_PORT, P2P=$P2P_PORT, Primary=$NARWHAL_PRIMARY_PORT, Worker=$NARWHAL_WORKER_PORT, Consensus=$CONSENSUS_PORT"
+done
+echo
+echo "Base IP: $BASE_IP (set BASE_IP environment variable to override)"
 echo "Remember to securely back up all generated keys!"
 echo "You can now run: myso genesis -f --with-faucet --committee-size 3 --from-config genesis_config.yaml" 

@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1734000000000
+  chain_start_timestamp_ms: 1752059201000
 
   # Protocol version
   protocol_version: 74  # Latest version
@@ -37,23 +37,23 @@ parameters:
 # Accounts to add tokens to
 accounts:
   # Fullnode allocation
-  - address: "0x2a47cccd93f765913a9b62d4ef2430fb068bdac1d449e64b16568c891f34bceb"
+  - address: "0xcd79352f432066fc1dbadef1ddbcbe3d00450d24bcd3c0efc7d0b010ffd0ab8d"
     gas_amounts:
       - 250000000000000 # 250,000 MySo
   # Validator 1
-  - address: "0xee8fac4cc2e084fdbd3ca5b0fbbdc2a6c24c6911ac5156255a4542062fb93a69"
+  - address: "0xadcf2f3a95223bcfd76297de8ab042bd814772199a29047ff216e5eb317e2b12"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 2
-  - address: "0xf2792a7e9440f3262e39a700be1ed7ec99f03a029faf5677957d93dc1bffe85a"
+  - address: "0x24d33c7e248fe612120079cc69d4e42230ea247c971f9faa97de64e9a98aadd3"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 3
-  - address: "0x5e50f98627dc7914f0a0f4eb5d44eba6899bd961617f88f86adae15e7641b713"
+  - address: "0x4332672c56969e1216e8a03341d798c381663d7b7a5478445467f07556a861fd"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Faucet
-  - address: "0xded85fe9c024b59b61f3ae5a566c17eb343f4dd2c4ff7a35de3b55ec06d87a4b"
+  - address: "0x85354b9888c0f88d49ee45880bbe5927833a69dacb223ea749f88cd33bd97baa"
     gas_amounts:
       - 100000000000000 # 100,000 MySo
       - 5000000000 # 5 MySo
@@ -62,3 +62,35 @@ accounts:
       - 5000000000 # 5 MySo
       - 5000000000 # 5 MySo
       - 5000000000 # 5 MySo
+
+validator_config_info:
+  # Validator 0 (dynamic ports)
+  - name: "validator-0"
+    network_address: "/ip4/69.10.63.78/tcp/59010/http"
+    p2p_address: "/ip4/69.10.63.78/udp/59020"
+    narwhal_primary_address: "/ip4/69.10.63.78/udp/59030"
+    narwhal_worker_address: "/ip4/69.10.63.78/udp/59040"
+    consensus_address: "/ip4/69.10.63.78/tcp/59050/http"
+    gas_price: 1000
+    commission_rate: 0
+    stake: 20000000000000000  # 20 million MYS in MIST units
+  # Validator 1 (dynamic ports)
+  - name: "validator-1"
+    network_address: "/ip4/69.10.63.78/tcp/59110/http"
+    p2p_address: "/ip4/69.10.63.78/udp/59120"
+    narwhal_primary_address: "/ip4/69.10.63.78/udp/59130"
+    narwhal_worker_address: "/ip4/69.10.63.78/udp/59140"
+    consensus_address: "/ip4/69.10.63.78/tcp/59150/http"
+    gas_price: 1000
+    commission_rate: 0
+    stake: 20000000000000000  # 20 million MYS in MIST units
+  # Validator 2 (dynamic ports)
+  - name: "validator-2"
+    network_address: "/ip4/69.10.63.78/tcp/59210/http"
+    p2p_address: "/ip4/69.10.63.78/udp/59220"
+    narwhal_primary_address: "/ip4/69.10.63.78/udp/59230"
+    narwhal_worker_address: "/ip4/69.10.63.78/udp/59240"
+    consensus_address: "/ip4/69.10.63.78/tcp/59250/http"
+    gas_price: 1000
+    commission_rate: 0
+    stake: 20000000000000000  # 20 million MYS in MIST units
