@@ -88,9 +88,6 @@ pub async fn setup_connection_pool(config: &Config) -> Result<Arc<Database>> {
     // Create the pool with configuration optimized for cloud deployments
     let pool = Pool::builder(manager)
         .max_size(config.database.max_connections as usize)
-        .create_timeout(Some(Duration::from_secs(30))) // Increased timeout for cloud DBs
-        .wait_timeout(Some(Duration::from_secs(30))) // Wait timeout for getting connections
-        .recycle_timeout(Some(Duration::from_secs(30))) // Recycle timeout
         .build()
         .map_err(|e| anyhow!("Failed to create connection pool: {}", e))?;
     
