@@ -5,6 +5,7 @@ use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
+use rustls;
 
 use mys_social_indexer::{
     api,
@@ -33,6 +34,11 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
+    
+    // Install default crypto provider for rustls (required for rustls 0.23+)
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
     
     info!("Starting MySocial indexer...");
     
