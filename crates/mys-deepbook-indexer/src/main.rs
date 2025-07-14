@@ -43,6 +43,11 @@ async fn main() -> Result<()> {
         .with_env()
         .init();
 
+    // Install default crypto provider for rustls (required for rustls 0.23+)
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     let args = Args::parse();
 
     // load config from environment variables if no config file specified
@@ -117,10 +122,20 @@ async fn main() -> Result<()> {
 }
 
 async fn run_migrations_with_tls(database_url: &str) -> Result<()> {
-    // Set up rustls for TLS connections
+    // Set up rustls for TLS connections using native certificates
+    info!("Loading native root certificates for database TLS connection...");
+    let certs = rustls_native_certs::load_native_certs()
+        .expect("Failed to load native root certificates");
+    
+    let mut root_store = rustls::RootCertStore::empty();
+    for cert in certs {
+        if let Err(e) = root_store.add(cert) {
+            tracing::warn!("Failed to add certificate to root store: {}", e);
+        }
+    }
+    
     let rustls_config = rustls::ClientConfig::builder()
-        .dangerous()
-        .with_custom_certificate_verifier(std::sync::Arc::new(SkipServerCertCheck))
+        .with_root_certificates(root_store)
         .with_no_client_auth();
     let tls = tokio_postgres_rustls::MakeRustlsConnect::new(rustls_config);
     let (client, conn) = tokio_postgres::connect(database_url, tls)
@@ -148,50 +163,4 @@ async fn run_migrations_with_tls(database_url: &str) -> Result<()> {
     Ok(())
 }
 
-fn root_certs() -> rustls::RootCertStore {
-    rustls::RootCertStore {
-        roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
-    }
-}
 
-/// Skip performing strict certificate verification to handle cloud database certificates
-#[derive(Debug)]
-struct SkipServerCertCheck;
-
-impl rustls::client::danger::ServerCertVerifier for SkipServerCertCheck {
-    fn verify_server_cert(
-        &self,
-        _end_entity: &rustls::pki_types::CertificateDer<'_>,
-        _intermediates: &[rustls::pki_types::CertificateDer<'_>],
-        _server_name: &rustls::pki_types::ServerName<'_>,
-        _ocsp_response: &[u8],
-        _now: rustls::pki_types::UnixTime,
-    ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
-        Ok(rustls::client::danger::ServerCertVerified::assertion())
-    }
-
-    fn verify_tls12_signature(
-        &self,
-        _message: &[u8],
-        _cert: &rustls::pki_types::CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
-    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
-        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
-    }
-
-    fn verify_tls13_signature(
-        &self,
-        _message: &[u8],
-        _cert: &rustls::pki_types::CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
-    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
-        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
-    }
-
-    fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
-        rustls::client::WebPkiServerVerifier::builder(std::sync::Arc::new(root_certs()))
-            .build()
-            .unwrap()
-            .supported_verify_schemes()
-    }
-}
