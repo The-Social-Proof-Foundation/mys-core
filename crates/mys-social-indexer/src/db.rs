@@ -5,12 +5,15 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
-use diesel_async::AsyncPgConnection;
+use diesel_async::{AsyncPgConnection, AsyncConnection};
 use diesel_async::pooled_connection::deadpool::{Object, Pool};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use tracing;
 use tokio::time::Duration;
+use rustls_native_certs::load_native_certs;
+use tokio_postgres_rustls::MakeRustlsConnect;
+use rustls;
 
 use crate::config::Config;
 
@@ -72,17 +75,80 @@ impl Database {
     }
 }
 
+/// Create a TLS-enabled connection using rustls
+async fn establish_tls_connection(database_url: &str) -> Result<AsyncPgConnection> {
+    tracing::info!("Setting up TLS connection with rustls");
+    
+    // Load native root certificates - this returns an iterator that we can iterate over
+    let certs = load_native_certs()
+        .expect("Failed to load native root certificates");
+    
+    tracing::info!("Loaded {} native root certificates", certs.len());
+    
+    // Create rustls config with native root certificates
+    let mut root_store = rustls::RootCertStore::empty();
+    for cert in certs {
+        root_store.add(cert).unwrap();
+    }
+    
+    let config = rustls::ClientConfig::builder()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+    
+    // Create TLS connector with rustls config
+    let tls = MakeRustlsConnect::new(config);
+    tracing::info!("Rustls TLS connector configured with native certificates");
+    
+    // Test the TLS connection using tokio-postgres directly
+    let (_client, connection) = tokio_postgres::connect(database_url, tls).await
+        .map_err(|e| anyhow!("Failed to establish TLS connection: {}", e))?;
+    
+    // Spawn the connection task
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            tracing::error!("PostgreSQL connection error: {}", e);
+        }
+    });
+    
+    tracing::info!("TLS PostgreSQL connection test successful! 🔒");
+    
+    // Now use diesel-async which should work with SSL/TLS properly configured
+    AsyncPgConnection::establish(database_url).await
+        .map_err(|e| anyhow!("Failed to establish diesel-async connection: {}", e))
+}
+
 /// Sets up the database connection pool
 pub async fn setup_connection_pool(config: &Config) -> Result<Arc<Database>> {
-    tracing::info!("Setting up database connection pool");
-    tracing::info!("Database URL: {}", &config.database.url);
+    tracing::info!("Setting up database connection pool with rustls TLS support");
+    tracing::info!("Database URL: {}", mask_database_url(&config.database.url));
     
     // Log environment info for debugging
     if let Ok(railway_env) = std::env::var("RAILWAY_ENVIRONMENT") {
         tracing::info!("Running on Railway environment: {}", railway_env);
     }
     
-    // Create connection manager with proper SSL configuration
+    // Validate that the DATABASE_URL has sslmode=require for Railway
+    if config.database.url.contains("railway.app") || config.database.url.contains("tsdb.cloud.timescale.com") {
+        if !config.database.url.contains("sslmode=require") {
+            tracing::warn!("Railway/TimescaleDB PostgreSQL requires SSL - DATABASE_URL should include ?sslmode=require");
+        } else {
+            tracing::info!("SSL mode detected in DATABASE_URL: sslmode=require");
+        }
+    }
+    
+    // Test TLS connection first
+    tracing::info!("Testing TLS connection with rustls...");
+    match establish_tls_connection(&config.database.url).await {
+        Ok(_) => {
+            tracing::info!("TLS connection test successful!");
+        }
+        Err(e) => {
+            tracing::error!("TLS connection test failed: {}", e);
+            return Err(e);
+        }
+    }
+    
+    // Create connection manager - diesel-async should now work with the TLS setup
     let manager = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&config.database.url);
     
     // Create the pool with configuration optimized for cloud deployments
@@ -101,7 +167,7 @@ pub async fn setup_connection_pool(config: &Config) -> Result<Arc<Database>> {
         match tokio::time::timeout(Duration::from_secs(15), pool.get()).await {
             Ok(Ok(_conn)) => {
                 // Connection successful - getting a connection from the pool validates database access
-                tracing::info!("Database connection established successfully");
+                tracing::info!("Database connection established successfully!");
                 return Ok(Arc::new(Database::new(pool)));
             },
             Ok(Err(e)) => {

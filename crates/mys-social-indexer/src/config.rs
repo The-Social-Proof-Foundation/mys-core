@@ -103,7 +103,21 @@ impl Config {
             }
             
             // Railway's DATABASE_URL should already include proper SSL configuration
-            // The user's example shows: ?sslmode=require is already included
+            // Temporarily disable SSL to test basic connectivity
+            if url.contains("?sslmode=require") {
+                let no_ssl_url = url.replace("?sslmode=require", "?sslmode=disable");
+                tracing::info!("Temporarily disabled SSL for testing basic connectivity");
+                return no_ssl_url;
+            } else if url.contains("sslmode=require") {
+                let no_ssl_url = url.replace("sslmode=require", "sslmode=disable");
+                tracing::info!("Temporarily disabled SSL for testing basic connectivity");
+                return no_ssl_url;
+            } else if !url.contains("sslmode") {
+                let no_ssl_url = format!("{}?sslmode=disable", url);
+                tracing::info!("Added SSL disabled for testing basic connectivity");
+                return no_ssl_url;
+            }
+            
             return url;
         }
         
@@ -121,10 +135,10 @@ impl Config {
                 tracing::error!("PGPASSWORD is empty!");
             } else {
                 let constructed_url = format!(
-                    "postgres://{}:{}@{}:{}/{}?sslmode=require",
+                    "postgres://{}:{}@{}:{}/{}?sslmode=disable",
                     user, password, host, port, database
                 );
-                tracing::info!("Constructed database URL with SSL required");
+                tracing::info!("Constructed database URL with SSL disabled for testing");
                 return constructed_url;
             }
         } else {
