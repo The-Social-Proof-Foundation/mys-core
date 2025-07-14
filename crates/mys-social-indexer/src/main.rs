@@ -36,8 +36,33 @@ async fn main() -> Result<()> {
     
     info!("Starting MySocial indexer...");
     
+    // Log deployment environment info for debugging
+    if let Ok(railway_env) = std::env::var("RAILWAY_ENVIRONMENT") {
+        info!("🚂 Running on Railway environment: {}", railway_env);
+    }
+    if let Ok(railway_service) = std::env::var("RAILWAY_SERVICE_NAME") {
+        info!("🚂 Railway service: {}", railway_service);
+    }
+    
     // Load config from environment
     let config = Config::from_env();
+    
+    // Log critical configuration for debugging (without sensitive data)
+    info!("Server configuration: {}:{}", config.server.host, config.server.port);
+    info!("Database max connections: {}", config.database.max_connections);
+    
+    // Mask sensitive parts of DATABASE_URL for logging
+    let masked_db_url = if let Some(at_pos) = config.database.url.find('@') {
+        let (before_at, after_at) = config.database.url.split_at(at_pos);
+        if let Some(colon_pos) = before_at.rfind(':') {
+            format!("{}:****@{}", &before_at[..colon_pos], after_at)
+        } else {
+            "****".to_string()
+        }
+    } else {
+        "****".to_string()
+    };
+    info!("Database URL (masked): {}", masked_db_url);
     
     // Set MySocial package address from environment variable if provided
     let env_var_names = ["MYSOCIAL_PACKAGE_ADDRESS", "PROFILE_PACKAGE_ADDRESS", "PLATFORM_PACKAGE_ADDRESS"];
@@ -60,12 +85,24 @@ async fn main() -> Result<()> {
     info!("Running database migrations...");
     if let Err(e) = db::run_migrations(&config) {
         error!("Failed to run migrations: {}", e);
+        error!("This might be due to: 1) Database not accessible, 2) Wrong DATABASE_URL, 3) Missing database, 4) Permission issues");
         return Err(e);
     }
+    info!("Database migrations completed successfully");
     
     // Set up database connection pool
     info!("Setting up database connection pool...");
-    let db_pool = db::setup_connection_pool(&config).await?;
+    let db_pool = match db::setup_connection_pool(&config).await {
+        Ok(pool) => {
+            info!("Database connection pool established successfully");
+            pool
+        },
+        Err(e) => {
+            error!("Failed to setup database connection pool: {}", e);
+            error!("Common issues: 1) Wrong DATABASE_URL, 2) Database not running, 3) Network/firewall issues, 4) SSL/TLS configuration");
+            return Err(e);
+        }
+    };
     
     // Create event channels
     let (profile_tx, profile_rx) = mpsc::channel(100);

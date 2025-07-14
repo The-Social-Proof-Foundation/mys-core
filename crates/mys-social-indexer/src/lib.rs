@@ -65,26 +65,3 @@ pub fn get_mysocial_package_address() -> &'static str {
     // Use hardcoded address as fallback if not set via environment variable
     MYSOCIAL_PACKAGE_ADDRESS.get().map(|s| s.as_str()).unwrap_or(DEFAULT_MYSOCIAL_PACKAGE_ADDRESS)
 }
-
-/// Get all package addresses to monitor for events
-/// Currently there's only one package, but this could be expanded later if needed
-pub fn get_monitored_package_addresses() -> Vec<&'static str> {
-    vec![get_mysocial_package_address()]
-}
-
-/// Backward compatibility functions - these now just return the main package address
-
-/// Get the profile package address (same as the main package)
-pub fn get_profile_package_address() -> &'static str {
-    get_mysocial_package_address()
-}
-
-/// Get the platform package address (same as the main package)
-pub fn get_platform_package_address() -> &'static str {
-    get_mysocial_package_address()
-}
-
-/// Get the governance package address (same as the main package)
-pub fn get_governance_package_address() -> &'static str {
-    get_mysocial_package_address()
-}

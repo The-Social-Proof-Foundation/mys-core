@@ -10,6 +10,7 @@ use diesel_async::pooled_connection::deadpool::{Object, Pool};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use tracing;
+use tokio::time::Duration;
 
 use crate::config::Config;
 
@@ -73,25 +74,74 @@ impl Database {
 
 /// Sets up the database connection pool
 pub async fn setup_connection_pool(config: &Config) -> Result<Arc<Database>> {
-    tracing::info!("Setting up database connection pool with TLS support");
+    tracing::info!("Setting up database connection pool");
+    tracing::info!("Database URL: {}", &config.database.url);
     
-    // Create connection manager - TLS support is provided by the dependencies
+    // Log environment info for debugging
+    if let Ok(railway_env) = std::env::var("RAILWAY_ENVIRONMENT") {
+        tracing::info!("Running on Railway environment: {}", railway_env);
+    }
+    
+    // Create connection manager with proper SSL configuration
     let manager = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&config.database.url);
     
-    // Create the pool with configuration
+    // Create the pool with configuration optimized for cloud deployments
     let pool = Pool::builder(manager)
         .max_size(config.database.max_connections as usize)
+        .connection_timeout(Duration::from_secs(30)) // Increased timeout for cloud DBs
+        .idle_timeout(Some(Duration::from_secs(600))) // 10 minutes idle timeout
+        .max_lifetime(Some(Duration::from_secs(1800))) // 30 minutes max connection lifetime
         .build()
         .map_err(|e| anyhow!("Failed to create connection pool: {}", e))?;
     
-    // Test the connection to verify TLS works
-    let _conn = pool.get().await
-        .map_err(|e| anyhow!("Failed to establish test connection (check TLS configuration): {}", e))?;
+    tracing::info!("Database connection pool created, testing connection...");
     
-    tracing::info!("Database connection pool established successfully with TLS support");
+    // Test the connection with retry logic for Railway/cloud environments
+    let mut last_error = None;
+    for attempt in 1..=5 {
+        tracing::info!("Connection attempt {} of 5", attempt);
+        
+        match tokio::time::timeout(Duration::from_secs(15), pool.get()).await {
+            Ok(Ok(mut conn)) => {
+                // Test with a simple query to ensure the connection works
+                match diesel::dsl::select(diesel::dsl::sql::<diesel::sql_types::Text>("version()"))
+                    .get_result::<String>(&mut conn)
+                    .await 
+                {
+                    Ok(version) => {
+                        tracing::info!("Database connection established successfully");
+                        tracing::info!("Database version: {}", version);
+                        return Ok(Arc::new(Database::new(pool)));
+                    },
+                    Err(e) => {
+                        tracing::warn!("Database query test failed on attempt {}: {}", attempt, e);
+                        last_error = Some(anyhow!("Database query failed: {}", e));
+                    }
+                }
+            },
+            Ok(Err(e)) => {
+                tracing::warn!("Database connection failed on attempt {}: {}", attempt, e);
+                last_error = Some(anyhow!("Database connection failed: {}", e));
+            },
+            Err(_) => {
+                tracing::warn!("Database connection timed out on attempt {}", attempt);
+                last_error = Some(anyhow!("Database connection timed out"));
+            }
+        }
+        
+        if attempt < 5 {
+            let wait_time = Duration::from_secs(2_u64.pow(attempt - 1)); // Exponential backoff: 1s, 2s, 4s, 8s
+            tracing::info!("Waiting {:?} before retry...", wait_time);
+            tokio::time::sleep(wait_time).await;
+        }
+    }
     
-    // Create and return the database
-    Ok(Arc::new(Database::new(pool)))
+    tracing::error!("All database connection attempts failed");
+    if let Some(err) = last_error {
+        return Err(err);
+    }
+    
+    Err(anyhow!("Failed to establish database connection after 5 attempts"))
 }
 
 /// Run database migrations

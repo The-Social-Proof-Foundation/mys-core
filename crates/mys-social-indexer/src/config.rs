@@ -48,11 +48,14 @@ impl Config {
                     .expect("DATABASE_MAX_CONNECTIONS must be a number"),
             },
             server: ServerConfig {
-                host: env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
-                port: env::var("SERVER_PORT")
+                // Use 0.0.0.0 by default for containerized deployments (Railway, Docker, etc.)
+                host: env::var("SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
+                // Railway provides PORT env var, fall back to SERVER_PORT, then default 8080
+                port: env::var("PORT")
+                    .or_else(|_| env::var("SERVER_PORT"))
                     .unwrap_or_else(|_| "8080".to_string())
                     .parse()
-                    .expect("SERVER_PORT must be a number"),
+                    .expect("PORT/SERVER_PORT must be a number"),
             },
             blockchain: BlockchainConfig {
                 rpc_url: env::var("RPC_URL")

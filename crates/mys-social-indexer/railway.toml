@@ -21,6 +21,9 @@ NIXPACKS_BUILD_CMD = "cargo build --release --bin mys-social-indexer"
 # Database Configuration
 DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 
+# Server Configuration
+SERVER_HOST = "0.0.0.0"
+
 # Logging configuration  
 RUST_LOG = "info,mys_social_indexer=debug"
 RUST_BACKTRACE = "1" 
