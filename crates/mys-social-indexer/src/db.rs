@@ -88,9 +88,9 @@ pub async fn setup_connection_pool(config: &Config) -> Result<Arc<Database>> {
     // Create the pool with configuration optimized for cloud deployments
     let pool = Pool::builder(manager)
         .max_size(config.database.max_connections as usize)
-        .connection_timeout(Duration::from_secs(30)) // Increased timeout for cloud DBs
-        .idle_timeout(Some(Duration::from_secs(600))) // 10 minutes idle timeout
-        .max_lifetime(Some(Duration::from_secs(1800))) // 30 minutes max connection lifetime
+        .create_timeout(Some(Duration::from_secs(30))) // Increased timeout for cloud DBs
+        .wait_timeout(Some(Duration::from_secs(30))) // Wait timeout for getting connections
+        .recycle_timeout(Some(Duration::from_secs(30))) // Recycle timeout
         .build()
         .map_err(|e| anyhow!("Failed to create connection pool: {}", e))?;
     
@@ -102,22 +102,10 @@ pub async fn setup_connection_pool(config: &Config) -> Result<Arc<Database>> {
         tracing::info!("Connection attempt {} of 5", attempt);
         
         match tokio::time::timeout(Duration::from_secs(15), pool.get()).await {
-            Ok(Ok(mut conn)) => {
-                // Test with a simple query to ensure the connection works
-                match diesel::dsl::select(diesel::dsl::sql::<diesel::sql_types::Text>("version()"))
-                    .get_result::<String>(&mut conn)
-                    .await 
-                {
-                    Ok(version) => {
-                        tracing::info!("Database connection established successfully");
-                        tracing::info!("Database version: {}", version);
-                        return Ok(Arc::new(Database::new(pool)));
-                    },
-                    Err(e) => {
-                        tracing::warn!("Database query test failed on attempt {}: {}", attempt, e);
-                        last_error = Some(anyhow!("Database query failed: {}", e));
-                    }
-                }
+            Ok(Ok(_conn)) => {
+                // Connection successful - getting a connection from the pool validates database access
+                tracing::info!("Database connection established successfully");
+                return Ok(Arc::new(Database::new(pool)));
             },
             Ok(Err(e)) => {
                 tracing::warn!("Database connection failed on attempt {}: {}", attempt, e);

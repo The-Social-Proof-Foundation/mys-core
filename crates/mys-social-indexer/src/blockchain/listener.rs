@@ -101,11 +101,9 @@ impl BlockchainEventListener {
             
         info!("Connected to blockchain node: {}", self.config.blockchain.ws_url);
         
-        // Get the addresses of all packages to monitor
-        let package_addresses = crate::get_monitored_package_addresses();
-        for address in &package_addresses {
-            info!("Monitoring events for package: {}", address);
-        }
+        // Get the MySocial package address to monitor
+        let package_address = crate::get_mysocial_package_address();
+        info!("Monitoring events for package: {}", package_address);
         
         // Create event filter for all events
         // This will capture all events - we'll filter by package and module in our handlers
@@ -224,11 +222,9 @@ impl BlockchainEventListener {
             
         info!("Connected to blockchain node: {}", self.config.blockchain.rpc_url);
         
-        // Get the addresses of all packages to monitor
-        let package_addresses = crate::get_monitored_package_addresses();
-        for address in &package_addresses {
-            info!("Monitoring events for package: {}", address);
-        }
+        // Get the MySocial package address to monitor
+        let package_address = crate::get_mysocial_package_address();
+        info!("Monitoring events for package: {}", package_address);
         
         // Create event filter for all events
         // This will capture all events - we'll filter by package and module in our handlers
