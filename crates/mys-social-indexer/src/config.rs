@@ -76,33 +76,9 @@ impl Config {
     fn get_database_url() -> String {
         tracing::info!("🔍 Getting database URL...");
         
-        // PRIORITY 1: Try individual PostgreSQL environment variables first (was working)
-        if let (Ok(host), Ok(user), Ok(password), Ok(database)) = (
-            env::var("PGHOST"),
-            env::var("PGUSER"), 
-            env::var("PGPASSWORD"),
-            env::var("PGDATABASE")
-        ) {
-            tracing::info!("✅ Using individual PostgreSQL environment variables (PGHOST, PGUSER, etc.)");
-            let port = env::var("PGPORT").unwrap_or_else(|_| "5432".to_string());
-            
-            if password.is_empty() {
-                tracing::error!("PGPASSWORD is empty!");
-            } else {
-                let constructed_url = format!(
-                    "postgres://{}:{}@{}:{}/{}?sslmode=prefer",
-                    user, password, host, port, database
-                );
-                tracing::info!("Constructed database URL with SSL preferred (testing TLS issue)");
-                return constructed_url;
-            }
-        } else {
-            tracing::info!("Individual PostgreSQL environment variables not complete");
-        }
-        
-        // PRIORITY 2: Try Railway's provided DATABASE_URL 
+        // PRIORITY 1: Try Railway's provided DATABASE_URL first (now with password!)
         if let Ok(url) = env::var("DATABASE_URL") {
-            tracing::info!("⬇️ Fallback: Using Railway's DATABASE_URL");
+            tracing::info!("✅ Using Railway's DATABASE_URL");
             
             // Log masked URL for debugging
             let masked_url = if let Some(at_pos) = url.find('@') {
@@ -117,16 +93,42 @@ impl Config {
             };
             tracing::info!("  DATABASE_URL (masked): {}", masked_url);
             
-            // Railway's DATABASE_URL should already include proper SSL configuration
-            if url.contains("timescale") || url.contains("railway.app") {
-                if !url.contains("sslmode") {
-                    let ssl_url = format!("{}?sslmode=prefer", url);
-                    tracing::info!("Added SSL preferred for Railway PostgreSQL (testing TLS)");
-                    return ssl_url;
-                }
+            // Validate that the URL contains authentication
+            if !url.contains('@') {
+                tracing::warn!("DATABASE_URL missing authentication credentials");
+            } else if url.contains(":@") {
+                tracing::warn!("DATABASE_URL appears to have empty password");
+            } else {
+                tracing::info!("DATABASE_URL appears to have authentication credentials ✅");
             }
             
+            // Railway's DATABASE_URL should already include proper SSL configuration
+            // The user's example shows: ?sslmode=require is already included
             return url;
+        }
+        
+        // PRIORITY 2: Fallback to individual PostgreSQL environment variables
+        if let (Ok(host), Ok(user), Ok(password), Ok(database)) = (
+            env::var("PGHOST"),
+            env::var("PGUSER"), 
+            env::var("PGPASSWORD"),
+            env::var("PGDATABASE")
+        ) {
+            tracing::info!("⬇️ Fallback: Using individual PostgreSQL environment variables");
+            let port = env::var("PGPORT").unwrap_or_else(|_| "5432".to_string());
+            
+            if password.is_empty() {
+                tracing::error!("PGPASSWORD is empty!");
+            } else {
+                let constructed_url = format!(
+                    "postgres://{}:{}@{}:{}/{}?sslmode=require",
+                    user, password, host, port, database
+                );
+                tracing::info!("Constructed database URL with SSL required");
+                return constructed_url;
+            }
+        } else {
+            tracing::info!("Individual PostgreSQL environment variables not complete");
         }
         
         // PRIORITY 3: Local development fallback
