@@ -18,7 +18,7 @@ NIXPACKS_LANGUAGE = "rust"
 NIXPACKS_BUILD_CMD = "cargo build --release --bin mys-social-indexer"
 
 [variables]
-# Database Configuration - Railway often provides these variables
+# Database Configuration
 DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 DATABASE_PRIVATE_URL = "${{Postgres.DATABASE_PRIVATE_URL}}"
 PGDATABASE = "${{Postgres.PGDATABASE}}"
@@ -32,4 +32,7 @@ SERVER_HOST = "0.0.0.0"
 
 # Logging configuration  
 RUST_LOG = "info,mys_social_indexer=debug"
-RUST_BACKTRACE = "1" 
+RUST_BACKTRACE = "1"
+
+# Blockchain Configuration
+RPC_URL = "http://fullnode.testnet.mysocial.network:9000"

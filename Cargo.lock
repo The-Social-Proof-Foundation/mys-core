@@ -11484,6 +11484,7 @@ dependencies = [
  "mys-types",
  "once_cell",
  "prometheus",
+ "reqwest 0.12.9",
  "rustls 0.23.20",
  "rustls-native-certs 0.8.1",
  "serde",

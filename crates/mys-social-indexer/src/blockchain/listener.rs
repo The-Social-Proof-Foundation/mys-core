@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::sync::Arc;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use futures::StreamExt;
 use tokio::sync::{mpsc, Mutex};
 use tokio::time::{interval, Duration};
@@ -49,6 +49,43 @@ impl BlockchainEventListener {
         }
     }
 
+    /// Test basic connectivity to the RPC endpoint
+    pub async fn test_connectivity(&self) -> Result<()> {
+        info!("🔍 Testing connectivity to MySocial RPC endpoint...");
+        info!("RPC URL: {}", self.config.blockchain.rpc_url);
+        info!("WebSocket URL: {}", self.config.blockchain.ws_url);
+        
+        // Test basic HTTP connectivity first
+        info!("Testing basic HTTP connectivity...");
+        match reqwest::get(&self.config.blockchain.rpc_url).await {
+            Ok(response) => {
+                info!("✅ HTTP connection successful - Status: {}", response.status());
+                
+                // Log response headers for debugging
+                for (key, value) in response.headers() {
+                    debug!("Response header: {}: {:?}", key, value);
+                }
+            }
+            Err(e) => {
+                error!("❌ HTTP connection failed: {}", e);
+                return Err(anyhow!("HTTP connectivity test failed: {}", e));
+            }
+        }
+        
+        // Test MySocial client connection
+        info!("Testing MySocial client connection...");
+        match MysClientBuilder::default().build(&self.config.blockchain.rpc_url).await {
+            Ok(_client) => {
+                info!("✅ MySocial client connection successful!");
+                Ok(())
+            }
+            Err(e) => {
+                error!("❌ MySocial client connection failed: {}", e);
+                Err(anyhow!("MySocial client connectivity test failed: {}", e))
+            }
+        }
+    }
+
     /// Register a new event handler
     pub async fn register_event_handler(&self, sender: mpsc::Sender<BlockchainEvent>) {
         let mut senders = self.event_senders.lock().await;
@@ -92,14 +129,18 @@ impl BlockchainEventListener {
     /// Start the blockchain event listener using websocket
     pub async fn start_ws_listener(&self) -> Result<()> {
         info!("Starting blockchain event listener using WebSocket");
+        info!("Attempting to connect to RPC: {}", self.config.blockchain.rpc_url);
+        info!("Attempting to connect to WebSocket: {}", self.config.blockchain.ws_url);
         
         // Create MySocial client with WebSocket support
         let client = MysClientBuilder::default()
             .ws_url(&self.config.blockchain.ws_url)
             .build(&self.config.blockchain.rpc_url)
-            .await?;
+            .await
+            .map_err(|e| anyhow!("Failed to build MySocial client - RPC: {}, WS: {}, Error: {}", 
+                self.config.blockchain.rpc_url, self.config.blockchain.ws_url, e))?;
             
-        info!("Connected to blockchain node: {}", self.config.blockchain.ws_url);
+        info!("✅ Successfully connected to blockchain node: {}", self.config.blockchain.ws_url);
         
         // Get the MySocial package address to monitor
         let package_address = crate::get_mysocial_package_address();
@@ -214,13 +255,16 @@ impl BlockchainEventListener {
     /// Start the blockchain event listener using polling
     pub async fn start_polling_listener(&self) -> Result<()> {
         info!("Starting blockchain event listener using polling");
+        info!("Attempting to connect to RPC: {}", self.config.blockchain.rpc_url);
         
         // Create MySocial client
         let client = MysClientBuilder::default()
             .build(&self.config.blockchain.rpc_url)
-            .await?;
+            .await
+            .map_err(|e| anyhow!("Failed to build MySocial client for polling - RPC: {}, Error: {}", 
+                self.config.blockchain.rpc_url, e))?;
             
-        info!("Connected to blockchain node: {}", self.config.blockchain.rpc_url);
+        info!("✅ Successfully connected to blockchain node for polling: {}", self.config.blockchain.rpc_url);
         
         // Get the MySocial package address to monitor
         let package_address = crate::get_mysocial_package_address();

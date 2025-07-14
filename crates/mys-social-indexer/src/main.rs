@@ -123,6 +123,18 @@ async fn main() -> Result<()> {
     // Create the blockchain event listener
     let blockchain_listener = Arc::new(BlockchainEventListener::new(config.clone(), db_pool.clone()));
     
+    // Test blockchain connectivity before starting
+    info!("Testing blockchain connectivity...");
+    match blockchain_listener.test_connectivity().await {
+        Ok(_) => {
+            info!("✅ Blockchain connectivity test passed!");
+        },
+        Err(e) => {
+            error!("❌ Blockchain connectivity test failed: {}", e);
+            warn!("Blockchain events may not work, but API server will continue running");
+        }
+    }
+    
     // Register event handlers
     blockchain_listener.register_event_handler(profile_tx).await;
     blockchain_listener.register_event_handler(social_graph_tx).await;
