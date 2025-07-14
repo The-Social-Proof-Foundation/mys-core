@@ -38,10 +38,8 @@ impl Config {
 
         Config {
             database: DatabaseConfig {
-                // Provide a default localhost PostgreSQL URL
-                url: env::var("DATABASE_URL").unwrap_or_else(|_| 
-                    "postgres://postgres:postgres@localhost:5432/myso_social_indexer".to_string()
-                ),
+                // Railway provides multiple ways to connect to PostgreSQL
+                url: Self::get_database_url(),
                 max_connections: env::var("DATABASE_MAX_CONNECTIONS")
                     .unwrap_or_else(|_| "10".to_string())
                     .parse()
@@ -72,5 +70,42 @@ impl Config {
                     .expect("EVENT_BATCH_SIZE must be a number"),
             },
         }
+    }
+    
+    /// Get database URL with Railway PostgreSQL support and SSL configuration
+    fn get_database_url() -> String {
+        // Try Railway's provided DATABASE_URL first
+        if let Ok(url) = env::var("DATABASE_URL") {
+            // Ensure SSL is enabled for Railway PostgreSQL
+            if url.contains("railway.app") && !url.contains("sslmode") {
+                return format!("{}?sslmode=require", url);
+            }
+            return url;
+        }
+        
+        // Try Railway's private database URL
+        if let Ok(url) = env::var("DATABASE_PRIVATE_URL") {
+            if !url.contains("sslmode") {
+                return format!("{}?sslmode=require", url);
+            }
+            return url;
+        }
+        
+        // Construct from individual PostgreSQL environment variables (Railway fallback)
+        if let (Ok(host), Ok(user), Ok(password), Ok(database)) = (
+            env::var("PGHOST"),
+            env::var("PGUSER"), 
+            env::var("PGPASSWORD"),
+            env::var("PGDATABASE")
+        ) {
+            let port = env::var("PGPORT").unwrap_or_else(|_| "5432".to_string());
+            return format!(
+                "postgres://{}:{}@{}:{}/{}?sslmode=require",
+                user, password, host, port, database
+            );
+        }
+        
+        // Default fallback for local development
+        "postgres://postgres:postgres@localhost:5432/mys_social_indexer".to_string()
     }
 }

@@ -134,17 +134,97 @@ pub async fn setup_connection_pool(config: &Config) -> Result<Arc<Database>> {
 
 /// Run database migrations
 pub fn run_migrations(config: &Config) -> Result<()> {
-    // Use a regular blocking connection for migrations
-    let mut conn = PgConnection::establish(&config.database.url)
-        .map_err(|e| anyhow!("Failed to establish migration connection (check TLS configuration): {}", e))?;
-    
     tracing::info!("Running database migrations...");
     
+    // Log database URL for debugging (mask sensitive parts)
+    let masked_url = mask_database_url(&config.database.url);
+    tracing::info!("Migration connection URL (masked): {}", masked_url);
+    
+    // Check if this looks like a Railway database URL
+    if config.database.url.contains("railway.app") {
+        tracing::info!("Detected Railway PostgreSQL - ensuring SSL configuration");
+    }
+    
+    // Validate DATABASE_URL format
+    if !config.database.url.starts_with("postgres://") && !config.database.url.starts_with("postgresql://") {
+        return Err(anyhow::anyhow!("Invalid DATABASE_URL format. Must start with postgres:// or postgresql://"));
+    }
+    
+    // Check for password in URL
+    if !config.database.url.contains('@') {
+        return Err(anyhow::anyhow!("DATABASE_URL appears to be missing authentication credentials (no @ symbol found)"));
+    }
+    
+    // Attempt connection with detailed error handling
+    let connection_result = PgConnection::establish(&config.database.url);
+    
+    let mut conn = match connection_result {
+        Ok(conn) => {
+            tracing::info!("Database migration connection established successfully");
+            conn
+        },
+        Err(e) => {
+            tracing::error!("Failed to establish migration connection: {}", e);
+            
+            // Provide specific guidance based on error type
+            let error_str = e.to_string();
+            if error_str.contains("fe_sendauth: no password supplied") {
+                tracing::error!("PostgreSQL authentication failed - no password provided");
+                tracing::error!("This usually means:");
+                tracing::error!("  1. DATABASE_URL is missing the password component");
+                tracing::error!("  2. Railway PostgreSQL service is not properly configured");
+                tracing::error!("  3. Environment variables are not being passed correctly");
+                tracing::error!("Expected format: postgres://username:password@host:port/database?sslmode=require");
+            } else if error_str.contains("SSL") || error_str.contains("ssl") {
+                tracing::error!("SSL/TLS connection issue detected");
+                tracing::error!("Railway PostgreSQL requires SSL connections");
+                tracing::error!("Ensure DATABASE_URL includes ?sslmode=require parameter");
+            } else if error_str.contains("timeout") {
+                tracing::error!("Connection timeout - database might be starting up");
+            } else if error_str.contains("refused") {
+                tracing::error!("Connection refused - check host and port in DATABASE_URL");
+            }
+            
+            return Err(anyhow::anyhow!("Failed to establish migration connection (check TLS configuration): {}", e));
+        }
+    };
+    
+    tracing::info!("Running pending database migrations...");
+    
     // Run migrations
-    conn.run_pending_migrations(MIGRATIONS)
-        .map_err(|e| anyhow::anyhow!("Migration error: {}", e))?;
+    match conn.run_pending_migrations(MIGRATIONS) {
+        Ok(migrations_run) => {
+            if migrations_run.is_empty() {
+                tracing::info!("No pending migrations to run");
+            } else {
+                tracing::info!("Successfully ran {} migrations", migrations_run.len());
+                for migration in &migrations_run {
+                    tracing::info!("  - {}", migration);
+                }
+            }
+        },
+        Err(e) => {
+            tracing::error!("Migration execution failed: {}", e);
+            return Err(anyhow::anyhow!("Migration error: {}", e));
+        }
+    }
     
     tracing::info!("Database migrations completed successfully");
     
     Ok(())
+}
+
+/// Mask sensitive parts of database URL for logging
+fn mask_database_url(url: &str) -> String {
+    if let Some(at_pos) = url.find('@') {
+        let (before_at, after_at) = url.split_at(at_pos);
+        if let Some(colon_pos) = before_at.rfind(':') {
+            let (protocol_user, _password) = before_at.split_at(colon_pos);
+            format!("{}:****@{}", protocol_user, after_at)
+        } else {
+            "postgres://****@****".to_string()
+        }
+    } else {
+        "Invalid URL format".to_string()
+    }
 }

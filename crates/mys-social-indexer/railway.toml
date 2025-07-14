@@ -18,8 +18,14 @@ NIXPACKS_LANGUAGE = "rust"
 NIXPACKS_BUILD_CMD = "cargo build --release --bin mys-social-indexer"
 
 [variables]
-# Database Configuration
+# Database Configuration - Railway often provides these variables
 DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+DATABASE_PRIVATE_URL = "${{Postgres.DATABASE_PRIVATE_URL}}"
+PGDATABASE = "${{Postgres.PGDATABASE}}"
+PGHOST = "${{Postgres.PGHOST}}"
+PGPASSWORD = "${{Postgres.PGPASSWORD}}"
+PGPORT = "${{Postgres.PGPORT}}"
+PGUSER = "${{Postgres.PGUSER}}"
 
 # Server Configuration
 SERVER_HOST = "0.0.0.0"
