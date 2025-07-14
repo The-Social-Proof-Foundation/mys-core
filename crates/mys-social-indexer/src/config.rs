@@ -74,38 +74,117 @@ impl Config {
     
     /// Get database URL with Railway PostgreSQL support and SSL configuration
     fn get_database_url() -> String {
-        // Try Railway's provided DATABASE_URL first
-        if let Ok(url) = env::var("DATABASE_URL") {
-            // Ensure SSL is enabled for Railway PostgreSQL
-            if url.contains("railway.app") && !url.contains("sslmode") {
-                return format!("{}?sslmode=require", url);
+        // Debug all environment variables first
+        tracing::info!("🔍 Debugging database environment variables:");
+        
+        let db_env_vars = [
+            "DATABASE_URL",
+            "DATABASE_PRIVATE_URL", 
+            "PGHOST",
+            "PGPORT",
+            "PGUSER",
+            "PGPASSWORD",
+            "PGDATABASE"
+        ];
+        
+        for var_name in &db_env_vars {
+            match env::var(var_name) {
+                Ok(value) => {
+                    let masked_value = if var_name.contains("PASSWORD") || var_name.contains("URL") {
+                        if var_name.contains("URL") {
+                            // Show more of the URL for debugging while masking password
+                            if let Some(at_pos) = value.find('@') {
+                                let (before_at, after_at) = value.split_at(at_pos);
+                                if let Some(colon_pos) = before_at.rfind(':') {
+                                    format!("{}:****@{}", &before_at[..colon_pos], after_at)
+                                } else {
+                                    format!("{}@{}", "postgres://user:****", after_at)
+                                }
+                            } else {
+                                format!("{}...", &value[..20.min(value.len())])
+                            }
+                        } else {
+                            "****".to_string()
+                        }
+                    } else {
+                        value.clone()
+                    };
+                    tracing::info!("  {}: {}", var_name, masked_value);
+                },
+                Err(_) => {
+                    tracing::info!("  {}: NOT_SET", var_name);
+                }
             }
-            return url;
         }
         
-        // Try Railway's private database URL
-        if let Ok(url) = env::var("DATABASE_PRIVATE_URL") {
-            if !url.contains("sslmode") {
-                return format!("{}?sslmode=require", url);
-            }
-            return url;
-        }
-        
-        // Construct from individual PostgreSQL environment variables (Railway fallback)
+        // PRIORITY 1: Try individual PostgreSQL environment variables first (most reliable)
         if let (Ok(host), Ok(user), Ok(password), Ok(database)) = (
             env::var("PGHOST"),
             env::var("PGUSER"), 
             env::var("PGPASSWORD"),
             env::var("PGDATABASE")
         ) {
+            tracing::info!("✅ Using individual PostgreSQL environment variables (PGHOST, PGUSER, etc.)");
             let port = env::var("PGPORT").unwrap_or_else(|_| "5432".to_string());
-            return format!(
-                "postgres://{}:{}@{}:{}/{}?sslmode=require",
-                user, password, host, port, database
-            );
+            
+            // Validate that we have all required components
+            if password.is_empty() {
+                tracing::error!("PGPASSWORD is empty!");
+            } else {
+                let constructed_url = format!(
+                    "postgres://{}:{}@{}:{}/{}?sslmode=require",
+                    user, password, host, port, database
+                );
+                
+                tracing::info!("Constructed database URL from individual variables with SSL enabled");
+                return constructed_url;
+            }
+        } else {
+            tracing::info!("Individual PostgreSQL environment variables not complete:");
+            tracing::info!("  PGHOST: {}", if env::var("PGHOST").is_ok() { "✅" } else { "❌" });
+            tracing::info!("  PGUSER: {}", if env::var("PGUSER").is_ok() { "✅" } else { "❌" });
+            tracing::info!("  PGPASSWORD: {}", if env::var("PGPASSWORD").is_ok() { "✅" } else { "❌" });
+            tracing::info!("  PGDATABASE: {}", if env::var("PGDATABASE").is_ok() { "✅" } else { "❌" });
         }
         
-        // Default fallback for local development
+        // PRIORITY 2: Try Railway's provided DATABASE_URL
+        if let Ok(url) = env::var("DATABASE_URL") {
+            tracing::info!("⬇️ Falling back to DATABASE_URL environment variable");
+            
+            // Validate that the URL contains authentication
+            if !url.contains('@') {
+                tracing::warn!("DATABASE_URL missing authentication credentials (no @ symbol)");
+            } else if url.contains(":@") {
+                tracing::warn!("DATABASE_URL appears to have empty password");
+            } else {
+                tracing::info!("DATABASE_URL appears to have authentication credentials");
+                
+                // Ensure SSL is enabled for Railway PostgreSQL
+                if url.contains("railway.app") || url.contains("timescale") {
+                    if !url.contains("sslmode") {
+                        let ssl_url = format!("{}?sslmode=require", url);
+                        tracing::info!("Added SSL requirement to Railway database URL");
+                        return ssl_url;
+                    }
+                }
+                return url;
+            }
+        }
+        
+        // PRIORITY 3: Try Railway's private database URL
+        if let Ok(url) = env::var("DATABASE_PRIVATE_URL") {
+            tracing::info!("⬇️ Falling back to DATABASE_PRIVATE_URL environment variable");
+            
+            if !url.contains("sslmode") {
+                let ssl_url = format!("{}?sslmode=require", url);
+                tracing::info!("Added SSL requirement to private database URL");
+                return ssl_url;
+            }
+            return url;
+        }
+        
+        // PRIORITY 4: Default fallback for local development
+        tracing::warn!("⬇️ Using default local database URL as final fallback");
         "postgres://postgres:postgres@localhost:5432/mys_social_indexer".to_string()
     }
 }

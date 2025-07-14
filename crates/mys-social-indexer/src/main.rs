@@ -44,51 +44,7 @@ async fn main() -> Result<()> {
         info!("🚂 Railway service: {}", railway_service);
     }
     
-    // Debug Railway PostgreSQL environment variables
-    info!("🔍 Debugging Railway PostgreSQL environment variables:");
-    let db_env_vars = [
-        "DATABASE_URL",
-        "DATABASE_PRIVATE_URL", 
-        "PGHOST",
-        "PGPORT",
-        "PGUSER",
-        "PGPASSWORD",
-        "PGDATABASE"
-    ];
-    
-    for var_name in &db_env_vars {
-        match std::env::var(var_name) {
-            Ok(value) => {
-                // Mask sensitive values
-                let masked_value = if var_name.contains("PASSWORD") || var_name.contains("URL") {
-                    if var_name.contains("URL") {
-                        // Mask URL
-                        if let Some(at_pos) = value.find('@') {
-                            let (before_at, after_at) = value.split_at(at_pos);
-                            if let Some(colon_pos) = before_at.rfind(':') {
-                                format!("{}:****@{}", &before_at[..colon_pos], after_at)
-                            } else {
-                                "****".to_string()
-                            }
-                        } else {
-                            "****".to_string()
-                        }
-                    } else {
-                        // Mask password
-                        "****".to_string()
-                    }
-                } else {
-                    value
-                };
-                info!("  {}: {}", var_name, masked_value);
-            },
-            Err(_) => {
-                info!("  {}: NOT_SET", var_name);
-            }
-        }
-    }
-    
-    // Load config from environment
+    // Load config from environment (will debug database env vars)
     let config = Config::from_env();
     
     // Log critical configuration for debugging (without sensitive data)
