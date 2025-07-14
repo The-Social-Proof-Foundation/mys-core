@@ -90,10 +90,10 @@ impl Config {
                 tracing::error!("PGPASSWORD is empty!");
             } else {
                 let constructed_url = format!(
-                    "postgres://{}:{}@{}:{}/{}?sslmode=require",
+                    "postgres://{}:{}@{}:{}/{}?sslmode=prefer",
                     user, password, host, port, database
                 );
-                tracing::info!("Constructed database URL with SSL enabled (should work with proper TLS deps)");
+                tracing::info!("Constructed database URL with SSL preferred (testing TLS issue)");
                 return constructed_url;
             }
         } else {
@@ -120,8 +120,8 @@ impl Config {
             // Railway's DATABASE_URL should already include proper SSL configuration
             if url.contains("timescale") || url.contains("railway.app") {
                 if !url.contains("sslmode") {
-                    let ssl_url = format!("{}?sslmode=require", url);
-                    tracing::info!("Added SSL requirement for Railway PostgreSQL");
+                    let ssl_url = format!("{}?sslmode=prefer", url);
+                    tracing::info!("Added SSL preferred for Railway PostgreSQL (testing TLS)");
                     return ssl_url;
                 }
             }
