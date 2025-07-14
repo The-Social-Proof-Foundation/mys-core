@@ -20,13 +20,16 @@ async-trait = { workspace = true }
 
 # Database
 diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json", "numeric"] }
-diesel-async = { workspace = true, features = ["bb8", "postgres", "deadpool"] }
+diesel-async = { workspace = true, features = ["bb8", "postgres", "deadpool", "async-connection-wrapper"] }
 diesel_migrations = { workspace = true }
 
-# TLS support for PostgreSQL connections
+# TLS support for PostgreSQL connections (matching DeepBook indexer)
 tokio-postgres = { version = "0.7", features = ["with-chrono-0_4", "with-serde_json-1"] }
+tokio-postgres-rustls = "0.12.0"
 postgres-native-tls = "0.5"
 native-tls = "0.2"
+rustls = { workspace = true }
+webpki-roots = "0.26"
 
 # Serialization and deserialization
 serde = { workspace = true, features = ["derive"] }

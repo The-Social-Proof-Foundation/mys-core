@@ -11412,12 +11412,14 @@ dependencies = [
  "once_cell",
  "postgres-native-tls",
  "prometheus",
+ "rustls 0.23.20",
  "serde",
  "serde_json",
  "test-log",
  "thiserror 1.0.69",
  "tokio",
  "tokio-postgres",
+ "tokio-postgres-rustls",
  "tokio-test",
  "tower 0.4.13",
  "tower-http 0.5.2",
@@ -11425,6 +11427,7 @@ dependencies = [
  "tracing-subscriber",
  "tracing-test",
  "uuid 1.16.0",
+ "webpki-roots 0.26.3",
 ]
 
 [[package]]
