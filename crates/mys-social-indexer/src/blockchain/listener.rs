@@ -128,9 +128,10 @@ impl BlockchainEventListener {
 
     /// Start the blockchain event listener using websocket
     pub async fn start_ws_listener(&self) -> Result<()> {
-        info!("Starting blockchain event listener using WebSocket");
-        info!("Attempting to connect to RPC: {}", self.config.blockchain.rpc_url);
-        info!("Attempting to connect to WebSocket: {}", self.config.blockchain.ws_url);
+        info!("🚀 Starting blockchain event listener using WebSocket");
+        info!("📡 RPC URL: {}", self.config.blockchain.rpc_url);
+        info!("🔌 WebSocket URL: {}", self.config.blockchain.ws_url);
+        info!("⚡ Real-time event streaming enabled");
         
         // Create MySocial client with WebSocket support
         let client = MysClientBuilder::default()
@@ -158,7 +159,8 @@ impl BlockchainEventListener {
         while let Some(event_result) = event_stream.next().await {
             match event_result {
                 Ok(event) => {
-                    debug!("Received event: {:?}", event);
+                    info!("⚡ Real-time event received: {}", event.type_);
+                    debug!("Event details: {:?}", event);
                     
                     // Get timestamp with fallback
                     let timestamp_ms = event.timestamp_ms.unwrap_or_else(|| {
@@ -254,8 +256,10 @@ impl BlockchainEventListener {
     
     /// Start the blockchain event listener using polling
     pub async fn start_polling_listener(&self) -> Result<()> {
-        info!("Starting blockchain event listener using polling");
-        info!("Attempting to connect to RPC: {}", self.config.blockchain.rpc_url);
+        info!("🚀 Starting blockchain event listener using polling");
+        info!("📡 RPC URL: {}", self.config.blockchain.rpc_url);
+        info!("⏱️  Poll interval: {}ms", self.config.blockchain.poll_interval_ms);
+        info!("📦 Batch size: {} events", self.config.blockchain.batch_size);
         
         // Create MySocial client
         let client = MysClientBuilder::default()
@@ -286,6 +290,10 @@ impl BlockchainEventListener {
         loop {
             interval.tick().await;
             
+            // Log every refresh cycle
+            info!("🔄 Indexer refresh cycle started - polling for new events (interval: {}ms)", 
+                  self.config.blockchain.poll_interval_ms);
+            
             match client.event_api()
                 .query_events(
                     event_filter.clone(),
@@ -295,6 +303,11 @@ impl BlockchainEventListener {
                 ).await 
             {
                 Ok(events) => {
+                    let total_events = events.data.len();
+                    info!("📥 Received {} events from blockchain", total_events);
+                    
+                    let mut new_events_processed = 0;
+                    
                     // Process events in reverse order (oldest to newest)
                     for event in events.data.into_iter().rev() {
                         // Get the timestamp
@@ -305,7 +318,8 @@ impl BlockchainEventListener {
                             continue;
                         }
                         
-                        debug!("Processing event: {:?}", event);
+                        new_events_processed += 1;
+                        debug!("Processing new event: {:?}", event);
                         
                         // Get timestamp with fallback
                         let timestamp_ms = event.timestamp_ms.unwrap_or_else(|| {
@@ -345,9 +359,18 @@ impl BlockchainEventListener {
                         // Process the event
                         self.process_event(blockchain_event).await;
                     }
+                    
+                    // Log refresh cycle summary
+                    if new_events_processed > 0 {
+                        info!("✅ Refresh cycle complete - processed {} new events out of {} total", 
+                              new_events_processed, total_events);
+                    } else {
+                        info!("⏭️  Refresh cycle complete - no new events (last seen: {}, total received: {})", 
+                              last_seen_timestamp, total_events);
+                    }
                 }
                 Err(e) => {
-                    error!("Error querying events: {}", e);
+                    error!("❌ Error querying events during refresh cycle: {}", e);
                 }
             }
         }
