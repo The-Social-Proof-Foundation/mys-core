@@ -1,0 +1,33 @@
+-- Add enhanced progress store for detailed indexing state management
+-- This extends the basic indexer_progress table with more granular tracking
+
+CREATE TABLE IF NOT EXISTS progress_store (
+    id SERIAL PRIMARY KEY,
+    worker_id VARCHAR NOT NULL,
+    module_name VARCHAR NOT NULL,
+    last_processed_checkpoint BIGINT NOT NULL DEFAULT 0,
+    last_processed_event_id VARCHAR,
+    last_processed_timestamp BIGINT NOT NULL,
+    processing_state VARCHAR NOT NULL DEFAULT 'running',
+    error_count INTEGER NOT NULL DEFAULT 0,
+    last_error_message TEXT,
+    last_error_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Create unique index for worker/module combination
+CREATE UNIQUE INDEX IF NOT EXISTS idx_progress_store_worker_module 
+ON progress_store(worker_id, module_name);
+
+-- Create index for checkpoint queries
+CREATE INDEX IF NOT EXISTS idx_progress_store_checkpoint 
+ON progress_store(last_processed_checkpoint);
+
+-- Create index for processing state queries
+CREATE INDEX IF NOT EXISTS idx_progress_store_state 
+ON progress_store(processing_state);
+
+-- Create index for error tracking
+CREATE INDEX IF NOT EXISTS idx_progress_store_errors 
+ON progress_store(error_count, last_error_at) WHERE error_count > 0; 
