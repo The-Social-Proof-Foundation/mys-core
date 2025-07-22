@@ -154,6 +154,8 @@ impl ProfileCreatedEvent {
             following_count: 0,
             // Initialize post count to 0
             post_count: 0,
+            // Initialize minimum offer amount as None (not for sale)
+            min_offer_amount: None,
             // Initialize all sensitive fields as None
             birthdate: None,
             current_location: None,
@@ -260,6 +262,9 @@ pub struct ProfileUpdatedEvent {
     
     #[serde(default)]
     pub github_username: Option<String>,
+    
+    #[serde(default)]
+    pub min_offer_amount: Option<u64>,
 }
 
 /// Event emitted when a username is updated

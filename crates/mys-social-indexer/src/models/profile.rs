@@ -25,6 +25,8 @@ pub struct Profile {
     pub following_count: i32,
     // Post count - number of top-level, non-deleted posts
     pub post_count: i32,
+    // Minimum offer amount for profile sales (NULL = not for sale)
+    pub min_offer_amount: Option<i64>,
     // Sensitive fields (all client-side encrypted)
     pub birthdate: Option<String>,
     pub current_location: Option<String>,
@@ -67,6 +69,9 @@ pub struct NewProfile {
     // Post count - initialize to 0
     #[serde(default)]
     pub post_count: i32,
+    // Minimum offer amount for profile sales - initialize to None
+    #[serde(default)]
+    pub min_offer_amount: Option<i64>,
     // Sensitive fields (all client-side encrypted)
     pub birthdate: Option<String>,
     pub current_location: Option<String>,
@@ -101,6 +106,8 @@ pub struct UpdateProfile {
     pub following_count: Option<i32>,
     // Post count - optional for when it needs to be updated
     pub post_count: Option<i32>,
+    // Minimum offer amount for profile sales - optional for when it needs to be updated
+    pub min_offer_amount: Option<i64>,
     // Sensitive fields (all client-side encrypted)
     pub birthdate: Option<String>,
     pub current_location: Option<String>,

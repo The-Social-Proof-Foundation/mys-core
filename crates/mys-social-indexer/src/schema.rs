@@ -25,6 +25,8 @@ table! {
         following_count -> Integer,
         // Post count - updated when posts are created/deleted
         post_count -> Integer,
+        // Minimum offer amount for profile sales (NULL = not for sale)
+        min_offer_amount -> Nullable<BigInt>,
         // Sensitive fields (client-side encrypted)
         birthdate -> Nullable<Text>,
         current_location -> Nullable<Text>,

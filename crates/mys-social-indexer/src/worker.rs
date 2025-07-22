@@ -206,6 +206,7 @@ impl SocialIndexerWorker {
             followers_count: None,
             following_count: None,
             post_count: None,
+            min_offer_amount: event.min_offer_amount.map(|v| v as i64),
             birthdate: event.birthdate.clone(),
             current_location: event.current_location.clone(),
             raised_location: event.raised_location.clone(),
