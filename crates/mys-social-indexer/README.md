@@ -139,12 +139,12 @@ SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
 
 # Indexer configuration
-CHECKPOINT_URL=https://checkpoints.testnet.mysocial.network
+CHECKPOINT_URL=https://mysocial-testnet-checkpoints.storage.googleapis.com
 START_CHECKPOINT=0
 INDEXER_CONCURRENCY=5
 
 # Package configuration
-PROFILE_PACKAGE_ADDRESS=0xe5759970ebb63cb02e34af3304a61600b07ed3cbd10376b3a0be98952b54aa76
+PROFILE_PACKAGE_ADDRESS=0x000000000000000000000000000000000000000000000000000000000000d880
 
 # Logging
 RUST_LOG=info,mys_social_indexer=debug
@@ -156,7 +156,46 @@ RUST_LOG=info,mys_social_indexer=debug
 - **GET /health** - Check the indexer's health
 
 ### Search API
-- **GET /search** - Global search across profiles, posts, tokens, platforms, myip, and governance proposals
+- **GET /search** - Global search across profiles, posts, spt tokens, spt staking pools, governance circles, platforms, myip, and governance proposals
+
+#### Search Parameters
+- `query` (required) - Search term to match against various fields
+- `page` (optional) - Page number for pagination (default: 1)
+- `limit` (optional) - Results per page, max 100 (default: 20)
+- `filter_types` (optional) - Comma-separated list of entity types to include
+
+#### Searchable Entity Types
+- `profile` - Search profiles by username, address, and bio
+- `post` - Search posts by content, post ID, owner, and profile ID
+- `spt-token` - Search social proof token pools by name, symbol, pool ID, owner, and associated ID
+- `spt-stake-pool` - Search staking pools by pool ID, associated ID, owner, and status
+- `governance-registry` - Search governance circles/registries (ecosystem, reputation, community notes) with delegate counts and voting parameters
+- `platform` - Search platforms by name, platform ID, developer address, and description
+- `proposal` - Search governance proposals by title, description, ID, and submitter
+
+#### Search Features
+- **Smart Ranking**: Exact matches appear first, followed by partial matches
+- **Rich Metadata**: Each result includes entity-specific metadata (e.g., staking progress, token prices, governance delegate counts)
+- **Real-time Status**: Staking pools show current progress toward thresholds
+- **Comprehensive Coverage**: Searches across all major system entities
+
+#### Example Queries
+```bash
+# Search everything
+GET /search?query=alice
+
+# Search only staking pools
+GET /search?query=threshold_met&filter_types=spt-stake-pool
+
+# Search tokens and staking pools
+GET /search?query=0x123&filter_types=spt-token,spt-stake-pool
+
+# Search governance circles
+GET /search?query=ecosystem&filter_types=governance-registry
+
+# Search with pagination
+GET /search?query=social&page=2&limit=50
+```
 
 ### Profile API
 - **GET /profiles** - List profiles

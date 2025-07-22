@@ -184,7 +184,7 @@ pub async fn global_search(
         -- Social Proof Token search
         SELECT 
             pool_id::TEXT as id,
-            'token' as entity_type,
+            'spt-token' as entity_type,
             name as title,
             NULL as description,
             NULL as image_url,
@@ -211,7 +211,89 @@ pub async fn global_search(
             SELECT MAX(time) FROM social_proof_token_pools sub
             WHERE sub.pool_id = social_proof_token_pools.pool_id
         )
-        AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'token' = ANY($4))
+        AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'spt-token' = ANY($4))
+        
+        UNION ALL
+        
+        -- Staking Pool search
+        SELECT 
+            pool_id::TEXT as id,
+            'spt-stake-pool' as entity_type,
+            CASE 
+                WHEN token_type = 1 THEN 'Profile Stake Pool: ' || associated_id
+                WHEN token_type = 2 THEN 'Post Stake Pool: ' || associated_id
+                ELSE 'Stake Pool: ' || pool_id
+            END as title,
+            CASE 
+                WHEN status = 'active' THEN 'Active staking pool - ' || total_staked || '/' || required_threshold || ' MYS staked'
+                WHEN status = 'threshold_met' THEN 'Threshold met - ready for token creation'
+                ELSE 'Stake pool status: ' || status
+            END as description,
+            NULL as image_url,
+            '/social-proof-token/stake-pools/' || pool_id as url_path,
+            pool_id as primary_field,
+            owner as secondary_field,
+            created_at as timestamp,
+            jsonb_build_object(
+                'token_type', token_type,
+                'total_staked', total_staked,
+                'required_threshold', required_threshold,
+                'status', status,
+                'associated_id', associated_id,
+                'progress_percentage', ROUND((total_staked::NUMERIC / required_threshold::NUMERIC) * 100, 2)
+            ) as metadata,
+            4 as priority
+        FROM spt_stake_pools
+        WHERE (
+            LOWER(pool_id) LIKE LOWER($1) OR
+            LOWER(associated_id) LIKE LOWER($1) OR
+            LOWER(owner) LIKE LOWER($1) OR
+            LOWER(status) LIKE LOWER($1)
+        )
+        AND time = (
+            SELECT MAX(time) FROM spt_stake_pools sub
+            WHERE sub.pool_id = spt_stake_pools.pool_id
+        )
+        AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'spt-stake-pool' = ANY($4))
+        
+        UNION ALL
+        
+        -- Governance Registry search (Circles)
+        SELECT 
+            id::TEXT as id,
+            'governance-registry' as entity_type,
+            CASE 
+                WHEN registry_type = 0 THEN 'Ecosystem Registry'
+                WHEN registry_type = 1 THEN 'Reputation Registry'
+                WHEN registry_type = 2 THEN 'Community Notes Registry'
+                ELSE 'Governance Registry #' || registry_type
+            END as title,
+            'Governance circle with ' || delegate_count || ' delegates, ' || proposal_submission_cost || ' MYS submission cost' as description,
+            NULL as image_url,
+            '/governance/registries/' || registry_type as url_path,
+            registry_type::TEXT as primary_field,
+            delegate_count::TEXT as secondary_field,
+            updated_at as timestamp,
+            jsonb_build_object(
+                'registry_type', registry_type,
+                'delegate_count', delegate_count,
+                'delegate_term_epochs', delegate_term_epochs,
+                'proposal_submission_cost', proposal_submission_cost,
+                'voting_period_epochs', voting_period_epochs,
+                'quorum_votes', quorum_votes
+            ) as metadata,
+            5 as priority
+        FROM governance_registries
+        WHERE (
+            registry_type::TEXT LIKE $1 OR
+            delegate_count::TEXT LIKE $1 OR
+            LOWER('ecosystem') LIKE LOWER($1) OR
+            LOWER('reputation') LIKE LOWER($1) OR
+            LOWER('community notes') LIKE LOWER($1) OR
+            LOWER('governance') LIKE LOWER($1) OR
+            LOWER('registry') LIKE LOWER($1)
+        )
+        AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'governance-registry' = ANY($4))
         
         UNION ALL
         
@@ -231,7 +313,7 @@ pub async fn global_search(
                 'is_approved', is_approved,
                 'status', status
             ) as metadata,
-            4 as priority
+            6 as priority
         FROM platforms
         WHERE (
             LOWER(platform_id) LIKE LOWER($1) OR
@@ -260,7 +342,7 @@ pub async fn global_search(
                 'community_votes_for', community_votes_for,
                 'community_votes_against', community_votes_against
             ) as metadata,
-            5 as priority
+            7 as priority
         FROM proposals
         WHERE (
             LOWER(id) LIKE LOWER($1) OR
@@ -337,11 +419,44 @@ pub async fn global_search(
                 LOWER(owner) LIKE LOWER($1) OR
                 LOWER(associated_id) LIKE LOWER($1)
             )
-            AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'token' = ANY($2))
+            AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'spt-token' = ANY($2))
             AND time = (
                 SELECT MAX(time) FROM social_proof_token_pools sub
                 WHERE sub.pool_id = social_proof_token_pools.pool_id
             )
+            
+            UNION ALL
+            
+            -- Staking Pool search
+            SELECT pool_id as id
+            FROM spt_stake_pools
+            WHERE (
+                LOWER(pool_id) LIKE LOWER($1) OR
+                LOWER(associated_id) LIKE LOWER($1) OR
+                LOWER(owner) LIKE LOWER($1) OR
+                LOWER(status) LIKE LOWER($1)
+            )
+            AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'spt-stake-pool' = ANY($2))
+            AND time = (
+                SELECT MAX(time) FROM spt_stake_pools sub
+                WHERE sub.pool_id = spt_stake_pools.pool_id
+            )
+            
+            UNION ALL
+            
+            -- Governance Registry search
+            SELECT id::TEXT as id
+            FROM governance_registries
+            WHERE (
+                registry_type::TEXT LIKE $1 OR
+                delegate_count::TEXT LIKE $1 OR
+                LOWER('ecosystem') LIKE LOWER($1) OR
+                LOWER('reputation') LIKE LOWER($1) OR
+                LOWER('community notes') LIKE LOWER($1) OR
+                LOWER('governance') LIKE LOWER($1) OR
+                LOWER('registry') LIKE LOWER($1)
+            )
+            AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'governance-registry' = ANY($2))
             
             UNION ALL
             
