@@ -16,7 +16,7 @@ use crate::db::Database;
 use crate::models::social_proof_token::{
     SocialProofTokenPoolWithPrice,
     SocialProofTokenTransaction, SocialProofTokenHolding,
-    SocialProofAuctionPool, SocialProofAuctionContribution,
+    SptStakePool, SptStake,
     SocialProofPriceAggregation,
     PopularTokenPool, UserTokenHoldings, UserTokenHolding,
 };
@@ -755,11 +755,11 @@ pub async fn get_spt_price_history(
     }))
 }
 
-/// Get active auctions
-pub async fn get_spt_auctions(
+/// Get active stake pools
+pub async fn get_spt_stake_pools(
     State(db): State<Arc<Database>>,
     Query(pagination): Query<PaginationParams>,
-) -> Result<Json<ApiResponse<Vec<SocialProofAuctionPool>>>, StatusCode> {
+) -> Result<Json<ApiResponse<Vec<SptStakePool>>>, StatusCode> {
     let limit = pagination.get_limit();
     let offset = pagination.get_offset();
     
@@ -769,24 +769,24 @@ pub async fn get_spt_auctions(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     
-    // Get active auctions
-    let auctions = diesel::sql_query(
+    // Get active stake pools
+    let stake_pools = diesel::sql_query(
         r#"
-        WITH latest_auctions AS (
-            SELECT DISTINCT ON (auction_id) *
-            FROM spt_auction_pools
-            ORDER BY auction_id, time DESC
+        WITH latest_stake_pools AS (
+            SELECT DISTINCT ON (pool_id) *
+            FROM spt_stake_pools
+            ORDER BY pool_id, time DESC
         )
         SELECT *
-        FROM latest_auctions
-        WHERE status = 1 -- Active auctions
-        ORDER BY start_time DESC
+        FROM latest_stake_pools
+        WHERE status = 'active' OR status = 'threshold_met'
+        ORDER BY total_staked DESC
         LIMIT $1 OFFSET $2
         "#
     )
     .bind::<diesel::sql_types::BigInt, _>(limit)
     .bind::<diesel::sql_types::BigInt, _>(offset)
-    .load::<SocialProofAuctionPool>(&mut conn)
+    .load::<SptStakePool>(&mut conn)
     .await
     .map_err(|e| {
         error!("Database error: {}", e);
@@ -796,14 +796,14 @@ pub async fn get_spt_auctions(
     // Count total for pagination
     let total_count = diesel::sql_query(
         r#"
-        WITH latest_auctions AS (
-            SELECT DISTINCT ON (auction_id) *
-            FROM spt_auction_pools
-            ORDER BY auction_id, time DESC
+        WITH latest_stake_pools AS (
+            SELECT DISTINCT ON (pool_id) *
+            FROM spt_stake_pools
+            ORDER BY pool_id, time DESC
         )
         SELECT COUNT(*) as count
-        FROM latest_auctions
-        WHERE status = 1 -- Active auctions
+        FROM latest_stake_pools
+        WHERE status = 'active' OR status = 'threshold_met'
         "#
     )
     .get_result::<CountResult>(&mut conn)
@@ -817,7 +817,7 @@ pub async fn get_spt_auctions(
     let total_pages = (total + limit - 1) / limit;
     
     Ok(Json(ApiResponse {
-        data: auctions,
+        data: stake_pools,
         pagination: Some(PaginationInfo {
             page: pagination.get_page(),
             limit,
@@ -827,11 +827,11 @@ pub async fn get_spt_auctions(
     }))
 }
 
-/// Get auction by ID
-pub async fn get_spt_auction_by_id(
+/// Get stake pool by ID
+pub async fn get_spt_stake_pool_by_id(
     State(db): State<Arc<Database>>,
     Path(id): Path<String>,
-) -> Result<Json<ApiResponse<SocialProofAuctionPool>>, StatusCode> {
+) -> Result<Json<ApiResponse<SptStakePool>>, StatusCode> {
     // Get a connection from the pool
     let mut conn = db.get_connection().await.map_err(|e| {
         error!("Database error: {}", e);
@@ -841,14 +841,14 @@ pub async fn get_spt_auction_by_id(
     let result = diesel::sql_query(
         r#"
         SELECT *
-        FROM spt_auction_pools
-        WHERE auction_id = $1
+        FROM spt_stake_pools
+        WHERE pool_id = $1
         ORDER BY time DESC
         LIMIT 1
         "#
     )
     .bind::<diesel::sql_types::Text, _>(id)
-    .get_result::<SocialProofAuctionPool>(&mut conn)
+    .get_result::<SptStakePool>(&mut conn)
     .await
     .optional()
     .map_err(|e| {
@@ -857,20 +857,20 @@ pub async fn get_spt_auction_by_id(
     })?;
     
     match result {
-        Some(auction) => Ok(Json(ApiResponse {
-            data: auction,
+        Some(stake_pool) => Ok(Json(ApiResponse {
+            data: stake_pool,
             pagination: None,
         })),
         None => Err(StatusCode::NOT_FOUND),
     }
 }
 
-/// Get auction contributions
-pub async fn get_spt_auction_contributions(
+/// Get stakes for a pool
+pub async fn get_spt_stakes_by_pool(
     State(db): State<Arc<Database>>,
     Path(id): Path<String>,
     Query(pagination): Query<PaginationParams>,
-) -> Result<Json<ApiResponse<Vec<SocialProofAuctionContribution>>>, StatusCode> {
+) -> Result<Json<ApiResponse<Vec<SptStake>>>, StatusCode> {
     let limit = pagination.get_limit();
     let offset = pagination.get_offset();
     
@@ -880,20 +880,26 @@ pub async fn get_spt_auction_contributions(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     
-    // Get contributions
-    let contributions = diesel::sql_query(
+    // Get stakes - latest per staker
+    let stakes = diesel::sql_query(
         r#"
+        WITH latest_stakes AS (
+            SELECT DISTINCT ON (staker_address) *
+            FROM spt_stakes
+            WHERE pool_id = $1
+            ORDER BY staker_address, time DESC
+        )
         SELECT *
-        FROM spt_auction_contributions
-        WHERE auction_id = $1
-        ORDER BY time DESC
+        FROM latest_stakes
+        WHERE amount > 0
+        ORDER BY amount DESC
         LIMIT $2 OFFSET $3
         "#
     )
     .bind::<diesel::sql_types::Text, _>(id.clone())
     .bind::<diesel::sql_types::BigInt, _>(limit)
     .bind::<diesel::sql_types::BigInt, _>(offset)
-    .load::<SocialProofAuctionContribution>(&mut conn)
+    .load::<SptStake>(&mut conn)
     .await
     .map_err(|e| {
         error!("Database error: {}", e);
@@ -903,9 +909,15 @@ pub async fn get_spt_auction_contributions(
     // Count total for pagination
     let total_count = diesel::sql_query(
         r#"
+        WITH latest_stakes AS (
+            SELECT DISTINCT ON (staker_address) *
+            FROM spt_stakes
+            WHERE pool_id = $1
+            ORDER BY staker_address, time DESC
+        )
         SELECT COUNT(*) as count
-        FROM spt_auction_contributions
-        WHERE auction_id = $1
+        FROM latest_stakes
+        WHERE amount > 0
         "#
     )
     .bind::<diesel::sql_types::Text, _>(id)
@@ -920,7 +932,7 @@ pub async fn get_spt_auction_contributions(
     let total_pages = (total + limit - 1) / limit;
     
     Ok(Json(ApiResponse {
-        data: contributions,
+        data: stakes,
         pagination: Some(PaginationInfo {
             page: pagination.get_page(),
             limit,

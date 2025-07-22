@@ -15,12 +15,12 @@ use crate::blockchain::chain_indexer::{
 };
 use crate::events::social_proof_token_events::{
     SocialProofInitPoolEvent, SocialProofBuyEvent, SocialProofSellEvent,
-    SocialProofStartAuctionEvent, SocialProofContributeAuctionEvent,
-    SocialProofFinalizeAuctionEvent,
+    SocialProofStakeCreatedEvent, SocialProofStakeWithdrawnEvent,
+    SocialProofThresholdMetEvent, ConfigUpdatedEvent,
 };
 use crate::models::social_proof_token::{
     NewSocialProofTokenPool, SocialProofTokenPool,
-    NewSocialProofAuctionPool, SocialProofAuctionPool,
+    NewSptStakePool, SptStakePool,
 };
 
 // Social proof token event handler implementation
@@ -55,14 +55,17 @@ impl BlockchainHandler for SocialProofTokenHandler {
             "social_proof_token::token_pool::SellEvent" => {
                 self.handle_sell_event(event).await
             },
-            "social_proof_token::auction_pool::StartAuctionEvent" => {
-                self.handle_start_auction_event(event).await
+            "token_exchange::StakeCreatedEvent" => {
+                self.handle_stake_created_event(event).await
             },
-            "social_proof_token::auction_pool::ContributeAuctionEvent" => {
-                self.handle_contribute_auction_event(event).await
+            "token_exchange::StakeWithdrawnEvent" => {
+                self.handle_stake_withdrawn_event(event).await
             },
-            "social_proof_token::auction_pool::FinalizeAuctionEvent" => {
-                self.handle_finalize_auction_event(event).await
+            "token_exchange::ThresholdMetEvent" => {
+                self.handle_threshold_met_event(event).await
+            },
+            "token_exchange::ConfigUpdatedEvent" => {
+                self.handle_config_updated_event(event).await
             },
             "token_exchange::EmergencyKillSwitchEvent" => {
                 self.handle_emergency_kill_switch_event(event).await
@@ -337,9 +340,9 @@ impl SocialProofTokenHandler {
         Ok(())
     }
     
-    // Handle start auction events
-    async fn handle_start_auction_event(&self, event_with_meta: MysEventWithMetadata) -> Result<()> {
-        info!("Handling start auction event");
+    // Handle stake created events
+    async fn handle_stake_created_event(&self, event_with_meta: MysEventWithMetadata) -> Result<()> {
+        info!("Handling stake created event");
         
         let event = &event_with_meta.event;
         let transaction_id = event_with_meta.transaction_digest.clone();
@@ -347,28 +350,83 @@ impl SocialProofTokenHandler {
         let datetime = Self::timestamp_to_datetime(timestamp);
         
         // Parse the event
-        let auction_event = SocialProofStartAuctionEvent::try_from(event.contents.clone())?;
-        
-        // Process the event data
-        let mut auction_pool = auction_event.into_model(timestamp, transaction_id.clone())?;
-        auction_pool.time = datetime;
+        let stake_event = SocialProofStakeCreatedEvent::try_from(event.contents.clone())?;
         
         // Get database connection
         let mut conn = self.db.get_connection().await?;
         
-        // Insert the auction pool
-        diesel::insert_into(crate::schema::spt_auction_pools::table)
-            .values(&auction_pool)
+        // 1. Create or update stake record
+        let mut stake_record = stake_event.into_stake_model(timestamp, transaction_id.clone())?;
+        stake_record.time = datetime;
+        
+        diesel::insert_into(crate::schema::spt_stakes::table)
+            .values(&stake_record)
             .execute(&mut conn)
             .await?;
         
-        info!("Processed start auction event for auction ID: {}", auction_pool.auction_id);
+        // 2. Create or update stake pool record
+        let pool_id = format!("stake_pool_{}", stake_event.associated_id);
+        
+        // Check if stake pool already exists
+        let existing_pool = crate::schema::spt_stake_pools::table
+            .filter(crate::schema::spt_stake_pools::pool_id.eq(&pool_id))
+            .order_by(crate::schema::spt_stake_pools::time.desc())
+            .first::<SptStakePool>(&mut conn)
+            .await
+            .optional()?;
+        
+        let stake_pool = if let Some(existing) = existing_pool {
+            // Update existing pool
+            NewSptStakePool {
+                pool_id: existing.pool_id,
+                associated_id: existing.associated_id,
+                token_type: existing.token_type,
+                owner: existing.owner,
+                total_staked: stake_event.total_staked,
+                required_threshold: existing.required_threshold,
+                status: if stake_event.threshold_met {
+                    "threshold_met".to_string()
+                } else {
+                    existing.status
+                },
+                created_at: existing.created_at,
+                time: datetime,
+                transaction_id: transaction_id.clone(),
+            }
+        } else {
+            // Create new pool - we'll need to determine threshold from config
+            let required_threshold = if stake_event.token_type == 1 { 10_000_000_000_000 } else { 1_000_000_000_000 }; // Default thresholds
+            
+            NewSptStakePool {
+                pool_id: pool_id.clone(),
+                associated_id: stake_event.associated_id.clone(),
+                token_type: stake_event.token_type,
+                owner: stake_event.staker.clone(), // Temporary, should be actual owner
+                total_staked: stake_event.total_staked,
+                required_threshold,
+                status: if stake_event.threshold_met {
+                    "threshold_met".to_string()
+                } else {
+                    "active".to_string()
+                },
+                created_at: stake_event.staked_at,
+                time: datetime,
+                transaction_id: transaction_id.clone(),
+            }
+        };
+        
+        diesel::insert_into(crate::schema::spt_stake_pools::table)
+            .values(&stake_pool)
+            .execute(&mut conn)
+            .await?;
+        
+        info!("Processed stake created event for pool ID: {}", pool_id);
         Ok(())
     }
     
-    // Handle contribute to auction events
-    async fn handle_contribute_auction_event(&self, event_with_meta: MysEventWithMetadata) -> Result<()> {
-        info!("Handling contribute to auction event");
+    // Handle stake withdrawn events  
+    async fn handle_stake_withdrawn_event(&self, event_with_meta: MysEventWithMetadata) -> Result<()> {
+        info!("Handling stake withdrawn event");
         
         let event = &event_with_meta.event;
         let transaction_id = event_with_meta.transaction_digest.clone();
@@ -376,57 +434,59 @@ impl SocialProofTokenHandler {
         let datetime = Self::timestamp_to_datetime(timestamp);
         
         // Parse the event
-        let contribute_event = SocialProofContributeAuctionEvent::try_from(event.contents.clone())?;
+        let withdraw_event = SocialProofStakeWithdrawnEvent::try_from(event.contents.clone())?;
         
         // Get database connection
         let mut conn = self.db.get_connection().await?;
         
-        // 1. Create contribution record
-        let mut contribution = contribute_event.into_model(timestamp, transaction_id.clone())?;
-        contribution.time = datetime;
+        // 1. Create withdrawal record (amount = 0 indicates full withdrawal)
+        let mut stake_record = withdraw_event.into_stake_model(timestamp, transaction_id.clone())?;
+        stake_record.time = datetime;
         
-        diesel::insert_into(crate::schema::spt_auction_contributions::table)
-            .values(&contribution)
+        diesel::insert_into(crate::schema::spt_stakes::table)
+            .values(&stake_record)
             .execute(&mut conn)
             .await?;
         
-        // 2. Update the auction pool with new values
-        let latest_auction = crate::schema::spt_auction_pools::table
-            .filter(crate::schema::spt_auction_pools::auction_id.eq(&contribute_event.auction_id))
-            .order_by(crate::schema::spt_auction_pools::time.desc())
-            .first::<SocialProofAuctionPool>(&mut conn)
+        // 2. Update stake pool with new total
+        let pool_id = format!("stake_pool_{}", withdraw_event.associated_id);
+        
+        let existing_pool = crate::schema::spt_stake_pools::table
+            .filter(crate::schema::spt_stake_pools::pool_id.eq(&pool_id))
+            .order_by(crate::schema::spt_stake_pools::time.desc())
+            .first::<SptStakePool>(&mut conn)
             .await
-            .map_err(|e| anyhow!("Failed to get latest auction pool: {}", e))?;
+            .map_err(|e| anyhow!("Failed to find stake pool: {}", e))?;
         
-        let new_total_contribution = latest_auction.total_contribution + contribute_event.amount;
-        
-        let updated_auction = NewSocialProofAuctionPool {
-            auction_id: latest_auction.auction_id.clone(),
-            associated_id: latest_auction.associated_id.clone(),
-            token_type: latest_auction.token_type,
-            owner: latest_auction.owner.clone(),
-            status: latest_auction.status,
-            total_contribution: new_total_contribution,
-            total_tokens: latest_auction.total_tokens,
-            start_time: latest_auction.start_time,
-            duration: latest_auction.duration,
-            finalized_at: latest_auction.finalized_at,
+        let updated_stake_pool = NewSptStakePool {
+            pool_id: existing_pool.pool_id,
+            associated_id: existing_pool.associated_id,
+            token_type: existing_pool.token_type,
+            owner: existing_pool.owner,
+            total_staked: withdraw_event.total_staked,
+            required_threshold: existing_pool.required_threshold,
+            status: if withdraw_event.total_staked >= existing_pool.required_threshold {
+                "threshold_met".to_string()
+            } else {
+                "active".to_string()
+            },
+            created_at: existing_pool.created_at,
             time: datetime,
             transaction_id: transaction_id.clone(),
         };
         
-        diesel::insert_into(crate::schema::spt_auction_pools::table)
-            .values(&updated_auction)
+        diesel::insert_into(crate::schema::spt_stake_pools::table)
+            .values(&updated_stake_pool)
             .execute(&mut conn)
             .await?;
         
-        info!("Processed contribute auction event for auction ID: {}", contribution.auction_id);
+        info!("Processed stake withdrawn event for pool ID: {}", pool_id);
         Ok(())
     }
     
-    // Handle finalize auction events
-    async fn handle_finalize_auction_event(&self, event_with_meta: MysEventWithMetadata) -> Result<()> {
-        info!("Handling finalize auction event");
+    // Handle threshold met events
+    async fn handle_threshold_met_event(&self, event_with_meta: MysEventWithMetadata) -> Result<()> {
+        info!("Handling threshold met event");
         
         let event = &event_with_meta.event;
         let transaction_id = event_with_meta.transaction_digest.clone();
@@ -434,42 +494,49 @@ impl SocialProofTokenHandler {
         let datetime = Self::timestamp_to_datetime(timestamp);
         
         // Parse the event
-        let finalize_event = SocialProofFinalizeAuctionEvent::try_from(event.contents.clone())?;
+        let threshold_event = SocialProofThresholdMetEvent::try_from(event.contents.clone())?;
         
         // Get database connection
         let mut conn = self.db.get_connection().await?;
         
-        // 1. Get the latest auction record
-        let latest_auction = crate::schema::spt_auction_pools::table
-            .filter(crate::schema::spt_auction_pools::auction_id.eq(&finalize_event.auction_id))
-            .order_by(crate::schema::spt_auction_pools::time.desc())
-            .first::<SocialProofAuctionPool>(&mut conn)
-            .await
-            .map_err(|e| anyhow!("Failed to get latest auction pool: {}", e))?;
+        // Update stake pool status to threshold_met
+        let mut stake_pool = threshold_event.into_stake_pool_model(timestamp, transaction_id.clone())?;
+        stake_pool.time = datetime;
         
-        // 2. Create updated auction record with finalized status
-        let updated_auction = NewSocialProofAuctionPool {
-            auction_id: latest_auction.auction_id.clone(),
-            associated_id: latest_auction.associated_id.clone(),
-            token_type: latest_auction.token_type,
-            owner: latest_auction.owner.clone(),
-            status: 2, // Finalized
-            total_contribution: latest_auction.total_contribution,
-            total_tokens: latest_auction.total_tokens,
-            start_time: latest_auction.start_time,
-            duration: latest_auction.duration,
-            finalized_at: Some(finalize_event.finalized_at),
-            time: datetime,
-            transaction_id: transaction_id.clone(),
-        };
-        
-        // 3. Insert updated auction record
-        diesel::insert_into(crate::schema::spt_auction_pools::table)
-            .values(&updated_auction)
+        diesel::insert_into(crate::schema::spt_stake_pools::table)
+            .values(&stake_pool)
             .execute(&mut conn)
             .await?;
         
-        info!("Processed finalize auction event for auction ID: {}", finalize_event.auction_id);
+        info!("Processed threshold met event for pool ID: {}", stake_pool.pool_id);
+        Ok(())
+    }
+    
+    // Handle exchange config updated events
+    async fn handle_config_updated_event(&self, event_with_meta: MysEventWithMetadata) -> Result<()> {
+        info!("Handling config updated event");
+        
+        let event = &event_with_meta.event;
+        let transaction_id = event_with_meta.transaction_digest.clone();
+        let timestamp = event_with_meta.timestamp;
+        let datetime = Self::timestamp_to_datetime(timestamp);
+        
+        // Parse the event
+        let config_event = ConfigUpdatedEvent::try_from(event.contents.clone())?;
+        
+        // Get database connection
+        let mut conn = self.db.get_connection().await?;
+        
+        // Create exchange config record
+        let mut exchange_config = config_event.into_exchange_config_model(timestamp as u64, transaction_id.clone())?;
+        exchange_config.time = datetime;
+        
+        diesel::insert_into(crate::schema::spt_exchange_config::table)
+            .values(&exchange_config)
+            .execute(&mut conn)
+            .await?;
+        
+        info!("Processed config updated event by: {}", config_event.updated_by);
         Ok(())
     }
     

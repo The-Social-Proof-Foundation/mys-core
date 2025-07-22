@@ -505,33 +505,54 @@ table! {
     }
 }
 
-// Define spt_auction_pools table
+// Define spt_stake_pools table
 table! {
-    spt_auction_pools (id, time) {
+    spt_stake_pools (id, time) {
         id -> Int4,
-        auction_id -> Varchar,
+        pool_id -> Varchar,
         associated_id -> Varchar,
         token_type -> Int2,
         owner -> Varchar,
-        status -> Int2,
-        start_time -> Int8,
-        duration -> Int8,
-        total_contribution -> Int8,
-        total_tokens -> Int8,
-        finalized_at -> Nullable<Int8>,
+        total_staked -> Int8,
+        required_threshold -> Int8,
+        status -> Varchar,
+        created_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
     }
 }
 
-// Define spt_auction_contributions table
+// Define spt_stakes table
 table! {
-    spt_auction_contributions (id, time) {
+    spt_stakes (id, time) {
         id -> Int4,
-        auction_id -> Varchar,
-        contributor_address -> Varchar,
+        pool_id -> Varchar,
+        staker_address -> Varchar,
         amount -> Int8,
-        contributed_at -> Int8,
+        staked_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define spt_exchange_config table
+table! {
+    spt_exchange_config (id, time) {
+        id -> Int4,
+        updated_by -> Varchar,
+        post_threshold -> Int8,
+        profile_threshold -> Int8,
+        max_individual_stake_bps -> Int8,
+        total_fee_bps -> Int8,
+        creator_fee_bps -> Int8,
+        platform_fee_bps -> Int8,
+        treasury_fee_bps -> Int8,
+        base_price -> Int8,
+        quadratic_coefficient -> Int8,
+        ecosystem_treasury -> Varchar,
+        max_hold_percent_bps -> Int8,
+        trading_halted -> Bool,
+        updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
     }
@@ -1121,8 +1142,9 @@ allow_tables_to_appear_in_same_query!(
     social_proof_token_pools,
     spt_holdings,
     spt_transactions,
-    spt_auction_pools,
-    spt_auction_contributions,
+    spt_stake_pools,
+    spt_stakes,
+    spt_exchange_config,
     spt_price_history,
     // Governance tables
     governance_registries,

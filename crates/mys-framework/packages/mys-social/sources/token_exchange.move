@@ -96,29 +96,12 @@ module social_contracts::token_exchange {
     const DEFAULT_BASE_PRICE: u64 = 100_000_000; // 0.1 MYS in smallest units
     const DEFAULT_QUADRATIC_COEFFICIENT: u64 = 100_000; // Coefficient for quadratic curve
 
-    // Viral threshold constants for posts
-    const POST_LIKES_WEIGHT: u64 = 1;
-    const POST_COMMENTS_WEIGHT: u64 = 3;
-    const POST_TIPS_WEIGHT: u64 = 10;
-    const POST_VIRAL_THRESHOLD: u64 = 100;
+    // Staking threshold constants for social proof token creation
+    const DEFAULT_POST_THRESHOLD: u64 = 1_000_000_000_000; // 1,000 MYS in smallest units (9 decimals)
+    const DEFAULT_PROFILE_THRESHOLD: u64 = 10_000_000_000_000; // 10,000 MYS in smallest units (9 decimals)
+    const DEFAULT_MAX_INDIVIDUAL_STAKE_BPS: u64 = 2000; // 20% (1/5 of threshold)
 
-    // Viral threshold constants for profiles
-    const PROFILE_FOLLOWS_WEIGHT: u64 = 1;
-    const PROFILE_POSTS_WEIGHT: u64 = 1;
-    const PROFILE_TIPS_WEIGHT: u64 = 5;
-    const PROFILE_VIRAL_THRESHOLD: u64 = 100;
 
-    // Auction duration limits (in seconds)
-    const MIN_POST_AUCTION_DURATION: u64 = 1 * 60 * 60; // 1 hour
-    const MAX_POST_AUCTION_DURATION: u64 = 3 * 60 * 60; // 3 hours
-    const MIN_PROFILE_AUCTION_DURATION: u64 = 24 * 60 * 60; // 1 day
-    const MAX_PROFILE_AUCTION_DURATION: u64 = 72 * 60 * 60; // 3 days
-
-    // Auction status
-    const AUCTION_STATUS_PENDING: u8 = 0;
-    const AUCTION_STATUS_ACTIVE: u8 = 1;
-    const AUCTION_STATUS_ENDED: u8 = 2;
-    const AUCTION_STATUS_FINALIZED: u8 = 3;
 
     // === Structs ===
 
@@ -146,21 +129,11 @@ module social_contracts::token_exchange {
         ecosystem_treasury: address,
         /// Maximum percentage a single wallet can hold of any token
         max_hold_percent_bps: u64,
-        /// Post viral thresholds & weights
-        post_likes_weight: u64,
-        post_comments_weight: u64,
-        post_tips_weight: u64,
-        post_viral_threshold: u64,
-        /// Profile viral thresholds & weights
-        profile_follows_weight: u64,
-        profile_posts_weight: u64,
-        profile_tips_weight: u64,
-        profile_viral_threshold: u64,
-        /// Auction duration limits (in seconds)
-        min_post_auction_duration: u64,
-        max_post_auction_duration: u64,
-        min_profile_auction_duration: u64,
-        max_profile_auction_duration: u64,
+        /// Staking thresholds for social proof token creation
+        post_threshold: u64,
+        profile_threshold: u64,
+        /// Maximum percentage any individual can stake towards a single post/profile
+        max_individual_stake_bps: u64,
         /// Emergency kill switch - when true, all trading is halted
         trading_halted: bool,
     }
@@ -170,10 +143,38 @@ module social_contracts::token_exchange {
         id: UID,
         /// Table from token ID to token info
         tokens: Table<address, TokenInfo>,
-        /// Table from profile/post ID to auction info
-        auctions: Table<address, AuctionInfo>,
+        /// Table from profile/post ID to staking pool info
+        stake_pools: Table<address, StakePool>,
         /// Version for upgrades
         version: u64,
+    }
+
+    /// Staking pool for a specific post or profile
+    public struct StakePool has store, copy, drop {
+        /// Associated profile or post ID
+        associated_id: address,
+        /// Token type (1=profile, 2=post)
+        token_type: u8,
+        /// Owner of the profile/post
+        owner: address,
+        /// Total MYS staked towards this post/profile
+        total_staked: u64,
+        /// Required threshold to enable auction creation
+        required_threshold: u64,
+        /// List of all stakers (for efficient iteration)
+        stakers: vector<address>,
+        /// Creation timestamp
+        created_at: u64,
+    }
+
+    /// Individual stake information
+    public struct StakeInfo has store, copy, drop {
+        /// Staker's address
+        staker: address,
+        /// Amount staked in MYS
+        amount: u64,
+        /// Timestamp when stake was created
+        staked_at: u64,
     }
 
     /// Information about a token
@@ -228,37 +229,17 @@ module social_contracts::token_exchange {
         amount: u64,
     }
 
-    /// Information about an auction
-    public struct AuctionInfo has store, copy, drop {
-        /// Associated profile or post ID
-        associated_id: address,
-        /// Token type (1=profile, 2=post)
-        token_type: u8,
-        /// Owner of the profile/post
-        owner: address,
-        /// Status of the auction
-        status: u8, // 0=pending, 1=active, 2=ended, 3=finalized
-        /// Time when the auction was started
-        start_time: u64,
-        /// Duration of the auction in seconds
-        duration: u64,
-        /// Total MYS contributed to the auction
-        total_contribution: u64,
-        /// Total tokens to be distributed
-        total_tokens: u64,
-        /// List of contributors' addresses
-        contributors: vector<address>,
-    }
 
-    /// Pre-launch auction pool
-    public struct AuctionPool has key {
+
+    /// Staking pool for collecting MYS stakes towards posts/profiles
+    public struct StakePoolObject has key {
         id: UID,
-        /// Auction info
-        info: AuctionInfo,
-        /// MYS balance contributed to the auction
+        /// Stake pool info
+        info: StakePool,
+        /// MYS balance staked in this pool
         mys_balance: Balance<MYS>,
-        /// Mapping of contributors' addresses to their MYS contributions
-        contributions: Table<address, u64>,
+        /// Mapping of stakers' addresses to their stake amounts
+        stakes: Table<address, u64>,
         /// Version for upgrades
         version: u64,
     }
@@ -303,32 +284,37 @@ module social_contracts::token_exchange {
         new_price: u64,
     }
 
-    /// Event emitted when an auction is created
-    public struct AuctionCreatedEvent has copy, drop {
-        auction_id: address,
+
+
+    /// Event emitted when MYS is staked towards a post/profile
+    public struct StakeCreatedEvent has copy, drop {
+        associated_id: address,
+        token_type: u8,
+        staker: address,
+        amount: u64,
+        total_staked: u64,
+        threshold_met: bool,
+        staked_at: u64,
+    }
+
+    /// Event emitted when MYS stake is withdrawn
+    public struct StakeWithdrawnEvent has copy, drop {
+        associated_id: address,
+        token_type: u8,
+        staker: address,
+        amount: u64,
+        total_staked: u64,
+        withdrawn_at: u64,
+    }
+
+    /// Event emitted when staking threshold is met for the first time
+    public struct ThresholdMetEvent has copy, drop {
         associated_id: address,
         token_type: u8,
         owner: address,
-        start_time: u64,
-        duration: u64,
-    }
-
-    /// Event emitted when a user contributes to an auction
-    public struct AuctionContributionEvent has copy, drop {
-        auction_id: address,
-        contributor: address,
-        amount: u64,
-        total_contribution: u64,
-    }
-
-    /// Event emitted when an auction is finalized
-    public struct AuctionFinalizedEvent has copy, drop {
-        auction_id: address,
-        associated_id: address,
-        total_contribution: u64,
-        total_tokens: u64,
-        token_price: u64,
-        pool_id: address,
+        total_staked: u64,
+        required_threshold: u64,
+        timestamp: u64,
     }
 
     /// Event emitted when exchange config is updated
@@ -349,14 +335,10 @@ module social_contracts::token_exchange {
         ecosystem_treasury: address,
         /// Maximum hold percentage
         max_hold_percent_bps: u64,
-        /// Viral thresholds and weights
-        post_viral_threshold: u64,
-        profile_viral_threshold: u64,
-        /// Auction durations
-        min_post_auction_duration: u64,
-        max_post_auction_duration: u64,
-        min_profile_auction_duration: u64,
-        max_profile_auction_duration: u64,
+        /// Staking thresholds
+        post_threshold: u64,
+        profile_threshold: u64,
+        max_individual_stake_bps: u64,
     }
 
     /// Event emitted when tokens are purchased by someone who already has a social token
@@ -404,18 +386,9 @@ module social_contracts::token_exchange {
                 quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
                 ecosystem_treasury: sender, // Initially set to sender, should be updated
                 max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
-                post_likes_weight: POST_LIKES_WEIGHT,
-                post_comments_weight: POST_COMMENTS_WEIGHT,
-                post_tips_weight: POST_TIPS_WEIGHT,
-                post_viral_threshold: POST_VIRAL_THRESHOLD,
-                profile_follows_weight: PROFILE_FOLLOWS_WEIGHT,
-                profile_posts_weight: PROFILE_POSTS_WEIGHT,
-                profile_tips_weight: PROFILE_TIPS_WEIGHT,
-                profile_viral_threshold: PROFILE_VIRAL_THRESHOLD,
-                min_post_auction_duration: MIN_POST_AUCTION_DURATION,
-                max_post_auction_duration: MAX_POST_AUCTION_DURATION,
-                min_profile_auction_duration: MIN_PROFILE_AUCTION_DURATION,
-                max_profile_auction_duration: MAX_PROFILE_AUCTION_DURATION,
+                post_threshold: DEFAULT_POST_THRESHOLD,
+                profile_threshold: DEFAULT_PROFILE_THRESHOLD,
+                max_individual_stake_bps: DEFAULT_MAX_INDIVIDUAL_STAKE_BPS,
                 trading_halted: false, // Trading is enabled by default
             }
         );
@@ -425,7 +398,7 @@ module social_contracts::token_exchange {
             TokenRegistry {
                 id: object::new(ctx),
                 tokens: table::new(ctx),
-                auctions: table::new(ctx),
+                stake_pools: table::new(ctx),
                 version: upgrade::current_version(),
             }
         );
@@ -445,18 +418,9 @@ module social_contracts::token_exchange {
         quadratic_coefficient: u64,
         ecosystem_treasury: address,
         max_hold_percent_bps: u64,
-        post_likes_weight: u64,
-        post_comments_weight: u64,
-        post_tips_weight: u64,
-        post_viral_threshold: u64,
-        profile_follows_weight: u64,
-        profile_posts_weight: u64,
-        profile_tips_weight: u64,
-        profile_viral_threshold: u64,
-        min_post_auction_duration: u64,
-        max_post_auction_duration: u64,
-        min_profile_auction_duration: u64,
-        max_profile_auction_duration: u64,
+        post_threshold: u64,
+        profile_threshold: u64,
+        max_individual_stake_bps: u64,
         ctx: &mut TxContext
     ) {
         // Verify sum of fee percentages equals total
@@ -464,10 +428,6 @@ module social_contracts::token_exchange {
         
         // Verify curve parameters are valid
         assert!(base_price > 0 && quadratic_coefficient > 0, EInvalidCurveParams);
-        
-        // Verify auction durations are valid
-        assert!(min_post_auction_duration < max_post_auction_duration, EInvalidAuctionDuration);
-        assert!(min_profile_auction_duration < max_profile_auction_duration, EInvalidAuctionDuration);
         
         // Update fee config
         config.total_fee_bps = total_fee_bps;
@@ -483,21 +443,10 @@ module social_contracts::token_exchange {
         config.ecosystem_treasury = ecosystem_treasury;
         config.max_hold_percent_bps = max_hold_percent_bps;
         
-        // Update viral thresholds & weights
-        config.post_likes_weight = post_likes_weight;
-        config.post_comments_weight = post_comments_weight;
-        config.post_tips_weight = post_tips_weight;
-        config.post_viral_threshold = post_viral_threshold;
-        config.profile_follows_weight = profile_follows_weight;
-        config.profile_posts_weight = profile_posts_weight;
-        config.profile_tips_weight = profile_tips_weight;
-        config.profile_viral_threshold = profile_viral_threshold;
-        
-        // Update auction duration limits
-        config.min_post_auction_duration = min_post_auction_duration;
-        config.max_post_auction_duration = max_post_auction_duration;
-        config.min_profile_auction_duration = min_profile_auction_duration;
-        config.max_profile_auction_duration = max_profile_auction_duration;
+        // Update staking thresholds
+        config.post_threshold = post_threshold;
+        config.profile_threshold = profile_threshold;
+        config.max_individual_stake_bps = max_individual_stake_bps;
         
         // Emit config updated event
         event::emit(ConfigUpdatedEvent {
@@ -511,12 +460,9 @@ module social_contracts::token_exchange {
             quadratic_coefficient,
             ecosystem_treasury,
             max_hold_percent_bps,
-            post_viral_threshold,
-            profile_viral_threshold,
-            min_post_auction_duration,
-            max_post_auction_duration,
-            min_profile_auction_duration,
-            max_profile_auction_duration,
+            post_threshold,
+            profile_threshold,
+            max_individual_stake_bps,
         });
     }
 
@@ -546,197 +492,14 @@ module social_contracts::token_exchange {
         config.trading_halted
     }
 
-    // === Viral Threshold Checks ===
+    // === Staking Functions ===
 
-    /// Check if a post has reached the viral threshold
-    public fun check_post_viral_threshold(
-        post: &Post
-    ): (bool, u64) {
-        // Calculate viral score based on post metrics
-        let likes = post::get_reaction_count(post) * POST_LIKES_WEIGHT;
-        let comments = post::get_post_comment_count(post) * POST_COMMENTS_WEIGHT;
-        let tips = post::get_tips_received(post) * POST_TIPS_WEIGHT;
-        
-        let viral_score = likes + comments + tips;
-        
-        // Check if the score exceeds the threshold
-        (viral_score >= POST_VIRAL_THRESHOLD, viral_score)
-    }
-    
-    /// Check if a profile has reached the viral threshold
-    public fun check_profile_viral_threshold(
-        profile: &Profile,
-        _registry: &UsernameRegistry
-    ): (bool, u64) {
-        // Use accessor functions instead of direct field access
-        let follows = profile::get_followers_count(profile) * PROFILE_FOLLOWS_WEIGHT;
-        let posts = profile::get_post_count(profile) * PROFILE_POSTS_WEIGHT;
-        let tips = profile::get_tips_received(profile) * PROFILE_TIPS_WEIGHT;
-        
-        let viral_score = follows + posts + tips;
-        
-        // Check if the score exceeds the threshold
-        (viral_score >= PROFILE_VIRAL_THRESHOLD, viral_score)
-    }
-    
-    // === Auction Functions ===
-    
-    /// Start a pre-launch auction for a post
-    public entry fun start_post_auction(
+    /// Stake MYS tokens towards a post to support social proof token creation
+    public entry fun stake_towards_post(
         registry: &mut TokenRegistry,
         config: &ExchangeConfig,
+        stake_pool_object: &mut StakePoolObject,
         post: &Post,
-        _symbol: vector<u8>,
-        _name: vector<u8>,
-        duration_hours: u64,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
-        
-        let post_id = post::get_id_address(post);
-        let owner = post::get_post_owner(post);
-        
-        // Verify caller is the post owner
-        assert!(tx_context::sender(ctx) == owner, ENotAuthorized);
-        
-        // Check if an auction already exists for this post
-        assert!(!table::contains(&registry.auctions, post_id), EAuctionInProgress);
-        
-        // Check if the post has reached the viral threshold
-        let (is_viral, _viral_score) = check_post_viral_threshold(post);
-        assert!(is_viral, EViralThresholdNotMet);
-        
-        // Validate auction duration
-        let duration_seconds = duration_hours * 60 * 60;
-        assert!(
-            duration_seconds >= MIN_POST_AUCTION_DURATION && 
-            duration_seconds <= MAX_POST_AUCTION_DURATION,
-            EInvalidAuctionDuration
-        );
-        
-        // Create auction info
-        let start_time = clock::timestamp_ms(clock) / 1000; // Convert to seconds
-        let auction_info = AuctionInfo {
-            associated_id: post_id,
-            token_type: TOKEN_TYPE_POST,
-            owner,
-            status: AUCTION_STATUS_ACTIVE,
-            start_time,
-            duration: duration_seconds,
-            total_contribution: 0,
-            total_tokens: 0,
-            contributors: vector::empty(),
-        };
-        
-        // Create auction pool
-        let auction_pool = AuctionPool {
-            id: object::new(ctx),
-            info: auction_info,
-            mys_balance: balance::zero(),
-            contributions: table::new(ctx),
-            version: upgrade::current_version(),
-        };
-        
-        // Add to registry
-        table::add(&mut registry.auctions, post_id, auction_info);
-        
-        // Emit event
-        event::emit(AuctionCreatedEvent {
-            auction_id: object::uid_to_address(&auction_pool.id),
-            associated_id: post_id,
-            token_type: TOKEN_TYPE_POST,
-            owner,
-            start_time,
-            duration: duration_seconds,
-        });
-        
-        // Share the auction pool
-        transfer::share_object(auction_pool);
-    }
-    
-    /// Start a pre-launch auction for a profile
-    public entry fun start_profile_auction(
-        registry: &mut TokenRegistry,
-        config: &ExchangeConfig,
-        profile: &Profile,
-        username_registry: &UsernameRegistry,
-        _symbol: vector<u8>,
-        _name: vector<u8>,
-        duration_days: u64,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
-        
-        let profile_id = profile::get_id_address(profile);
-        let owner = profile::get_owner(profile);
-        
-        // Verify caller is the profile owner
-        assert!(tx_context::sender(ctx) == owner, ENotAuthorized);
-        
-        // Check if an auction already exists for this profile
-        assert!(!table::contains(&registry.auctions, profile_id), EAuctionInProgress);
-        
-        // Check if the profile has reached the viral threshold
-        let (is_viral, _viral_score) = check_profile_viral_threshold(profile, username_registry);
-        assert!(is_viral, EViralThresholdNotMet);
-        
-        // Validate auction duration
-        let duration_seconds = duration_days * 24 * 60 * 60;
-        assert!(
-            duration_seconds >= MIN_PROFILE_AUCTION_DURATION && 
-            duration_seconds <= MAX_PROFILE_AUCTION_DURATION,
-            EInvalidAuctionDuration
-        );
-        
-        // Create auction info
-        let start_time = clock::timestamp_ms(clock) / 1000; // Convert to seconds
-        let auction_info = AuctionInfo {
-            associated_id: profile_id,
-            token_type: TOKEN_TYPE_PROFILE,
-            owner,
-            status: AUCTION_STATUS_ACTIVE,
-            start_time,
-            duration: duration_seconds,
-            total_contribution: 0,
-            total_tokens: 0,
-            contributors: vector::empty(),
-        };
-        
-        // Create auction pool
-        let auction_pool = AuctionPool {
-            id: object::new(ctx),
-            info: auction_info,
-            mys_balance: balance::zero(),
-            contributions: table::new(ctx),
-            version: upgrade::current_version(),
-        };
-        
-        // Add to registry
-        table::add(&mut registry.auctions, profile_id, auction_info);
-        
-        // Emit event
-        event::emit(AuctionCreatedEvent {
-            auction_id: object::uid_to_address(&auction_pool.id),
-            associated_id: profile_id,
-            token_type: TOKEN_TYPE_PROFILE,
-            owner,
-            start_time,
-            duration: duration_seconds,
-        });
-        
-        // Share the auction pool
-        transfer::share_object(auction_pool);
-    }
-    
-    /// Contribute MYS to an auction
-    public entry fun contribute_to_auction(
-        registry: &mut TokenRegistry,
-        config: &ExchangeConfig,
-        auction_pool: &mut AuctionPool,
         mut payment: Coin<MYS>,
         amount: u64,
         ctx: &mut TxContext
@@ -744,140 +507,369 @@ module social_contracts::token_exchange {
         // Check if trading is halted
         assert!(!config.trading_halted, ETradingHalted);
         
-        let contributor = tx_context::sender(ctx);
+        let staker = tx_context::sender(ctx);
+        let post_id = post::get_id_address(post);
+        let post_owner = post::get_post_owner(post);
+        let now = tx_context::epoch(ctx);
         
-        // Verify auction is active
-        assert!(auction_pool.info.status == AUCTION_STATUS_ACTIVE, EAuctionNotActive);
+        // Verify stake pool matches the post
+        assert!(stake_pool_object.info.associated_id == post_id, EInvalidID);
+        assert!(stake_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
         
-        // Verify auction info matches registry
-        let stored_info = table::borrow(&registry.auctions, auction_pool.info.associated_id);
-        assert!(
-            stored_info.owner == auction_pool.info.owner && 
-            stored_info.start_time == auction_pool.info.start_time,
-            EInvalidID
-        );
+        // Ensure staker has enough funds
+        assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
         
-        // Ensure contributor has enough funds
-        assert!(coin::value(&payment) >= amount, EInsufficientFunds);
-        
-        // Extract payment
-        let contribution = coin::split(&mut payment, amount, ctx);
-        
-        // Update contribution record
-        if (table::contains(&auction_pool.contributions, contributor)) {
-            let current_contribution = table::borrow_mut(&mut auction_pool.contributions, contributor);
-            *current_contribution = *current_contribution + amount;
+        // Check individual stake limit
+        let max_individual_stake = (config.post_threshold * config.max_individual_stake_bps) / 10000;
+        let current_stake = if (table::contains(&stake_pool_object.stakes, staker)) {
+            *table::borrow(&stake_pool_object.stakes, staker)
         } else {
-            table::add(&mut auction_pool.contributions, contributor, amount);
-            // Add to contributors list for tracking
-            vector::push_back(&mut auction_pool.info.contributors, contributor);
+            0
+        };
+        assert!(current_stake + amount <= max_individual_stake, EExceededMaxHold);
+        
+        // Extract stake payment
+        let stake_payment = coin::split(&mut payment, amount, ctx);
+        balance::join(&mut stake_pool_object.mys_balance, coin::into_balance(stake_payment));
+        
+        // Update staker's balance in the pool
+        if (table::contains(&stake_pool_object.stakes, staker)) {
+            let stake_balance = table::borrow_mut(&mut stake_pool_object.stakes, staker);
+            *stake_balance = *stake_balance + amount;
+        } else {
+            table::add(&mut stake_pool_object.stakes, staker, amount);
+            // Add to stakers list for tracking
+            vector::push_back(&mut stake_pool_object.info.stakers, staker);
         };
         
-        // Add to pool balance
-        balance::join(&mut auction_pool.mys_balance, coin::into_balance(contribution));
-        
-        // Update total contribution
-        auction_pool.info.total_contribution = auction_pool.info.total_contribution + amount;
+        // Update total staked
+        stake_pool_object.info.total_staked = stake_pool_object.info.total_staked + amount;
         
         // Update registry
-        let mut updated_info = *stored_info;
-        updated_info.total_contribution = auction_pool.info.total_contribution;
-        
-        // If this is a new contributor, add them to the registry's contributor list too
-        if (!table::contains(&auction_pool.contributions, contributor)) {
-            vector::push_back(&mut updated_info.contributors, contributor);
+        if (table::contains(&registry.stake_pools, post_id)) {
+            let registry_pool = table::borrow_mut(&mut registry.stake_pools, post_id);
+            registry_pool.total_staked = stake_pool_object.info.total_staked;
+        } else {
+            // Create registry entry if it doesn't exist
+            let stake_pool = StakePool {
+                associated_id: post_id,
+                token_type: TOKEN_TYPE_POST,
+                owner: post_owner,
+                total_staked: stake_pool_object.info.total_staked,
+                required_threshold: config.post_threshold,
+                stakers: stake_pool_object.info.stakers,
+                created_at: now,
+            };
+            table::add(&mut registry.stake_pools, post_id, stake_pool);
         };
         
-        *table::borrow_mut(&mut registry.auctions, auction_pool.info.associated_id) = updated_info;
+        // Check if threshold was just met
+        let threshold_met = stake_pool_object.info.total_staked >= config.post_threshold;
+        let was_threshold_met = (stake_pool_object.info.total_staked - amount) >= config.post_threshold;
         
-        // Return any excess payment
+        // Emit threshold met event if this stake pushed us over the threshold
+        if (threshold_met && !was_threshold_met) {
+            event::emit(ThresholdMetEvent {
+                associated_id: post_id,
+                token_type: TOKEN_TYPE_POST,
+                owner: post_owner,
+                total_staked: stake_pool_object.info.total_staked,
+                required_threshold: config.post_threshold,
+                timestamp: now,
+            });
+        };
+        
+        // Return excess payment
         if (coin::value(&payment) > 0) {
-            transfer::public_transfer(payment, contributor);
+            transfer::public_transfer(payment, staker);
         } else {
             coin::destroy_zero(payment);
         };
         
-        // Emit contribution event
-        event::emit(AuctionContributionEvent {
-            auction_id: object::uid_to_address(&auction_pool.id),
-            contributor,
+        // Emit stake created event
+        event::emit(StakeCreatedEvent {
+            associated_id: post_id,
+            token_type: TOKEN_TYPE_POST,
+            staker,
             amount,
-            total_contribution: auction_pool.info.total_contribution,
+            total_staked: stake_pool_object.info.total_staked,
+            threshold_met,
+            staked_at: now,
         });
     }
-    
-    /// Check if an auction has ended
-    public fun is_auction_ended(
-        auction_info: &AuctionInfo, 
-        clock: &Clock
-    ): bool {
-        let current_time = clock::timestamp_ms(clock) / 1000; // Convert to seconds
-        let end_time = auction_info.start_time + auction_info.duration;
-        current_time >= end_time
-    }
-    
-    /// Finalize an auction and create the token pool
-    /// This function checks if the auction has ended and finalizes it by creating a token pool
-    public entry fun finalize_auction(
+
+    /// Stake MYS tokens towards a profile to support social proof token creation
+    public entry fun stake_towards_profile(
         registry: &mut TokenRegistry,
         config: &ExchangeConfig,
-        auction_pool: &mut AuctionPool,
-        clock: &Clock,
+        stake_pool_object: &mut StakePoolObject,
+        profile: &Profile,
+        mut payment: Coin<MYS>,
+        amount: u64,
         ctx: &mut TxContext
     ) {
-        // Check if trading is halted (finalization creates tradeable tokens)
+        // Check if trading is halted
         assert!(!config.trading_halted, ETradingHalted);
         
-        // Check if auction has ended but status not updated
-        if (auction_pool.info.status == AUCTION_STATUS_ACTIVE && is_auction_ended(&auction_pool.info, clock)) {
-            // Update status to ended
-            auction_pool.info.status = AUCTION_STATUS_ENDED;
-            
-            // Update registry
-            let mut updated_info = *table::borrow(&registry.auctions, auction_pool.info.associated_id);
-            updated_info.status = AUCTION_STATUS_ENDED;
-            *table::borrow_mut(&mut registry.auctions, auction_pool.info.associated_id) = updated_info;
+        let staker = tx_context::sender(ctx);
+        let profile_id = profile::get_id_address(profile);
+        let profile_owner = profile::get_owner(profile);
+        let now = tx_context::epoch(ctx);
+        
+        // Verify stake pool matches the profile
+        assert!(stake_pool_object.info.associated_id == profile_id, EInvalidID);
+        assert!(stake_pool_object.info.token_type == TOKEN_TYPE_PROFILE, EInvalidTokenType);
+        
+        // Ensure staker has enough funds
+        assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
+        
+        // Check individual stake limit
+        let max_individual_stake = (config.profile_threshold * config.max_individual_stake_bps) / 10000;
+        let current_stake = if (table::contains(&stake_pool_object.stakes, staker)) {
+            *table::borrow(&stake_pool_object.stakes, staker)
+        } else {
+            0
+        };
+        assert!(current_stake + amount <= max_individual_stake, EExceededMaxHold);
+        
+        // Extract stake payment
+        let stake_payment = coin::split(&mut payment, amount, ctx);
+        balance::join(&mut stake_pool_object.mys_balance, coin::into_balance(stake_payment));
+        
+        // Update staker's balance in the pool
+        if (table::contains(&stake_pool_object.stakes, staker)) {
+            let stake_balance = table::borrow_mut(&mut stake_pool_object.stakes, staker);
+            *stake_balance = *stake_balance + amount;
+        } else {
+            table::add(&mut stake_pool_object.stakes, staker, amount);
+            // Add to stakers list for tracking
+            vector::push_back(&mut stake_pool_object.info.stakers, staker);
         };
         
-        // Verify auction has ended
-        assert!(auction_pool.info.status == AUCTION_STATUS_ENDED, EAuctionNotEnded);
-        assert!(is_auction_ended(&auction_pool.info, clock), EAuctionNotEnded);
+        // Update total staked
+        stake_pool_object.info.total_staked = stake_pool_object.info.total_staked + amount;
         
-        // Verify auction has not been finalized
-        assert!(
-            !table::contains(&registry.tokens, auction_pool.info.associated_id),
-            EAuctionAlreadyFinalized
-        );
+        // Update registry
+        if (table::contains(&registry.stake_pools, profile_id)) {
+            let registry_pool = table::borrow_mut(&mut registry.stake_pools, profile_id);
+            registry_pool.total_staked = stake_pool_object.info.total_staked;
+        } else {
+            // Create registry entry if it doesn't exist
+            let stake_pool = StakePool {
+                associated_id: profile_id,
+                token_type: TOKEN_TYPE_PROFILE,
+                owner: profile_owner,
+                total_staked: stake_pool_object.info.total_staked,
+                required_threshold: config.profile_threshold,
+                stakers: stake_pool_object.info.stakers,
+                created_at: now,
+            };
+            table::add(&mut registry.stake_pools, profile_id, stake_pool);
+        };
         
-        // Verify there are contributions
-        assert!(auction_pool.info.total_contribution > 0, ENoContribution);
+        // Check if threshold was just met
+        let threshold_met = stake_pool_object.info.total_staked >= config.profile_threshold;
+        let was_threshold_met = (stake_pool_object.info.total_staked - amount) >= config.profile_threshold;
         
-        // Calculate initial token supply with dynamic scaling based on contribution size
-        // This creates a non-linear relationship where larger pools get proportionally 
-        // more tokens, helping to prevent front-running and maintain AMM efficiency
+        // Emit threshold met event if this stake pushed us over the threshold
+        if (threshold_met && !was_threshold_met) {
+            event::emit(ThresholdMetEvent {
+                associated_id: profile_id,
+                token_type: TOKEN_TYPE_PROFILE,
+                owner: profile_owner,
+                total_staked: stake_pool_object.info.total_staked,
+                required_threshold: config.profile_threshold,
+                timestamp: now,
+            });
+        };
         
-        // Use square root scaling to balance between very large and small pools
-        // We use total_contribution^0.75 as our scaling factor
-        // (Using integer math for the calculation)
-        let contribution = auction_pool.info.total_contribution;
-        let sqrt_contribution = math::sqrt(contribution);
-        let cbrt_contribution = math::sqrt(sqrt_contribution); // approximation of cube root
-        let mut scale_factor = sqrt_contribution * cbrt_contribution; // contribution^0.75
+        // Return excess payment
+        if (coin::value(&payment) > 0) {
+            transfer::public_transfer(payment, staker);
+        } else {
+            coin::destroy_zero(payment);
+        };
         
-        // Divide the scale factor to make each token worth more than 1 MYSO
-        // This ensures tokens are premium assets compared to the base currency
+        // Emit stake created event
+        event::emit(StakeCreatedEvent {
+            associated_id: profile_id,
+            token_type: TOKEN_TYPE_PROFILE,
+            staker,
+            amount,
+            total_staked: stake_pool_object.info.total_staked,
+            threshold_met,
+            staked_at: now,
+        });
+    }
+
+    /// Withdraw MYS stake from a post or profile
+    public entry fun withdraw_stake(
+        registry: &mut TokenRegistry,
+        stake_pool_object: &mut StakePoolObject,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let staker = tx_context::sender(ctx);
+        let associated_id = stake_pool_object.info.associated_id;
+        let now = tx_context::epoch(ctx);
+        
+        // Verify staker has a stake
+        assert!(table::contains(&stake_pool_object.stakes, staker), ENoTokensOwned);
+        
+        let current_stake = *table::borrow(&stake_pool_object.stakes, staker);
+        assert!(current_stake >= amount, EInsufficientLiquidity);
+        
+        // Update staker's balance
+        if (current_stake == amount) {
+            // Remove staker completely
+            table::remove(&mut stake_pool_object.stakes, staker);
+            
+            // Remove from stakers list
+            let mut i = 0;
+            let len = vector::length(&stake_pool_object.info.stakers);
+            while (i < len) {
+                if (*vector::borrow(&stake_pool_object.info.stakers, i) == staker) {
+                    vector::remove(&mut stake_pool_object.info.stakers, i);
+                    break
+                };
+                i = i + 1;
+            };
+        } else {
+            // Reduce stake amount
+            let stake_balance = table::borrow_mut(&mut stake_pool_object.stakes, staker);
+            *stake_balance = *stake_balance - amount;
+        };
+        
+        // Update total staked
+        stake_pool_object.info.total_staked = stake_pool_object.info.total_staked - amount;
+        
+        // Update registry
+        if (table::contains(&registry.stake_pools, associated_id)) {
+            let registry_pool = table::borrow_mut(&mut registry.stake_pools, associated_id);
+            registry_pool.total_staked = stake_pool_object.info.total_staked;
+        };
+        
+        // Transfer staked MYS back to staker
+        let refund_balance = balance::split(&mut stake_pool_object.mys_balance, amount);
+        let refund_coin = coin::from_balance(refund_balance, ctx);
+        transfer::public_transfer(refund_coin, staker);
+        
+        // Emit stake withdrawn event
+        event::emit(StakeWithdrawnEvent {
+            associated_id,
+            token_type: stake_pool_object.info.token_type,
+            staker,
+            amount,
+            total_staked: stake_pool_object.info.total_staked,
+            withdrawn_at: now,
+        });
+    }
+
+    /// Create a new stake pool for a post or profile
+    public entry fun create_stake_pool(
+        registry: &mut TokenRegistry,
+        config: &ExchangeConfig,
+        associated_id: address,
+        token_type: u8,
+        owner: address,
+        ctx: &mut TxContext
+    ) {
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
+        // Verify caller is the owner
+        assert!(tx_context::sender(ctx) == owner, ENotAuthorized);
+        
+        // Check if stake pool already exists
+        assert!(!table::contains(&registry.stake_pools, associated_id), ETokenAlreadyExists);
+        
+        let now = tx_context::epoch(ctx);
+        let required_threshold = if (token_type == TOKEN_TYPE_POST) {
+            config.post_threshold
+        } else if (token_type == TOKEN_TYPE_PROFILE) {
+            config.profile_threshold
+        } else {
+            abort EInvalidTokenType
+        };
+        
+        // Create stake pool info
+        let stake_pool = StakePool {
+            associated_id,
+            token_type,
+            owner,
+            total_staked: 0,
+            required_threshold,
+            stakers: vector::empty(),
+            created_at: now,
+        };
+        
+        // Add to registry
+        table::add(&mut registry.stake_pools, associated_id, stake_pool);
+        
+        // Create stake pool object
+        let stake_pool_object = StakePoolObject {
+            id: object::new(ctx),
+            info: stake_pool,
+            mys_balance: balance::zero(),
+            stakes: table::new(ctx),
+            version: upgrade::current_version(),
+        };
+        
+        transfer::share_object(stake_pool_object);
+    }
+
+    /// Check if staking threshold is met for auction creation
+    public fun can_create_auction(
+        registry: &TokenRegistry,
+        associated_id: address
+    ): bool {
+        if (!table::contains(&registry.stake_pools, associated_id)) {
+            return false
+        };
+        
+        let stake_pool = table::borrow(&registry.stake_pools, associated_id);
+        stake_pool.total_staked >= stake_pool.required_threshold
+    }
+    
+    /// Create a social proof token directly from a stake pool once threshold is met
+    /// This replaces the auction system - only the post/profile owner can call this
+    public entry fun create_social_proof_token(
+        registry: &mut TokenRegistry,
+        config: &ExchangeConfig,
+        stake_pool_object: &mut StakePoolObject,
+        ctx: &mut TxContext
+    ) {
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
+        let caller = tx_context::sender(ctx);
+        let associated_id = stake_pool_object.info.associated_id;
+        
+        // Verify caller is the owner of the post/profile
+        assert!(caller == stake_pool_object.info.owner, ENotAuthorized);
+        
+        // Check if staking threshold has been met
+        assert!(can_create_auction(registry, associated_id), EViralThresholdNotMet);
+        
+        // Verify token has not already been created
+        assert!(!table::contains(&registry.tokens, associated_id), ETokenAlreadyExists);
+        
+        // Calculate initial token supply based on total staked amount
+        // Use the same scaling formula as the old auction system
+        let total_staked = stake_pool_object.info.total_staked;
+        let sqrt_staked = math::sqrt(total_staked);
+        let cbrt_staked = math::sqrt(sqrt_staked); // approximation of cube root
+        let mut scale_factor = sqrt_staked * cbrt_staked; // staked^0.75
+        
+        // Divide the scale factor to make each token worth more than 1 MYS
         scale_factor = scale_factor / 1000;
         
         // Apply different base multipliers for profile vs post tokens
-        // Profile tokens have lower supply (more valuable per token)
-        // Post tokens have higher supply (more collectible, less valuable per token)
-        let mut initial_token_supply = if (auction_pool.info.token_type == TOKEN_TYPE_PROFILE) {
-            // Profile tokens - lower supply (1x base multiplier)
-            // These represent long-term investment in a person/brand
+        let mut initial_token_supply = if (stake_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
+            // Profile tokens - lower supply (more valuable per token)
             scale_factor
         } else {
-            // Post tokens - higher supply (10x base multiplier)
-            // These are more collectible with many tokens per viral post
+            // Post tokens - higher supply (more collectible)
             scale_factor * 10
         };
         
@@ -886,20 +878,20 @@ module social_contracts::token_exchange {
             initial_token_supply = 1;
         };
         
-        let token_price = auction_pool.info.total_contribution / initial_token_supply;
+        let token_price = total_staked / initial_token_supply;
         
         // Create token info
         let token_info = TokenInfo {
             id: @0x0, // Temporary, will be updated
-            token_type: auction_pool.info.token_type,
-            owner: auction_pool.info.owner,
-            associated_id: auction_pool.info.associated_id,
-            symbol: if (auction_pool.info.token_type == TOKEN_TYPE_PROFILE) {
+            token_type: stake_pool_object.info.token_type,
+            owner: stake_pool_object.info.owner,
+            associated_id,
+            symbol: if (stake_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
                 string::utf8(b"PUSER")
             } else {
                 string::utf8(b"PPOST")
             },
-            name: if (auction_pool.info.token_type == TOKEN_TYPE_PROFILE) {
+            name: if (stake_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
                 string::utf8(b"Profile Token")
             } else {
                 string::utf8(b"Post Token")
@@ -914,7 +906,7 @@ module social_contracts::token_exchange {
         let pool_id = object::new(ctx);
         let pool_address = object::uid_to_address(&pool_id);
         
-        // Create pool with updated token info
+        // Update token info with actual pool address
         let mut updated_token_info = token_info;
         updated_token_info.id = pool_address;
         
@@ -928,65 +920,46 @@ module social_contracts::token_exchange {
             version: upgrade::current_version(),
         };
         
-        // Distribute tokens to contributors
-        // Production implementation that efficiently distributes tokens to all contributors
-        let contributors = &auction_pool.info.contributors;
-        let num_contributors = vector::length(contributors);
+        // Distribute tokens to stakers proportionally
+        let stakers = &stake_pool_object.info.stakers;
+        let num_stakers = vector::length(stakers);
         
-        // Iterate through all contributors who participated in the auction
         let mut i = 0;
-        while (i < num_contributors) {
-            let contributor = *vector::borrow(contributors, i);
-            let contribution_amount = *table::borrow(&auction_pool.contributions, contributor);
+        while (i < num_stakers) {
+            let staker = *vector::borrow(stakers, i);
+            let stake_amount = *table::borrow(&stake_pool_object.stakes, staker);
             
-            // Calculate token amount based on contributor's proportion of total contribution
-            let token_amount = (contribution_amount * initial_token_supply) / auction_pool.info.total_contribution;
+            // Calculate token amount based on staker's proportion of total stake
+            let token_amount = (stake_amount * initial_token_supply) / total_staked;
             
-            // Only process non-zero token amounts
             if (token_amount > 0) {
                 // Update holder's balance in the pool
-                table::add(&mut token_pool.holders, contributor, token_amount);
+                table::add(&mut token_pool.holders, staker, token_amount);
                 
-                // Create social token
+                // Create social token for the staker
                 let social_token = SocialToken {
                     id: object::new(ctx),
                     pool_id: pool_address,
-                    token_type: auction_pool.info.token_type,
+                    token_type: stake_pool_object.info.token_type,
                     amount: token_amount,
                 };
                 
-                // Transfer social token to contributor
-                transfer::public_transfer(social_token, contributor);
+                // Transfer social token to staker
+                transfer::public_transfer(social_token, staker);
             };
             
             i = i + 1;
         };
         
-        // Add contribution to pool balance
-        balance::join(&mut token_pool.mys_balance, balance::withdraw_all(&mut auction_pool.mys_balance));
+        // Transfer all staked MYS to the token pool as initial liquidity
+        balance::join(&mut token_pool.mys_balance, balance::withdraw_all(&mut stake_pool_object.mys_balance));
         
-        // Update the registry
-        table::add(&mut registry.tokens, auction_pool.info.associated_id, updated_token_info);
+        // Clear the stake pool since it's now converted to a token
+        stake_pool_object.info.total_staked = 0;
+        // Note: We keep the stakes table for reference but it's no longer active
         
-        // Update auction status
-        auction_pool.info.status = AUCTION_STATUS_FINALIZED;
-        auction_pool.info.total_tokens = initial_token_supply;
-        
-        // Update registry auction info
-        let mut updated_auction_info = *table::borrow(&registry.auctions, auction_pool.info.associated_id);
-        updated_auction_info.status = AUCTION_STATUS_FINALIZED;
-        updated_auction_info.total_tokens = initial_token_supply;
-        *table::borrow_mut(&mut registry.auctions, auction_pool.info.associated_id) = updated_auction_info;
-        
-        // Emit finalized event
-        event::emit(AuctionFinalizedEvent {
-            auction_id: object::uid_to_address(&auction_pool.id),
-            associated_id: auction_pool.info.associated_id,
-            total_contribution: auction_pool.info.total_contribution,
-            total_tokens: initial_token_supply,
-            token_price,
-            pool_id: pool_address,
-        });
+        // Add to registry
+        table::add(&mut registry.tokens, associated_id, updated_token_info);
         
         // Emit token created event
         event::emit(TokenPoolCreatedEvent {
@@ -1704,13 +1677,13 @@ module social_contracts::token_exchange {
         &mut pool.version
     }
 
-    /// Get the version of an auction pool
-    public fun auction_version(pool: &AuctionPool): u64 {
+    /// Get the version of a stake pool
+    public fun stake_pool_version(pool: &StakePoolObject): u64 {
         pool.version
     }
 
-    /// Get a mutable reference to the auction pool version (for upgrade module)
-    public fun borrow_auction_version_mut(pool: &mut AuctionPool): &mut u64 {
+    /// Get a mutable reference to the stake pool version (for upgrade module)
+    public fun borrow_stake_pool_version_mut(pool: &mut StakePoolObject): &mut u64 {
         &mut pool.version
     }
 
@@ -1768,9 +1741,9 @@ module social_contracts::token_exchange {
         // Any migration logic can be added here for future upgrades
     }
 
-    /// Migration function for AuctionPool
-    public entry fun migrate_auction_pool(
-        pool: &mut AuctionPool,
+    /// Migration function for StakePoolObject
+    public entry fun migrate_stake_pool(
+        pool: &mut StakePoolObject,
         _: &UpgradeAdminCap,
         ctx: &mut TxContext
     ) {
@@ -1787,7 +1760,7 @@ module social_contracts::token_exchange {
         let pool_id = object::id(pool);
         upgrade::emit_migration_event(
             pool_id,
-            string::utf8(b"AuctionPool"),
+            string::utf8(b"StakePoolObject"),
             old_version,
             tx_context::sender(ctx)
         );

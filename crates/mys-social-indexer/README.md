@@ -11,7 +11,7 @@ A indexer for the MySocial blockchain that focuses on tracking social interactio
 - **Post Promotion**: Tracks pay-per-view promoted posts with budget management and view tracking
 - **MyIP Integration**: Tracks intellectual property licenses and revenue
 - **Governance Integration**: Tracks proposals, voting, and delegates
-- **Social Proof Token**: Tracks token pools, transactions, holdings, and auctions
+- **Social Proof Token**: Tracks token pools, transactions, holdings, and staking pools
 - **Database Storage**: Stores all data in TimescaleDB (PostgreSQL)
 - **REST API**: Provides endpoints for accessing indexed data
 - **Configurable**: Customizable via environment variables
@@ -25,6 +25,38 @@ The indexer consists of the following components:
 2. **Event Processor**: Identifies and processes events from various modules
 3. **Database**: Stores indexed data in TimescaleDB (PostgreSQL)
 4. **API Server**: Exposes indexed data via REST API endpoints
+
+## Social Proof Token Staking System
+
+The indexer now supports a modern staking-based social proof token system, replacing the previous auction model. Users can stake MYS tokens towards posts and profiles to enable social proof token creation when thresholds are met.
+
+### How It Works
+1. **Stake Creation**: Users stake MYS tokens towards posts (1,000 MYS threshold) or profiles (10,000 MYS threshold)
+2. **Threshold Monitoring**: The indexer tracks total staked amounts and monitors threshold achievement
+3. **Token Creation**: When thresholds are met, post/profile owners can create social proof tokens
+4. **Real-time Tracking**: All staking activity is tracked in real-time with comprehensive analytics
+
+### Key Features
+- **Stake Pool Management**: Track total staked amounts per post/profile with real-time status updates
+- **Individual Stake Tracking**: Monitor user stakes with history of deposits and withdrawals
+- **Threshold Achievement**: Automatic detection when posts/profiles meet staking requirements
+- **Analytics**: Comprehensive staking metrics including trends, velocity, and top pools
+
+### Database Tables (TimescaleDB Hypertables)
+- `spt_stake_pools`: Stake pool configurations and current totals (1-month chunks)
+- `spt_stakes`: Individual stake records with full history (1-week chunks)
+- `spt_exchange_config`: Exchange configuration changes and threshold updates (1-month chunks)
+
+### Staking Thresholds
+- **Posts**: 1,000 MYS tokens required to enable social proof token creation
+- **Profiles**: 10,000 MYS tokens required to enable social proof token creation
+- **Individual Limits**: Maximum 20% of threshold per individual staker
+
+### API Capabilities
+- **Real-time Status**: Live staking pool status and threshold progress
+- **Stake Analytics**: Comprehensive metrics on staking trends and patterns
+- **User Tracking**: Complete stake history per user across all pools
+- **Threshold Monitoring**: Track pools approaching or exceeding thresholds
 
 ## Post Promotion Feature
 
@@ -175,8 +207,8 @@ RUST_LOG=info,mys_social_indexer=debug
 - **GET /promotions/analytics/top-performing** - Get top performing promotions from materialized views
 - **GET /promotions/analytics/spending-trends** - Get platform-wide spending trends from continuous aggregates
 
-### MyIP API (Intellectual Property)
-- **GET /licenses** - List intellectual property licenses
+### MyIP API (Information Property)
+- **GET /licenses** - List information property licenses
 - **GET /licenses/popular** - Get popular licenses
 - **GET /licenses/:id** - Get license by ID
 - **GET /licenses/:id/events** - Get events for a license
@@ -201,15 +233,26 @@ RUST_LOG=info,mys_social_indexer=debug
 - **GET /governance/events** - List recent governance events
 
 ### Social Proof Token API
+
+#### Token Pool Management
 - **GET /social-proof-token/pools** - List token pools
 - **GET /social-proof-token/pools/:id** - Get token pool by ID
 - **GET /social-proof-token/pools/by-associated-id/:id** - Get token pool by associated profile or post ID
 - **GET /social-proof-token/pools/:id/transactions** - Get transactions for a token pool
 - **GET /social-proof-token/pools/:id/holdings** - Get holdings for a token pool
 - **GET /social-proof-token/pools/:id/price-history** - Get price history for a token pool
-- **GET /social-proof-token/auctions** - List active token auctions
-- **GET /social-proof-token/auctions/:id** - Get auction details by ID
-- **GET /social-proof-token/auctions/:id/contributions** - Get contributions for an auction
+
+#### Staking System
+- **GET /social-proof-token/stake-pools** - List active stake pools supporting posts/profiles
+- **GET /social-proof-token/stake-pools/:id** - Get stake pool details by pool ID
+- **GET /social-proof-token/stake-pools/:id/stakes** - Get individual stakes for a pool
+- **GET /social-proof-token/stake-pools/by-associated-id/:id** - Get stake pool by associated profile or post ID
+- **GET /social-proof-token/stake-pools/threshold-met** - Get pools that have met their staking threshold
+- **GET /social-proof-token/stake-pools/recent** - Get recently created or updated stake pools
+- **GET /social-proof-token/stakes/user/:address** - Get all stakes by a specific user
+- **GET /social-proof-token/stakes/user/:address/active** - Get active stakes by a user (amount > 0)
+
+#### Analytics & Insights
 - **GET /social-proof-token/popular** - Get popular token pools
 - **GET /social-proof-token/users/:address/holdings** - Get token holdings for a user
 - **GET /social-proof-token/analytics/top-performers** - Get tokens with highest price/volume growth in specified period
@@ -217,6 +260,12 @@ RUST_LOG=info,mys_social_indexer=debug
 - **GET /social-proof-token/creators/:address/revenue-streams** - Break down creator revenue from token fees across content
 - **GET /social-proof-token/market-sentiment** - Aggregate buy/sell patterns to create market momentum indicators
 - **GET /social-proof-token/pools/:id/liquidity-profile** - Show transaction volume, frequency and depth to assess token liquidity
+
+#### Staking Analytics
+- **GET /social-proof-token/analytics/staking-trends** - Get staking trend data over time
+- **GET /social-proof-token/analytics/top-staked-pools** - Get pools with highest total stake amounts
+- **GET /social-proof-token/analytics/staking-velocity** - Track stake/unstake frequency and patterns
+- **GET /social-proof-token/analytics/threshold-progress** - Monitor pools approaching their staking thresholds
 
 ## License
 

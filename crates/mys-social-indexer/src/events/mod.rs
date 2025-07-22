@@ -93,9 +93,9 @@ pub use social_proof_token_events::{
     TokenBoughtEvent,
     TokenSoldEvent,
     TokensAddedEvent,
-    AuctionCreatedEvent,
-    AuctionContributionEvent,
-    AuctionFinalizedEvent,
+    StakeCreatedEvent,
+    StakeWithdrawnEvent,
+    ThresholdMetEvent,
     ConfigUpdatedEvent,
 };
 

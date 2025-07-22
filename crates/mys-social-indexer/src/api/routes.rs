@@ -96,9 +96,9 @@ use crate::api::handlers::social_proof_token::{
     get_spt_transactions,
     get_spt_holdings,
     get_spt_price_history,
-    get_spt_auctions,
-    get_spt_auction_by_id,
-    get_spt_auction_contributions,
+    get_spt_stake_pools,
+    get_spt_stake_pool_by_id,
+    get_spt_stakes_by_pool,
     get_user_spt_holdings,
     get_popular_tokens,
     get_top_performing_tokens,
@@ -278,9 +278,9 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/social-proof-token/pools/:id/transactions", get(get_spt_transactions))
         .route("/social-proof-token/pools/:id/holdings", get(get_spt_holdings))
         .route("/social-proof-token/pools/:id/price-history", get(get_spt_price_history))
-        .route("/social-proof-token/auctions", get(get_spt_auctions))
-        .route("/social-proof-token/auctions/:id", get(get_spt_auction_by_id))
-        .route("/social-proof-token/auctions/:id/contributions", get(get_spt_auction_contributions))
+        .route("/social-proof-token/stake-pools", get(get_spt_stake_pools))
+        .route("/social-proof-token/stake-pools/:id", get(get_spt_stake_pool_by_id))
+        .route("/social-proof-token/stake-pools/:id/stakes", get(get_spt_stakes_by_pool))
         .route("/social-proof-token/popular", get(get_popular_tokens))
         .route("/social-proof-token/users/:address/holdings", get(get_user_spt_holdings))
         .route("/social-proof-token/analytics/top-performers", get(get_top_performing_tokens))

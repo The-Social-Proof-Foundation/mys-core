@@ -12,14 +12,16 @@ pub enum SocialProofTokenEventType {
     TokenSold,
     /// Tokens were added to an existing holding
     TokensAdded,
-    /// An auction was created
-    AuctionCreated,
-    /// A contribution was made to an auction
-    AuctionContribution,
-    /// An auction was finalized
-    AuctionFinalized,
+    /// MYS was staked towards a post/profile
+    StakeCreated,
+    /// MYS stake was withdrawn
+    StakeWithdrawn,
+    /// Staking threshold was met for the first time
+    ThresholdMet,
     /// Exchange configuration was updated
     ConfigUpdated,
+    /// Emergency kill switch was toggled
+    EmergencyKillSwitch,
 }
 
 impl SocialProofTokenEventType {
@@ -30,10 +32,11 @@ impl SocialProofTokenEventType {
             Self::TokenBought => "TokenBought",
             Self::TokenSold => "TokenSold",
             Self::TokensAdded => "TokensAdded",
-            Self::AuctionCreated => "AuctionCreated",
-            Self::AuctionContribution => "AuctionContribution",
-            Self::AuctionFinalized => "AuctionFinalized",
+            Self::StakeCreated => "StakeCreated",
+            Self::StakeWithdrawn => "StakeWithdrawn",
+            Self::ThresholdMet => "ThresholdMet",
             Self::ConfigUpdated => "ConfigUpdated",
+            Self::EmergencyKillSwitch => "EmergencyKillSwitch",
         }
     }
     
@@ -44,10 +47,11 @@ impl SocialProofTokenEventType {
             "TokenBought" => Some(Self::TokenBought),
             "TokenSold" => Some(Self::TokenSold),
             "TokensAdded" => Some(Self::TokensAdded), 
-            "AuctionCreated" => Some(Self::AuctionCreated),
-            "AuctionContribution" => Some(Self::AuctionContribution),
-            "AuctionFinalized" => Some(Self::AuctionFinalized),
+            "StakeCreated" => Some(Self::StakeCreated),
+            "StakeWithdrawn" => Some(Self::StakeWithdrawn),
+            "ThresholdMet" => Some(Self::ThresholdMet),
             "ConfigUpdated" => Some(Self::ConfigUpdated),
+            "EmergencyKillSwitch" => Some(Self::EmergencyKillSwitch),
             _ => None,
         }
     }
