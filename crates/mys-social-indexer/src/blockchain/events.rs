@@ -238,7 +238,7 @@ impl ProfileEventListener {
                 schema::profiles::updated_at.eq(&new_profile.updated_at),
                 schema::profiles::cover_photo.eq(&new_profile.cover_photo),
                 schema::profiles::profile_id.eq(&new_profile.profile_id),
-                schema::profiles::sensitive_data_updated_at.eq(&new_profile.sensitive_data_updated_at),
+                schema::profiles::post_count.eq(&new_profile.post_count),
                 // Sensitive fields
                 schema::profiles::birthdate.eq(&new_profile.birthdate),
                 schema::profiles::current_location.eq(&new_profile.current_location),

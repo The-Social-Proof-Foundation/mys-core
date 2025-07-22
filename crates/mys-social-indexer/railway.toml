@@ -35,4 +35,4 @@ RUST_LOG = "info,mys_social_indexer=debug"
 RUST_BACKTRACE = "1"
 
 # Blockchain Configuration
-RPC_URL = "http://fullnode.testnet.mysocial.network:9000"
+RPC_URL = "https://fullnode.testnet.mysocial.network:9000"

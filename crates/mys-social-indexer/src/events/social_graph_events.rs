@@ -61,9 +61,9 @@ impl FollowEvent {
             profile_photo: None,
             website: None,
             cover_photo: None,
-            sensitive_data_updated_at: None,
             followers_count: None,
             following_count: Some(1), // This will be used in a raw SQL to increment by 1
+            post_count: None,
             birthdate: None,
             current_location: None,
             raised_location: None,
@@ -92,9 +92,9 @@ impl FollowEvent {
             profile_photo: None,
             website: None,
             cover_photo: None,
-            sensitive_data_updated_at: None,
             followers_count: Some(1), // This will be used in a raw SQL to increment by 1
             following_count: None,
+            post_count: None,
             birthdate: None,
             current_location: None,
             raised_location: None,
@@ -125,9 +125,9 @@ impl UnfollowEvent {
             profile_photo: None,
             website: None,
             cover_photo: None,
-            sensitive_data_updated_at: None,
             followers_count: None,
             following_count: Some(-1), // This will be used in a raw SQL to decrement by 1
+            post_count: None,
             birthdate: None,
             current_location: None,
             raised_location: None,
@@ -156,9 +156,9 @@ impl UnfollowEvent {
             profile_photo: None,
             website: None,
             cover_photo: None,
-            sensitive_data_updated_at: None,
             followers_count: Some(-1), // This will be used in a raw SQL to decrement by 1
             following_count: None,
+            post_count: None,
             birthdate: None,
             current_location: None,
             raised_location: None,

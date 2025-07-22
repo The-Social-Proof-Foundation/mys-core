@@ -149,10 +149,11 @@ impl ProfileCreatedEvent {
             updated_at: now,   // Use current time for updated_at
             cover_photo,
             profile_id: Some(self.profile_id.clone()),
-            sensitive_data_updated_at: None, // Will be set when sensitive data is added
             // Initialize follower/following counts to 0
             followers_count: 0,
             following_count: 0,
+            // Initialize post count to 0
+            post_count: 0,
             // Initialize all sensitive fields as None
             birthdate: None,
             current_location: None,

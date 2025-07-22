@@ -20,10 +20,11 @@ pub struct Profile {
     pub updated_at: NaiveDateTime,
     pub cover_photo: Option<String>,
     pub profile_id: Option<String>,
-    pub sensitive_data_updated_at: Option<NaiveDateTime>,
     // Social graph statistics
     pub followers_count: i32,
     pub following_count: i32,
+    // Post count - number of top-level, non-deleted posts
+    pub post_count: i32,
     // Sensitive fields (all client-side encrypted)
     pub birthdate: Option<String>,
     pub current_location: Option<String>,
@@ -58,12 +59,14 @@ pub struct NewProfile {
     pub updated_at: NaiveDateTime,
     pub cover_photo: Option<String>,
     pub profile_id: Option<String>,
-    pub sensitive_data_updated_at: Option<NaiveDateTime>,
     // Social graph statistics - initialize to 0
     #[serde(default)]
     pub followers_count: i32,
     #[serde(default)]
     pub following_count: i32,
+    // Post count - initialize to 0
+    #[serde(default)]
+    pub post_count: i32,
     // Sensitive fields (all client-side encrypted)
     pub birthdate: Option<String>,
     pub current_location: Option<String>,
@@ -93,10 +96,11 @@ pub struct UpdateProfile {
     pub profile_photo: Option<String>,
     pub website: Option<String>,     // Website field from contract
     pub cover_photo: Option<String>,
-    pub sensitive_data_updated_at: Option<NaiveDateTime>,
     // Social graph statistics - optional for when they need to be updated
     pub followers_count: Option<i32>,
     pub following_count: Option<i32>,
+    // Post count - optional for when it needs to be updated
+    pub post_count: Option<i32>,
     // Sensitive fields (all client-side encrypted)
     pub birthdate: Option<String>,
     pub current_location: Option<String>,

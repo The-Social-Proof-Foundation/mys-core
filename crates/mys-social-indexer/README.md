@@ -124,7 +124,7 @@ RUST_LOG=info,mys_social_indexer=debug
 - **GET /health** - Check the indexer's health
 
 ### Search API
-- **GET /search** - Global search across profiles, posts, tokens, platforms, licenses, and governance proposals
+- **GET /search** - Global search across profiles, posts, tokens, platforms, myip, and governance proposals
 
 ### Profile API
 - **GET /profiles** - List profiles

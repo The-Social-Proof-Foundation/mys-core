@@ -7,7 +7,7 @@ use chrono::Utc;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::db::{Database, DbConnection};
 // Import event types specifically to avoid ambiguity
@@ -109,6 +109,26 @@ impl PostEventHandler {
             .set(schema::posts::transaction_id.eq(tx_id))
             .execute(&mut conn)
             .await?;
+
+        // Increment post_count for the profile (with graceful error handling)
+        match diesel::update(crate::schema::profiles::table)
+            .filter(crate::schema::profiles::owner_address.eq(&event.owner))
+            .set(crate::schema::profiles::post_count.eq(crate::schema::profiles::post_count + 1))
+            .execute(&mut conn)
+            .await 
+        {
+            Ok(updated_rows) => {
+                if updated_rows > 0 {
+                    info!("Successfully incremented post_count for profile: {}", event.owner);
+                } else {
+                    warn!("No profile found to increment post_count for owner: {}", event.owner);
+                }
+            }
+            Err(e) => {
+                // Log error but don't fail the transaction
+                error!("Failed to increment post_count for profile {}: {}. Post creation succeeded.", event.owner, e);
+            }
+        }
             
         info!("Successfully processed post created: {}", event.post_id);
         Ok(())
@@ -483,6 +503,26 @@ impl PostEventHandler {
                 .set(schema::posts::deleted_at.eq(event.deleted_at as i64))
                 .execute(&mut conn)
                 .await?;
+
+            // Decrement post_count for the profile (with graceful error handling)
+            match diesel::update(crate::schema::profiles::table)
+                .filter(crate::schema::profiles::owner_address.eq(&event.owner))
+                .set(crate::schema::profiles::post_count.eq(crate::schema::profiles::post_count - 1))
+                .execute(&mut conn)
+                .await 
+            {
+                Ok(updated_rows) => {
+                    if updated_rows > 0 {
+                        info!("Successfully decremented post_count for profile: {}", event.owner);
+                    } else {
+                        warn!("No profile found to decrement post_count for owner: {}", event.owner);
+                    }
+                }
+                Err(e) => {
+                    // Log error but don't fail the transaction
+                    error!("Failed to decrement post_count for profile {}: {}. Post deletion succeeded.", event.owner, e);
+                }
+            }
         } else {
             // Get post_id to update comment count
             let post_id_result = diesel::sql_query(

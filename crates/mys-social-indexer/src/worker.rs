@@ -202,8 +202,10 @@ impl SocialIndexerWorker {
             profile_photo: if event.profile_photo.is_some() { event.profile_photo.clone() } else { profile.profile_photo.clone() },
             website: event.website.clone(),  // Use new website field from event
             cover_photo: if event.cover_photo.is_some() { event.cover_photo.clone() } else { profile.cover_photo.clone() },
-            sensitive_data_updated_at: Some(now), // Use current time
-            // Include all sensitive fields from the event
+            // Keep existing counts unchanged during profile updates
+            followers_count: None,
+            following_count: None,
+            post_count: None,
             birthdate: event.birthdate.clone(),
             current_location: event.current_location.clone(),
             raised_location: event.raised_location.clone(),

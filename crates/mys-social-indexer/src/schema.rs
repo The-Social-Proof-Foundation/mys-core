@@ -19,11 +19,12 @@ table! {
         updated_at -> Timestamp,
         cover_photo -> Nullable<Varchar>,
         profile_id -> Nullable<Varchar>,
-        sensitive_data_updated_at -> Nullable<Timestamp>,
         // Followers count - updated when follow/unfollow occurs
         followers_count -> Integer,
         // Following count - updated when follow/unfollow occurs
         following_count -> Integer,
+        // Post count - updated when posts are created/deleted
+        post_count -> Integer,
         // Sensitive fields (client-side encrypted)
         birthdate -> Nullable<Text>,
         current_location -> Nullable<Text>,
