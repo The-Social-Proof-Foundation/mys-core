@@ -191,7 +191,7 @@ pub async fn global_search(
             '/social-proof-token/pools/' || pool_id as url_path,
             symbol as primary_field,
             owner as secondary_field,
-            EXTRACT(EPOCH FROM created_at)::BIGINT as timestamp,
+            created_at as timestamp,
             jsonb_build_object(
                 'token_type', token_type,
                 'base_price', base_price,
