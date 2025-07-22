@@ -298,101 +298,86 @@ pub async fn global_search(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
     
-    // Count query for pagination
+    // Simplified count query to avoid aggregation issues
     let count_query = r#"
-    WITH combined_results AS (
-        -- Profile search
-        SELECT 
-            'profile' as entity_type,
-            COUNT(*) as type_count
-        FROM profiles
-        WHERE (
-            LOWER(owner_address) LIKE LOWER($1) OR
-            LOWER(username) LIKE LOWER($1) OR
-            LOWER(bio) LIKE LOWER($1)
-        )
-        AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'profile' = ANY($2))
-        
-        UNION ALL
-        
-        -- Post search
-        SELECT 
-            'post' as entity_type,
-            COUNT(*) as type_count
-        FROM posts
-        WHERE (
-            LOWER(content) LIKE LOWER($1) OR
-            LOWER(post_id) LIKE LOWER($1) OR
-            LOWER(owner) LIKE LOWER($1) OR
-            LOWER(profile_id) LIKE LOWER($1)
-        )
-        AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'post' = ANY($2))
-        
-        UNION ALL
-        
-        -- Social Proof Token search
-        SELECT 
-            'token' as entity_type,
-            COUNT(DISTINCT pool_id) as type_count
-        FROM social_proof_token_pools
-        WHERE (
-            LOWER(pool_id) LIKE LOWER($1) OR
-            LOWER(name) LIKE LOWER($1) OR
-            LOWER(symbol) LIKE LOWER($1) OR
-            LOWER(owner) LIKE LOWER($1) OR
-            LOWER(associated_id) LIKE LOWER($1)
-        )
-        AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'token' = ANY($2))
-        
-        UNION ALL
-        
-        -- Platform search
-        SELECT 
-            'platform' as entity_type,
-            COUNT(*) as type_count
-        FROM platforms
-        WHERE (
-            LOWER(platform_id) LIKE LOWER($1) OR
-            LOWER(name) LIKE LOWER($1) OR
-            LOWER(developer_address) LIKE LOWER($1) OR
-            LOWER(description) LIKE LOWER($1)
-        )
-        AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'platform' = ANY($2))
-        
-        UNION ALL
-        
-        -- Governance Proposal search
-        SELECT 
-            'proposal' as entity_type,
-            COUNT(*) as type_count
-        FROM proposals
-        WHERE (
-            LOWER(id) LIKE LOWER($1) OR
-            LOWER(title) LIKE LOWER($1) OR
-            LOWER(submitter) LIKE LOWER($1) OR
-            LOWER(description) LIKE LOWER($1)
-        )
-        AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'proposal' = ANY($2))
-    )
-    SELECT 
-        SUM(type_count) as count,
-        jsonb_object_agg(entity_type, type_count) as counts_by_type
-    FROM combined_results
+        SELECT COUNT(*) as count
+        FROM (
+            -- Profile search
+            SELECT owner_address as id
+            FROM profiles
+            WHERE (
+                LOWER(owner_address) LIKE LOWER($1) OR
+                LOWER(username) LIKE LOWER($1) OR
+                LOWER(bio) LIKE LOWER($1)
+            )
+            AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'profile' = ANY($2))
+            
+            UNION ALL
+            
+            -- Post search
+            SELECT post_id as id
+            FROM posts
+            WHERE (
+                LOWER(content) LIKE LOWER($1) OR
+                LOWER(post_id) LIKE LOWER($1) OR
+                LOWER(owner) LIKE LOWER($1) OR
+                LOWER(profile_id) LIKE LOWER($1)
+            )
+            AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'post' = ANY($2))
+            
+            UNION ALL
+            
+            -- Social Proof Token search
+            SELECT pool_id as id
+            FROM social_proof_token_pools
+            WHERE (
+                LOWER(pool_id) LIKE LOWER($1) OR
+                LOWER(name) LIKE LOWER($1) OR
+                LOWER(symbol) LIKE LOWER($1) OR
+                LOWER(owner) LIKE LOWER($1) OR
+                LOWER(associated_id) LIKE LOWER($1)
+            )
+            AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'token' = ANY($2))
+            AND time = (
+                SELECT MAX(time) FROM social_proof_token_pools sub
+                WHERE sub.pool_id = social_proof_token_pools.pool_id
+            )
+            
+            UNION ALL
+            
+            -- Platform search
+            SELECT platform_id as id
+            FROM platforms
+            WHERE (
+                LOWER(platform_id) LIKE LOWER($1) OR
+                LOWER(name) LIKE LOWER($1) OR
+                LOWER(developer_address) LIKE LOWER($1) OR
+                LOWER(description) LIKE LOWER($1)
+            )
+            AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'platform' = ANY($2))
+            
+            UNION ALL
+            
+            -- Governance Proposal search
+            SELECT id
+            FROM proposals
+            WHERE (
+                LOWER(id) LIKE LOWER($1) OR
+                LOWER(title) LIKE LOWER($1) OR
+                LOWER(submitter) LIKE LOWER($1) OR
+                LOWER(description) LIKE LOWER($1)
+            )
+            AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'proposal' = ANY($2))
+        ) combined_results
     "#;
     
-    // Get count of search results for pagination
-    #[derive(diesel::QueryableByName)]
-    struct CountByTypeResult {
-        #[diesel(sql_type = diesel::sql_types::BigInt)]
-        count: i64,
-        #[diesel(sql_type = diesel::sql_types::Json)]
-        counts_by_type: serde_json::Value,
-    }
+    // Use the shared CountResult struct
+    use crate::db::query_types::CountResult;
     
     let count_result = diesel::sql_query(count_query)
         .bind::<diesel::sql_types::Text, _>(&like_query)
         .bind::<diesel::sql_types::Array<diesel::sql_types::Text>, _>(&filter_types)
-        .get_result::<CountByTypeResult>(&mut conn)
+        .get_result::<CountResult>(&mut conn)
         .await
         .map_err(|e| {
             error!("Database error in count query: {}", e);
@@ -423,7 +408,7 @@ pub async fn global_search(
         data: SearchResults {
             results,
             total_count: count_result.count,
-            counts_by_type: count_result.counts_by_type,
+            counts_by_type: serde_json::json!({}), // Simplified - no longer tracking counts by type
         },
         pagination: Some(PaginationInfo {
             page: params.get_page(),
