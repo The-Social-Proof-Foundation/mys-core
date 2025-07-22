@@ -186,7 +186,7 @@ pub async fn global_search(
             pool_id::TEXT as id,
             'token' as entity_type,
             name as title,
-            description,
+            NULL as description,
             NULL as image_url,
             '/social-proof-token/pools/' || pool_id as url_path,
             symbol as primary_field,
@@ -205,7 +205,6 @@ pub async fn global_search(
             LOWER(name) LIKE LOWER($1) OR
             LOWER(symbol) LIKE LOWER($1) OR
             LOWER(owner) LIKE LOWER($1) OR
-            LOWER(description) LIKE LOWER($1) OR
             LOWER(associated_id) LIKE LOWER($1)
         )
         AND time = (
@@ -341,7 +340,6 @@ pub async fn global_search(
             LOWER(name) LIKE LOWER($1) OR
             LOWER(symbol) LIKE LOWER($1) OR
             LOWER(owner) LIKE LOWER($1) OR
-            LOWER(description) LIKE LOWER($1) OR
             LOWER(associated_id) LIKE LOWER($1)
         )
         AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'token' = ANY($2))
