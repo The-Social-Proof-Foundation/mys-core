@@ -132,20 +132,20 @@ pub async fn global_search(
     WITH combined_results AS (
         -- Profile search
         SELECT 
-            address::TEXT as id,
+            owner_address::TEXT as id,
             'profile' as entity_type,
             COALESCE(username, 'Anonymous Profile') as title,
             bio as description,
-            avatar_url as image_url,
-            '/profiles/' || address as url_path,
+            profile_photo as image_url,
+            '/profiles/' || owner_address as url_path,
             username as primary_field,
-            address as secondary_field,
+            owner_address as secondary_field,
             EXTRACT(EPOCH FROM created_at)::BIGINT as timestamp,
             NULL::JSONB as metadata,
             1 as priority
         FROM profiles
         WHERE (
-            LOWER(address) LIKE LOWER($1) OR
+            LOWER(owner_address) LIKE LOWER($1) OR
             LOWER(username) LIKE LOWER($1) OR
             LOWER(bio) LIKE LOWER($1)
         )
@@ -162,21 +162,20 @@ pub async fn global_search(
             NULL as image_url,
             '/posts/' || post_id as url_path,
             NULL as primary_field,
-            author_address as secondary_field,
+            owner as secondary_field,
             EXTRACT(EPOCH FROM time)::BIGINT as timestamp,
             jsonb_build_object(
-                'platform_id', platform_id,
-                'author_address', author_address,
-                'author_username', author_username,
-                'has_media', has_attachments
+                'owner', owner,
+                'profile_id', profile_id,
+                'has_media', CASE WHEN media_urls IS NOT NULL THEN true ELSE false END
             ) as metadata,
             2 as priority
         FROM posts
         WHERE (
             LOWER(content) LIKE LOWER($1) OR
             LOWER(post_id) LIKE LOWER($1) OR
-            LOWER(author_address) LIKE LOWER($1) OR
-            LOWER(author_username) LIKE LOWER($1)
+            LOWER(owner) LIKE LOWER($1) OR
+            LOWER(profile_id) LIKE LOWER($1)
         )
         AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'post' = ANY($4))
         
@@ -223,79 +222,51 @@ pub async fn global_search(
             'platform' as entity_type,
             name as title,
             description,
-            avatar_url as image_url,
+            logo as image_url,
             '/platforms/' || platform_id as url_path,
             platform_id as primary_field,
-            owner_address as secondary_field,
+            developer_address as secondary_field,
             EXTRACT(EPOCH FROM created_at)::BIGINT as timestamp,
             jsonb_build_object(
-                'owner_address', owner_address,
-                'approval_status', approval_status,
-                'members_count', members_count
+                'developer_address', developer_address,
+                'is_approved', is_approved,
+                'status', status
             ) as metadata,
             4 as priority
         FROM platforms
         WHERE (
             LOWER(platform_id) LIKE LOWER($1) OR
             LOWER(name) LIKE LOWER($1) OR
-            LOWER(owner_address) LIKE LOWER($1) OR
+            LOWER(developer_address) LIKE LOWER($1) OR
             LOWER(description) LIKE LOWER($1)
         )
         AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'platform' = ANY($4))
         
         UNION ALL
         
-        -- License (IP) search
-        SELECT 
-            license_id::TEXT as id,
-            'license' as entity_type,
-            name as title,
-            description,
-            thumbnail_url as image_url,
-            '/licenses/' || license_id as url_path,
-            license_id as primary_field,
-            creator_address as secondary_field,
-            EXTRACT(EPOCH FROM created_at)::BIGINT as timestamp,
-            jsonb_build_object(
-                'creator_address', creator_address,
-                'license_type', license_type,
-                'price', price
-            ) as metadata,
-            5 as priority
-        FROM licenses
-        WHERE (
-            LOWER(license_id) LIKE LOWER($1) OR
-            LOWER(name) LIKE LOWER($1) OR
-            LOWER(creator_address) LIKE LOWER($1) OR
-            LOWER(description) LIKE LOWER($1)
-        )
-        AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'license' = ANY($4))
-        
-        UNION ALL
-        
         -- Governance Proposal search
         SELECT 
-            proposal_id::TEXT as id,
+            id::TEXT as id,
             'proposal' as entity_type,
             title,
             description,
             NULL as image_url,
-            '/governance/proposals/' || proposal_id as url_path,
-            proposal_id as primary_field,
-            proposer_address as secondary_field,
-            EXTRACT(EPOCH FROM created_at)::BIGINT as timestamp,
+            '/governance/proposals/' || id as url_path,
+            id as primary_field,
+            submitter as secondary_field,
+            EXTRACT(EPOCH FROM time)::BIGINT as timestamp,
             jsonb_build_object(
-                'proposer_address', proposer_address,
+                'submitter', submitter,
                 'status', status,
-                'votes_for', votes_for,
-                'votes_against', votes_against
+                'community_votes_for', community_votes_for,
+                'community_votes_against', community_votes_against
             ) as metadata,
-            6 as priority
-        FROM governance_proposals
+            5 as priority
+        FROM proposals
         WHERE (
-            LOWER(proposal_id) LIKE LOWER($1) OR
+            LOWER(id) LIKE LOWER($1) OR
             LOWER(title) LIKE LOWER($1) OR
-            LOWER(proposer_address) LIKE LOWER($1) OR
+            LOWER(submitter) LIKE LOWER($1) OR
             LOWER(description) LIKE LOWER($1)
         )
         AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'proposal' = ANY($4))
@@ -337,7 +308,7 @@ pub async fn global_search(
             COUNT(*) as type_count
         FROM profiles
         WHERE (
-            LOWER(address) LIKE LOWER($1) OR
+            LOWER(owner_address) LIKE LOWER($1) OR
             LOWER(username) LIKE LOWER($1) OR
             LOWER(bio) LIKE LOWER($1)
         )
@@ -353,8 +324,8 @@ pub async fn global_search(
         WHERE (
             LOWER(content) LIKE LOWER($1) OR
             LOWER(post_id) LIKE LOWER($1) OR
-            LOWER(author_address) LIKE LOWER($1) OR
-            LOWER(author_username) LIKE LOWER($1)
+            LOWER(owner) LIKE LOWER($1) OR
+            LOWER(profile_id) LIKE LOWER($1)
         )
         AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'post' = ANY($2))
         
@@ -385,25 +356,10 @@ pub async fn global_search(
         WHERE (
             LOWER(platform_id) LIKE LOWER($1) OR
             LOWER(name) LIKE LOWER($1) OR
-            LOWER(owner_address) LIKE LOWER($1) OR
+            LOWER(developer_address) LIKE LOWER($1) OR
             LOWER(description) LIKE LOWER($1)
         )
         AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'platform' = ANY($2))
-        
-        UNION ALL
-        
-        -- License (IP) search
-        SELECT 
-            'license' as entity_type,
-            COUNT(*) as type_count
-        FROM licenses
-        WHERE (
-            LOWER(license_id) LIKE LOWER($1) OR
-            LOWER(name) LIKE LOWER($1) OR
-            LOWER(creator_address) LIKE LOWER($1) OR
-            LOWER(description) LIKE LOWER($1)
-        )
-        AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'license' = ANY($2))
         
         UNION ALL
         
@@ -411,11 +367,11 @@ pub async fn global_search(
         SELECT 
             'proposal' as entity_type,
             COUNT(*) as type_count
-        FROM governance_proposals
+        FROM proposals
         WHERE (
-            LOWER(proposal_id) LIKE LOWER($1) OR
+            LOWER(id) LIKE LOWER($1) OR
             LOWER(title) LIKE LOWER($1) OR
-            LOWER(proposer_address) LIKE LOWER($1) OR
+            LOWER(submitter) LIKE LOWER($1) OR
             LOWER(description) LIKE LOWER($1)
         )
         AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'proposal' = ANY($2))
