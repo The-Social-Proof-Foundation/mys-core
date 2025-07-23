@@ -41,289 +41,238 @@ impl SocialGraphEventHandler {
     
     /// Process a follow event - creates relationship and updates follow counts
     async fn process_follow_event(&self, event: &FollowEvent, blockchain_event: Option<&BlockchainEvent>) -> Result<()> {
-        debug!("Processing follow event details");
-        
+        info!("Processing social graph FollowEvent");
         let mut conn = self.get_connection().await?;
         
-        // We always record the event in social_graph_events table, regardless of relationship status
+        // Create a social graph event record for history/auditing
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default();
+        
+        let event_id = blockchain_event.map(|e| e.event_id.clone());
+        
+        let social_graph_event = crate::models::social_graph::NewSocialGraphEvent {
+            event_type: "follow".to_string(),
+            follower_address: event.follower.clone(),
+            following_address: event.following.clone(),
+            created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                .unwrap_or_else(|| chrono::Utc::now())
+                .naive_utc(),
+            event_id,
+            raw_event_data: serde_json::to_value(event).ok(),
+        };
+        
+        // Always insert the event record
+        diesel::insert_into(schema::social_graph_events::table)
+            .values(&social_graph_event)
+            .execute(&mut conn)
+            .await?;
+            
+        // Get profile IDs from addresses (using owner_address field)
+        let follower_profile = match schema::profiles::table
+            .filter(schema::profiles::owner_address.eq(&event.follower))
+            .select((schema::profiles::id, schema::profiles::owner_address))
+            .first::<(i32, String)>(&mut conn)
+            .await {
+            Ok(profile) => profile,
+            Err(e) => {
+                error!("Failed to find follower profile for address {}: {}", event.follower, e);
+                return Ok(()); // Still return Ok since we recorded the event
+            }
+        };
+            
+        let following_profile = match schema::profiles::table
+            .filter(schema::profiles::owner_address.eq(&event.following))
+            .select((schema::profiles::id, schema::profiles::owner_address))
+            .first::<(i32, String)>(&mut conn)
+            .await {
+            Ok(profile) => profile,
+            Err(e) => {
+                error!("Failed to find following profile for address {}: {}", event.following, e);
+                return Ok(()); // Still return Ok since we recorded the event
+            }
+        };
+        
+        // Create relationship using addresses (matching the schema)
+        let relationship = match event.into_relationship() {
+            Ok(rel) => rel,
+            Err(e) => {
+                error!("Failed to create relationship: {}", e);
+                return Ok(());
+            }
+        };
+        
+        // Check if relationship already exists using addresses (matching the schema)
+        let existing = match schema::social_graph_relationships::table
+            .filter(schema::social_graph_relationships::follower_address.eq(&event.follower))
+            .filter(schema::social_graph_relationships::following_address.eq(&event.following))
+            .count()
+            .get_result::<i64>(&mut conn)
+            .await {
+            Ok(count) => count > 0,
+            Err(e) => {
+                error!("Failed to check existing relationship: {}", e);
+                return Ok(());
+            }
+        };
+            
+        if existing {
+            info!("Follow relationship already exists between {} and {}", 
+                event.follower, event.following);
+            return Ok(());
+        }
+            
         // Start a transaction for atomicity
-        conn.build_transaction()
+        let result = conn.build_transaction()
             .run(|mut conn| Box::pin(async move {
-                // Create a social graph event record for history/auditing - we ALWAYS create this
-                // even if the relationship can't be created yet
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default();
-                
-                // Get event_id from blockchain_event if available
-                let event_id = blockchain_event.map(|e| e.event_id.clone());
-                
-                let social_graph_event = crate::models::social_graph::NewSocialGraphEvent {
-                    event_type: "follow".to_string(),
-                    follower_address: event.follower.clone(),
-                    following_address: event.following.clone(),
-                    created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
-                        .unwrap_or_else(|| chrono::Utc::now())
-                        .naive_utc(),
-                    event_id,  // Use the event_id from blockchain
-                    raw_event_data: serde_json::to_value(event).ok(), // Store original event
-                };
-                
-                // Always insert the event record, no matter what happens with the relationship
-                diesel::insert_into(schema::social_graph_events::table)
-                    .values(&social_graph_event)
-                    .execute(&mut conn)
-                    .await?;
-                
-                // Now check if both profiles exist before creating a relationship
-                debug!("Verifying profiles exist by profile_id");
-                let follower_profile_exists = schema::profiles::table
-                    .filter(schema::profiles::profile_id.eq(&event.follower))
-                    .count()
-                    .get_result::<i64>(&mut conn)
-                    .await
-                    .unwrap_or(0) > 0;
-                
-                if !follower_profile_exists {
-                    info!("Follower profile not found: {}", event.follower);
-                    // Still return Ok() since we've recorded the event
-                    return Ok(());
-                }
-                
-                let following_profile_exists = schema::profiles::table
-                    .filter(schema::profiles::profile_id.eq(&event.following))
-                    .count()
-                    .get_result::<i64>(&mut conn)
-                    .await
-                    .unwrap_or(0) > 0;
-                
-                if !following_profile_exists {
-                    info!("Following profile not found: {}", event.following);
-                    // Still return Ok() since we've recorded the event
-                    return Ok(());
-                }
-                
-                // Check if relationship already exists
-                let existing = schema::social_graph_relationships::table
-                    .filter(schema::social_graph_relationships::follower_address.eq(&event.follower))
-                    .filter(schema::social_graph_relationships::following_address.eq(&event.following))
-                    .count()
-                    .get_result::<i64>(&mut conn)
-                    .await?;
-                
-                if existing > 0 {
-                    debug!("Follow relationship already exists - ignoring");
-                    return Ok(());
-                }
-                
-                // Create relationship record
-                let relationship = match event.into_relationship() {
-                    Ok(r) => r,
-                    Err(e) => {
-                        error!("Failed to create relationship: {}", e);
-                        return Err(diesel::result::Error::RollbackTransaction);
-                    }
-                };
-                
-                // First, look up the owner_address for both follower and following profile IDs
-                let follower_owner = schema::profiles::table
-                    .filter(schema::profiles::profile_id.eq(&relationship.follower_address))
-                    .select(schema::profiles::owner_address)
-                    .first::<String>(&mut conn)
-                    .await;
-                
-                let following_owner = schema::profiles::table
-                    .filter(schema::profiles::profile_id.eq(&relationship.following_address))
-                    .select(schema::profiles::owner_address)
-                    .first::<String>(&mut conn)
-                    .await;
-                
-                // Log for debugging at trace level only
-                debug!("Verified profile ID mapping for follow event");
-                
-                // Continue only if we found both owner addresses
-                if let (Ok(_follower_owner), Ok(_following_owner)) = (&follower_owner, &following_owner) {
-                    // Insert relationship - using standard Diesel query DSL to ensure proper escaping
-                    diesel::insert_into(schema::social_graph_relationships::table)
-                        .values(&relationship)
-                        .on_conflict((
-                            schema::social_graph_relationships::follower_address, 
-                            schema::social_graph_relationships::following_address
-                        ))
-                        .do_nothing()
-                        .execute(&mut conn)
-                        .await?;
-                    
-                    // Force recalculate the counts for the affected profiles based on actual relationships
-                    diesel::sql_query(
-                        "UPDATE profiles 
-                         SET following_count = (
-                             SELECT COUNT(*) FROM social_graph_relationships 
-                             WHERE follower_address = $1
-                         )
-                         WHERE profile_id = $1"
-                    )
-                    .bind::<diesel::sql_types::Text, _>(&relationship.follower_address)
+                // Insert relationship
+                diesel::insert_into(schema::social_graph_relationships::table)
+                    .values(&relationship)
                     .execute(&mut conn)
                     .await?;
                     
-                    diesel::sql_query(
-                        "UPDATE profiles 
-                         SET followers_count = (
-                             SELECT COUNT(*) FROM social_graph_relationships 
-                             WHERE following_address = $1
-                         )
-                         WHERE profile_id = $1"
-                    )
-                    .bind::<diesel::sql_types::Text, _>(&relationship.following_address)
-                    .execute(&mut conn)
-                    .await?;
-                } else {
-                    debug!("One or both profiles not found in the database, skipping relationship");
-                }
+                // Update follower's following count (increment)
+                diesel::sql_query(format!(
+                    "UPDATE profiles SET following_count = following_count + 1 WHERE id = {}", 
+                    follower_profile.0
+                ))
+                .execute(&mut conn)
+                .await?;
                 
-                // Log success message with simpler format
-                debug!("Successfully updated follow relationship and counts.");
+                // Update followed's followers count (increment)
+                diesel::sql_query(format!(
+                    "UPDATE profiles SET followers_count = followers_count + 1 WHERE id = {}", 
+                    following_profile.0
+                ))
+                .execute(&mut conn)
+                .await?;
                 
                 Result::<_, diesel::result::Error>::Ok(())
             }))
-            .await?;
+            .await;
             
-        info!("Successfully processed follow event");
+        if let Err(e) = result {
+            error!("Failed to process follow event transaction: {}", e);
+            return Err(anyhow::anyhow!("Transaction failed: {}", e));
+        } else {
+            info!("Processed follow event: {} is now following {}", 
+                event.follower, event.following);
+        }
             
         Ok(())
     }
     
     /// Process an unfollow event - removes relationship and updates follow counts
     async fn process_unfollow_event(&self, event: &UnfollowEvent, blockchain_event: Option<&BlockchainEvent>) -> Result<()> {
-        debug!("Processing unfollow event details");
-        
+        info!("Processing social graph UnfollowEvent");
         let mut conn = self.get_connection().await?;
         
-        // We always record the event in social_graph_events table, regardless of relationship status
+        // Create a social graph event record for history/auditing
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default();
+        
+        let event_id = blockchain_event.map(|e| e.event_id.clone());
+        
+        let social_graph_event = crate::models::social_graph::NewSocialGraphEvent {
+            event_type: "unfollow".to_string(),
+            follower_address: event.follower.clone(),
+            following_address: event.unfollowed.clone(),
+            created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                .unwrap_or_else(|| chrono::Utc::now())
+                .naive_utc(),
+            event_id,
+            raw_event_data: serde_json::to_value(event).ok(),
+        };
+        
+        // Always insert the event record
+        diesel::insert_into(schema::social_graph_events::table)
+            .values(&social_graph_event)
+            .execute(&mut conn)
+            .await?;
+            
+        // Get profile IDs from addresses (using owner_address field)
+        let follower_profile = match schema::profiles::table
+            .filter(schema::profiles::owner_address.eq(&event.follower))
+            .select((schema::profiles::id, schema::profiles::owner_address))
+            .first::<(i32, String)>(&mut conn)
+            .await {
+            Ok(profile) => profile,
+            Err(e) => {
+                error!("Failed to find follower profile for address {}: {}", event.follower, e);
+                return Ok(()); // Still return Ok since we recorded the event
+            }
+        };
+            
+        let unfollowed_profile = match schema::profiles::table
+            .filter(schema::profiles::owner_address.eq(&event.unfollowed))
+            .select((schema::profiles::id, schema::profiles::owner_address))
+            .first::<(i32, String)>(&mut conn)
+            .await {
+            Ok(profile) => profile,
+            Err(e) => {
+                error!("Failed to find unfollowed profile for address {}: {}", event.unfollowed, e);
+                return Ok(()); // Still return Ok since we recorded the event
+            }
+        };
+        
+        // Check if relationship exists (using addresses since that's what the schema uses)
+        let relationship_exists = match schema::social_graph_relationships::table
+            .filter(schema::social_graph_relationships::follower_address.eq(&event.follower))
+            .filter(schema::social_graph_relationships::following_address.eq(&event.unfollowed))
+            .count()
+            .get_result::<i64>(&mut conn)
+            .await {
+            Ok(count) => count > 0,
+            Err(e) => {
+                error!("Failed to check existing relationship: {}", e);
+                return Ok(());
+            }
+        };
+        
+        if !relationship_exists {
+            info!("Follow relationship does not exist between {} and {}", 
+                event.follower, event.unfollowed);
+            return Ok(());
+        }
+            
         // Start a transaction for atomicity
-        conn.build_transaction()
+        let result = conn.build_transaction()
             .run(|mut conn| Box::pin(async move {
-                // Create a social graph event record for history/auditing - we ALWAYS create this
-                // even if there's no relationship to delete
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default();
-                
-                // Get event_id from blockchain_event if available
-                let event_id = blockchain_event.map(|e| e.event_id.clone());
-                
-                let social_graph_event = crate::models::social_graph::NewSocialGraphEvent {
-                    event_type: "unfollow".to_string(),
-                    follower_address: event.follower.clone(),
-                    following_address: event.unfollowed.clone(),
-                    created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
-                        .unwrap_or_else(|| chrono::Utc::now())
-                        .naive_utc(),
-                    event_id,  // Use the event_id from blockchain
-                    raw_event_data: serde_json::to_value(event).ok(),
-                };
-                
-                // Always insert the event record, no matter what
-                diesel::insert_into(schema::social_graph_events::table)
-                    .values(&social_graph_event)
-                    .execute(&mut conn)
-                    .await?;
-                
-                // Check if relationship exists
-                let relationship = schema::social_graph_relationships::table
+                // Delete the relationship using addresses
+                diesel::delete(schema::social_graph_relationships::table
                     .filter(schema::social_graph_relationships::follower_address.eq(&event.follower))
-                    .filter(schema::social_graph_relationships::following_address.eq(&event.unfollowed))
-                    .select(schema::social_graph_relationships::id)
-                    .first::<i32>(&mut conn)
-                    .await;
-                
-                // If the relationship doesn't exist, still return Ok since we've recorded the event
-                if let Err(diesel::result::Error::NotFound) = relationship {
-                    debug!("Follow relationship does not exist for unfollow - ignoring");
-                    return Ok(());
-                }
-                
-                let relationship_id = relationship?;
-                
-                // Store follower and following addresses for counter updates
-                let (follower_address, following_address) = {
-                    let rel = schema::social_graph_relationships::table
-                        .filter(schema::social_graph_relationships::id.eq(relationship_id))
-                        .select((
-                            schema::social_graph_relationships::follower_address, 
-                            schema::social_graph_relationships::following_address
-                        ))
-                        .first::<(String, String)>(&mut conn)
-                        .await?;
-                    (rel.0, rel.1)
-                };
-                
-                // First, look up the owner_address for both follower and following profile IDs
-                let follower_owner = schema::profiles::table
-                    .filter(schema::profiles::profile_id.eq(&follower_address))
-                    .select(schema::profiles::owner_address)
-                    .first::<String>(&mut conn)
-                    .await;
-                
-                let following_owner = schema::profiles::table
-                    .filter(schema::profiles::profile_id.eq(&following_address))
-                    .select(schema::profiles::owner_address)
-                    .first::<String>(&mut conn)
-                    .await;
-                
-                // Log for debugging at trace level only
-                debug!("Verified profile ID mapping for unfollow event");
-                
-                // Continue only if we found both owner addresses
-                if let (Ok(_follower_owner), Ok(_following_owner)) = (&follower_owner, &following_owner) {
-                    // Delete the relationship using proper Diesel delete with DSL
-                    let deleted = diesel::delete(
-                        schema::social_graph_relationships::table
-                            .filter(schema::social_graph_relationships::follower_address.eq(&follower_address))
-                            .filter(schema::social_graph_relationships::following_address.eq(&following_address))
-                    )
+                    .filter(schema::social_graph_relationships::following_address.eq(&event.unfollowed)))
                     .execute(&mut conn)
                     .await?;
                     
-                    debug!("Deleted relationship, rows affected: {}", deleted);
-                    
-                    // Force recalculate the counts for the affected profiles based on actual relationships
-                    diesel::sql_query(
-                        "UPDATE profiles 
-                         SET following_count = (
-                             SELECT COUNT(*) FROM social_graph_relationships 
-                             WHERE follower_address = $1
-                         )
-                         WHERE profile_id = $1"
-                    )
-                    .bind::<diesel::sql_types::Text, _>(&follower_address)
-                    .execute(&mut conn)
-                    .await?;
-                    
-                    diesel::sql_query(
-                        "UPDATE profiles 
-                         SET followers_count = (
-                             SELECT COUNT(*) FROM social_graph_relationships 
-                             WHERE following_address = $1
-                         )
-                         WHERE profile_id = $1"
-                    )
-                    .bind::<diesel::sql_types::Text, _>(&following_address)
-                    .execute(&mut conn)
-                    .await?;
-                } else {
-                    debug!("One or both profiles not found in the database, skipping unfollow");
-                }
+                // Update follower's following count (decrement with safety)
+                diesel::sql_query(format!(
+                    "UPDATE profiles SET following_count = GREATEST(0, following_count - 1) WHERE id = {}", 
+                    follower_profile.0
+                ))
+                .execute(&mut conn)
+                .await?;
                 
-                // Log success message with simpler format
-                debug!("Successfully updated unfollow relationship and counts.");
+                // Update unfollowed's followers count (decrement with safety)
+                diesel::sql_query(format!(
+                    "UPDATE profiles SET followers_count = GREATEST(0, followers_count - 1) WHERE id = {}", 
+                    unfollowed_profile.0
+                ))
+                .execute(&mut conn)
+                .await?;
                 
                 Result::<_, diesel::result::Error>::Ok(())
             }))
-            .await?;
+            .await;
             
-        info!("Successfully processed unfollow event");
+        if let Err(e) = result {
+            error!("Failed to process unfollow event transaction: {}", e);
+            return Err(anyhow::anyhow!("Transaction failed: {}", e));
+        } else {
+            info!("Processed unfollow event: {} unfollowed {}", 
+                event.follower, event.unfollowed);
+        }
             
         Ok(())
     }

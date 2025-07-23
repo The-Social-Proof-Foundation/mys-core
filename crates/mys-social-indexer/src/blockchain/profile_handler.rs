@@ -46,37 +46,14 @@ impl ProfileEventListener {
             .map_err(|e| anyhow!("Failed to get database connection: {}", e))
     }
 
-    /// Update worker progress with timestamp
-    async fn update_progress(&self, timestamp: u64) -> Result<()> {
+    /// Update worker progress
+    async fn update_progress(&self) -> Result<()> {
         let mut conn = self.get_connection().await?;
         let now = Utc::now().naive_utc();
         
-        // Check if the table exists, and if not, create it
-        let table_exists: bool = diesel::dsl::select(
-            diesel::dsl::sql::<diesel::sql_types::Bool>(
-                "EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'indexer_progress')"
-            )
-        )
-        .get_result(&mut conn)
-        .await
-        .unwrap_or(false);
-        
-        if !table_exists {
-            info!("Creating indexer_progress table...");
-            diesel::sql_query(
-                "CREATE TABLE IF NOT EXISTS indexer_progress (
-                    id VARCHAR PRIMARY KEY,
-                    last_checkpoint_processed BIGINT NOT NULL DEFAULT 0,
-                    last_processed_at TIMESTAMP NOT NULL DEFAULT NOW()
-                )"
-            )
-            .execute(&mut conn)
-            .await?;
-        }
-        
         let progress = NewIndexerProgress {
             id: self.worker_name.clone(),
-            last_checkpoint_processed: timestamp as i64,
+            last_checkpoint_processed: 0, // Not tracking specific checkpoints in event-driven system
             last_processed_at: now,
         };
         
@@ -319,7 +296,7 @@ impl ProfileEventListener {
                 }
                 
                 // Update progress after processing the event
-                if let Err(e) = self.update_progress(event.timestamp_ms).await {
+                if let Err(e) = self.update_progress().await {
                     error!("Failed to update progress: {}", e);
                 }
             }
@@ -331,7 +308,7 @@ impl ProfileEventListener {
                 }
                 
                 // Update progress after processing the event
-                if let Err(e) = self.update_progress(event.timestamp_ms).await {
+                if let Err(e) = self.update_progress().await {
                     error!("Failed to update progress: {}", e);
                 }
             }
@@ -343,7 +320,7 @@ impl ProfileEventListener {
                 }
                 
                 // Update progress after processing the event
-                if let Err(e) = self.update_progress(event.timestamp_ms).await {
+                if let Err(e) = self.update_progress().await {
                     error!("Failed to update progress: {}", e);
                 }
             }
@@ -359,7 +336,7 @@ impl ProfileEventListener {
                 }
                 
                 // Update progress after processing the event
-                if let Err(e) = self.update_progress(event.timestamp_ms).await {
+                if let Err(e) = self.update_progress().await {
                     error!("Failed to update progress: {}", e);
                 }
             }
@@ -375,7 +352,7 @@ impl ProfileEventListener {
                 }
                 
                 // Update progress after processing the event
-                if let Err(e) = self.update_progress(event.timestamp_ms).await {
+                if let Err(e) = self.update_progress().await {
                     error!("Failed to update progress: {}", e);
                 }
             }
@@ -390,7 +367,7 @@ impl ProfileEventListener {
                 }
                 
                 // Update progress after processing the event
-                if let Err(e) = self.update_progress(event.timestamp_ms).await {
+                if let Err(e) = self.update_progress().await {
                     error!("Failed to update progress: {}", e);
                 }
             }

@@ -168,6 +168,15 @@ impl BlockchainEventListener {
                             .as_millis() as u64
                     });
                     
+                    // CRITICAL: Enhanced social graph event detection
+                    let event_type_str = event.type_.to_string();
+                    if event_type_str.contains("FollowEvent") || 
+                       event_type_str.contains("UnfollowEvent") ||
+                       event_type_str.contains("social_graph") {
+                        tracing::error!("🚨 SOCIAL GRAPH EVENT DETECTED: {}", event_type_str);
+                        tracing::error!("🚨 FULL EVENT DATA: {}", serde_json::to_string_pretty(&event).unwrap_or_default());
+                    }
+                    
                     // Log the raw event for debugging
                     tracing::debug!("Raw blockchain event: {:?}", event);
                     
@@ -317,6 +326,15 @@ impl BlockchainEventListener {
                         
                         // Update the last seen timestamp
                         last_seen_timestamp = timestamp_ms;
+                        
+                        // CRITICAL: Enhanced social graph event detection
+                        let event_type_str = event.type_.to_string();
+                        if event_type_str.contains("FollowEvent") || 
+                           event_type_str.contains("UnfollowEvent") ||
+                           event_type_str.contains("social_graph") {
+                            tracing::error!("🚨 POLLING: SOCIAL GRAPH EVENT DETECTED: {}", event_type_str);
+                            tracing::error!("🚨 POLLING: FULL EVENT DATA: {}", serde_json::to_string_pretty(&event).unwrap_or_default());
+                        }
                         
                         // Log the raw event for debugging
                         tracing::debug!("Raw blockchain event: {:?}", event);
