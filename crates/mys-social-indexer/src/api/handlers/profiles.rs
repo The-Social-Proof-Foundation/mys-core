@@ -9,7 +9,7 @@ use axum::{
 };
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::db::DbPool;
 use crate::models::Profile;
@@ -168,4 +168,174 @@ pub async fn get_profile_by_username(
             }))
         )
     }
+}
+
+/// Response structure for username availability check
+#[derive(Debug, Serialize)]
+pub struct UsernameAvailabilityResponse {
+    pub username: String,
+    pub available: bool,
+    pub reason: Option<String>,
+}
+
+/// Check if a username is available for registration
+/// 
+/// This endpoint validates the username format and checks database availability.
+/// Returns detailed information about username availability and validation.
+pub async fn check_username_availability(
+    State(db_pool): State<DbPool>,
+    Path(username): Path<String>,
+) -> impl IntoResponse {
+    // Validate username format first (before hitting database)
+    if let Some(validation_error) = validate_username(&username) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(UsernameAvailabilityResponse {
+                username: username.clone(),
+                available: false,
+                reason: Some(validation_error),
+            })
+        );
+    }
+
+    let mut conn = match db_pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(UsernameAvailabilityResponse {
+                    username: username.clone(),
+                    available: false,
+                    reason: Some(format!("Database connection error: {}", e)),
+                })
+            )
+        }
+    };
+
+    // Check if username exists in database (case-insensitive)
+    let username_exists = match profiles::table
+        .filter(profiles::username.eq(&username))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+    {
+        Ok(count) => count > 0,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(UsernameAvailabilityResponse {
+                    username: username.clone(),
+                    available: false,
+                    reason: Some(format!("Database query error: {}", e)),
+                })
+            )
+        }
+    };
+
+    let available = !username_exists;
+    let reason = if username_exists {
+        Some("Username is already taken".to_string())
+    } else {
+        None
+    };
+
+    (
+        StatusCode::OK,
+        Json(UsernameAvailabilityResponse {
+            username,
+            available,
+            reason,
+        })
+    )
+}
+
+/// Validate username format according to MySocial rules
+/// 
+/// Returns None if valid, Some(error_message) if invalid
+fn validate_username(username: &str) -> Option<String> {
+    // Check if username is empty
+    if username.is_empty() {
+        return Some("Username cannot be empty".to_string());
+    }
+    
+    // Check length constraints (3-30 characters)
+    if username.len() < 3 {
+        return Some("Username must be at least 3 characters long".to_string());
+    }
+    
+    if username.len() > 30 {
+        return Some("Username cannot be longer than 30 characters".to_string());
+    }
+    
+    // Check if username starts or ends with underscore or hyphen
+    if username.starts_with('_') || username.starts_with('-') {
+        return Some("Username cannot start with underscore or hyphen".to_string());
+    }
+    
+    if username.ends_with('_') || username.ends_with('-') {
+        return Some("Username cannot end with underscore or hyphen".to_string());
+    }
+    
+    // Check for valid characters (alphanumeric, underscore, hyphen)
+    if !username.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+        return Some("Username can only contain letters, numbers, underscores, and hyphens".to_string());
+    }
+    
+    // Check for consecutive special characters
+    if username.contains("__") || username.contains("--") || username.contains("_-") || username.contains("-_") {
+        return Some("Username cannot contain consecutive special characters".to_string());
+    }
+    
+    // Check for reserved words (case-insensitive)
+    let reserved_words = [
+        "admin", "administrator", "api", "app", "auth", "bot", "cache", "config", 
+        "dev", "developer", "help", "info", "mail", "mysocial", "null", "official",
+        "root", "staff", "support", "system", "test", "user", "www", "about",
+        "account", "accounts", "activate", "add", "admin", "administrator", "all",
+        "alpha", "analysis", "api", "app", "apps", "archive", "auth", "beta",
+        "billing", "blog", "blogs", "board", "bookmark", "bot", "buy", "cache",
+        "calendar", "campaign", "cancel", "career", "careers", "cart", "catalog",
+        "categories", "category", "cgi", "chat", "check", "client", "clients",
+        "code", "commercial", "connect", "contact", "contest", "create", "delete",
+        "demo", "design", "dev", "devel", "developer", "developers", "dir",
+        "directory", "doc", "docs", "download", "downloads", "edit", "editor",
+        "email", "event", "events", "example", "explore", "faq", "favorite",
+        "feed", "feeds", "file", "files", "follow", "forgot", "form", "forum",
+        "forums", "ftp", "get", "gift", "gifts", "gist", "github", "guest",
+        "guests", "help", "home", "hosting", "hostname", "icon", "icons", "id",
+        "image", "images", "img", "index", "info", "insert", "invite", "iphone",
+        "irc", "is", "issue", "issues", "it", "job", "jobs", "join", "js",
+        "json", "key", "keys", "learn", "legal", "license", "list", "lists",
+        "log", "login", "logout", "logs", "mail", "manager", "marketing", "master",
+        "me", "media", "member", "members", "memory", "message", "messages",
+        "mine", "mobile", "msg", "mysql", "name", "named", "net", "network",
+        "new", "news", "newsletter", "no", "node", "null", "oauth", "oauth2",
+        "official", "old", "online", "order", "orders", "overview", "owner",
+        "page", "pages", "panel", "password", "payment", "payments", "photo",
+        "photos", "pic", "pics", "plan", "plans", "plugin", "plugins", "policy",
+        "popular", "post", "postfix", "posts", "preview", "pricing", "privacy",
+        "private", "profile", "profiles", "project", "projects", "public",
+        "purchase", "put", "query", "random", "register", "registration", "remove",
+        "report", "reports", "repository", "reset", "root", "rss", "sale",
+        "sales", "sample", "samples", "save", "search", "secure", "security",
+        "select", "self", "sell", "server", "servers", "service", "services",
+        "session", "sessions", "setting", "settings", "setup", "share", "shop",
+        "shopping", "show", "sign", "signin", "signout", "signup", "site",
+        "sitemap", "sites", "smtp", "sql", "ssh", "ssl", "stage", "staging",
+        "stat", "static", "stats", "status", "store", "stores", "subdomain",
+        "subscribe", "sudo", "super", "support", "survey", "sync", "system",
+        "tag", "tags", "team", "teams", "temp", "term", "terms", "test",
+        "testing", "tests", "theme", "themes", "tmp", "today", "tool", "tools",
+        "top", "topic", "topics", "tos", "tour", "training", "trial", "true",
+        "tutorial", "tutorials", "tv", "twitter", "undef", "unsubscribe",
+        "update", "upload", "uploads", "url", "usage", "user", "username",
+        "users", "validation", "video", "videos", "view", "views", "web",
+        "webhook", "wiki", "word", "work", "works", "www", "xml", "year"
+    ];
+    
+    if reserved_words.contains(&username.to_lowercase().as_str()) {
+        return Some("Username is reserved and cannot be used".to_string());
+    }
+    
+    None
 }

@@ -201,6 +201,7 @@ GET /search?query=social&page=2&limit=50
 - **GET /profiles** - List profiles
 - **GET /profiles/address/:address** - Get profile by blockchain address
 - **GET /profiles/username/:username** - Get profile by username
+- **GET /profiles/username/:username/availability** - Check if a username is available for registration
 - **GET /profiles/:id/posts** - Get posts by a profile
 - **GET /profiles/:id/events** - Get profile events
 - **GET /profiles/:id/platforms** - Get platform memberships

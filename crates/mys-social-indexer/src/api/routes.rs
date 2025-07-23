@@ -32,6 +32,7 @@ use crate::api::handlers::profiles::{
     latest_profiles,
     get_profile_by_address,
     get_profile_by_username,
+    check_username_availability,
 };
 use crate::api::handlers::profile_events::{
     get_profile_events,
@@ -159,6 +160,7 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/profiles", get(latest_profiles))
         .route("/profiles/address/:address", get(get_profile_by_address))
         .route("/profiles/username/:username", get(get_profile_by_username))
+        .route("/profiles/username/:username/availability", get(check_username_availability))
         .route("/profiles/:id/posts", get(get_profile_posts))
         .route("/profiles/:id/events", get(get_profile_events))
         .route("/profiles/:id/platforms", get(get_platform_memberships))
