@@ -98,6 +98,39 @@ impl BlockchainEventListener {
         // This will help us identify if events are being received at all
         tracing::info!("🔍 GLOBAL EVENT TRACKER: Received event type: {}", event.event_type);
         
+        // CRITICAL: Package address debugging - extract package address from event type
+        let event_parts: Vec<&str> = event.event_type.split("::").collect();
+        if event_parts.len() >= 3 {
+            let package_addr = event_parts[0];
+            let module_name = event_parts[1];
+            let event_name = event_parts[2];
+            
+            tracing::info!("🔍 EVENT BREAKDOWN: Package={}, Module={}, Event={}", package_addr, module_name, event_name);
+            
+            // Log our configured package address vs actual
+            let configured_addr = crate::get_mysocial_package_address();
+            tracing::info!("🔍 CONFIGURED PACKAGE: {}", configured_addr);
+            tracing::info!("🔍 ACTUAL PACKAGE: {}", package_addr);
+            
+            // Check for social graph events specifically
+            if module_name == "social_graph" || event_name.contains("Follow") {
+                tracing::error!("🚨🚨🚨 SOCIAL GRAPH EVENT FOUND: {}", event.event_type);
+                tracing::error!("🚨 Package: {}", package_addr);
+                tracing::error!("🚨 Module: {}", module_name);
+                tracing::error!("🚨 Event: {}", event_name);
+                tracing::error!("🚨 Full Data: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
+                
+                // Check if package matches our configured address
+                if package_addr == configured_addr {
+                    tracing::error!("✅ Package address MATCHES configured address");
+                } else {
+                    tracing::error!("❌ Package address DOES NOT MATCH configured address!");
+                    tracing::error!("❌ Expected: {}", configured_addr);
+                    tracing::error!("❌ Actual: {}", package_addr);
+                }
+            }
+        }
+        
         // CRITICAL: Enhanced social graph event detection with case-insensitive matching
         let event_type_lower = event.event_type.to_lowercase();
         if event_type_lower.contains("follow") || event_type_lower.contains("unfollow") {

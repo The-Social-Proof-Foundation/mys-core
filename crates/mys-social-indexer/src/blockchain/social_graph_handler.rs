@@ -279,46 +279,77 @@ impl SocialGraphEventHandler {
     
     /// Process raw blockchain events
     async fn process_event(&self, event: BlockchainEvent) -> Result<()> {
-        debug!("Social graph handler examining event: {}", event.event_type);
-        debug!("Event ID: {}", event.event_id);
+        info!("🚨 SOCIAL GRAPH: Examining event: {}", event.event_type);
+        info!("🚨 SOCIAL GRAPH: Event ID: {}", event.event_id);
         
-        // Log the full event data at trace level only
-        trace!("Event data: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
+        // TEMPORARY DEBUG: Log ALL events to see what we're receiving
+        info!("🔍 SOCIAL GRAPH DEBUG: ALL EVENTS - Type: {}", event.event_type);
+        if event.event_type.to_lowercase().contains("follow") || 
+           event.event_type.to_lowercase().contains("social") ||
+           event.event_type.to_lowercase().contains("graph") {
+            info!("🔍 SOCIAL GRAPH DEBUG: POTENTIAL MATCH - Type: {}", event.event_type);
+            info!("🔍 SOCIAL GRAPH DEBUG: POTENTIAL MATCH - Data: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
+        }
         
-        if event.event_type.contains("::social_graph::") || 
-           event.event_type.contains("::FollowEvent") || 
-           event.event_type.contains("::UnfollowEvent") {
-            info!("Processing social graph event: {}", event.event_type);
+        // TEMPORARY: More permissive filtering - catch social graph events from ANY package
+        let event_parts: Vec<&str> = event.event_type.split("::").collect();
+        let is_social_graph_event = if event_parts.len() >= 3 {
+            let module_name = event_parts[1];
+            let event_name = event_parts[2];
             
-            if event.event_type.ends_with("::FollowEvent") {
+            // Accept if module is social_graph OR event name contains Follow
+            module_name == "social_graph" || 
+            event_name.contains("Follow") ||
+            event_name == "FollowEvent" ||
+            event_name == "UnfollowEvent"
+        } else {
+            // Fallback to original filtering
+            event.event_type.contains("::social_graph::") || 
+            event.event_type.contains("::FollowEvent") || 
+            event.event_type.contains("::UnfollowEvent") ||
+            event.event_type.ends_with("FollowEvent") ||
+            event.event_type.ends_with("UnfollowEvent") ||
+            event.event_type.to_lowercase().contains("follow")
+        };
+        
+        if is_social_graph_event {
+            info!("🚨 SOCIAL GRAPH: Processing social graph event: {}", event.event_type);
+            info!("🚨 SOCIAL GRAPH: Full event data: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
+            
+            if event.event_type.ends_with("::FollowEvent") || event.event_type.ends_with("FollowEvent") {
+                info!("🚨 SOCIAL GRAPH: Attempting to parse FollowEvent");
                 match crate::events::event_utils::parse_json_event_with_fields::<FollowEvent>(&event.data) {
                     Ok(follow_event) => {
-                        info!("Processing follow: {} -> {}", &follow_event.follower, &follow_event.following);
+                        info!("🚨 SOCIAL GRAPH: Successfully parsed FollowEvent: {} -> {}", &follow_event.follower, &follow_event.following);
                         if let Err(e) = self.process_follow_event(&follow_event, Some(&event)).await {
                             error!("Failed to process follow event: {}", e);
                         }
                     },
                     Err(e) => {
-                        error!("Failed to parse follow event: {}", e);
-                        // Log the exact event data for debugging
+                        error!("🚨 SOCIAL GRAPH: Failed to parse follow event: {}", e);
                         error!("Event data that failed to parse: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
                     }
                 }
-            } else if event.event_type.ends_with("::UnfollowEvent") {
+            } else if event.event_type.ends_with("::UnfollowEvent") || event.event_type.ends_with("UnfollowEvent") {
+                info!("🚨 SOCIAL GRAPH: Attempting to parse UnfollowEvent");
                 match crate::events::event_utils::parse_json_event_with_fields::<UnfollowEvent>(&event.data) {
                     Ok(unfollow_event) => {
-                        info!("Processing unfollow: {} -> {}", &unfollow_event.follower, &unfollow_event.unfollowed);
+                        info!("🚨 SOCIAL GRAPH: Successfully parsed UnfollowEvent: {} -> {}", &unfollow_event.follower, &unfollow_event.unfollowed);
                         if let Err(e) = self.process_unfollow_event(&unfollow_event, Some(&event)).await {
                             error!("Failed to process unfollow event: {}", e);
                         }
                     },
                     Err(e) => {
-                        error!("Failed to parse unfollow event: {}", e);
-                        // Log the exact event data for debugging
+                        error!("🚨 SOCIAL GRAPH: Failed to parse unfollow event: {}", e);
                         error!("Event data that failed to parse: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
                     }
                 }
+            } else {
+                info!("🚨 SOCIAL GRAPH: Social graph event type not specifically handled: {}", event.event_type);
             }
+        } else {
+            // Log that we're skipping non-social-graph events (but only at debug level to avoid spam)
+            debug!("Social graph handler skipping non-social-graph event: {}", event.event_type);
         }
         
         Ok(())
@@ -329,7 +360,9 @@ impl SocialGraphEventHandler {
         info!("Starting social graph event handler");
         
         while let Some(event) = self.rx.recv().await {
-            debug!("Received event: {:?}", event);
+            info!("🚨 SOCIAL GRAPH HANDLER: Received event: {}", event.event_type);
+            info!("🚨 SOCIAL GRAPH HANDLER: Event ID: {}", event.event_id);
+            info!("🚨 SOCIAL GRAPH HANDLER: Event data: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
             
             if let Err(e) = self.process_event(event).await {
                 error!("Error processing event: {}", e);
