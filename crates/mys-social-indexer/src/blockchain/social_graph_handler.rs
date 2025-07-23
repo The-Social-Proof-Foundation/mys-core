@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn, trace};
 
 use crate::db::{Database, DbConnection};
-use crate::events::{FollowEvent, UnfollowEvent, parse_event, event_utils::parse_json_event};
+use crate::events::{FollowEvent, UnfollowEvent, parse_event};
 use crate::schema;
 use mys_types::event::Event as MysEvent;
 
@@ -291,7 +291,7 @@ impl SocialGraphEventHandler {
             info!("Processing social graph event: {}", event.event_type);
             
             if event.event_type.ends_with("::FollowEvent") {
-                match parse_json_event::<FollowEvent>(&event.data) {
+                match crate::events::event_utils::parse_json_event_with_fields::<FollowEvent>(&event.data) {
                     Ok(follow_event) => {
                         info!("Processing follow: {} -> {}", &follow_event.follower, &follow_event.following);
                         if let Err(e) = self.process_follow_event(&follow_event, Some(&event)).await {
@@ -300,10 +300,12 @@ impl SocialGraphEventHandler {
                     },
                     Err(e) => {
                         error!("Failed to parse follow event: {}", e);
+                        // Log the exact event data for debugging
+                        error!("Event data that failed to parse: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
                     }
                 }
             } else if event.event_type.ends_with("::UnfollowEvent") {
-                match parse_json_event::<UnfollowEvent>(&event.data) {
+                match crate::events::event_utils::parse_json_event_with_fields::<UnfollowEvent>(&event.data) {
                     Ok(unfollow_event) => {
                         info!("Processing unfollow: {} -> {}", &unfollow_event.follower, &unfollow_event.unfollowed);
                         if let Err(e) = self.process_unfollow_event(&unfollow_event, Some(&event)).await {
@@ -312,6 +314,8 @@ impl SocialGraphEventHandler {
                     },
                     Err(e) => {
                         error!("Failed to parse unfollow event: {}", e);
+                        // Log the exact event data for debugging
+                        error!("Event data that failed to parse: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
                     }
                 }
             }

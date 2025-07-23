@@ -1098,11 +1098,15 @@ impl Worker for SocialIndexerWorker {
                     
                     // Social Graph events from social_graph module
                     t if t.starts_with(MODULE_PREFIX_SOCIAL_GRAPH) && t.ends_with("FollowEvent") => {
-                        debug!("FollowEvent detected - handled by SocialGraphEventHandler");
+                        info!("🚨 WORKER: FollowEvent detected - should be handled by SocialGraphEventHandler");
+                        info!("🚨 WORKER: Event type: {}", type_str);
+                        info!("🚨 WORKER: Raw event data: {}", serde_json::to_string_pretty(event).unwrap_or_default());
                     },
                     
                     t if t.starts_with(MODULE_PREFIX_SOCIAL_GRAPH) && t.ends_with("UnfollowEvent") => {
-                        debug!("UnfollowEvent detected - handled by SocialGraphEventHandler");
+                        info!("🚨 WORKER: UnfollowEvent detected - should be handled by SocialGraphEventHandler");
+                        info!("🚨 WORKER: Event type: {}", type_str);
+                        info!("🚨 WORKER: Raw event data: {}", serde_json::to_string_pretty(event).unwrap_or_default());
                     },
                     
                     // Platform events

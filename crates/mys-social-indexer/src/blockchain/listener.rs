@@ -98,6 +98,24 @@ impl BlockchainEventListener {
         // This will help us identify if events are being received at all
         tracing::info!("🔍 GLOBAL EVENT TRACKER: Received event type: {}", event.event_type);
         
+        // CRITICAL: Enhanced social graph event detection with case-insensitive matching
+        let event_type_lower = event.event_type.to_lowercase();
+        if event_type_lower.contains("follow") || event_type_lower.contains("unfollow") {
+            tracing::error!("🚨🚨🚨 FOLLOW/UNFOLLOW EVENT DETECTED: {}", event.event_type);
+            tracing::error!("🚨 EVENT DATA: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
+            tracing::error!("🚨 FULL EVENT: tx_digest={}, event_id={}, timestamp={}", 
+                event.tx_digest, event.event_id, event.timestamp_ms);
+        }
+        
+        // Enhanced social graph event detection
+        if event.event_type.contains("FollowEvent") || 
+           event.event_type.contains("UnfollowEvent") ||
+           event.event_type.contains("social_graph") ||
+           event.event_type.contains("SocialGraph") {
+            tracing::error!("🚨 SOCIAL GRAPH EVENT DETECTED: {}", event.event_type);
+            tracing::error!("🚨 FULL EVENT DATA: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
+        }
+        
         // Specifically log any event that might be related to blocking
         if event.event_type.contains("block_list") || 
            event.event_type.contains("BlockProfile") || 
@@ -117,6 +135,27 @@ impl BlockchainEventListener {
                 }
             }
         }
+        
+        // Log ALL events that could possibly be social graph related
+        if event.event_type.contains("::profile::") || 
+           event.event_type.contains("::social_graph::") ||
+           event.event_type.contains("::social::") ||
+           event.event_type.contains("Follow") ||
+           event.event_type.contains("follow") ||
+           event.event_type.contains("Unfollow") ||
+           event.event_type.contains("unfollow") ||
+           event.event_type.contains("::platform::") ||
+           event.event_type.contains("::Platform") ||
+           event.event_type.contains("::block_list::") ||
+           event.event_type.contains("BlockProfileEvent") {
+            tracing::info!("🔍 POTENTIAL SOCIAL EVENT DETECTED - Event type: {}", event.event_type);
+            tracing::info!("🔍 Event structure analysis - Top level data: {}", 
+                serde_json::to_string_pretty(&event.data).unwrap_or_default());
+        }
+        
+        // Log ALL events to help debug what's actually coming through
+        tracing::debug!("📋 ALL EVENTS: type='{}', tx_digest='{}', event_id='{}'", 
+            event.event_type, event.tx_digest, event.event_id);
         
         let senders = self.event_senders.lock().await;
         for sender in senders.iter() {
