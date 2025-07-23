@@ -259,11 +259,11 @@ fn validate_username(username: &str) -> Option<String> {
     }
     
     // Check length constraints (3-30 characters)
-    if username.len() < 3 {
+    if username.len() < 2 {
         return Some("Username must be at least 3 characters long".to_string());
     }
     
-    if username.len() > 30 {
+    if username.len() > 50 {
         return Some("Username cannot be longer than 30 characters".to_string());
     }
     
@@ -286,51 +286,12 @@ fn validate_username(username: &str) -> Option<String> {
         return Some("Username cannot contain consecutive special characters".to_string());
     }
     
-    // Check for reserved words (case-insensitive)
+    // Check for reserved words (case-insensitive) - matches profile.move RESERVED_NAMES
     let reserved_words = [
-        "admin", "administrator", "api", "app", "auth", "bot", "cache", "config", 
-        "dev", "developer", "help", "info", "mail", "mysocial", "null", "official",
-        "root", "staff", "support", "system", "test", "user", "www", "about",
-        "account", "accounts", "activate", "add", "admin", "administrator", "all",
-        "alpha", "analysis", "api", "app", "apps", "archive", "auth", "beta",
-        "billing", "blog", "blogs", "board", "bookmark", "bot", "buy", "cache",
-        "calendar", "campaign", "cancel", "career", "careers", "cart", "catalog",
-        "categories", "category", "cgi", "chat", "check", "client", "clients",
-        "code", "commercial", "connect", "contact", "contest", "create", "delete",
-        "demo", "design", "dev", "devel", "developer", "developers", "dir",
-        "directory", "doc", "docs", "download", "downloads", "edit", "editor",
-        "email", "event", "events", "example", "explore", "faq", "favorite",
-        "feed", "feeds", "file", "files", "follow", "forgot", "form", "forum",
-        "forums", "ftp", "get", "gift", "gifts", "gist", "github", "guest",
-        "guests", "help", "home", "hosting", "hostname", "icon", "icons", "id",
-        "image", "images", "img", "index", "info", "insert", "invite", "iphone",
-        "irc", "is", "issue", "issues", "it", "job", "jobs", "join", "js",
-        "json", "key", "keys", "learn", "legal", "license", "list", "lists",
-        "log", "login", "logout", "logs", "mail", "manager", "marketing", "master",
-        "me", "media", "member", "members", "memory", "message", "messages",
-        "mine", "mobile", "msg", "mysql", "name", "named", "net", "network",
-        "new", "news", "newsletter", "no", "node", "null", "oauth", "oauth2",
-        "official", "old", "online", "order", "orders", "overview", "owner",
-        "page", "pages", "panel", "password", "payment", "payments", "photo",
-        "photos", "pic", "pics", "plan", "plans", "plugin", "plugins", "policy",
-        "popular", "post", "postfix", "posts", "preview", "pricing", "privacy",
-        "private", "profile", "profiles", "project", "projects", "public",
-        "purchase", "put", "query", "random", "register", "registration", "remove",
-        "report", "reports", "repository", "reset", "root", "rss", "sale",
-        "sales", "sample", "samples", "save", "search", "secure", "security",
-        "select", "self", "sell", "server", "servers", "service", "services",
-        "session", "sessions", "setting", "settings", "setup", "share", "shop",
-        "shopping", "show", "sign", "signin", "signout", "signup", "site",
-        "sitemap", "sites", "smtp", "sql", "ssh", "ssl", "stage", "staging",
-        "stat", "static", "stats", "status", "store", "stores", "subdomain",
-        "subscribe", "sudo", "super", "support", "survey", "sync", "system",
-        "tag", "tags", "team", "teams", "temp", "term", "terms", "test",
-        "testing", "tests", "theme", "themes", "tmp", "today", "tool", "tools",
-        "top", "topic", "topics", "tos", "tour", "training", "trial", "true",
-        "tutorial", "tutorials", "tv", "twitter", "undef", "unsubscribe",
-        "update", "upload", "uploads", "url", "usage", "user", "username",
-        "users", "validation", "video", "videos", "view", "views", "web",
-        "webhook", "wiki", "word", "work", "works", "www", "xml", "year"
+        "admin", "administrator", "owner", "mod", "moderator", "staff", "support", 
+        "myso", "mysocial", "system", "root", "official",
+        // Inappropriate names
+        "fuck", "shit", "ass", "piss", "cunt", "asshole", "dick", "pussy", "sex"
     ];
     
     if reserved_words.contains(&username.to_lowercase().as_str()) {
