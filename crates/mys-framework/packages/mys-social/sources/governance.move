@@ -49,8 +49,7 @@ module social_contracts::governance {
 
     /// Proposal type constants
     const PROPOSAL_TYPE_ECOSYSTEM: u8 = 0;
-    const PROPOSAL_TYPE_REPUTATION: u8 = 1;
-    const PROPOSAL_TYPE_COMMUNITY_NOTES: u8 = 2;
+    const PROPOSAL_TYPE_PROOF_OF_CREATIVITY: u8 = 1;
     const PROPOSAL_TYPE_PLATFORM: u8 = 3;
 
     /// Proposal status constants
@@ -75,7 +74,7 @@ module social_contracts::governance {
     /// Governance registry that keeps track of all delegates and proposals
     public struct GovernanceDAO has key {
         id: UID,
-        /// Registry type identifier (ecosystem, reputation, community notes)
+        /// Registry type identifier (ecosystem, proof of creativity, platform)
         registry_type: u8,
         /// Configuration parameters
         delegate_count: u64,
@@ -126,7 +125,7 @@ module social_contracts::governance {
         id: UID,
         title: String,
         description: String,
-        proposal_type: u8,  // Ecosystem, Reputation, Community Notes
+        proposal_type: u8,  // Ecosystem, Proof of Creativity, Platform
         reference_id: Option<ID>,  // Optional reference to content/profile/post ID
         metadata_json: Option<String>, // Optional JSON metadata string
         submitter: address,
@@ -274,7 +273,7 @@ module social_contracts::governance {
 
     /// Create and share separate governance registries for each proposal type
     fun init(ctx: &mut TxContext) {
-        // Create Ecosystem Governance Registry
+        // Create MySocial Ecosystem Governance Registry
         let mut ecosystem_registry = GovernanceDAO {
             id: object::new(ctx),
             registry_type: PROPOSAL_TYPE_ECOSYSTEM,
@@ -299,44 +298,19 @@ module social_contracts::governance {
             version: upgrade::current_version(),
         };
         
-        // Create Reputation Governance Registry
-        let mut reputation_registry = GovernanceDAO {
+        // Create Proof of Creativity Governance Registry
+        let mut proof_of_creativity_registry = GovernanceDAO {
             id: object::new(ctx),
-            registry_type: PROPOSAL_TYPE_REPUTATION,
-            // Configuration parameters specific to reputation governance
-            delegate_count: 5, // Smaller council for reputation disputes
-            delegate_term_epochs: 60, // 2 months for reputation delegates
-            proposal_submission_cost: 50_000_000, // 50 MYS for reputation disputes
-            min_on_chain_age_days: 7, // 1 week minimum for reputation voting
-            max_votes_per_user: 5, // Up to 5 votes per user
-            quadratic_base_cost: 5_000_000, // 5 MYS per additional vote
-            voting_period_epochs: 3, // 3 epochs for reputation votes
-            quorum_votes: 15, // 15 votes required for reputation proposals
-            // Tables
-            delegates: table::new<address, Delegate>(ctx),
-            proposals: table::new<ID, Proposal>(ctx),
-            proposals_by_status: table::new<u8, vector<ID>>(ctx),
-            treasury: balance::zero(),
-            nominated_delegates: table::new<address, NominatedDelegate>(ctx),
-            delegate_addresses: vec_set::empty<address>(),
-            nominee_addresses: vec_set::empty<address>(),
-            voters: table::new<address, Table<address, bool>>(ctx),
-            version: upgrade::current_version(),
-        };
-        
-        // Create Community Notes Governance Registry
-        let mut community_notes_registry = GovernanceDAO {
-            id: object::new(ctx),
-            registry_type: PROPOSAL_TYPE_COMMUNITY_NOTES,
-            // Configuration parameters specific to community notes governance
-            delegate_count: 7, // Medium council for community notes
-            delegate_term_epochs: 30, // 1 month for community notes delegates
-            proposal_submission_cost: 25_000_000, // 25 MYS for community notes
-            min_on_chain_age_days: 3, // 3 days minimum for community notes voting
+            registry_type: PROPOSAL_TYPE_PROOF_OF_CREATIVITY,
+            // Configuration parameters specific to proof of creativity governance
+            delegate_count: 2, // Smaller council for proof of creativity
+            delegate_term_epochs: 180, // 3 months for proof of creativity delegates
+            proposal_submission_cost: 25_000_000, // 25 MYS for proof of creativity
+            min_on_chain_age_days: 1, // 1 day minimum for proof of creativity voting
             max_votes_per_user: 3, // Up to 3 votes per user
             quadratic_base_cost: 2_500_000, // 2.5 MYS per additional vote
-            voting_period_epochs: 1, // 1 epoch for community notes votes
-            quorum_votes: 10, // 10 votes required for community notes proposals
+            voting_period_epochs: 1, // 1 epoch for proof of creativity votes
+            quorum_votes: 10, // 10 votes required for proof of creativity proposals
             // Tables
             delegates: table::new<address, Delegate>(ctx),
             proposals: table::new<ID, Proposal>(ctx),
@@ -351,13 +325,11 @@ module social_contracts::governance {
         
         // Initialize each registry's status tables
         initialize_registry_tables(&mut ecosystem_registry, ctx);
-        initialize_registry_tables(&mut reputation_registry, ctx);
-        initialize_registry_tables(&mut community_notes_registry, ctx);
+        initialize_registry_tables(&mut proof_of_creativity_registry, ctx);
         
         // Share the registry objects
         transfer::share_object(ecosystem_registry);
-        transfer::share_object(reputation_registry);
-        transfer::share_object(community_notes_registry);
+        transfer::share_object(proof_of_creativity_registry);
     }
 
     fun initialize_registry_tables(registry: &mut GovernanceDAO, _ctx: &mut TxContext) {
@@ -831,7 +803,7 @@ module social_contracts::governance {
     }
 
     /// Universal function to submit any type of proposal
-    /// Handles all proposal types: ecosystem, reputation disputes, and community notes
+    /// Handles proposal types: ecosystem and proof of creativity
     public entry fun submit_proposal(
         registry: &mut GovernanceDAO,
         proposal_type: u8,
@@ -853,19 +825,20 @@ module social_contracts::governance {
         let actual_reference_id = if (proposal_type == PROPOSAL_TYPE_ECOSYSTEM) {
             // Ecosystem proposals use reference_id as provided
             reference_id
-        } else if (option::is_some(&reference_id)) {
-            // If reference_id is explicitly provided, use it for any proposal type
-            reference_id
-        } else if (option::is_some(&disputed_id)) {
-            // For disputes (reputation or community notes), use disputed_id as the reference if no reference provided
-            disputed_id
-        } else {
-            // For disputes, a reference or disputed ID should be provided
-            if (proposal_type != PROPOSAL_TYPE_ECOSYSTEM) {
-                // Reputation and community notes should have a reference
+        } else if (proposal_type == PROPOSAL_TYPE_PROOF_OF_CREATIVITY) {
+            // Proof of creativity proposals should have either reference_id or disputed_id
+            if (option::is_some(&reference_id)) {
+                reference_id
+            } else if (option::is_some(&disputed_id)) {
+                disputed_id
+            } else {
+                // Proof of creativity proposals should reference creative content
                 assert!(false, EInvalidParameter);
-            };
-            option::none<ID>()
+                option::none<ID>()
+            }
+        } else {
+            // For other proposal types (like platform), use reference_id if provided
+            reference_id
         };
         
         // Submit the proposal using the internal implementation
@@ -905,48 +878,23 @@ module social_contracts::governance {
         );
     }
 
-    /// Submit a special proposal for reputation dispute
-    public entry fun submit_reputation_dispute(
+    /// Submit a proof of creativity proposal
+    public entry fun submit_proof_of_creativity_proposal(
         registry: &mut GovernanceDAO,
         title: String,
         description: String,
-        disputed_profile_id: ID,
-        reference_id: Option<ID>,
+        creative_content_id: ID,
         metadata_json: Option<String>,
         coin: &mut Coin<MYS>,
         ctx: &mut TxContext
     ) {
         submit_proposal(
             registry,
-            PROPOSAL_TYPE_REPUTATION,
+            PROPOSAL_TYPE_PROOF_OF_CREATIVITY,
             title,
             description,
-            option::some(disputed_profile_id),
-            reference_id,
-            metadata_json,
-            coin,
-            ctx
-        );
-    }
-
-    /// Submit a special proposal for community note
-    public entry fun submit_community_note(
-        registry: &mut GovernanceDAO,
-        title: String,
-        description: String,
-        disputed_content_id: ID,
-        reference_id: Option<ID>,
-        metadata_json: Option<String>,
-        coin: &mut Coin<MYS>,
-        ctx: &mut TxContext
-    ) {
-        submit_proposal(
-            registry,
-            PROPOSAL_TYPE_COMMUNITY_NOTES,
-            title,
-            description,
-            option::some(disputed_content_id),
-            reference_id,
+            option::none<ID>(), // No disputed ID for proof of creativity
+            option::some(creative_content_id), // Reference to creative content
             metadata_json,
             coin,
             ctx

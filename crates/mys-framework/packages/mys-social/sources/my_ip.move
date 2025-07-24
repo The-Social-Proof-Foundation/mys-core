@@ -131,6 +131,7 @@ module social_contracts::my_ip {
             ip_to_owner: table::new(ctx),
             version: upgrade::current_version(),
         };
+
         transfer::share_object(registry);
     }
 

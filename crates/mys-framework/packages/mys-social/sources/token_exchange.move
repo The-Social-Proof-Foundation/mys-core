@@ -878,8 +878,6 @@ module social_contracts::token_exchange {
             initial_token_supply = 1;
         };
         
-        let token_price = total_staked / initial_token_supply;
-        
         // Create token info
         let token_info = TokenInfo {
             id: @0x0, // Temporary, will be updated
