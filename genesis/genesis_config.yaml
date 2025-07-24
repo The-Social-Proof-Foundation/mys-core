@@ -56,12 +56,6 @@ accounts:
   - address: "0x85354b9888c0f88d49ee45880bbe5927833a69dacb223ea749f88cd33bd97baa"
     gas_amounts:
       - 100000000000000 # 100,000 MySo
-      - 5000000000 # 5 MySo
-      - 5000000000 # 5 MySo
-      - 5000000000 # 5 MySo
-      - 5000000000 # 5 MySo
-      - 5000000000 # 5 MySo
-      - 5000000000 # 5 MySo
 
 validator_config_info:
   # Validator 0 (dynamic ports)
@@ -71,7 +65,7 @@ validator_config_info:
     narwhal_primary_address: "/ip4/69.10.63.78/udp/59030"
     narwhal_worker_address: "/ip4/69.10.63.78/udp/59040"
     consensus_address: "/ip4/69.10.63.78/tcp/59050/http"
-    gas_price: 1000
+    gas_price: 100
     commission_rate: 0
     stake: 20000000000000000  # 20 million MYS in MIST units
   # Validator 1 (dynamic ports)
@@ -81,7 +75,7 @@ validator_config_info:
     narwhal_primary_address: "/ip4/69.10.63.78/udp/59130"
     narwhal_worker_address: "/ip4/69.10.63.78/udp/59140"
     consensus_address: "/ip4/69.10.63.78/tcp/59150/http"
-    gas_price: 1000
+    gas_price: 100
     commission_rate: 0
     stake: 20000000000000000  # 20 million MYS in MIST units
   # Validator 2 (dynamic ports)
@@ -91,6 +85,6 @@ validator_config_info:
     narwhal_primary_address: "/ip4/69.10.63.78/udp/59230"
     narwhal_worker_address: "/ip4/69.10.63.78/udp/59240"
     consensus_address: "/ip4/69.10.63.78/tcp/59250/http"
-    gas_price: 1000
+    gas_price: 100
     commission_rate: 0
     stake: 20000000000000000  # 20 million MYS in MIST units

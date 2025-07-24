@@ -348,12 +348,6 @@ accounts:
   - address: "$FAUCET_ADDRESS"
     gas_amounts:
       - 100000000000000 # 100,000 MySo
-      - 5000000000 # 5 MySo
-      - 5000000000 # 5 MySo
-      - 5000000000 # 5 MySo
-      - 5000000000 # 5 MySo
-      - 5000000000 # 5 MySo
-      - 5000000000 # 5 MySo
 
 validator_config_info:
 EOL
@@ -371,7 +365,7 @@ for i in {0..2}; do
     narwhal_primary_address: "/ip4/$BASE_IP/udp/$NARWHAL_PRIMARY_PORT"
     narwhal_worker_address: "/ip4/$BASE_IP/udp/$NARWHAL_WORKER_PORT"
     consensus_address: "/ip4/$BASE_IP/tcp/$CONSENSUS_PORT/http"
-    gas_price: 1000
+    gas_price: 100
     commission_rate: 0
     stake: 20000000000000000  # 20 million MYS in MIST units
 EOL
