@@ -247,22 +247,58 @@ GET /search?query=social&page=2&limit=50
 - **GET /promotions/analytics/top-performing** - Get top performing promotions from materialized views
 - **GET /promotions/analytics/spending-trends** - Get platform-wide spending trends from continuous aggregates
 
-### MyIP API (Information Property)
-- **GET /licenses** - List information property licenses
-- **GET /licenses/popular** - Get popular licenses
-- **GET /licenses/:id** - Get license by ID
-- **GET /licenses/:id/events** - Get events for a license
-- **GET /licenses/:id/grants** - Get grants for a license
-- **GET /licenses/:id/revenue** - Get revenue for a license
-- **GET /licenses/:id/posts** - Get posts using a license
-- **GET /licenses/:id/stats** - Get statistics for a license
-- **GET /licenses/:id/revenue-timeline** - Get revenue timeline for a license
-- **GET /creators/:id/licenses** - Get licenses created by an address
+### Proof of Content (PoC) API
+- **GET /poc/badges** - List all proof of content badges
+- **GET /poc/badges/:id** - Get specific proof of content badge details
+- **GET /poc/revenue-redirections** - List all revenue redirections
+- **GET /poc/analysis-results** - List AI analysis results for content
+- **GET /poc/disputes** - List all content disputes
+- **GET /poc/disputes/:id** - Get specific dispute details
+- **GET /poc/disputes/:id/votes** - Get votes for a specific dispute
+- **GET /poc/analytics** - Get proof of content analytics
+- **GET /poc/configuration** - Get current PoC system configuration
+- **GET /posts/:id/poc-badges** - Get PoC badges for a specific post
+- **GET /posts/:id/revenue-redirections** - Get revenue redirections for a specific post
+
+### Subscription API
+- **GET /subscriptions** - List all subscriptions
+- **GET /subscription-services** - List all subscription services
+- **GET /subscription-revenue** - Get subscription revenue data
+- **GET /subscriptions/:id/status** - Get subscription status
+- **GET /subscription-access/:subscriber/:content_id** - Check subscription access
+- **GET /subscription-analytics** - Get subscription analytics
+- **GET /service-performance** - Get service performance metrics
+- **GET /subscribers/:address/summary** - Get subscriber summary for an address
+
+### Revenue Analytics API
+- **GET /revenue/dashboard** - Get comprehensive revenue dashboard
+- **GET /revenue/leaderboard** - Get revenue leaderboard
+- **GET /revenue/chart-data** - Get revenue chart data for visualization
+- **GET /revenue/unified** - Get unified revenue across all sources
+- **GET /revenue/creators/:address/stats** - Get creator revenue statistics
+- **GET /revenue/platforms/:address/stats** - Get platform revenue statistics
+- **GET /revenue/spt/pools/:pool_id** - Get SPT pool revenue
+
+### MyIP Marketplace API
+- **GET /marketplace** - List marketplace data
+- **GET /marketplace/popular** - Get popular marketplace items
+- **GET /marketplace/:id** - Get marketplace item by ID
+- **GET /marketplace/:id/purchases** - Get purchases for a marketplace item
+- **GET /marketplace/:id/subscriptions** - Get subscriptions for a marketplace item
+- **GET /marketplace/:id/revenue** - Get revenue for a marketplace item
+- **GET /marketplace/:id/access-logs** - Get access logs for a marketplace item
+- **GET /marketplace/:id/stats** - Get statistics for a marketplace item
+- **GET /marketplace/:id/revenue-timeline** - Get revenue timeline for a marketplace item
+- **GET /marketplace/:id/access-analytics** - Get access analytics for a marketplace item
+- **GET /creators/:id/marketplace-data** - Get marketplace data created by a specific address
 
 ### Governance API
 - **GET /governance/proposals** - List governance proposals
 - **GET /governance/proposals/:id** - Get proposal details
 - **GET /governance/proposals/:id/votes** - Get community votes on a proposal
+- **GET /governance/proposals/:id/anonymous-stats** - Get anonymous voting statistics for a proposal
+- **GET /governance/proposals/:id/anonymous-votes** - Get anonymous votes for a proposal
+- **GET /governance/proposals/:id/decryption-failures** - Get vote decryption failures for a proposal
 - **GET /governance/delegates** - List delegates
 - **GET /governance/delegates/:address** - Get delegate details
 - **GET /governance/delegates/:address/proposals** - Get proposals reviewed by a delegate
@@ -271,6 +307,7 @@ GET /search?query=social&page=2&limit=50
 - **GET /governance/registries** - List governance registries
 - **GET /governance/registries/:registry_type** - Get registry by type
 - **GET /governance/events** - List recent governance events
+- **GET /governance/anonymous-voting-trends** - Get anonymous voting trends analytics
 
 ### Social Proof Token API
 
@@ -281,16 +318,12 @@ GET /search?query=social&page=2&limit=50
 - **GET /social-proof-token/pools/:id/transactions** - Get transactions for a token pool
 - **GET /social-proof-token/pools/:id/holdings** - Get holdings for a token pool
 - **GET /social-proof-token/pools/:id/price-history** - Get price history for a token pool
+- **GET /social-proof-token/pools/:id/liquidity-profile** - Show transaction volume, frequency and depth to assess token liquidity
 
 #### Staking System
 - **GET /social-proof-token/stake-pools** - List active stake pools supporting posts/profiles
 - **GET /social-proof-token/stake-pools/:id** - Get stake pool details by pool ID
 - **GET /social-proof-token/stake-pools/:id/stakes** - Get individual stakes for a pool
-- **GET /social-proof-token/stake-pools/by-associated-id/:id** - Get stake pool by associated profile or post ID
-- **GET /social-proof-token/stake-pools/threshold-met** - Get pools that have met their staking threshold
-- **GET /social-proof-token/stake-pools/recent** - Get recently created or updated stake pools
-- **GET /social-proof-token/stakes/user/:address** - Get all stakes by a specific user
-- **GET /social-proof-token/stakes/user/:address/active** - Get active stakes by a user (amount > 0)
 
 #### Analytics & Insights
 - **GET /social-proof-token/popular** - Get popular token pools
@@ -299,13 +332,6 @@ GET /search?query=social&page=2&limit=50
 - **GET /social-proof-token/portfolios/:address/performance** - Track user's token portfolio value over time with ROI metrics
 - **GET /social-proof-token/creators/:address/revenue-streams** - Break down creator revenue from token fees across content
 - **GET /social-proof-token/market-sentiment** - Aggregate buy/sell patterns to create market momentum indicators
-- **GET /social-proof-token/pools/:id/liquidity-profile** - Show transaction volume, frequency and depth to assess token liquidity
-
-#### Staking Analytics
-- **GET /social-proof-token/analytics/staking-trends** - Get staking trend data over time
-- **GET /social-proof-token/analytics/top-staked-pools** - Get pools with highest total stake amounts
-- **GET /social-proof-token/analytics/staking-velocity** - Track stake/unstake frequency and patterns
-- **GET /social-proof-token/analytics/threshold-progress** - Monitor pools approaching their staking thresholds
 
 ## License
 

@@ -12,7 +12,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::db::{Database, DbConnection};
 use crate::blockchain::listener::BlockchainEvent;
-use crate::events::profile_events::ProfileCreatedEvent;
+use crate::events::profile_events::{ProfileCreatedEvent, ProfileUpdatedEvent};
 use crate::events::blocking_events;
 use crate::models::indexer::NewIndexerProgress;
 use crate::schema;
@@ -246,6 +246,109 @@ impl ProfileEventListener {
         Ok(())
     }
 
+    /// Process a profile updated event
+    async fn process_profile_updated(&self, event: &ProfileUpdatedEvent) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing ProfileUpdatedEvent: profile_id={}", event.profile_id);
+        info!("Update fields: display_name={:?}, bio={:?}, profile_photo={:?}, cover_photo={:?}", 
+              event.display_name, event.bio, event.profile_photo, event.cover_photo);
+        
+        // Find the profile by profile_id
+        let existing_profile = schema::profiles::table
+            .filter(schema::profiles::profile_id.eq(&event.profile_id))
+            .first::<crate::models::profile::Profile>(&mut conn)
+            .await
+            .map_err(|e| anyhow!("Profile not found with ID {}: {}", event.profile_id, e))?;
+        
+        // Update profile fields with new values, keeping existing values for fields not being updated
+        let updated_at = chrono::Utc::now().naive_utc();
+        
+        diesel::update(schema::profiles::table)
+            .filter(schema::profiles::profile_id.eq(&event.profile_id))
+            .set((
+                // Update display_name if provided
+                schema::profiles::display_name.eq(
+                    event.display_name.as_ref().unwrap_or(&existing_profile.display_name.unwrap_or_default())
+                ),
+                // Update bio if provided
+                schema::profiles::bio.eq(
+                    event.bio.as_ref().or(existing_profile.bio.as_ref())
+                ),
+                // Update profile_photo if provided
+                schema::profiles::profile_photo.eq(
+                    event.profile_photo.as_ref().or(existing_profile.profile_photo.as_ref())
+                ),
+                // Update cover_photo if provided
+                schema::profiles::cover_photo.eq(
+                    event.cover_photo.as_ref().or(existing_profile.cover_photo.as_ref())
+                ),
+                // Update username if provided
+                schema::profiles::username.eq(
+                    event.username.as_ref().unwrap_or(&existing_profile.username)
+                ),
+                // Always update the timestamp
+                schema::profiles::updated_at.eq(updated_at),
+                // Update sensitive fields if provided
+                schema::profiles::birthdate.eq(
+                    event.birthdate.as_ref().or(existing_profile.birthdate.as_ref())
+                ),
+                schema::profiles::current_location.eq(
+                    event.current_location.as_ref().or(existing_profile.current_location.as_ref())
+                ),
+                schema::profiles::raised_location.eq(
+                    event.raised_location.as_ref().or(existing_profile.raised_location.as_ref())
+                ),
+                schema::profiles::phone.eq(
+                    event.phone.as_ref().or(existing_profile.phone.as_ref())
+                ),
+                schema::profiles::email.eq(
+                    event.email.as_ref().or(existing_profile.email.as_ref())
+                ),
+                schema::profiles::gender.eq(
+                    event.gender.as_ref().or(existing_profile.gender.as_ref())
+                ),
+                schema::profiles::political_view.eq(
+                    event.political_view.as_ref().or(existing_profile.political_view.as_ref())
+                ),
+                schema::profiles::religion.eq(
+                    event.religion.as_ref().or(existing_profile.religion.as_ref())
+                ),
+                schema::profiles::education.eq(
+                    event.education.as_ref().or(existing_profile.education.as_ref())
+                ),
+                schema::profiles::primary_language.eq(
+                    event.primary_language.as_ref().or(existing_profile.primary_language.as_ref())
+                ),
+                schema::profiles::relationship_status.eq(
+                    event.relationship_status.as_ref().or(existing_profile.relationship_status.as_ref())
+                ),
+                schema::profiles::x_username.eq(
+                    event.x_username.as_ref().or(existing_profile.x_username.as_ref())
+                ),
+                schema::profiles::mastodon_username.eq(
+                    event.mastodon_username.as_ref().or(existing_profile.mastodon_username.as_ref())
+                ),
+                schema::profiles::facebook_username.eq(
+                    event.facebook_username.as_ref().or(existing_profile.facebook_username.as_ref())
+                ),
+                schema::profiles::reddit_username.eq(
+                    event.reddit_username.as_ref().or(existing_profile.reddit_username.as_ref())
+                ),
+                schema::profiles::github_username.eq(
+                    event.github_username.as_ref().or(existing_profile.github_username.as_ref())
+                ),
+                schema::profiles::min_offer_amount.eq(
+                    event.min_offer_amount.map(|v| v as i64).or(existing_profile.min_offer_amount)
+                ),
+            ))
+            .execute(&mut conn)
+            .await?;
+            
+        info!("✅ Successfully processed profile updated: {}", event.profile_id);
+        Ok(())
+    }
+
     /// Process platform block event
     async fn process_platform_block_event(&self, event_data: &serde_json::Value) -> Result<()> {
         let mut conn = self.get_connection().await?;
@@ -272,13 +375,13 @@ impl ProfileEventListener {
                 // Handle profile created event
                 if event.event_type.ends_with("::ProfileCreatedEvent") {
                     // Log the raw event data for debugging
-                    info!("Profile event detected with data: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
+                    info!("Profile created event detected with data: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
                     
                     // Extract fields from JSON and parse as ProfileCreatedEvent
                     match crate::events::event_utils::extract_event_fields(&event.data)
                         .and_then(|fields| serde_json::from_value::<ProfileCreatedEvent>(fields).map_err(|e| anyhow::anyhow!(e))) {
                         Ok(profile_event) => {
-                            info!("Successfully parsed profile event: {:?}", profile_event);
+                            info!("Successfully parsed profile created event: {:?}", profile_event);
                             if let Err(e) = self.process_profile_created(&profile_event).await {
                                 error!("Failed to process profile created event: {}", e);
                             }
@@ -291,6 +394,25 @@ impl ProfileEventListener {
                             if let Err(parse_err) = self.try_manual_profile_parse(&event.data).await {
                                 error!("Manual parsing also failed: {}", parse_err);
                             }
+                        }
+                    }
+                }
+                // Handle profile updated event
+                else if event.event_type.ends_with("::ProfileUpdatedEvent") {
+                    // Log the raw event data for debugging
+                    info!("Profile updated event detected with data: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
+                    
+                    // Extract fields from JSON and parse as ProfileUpdatedEvent
+                    match crate::events::event_utils::extract_event_fields(&event.data)
+                        .and_then(|fields| serde_json::from_value::<ProfileUpdatedEvent>(fields).map_err(|e| anyhow::anyhow!(e))) {
+                        Ok(profile_event) => {
+                            info!("Successfully parsed profile updated event: {:?}", profile_event);
+                            if let Err(e) = self.process_profile_updated(&profile_event).await {
+                                error!("Failed to process profile updated event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize profile updated event: {}", e);
                         }
                     }
                 }
@@ -416,7 +538,22 @@ impl ProfileEventListener {
                 }
             }
             "update_profile" | "ProfileUpdated" => {
-                debug!("Processing profile update event (not yet implemented)");
+                info!("Processing profile update event via legacy method");
+                
+                // Try to parse as ProfileUpdatedEvent
+                match crate::events::event_utils::extract_event_fields(event_data)
+                    .and_then(|fields| serde_json::from_value::<ProfileUpdatedEvent>(fields).map_err(|e| anyhow::anyhow!(e))) {
+                    Ok(profile_event) => {
+                        if let Err(e) = self.process_profile_updated(&profile_event).await {
+                            error!("Failed to process profile updated event: {}", e);
+                        }
+                    },
+                    Err(e) => {
+                        error!("Failed to parse profile updated event: {}", e);
+                        // Log the full event data for debugging
+                        error!("Event data: {}", serde_json::to_string_pretty(event_data).unwrap_or_default());
+                    }
+                }
             }
             "register_username" | "UsernameRegistered" => {
                 debug!("Processing username registration event (not yet implemented)");
