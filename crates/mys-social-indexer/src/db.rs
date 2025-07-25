@@ -17,6 +17,9 @@ use rustls;
 
 use crate::config::Config;
 
+pub mod connection_manager;
+pub use connection_manager::{ConnectionManager, RetryConfig, TransactionConfig, IsolationLevel, DatabaseAccess};
+
 pub type DbPool = Pool<AsyncPgConnection>;
 pub type DbConnection = Object<AsyncPgConnection>;
 

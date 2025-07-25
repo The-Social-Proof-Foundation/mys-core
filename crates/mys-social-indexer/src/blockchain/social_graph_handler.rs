@@ -13,7 +13,6 @@ use crate::db::{Database, DbConnection};
 use crate::blockchain::listener::BlockchainEvent;
 use crate::events::{FollowEvent, UnfollowEvent};
 use crate::models::indexer::NewIndexerProgress;
-use crate::models::social_graph::NewSocialGraphRelationship;
 use crate::schema;
 
 /// SocialGraphEventHandler handles all social graph events from the blockchain

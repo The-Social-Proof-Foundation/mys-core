@@ -11,7 +11,6 @@ use crate::db::{Database, DbConnection};
 use crate::events::blocking_events::{
     process_profile_block_event,
     process_profile_unblock_event,
-    process_block_list_created_event
 };
 
 use super::listener::BlockchainEvent;
