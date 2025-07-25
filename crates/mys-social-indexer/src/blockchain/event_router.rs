@@ -32,7 +32,17 @@ impl EventPattern {
             EventPattern::StartsWith(pattern) => event_type.starts_with(pattern),
             EventPattern::EndsWith(pattern) => event_type.ends_with(pattern),
             EventPattern::Module { package, module } => {
-                event_type.starts_with(package) && event_type.contains(&format!("::{module}::"))
+                // Handle both full and short package address formats
+                let package_matches = if package.len() > 10 && package.starts_with("0x") {
+                    // Full format: extract last 4 characters after 0x
+                    let short_package = format!("0x{}", &package[package.len()-4..]);
+                    event_type.starts_with(&short_package) || event_type.starts_with(package)
+                } else {
+                    // Short format or other format
+                    event_type.starts_with(package)
+                };
+                
+                package_matches && event_type.contains(&format!("::{module}::"))
             }
         }
     }
@@ -129,6 +139,29 @@ impl EventRouter {
             // Check if any pattern matches
             let matches = registration.patterns.iter().any(|pattern| {
                 let result = pattern.matches(&event.event_type);
+                
+                // Enhanced logging for profile events
+                if event.event_type.contains("::profile::") {
+                    info!(
+                        "🔍 PROFILE EVENT PATTERN CHECK: event='{}', pattern={:?}, matches={}",
+                        event.event_type, pattern, result
+                    );
+                    
+                    if let EventPattern::Module { package, module } = pattern {
+                        let short_package = if package.len() > 10 && package.starts_with("0x") {
+                            format!("0x{}", &package[package.len()-4..])
+                        } else {
+                            package.clone()
+                        };
+                        info!(
+                            "🔍 MODULE PATTERN DETAILS: full_package='{}', short_package='{}', module='{}', event_starts_with_short={}, event_contains_module={}",
+                            package, short_package, module,
+                            event.event_type.starts_with(&short_package),
+                            event.event_type.contains(&format!("::{module}::"))
+                        );
+                    }
+                }
+                
                 if result {
                     debug!(
                         "Event {} matches pattern {:?} for handler {}",
