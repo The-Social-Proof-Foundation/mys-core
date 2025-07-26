@@ -91,36 +91,34 @@ if [ -n "$GCS_SERVICE_ACCOUNT_JSON" ]; then\n\
   echo "$GCS_SERVICE_ACCOUNT_JSON" > /app/credentials/gcs-key.json\n\
   export GOOGLE_APPLICATION_CREDENTIALS="/app/credentials/gcs-key.json"\n\
   echo "✓ GCS authentication configured"\n\
-  
-  # Debug: Check if file was created and is valid JSON
-  if [ -f "/app/credentials/gcs-key.json" ]; then
-    echo "✓ GCS key file exists"
-    FILE_SIZE=$(wc -c < /app/credentials/gcs-key.json)
-    echo "✓ GCS key file size: $FILE_SIZE bytes"
-    # Check if it's valid JSON (just the first few characters)
-    head -c 100 /app/credentials/gcs-key.json | head -1
-    
-    # Validate JSON syntax
-    if jq empty /app/credentials/gcs-key.json 2>/dev/null; then
-      echo "✓ GCS key file is valid JSON"
-      # Check for required fields
-      if jq -e '.type and .project_id and .private_key and .client_email' /app/credentials/gcs-key.json >/dev/null 2>&1; then
-        echo "✓ GCS key file has required fields"
-      else
-        echo "✗ GCS key file missing required fields (type, project_id, private_key, client_email)"
-        jq 'keys' /app/credentials/gcs-key.json
-        exit 1
-      fi
-    else
-      echo "✗ GCS key file is not valid JSON!"
-      echo "First 200 characters of the file:"
-      head -c 200 /app/credentials/gcs-key.json
-      exit 1
-    fi
-  else
-    echo "✗ GCS key file not found!"
-    exit 1
-  fi
+  \n\
+  # Debug: Check if file was created and is valid JSON\n\
+  if [ -f "/app/credentials/gcs-key.json" ]; then\n\
+    echo "✓ GCS key file exists"\n\
+    FILE_SIZE=$(wc -c < /app/credentials/gcs-key.json)\n\
+    echo "✓ GCS key file size: $FILE_SIZE bytes"\n\
+    head -c 100 /app/credentials/gcs-key.json | head -1\n\
+    \n\
+    # Validate JSON syntax\n\
+    if jq empty /app/credentials/gcs-key.json 2>/dev/null; then\n\
+      echo "✓ GCS key file is valid JSON"\n\
+      if jq -e ".type and .project_id and .private_key and .client_email" /app/credentials/gcs-key.json >/dev/null 2>&1; then\n\
+        echo "✓ GCS key file has required fields"\n\
+      else\n\
+        echo "✗ GCS key file missing required fields"\n\
+        jq "keys" /app/credentials/gcs-key.json\n\
+        exit 1\n\
+      fi\n\
+    else\n\
+      echo "✗ GCS key file is not valid JSON!"\n\
+      echo "First 200 characters of the file:"\n\
+      head -c 200 /app/credentials/gcs-key.json\n\
+      exit 1\n\
+    fi\n\
+  else\n\
+    echo "✗ GCS key file not found!"\n\
+    exit 1\n\
+  fi\n\
 else\n\
   echo "WARNING: GCS_SERVICE_ACCOUNT_JSON not set - uploads may fail"\n\
 fi\n\
