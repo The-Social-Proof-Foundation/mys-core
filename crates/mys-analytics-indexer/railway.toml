@@ -4,7 +4,6 @@ dockerfilePath = "crates/mys-analytics-indexer/Dockerfile"
 buildCommand = "cargo build --release --bin mys-analytics-indexer"
 
 [deploy]
-startCommand = "mys-analytics-indexer"
 healthcheckPath = "/metrics"
 healthcheckTimeout = 60
 
@@ -25,7 +24,7 @@ TIME_INTERVAL_S = "600"
 # Google Cloud Storage (REQUIRED)
 REMOTE_STORE_BUCKET = "mysocial-testnet-analytics"
 REMOTE_STORE_REGION = "us"
-REMOTE_STORE_URL = "https://console.cloud.google.com/storage/browser/mysoocial-testnet-analytics"
+REMOTE_STORE_URL = "https://mysocial-testnet-checkpoints.storage.googleapis.com"
 
 # GCS Authentication - Set this in Railway UI (not here for security)
 # GCS_SERVICE_ACCOUNT_JSON = "{ your service account JSON content }" 
