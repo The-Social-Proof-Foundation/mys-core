@@ -67,7 +67,7 @@ validator_config_info:
     consensus_address: "/ip4/69.10.63.78/tcp/59050/http"
     gas_price: 100
     commission_rate: 0
-    stake: 20000000000000000  # 20 million MYS in MIST units
+    stake: 20000000000000000  # 20 million MySo in MIST units
   # Validator 1 (dynamic ports)
   - name: "validator-1"
     network_address: "/ip4/69.10.63.78/tcp/59110/http"
@@ -77,7 +77,7 @@ validator_config_info:
     consensus_address: "/ip4/69.10.63.78/tcp/59150/http"
     gas_price: 100
     commission_rate: 0
-    stake: 20000000000000000  # 20 million MYS in MIST units
+    stake: 20000000000000000  # 20 million MySo in MIST units
   # Validator 2 (dynamic ports)
   - name: "validator-2"
     network_address: "/ip4/69.10.63.78/tcp/59210/http"
@@ -87,4 +87,4 @@ validator_config_info:
     consensus_address: "/ip4/69.10.63.78/tcp/59250/http"
     gas_price: 100
     commission_rate: 0
-    stake: 20000000000000000  # 20 million MYS in MIST units
+    stake: 20000000000000000  # 20 million MySo in MIST units

@@ -99,7 +99,7 @@ fi\n\
 mkdir -p "${CHECKPOINT_DIR:-/tmp/analytics}"\n\
 mkdir -p "${PACKAGE_CACHE_PATH:-/opt/mys/db/package_cache}"\n\
 \n\
-# Build command arguments\n\
+# Build command arguments - only using supported flags\n\
 ARGS="--rest-url $REST_URL"\n\
 ARGS="$ARGS --file-type $FILE_TYPE"\n\
 ARGS="$ARGS --file-format ${FILE_FORMAT:-parquet}"\n\
@@ -108,11 +108,11 @@ ARGS="$ARGS --max-file-size-mb ${MAX_FILE_SIZE_MB:-100}"\n\
 ARGS="$ARGS --time-interval-s ${TIME_INTERVAL_S:-600}"\n\
 ARGS="$ARGS --checkpoint-dir ${CHECKPOINT_DIR:-/tmp/analytics}"\n\
 ARGS="$ARGS --package-cache-path ${PACKAGE_CACHE_PATH:-/opt/mys/db/package_cache}"\n\
-ARGS="$ARGS --remote-store-url ${REMOTE_STORE_URL:-https://checkpoints.testnet.mysocial.network}"\n\
-ARGS="$ARGS --remote-store-bucket $REMOTE_STORE_BUCKET"\n\
+ARGS="$ARGS --remote-store-url ${REMOTE_STORE_URL:-https://mysocial-testnet-checkpoints.storage.googleapis.com}"\n\
 \n\
-if [ -n "$REMOTE_STORE_REGION" ]; then\n\
-  ARGS="$ARGS --remote-store-region $REMOTE_STORE_REGION"\n\
+# Add optional object store argument if available\n\
+if [ -n "$REMOTE_STORE_BUCKET" ]; then\n\
+  ARGS="$ARGS $REMOTE_STORE_BUCKET"\n\
 fi\n\
 \n\
 if [ -n "$STARTING_CHECKPOINT_SEQ_NUM" ]; then\n\
