@@ -1,6 +1,7 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "crates/mys-analytics-indexer/Dockerfile"
+buildContext = "."
 
 [deploy]
 startCommand = "/usr/local/bin/entrypoint.sh"
