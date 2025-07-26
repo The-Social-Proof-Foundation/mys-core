@@ -1,95 +1,17 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "crates/mys-analytics-indexer/Dockerfile"
-buildContext = "."
 
 [deploy]
-startCommand = "/usr/local/bin/entrypoint.sh"
+startCommand = "mys-analytics-indexer"
 healthcheckPath = "/metrics"
-healthcheckTimeout = 300
-restartPolicyType = "on_failure"
-
-# Resource allocation for analytics processing
-[deploy.resources]
-memory = "4Gi"
-cpu = "2000m"
+healthcheckTimeout = 60
 
 [variables]
-# === CORE INDEXER CONFIGURATION ===
-# MySocial RPC endpoint for checkpoint data  
-REST_URL = "https://fullnode.mainnet.mysocial.network:9000"
-
-# Data type to process - CHANGE THIS FOR EACH SERVICE
-FILE_TYPE = "checkpoint"
-
-# Output format
-FILE_FORMAT = "parquet"
-
-# === PROCESSING SETTINGS ===
-# Number of checkpoints to process before uploading
-CHECKPOINT_INTERVAL = "10000"
-
-# Maximum file size in MB before uploading  
-MAX_FILE_SIZE_MB = "100"
-
-# Time interval in seconds before uploading
-TIME_INTERVAL_S = "600"
-
-# === PROMETHEUS METRICS ===
-# Metrics are automatically exposed on standard port 9184
-
-# === STORAGE CONFIGURATION ===
-# Local temporary directory for processing
-CHECKPOINT_DIR = "/tmp/analytics"
-
-# Package cache directory
-PACKAGE_CACHE_PATH = "/opt/mys/db/package_cache"
-
-# === GOOGLE CLOUD STORAGE ===
-# GCS bucket for analytics data storage
-REMOTE_STORE_BUCKET = "your-analytics-bucket"
-REMOTE_STORE_REGION = "us-central1"
-
-# Optional: Path prefix in bucket (uncomment to use)
-# REMOTE_STORE_PATH_PREFIX = "analytics/v1"
-
-# Checkpoint source URL
-REMOTE_STORE_URL = "https://checkpoints.mainnet.mysocial.network"
-
-# === OPTIONAL: BIGQUERY INTEGRATION ===
-# Uncomment to enable BigQuery max checkpoint reporting
-# REPORT_BQ_MAX_TABLE_CHECKPOINT = "true"
-# BQ_SERVICE_ACCOUNT_KEY_FILE = "/app/credentials/bigquery-key.json"
-# BQ_PROJECT_ID = "your-gcp-project"
-# BQ_DATASET_ID = "mysocial_analytics"
-# BQ_TABLE_ID = "checkpoints"
-# BQ_CHECKPOINT_COL_ID = "checkpoint_sequence_number"
-
-# === OPTIONAL: SNOWFLAKE INTEGRATION ===
-# Uncomment to enable Snowflake max checkpoint reporting
-# REPORT_SF_MAX_TABLE_CHECKPOINT = "true"
-# SF_ACCOUNT_IDENTIFIER = "your-account.region"
-# SF_WAREHOUSE = "ANALYTICS_WH"
-# SF_DATABASE = "MYSOCIAL"
-# SF_SCHEMA = "ANALYTICS"
-# SF_USERNAME = "analytics_user"
-# SF_ROLE = "ANALYTICS_ROLE"
-# SF_PASSWORD = "your-password"
-# SF_TABLE_ID = "checkpoints"
-# SF_CHECKPOINT_COL_ID = "checkpoint_sequence_number"
-
-# === OPTIONAL: PROCESSING CUSTOMIZATION ===
-# Starting checkpoint sequence number (auto-detected if not set)
-# STARTING_CHECKPOINT_SEQ_NUM = "1000000"
-
-# Package ID filtering (uncomment to filter specific packages)
-# PACKAGE_ID_FILTER = "0x123456789..."
-
-# === LOGGING ===
+# Logging configuration
 RUST_LOG = "info,mys_analytics_indexer=debug"
-RUST_BACKTRACE = "1"
 
-# === GOOGLE CLOUD AUTHENTICATION ===
-# Set this to your GCS service account key content
-# You can set this as a Railway environment variable
-# GOOGLE_APPLICATION_CREDENTIALS = "${{GOOGLE_SERVICE_ACCOUNT_KEY}}" 
+# Core configuration
+REST_URL = "https://fullnode.mainnet.mysocial.network:9000"
+FILE_TYPE = "checkpoint"
+CHECKPOINT_INTERVAL = "10000" 
