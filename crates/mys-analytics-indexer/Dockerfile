@@ -110,10 +110,8 @@ ARGS="$ARGS --checkpoint-dir ${CHECKPOINT_DIR:-/tmp/analytics}"\n\
 ARGS="$ARGS --package-cache-path ${PACKAGE_CACHE_PATH:-/opt/mys/db/package_cache}"\n\
 ARGS="$ARGS --remote-store-url ${REMOTE_STORE_URL:-https://mysocial-testnet-checkpoints.storage.googleapis.com}"\n\
 \n\
-# Add optional object store argument if available\n\
-if [ -n "$REMOTE_STORE_BUCKET" ]; then\n\
-  ARGS="$ARGS $REMOTE_STORE_BUCKET"\n\
-fi\n\
+# Add GCS as the object store type\n\
+ARGS="$ARGS gcs"\n\
 \n\
 if [ -n "$STARTING_CHECKPOINT_SEQ_NUM" ]; then\n\
   ARGS="$ARGS --starting-checkpoint-seq-num $STARTING_CHECKPOINT_SEQ_NUM"\n\
