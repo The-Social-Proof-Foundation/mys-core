@@ -88,7 +88,7 @@ fi\n\
 # Create GCS service account key from environment variables\n\
 if [ -n "$GCS_SERVICE_ACCOUNT_JSON" ]; then\n\
   echo "Creating GCS service account key file..."\n\
-  echo "$GCS_SERVICE_ACCOUNT_JSON" > /app/credentials/gcs-key.json\n\
+  printf "%s" "$GCS_SERVICE_ACCOUNT_JSON" > /app/credentials/gcs-key.json\n\
   export GOOGLE_APPLICATION_CREDENTIALS="/app/credentials/gcs-key.json"\n\
   echo "✓ GCS authentication configured"\n\
   \n\
@@ -97,13 +97,14 @@ if [ -n "$GCS_SERVICE_ACCOUNT_JSON" ]; then\n\
     echo "✓ GCS key file exists"\n\
     FILE_SIZE=$(wc -c < /app/credentials/gcs-key.json)\n\
     echo "✓ GCS key file size: $FILE_SIZE bytes"\n\
-    head -c 100 /app/credentials/gcs-key.json | head -1\n\
     \n\
     # Validate JSON syntax\n\
     if jq empty /app/credentials/gcs-key.json 2>/dev/null; then\n\
       echo "✓ GCS key file is valid JSON"\n\
       if jq -e ".type and .project_id and .private_key and .client_email" /app/credentials/gcs-key.json >/dev/null 2>&1; then\n\
         echo "✓ GCS key file has required fields"\n\
+        echo "✓ Project ID: $(jq -r .project_id /app/credentials/gcs-key.json)"\n\
+        echo "✓ Client Email: $(jq -r .client_email /app/credentials/gcs-key.json)"\n\
       else\n\
         echo "✗ GCS key file missing required fields"\n\
         jq "keys" /app/credentials/gcs-key.json\n\
@@ -111,8 +112,7 @@ if [ -n "$GCS_SERVICE_ACCOUNT_JSON" ]; then\n\
       fi\n\
     else\n\
       echo "✗ GCS key file is not valid JSON!"\n\
-      echo "First 200 characters of the file:"\n\
-      head -c 200 /app/credentials/gcs-key.json\n\
+      echo "JSON syntax error - check Railway environment variable formatting"\n\
       exit 1\n\
     fi\n\
   else\n\
