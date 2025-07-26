@@ -8964,6 +8964,7 @@ dependencies = [
  "mys-storage",
  "mys-types",
  "mysten-metrics",
+ "mysten-service",
  "num_enum 0.6.1",
  "object_store",
  "parquet",

@@ -80,12 +80,6 @@ pub struct AnalyticsIndexerConfig {
     /// The url of the checkpoint client to connect to.
     #[clap(long)]
     pub rest_url: String,
-    /// The url of the metrics client to connect to.
-    #[clap(long, default_value = "127.0.0.1", global = true)]
-    pub client_metric_host: String,
-    /// The port of the metrics client to connect to.
-    #[clap(long, default_value = "8081", global = true)]
-    pub client_metric_port: u16,
     /// Directory to contain the temporary files for checkpoint entries.
     #[clap(long, global = true, default_value = "/tmp")]
     pub checkpoint_dir: PathBuf,

@@ -4,12 +4,12 @@
 
 use anyhow::Result;
 use clap::*;
-use prometheus::Registry;
 use mys_analytics_indexer::{
     analytics_metrics::AnalyticsMetrics, errors::AnalyticsIndexerError, make_analytics_processor,
     AnalyticsIndexerConfig,
 };
 use mys_data_ingestion_core::{setup_single_workflow, ReaderOptions};
+use mysten_service::metrics::start_basic_prometheus_server;
 use tokio::signal;
 use tracing::info;
 
@@ -21,15 +21,9 @@ async fn main() -> Result<()> {
 
     let config = AnalyticsIndexerConfig::parse();
     info!("Parsed config: {:#?}", config);
-    let registry_service = mysten_metrics::start_prometheus_server(
-        format!(
-            "{}:{}",
-            config.client_metric_host, config.client_metric_port
-        )
-        .parse()
-        .unwrap(),
-    );
-    let registry: Registry = registry_service.default_registry();
+    
+    // Start standard Prometheus server on port 9184
+    let registry = start_basic_prometheus_server();
     mysten_metrics::init_metrics(&registry);
     let metrics = AnalyticsMetrics::new(&registry);
     let remote_store_url = config.remote_store_url.clone();
