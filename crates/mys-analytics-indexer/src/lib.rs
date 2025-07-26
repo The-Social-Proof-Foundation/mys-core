@@ -59,7 +59,7 @@ pub mod tables;
 mod writers;
 
 const EPOCH_DIR_PREFIX: &str = "epoch_";
-const CHECKPOINT_DIR_PREFIX: &str = "checkpoints";
+const CHECKPOINT_DIR_PREFIX: &str = "";
 const OBJECT_DIR_PREFIX: &str = "objects";
 const TRANSACTION_DIR_PREFIX: &str = "transactions";
 const EVENT_DIR_PREFIX: &str = "events";
@@ -109,7 +109,7 @@ pub struct AnalyticsIndexerConfig {
     pub file_type: FileType,
     #[clap(
         long,
-        default_value = "https://checkpoints.mainnet.mysocial.network",
+        default_value = "https://mysocial-testnet-checkpoints.storage.googleapis.com",
         global = true
     )]
     pub remote_store_url: String,
