@@ -110,6 +110,10 @@ ARGS="$ARGS --checkpoint-dir ${CHECKPOINT_DIR:-/tmp/analytics}"\n\
 ARGS="$ARGS --package-cache-path ${PACKAGE_CACHE_PATH:-/opt/mys/db/package_cache}"\n\
 ARGS="$ARGS --remote-store-url ${REMOTE_STORE_URL:-https://mysocial-testnet-checkpoints.storage.googleapis.com}"\n\
 \n\
+# Add GCS-specific flags\n\
+ARGS="$ARGS --bucket $REMOTE_STORE_BUCKET"\n\
+ARGS="$ARGS --google-service-account /app/credentials/gcs-key.json"\n\
+\n\
 # Add GCS as the object store type\n\
 ARGS="$ARGS gcs"\n\
 \n\
