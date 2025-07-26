@@ -13,7 +13,7 @@ healthcheckTimeout = 60
 RUST_LOG = "info,mys_analytics_indexer=debug"
 
 # Core MySocial configuration
-REST_URL = "https://fullnode.mainnet.mysocial.network:9000"
+REST_URL = "https://fullnode.testnet.mysocial.network:9000"
 FILE_TYPE = "checkpoint"
 
 # Processing settings
@@ -23,9 +23,9 @@ MAX_FILE_SIZE_MB = "100"
 TIME_INTERVAL_S = "600"
 
 # Google Cloud Storage (REQUIRED)
-REMOTE_STORE_BUCKET = "mysoocial-testnet-analytics"
+REMOTE_STORE_BUCKET = "mysocial-testnet-analytics"
 REMOTE_STORE_REGION = "us"
-REMOTE_STORE_URL = "https://checkpoints.mainnet.mysocial.network"
+REMOTE_STORE_URL = "https://console.cloud.google.com/storage/browser/mysoocial-testnet-analytics"
 
 # GCS Authentication - Set this in Railway UI (not here for security)
 # GCS_SERVICE_ACCOUNT_JSON = "{ your service account JSON content }" 

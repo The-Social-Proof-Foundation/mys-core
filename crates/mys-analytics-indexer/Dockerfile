@@ -56,22 +56,32 @@ RUN echo '#!/bin/sh\n\
 echo "=== MySocial Analytics Indexer ==="\n\
 echo "Starting analytics indexer..."\n\
 echo ""\n\
+echo "=== DEBUG: Environment Variables ==="\n\
+env | grep -E "(REST_URL|FILE_TYPE|REMOTE_)" | sort || echo "No matching env vars found"\n\
+echo ""\n\
 \n\
 # Validate required environment variables\n\
 if [ -z "$REST_URL" ]; then\n\
-  echo "ERROR: REST_URL is required"\n\
-  echo "Example: REST_URL=https://fullnode.mainnet.mysocial.network:9000"\n\
+  echo "ERROR: REST_URL environment variable is not set"\n\
+  echo "Expected: REST_URL=https://fullnode.testnet.mysocial.network:9000"\n\
+  echo "Available env vars:"\n\
+  env | head -10\n\
   exit 1\n\
 fi\n\
 \n\
 if [ -z "$FILE_TYPE" ]; then\n\
-  echo "ERROR: FILE_TYPE is required"\n\
-  echo "Must be one of: checkpoint, transaction, object, event"\n\
+  echo "ERROR: FILE_TYPE environment variable is not set"\n\
+  echo "Expected: FILE_TYPE=checkpoint"\n\
+  echo "Available env vars:"\n\
+  env | head -10\n\
   exit 1\n\
 fi\n\
 \n\
 if [ -z "$REMOTE_STORE_BUCKET" ]; then\n\
-  echo "ERROR: REMOTE_STORE_BUCKET is required"\n\
+  echo "ERROR: REMOTE_STORE_BUCKET environment variable is not set"\n\
+  echo "Expected: REMOTE_STORE_BUCKET=mysocial-testnet-analytics"\n\
+  echo "Available env vars:"\n\
+  env | head -10\n\
   exit 1\n\
 fi\n\
 \n\
@@ -98,7 +108,7 @@ ARGS="$ARGS --max-file-size-mb ${MAX_FILE_SIZE_MB:-100}"\n\
 ARGS="$ARGS --time-interval-s ${TIME_INTERVAL_S:-600}"\n\
 ARGS="$ARGS --checkpoint-dir ${CHECKPOINT_DIR:-/tmp/analytics}"\n\
 ARGS="$ARGS --package-cache-path ${PACKAGE_CACHE_PATH:-/opt/mys/db/package_cache}"\n\
-ARGS="$ARGS --remote-store-url ${REMOTE_STORE_URL:-https://checkpoints.mainnet.mysocial.network}"\n\
+ARGS="$ARGS --remote-store-url ${REMOTE_STORE_URL:-https://checkpoints.testnet.mysocial.network}"\n\
 ARGS="$ARGS --remote-store-bucket $REMOTE_STORE_BUCKET"\n\
 \n\
 if [ -n "$REMOTE_STORE_REGION" ]; then\n\
@@ -115,7 +125,7 @@ echo "FILE_TYPE: $FILE_TYPE"\n\
 echo "BUCKET: $REMOTE_STORE_BUCKET"\n\
 echo "CHECKPOINT_INTERVAL: ${CHECKPOINT_INTERVAL:-10000}"\n\
 echo ""\n\
-echo "Starting: mys-analytics-indexer $ARGS"\n\
+echo "Final command: mys-analytics-indexer $ARGS"\n\
 echo ""\n\
 \n\
 exec mys-analytics-indexer $ARGS' > /usr/local/bin/entrypoint.sh && \
