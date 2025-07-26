@@ -1,6 +1,7 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "crates/mys-analytics-indexer/Dockerfile"
+buildCommand = "cargo build --release --bin mys-analytics-indexer"
 
 [deploy]
 startCommand = "mys-analytics-indexer"
