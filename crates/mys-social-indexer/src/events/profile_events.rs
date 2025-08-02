@@ -73,6 +73,11 @@ fn default_timestamp() -> u64 {
         .as_secs()
 }
 
+/// Default function for numeric fields that should be 0
+fn default_zero() -> u64 {
+    0
+}
+
 /// Event emitted when a profile is created
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProfileCreatedEvent {
@@ -326,4 +331,111 @@ pub struct ProfileJoinedPlatformEvent {
     /// Timestamp of the join action
     #[serde(default, deserialize_with = "deserialize_optional_number_from_string")]
     pub joined_at: Option<u64>,
+}
+
+/// Event emitted when MYS tokens are vested
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TokensVestedEvent {
+    /// ID of the vesting wallet
+    #[serde(rename = "wallet_id", default)]
+    pub wallet_id: String,
+    
+    /// Address of the wallet owner
+    #[serde(rename = "owner", default)]
+    pub owner: String,
+    
+    /// Total amount of tokens vested
+    #[serde(rename = "total_amount", default = "default_zero", deserialize_with = "deserialize_number_from_string")]
+    pub total_amount: u64,
+    
+    /// Start time of vesting (in milliseconds)
+    #[serde(rename = "start_time", default = "default_zero", deserialize_with = "deserialize_number_from_string")]
+    pub start_time: u64,
+    
+    /// Duration of vesting period (in milliseconds)
+    #[serde(rename = "duration", default = "default_zero", deserialize_with = "deserialize_number_from_string")]
+    pub duration: u64,
+    
+    /// Curve factor for vesting schedule
+    #[serde(rename = "curve_factor", default = "default_zero", deserialize_with = "deserialize_number_from_string")]
+    pub curve_factor: u64,
+    
+    /// Timestamp when tokens were vested (in milliseconds)
+    #[serde(rename = "vested_at", default = "default_timestamp", deserialize_with = "deserialize_number_from_string")]
+    pub vested_at: u64,
+}
+
+impl TokensVestedEvent {
+    /// Convert the event to vesting wallet and event models
+    pub fn into_models(&self, transaction_id: String) -> (crate::models::NewVestingWallet, crate::models::NewVestingEvent) {
+        let wallet = crate::models::NewVestingWallet::from_tokens_vested_event(
+            self.wallet_id.clone(),
+            self.owner.clone(),
+            self.total_amount,
+            self.start_time,
+            self.duration,
+            self.curve_factor,
+            transaction_id.clone(),
+            Some(self.vested_at),
+        );
+        
+        let event = crate::models::NewVestingEvent::from_tokens_vested_event(
+            self.wallet_id.clone(),
+            self.owner.clone(),
+            self.total_amount,
+            self.start_time,
+            self.duration,
+            self.curve_factor,
+            self.vested_at,
+            transaction_id,
+        );
+        
+        (wallet, event)
+    }
+}
+
+/// Event emitted when vested tokens are claimed
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TokensClaimedEvent {
+    /// ID of the vesting wallet
+    #[serde(rename = "wallet_id", default)]
+    pub wallet_id: String,
+    
+    /// Address of the wallet owner
+    #[serde(rename = "owner", default)]
+    pub owner: String,
+    
+    /// Amount of tokens claimed in this transaction
+    #[serde(rename = "claimed_amount", default = "default_zero", deserialize_with = "deserialize_number_from_string")]
+    pub claimed_amount: u64,
+    
+    /// Remaining balance after this claim
+    #[serde(rename = "remaining_balance", default = "default_zero", deserialize_with = "deserialize_number_from_string")]
+    pub remaining_balance: u64,
+    
+    /// Timestamp when tokens were claimed (in milliseconds)
+    #[serde(rename = "claimed_at", default = "default_timestamp", deserialize_with = "deserialize_number_from_string")]
+    pub claimed_at: u64,
+}
+
+impl TokensClaimedEvent {
+    /// Convert the event to vesting update and event models
+    pub fn into_models(&self, transaction_id: String) -> (crate::models::UpdateVestingWallet, crate::models::NewVestingEvent) {
+        let wallet_update = crate::models::UpdateVestingWallet::from_tokens_claimed(
+            self.claimed_amount,
+            self.remaining_balance,
+            Some(self.claimed_at),
+        );
+        
+        let event = crate::models::NewVestingEvent::from_tokens_claimed_event(
+            self.wallet_id.clone(),
+            self.owner.clone(),
+            self.claimed_amount,
+            self.remaining_balance,
+            self.claimed_at,
+            transaction_id,
+        );
+        
+        (wallet_update, event)
+    }
 }

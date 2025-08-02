@@ -181,6 +181,45 @@ table! {
     }
 }
 
+// ===========================================================================
+// VESTING TABLES
+// ===========================================================================
+
+// Define vesting_wallets table (Regular table - reference data)
+table! {
+    vesting_wallets (wallet_id) {
+        wallet_id -> Varchar,
+        owner_address -> Varchar,
+        total_amount -> BigInt,
+        start_time -> BigInt,
+        duration -> BigInt,
+        curve_factor -> BigInt,
+        claimed_amount -> BigInt,
+        remaining_balance -> BigInt,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define vesting_events table (TimescaleDB hypertable)
+table! {
+    vesting_events (id, time) {
+        id -> Int4,
+        wallet_id -> Varchar,
+        event_type -> Varchar,
+        owner_address -> Varchar,
+        amount -> BigInt,
+        remaining_balance -> Nullable<BigInt>,
+        start_time -> Nullable<BigInt>,
+        duration -> Nullable<BigInt>,
+        curve_factor -> Nullable<BigInt>,
+        event_time -> BigInt,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
 // Define posts table
 table! {
     posts (id, time) {
@@ -1122,6 +1161,9 @@ allow_tables_to_appear_in_same_query!(
     platform_memberships,
     profiles_blocked,
     profile_events,
+    // Vesting tables
+    vesting_wallets,
+    vesting_events,
     posts,
     comments,
     reactions,

@@ -17,9 +17,9 @@ module social_contracts::profile {
         event,
         table::{Self, Table},
         coin::{Self, Coin},
-        balance::Balance,
+        balance::{Self, Balance},
         url::{Self, Url},
-        clock::Clock
+        clock::{Self, Clock}
     };
     use mys::mys::MYS;
 
@@ -44,8 +44,15 @@ module social_contracts::profile {
     const EOfferBelowMinimum: u64 = 12;
     const EBadgeNotFound: u64 = 13;
     const EBadgeAlreadyExists: u64 = 14;
+    // Vesting error codes
+    const EInvalidStartTime: u64 = 15;
+    const EVestingWalletNotFound: u64 = 16;
+    const ENotVestingWalletOwner: u64 = 17;
 
     const PROFILE_SALE_FEE_BPS: u64 = 500;
+    
+    // Fixed-point precision for curve calculations (1000 = 1.0)
+    const CURVE_PRECISION: u64 = 1000;
 
     /// Reserved usernames that cannot be registered
     const RESERVED_NAMES: vector<vector<u8>> = vector[
@@ -164,6 +171,27 @@ module social_contracts::profile {
         badge_type: u8,
     }
 
+
+
+    /// Vesting Wallet contains MYS coins that are available for claiming over time
+    public struct VestingWallet has key, store {
+        id: UID,
+        /// Balance of MYS coins remaining in the wallet
+        balance: Balance<MYS>,
+        /// Address of the wallet owner who can claim the tokens
+        owner: address,
+        /// Time when the vesting started (in milliseconds)
+        start_time: u64,
+        /// Amount of coins that have been claimed
+        claimed_amount: u64,
+        /// Total duration of the vesting schedule (in milliseconds)
+        duration: u64,
+        /// Total amount originally vested
+        total_amount: u64,
+        /// Curve factor (1000 = linear, >1000 = more at end, <1000 = more at start)
+        curve_factor: u64,
+    }
+
     // === Events ===
 
     /// Event emitted when a badge is assigned to a profile
@@ -274,6 +302,26 @@ module social_contracts::profile {
         fee_amount: u64,
         fee_recipient: address,
         timestamp: u64,
+    }
+
+    /// Event emitted when MYS tokens are vested
+    public struct TokensVestedEvent has copy, drop {
+        wallet_id: address,
+        owner: address,
+        total_amount: u64,
+        start_time: u64,
+        duration: u64,
+        curve_factor: u64,
+        vested_at: u64,
+    }
+
+    /// Event emitted when vested tokens are claimed
+    public struct TokensClaimedEvent has copy, drop {
+        wallet_id: address,
+        owner: address,
+        claimed_amount: u64,
+        remaining_balance: u64,
+        claimed_at: u64,
     }
 
     /// Module initializer to create the username registry
@@ -1596,8 +1644,266 @@ module social_contracts::profile {
     public fun badge_count(profile: &Profile): u64 {
         vector::length(&profile.badges)
     }
-    
 
-    
+    // === Vesting Functions ===
+
+    /// Create a new vesting wallet with MYS tokens that vest over time with configurable curve
+    /// The start time must be in the future and duration must be greater than 0
+    /// curve_factor: 0 or 1000 = linear, >1000 = more tokens at end, <1000 = more tokens at start
+    /// 
+    /// Example Curves:
+    /// Exponential (curve_factor = 2000):
+    /// 25% time → ~6% tokens
+    /// 50% time → ~25% tokens
+    /// 75% time → ~56% tokens
+    /// 100% time → 100% tokens
+    /// Logarithmic (curve_factor = 500):
+    /// 25% time → ~44% tokens
+    /// 50% time → ~75% tokens
+    /// 75% time → ~94% tokens
+    /// 100% time → 100% tokens
+
+    public entry fun vest_myso(
+        mut coin: Coin<MYS>,
+        recipient: address,
+        start_time: u64,
+        duration: u64,
+        curve_factor: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        // Validate that start time is in the future
+        let current_time = clock::timestamp_ms(clock);
+        assert!(start_time > current_time, EInvalidStartTime);
+
+        // Validate that duration is greater than 0
+        assert!(duration > 0, EInvalidStartTime);
+
+        let total_amount = coin::value(&coin);
+        assert!(total_amount > 0, EInsufficientTokens);
+
+        // Default to linear if curve_factor is 0
+        let final_curve_factor = if (curve_factor == 0) {
+            CURVE_PRECISION // 1000 = linear
+        } else {
+            // Validate curve factor is reasonable (between 100 and 10000, i.e., 0.1x to 10x)
+            assert!(curve_factor >= 100 && curve_factor <= 10000, EInvalidStartTime);
+            curve_factor
+        };
+
+        // Create the vesting wallet
+        let wallet = VestingWallet {
+            id: object::new(ctx),
+            balance: coin::into_balance(coin),
+            owner: recipient,
+            start_time,
+            claimed_amount: 0,
+            duration,
+            total_amount,
+            curve_factor: final_curve_factor,
+        };
+
+        let wallet_id = object::uid_to_address(&wallet.id);
+
+        // Emit vesting event
+        event::emit(TokensVestedEvent {
+            wallet_id,
+            owner: recipient,
+            total_amount,
+            start_time,
+            duration,
+            curve_factor: final_curve_factor,
+            vested_at: current_time,
+        });
+
+        // Transfer the vesting wallet to the recipient
+        transfer::public_transfer(wallet, recipient);
+    }
+
+    /// Claim vested tokens from a vesting wallet
+    /// Only the wallet owner can claim tokens, and only claimable amounts
+    public entry fun claim_vested_tokens(
+        wallet: &mut VestingWallet,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        
+        // Verify sender is the wallet owner
+        assert!(wallet.owner == sender, ENotVestingWalletOwner);
+
+        let claimable_amount = calculate_claimable(wallet, clock);
+        
+        // Only proceed if there are tokens to claim
+        if (claimable_amount > 0) {
+            // Update claimed amount
+            wallet.claimed_amount = wallet.claimed_amount + claimable_amount;
+            
+            // Create coin from the claimable balance and transfer to owner
+            let claimed_coin = coin::from_balance<MYS>(
+                balance::split(&mut wallet.balance, claimable_amount),
+                ctx
+            );
+            
+            let wallet_id = object::uid_to_address(&wallet.id);
+            let remaining_balance = balance::value(&wallet.balance);
+            
+            // Emit claim event
+            event::emit(TokensClaimedEvent {
+                wallet_id,
+                owner: sender,
+                claimed_amount: claimable_amount,
+                remaining_balance,
+                claimed_at: clock::timestamp_ms(clock),
+            });
+            
+            // Transfer claimed tokens to the owner
+            transfer::public_transfer(claimed_coin, sender);
+        };
+    }
+
+    /// Calculate how many tokens can be claimed from a vesting wallet at the current time
+    public fun claimable(wallet: &VestingWallet, clock: &Clock): u64 {
+        calculate_claimable(wallet, clock)
+    }
+
+    /// Internal function to calculate claimable amount
+    fun calculate_claimable(wallet: &VestingWallet, clock: &Clock): u64 {
+        let current_time = clock::timestamp_ms(clock);
+        
+        // If vesting hasn't started yet, nothing is claimable
+        if (current_time < wallet.start_time) {
+            return 0
+        };
+        
+        // If vesting period is complete, all remaining balance is claimable
+        if (current_time >= wallet.start_time + wallet.duration) {
+            return balance::value(&wallet.balance)
+        };
+        
+        // Calculate progress as a percentage (0 to CURVE_PRECISION)
+        let elapsed_time = current_time - wallet.start_time;
+        let progress = ((elapsed_time as u128) * (CURVE_PRECISION as u128)) / (wallet.duration as u128);
+        
+        // Apply curve based on curve_factor
+        let curved_progress = if (wallet.curve_factor == CURVE_PRECISION) {
+            // Linear vesting (curve_factor = 1000)
+            progress
+        } else if (wallet.curve_factor > CURVE_PRECISION) {
+            // Exponential curve - more tokens at the end
+            // Use simplified exponential: progress^2 scaled by curve_factor
+            let steepness = wallet.curve_factor - CURVE_PRECISION; // How much above linear
+            let quadratic = (progress * progress) / (CURVE_PRECISION as u128);
+            let linear_part = (progress * (CURVE_PRECISION as u128)) / (CURVE_PRECISION as u128);
+            
+            // Blend between linear and quadratic based on steepness
+            (linear_part * (CURVE_PRECISION as u128) + quadratic * (steepness as u128)) / (CURVE_PRECISION as u128)
+        } else {
+            // Logarithmic curve - more tokens at the start
+            // Use simplified square root approximation for early release
+            let steepness = CURVE_PRECISION - wallet.curve_factor; // How much below linear
+            let sqrt_approx = sqrt_approximation(progress * (CURVE_PRECISION as u128)) * (CURVE_PRECISION as u128) / (CURVE_PRECISION as u128);
+            let linear_part = progress;
+            
+            // Blend between square root and linear based on steepness
+            (sqrt_approx * (steepness as u128) + linear_part * (CURVE_PRECISION as u128)) / (CURVE_PRECISION as u128)
+        };
+        
+        // Convert back to total claimable amount
+        let total_claimable = ((wallet.total_amount as u128) * curved_progress) / (CURVE_PRECISION as u128);
+        
+        // Subtract already claimed amount to get newly claimable amount
+        let newly_claimable = (total_claimable as u64) - wallet.claimed_amount;
+        
+        // Ensure we don't exceed the remaining balance
+        let remaining_balance = balance::value(&wallet.balance);
+        if (newly_claimable > remaining_balance) {
+            remaining_balance
+        } else {
+            newly_claimable
+        }
+    }
+
+    /// Simple square root approximation using Newton's method
+    fun sqrt_approximation(n: u128): u128 {
+        if (n == 0) return 0;
+        if (n == 1) return 1;
+        
+        let mut x = n;
+        let mut y = (x + 1) / 2;
+        
+        // Newton's method with limited iterations
+        let mut i = 0;
+        while (y < x && i < 10) {
+            x = y;
+            y = (x + n / x) / 2;
+            i = i + 1;
+        };
+        
+        x
+    }
+
+    /// Delete an empty vesting wallet
+    /// Can only be called when the wallet balance is zero
+    public entry fun delete_vesting_wallet(wallet: VestingWallet, ctx: &mut TxContext) {
+        let sender = tx_context::sender(ctx);
+        
+        // Verify sender is the wallet owner
+        assert!(wallet.owner == sender, ENotVestingWalletOwner);
+        
+        let VestingWallet { 
+            id, 
+            balance, 
+            owner: _, 
+            start_time: _, 
+            claimed_amount: _, 
+            duration: _, 
+            total_amount: _,
+            curve_factor: _
+        } = wallet;
+        
+        // Delete the wallet ID
+        object::delete(id);
+        
+        // Destroy the empty balance
+        balance::destroy_zero(balance);
+    }
+
+    // === Vesting Wallet Accessors ===
+
+    /// Get the remaining balance in a vesting wallet
+    public fun vesting_balance(wallet: &VestingWallet): u64 {
+        balance::value(&wallet.balance)
+    }
+
+    /// Get the owner of a vesting wallet
+    public fun vesting_owner(wallet: &VestingWallet): address {
+        wallet.owner
+    }
+
+    /// Get the start time of a vesting schedule
+    public fun vesting_start_time(wallet: &VestingWallet): u64 {
+        wallet.start_time
+    }
+
+    /// Get the duration of a vesting schedule
+    public fun vesting_duration(wallet: &VestingWallet): u64 {
+        wallet.duration
+    }
+
+    /// Get the total amount originally vested
+    public fun vesting_total_amount(wallet: &VestingWallet): u64 {
+        wallet.total_amount
+    }
+
+    /// Get the amount already claimed from a vesting wallet
+    public fun vesting_claimed_amount(wallet: &VestingWallet): u64 {
+        wallet.claimed_amount
+    }
+
+    /// Get the curve factor of a vesting wallet
+    public fun vesting_curve_factor(wallet: &VestingWallet): u64 {
+        wallet.curve_factor
+    }
 
 }

@@ -282,7 +282,77 @@ echo "Address: $FAUCET_ADDRESS"
 echo "Key saved to faucet/"
 echo
 
-# Step 4: Update genesis_config.yaml with generated addresses
+# Step 4: Generate social-proof-foundation key
+echo -e "${YELLOW}Generating social-proof-foundation key...${NC}"
+
+# Create the key in its own directory
+mkdir -p "${GENESIS_DIR}/social-proof-foundation"
+pushd "${GENESIS_DIR}/social-proof-foundation" > /dev/null
+
+cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519 > social_proof_foundation_output.txt
+
+# Extract key information
+SOCIAL_PROOF_FOUNDATION_ADDRESS=$(grep "mysAddress" social_proof_foundation_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
+SOCIAL_PROOF_FOUNDATION_MNEMONIC=$(grep "mnemonic" social_proof_foundation_output.txt | sed 's/│//g' | awk '{$1=""; print $0}' | xargs)
+
+echo "Social Proof Foundation Address: $SOCIAL_PROOF_FOUNDATION_ADDRESS"
+echo "Social Proof Foundation Mnemonic: $SOCIAL_PROOF_FOUNDATION_MNEMONIC"
+
+# Save social-proof-foundation info for reference
+echo "Social Proof Foundation Address: $SOCIAL_PROOF_FOUNDATION_ADDRESS" > social_proof_foundation_info.txt
+echo "Social Proof Foundation Mnemonic: $SOCIAL_PROOF_FOUNDATION_MNEMONIC" >> social_proof_foundation_info.txt
+cp social_proof_foundation_output.txt social_proof_foundation.json
+
+# Move social-proof-foundation key file if it exists
+if [ -f "${SOCIAL_PROOF_FOUNDATION_ADDRESS}.key" ]; then
+    mv "${SOCIAL_PROOF_FOUNDATION_ADDRESS}.key" social_proof_foundation.key
+    echo "Created social_proof_foundation.key"
+fi
+
+# Return to genesis directory
+popd > /dev/null
+
+echo -e "${GREEN}Social Proof Foundation key generated successfully!${NC}"
+echo "Address: $SOCIAL_PROOF_FOUNDATION_ADDRESS"
+echo "Key saved to social-proof-foundation/"
+echo
+
+# Step 5: Generate core-team key
+echo -e "${YELLOW}Generating core-team key...${NC}"
+
+# Create the key in its own directory
+mkdir -p "${GENESIS_DIR}/core-team"
+pushd "${GENESIS_DIR}/core-team" > /dev/null
+
+cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519 > core_team_output.txt
+
+# Extract key information
+CORE_TEAM_ADDRESS=$(grep "mysAddress" core_team_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
+CORE_TEAM_MNEMONIC=$(grep "mnemonic" core_team_output.txt | sed 's/│//g' | awk '{$1=""; print $0}' | xargs)
+
+echo "Core Team Address: $CORE_TEAM_ADDRESS"
+echo "Core Team Mnemonic: $CORE_TEAM_MNEMONIC"
+
+# Save core-team info for later use
+echo "Core Team Address: $CORE_TEAM_ADDRESS" > core_team_info.txt
+echo "Core Team Mnemonic: $CORE_TEAM_MNEMONIC" >> core_team_info.txt
+cp core_team_output.txt core_team.json
+
+# Move core-team key file if it exists
+if [ -f "${CORE_TEAM_ADDRESS}.key" ]; then
+    mv "${CORE_TEAM_ADDRESS}.key" core_team.key
+    echo "Created core_team.key"
+fi
+
+# Return to genesis directory
+popd > /dev/null
+
+echo -e "${GREEN}Core Team key generated successfully!${NC}"
+echo "Address: $CORE_TEAM_ADDRESS"
+echo "Key saved to core-team/"
+echo
+
+# Step 6: Update genesis_config.yaml with generated addresses
 echo -e "${YELLOW}Updating genesis_config.yaml with generated addresses...${NC}"
 
 # Make a backup of the original file
@@ -295,8 +365,8 @@ cat > "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
 # This file controls the epoch duration and stake subsidy parameters
 
 parameters:
-  # Chain start timestamp (in milliseconds since epoch)
-  chain_start_timestamp_ms: $(date +%s)000
+  # Chain start timestamp current time + 1 hour (in milliseconds since epoch)
+  chain_start_timestamp_ms: $(( $(date +%s) + 3600 ))000
 
   # Protocol version
   protocol_version: 74  # Latest version
@@ -315,8 +385,8 @@ parameters:
   stake_subsidy_start_epoch: 0
 
   # Initial stake subsidy distribution amount per epoch (in MIST)
-  # Default: 35,000 MySo = 35,000,000,000,000 MIST
-  stake_subsidy_initial_distribution_amount: 35000000000000
+  # Default: 50,000 MySo = 50,000,000,000,000 MIST
+  stake_subsidy_initial_distribution_amount: 50000000000000
 
   # Number of epochs before decreasing the subsidy amount
   # Default: 15 epochs
@@ -331,7 +401,7 @@ accounts:
   # Fullnode allocation
   - address: "$FULLNODE_ADDRESS"
     gas_amounts:
-      - 250000000000000 # 250,000 MySo
+      - 500000000000000 # 500,000 MySo
   # Validator 1
   - address: "${VALIDATOR_ADDRESSES[0]}"
     gas_amounts:
@@ -347,7 +417,15 @@ accounts:
   # Faucet
   - address: "$FAUCET_ADDRESS"
     gas_amounts:
-      - 100000000000000 # 100,000 MySo
+      - 1000000000000000 # 1,000,000 MySo
+  # Social Proof Foundation
+  - address: "$SOCIAL_PROOF_FOUNDATION_ADDRESS"
+    gas_amounts:
+      - 235000000000000000 # 240,000,000 MySo (24% - 2mill for owning fullnode & validator - 3mill for 3 validators init staking)
+  # Core Team
+  - address: "$CORE_TEAM_ADDRESS"
+    gas_amounts:
+      - 250000000000000000 # 250,000,000 MySo (25% 12.5% core & 12.5 marketing)
 
 validator_config_info:
 EOL
@@ -359,15 +437,15 @@ for i in {0..2}; do
   
   cat >> "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
   # Validator $i (dynamic ports)
-  - name: "validator-$i"
+  - name: "MySo Core Validator $i"
     network_address: "/ip4/$BASE_IP/tcp/$NETWORK_PORT/http"
     p2p_address: "/ip4/$BASE_IP/udp/$P2P_PORT"
     narwhal_primary_address: "/ip4/$BASE_IP/udp/$NARWHAL_PRIMARY_PORT"
     narwhal_worker_address: "/ip4/$BASE_IP/udp/$NARWHAL_WORKER_PORT"
     consensus_address: "/ip4/$BASE_IP/tcp/$CONSENSUS_PORT/http"
-    gas_price: 100
-    commission_rate: 0
-    stake: 20000000000000000  # 20 million MYS in MIST units
+    gas_price: 0
+    commission_rate: 500
+    stake: 1000000000000000  # 1 million MySo in MIST units
 EOL
 done
 

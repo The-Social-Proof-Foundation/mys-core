@@ -44,6 +44,10 @@ pub struct ProfileEventsResponse {
 }
 
 /// Handler for getting profile events by profile ID
+/// Note: This handler returns profile management events (creation, updates, etc.).
+/// For vesting-related events (TokensVested, TokensClaimed), use the vesting endpoints:
+/// - GET /vesting/users/{address}/wallets
+/// - GET /vesting/events?owner_address={address}
 pub async fn get_profile_events(
     Path(profile_id): Path<String>,
     Query(query): Query<ProfileEventsQuery>,

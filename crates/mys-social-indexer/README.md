@@ -12,6 +12,7 @@ A indexer for the MySocial blockchain that focuses on tracking social interactio
 - **MyIP Integration**: Tracks intellectual property licenses and revenue
 - **Governance Integration**: Tracks proposals, voting, and delegates
 - **Social Proof Token**: Tracks token pools, transactions, holdings, and staking pools
+- **Token Vesting**: Tracks MYS token vesting schedules with configurable release curves
 - **Database Storage**: Stores all data in TimescaleDB (PostgreSQL)
 - **REST API**: Provides endpoints for accessing indexed data
 - **Configurable**: Customizable via environment variables
@@ -90,6 +91,45 @@ The indexer now supports tracking promoted posts, a pay-per-view system where po
 - **Time-Series Analytics**: Leverage TimescaleDB's time_bucket for efficient aggregation
 - **Continuous Aggregates**: Query pre-computed data for instant results
 - **Performance Views**: Access materialized views for top promotions and trends
+
+## Token Vesting System
+
+The indexer supports comprehensive tracking of MYS token vesting schedules with configurable release curves. This system enables organizations and individuals to implement sophisticated token distribution strategies with automated tracking and real-time analytics.
+
+### How It Works
+1. **Vesting Creation**: When tokens are vested via `vest_myso()`, a `TokensVestedEvent` is emitted containing wallet details, schedule parameters, and curve configuration
+2. **Automated Tracking**: The indexer monitors all vesting wallets and calculates real-time claimable amounts based on elapsed time and curve factors
+3. **Claim Processing**: When users claim tokens via `claim_vested_tokens()`, `TokensClaimedEvent` updates wallet balances and tracks distribution history
+4. **Curve Support**: Supports linear, exponential, and logarithmic vesting curves for flexible token release schedules
+
+### Vesting Curve Types
+- **Linear Vesting** (curve_factor = 1000): Equal token amounts released over time
+- **Exponential Curves** (curve_factor > 1000): Few tokens at start, accelerating toward end
+- **Logarithmic Curves** (curve_factor < 1000): More tokens at start, decelerating over time
+- **Custom Factors**: Any curve_factor between 100-10000 for precise release control
+
+### Key Features
+- **Real-time Calculations**: Live claimable amount computation using curve mathematics
+- **Status Tracking**: Automatic detection of vesting phases (not_started, in_progress, completed)
+- **Progress Monitoring**: Track vesting progress percentage and time remaining
+- **Analytics Dashboard**: Comprehensive platform-wide vesting statistics and trends
+- **User Portfolio**: Individual vesting wallet management and history
+
+### Database Tables
+- `vesting_wallets`: Core vesting wallet configurations and current balances (Regular table)
+- `vesting_events`: Complete event history for all vesting actions (TimescaleDB hypertable)
+
+### Vesting Analytics
+- **Portfolio Tracking**: Monitor total vested, claimed, and remaining amounts across all wallets
+- **Curve Analysis**: Statistics on most popular vesting curves and durations
+- **User Insights**: Individual wallet performance and claiming patterns
+- **Platform Metrics**: Aggregate vesting activity and distribution trends
+
+### API Capabilities
+- **Real-time Status**: Live wallet status with current claimable amounts
+- **Event History**: Complete audit trail of all vesting and claiming activities
+- **User Management**: Per-user wallet listing and portfolio overview
+- **Analytics**: Platform-wide vesting statistics and leaderboards
 
 ## Getting Started
 
@@ -246,6 +286,16 @@ GET /search?query=social&page=2&limit=50
 - **GET /promotions/:id/analytics/hourly** - Get hourly stats from continuous aggregates for better performance
 - **GET /promotions/analytics/top-performing** - Get top performing promotions from materialized views
 - **GET /promotions/analytics/spending-trends** - Get platform-wide spending trends from continuous aggregates
+
+### Token Vesting API
+- **GET /vesting/wallets** - List all vesting wallets with optional filtering by owner
+- **GET /vesting/wallets/:wallet_id** - Get specific vesting wallet details with real-time status
+- **GET /vesting/wallets/:wallet_id/events** - Get complete event history for a vesting wallet
+- **GET /vesting/wallets/:wallet_id/claimable** - Get real-time claimable amount with progress details
+- **GET /vesting/users/:address/wallets** - Get all vesting wallets for a specific user address
+- **GET /vesting/events** - List all vesting events with optional owner filtering
+- **GET /vesting/analytics** - Get platform-wide vesting statistics and metrics
+- **GET /vesting/leaderboard** - Get vesting leaderboard (top users by vested amounts)
 
 ### Proof of Content (PoC) API
 - **GET /poc/badges** - List all proof of content badges

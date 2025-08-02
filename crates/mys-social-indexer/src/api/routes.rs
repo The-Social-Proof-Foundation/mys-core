@@ -135,6 +135,17 @@ use crate::api::handlers::subscriptions::{
     get_service_performance,
     get_subscriber_summary,
 };
+// Import vesting handlers  
+use crate::api::handlers::vesting::{
+    get_vesting_wallets,
+    get_vesting_wallet_by_id,
+    get_vesting_wallet_events,
+    get_vesting_wallet_claimable,
+    get_user_vesting_wallets,
+    get_vesting_events,
+    get_vesting_analytics,
+    get_vesting_leaderboard,
+};
 // Import revenue handlers
 use crate::api::handlers::revenue::{
     get_revenue_dashboard,
@@ -228,6 +239,16 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/subscription-analytics", get(get_subscription_analytics))
         .route("/service-performance", get(get_service_performance))
         .route("/subscribers/:address/summary", get(get_subscriber_summary))
+        
+        // Vesting endpoints (using TimescaleDB)
+        .route("/vesting/wallets", get(get_vesting_wallets))
+        .route("/vesting/wallets/:wallet_id", get(get_vesting_wallet_by_id))
+        .route("/vesting/wallets/:wallet_id/events", get(get_vesting_wallet_events))
+        .route("/vesting/wallets/:wallet_id/claimable", get(get_vesting_wallet_claimable))
+        .route("/vesting/users/:address/wallets", get(get_user_vesting_wallets))
+        .route("/vesting/events", get(get_vesting_events))
+        .route("/vesting/analytics", get(get_vesting_analytics))
+        .route("/vesting/leaderboard", get(get_vesting_leaderboard))
         
         // Unified Revenue Analytics endpoints (using TimescaleDB)
         .route("/revenue/dashboard", get(get_revenue_dashboard))

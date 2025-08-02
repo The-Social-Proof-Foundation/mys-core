@@ -15,6 +15,7 @@ pub mod poc;
 pub mod subscription;
 pub mod revenue;
 pub mod token_exchange;
+pub mod vesting;
 
 pub use profile::*;
 pub use indexer::*;
@@ -67,3 +68,10 @@ pub use revenue::{
     calculate_percentage, calculate_growth_rate
 };
 pub use token_exchange::*;
+// Import vesting types
+pub use vesting::{
+    VestingWallet, NewVestingWallet, UpdateVestingWallet,
+    VestingEvent, NewVestingEvent, VestingWalletWithStatus,
+    VESTING_EVENT_TYPE_VESTED, VESTING_EVENT_TYPE_CLAIMED,
+    CURVE_FACTOR_LINEAR, CURVE_FACTOR_MIN, CURVE_FACTOR_MAX
+};

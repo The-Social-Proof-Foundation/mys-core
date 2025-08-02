@@ -12,7 +12,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::db::{Database, DbConnection};
 use crate::blockchain::listener::BlockchainEvent;
-use crate::events::profile_events::{ProfileCreatedEvent, ProfileUpdatedEvent};
+use crate::events::profile_events::{ProfileCreatedEvent, ProfileUpdatedEvent, TokensVestedEvent, TokensClaimedEvent};
 use crate::events::blocking_events;
 use crate::models::indexer::NewIndexerProgress;
 use crate::schema;
@@ -349,6 +349,70 @@ impl ProfileEventListener {
         Ok(())
     }
 
+    /// Process a tokens vested event
+    async fn process_tokens_vested(&self, event: &TokensVestedEvent, transaction_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing TokensVestedEvent: wallet_id={}, owner={}, amount={}", 
+              event.wallet_id, event.owner, event.total_amount);
+        
+        // Convert event to database models
+        let (new_wallet, new_event) = event.into_models(transaction_id.to_string());
+        
+        // Insert the vesting wallet (or update if it already exists)
+        diesel::insert_into(schema::vesting_wallets::table)
+            .values(&new_wallet)
+            .on_conflict(schema::vesting_wallets::wallet_id)
+            .do_update()
+            .set((
+                schema::vesting_wallets::owner_address.eq(&new_wallet.owner_address),
+                schema::vesting_wallets::total_amount.eq(&new_wallet.total_amount),
+                schema::vesting_wallets::start_time.eq(&new_wallet.start_time),
+                schema::vesting_wallets::duration.eq(&new_wallet.duration),
+                schema::vesting_wallets::curve_factor.eq(&new_wallet.curve_factor),
+                schema::vesting_wallets::updated_at.eq(&new_wallet.updated_at),
+                schema::vesting_wallets::transaction_id.eq(&new_wallet.transaction_id),
+            ))
+            .execute(&mut conn)
+            .await?;
+        
+        // Insert the vesting event
+        diesel::insert_into(schema::vesting_events::table)
+            .values(&new_event)
+            .execute(&mut conn)
+            .await?;
+            
+        info!("✅ Successfully processed tokens vested: wallet_id={}", event.wallet_id);
+        Ok(())
+    }
+
+    /// Process a tokens claimed event
+    async fn process_tokens_claimed(&self, event: &TokensClaimedEvent, transaction_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+        
+        info!("Processing TokensClaimedEvent: wallet_id={}, owner={}, claimed_amount={}, remaining_balance={}", 
+              event.wallet_id, event.owner, event.claimed_amount, event.remaining_balance);
+        
+        // Convert event to database models
+        let (wallet_update, new_event) = event.into_models(transaction_id.to_string());
+        
+        // Update the vesting wallet with new claimed amount and remaining balance
+        diesel::update(schema::vesting_wallets::table.filter(schema::vesting_wallets::wallet_id.eq(&event.wallet_id)))
+            .set(&wallet_update)
+            .execute(&mut conn)
+            .await?;
+        
+        // Insert the claim event
+        diesel::insert_into(schema::vesting_events::table)
+            .values(&new_event)
+            .execute(&mut conn)
+            .await?;
+            
+        info!("✅ Successfully processed tokens claimed: wallet_id={}, amount={}", 
+              event.wallet_id, event.claimed_amount);
+        Ok(())
+    }
+
     /// Process platform block event
     async fn process_platform_block_event(&self, event_data: &serde_json::Value) -> Result<()> {
         let mut conn = self.get_connection().await?;
@@ -413,6 +477,42 @@ impl ProfileEventListener {
                         },
                         Err(e) => {
                             error!("Failed to deserialize profile updated event: {}", e);
+                        }
+                    }
+                }
+                // Handle tokens vested event
+                else if event.event_type.ends_with("::TokensVestedEvent") {
+                    info!("Tokens vested event detected with data: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
+                    
+                    // Extract fields from JSON and parse as TokensVestedEvent
+                    match crate::events::event_utils::extract_event_fields(&event.data)
+                        .and_then(|fields| serde_json::from_value::<TokensVestedEvent>(fields).map_err(|e| anyhow::anyhow!(e))) {
+                        Ok(vesting_event) => {
+                            info!("Successfully parsed tokens vested event: {:?}", vesting_event);
+                            if let Err(e) = self.process_tokens_vested(&vesting_event, &event.tx_digest).await {
+                                error!("Failed to process tokens vested event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize tokens vested event: {}", e);
+                        }
+                    }
+                }
+                // Handle tokens claimed event
+                else if event.event_type.ends_with("::TokensClaimedEvent") {
+                    info!("Tokens claimed event detected with data: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
+                    
+                    // Extract fields from JSON and parse as TokensClaimedEvent
+                    match crate::events::event_utils::extract_event_fields(&event.data)
+                        .and_then(|fields| serde_json::from_value::<TokensClaimedEvent>(fields).map_err(|e| anyhow::anyhow!(e))) {
+                        Ok(claim_event) => {
+                            info!("Successfully parsed tokens claimed event: {:?}", claim_event);
+                            if let Err(e) = self.process_tokens_claimed(&claim_event, &event.tx_digest).await {
+                                error!("Failed to process tokens claimed event: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            error!("Failed to deserialize tokens claimed event: {}", e);
                         }
                     }
                 }

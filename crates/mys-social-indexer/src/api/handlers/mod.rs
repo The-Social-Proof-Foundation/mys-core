@@ -15,3 +15,4 @@ pub mod search;
 pub mod poc;
 pub mod subscriptions;
 pub mod revenue;
+pub mod vesting;
