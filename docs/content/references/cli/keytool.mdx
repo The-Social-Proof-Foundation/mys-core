@@ -18,11 +18,11 @@ Commands:
   											and output the result.
   decode-multi-sig                  	Given a Base64 encoded MultiSig signature, decode its components. If tx_bytes is passed in, verify the multisig
   generate                          	Generate a new keypair with key scheme flag {ed25519 | secp256k1 | secp256r1} with optional derivation path, default to
-                                        	m/44'/784'/0'/0'/0' for ed25519 or m/54'/784'/0'/0/0 for secp256k1 or m/74'/784'/0'/0/0 for secp256r1. Word length can be { word12 |
+                                        	m/44'/6976'/0'/0'/0' for ed25519 or m/54'/6976'/0'/0/0 for secp256k1 or m/74'/6976'/0'/0/0 for secp256r1. Word length can be { word12 |
                                         	word15 | word18 | word21 | word24} default to word12 if not specified
   import                            	Add a new key to mys.keystore using either the input mnemonic phrase or a private key (from the Wallet), the key scheme flag {ed25519 |
-                                        	secp256k1 | secp256r1} and an optional derivation path, default to m/44'/784'/0'/0'/0' for ed25519 or m/54'/784'/0'/0/0 for secp256k1
-                                        	or m/74'/784'/0'/0/0 for secp256r1. Supports mnemonic phrase of word length 12, 15, 18`, 21, 24
+                                        	secp256k1 | secp256r1} and an optional derivation path, default to m/44'/6976'/0'/0'/0' for ed25519 or m/54'/6976'/0'/0/0 for secp256k1
+                                        	or m/74'/6976'/0'/0/0 for secp256r1. Supports mnemonic phrase of word length 12, 15, 18`, 21, 24
   list                              	List all keys by its MySocial address, Base64 encoded public key, key scheme name in mys.keystore
   load-keypair                      	This reads the content at the provided file path. The accepted format can be [enum MySocialKeyPair] (Base64 encoded of 33-byte `flag ||
                                         	privkey`) or `type AuthorityKeyPair` (Base64 encoded `privkey`). This prints out the account keypair as Base64 encoded `flag ||
