@@ -36,8 +36,7 @@ Implements proposal submission, voting, and execution processes
 -  [Function `update_delegate_panel`](#social_contracts_governance_update_delegate_panel)
 -  [Function `submit_proposal`](#social_contracts_governance_submit_proposal)
 -  [Function `submit_ecosystem_proposal`](#social_contracts_governance_submit_ecosystem_proposal)
--  [Function `submit_reputation_dispute`](#social_contracts_governance_submit_reputation_dispute)
--  [Function `submit_community_note`](#social_contracts_governance_submit_community_note)
+-  [Function `submit_proof_of_creativity_proposal`](#social_contracts_governance_submit_proof_of_creativity_proposal)
 -  [Function `submit_proposal_internal`](#social_contracts_governance_submit_proposal_internal)
 -  [Function `rescind_proposal`](#social_contracts_governance_rescind_proposal)
 -  [Function `delegate_vote_on_proposal`](#social_contracts_governance_delegate_vote_on_proposal)
@@ -137,7 +136,7 @@ Governance registry that keeps track of all delegates and proposals
 <code>registry_type: u8</code>
 </dt>
 <dd>
- Registry type identifier (ecosystem, reputation, community notes)
+ Registry type identifier (ecosystem, proof of creativity, platform)
 </dd>
 <dt>
 <code>delegate_count: u64</code>
@@ -1340,15 +1339,6 @@ Error codes
 
 
 
-<a name="social_contracts_governance_PROPOSAL_TYPE_COMMUNITY_NOTES"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_COMMUNITY_NOTES">PROPOSAL_TYPE_COMMUNITY_NOTES</a>: u8 = 2;
-</code></pre>
-
-
-
 <a name="social_contracts_governance_PROPOSAL_TYPE_ECOSYSTEM"></a>
 
 Proposal type constants
@@ -1368,11 +1358,11 @@ Proposal type constants
 
 
 
-<a name="social_contracts_governance_PROPOSAL_TYPE_REPUTATION"></a>
+<a name="social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_REPUTATION">PROPOSAL_TYPE_REPUTATION</a>: u8 = 1;
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>: u8 = 1;
 </code></pre>
 
 
@@ -1495,7 +1485,7 @@ Create and share separate governance registries for each proposal type
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_init">init</a>(ctx: &<b>mut</b> TxContext) {
-    // Create Ecosystem Governance Registry
+    // Create MySocial Ecosystem Governance Registry
     <b>let</b> <b>mut</b> ecosystem_registry = <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a> {
         id: object::new(ctx),
         registry_type: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_ECOSYSTEM">PROPOSAL_TYPE_ECOSYSTEM</a>,
@@ -1519,43 +1509,19 @@ Create and share separate governance registries for each proposal type
         voters: table::new&lt;<b>address</b>, Table&lt;<b>address</b>, bool&gt;&gt;(ctx),
         <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
-    // Create Reputation Governance Registry
-    <b>let</b> <b>mut</b> reputation_registry = <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a> {
+    // Create Proof of Creativity Governance Registry
+    <b>let</b> <b>mut</b> proof_of_creativity_registry = <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a> {
         id: object::new(ctx),
-        registry_type: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_REPUTATION">PROPOSAL_TYPE_REPUTATION</a>,
-        // Configuration parameters specific to reputation <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>
-        delegate_count: 5, // Smaller council <b>for</b> reputation disputes
-        delegate_term_epochs: 60, // 2 months <b>for</b> reputation delegates
-        proposal_submission_cost: 50_000_000, // 50 MYS <b>for</b> reputation disputes
-        min_on_chain_age_days: 7, // 1 week minimum <b>for</b> reputation voting
-        max_votes_per_user: 5, // Up to 5 votes per user
-        quadratic_base_cost: 5_000_000, // 5 MYS per additional vote
-        voting_period_epochs: 3, // 3 epochs <b>for</b> reputation votes
-        quorum_votes: 15, // 15 votes required <b>for</b> reputation proposals
-        // Tables
-        delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a>&gt;(ctx),
-        proposals: table::new&lt;ID, <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>&gt;(ctx),
-        proposals_by_status: table::new&lt;u8, vector&lt;ID&gt;&gt;(ctx),
-        treasury: balance::zero(),
-        nominated_delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_NominatedDelegate">NominatedDelegate</a>&gt;(ctx),
-        delegate_addresses: vec_set::empty&lt;<b>address</b>&gt;(),
-        nominee_addresses: vec_set::empty&lt;<b>address</b>&gt;(),
-        voters: table::new&lt;<b>address</b>, Table&lt;<b>address</b>, bool&gt;&gt;(ctx),
-        <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
-    };
-    // Create Community Notes Governance Registry
-    <b>let</b> <b>mut</b> community_notes_registry = <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a> {
-        id: object::new(ctx),
-        registry_type: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_COMMUNITY_NOTES">PROPOSAL_TYPE_COMMUNITY_NOTES</a>,
-        // Configuration parameters specific to community notes <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>
-        delegate_count: 7, // Medium council <b>for</b> community notes
-        delegate_term_epochs: 30, // 1 month <b>for</b> community notes delegates
-        proposal_submission_cost: 25_000_000, // 25 MYS <b>for</b> community notes
-        min_on_chain_age_days: 3, // 3 days minimum <b>for</b> community notes voting
+        registry_type: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>,
+        // Configuration parameters specific to proof of creativity <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>
+        delegate_count: 2, // Smaller council <b>for</b> proof of creativity
+        delegate_term_epochs: 180, // 3 months <b>for</b> proof of creativity delegates
+        proposal_submission_cost: 25_000_000, // 25 MYS <b>for</b> proof of creativity
+        min_on_chain_age_days: 1, // 1 day minimum <b>for</b> proof of creativity voting
         max_votes_per_user: 3, // Up to 3 votes per user
         quadratic_base_cost: 2_500_000, // 2.5 MYS per additional vote
-        voting_period_epochs: 1, // 1 epoch <b>for</b> community notes votes
-        quorum_votes: 10, // 10 votes required <b>for</b> community notes proposals
+        voting_period_epochs: 1, // 1 epoch <b>for</b> proof of creativity votes
+        quorum_votes: 10, // 10 votes required <b>for</b> proof of creativity proposals
         // Tables
         delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a>&gt;(ctx),
         proposals: table::new&lt;ID, <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>&gt;(ctx),
@@ -1569,12 +1535,10 @@ Create and share separate governance registries for each proposal type
     };
     // Initialize each registry's status tables
     <a href="../social_contracts/governance.md#social_contracts_governance_initialize_registry_tables">initialize_registry_tables</a>(&<b>mut</b> ecosystem_registry, ctx);
-    <a href="../social_contracts/governance.md#social_contracts_governance_initialize_registry_tables">initialize_registry_tables</a>(&<b>mut</b> reputation_registry, ctx);
-    <a href="../social_contracts/governance.md#social_contracts_governance_initialize_registry_tables">initialize_registry_tables</a>(&<b>mut</b> community_notes_registry, ctx);
+    <a href="../social_contracts/governance.md#social_contracts_governance_initialize_registry_tables">initialize_registry_tables</a>(&<b>mut</b> proof_of_creativity_registry, ctx);
     // Share the registry objects
     transfer::share_object(ecosystem_registry);
-    transfer::share_object(reputation_registry);
-    transfer::share_object(community_notes_registry);
+    transfer::share_object(proof_of_creativity_registry);
 }
 </code></pre>
 
@@ -2099,7 +2063,7 @@ Updates delegate panel at the end of a delegate term cycle.
 ## Function `submit_proposal`
 
 Universal function to submit any type of proposal
-Handles all proposal types: ecosystem, reputation disputes, and community notes
+Handles proposal types: ecosystem and proof of creativity
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_proposal">submit_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_type: u8, title: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, disputed_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>&gt;, reference_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, coin: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
@@ -2130,19 +2094,20 @@ Handles all proposal types: ecosystem, reputation disputes, and community notes
     <b>let</b> actual_reference_id = <b>if</b> (proposal_type == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_ECOSYSTEM">PROPOSAL_TYPE_ECOSYSTEM</a>) {
         // Ecosystem proposals <b>use</b> reference_id <b>as</b> provided
         reference_id
-    } <b>else</b> <b>if</b> (option::is_some(&reference_id)) {
-        // If reference_id is explicitly provided, <b>use</b> it <b>for</b> any proposal type
-        reference_id
-    } <b>else</b> <b>if</b> (option::is_some(&disputed_id)) {
-        // For disputes (reputation or community notes), <b>use</b> disputed_id <b>as</b> the reference <b>if</b> no reference provided
-        disputed_id
-    } <b>else</b> {
-        // For disputes, a reference or disputed ID should be provided
-        <b>if</b> (proposal_type != <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_ECOSYSTEM">PROPOSAL_TYPE_ECOSYSTEM</a>) {
-            // Reputation and community notes should have a reference
+    } <b>else</b> <b>if</b> (proposal_type == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>) {
+        // Proof of creativity proposals should have either reference_id or disputed_id
+        <b>if</b> (option::is_some(&reference_id)) {
+            reference_id
+        } <b>else</b> <b>if</b> (option::is_some(&disputed_id)) {
+            disputed_id
+        } <b>else</b> {
+            // Proof of creativity proposals should reference creative content
             <b>assert</b>!(<b>false</b>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
-        };
-        option::none&lt;ID&gt;()
+            option::none&lt;ID&gt;()
+        }
+    } <b>else</b> {
+        // For other proposal types (like <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>), <b>use</b> reference_id <b>if</b> provided
+        reference_id
     };
     // Submit the proposal using the internal implementation
     <a href="../social_contracts/governance.md#social_contracts_governance_submit_proposal_internal">submit_proposal_internal</a>(
@@ -2206,14 +2171,14 @@ Requires staking MYS tokens equal to the proposal submission cost
 
 </details>
 
-<a name="social_contracts_governance_submit_reputation_dispute"></a>
+<a name="social_contracts_governance_submit_proof_of_creativity_proposal"></a>
 
-## Function `submit_reputation_dispute`
+## Function `submit_proof_of_creativity_proposal`
 
-Submit a special proposal for reputation dispute
+Submit a proof of creativity proposal
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_reputation_dispute">submit_reputation_dispute</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, title: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, disputed_profile_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, reference_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, coin: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_proof_of_creativity_proposal">submit_proof_of_creativity_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, title: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, creative_content_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, coin: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2222,67 +2187,22 @@ Submit a special proposal for reputation dispute
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_reputation_dispute">submit_reputation_dispute</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_proof_of_creativity_proposal">submit_proof_of_creativity_proposal</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
     title: String,
     description: String,
-    disputed_profile_id: ID,
-    reference_id: Option&lt;ID&gt;,
+    creative_content_id: ID,
     metadata_json: Option&lt;String&gt;,
     coin: &<b>mut</b> Coin&lt;MYS&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
     <a href="../social_contracts/governance.md#social_contracts_governance_submit_proposal">submit_proposal</a>(
         registry,
-        <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_REPUTATION">PROPOSAL_TYPE_REPUTATION</a>,
+        <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>,
         title,
         description,
-        option::some(disputed_profile_id),
-        reference_id,
-        metadata_json,
-        coin,
-        ctx
-    );
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_governance_submit_community_note"></a>
-
-## Function `submit_community_note`
-
-Submit a special proposal for community note
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_community_note">submit_community_note</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, title: <a href="../std/string.md#std_string_String">std::string::String</a>, description: <a href="../std/string.md#std_string_String">std::string::String</a>, disputed_content_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, reference_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, coin: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_submit_community_note">submit_community_note</a>(
-    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    title: String,
-    description: String,
-    disputed_content_id: ID,
-    reference_id: Option&lt;ID&gt;,
-    metadata_json: Option&lt;String&gt;,
-    coin: &<b>mut</b> Coin&lt;MYS&gt;,
-    ctx: &<b>mut</b> TxContext
-) {
-    <a href="../social_contracts/governance.md#social_contracts_governance_submit_proposal">submit_proposal</a>(
-        registry,
-        <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_COMMUNITY_NOTES">PROPOSAL_TYPE_COMMUNITY_NOTES</a>,
-        title,
-        description,
-        option::some(disputed_content_id),
-        reference_id,
+        option::none&lt;ID&gt;(), // No disputed ID <b>for</b> proof of creativity
+        option::some(creative_content_id), // Reference to creative content
         metadata_json,
         coin,
         ctx

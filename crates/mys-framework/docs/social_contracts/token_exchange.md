@@ -12,17 +12,18 @@ platform, and ecosystem treasury.
 -  [Struct `ExchangeAdminCap`](#social_contracts_token_exchange_ExchangeAdminCap)
 -  [Struct `ExchangeConfig`](#social_contracts_token_exchange_ExchangeConfig)
 -  [Struct `TokenRegistry`](#social_contracts_token_exchange_TokenRegistry)
+-  [Struct `StakePool`](#social_contracts_token_exchange_StakePool)
+-  [Struct `StakeInfo`](#social_contracts_token_exchange_StakeInfo)
 -  [Struct `TokenInfo`](#social_contracts_token_exchange_TokenInfo)
 -  [Struct `TokenPool`](#social_contracts_token_exchange_TokenPool)
 -  [Struct `SocialToken`](#social_contracts_token_exchange_SocialToken)
--  [Struct `AuctionInfo`](#social_contracts_token_exchange_AuctionInfo)
--  [Struct `AuctionPool`](#social_contracts_token_exchange_AuctionPool)
+-  [Struct `StakePoolObject`](#social_contracts_token_exchange_StakePoolObject)
 -  [Struct `TokenPoolCreatedEvent`](#social_contracts_token_exchange_TokenPoolCreatedEvent)
 -  [Struct `TokenBoughtEvent`](#social_contracts_token_exchange_TokenBoughtEvent)
 -  [Struct `TokenSoldEvent`](#social_contracts_token_exchange_TokenSoldEvent)
--  [Struct `AuctionCreatedEvent`](#social_contracts_token_exchange_AuctionCreatedEvent)
--  [Struct `AuctionContributionEvent`](#social_contracts_token_exchange_AuctionContributionEvent)
--  [Struct `AuctionFinalizedEvent`](#social_contracts_token_exchange_AuctionFinalizedEvent)
+-  [Struct `StakeCreatedEvent`](#social_contracts_token_exchange_StakeCreatedEvent)
+-  [Struct `StakeWithdrawnEvent`](#social_contracts_token_exchange_StakeWithdrawnEvent)
+-  [Struct `ThresholdMetEvent`](#social_contracts_token_exchange_ThresholdMetEvent)
 -  [Struct `ConfigUpdatedEvent`](#social_contracts_token_exchange_ConfigUpdatedEvent)
 -  [Struct `TokensAddedEvent`](#social_contracts_token_exchange_TokensAddedEvent)
 -  [Struct `EmergencyKillSwitchEvent`](#social_contracts_token_exchange_EmergencyKillSwitchEvent)
@@ -31,13 +32,12 @@ platform, and ecosystem treasury.
 -  [Function `update_exchange_config`](#social_contracts_token_exchange_update_exchange_config)
 -  [Function `toggle_emergency_kill_switch`](#social_contracts_token_exchange_toggle_emergency_kill_switch)
 -  [Function `is_trading_halted`](#social_contracts_token_exchange_is_trading_halted)
--  [Function `check_post_viral_threshold`](#social_contracts_token_exchange_check_post_viral_threshold)
--  [Function `check_profile_viral_threshold`](#social_contracts_token_exchange_check_profile_viral_threshold)
--  [Function `start_post_auction`](#social_contracts_token_exchange_start_post_auction)
--  [Function `start_profile_auction`](#social_contracts_token_exchange_start_profile_auction)
--  [Function `contribute_to_auction`](#social_contracts_token_exchange_contribute_to_auction)
--  [Function `is_auction_ended`](#social_contracts_token_exchange_is_auction_ended)
--  [Function `finalize_auction`](#social_contracts_token_exchange_finalize_auction)
+-  [Function `stake_towards_post`](#social_contracts_token_exchange_stake_towards_post)
+-  [Function `stake_towards_profile`](#social_contracts_token_exchange_stake_towards_profile)
+-  [Function `withdraw_stake`](#social_contracts_token_exchange_withdraw_stake)
+-  [Function `create_stake_pool`](#social_contracts_token_exchange_create_stake_pool)
+-  [Function `can_create_auction`](#social_contracts_token_exchange_can_create_auction)
+-  [Function `create_social_proof_token`](#social_contracts_token_exchange_create_social_proof_token)
 -  [Function `update_token_poc_data`](#social_contracts_token_exchange_update_token_poc_data)
 -  [Function `calculate_poc_split`](#social_contracts_token_exchange_calculate_poc_split)
 -  [Function `apply_token_poc_redirection`](#social_contracts_token_exchange_apply_token_poc_redirection)
@@ -64,11 +64,11 @@ platform, and ecosystem treasury.
 -  [Function `borrow_registry_version_mut`](#social_contracts_token_exchange_borrow_registry_version_mut)
 -  [Function `pool_version`](#social_contracts_token_exchange_pool_version)
 -  [Function `borrow_pool_version_mut`](#social_contracts_token_exchange_borrow_pool_version_mut)
--  [Function `auction_version`](#social_contracts_token_exchange_auction_version)
--  [Function `borrow_auction_version_mut`](#social_contracts_token_exchange_borrow_auction_version_mut)
+-  [Function `stake_pool_version`](#social_contracts_token_exchange_stake_pool_version)
+-  [Function `borrow_stake_pool_version_mut`](#social_contracts_token_exchange_borrow_stake_pool_version_mut)
 -  [Function `migrate_token_registry`](#social_contracts_token_exchange_migrate_token_registry)
 -  [Function `migrate_token_pool`](#social_contracts_token_exchange_migrate_token_pool)
--  [Function `migrate_auction_pool`](#social_contracts_token_exchange_migrate_auction_pool)
+-  [Function `migrate_stake_pool`](#social_contracts_token_exchange_migrate_stake_pool)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
@@ -221,67 +221,21 @@ Global exchange configuration
  Maximum percentage a single wallet can hold of any token
 </dd>
 <dt>
-<code>post_likes_weight: u64</code>
+<code>post_threshold: u64</code>
 </dt>
 <dd>
- Post viral thresholds & weights
+ Staking thresholds for social proof token creation
 </dd>
 <dt>
-<code>post_comments_weight: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>post_tips_weight: u64</code>
+<code>profile_threshold: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>post_viral_threshold: u64</code>
+<code>max_individual_stake_bps: u64</code>
 </dt>
 <dd>
-</dd>
-<dt>
-<code>profile_follows_weight: u64</code>
-</dt>
-<dd>
- Profile viral thresholds & weights
-</dd>
-<dt>
-<code>profile_posts_weight: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>profile_tips_weight: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>profile_viral_threshold: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>min_post_auction_duration: u64</code>
-</dt>
-<dd>
- Auction duration limits (in seconds)
-</dd>
-<dt>
-<code>max_post_auction_duration: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>min_profile_auction_duration: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>max_profile_auction_duration: u64</code>
-</dt>
-<dd>
+ Maximum percentage any individual can stake towards a single post/profile
 </dd>
 <dt>
 <code>trading_halted: bool</code>
@@ -323,16 +277,120 @@ Registry of all tokens in the exchange
  Table from token ID to token info
 </dd>
 <dt>
-<code>auctions: <a href="../mys/table.md#mys_table_Table">mys::table::Table</a>&lt;<b>address</b>, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionInfo">social_contracts::token_exchange::AuctionInfo</a>&gt;</code>
+<code>stake_pools: <a href="../mys/table.md#mys_table_Table">mys::table::Table</a>&lt;<b>address</b>, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePool">social_contracts::token_exchange::StakePool</a>&gt;</code>
 </dt>
 <dd>
- Table from profile/post ID to auction info
+ Table from profile/post ID to staking pool info
 </dd>
 <dt>
 <code>version: u64</code>
 </dt>
 <dd>
  Version for upgrades
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_token_exchange_StakePool"></a>
+
+## Struct `StakePool`
+
+Staking pool for a specific post or profile
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePool">StakePool</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>associated_id: <b>address</b></code>
+</dt>
+<dd>
+ Associated profile or post ID
+</dd>
+<dt>
+<code>token_type: u8</code>
+</dt>
+<dd>
+ Token type (1=profile, 2=post)
+</dd>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+ Owner of the profile/post
+</dd>
+<dt>
+<code>total_staked: u64</code>
+</dt>
+<dd>
+ Total MYS staked towards this post/profile
+</dd>
+<dt>
+<code>required_threshold: u64</code>
+</dt>
+<dd>
+ Required threshold to enable auction creation
+</dd>
+<dt>
+<code>stakers: vector&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+ List of all stakers (for efficient iteration)
+</dd>
+<dt>
+<code>created_at: u64</code>
+</dt>
+<dd>
+ Creation timestamp
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_token_exchange_StakeInfo"></a>
+
+## Struct `StakeInfo`
+
+Individual stake information
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakeInfo">StakeInfo</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>staker: <b>address</b></code>
+</dt>
+<dd>
+ Staker's address
+</dd>
+<dt>
+<code>amount: u64</code>
+</dt>
+<dd>
+ Amount staked in MYS
+</dd>
+<dt>
+<code>staked_at: u64</code>
+</dt>
+<dd>
+ Timestamp when stake was created
 </dd>
 </dl>
 
@@ -529,90 +587,14 @@ Social token that represents a user's owned tokens
 
 </details>
 
-<a name="social_contracts_token_exchange_AuctionInfo"></a>
+<a name="social_contracts_token_exchange_StakePoolObject"></a>
 
-## Struct `AuctionInfo`
+## Struct `StakePoolObject`
 
-Information about an auction
-
-
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionInfo">AuctionInfo</a> <b>has</b> <b>copy</b>, drop, store
-</code></pre>
+Staking pool for collecting MYS stakes towards posts/profiles
 
 
-
-<details>
-<summary>Fields</summary>
-
-
-<dl>
-<dt>
-<code>associated_id: <b>address</b></code>
-</dt>
-<dd>
- Associated profile or post ID
-</dd>
-<dt>
-<code>token_type: u8</code>
-</dt>
-<dd>
- Token type (1=profile, 2=post)
-</dd>
-<dt>
-<code>owner: <b>address</b></code>
-</dt>
-<dd>
- Owner of the profile/post
-</dd>
-<dt>
-<code>status: u8</code>
-</dt>
-<dd>
- Status of the auction
-</dd>
-<dt>
-<code>start_time: u64</code>
-</dt>
-<dd>
- Time when the auction was started
-</dd>
-<dt>
-<code>duration: u64</code>
-</dt>
-<dd>
- Duration of the auction in seconds
-</dd>
-<dt>
-<code>total_contribution: u64</code>
-</dt>
-<dd>
- Total MYS contributed to the auction
-</dd>
-<dt>
-<code>total_tokens: u64</code>
-</dt>
-<dd>
- Total tokens to be distributed
-</dd>
-<dt>
-<code>contributors: vector&lt;<b>address</b>&gt;</code>
-</dt>
-<dd>
- List of contributors' addresses
-</dd>
-</dl>
-
-
-</details>
-
-<a name="social_contracts_token_exchange_AuctionPool"></a>
-
-## Struct `AuctionPool`
-
-Pre-launch auction pool
-
-
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">AuctionPool</a> <b>has</b> key
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">StakePoolObject</a> <b>has</b> key
 </code></pre>
 
 
@@ -628,22 +610,22 @@ Pre-launch auction pool
 <dd>
 </dd>
 <dt>
-<code>info: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionInfo">social_contracts::token_exchange::AuctionInfo</a></code>
+<code>info: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePool">social_contracts::token_exchange::StakePool</a></code>
 </dt>
 <dd>
- Auction info
+ Stake pool info
 </dd>
 <dt>
 <code>mys_balance: <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;</code>
 </dt>
 <dd>
- MYS balance contributed to the auction
+ MYS balance staked in this pool
 </dd>
 <dt>
-<code>contributions: <a href="../mys/table.md#mys_table_Table">mys::table::Table</a>&lt;<b>address</b>, u64&gt;</code>
+<code>stakes: <a href="../mys/table.md#mys_table_Table">mys::table::Table</a>&lt;<b>address</b>, u64&gt;</code>
 </dt>
 <dd>
- Mapping of contributors' addresses to their MYS contributions
+ Mapping of stakers' addresses to their stake amounts
 </dd>
 <dt>
 <code>version: u64</code>
@@ -852,14 +834,14 @@ Event emitted when tokens are sold
 
 </details>
 
-<a name="social_contracts_token_exchange_AuctionCreatedEvent"></a>
+<a name="social_contracts_token_exchange_StakeCreatedEvent"></a>
 
-## Struct `AuctionCreatedEvent`
+## Struct `StakeCreatedEvent`
 
-Event emitted when an auction is created
+Event emitted when MYS is staked towards a post/profile
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionCreatedEvent">AuctionCreatedEvent</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakeCreatedEvent">StakeCreatedEvent</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -870,10 +852,114 @@ Event emitted when an auction is created
 
 <dl>
 <dt>
-<code>auction_id: <b>address</b></code>
+<code>associated_id: <b>address</b></code>
 </dt>
 <dd>
 </dd>
+<dt>
+<code>token_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>staker: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_staked: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>threshold_met: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>staked_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_token_exchange_StakeWithdrawnEvent"></a>
+
+## Struct `StakeWithdrawnEvent`
+
+Event emitted when MYS stake is withdrawn
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakeWithdrawnEvent">StakeWithdrawnEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>associated_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>token_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>staker: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_staked: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>withdrawn_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_token_exchange_ThresholdMetEvent"></a>
+
+## Struct `ThresholdMetEvent`
+
+Event emitted when staking threshold is met for the first time
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ThresholdMetEvent">ThresholdMetEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
 <dt>
 <code>associated_id: <b>address</b></code>
 </dt>
@@ -890,106 +976,17 @@ Event emitted when an auction is created
 <dd>
 </dd>
 <dt>
-<code>start_time: u64</code>
+<code>total_staked: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>duration: u64</code>
-</dt>
-<dd>
-</dd>
-</dl>
-
-
-</details>
-
-<a name="social_contracts_token_exchange_AuctionContributionEvent"></a>
-
-## Struct `AuctionContributionEvent`
-
-Event emitted when a user contributes to an auction
-
-
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionContributionEvent">AuctionContributionEvent</a> <b>has</b> <b>copy</b>, drop
-</code></pre>
-
-
-
-<details>
-<summary>Fields</summary>
-
-
-<dl>
-<dt>
-<code>auction_id: <b>address</b></code>
+<code>required_threshold: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>contributor: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>amount: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>total_contribution: u64</code>
-</dt>
-<dd>
-</dd>
-</dl>
-
-
-</details>
-
-<a name="social_contracts_token_exchange_AuctionFinalizedEvent"></a>
-
-## Struct `AuctionFinalizedEvent`
-
-Event emitted when an auction is finalized
-
-
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionFinalizedEvent">AuctionFinalizedEvent</a> <b>has</b> <b>copy</b>, drop
-</code></pre>
-
-
-
-<details>
-<summary>Fields</summary>
-
-
-<dl>
-<dt>
-<code>auction_id: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>associated_id: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>total_contribution: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>total_tokens: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>token_price: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>pool_id: <b>address</b></code>
+<code>timestamp: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1072,34 +1069,18 @@ Event emitted when exchange config is updated
  Maximum hold percentage
 </dd>
 <dt>
-<code>post_viral_threshold: u64</code>
+<code>post_threshold: u64</code>
 </dt>
 <dd>
- Viral thresholds and weights
+ Staking thresholds
 </dd>
 <dt>
-<code>profile_viral_threshold: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>min_post_auction_duration: u64</code>
-</dt>
-<dd>
- Auction durations
-</dd>
-<dt>
-<code>max_post_auction_duration: u64</code>
+<code>profile_threshold: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
-<code>min_profile_auction_duration: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>max_profile_auction_duration: u64</code>
+<code>max_individual_stake_bps: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1196,42 +1177,6 @@ Event emitted when emergency kill switch is toggled
 ## Constants
 
 
-<a name="social_contracts_token_exchange_AUCTION_STATUS_ACTIVE"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_ACTIVE">AUCTION_STATUS_ACTIVE</a>: u8 = 1;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_AUCTION_STATUS_ENDED"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_ENDED">AUCTION_STATUS_ENDED</a>: u8 = 2;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_AUCTION_STATUS_FINALIZED"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_FINALIZED">AUCTION_STATUS_FINALIZED</a>: u8 = 3;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_AUCTION_STATUS_PENDING"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_PENDING">AUCTION_STATUS_PENDING</a>: u8 = 0;
-</code></pre>
-
-
-
 <a name="social_contracts_token_exchange_DEFAULT_BASE_PRICE"></a>
 
 
@@ -1250,11 +1195,38 @@ Event emitted when emergency kill switch is toggled
 
 
 
+<a name="social_contracts_token_exchange_DEFAULT_MAX_INDIVIDUAL_STAKE_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_DEFAULT_MAX_INDIVIDUAL_STAKE_BPS">DEFAULT_MAX_INDIVIDUAL_STAKE_BPS</a>: u64 = 2000;
+</code></pre>
+
+
+
 <a name="social_contracts_token_exchange_DEFAULT_PLATFORM_FEE_BPS"></a>
 
 
 
 <pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_DEFAULT_PLATFORM_FEE_BPS">DEFAULT_PLATFORM_FEE_BPS</a>: u64 = 25;
+</code></pre>
+
+
+
+<a name="social_contracts_token_exchange_DEFAULT_POST_THRESHOLD"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_DEFAULT_POST_THRESHOLD">DEFAULT_POST_THRESHOLD</a>: u64 = 1000000000000;
+</code></pre>
+
+
+
+<a name="social_contracts_token_exchange_DEFAULT_PROFILE_THRESHOLD"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_DEFAULT_PROFILE_THRESHOLD">DEFAULT_PROFILE_THRESHOLD</a>: u64 = 10000000000000;
 </code></pre>
 
 
@@ -1515,114 +1487,6 @@ Viral threshold not met
 
 
 
-<a name="social_contracts_token_exchange_MAX_POST_AUCTION_DURATION"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MAX_POST_AUCTION_DURATION">MAX_POST_AUCTION_DURATION</a>: u64 = 10800;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_MAX_PROFILE_AUCTION_DURATION"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MAX_PROFILE_AUCTION_DURATION">MAX_PROFILE_AUCTION_DURATION</a>: u64 = 259200;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_MIN_POST_AUCTION_DURATION"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MIN_POST_AUCTION_DURATION">MIN_POST_AUCTION_DURATION</a>: u64 = 3600;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_MIN_PROFILE_AUCTION_DURATION"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MIN_PROFILE_AUCTION_DURATION">MIN_PROFILE_AUCTION_DURATION</a>: u64 = 86400;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_POST_COMMENTS_WEIGHT"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_COMMENTS_WEIGHT">POST_COMMENTS_WEIGHT</a>: u64 = 3;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_POST_LIKES_WEIGHT"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_LIKES_WEIGHT">POST_LIKES_WEIGHT</a>: u64 = 1;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_POST_TIPS_WEIGHT"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_TIPS_WEIGHT">POST_TIPS_WEIGHT</a>: u64 = 10;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_POST_VIRAL_THRESHOLD"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_VIRAL_THRESHOLD">POST_VIRAL_THRESHOLD</a>: u64 = 100;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_PROFILE_FOLLOWS_WEIGHT"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_PROFILE_FOLLOWS_WEIGHT">PROFILE_FOLLOWS_WEIGHT</a>: u64 = 1;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_PROFILE_POSTS_WEIGHT"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_PROFILE_POSTS_WEIGHT">PROFILE_POSTS_WEIGHT</a>: u64 = 1;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_PROFILE_TIPS_WEIGHT"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_PROFILE_TIPS_WEIGHT">PROFILE_TIPS_WEIGHT</a>: u64 = 5;
-</code></pre>
-
-
-
-<a name="social_contracts_token_exchange_PROFILE_VIRAL_THRESHOLD"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_PROFILE_VIRAL_THRESHOLD">PROFILE_VIRAL_THRESHOLD</a>: u64 = 100;
-</code></pre>
-
-
-
 <a name="social_contracts_token_exchange_TOKEN_TYPE_POST"></a>
 
 
@@ -1678,18 +1542,9 @@ Initialize the token exchange system
             quadratic_coefficient: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_DEFAULT_QUADRATIC_COEFFICIENT">DEFAULT_QUADRATIC_COEFFICIENT</a>,
             ecosystem_treasury: sender, // Initially set to sender, should be updated
             max_hold_percent_bps: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MAX_HOLD_PERCENT_BPS">MAX_HOLD_PERCENT_BPS</a>,
-            post_likes_weight: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_LIKES_WEIGHT">POST_LIKES_WEIGHT</a>,
-            post_comments_weight: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_COMMENTS_WEIGHT">POST_COMMENTS_WEIGHT</a>,
-            post_tips_weight: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_TIPS_WEIGHT">POST_TIPS_WEIGHT</a>,
-            post_viral_threshold: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_VIRAL_THRESHOLD">POST_VIRAL_THRESHOLD</a>,
-            profile_follows_weight: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_PROFILE_FOLLOWS_WEIGHT">PROFILE_FOLLOWS_WEIGHT</a>,
-            profile_posts_weight: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_PROFILE_POSTS_WEIGHT">PROFILE_POSTS_WEIGHT</a>,
-            profile_tips_weight: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_PROFILE_TIPS_WEIGHT">PROFILE_TIPS_WEIGHT</a>,
-            profile_viral_threshold: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_PROFILE_VIRAL_THRESHOLD">PROFILE_VIRAL_THRESHOLD</a>,
-            min_post_auction_duration: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MIN_POST_AUCTION_DURATION">MIN_POST_AUCTION_DURATION</a>,
-            max_post_auction_duration: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MAX_POST_AUCTION_DURATION">MAX_POST_AUCTION_DURATION</a>,
-            min_profile_auction_duration: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MIN_PROFILE_AUCTION_DURATION">MIN_PROFILE_AUCTION_DURATION</a>,
-            max_profile_auction_duration: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MAX_PROFILE_AUCTION_DURATION">MAX_PROFILE_AUCTION_DURATION</a>,
+            post_threshold: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_DEFAULT_POST_THRESHOLD">DEFAULT_POST_THRESHOLD</a>,
+            profile_threshold: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_DEFAULT_PROFILE_THRESHOLD">DEFAULT_PROFILE_THRESHOLD</a>,
+            max_individual_stake_bps: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_DEFAULT_MAX_INDIVIDUAL_STAKE_BPS">DEFAULT_MAX_INDIVIDUAL_STAKE_BPS</a>,
             trading_halted: <b>false</b>, // Trading is enabled by default
         }
     );
@@ -1698,7 +1553,7 @@ Initialize the token exchange system
         <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a> {
             id: object::new(ctx),
             tokens: table::new(ctx),
-            auctions: table::new(ctx),
+            stake_pools: table::new(ctx),
             version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
         }
     );
@@ -1716,7 +1571,7 @@ Initialize the token exchange system
 Update exchange configuration
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_update_exchange_config">update_exchange_config</a>(_admin_cap: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeAdminCap">social_contracts::token_exchange::ExchangeAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, total_fee_bps: u64, creator_fee_bps: u64, platform_fee_bps: u64, treasury_fee_bps: u64, base_price: u64, quadratic_coefficient: u64, ecosystem_treasury: <b>address</b>, max_hold_percent_bps: u64, post_likes_weight: u64, post_comments_weight: u64, post_tips_weight: u64, post_viral_threshold: u64, profile_follows_weight: u64, profile_posts_weight: u64, profile_tips_weight: u64, profile_viral_threshold: u64, min_post_auction_duration: u64, max_post_auction_duration: u64, min_profile_auction_duration: u64, max_profile_auction_duration: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_update_exchange_config">update_exchange_config</a>(_admin_cap: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeAdminCap">social_contracts::token_exchange::ExchangeAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, total_fee_bps: u64, creator_fee_bps: u64, platform_fee_bps: u64, treasury_fee_bps: u64, base_price: u64, quadratic_coefficient: u64, ecosystem_treasury: <b>address</b>, max_hold_percent_bps: u64, post_threshold: u64, profile_threshold: u64, max_individual_stake_bps: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1736,27 +1591,15 @@ Update exchange configuration
     quadratic_coefficient: u64,
     ecosystem_treasury: <b>address</b>,
     max_hold_percent_bps: u64,
-    post_likes_weight: u64,
-    post_comments_weight: u64,
-    post_tips_weight: u64,
-    post_viral_threshold: u64,
-    profile_follows_weight: u64,
-    profile_posts_weight: u64,
-    profile_tips_weight: u64,
-    profile_viral_threshold: u64,
-    min_post_auction_duration: u64,
-    max_post_auction_duration: u64,
-    min_profile_auction_duration: u64,
-    max_profile_auction_duration: u64,
+    post_threshold: u64,
+    profile_threshold: u64,
+    max_individual_stake_bps: u64,
     ctx: &<b>mut</b> TxContext
 ) {
     // Verify sum of fee percentages equals total
     <b>assert</b>!(creator_fee_bps + platform_fee_bps + treasury_fee_bps == total_fee_bps, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidFeeConfig">EInvalidFeeConfig</a>);
     // Verify curve parameters are valid
     <b>assert</b>!(base_price &gt; 0 && quadratic_coefficient &gt; 0, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidCurveParams">EInvalidCurveParams</a>);
-    // Verify auction durations are valid
-    <b>assert</b>!(min_post_auction_duration &lt; max_post_auction_duration, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidAuctionDuration">EInvalidAuctionDuration</a>);
-    <b>assert</b>!(min_profile_auction_duration &lt; max_profile_auction_duration, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidAuctionDuration">EInvalidAuctionDuration</a>);
     // Update fee config
     config.total_fee_bps = total_fee_bps;
     config.creator_fee_bps = creator_fee_bps;
@@ -1768,20 +1611,10 @@ Update exchange configuration
     // Update treasury addresses
     config.ecosystem_treasury = ecosystem_treasury;
     config.max_hold_percent_bps = max_hold_percent_bps;
-    // Update viral thresholds & weights
-    config.post_likes_weight = post_likes_weight;
-    config.post_comments_weight = post_comments_weight;
-    config.post_tips_weight = post_tips_weight;
-    config.post_viral_threshold = post_viral_threshold;
-    config.profile_follows_weight = profile_follows_weight;
-    config.profile_posts_weight = profile_posts_weight;
-    config.profile_tips_weight = profile_tips_weight;
-    config.profile_viral_threshold = profile_viral_threshold;
-    // Update auction duration limits
-    config.min_post_auction_duration = min_post_auction_duration;
-    config.max_post_auction_duration = max_post_auction_duration;
-    config.min_profile_auction_duration = min_profile_auction_duration;
-    config.max_profile_auction_duration = max_profile_auction_duration;
+    // Update staking thresholds
+    config.post_threshold = post_threshold;
+    config.profile_threshold = profile_threshold;
+    config.max_individual_stake_bps = max_individual_stake_bps;
     // Emit config updated event
     event::emit(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
@@ -1794,12 +1627,9 @@ Update exchange configuration
         quadratic_coefficient,
         ecosystem_treasury,
         max_hold_percent_bps,
-        post_viral_threshold,
-        profile_viral_threshold,
-        min_post_auction_duration,
-        max_post_auction_duration,
-        min_profile_auction_duration,
-        max_profile_auction_duration,
+        post_threshold,
+        profile_threshold,
+        max_individual_stake_bps,
     });
 }
 </code></pre>
@@ -1873,14 +1703,14 @@ Check if trading is currently halted
 
 </details>
 
-<a name="social_contracts_token_exchange_check_post_viral_threshold"></a>
+<a name="social_contracts_token_exchange_stake_towards_post"></a>
 
-## Function `check_post_viral_threshold`
+## Function `stake_towards_post`
 
-Check if a post has reached the viral threshold
+Stake MYS tokens towards a post to support social proof token creation
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_check_post_viral_threshold">check_post_viral_threshold</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): (bool, u64)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_stake_towards_post">stake_towards_post</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, stake_pool_object: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">social_contracts::token_exchange::StakePoolObject</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, payment: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1889,301 +1719,94 @@ Check if a post has reached the viral threshold
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_check_post_viral_threshold">check_post_viral_threshold</a>(
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post
-): (bool, u64) {
-    // Calculate viral score based on <a href="../social_contracts/post.md#social_contracts_post">post</a> metrics
-    <b>let</b> likes = <a href="../social_contracts/post.md#social_contracts_post_get_reaction_count">post::get_reaction_count</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) * <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_LIKES_WEIGHT">POST_LIKES_WEIGHT</a>;
-    <b>let</b> comments = <a href="../social_contracts/post.md#social_contracts_post_get_post_comment_count">post::get_post_comment_count</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) * <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_COMMENTS_WEIGHT">POST_COMMENTS_WEIGHT</a>;
-    <b>let</b> tips = <a href="../social_contracts/post.md#social_contracts_post_get_tips_received">post::get_tips_received</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) * <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_TIPS_WEIGHT">POST_TIPS_WEIGHT</a>;
-    <b>let</b> viral_score = likes + comments + tips;
-    // Check <b>if</b> the score exceeds the threshold
-    (viral_score &gt;= <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_POST_VIRAL_THRESHOLD">POST_VIRAL_THRESHOLD</a>, viral_score)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_token_exchange_check_profile_viral_threshold"></a>
-
-## Function `check_profile_viral_threshold`
-
-Check if a profile has reached the viral threshold
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_check_profile_viral_threshold">check_profile_viral_threshold</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, _registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>): (bool, u64)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_check_profile_viral_threshold">check_profile_viral_threshold</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &Profile,
-    _registry: &UsernameRegistry
-): (bool, u64) {
-    // Use accessor functions instead of direct field access
-    <b>let</b> follows = <a href="../social_contracts/profile.md#social_contracts_profile_get_followers_count">profile::get_followers_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>) * <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_PROFILE_FOLLOWS_WEIGHT">PROFILE_FOLLOWS_WEIGHT</a>;
-    <b>let</b> posts = <a href="../social_contracts/profile.md#social_contracts_profile_get_post_count">profile::get_post_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>) * <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_PROFILE_POSTS_WEIGHT">PROFILE_POSTS_WEIGHT</a>;
-    <b>let</b> tips = <a href="../social_contracts/profile.md#social_contracts_profile_get_tips_received">profile::get_tips_received</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>) * <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_PROFILE_TIPS_WEIGHT">PROFILE_TIPS_WEIGHT</a>;
-    <b>let</b> viral_score = follows + posts + tips;
-    // Check <b>if</b> the score exceeds the threshold
-    (viral_score &gt;= <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_PROFILE_VIRAL_THRESHOLD">PROFILE_VIRAL_THRESHOLD</a>, viral_score)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_token_exchange_start_post_auction"></a>
-
-## Function `start_post_auction`
-
-Start a pre-launch auction for a post
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_start_post_auction">start_post_auction</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, _symbol: vector&lt;u8&gt;, _name: vector&lt;u8&gt;, duration_hours: u64, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_start_post_auction">start_post_auction</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_stake_towards_post">stake_towards_post</a>(
     registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a>,
     config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">ExchangeConfig</a>,
+    stake_pool_object: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">StakePoolObject</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
-    _symbol: vector&lt;u8&gt;,
-    _name: vector&lt;u8&gt;,
-    duration_hours: u64,
-    clock: &Clock,
-    ctx: &<b>mut</b> TxContext
-) {
-    // Check <b>if</b> trading is halted
-    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
-    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>let</b> owner = <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    // Verify caller is the <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
-    <b>assert</b>!(tx_context::sender(ctx) == owner, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ENotAuthorized">ENotAuthorized</a>);
-    // Check <b>if</b> an auction already exists <b>for</b> this <a href="../social_contracts/post.md#social_contracts_post">post</a>
-    <b>assert</b>!(!table::contains(&registry.auctions, post_id), <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EAuctionInProgress">EAuctionInProgress</a>);
-    // Check <b>if</b> the <a href="../social_contracts/post.md#social_contracts_post">post</a> <b>has</b> reached the viral threshold
-    <b>let</b> (is_viral, _viral_score) = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_check_post_viral_threshold">check_post_viral_threshold</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>assert</b>!(is_viral, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EViralThresholdNotMet">EViralThresholdNotMet</a>);
-    // Validate auction duration
-    <b>let</b> duration_seconds = duration_hours * 60 * 60;
-    <b>assert</b>!(
-        duration_seconds &gt;= <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MIN_POST_AUCTION_DURATION">MIN_POST_AUCTION_DURATION</a> &&
-        duration_seconds &lt;= <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MAX_POST_AUCTION_DURATION">MAX_POST_AUCTION_DURATION</a>,
-        <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidAuctionDuration">EInvalidAuctionDuration</a>
-    );
-    // Create auction info
-    <b>let</b> start_time = clock::timestamp_ms(clock) / 1000; // Convert to seconds
-    <b>let</b> auction_info = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionInfo">AuctionInfo</a> {
-        associated_id: post_id,
-        token_type: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
-        owner,
-        status: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_ACTIVE">AUCTION_STATUS_ACTIVE</a>,
-        start_time,
-        duration: duration_seconds,
-        total_contribution: 0,
-        total_tokens: 0,
-        contributors: vector::empty(),
-    };
-    // Create auction pool
-    <b>let</b> auction_pool = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">AuctionPool</a> {
-        id: object::new(ctx),
-        info: auction_info,
-        mys_balance: balance::zero(),
-        contributions: table::new(ctx),
-        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
-    };
-    // Add to registry
-    table::add(&<b>mut</b> registry.auctions, post_id, auction_info);
-    // Emit event
-    event::emit(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionCreatedEvent">AuctionCreatedEvent</a> {
-        auction_id: object::uid_to_address(&auction_pool.id),
-        associated_id: post_id,
-        token_type: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
-        owner,
-        start_time,
-        duration: duration_seconds,
-    });
-    // Share the auction pool
-    transfer::share_object(auction_pool);
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_token_exchange_start_profile_auction"></a>
-
-## Function `start_profile_auction`
-
-Start a pre-launch auction for a profile
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_start_profile_auction">start_profile_auction</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, _symbol: vector&lt;u8&gt;, _name: vector&lt;u8&gt;, duration_days: u64, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_start_profile_auction">start_profile_auction</a>(
-    registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a>,
-    config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">ExchangeConfig</a>,
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &Profile,
-    username_registry: &UsernameRegistry,
-    _symbol: vector&lt;u8&gt;,
-    _name: vector&lt;u8&gt;,
-    duration_days: u64,
-    clock: &Clock,
-    ctx: &<b>mut</b> TxContext
-) {
-    // Check <b>if</b> trading is halted
-    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
-    <b>let</b> profile_id = <a href="../social_contracts/profile.md#social_contracts_profile_get_id_address">profile::get_id_address</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>);
-    <b>let</b> owner = <a href="../social_contracts/profile.md#social_contracts_profile_get_owner">profile::get_owner</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>);
-    // Verify caller is the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> owner
-    <b>assert</b>!(tx_context::sender(ctx) == owner, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ENotAuthorized">ENotAuthorized</a>);
-    // Check <b>if</b> an auction already exists <b>for</b> this <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
-    <b>assert</b>!(!table::contains(&registry.auctions, profile_id), <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EAuctionInProgress">EAuctionInProgress</a>);
-    // Check <b>if</b> the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <b>has</b> reached the viral threshold
-    <b>let</b> (is_viral, _viral_score) = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_check_profile_viral_threshold">check_profile_viral_threshold</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, username_registry);
-    <b>assert</b>!(is_viral, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EViralThresholdNotMet">EViralThresholdNotMet</a>);
-    // Validate auction duration
-    <b>let</b> duration_seconds = duration_days * 24 * 60 * 60;
-    <b>assert</b>!(
-        duration_seconds &gt;= <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MIN_PROFILE_AUCTION_DURATION">MIN_PROFILE_AUCTION_DURATION</a> &&
-        duration_seconds &lt;= <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_MAX_PROFILE_AUCTION_DURATION">MAX_PROFILE_AUCTION_DURATION</a>,
-        <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidAuctionDuration">EInvalidAuctionDuration</a>
-    );
-    // Create auction info
-    <b>let</b> start_time = clock::timestamp_ms(clock) / 1000; // Convert to seconds
-    <b>let</b> auction_info = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionInfo">AuctionInfo</a> {
-        associated_id: profile_id,
-        token_type: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>,
-        owner,
-        status: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_ACTIVE">AUCTION_STATUS_ACTIVE</a>,
-        start_time,
-        duration: duration_seconds,
-        total_contribution: 0,
-        total_tokens: 0,
-        contributors: vector::empty(),
-    };
-    // Create auction pool
-    <b>let</b> auction_pool = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">AuctionPool</a> {
-        id: object::new(ctx),
-        info: auction_info,
-        mys_balance: balance::zero(),
-        contributions: table::new(ctx),
-        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
-    };
-    // Add to registry
-    table::add(&<b>mut</b> registry.auctions, profile_id, auction_info);
-    // Emit event
-    event::emit(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionCreatedEvent">AuctionCreatedEvent</a> {
-        auction_id: object::uid_to_address(&auction_pool.id),
-        associated_id: profile_id,
-        token_type: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>,
-        owner,
-        start_time,
-        duration: duration_seconds,
-    });
-    // Share the auction pool
-    transfer::share_object(auction_pool);
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_token_exchange_contribute_to_auction"></a>
-
-## Function `contribute_to_auction`
-
-Contribute MYS to an auction
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_contribute_to_auction">contribute_to_auction</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, auction_pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">social_contracts::token_exchange::AuctionPool</a>, payment: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_contribute_to_auction">contribute_to_auction</a>(
-    registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a>,
-    config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">ExchangeConfig</a>,
-    auction_pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">AuctionPool</a>,
     <b>mut</b> payment: Coin&lt;MYS&gt;,
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check <b>if</b> trading is halted
     <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
-    <b>let</b> contributor = tx_context::sender(ctx);
-    // Verify auction is active
-    <b>assert</b>!(auction_pool.info.status == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_ACTIVE">AUCTION_STATUS_ACTIVE</a>, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EAuctionNotActive">EAuctionNotActive</a>);
-    // Verify auction info matches registry
-    <b>let</b> stored_info = table::borrow(&registry.auctions, auction_pool.info.associated_id);
-    <b>assert</b>!(
-        stored_info.owner == auction_pool.info.owner &&
-        stored_info.start_time == auction_pool.info.start_time,
-        <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidID">EInvalidID</a>
-    );
-    // Ensure contributor <b>has</b> enough funds
-    <b>assert</b>!(coin::value(&payment) &gt;= amount, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInsufficientFunds">EInsufficientFunds</a>);
-    // Extract payment
-    <b>let</b> contribution = coin::split(&<b>mut</b> payment, amount, ctx);
-    // Update contribution record
-    <b>if</b> (table::contains(&auction_pool.contributions, contributor)) {
-        <b>let</b> current_contribution = table::borrow_mut(&<b>mut</b> auction_pool.contributions, contributor);
-        *current_contribution = *current_contribution + amount;
+    <b>let</b> staker = tx_context::sender(ctx);
+    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> post_owner = <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> now = tx_context::epoch(ctx);
+    // Verify stake pool matches the <a href="../social_contracts/post.md#social_contracts_post">post</a>
+    <b>assert</b>!(stake_pool_object.info.associated_id == post_id, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidID">EInvalidID</a>);
+    <b>assert</b>!(stake_pool_object.info.token_type == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidTokenType">EInvalidTokenType</a>);
+    // Ensure staker <b>has</b> enough funds
+    <b>assert</b>!(coin::value(&payment) &gt;= amount && amount &gt; 0, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInsufficientFunds">EInsufficientFunds</a>);
+    // Check individual stake limit
+    <b>let</b> max_individual_stake = (config.post_threshold * config.max_individual_stake_bps) / 10000;
+    <b>let</b> current_stake = <b>if</b> (table::contains(&stake_pool_object.stakes, staker)) {
+        *table::borrow(&stake_pool_object.stakes, staker)
     } <b>else</b> {
-        table::add(&<b>mut</b> auction_pool.contributions, contributor, amount);
-        // Add to contributors list <b>for</b> tracking
-        vector::push_back(&<b>mut</b> auction_pool.info.contributors, contributor);
+        0
     };
-    // Add to pool balance
-    balance::join(&<b>mut</b> auction_pool.mys_balance, coin::into_balance(contribution));
-    // Update total contribution
-    auction_pool.info.total_contribution = auction_pool.info.total_contribution + amount;
+    <b>assert</b>!(current_stake + amount &lt;= max_individual_stake, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EExceededMaxHold">EExceededMaxHold</a>);
+    // Extract stake payment
+    <b>let</b> stake_payment = coin::split(&<b>mut</b> payment, amount, ctx);
+    balance::join(&<b>mut</b> stake_pool_object.mys_balance, coin::into_balance(stake_payment));
+    // Update staker's balance in the pool
+    <b>if</b> (table::contains(&stake_pool_object.stakes, staker)) {
+        <b>let</b> stake_balance = table::borrow_mut(&<b>mut</b> stake_pool_object.stakes, staker);
+        *stake_balance = *stake_balance + amount;
+    } <b>else</b> {
+        table::add(&<b>mut</b> stake_pool_object.stakes, staker, amount);
+        // Add to stakers list <b>for</b> tracking
+        vector::push_back(&<b>mut</b> stake_pool_object.info.stakers, staker);
+    };
+    // Update total staked
+    stake_pool_object.info.total_staked = stake_pool_object.info.total_staked + amount;
     // Update registry
-    <b>let</b> <b>mut</b> updated_info = *stored_info;
-    updated_info.total_contribution = auction_pool.info.total_contribution;
-    // If this is a new contributor, add them to the registry's contributor list too
-    <b>if</b> (!table::contains(&auction_pool.contributions, contributor)) {
-        vector::push_back(&<b>mut</b> updated_info.contributors, contributor);
+    <b>if</b> (table::contains(&registry.stake_pools, post_id)) {
+        <b>let</b> registry_pool = table::borrow_mut(&<b>mut</b> registry.stake_pools, post_id);
+        registry_pool.total_staked = stake_pool_object.info.total_staked;
+    } <b>else</b> {
+        // Create registry <b>entry</b> <b>if</b> it doesn't exist
+        <b>let</b> stake_pool = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePool">StakePool</a> {
+            associated_id: post_id,
+            token_type: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
+            owner: post_owner,
+            total_staked: stake_pool_object.info.total_staked,
+            required_threshold: config.post_threshold,
+            stakers: stake_pool_object.info.stakers,
+            created_at: now,
+        };
+        table::add(&<b>mut</b> registry.stake_pools, post_id, stake_pool);
     };
-    *table::borrow_mut(&<b>mut</b> registry.auctions, auction_pool.info.associated_id) = updated_info;
-    // Return any excess payment
+    // Check <b>if</b> threshold was just met
+    <b>let</b> threshold_met = stake_pool_object.info.total_staked &gt;= config.post_threshold;
+    <b>let</b> was_threshold_met = (stake_pool_object.info.total_staked - amount) &gt;= config.post_threshold;
+    // Emit threshold met event <b>if</b> this stake pushed us over the threshold
+    <b>if</b> (threshold_met && !was_threshold_met) {
+        event::emit(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ThresholdMetEvent">ThresholdMetEvent</a> {
+            associated_id: post_id,
+            token_type: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
+            owner: post_owner,
+            total_staked: stake_pool_object.info.total_staked,
+            required_threshold: config.post_threshold,
+            timestamp: now,
+        });
+    };
+    // Return excess payment
     <b>if</b> (coin::value(&payment) &gt; 0) {
-        transfer::public_transfer(payment, contributor);
+        transfer::public_transfer(payment, staker);
     } <b>else</b> {
         coin::destroy_zero(payment);
     };
-    // Emit contribution event
-    event::emit(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionContributionEvent">AuctionContributionEvent</a> {
-        auction_id: object::uid_to_address(&auction_pool.id),
-        contributor,
+    // Emit stake created event
+    event::emit(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakeCreatedEvent">StakeCreatedEvent</a> {
+        associated_id: post_id,
+        token_type: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
+        staker,
         amount,
-        total_contribution: auction_pool.info.total_contribution,
+        total_staked: stake_pool_object.info.total_staked,
+        threshold_met,
+        staked_at: now,
     });
 }
 </code></pre>
@@ -2192,14 +1815,14 @@ Contribute MYS to an auction
 
 </details>
 
-<a name="social_contracts_token_exchange_is_auction_ended"></a>
+<a name="social_contracts_token_exchange_stake_towards_profile"></a>
 
-## Function `is_auction_ended`
+## Function `stake_towards_profile`
 
-Check if an auction has ended
+Stake MYS tokens towards a profile to support social proof token creation
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_is_auction_ended">is_auction_ended</a>(auction_info: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionInfo">social_contracts::token_exchange::AuctionInfo</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>): bool
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_stake_towards_profile">stake_towards_profile</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, stake_pool_object: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">social_contracts::token_exchange::StakePoolObject</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, payment: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2208,13 +1831,95 @@ Check if an auction has ended
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_is_auction_ended">is_auction_ended</a>(
-    auction_info: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionInfo">AuctionInfo</a>,
-    clock: &Clock
-): bool {
-    <b>let</b> current_time = clock::timestamp_ms(clock) / 1000; // Convert to seconds
-    <b>let</b> end_time = auction_info.start_time + auction_info.duration;
-    current_time &gt;= end_time
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_stake_towards_profile">stake_towards_profile</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a>,
+    config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">ExchangeConfig</a>,
+    stake_pool_object: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">StakePoolObject</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &Profile,
+    <b>mut</b> payment: Coin&lt;MYS&gt;,
+    amount: u64,
+    ctx: &<b>mut</b> TxContext
+) {
+    // Check <b>if</b> trading is halted
+    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
+    <b>let</b> staker = tx_context::sender(ctx);
+    <b>let</b> profile_id = <a href="../social_contracts/profile.md#social_contracts_profile_get_id_address">profile::get_id_address</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>);
+    <b>let</b> profile_owner = <a href="../social_contracts/profile.md#social_contracts_profile_get_owner">profile::get_owner</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>);
+    <b>let</b> now = tx_context::epoch(ctx);
+    // Verify stake pool matches the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
+    <b>assert</b>!(stake_pool_object.info.associated_id == profile_id, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidID">EInvalidID</a>);
+    <b>assert</b>!(stake_pool_object.info.token_type == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidTokenType">EInvalidTokenType</a>);
+    // Ensure staker <b>has</b> enough funds
+    <b>assert</b>!(coin::value(&payment) &gt;= amount && amount &gt; 0, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInsufficientFunds">EInsufficientFunds</a>);
+    // Check individual stake limit
+    <b>let</b> max_individual_stake = (config.profile_threshold * config.max_individual_stake_bps) / 10000;
+    <b>let</b> current_stake = <b>if</b> (table::contains(&stake_pool_object.stakes, staker)) {
+        *table::borrow(&stake_pool_object.stakes, staker)
+    } <b>else</b> {
+        0
+    };
+    <b>assert</b>!(current_stake + amount &lt;= max_individual_stake, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EExceededMaxHold">EExceededMaxHold</a>);
+    // Extract stake payment
+    <b>let</b> stake_payment = coin::split(&<b>mut</b> payment, amount, ctx);
+    balance::join(&<b>mut</b> stake_pool_object.mys_balance, coin::into_balance(stake_payment));
+    // Update staker's balance in the pool
+    <b>if</b> (table::contains(&stake_pool_object.stakes, staker)) {
+        <b>let</b> stake_balance = table::borrow_mut(&<b>mut</b> stake_pool_object.stakes, staker);
+        *stake_balance = *stake_balance + amount;
+    } <b>else</b> {
+        table::add(&<b>mut</b> stake_pool_object.stakes, staker, amount);
+        // Add to stakers list <b>for</b> tracking
+        vector::push_back(&<b>mut</b> stake_pool_object.info.stakers, staker);
+    };
+    // Update total staked
+    stake_pool_object.info.total_staked = stake_pool_object.info.total_staked + amount;
+    // Update registry
+    <b>if</b> (table::contains(&registry.stake_pools, profile_id)) {
+        <b>let</b> registry_pool = table::borrow_mut(&<b>mut</b> registry.stake_pools, profile_id);
+        registry_pool.total_staked = stake_pool_object.info.total_staked;
+    } <b>else</b> {
+        // Create registry <b>entry</b> <b>if</b> it doesn't exist
+        <b>let</b> stake_pool = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePool">StakePool</a> {
+            associated_id: profile_id,
+            token_type: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>,
+            owner: profile_owner,
+            total_staked: stake_pool_object.info.total_staked,
+            required_threshold: config.profile_threshold,
+            stakers: stake_pool_object.info.stakers,
+            created_at: now,
+        };
+        table::add(&<b>mut</b> registry.stake_pools, profile_id, stake_pool);
+    };
+    // Check <b>if</b> threshold was just met
+    <b>let</b> threshold_met = stake_pool_object.info.total_staked &gt;= config.profile_threshold;
+    <b>let</b> was_threshold_met = (stake_pool_object.info.total_staked - amount) &gt;= config.profile_threshold;
+    // Emit threshold met event <b>if</b> this stake pushed us over the threshold
+    <b>if</b> (threshold_met && !was_threshold_met) {
+        event::emit(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ThresholdMetEvent">ThresholdMetEvent</a> {
+            associated_id: profile_id,
+            token_type: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>,
+            owner: profile_owner,
+            total_staked: stake_pool_object.info.total_staked,
+            required_threshold: config.profile_threshold,
+            timestamp: now,
+        });
+    };
+    // Return excess payment
+    <b>if</b> (coin::value(&payment) &gt; 0) {
+        transfer::public_transfer(payment, staker);
+    } <b>else</b> {
+        coin::destroy_zero(payment);
+    };
+    // Emit stake created event
+    event::emit(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakeCreatedEvent">StakeCreatedEvent</a> {
+        associated_id: profile_id,
+        token_type: <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>,
+        staker,
+        amount,
+        total_staked: stake_pool_object.info.total_staked,
+        threshold_met,
+        staked_at: now,
+    });
 }
 </code></pre>
 
@@ -2222,15 +1927,14 @@ Check if an auction has ended
 
 </details>
 
-<a name="social_contracts_token_exchange_finalize_auction"></a>
+<a name="social_contracts_token_exchange_withdraw_stake"></a>
 
-## Function `finalize_auction`
+## Function `withdraw_stake`
 
-Finalize an auction and create the token pool
-This function checks if the auction has ended and finalizes it by creating a token pool
+Withdraw MYS stake from a post or profile
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_finalize_auction">finalize_auction</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, auction_pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">social_contracts::token_exchange::AuctionPool</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_withdraw_stake">withdraw_stake</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, stake_pool_object: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">social_contracts::token_exchange::StakePoolObject</a>, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2239,76 +1943,228 @@ This function checks if the auction has ended and finalizes it by creating a tok
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_finalize_auction">finalize_auction</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_withdraw_stake">withdraw_stake</a>(
     registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a>,
-    config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">ExchangeConfig</a>,
-    auction_pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">AuctionPool</a>,
-    clock: &Clock,
+    stake_pool_object: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">StakePoolObject</a>,
+    amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Check <b>if</b> trading is halted (finalization creates tradeable tokens)
-    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
-    // Check <b>if</b> auction <b>has</b> ended but status not updated
-    <b>if</b> (auction_pool.info.status == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_ACTIVE">AUCTION_STATUS_ACTIVE</a> && <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_is_auction_ended">is_auction_ended</a>(&auction_pool.info, clock)) {
-        // Update status to ended
-        auction_pool.info.status = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_ENDED">AUCTION_STATUS_ENDED</a>;
-        // Update registry
-        <b>let</b> <b>mut</b> updated_info = *table::borrow(&registry.auctions, auction_pool.info.associated_id);
-        updated_info.status = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_ENDED">AUCTION_STATUS_ENDED</a>;
-        *table::borrow_mut(&<b>mut</b> registry.auctions, auction_pool.info.associated_id) = updated_info;
+    <b>let</b> staker = tx_context::sender(ctx);
+    <b>let</b> associated_id = stake_pool_object.info.associated_id;
+    <b>let</b> now = tx_context::epoch(ctx);
+    // Verify staker <b>has</b> a stake
+    <b>assert</b>!(table::contains(&stake_pool_object.stakes, staker), <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ENoTokensOwned">ENoTokensOwned</a>);
+    <b>let</b> current_stake = *table::borrow(&stake_pool_object.stakes, staker);
+    <b>assert</b>!(current_stake &gt;= amount, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInsufficientLiquidity">EInsufficientLiquidity</a>);
+    // Update staker's balance
+    <b>if</b> (current_stake == amount) {
+        // Remove staker completely
+        table::remove(&<b>mut</b> stake_pool_object.stakes, staker);
+        // Remove from stakers list
+        <b>let</b> <b>mut</b> i = 0;
+        <b>let</b> len = vector::length(&stake_pool_object.info.stakers);
+        <b>while</b> (i &lt; len) {
+            <b>if</b> (*vector::borrow(&stake_pool_object.info.stakers, i) == staker) {
+                vector::remove(&<b>mut</b> stake_pool_object.info.stakers, i);
+                <b>break</b>
+            };
+            i = i + 1;
+        };
+    } <b>else</b> {
+        // Reduce stake amount
+        <b>let</b> stake_balance = table::borrow_mut(&<b>mut</b> stake_pool_object.stakes, staker);
+        *stake_balance = *stake_balance - amount;
     };
-    // Verify auction <b>has</b> ended
-    <b>assert</b>!(auction_pool.info.status == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_ENDED">AUCTION_STATUS_ENDED</a>, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EAuctionNotEnded">EAuctionNotEnded</a>);
-    <b>assert</b>!(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_is_auction_ended">is_auction_ended</a>(&auction_pool.info, clock), <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EAuctionNotEnded">EAuctionNotEnded</a>);
-    // Verify auction <b>has</b> not been finalized
-    <b>assert</b>!(
-        !table::contains(&registry.tokens, auction_pool.info.associated_id),
-        <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EAuctionAlreadyFinalized">EAuctionAlreadyFinalized</a>
-    );
-    // Verify there are contributions
-    <b>assert</b>!(auction_pool.info.total_contribution &gt; 0, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ENoContribution">ENoContribution</a>);
-    // Calculate initial token supply with dynamic scaling based on contribution size
-    // This creates a non-linear relationship where larger pools get proportionally
-    // more tokens, helping to prevent front-running and maintain AMM efficiency
-    // Use square root scaling to balance between very large and small pools
-    // We <b>use</b> total_contribution^0.75 <b>as</b> our scaling factor
-    // (Using integer math <b>for</b> the calculation)
-    <b>let</b> contribution = auction_pool.info.total_contribution;
-    <b>let</b> sqrt_contribution = math::sqrt(contribution);
-    <b>let</b> cbrt_contribution = math::sqrt(sqrt_contribution); // approximation of cube root
-    <b>let</b> <b>mut</b> scale_factor = sqrt_contribution * cbrt_contribution; // contribution^0.75
-    // Divide the scale factor to make each token worth more than 1 MYSO
-    // This ensures tokens are premium assets compared to the base currency
+    // Update total staked
+    stake_pool_object.info.total_staked = stake_pool_object.info.total_staked - amount;
+    // Update registry
+    <b>if</b> (table::contains(&registry.stake_pools, associated_id)) {
+        <b>let</b> registry_pool = table::borrow_mut(&<b>mut</b> registry.stake_pools, associated_id);
+        registry_pool.total_staked = stake_pool_object.info.total_staked;
+    };
+    // Transfer staked MYS back to staker
+    <b>let</b> refund_balance = balance::split(&<b>mut</b> stake_pool_object.mys_balance, amount);
+    <b>let</b> refund_coin = coin::from_balance(refund_balance, ctx);
+    transfer::public_transfer(refund_coin, staker);
+    // Emit stake withdrawn event
+    event::emit(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakeWithdrawnEvent">StakeWithdrawnEvent</a> {
+        associated_id,
+        token_type: stake_pool_object.info.token_type,
+        staker,
+        amount,
+        total_staked: stake_pool_object.info.total_staked,
+        withdrawn_at: now,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_create_stake_pool"></a>
+
+## Function `create_stake_pool`
+
+Create a new stake pool for a post or profile
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_create_stake_pool">create_stake_pool</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, associated_id: <b>address</b>, token_type: u8, owner: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_create_stake_pool">create_stake_pool</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a>,
+    config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">ExchangeConfig</a>,
+    associated_id: <b>address</b>,
+    token_type: u8,
+    owner: <b>address</b>,
+    ctx: &<b>mut</b> TxContext
+) {
+    // Check <b>if</b> trading is halted
+    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
+    // Verify caller is the owner
+    <b>assert</b>!(tx_context::sender(ctx) == owner, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ENotAuthorized">ENotAuthorized</a>);
+    // Check <b>if</b> stake pool already exists
+    <b>assert</b>!(!table::contains(&registry.stake_pools, associated_id), <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETokenAlreadyExists">ETokenAlreadyExists</a>);
+    <b>let</b> now = tx_context::epoch(ctx);
+    <b>let</b> required_threshold = <b>if</b> (token_type == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>) {
+        config.post_threshold
+    } <b>else</b> <b>if</b> (token_type == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>) {
+        config.profile_threshold
+    } <b>else</b> {
+        <b>abort</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EInvalidTokenType">EInvalidTokenType</a>
+    };
+    // Create stake pool info
+    <b>let</b> stake_pool = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePool">StakePool</a> {
+        associated_id,
+        token_type,
+        owner,
+        total_staked: 0,
+        required_threshold,
+        stakers: vector::empty(),
+        created_at: now,
+    };
+    // Add to registry
+    table::add(&<b>mut</b> registry.stake_pools, associated_id, stake_pool);
+    // Create stake pool object
+    <b>let</b> stake_pool_object = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">StakePoolObject</a> {
+        id: object::new(ctx),
+        info: stake_pool,
+        mys_balance: balance::zero(),
+        stakes: table::new(ctx),
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
+    };
+    transfer::share_object(stake_pool_object);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_can_create_auction"></a>
+
+## Function `can_create_auction`
+
+Check if staking threshold is met for auction creation
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_can_create_auction">can_create_auction</a>(registry: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, associated_id: <b>address</b>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_can_create_auction">can_create_auction</a>(
+    registry: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a>,
+    associated_id: <b>address</b>
+): bool {
+    <b>if</b> (!table::contains(&registry.stake_pools, associated_id)) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> stake_pool = table::borrow(&registry.stake_pools, associated_id);
+    stake_pool.total_staked &gt;= stake_pool.required_threshold
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_token_exchange_create_social_proof_token"></a>
+
+## Function `create_social_proof_token`
+
+Create a social proof token directly from a stake pool once threshold is met
+This replaces the auction system - only the post/profile owner can call this
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_create_social_proof_token">create_social_proof_token</a>(registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">social_contracts::token_exchange::ExchangeConfig</a>, stake_pool_object: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">social_contracts::token_exchange::StakePoolObject</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_create_social_proof_token">create_social_proof_token</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">TokenRegistry</a>,
+    config: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ExchangeConfig">ExchangeConfig</a>,
+    stake_pool_object: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">StakePoolObject</a>,
+    ctx: &<b>mut</b> TxContext
+) {
+    // Check <b>if</b> trading is halted
+    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETradingHalted">ETradingHalted</a>);
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>let</b> associated_id = stake_pool_object.info.associated_id;
+    // Verify caller is the owner of the <a href="../social_contracts/post.md#social_contracts_post">post</a>/<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
+    <b>assert</b>!(caller == stake_pool_object.info.owner, <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ENotAuthorized">ENotAuthorized</a>);
+    // Check <b>if</b> staking threshold <b>has</b> been met
+    <b>assert</b>!(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_can_create_auction">can_create_auction</a>(registry, associated_id), <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_EViralThresholdNotMet">EViralThresholdNotMet</a>);
+    // Verify token <b>has</b> not already been created
+    <b>assert</b>!(!table::contains(&registry.tokens, associated_id), <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_ETokenAlreadyExists">ETokenAlreadyExists</a>);
+    // Calculate initial token supply based on total staked amount
+    // Use the same scaling formula <b>as</b> the old auction system
+    <b>let</b> total_staked = stake_pool_object.info.total_staked;
+    <b>let</b> sqrt_staked = math::sqrt(total_staked);
+    <b>let</b> cbrt_staked = math::sqrt(sqrt_staked); // approximation of cube root
+    <b>let</b> <b>mut</b> scale_factor = sqrt_staked * cbrt_staked; // staked^0.75
+    // Divide the scale factor to make each token worth more than 1 MYS
     scale_factor = scale_factor / 1000;
     // Apply different base multipliers <b>for</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> vs <a href="../social_contracts/post.md#social_contracts_post">post</a> tokens
-    // Profile tokens have lower supply (more valuable per token)
-    // Post tokens have higher supply (more collectible, less valuable per token)
-    <b>let</b> <b>mut</b> initial_token_supply = <b>if</b> (auction_pool.info.token_type == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>) {
-        // Profile tokens - lower supply (1x base multiplier)
-        // These represent long-term investment in a person/brand
+    <b>let</b> <b>mut</b> initial_token_supply = <b>if</b> (stake_pool_object.info.token_type == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>) {
+        // Profile tokens - lower supply (more valuable per token)
         scale_factor
     } <b>else</b> {
-        // Post tokens - higher supply (10x base multiplier)
-        // These are more collectible with many tokens per viral <a href="../social_contracts/post.md#social_contracts_post">post</a>
+        // Post tokens - higher supply (more collectible)
         scale_factor * 10
     };
     // Ensure we have at least 1 token
     <b>if</b> (initial_token_supply == 0) {
         initial_token_supply = 1;
     };
-    <b>let</b> token_price = auction_pool.info.total_contribution / initial_token_supply;
     // Create token info
     <b>let</b> token_info = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenInfo">TokenInfo</a> {
         id: @0x0, // Temporary, will be updated
-        token_type: auction_pool.info.token_type,
-        owner: auction_pool.info.owner,
-        associated_id: auction_pool.info.associated_id,
-        symbol: <b>if</b> (auction_pool.info.token_type == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>) {
+        token_type: stake_pool_object.info.token_type,
+        owner: stake_pool_object.info.owner,
+        associated_id,
+        symbol: <b>if</b> (stake_pool_object.info.token_type == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>) {
             string::utf8(b"PUSER")
         } <b>else</b> {
             string::utf8(b"PPOST")
         },
-        name: <b>if</b> (auction_pool.info.token_type == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>) {
+        name: <b>if</b> (stake_pool_object.info.token_type == <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>) {
             string::utf8(b"Profile Token")
         } <b>else</b> {
             string::utf8(b"Post Token")
@@ -2321,7 +2177,7 @@ This function checks if the auction has ended and finalizes it by creating a tok
     // Create token pool
     <b>let</b> pool_id = object::new(ctx);
     <b>let</b> pool_address = object::uid_to_address(&pool_id);
-    // Create pool with updated token info
+    // Update token info with actual pool <b>address</b>
     <b>let</b> <b>mut</b> updated_token_info = token_info;
     updated_token_info.id = pool_address;
     <b>let</b> <b>mut</b> token_pool = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPool">TokenPool</a> {
@@ -2333,54 +2189,37 @@ This function checks if the auction has ended and finalizes it by creating a tok
         poc_redirect_percentage: option::none(),
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
-    // Distribute tokens to contributors
-    // Production implementation that efficiently distributes tokens to all contributors
-    <b>let</b> contributors = &auction_pool.info.contributors;
-    <b>let</b> num_contributors = vector::length(contributors);
-    // Iterate through all contributors who participated in the auction
+    // Distribute tokens to stakers proportionally
+    <b>let</b> stakers = &stake_pool_object.info.stakers;
+    <b>let</b> num_stakers = vector::length(stakers);
     <b>let</b> <b>mut</b> i = 0;
-    <b>while</b> (i &lt; num_contributors) {
-        <b>let</b> contributor = *vector::borrow(contributors, i);
-        <b>let</b> contribution_amount = *table::borrow(&auction_pool.contributions, contributor);
-        // Calculate token amount based on contributor's proportion of total contribution
-        <b>let</b> token_amount = (contribution_amount * initial_token_supply) / auction_pool.info.total_contribution;
-        // Only process non-zero token amounts
+    <b>while</b> (i &lt; num_stakers) {
+        <b>let</b> staker = *vector::borrow(stakers, i);
+        <b>let</b> stake_amount = *table::borrow(&stake_pool_object.stakes, staker);
+        // Calculate token amount based on staker's proportion of total stake
+        <b>let</b> token_amount = (stake_amount * initial_token_supply) / total_staked;
         <b>if</b> (token_amount &gt; 0) {
             // Update holder's balance in the pool
-            table::add(&<b>mut</b> token_pool.holders, contributor, token_amount);
-            // Create social token
+            table::add(&<b>mut</b> token_pool.holders, staker, token_amount);
+            // Create social token <b>for</b> the staker
             <b>let</b> social_token = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_SocialToken">SocialToken</a> {
                 id: object::new(ctx),
                 pool_id: pool_address,
-                token_type: auction_pool.info.token_type,
+                token_type: stake_pool_object.info.token_type,
                 amount: token_amount,
             };
-            // Transfer social token to contributor
-            transfer::public_transfer(social_token, contributor);
+            // Transfer social token to staker
+            transfer::public_transfer(social_token, staker);
         };
         i = i + 1;
     };
-    // Add contribution to pool balance
-    balance::join(&<b>mut</b> token_pool.mys_balance, balance::withdraw_all(&<b>mut</b> auction_pool.mys_balance));
-    // Update the registry
-    table::add(&<b>mut</b> registry.tokens, auction_pool.info.associated_id, updated_token_info);
-    // Update auction status
-    auction_pool.info.status = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_FINALIZED">AUCTION_STATUS_FINALIZED</a>;
-    auction_pool.info.total_tokens = initial_token_supply;
-    // Update registry auction info
-    <b>let</b> <b>mut</b> updated_auction_info = *table::borrow(&registry.auctions, auction_pool.info.associated_id);
-    updated_auction_info.status = <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AUCTION_STATUS_FINALIZED">AUCTION_STATUS_FINALIZED</a>;
-    updated_auction_info.total_tokens = initial_token_supply;
-    *table::borrow_mut(&<b>mut</b> registry.auctions, auction_pool.info.associated_id) = updated_auction_info;
-    // Emit finalized event
-    event::emit(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionFinalizedEvent">AuctionFinalizedEvent</a> {
-        auction_id: object::uid_to_address(&auction_pool.id),
-        associated_id: auction_pool.info.associated_id,
-        total_contribution: auction_pool.info.total_contribution,
-        total_tokens: initial_token_supply,
-        token_price,
-        pool_id: pool_address,
-    });
+    // Transfer all staked MYS to the token pool <b>as</b> initial liquidity
+    balance::join(&<b>mut</b> token_pool.mys_balance, balance::withdraw_all(&<b>mut</b> stake_pool_object.mys_balance));
+    // Clear the stake pool since it's now converted to a token
+    stake_pool_object.info.total_staked = 0;
+    // Note: We keep the stakes table <b>for</b> reference but it's no longer active
+    // Add to registry
+    table::add(&<b>mut</b> registry.tokens, associated_id, updated_token_info);
     // Emit token created event
     event::emit(<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenPoolCreatedEvent">TokenPoolCreatedEvent</a> {
         id: pool_address,
@@ -3481,14 +3320,14 @@ Get a mutable reference to the pool version (for upgrade module)
 
 </details>
 
-<a name="social_contracts_token_exchange_auction_version"></a>
+<a name="social_contracts_token_exchange_stake_pool_version"></a>
 
-## Function `auction_version`
+## Function `stake_pool_version`
 
-Get the version of an auction pool
+Get the version of a stake pool
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_auction_version">auction_version</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">social_contracts::token_exchange::AuctionPool</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_stake_pool_version">stake_pool_version</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">social_contracts::token_exchange::StakePoolObject</a>): u64
 </code></pre>
 
 
@@ -3497,7 +3336,7 @@ Get the version of an auction pool
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_auction_version">auction_version</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">AuctionPool</a>): u64 {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_stake_pool_version">stake_pool_version</a>(pool: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">StakePoolObject</a>): u64 {
     pool.version
 }
 </code></pre>
@@ -3506,14 +3345,14 @@ Get the version of an auction pool
 
 </details>
 
-<a name="social_contracts_token_exchange_borrow_auction_version_mut"></a>
+<a name="social_contracts_token_exchange_borrow_stake_pool_version_mut"></a>
 
-## Function `borrow_auction_version_mut`
+## Function `borrow_stake_pool_version_mut`
 
-Get a mutable reference to the auction pool version (for upgrade module)
+Get a mutable reference to the stake pool version (for upgrade module)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_borrow_auction_version_mut">borrow_auction_version_mut</a>(pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">social_contracts::token_exchange::AuctionPool</a>): &<b>mut</b> u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_borrow_stake_pool_version_mut">borrow_stake_pool_version_mut</a>(pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">social_contracts::token_exchange::StakePoolObject</a>): &<b>mut</b> u64
 </code></pre>
 
 
@@ -3522,7 +3361,7 @@ Get a mutable reference to the auction pool version (for upgrade module)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_borrow_auction_version_mut">borrow_auction_version_mut</a>(pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">AuctionPool</a>): &<b>mut</b> u64 {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_borrow_stake_pool_version_mut">borrow_stake_pool_version_mut</a>(pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">StakePoolObject</a>): &<b>mut</b> u64 {
     &<b>mut</b> pool.version
 }
 </code></pre>
@@ -3617,14 +3456,14 @@ Migration function for TokenPool
 
 </details>
 
-<a name="social_contracts_token_exchange_migrate_auction_pool"></a>
+<a name="social_contracts_token_exchange_migrate_stake_pool"></a>
 
-## Function `migrate_auction_pool`
+## Function `migrate_stake_pool`
 
-Migration function for AuctionPool
+Migration function for StakePoolObject
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_migrate_auction_pool">migrate_auction_pool</a>(pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">social_contracts::token_exchange::AuctionPool</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_migrate_stake_pool">migrate_stake_pool</a>(pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">social_contracts::token_exchange::StakePoolObject</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3633,8 +3472,8 @@ Migration function for AuctionPool
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_migrate_auction_pool">migrate_auction_pool</a>(
-    pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">AuctionPool</a>,
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_migrate_stake_pool">migrate_stake_pool</a>(
+    pool: &<b>mut</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">StakePoolObject</a>,
     _: &UpgradeAdminCap,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -3648,7 +3487,7 @@ Migration function for AuctionPool
     <b>let</b> pool_id = object::id(pool);
     <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
         pool_id,
-        string::utf8(b"<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_AuctionPool">AuctionPool</a>"),
+        string::utf8(b"<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_StakePoolObject">StakePoolObject</a>"),
         old_version,
         tx_context::sender(ctx)
     );

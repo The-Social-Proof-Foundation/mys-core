@@ -4834,6 +4834,9 @@ Profile
 ProfileBadge
 	public struct
 	0xd880::profile
+VestingWallet
+	public struct
+	0xd880::profile
 BadgeAssignedEvent
 	public struct
 	0xd880::profile
@@ -4859,6 +4862,12 @@ ProfileOffer
 	public struct
 	0xd880::profile
 ProfileSaleFeeEvent
+	public struct
+	0xd880::profile
+TokensVestedEvent
+	public struct
+	0xd880::profile
+TokensClaimedEvent
 	public struct
 	0xd880::profile
 init
@@ -5041,6 +5050,45 @@ get_platform_badges
 badge_count
 	public fun
 	0xd880::profile
+vest_myso
+	public entry fun
+	0xd880::profile
+claim_vested_tokens
+	public entry fun
+	0xd880::profile
+claimable
+	public fun
+	0xd880::profile
+calculate_claimable
+	fun
+	0xd880::profile
+sqrt_approximation
+	fun
+	0xd880::profile
+delete_vesting_wallet
+	public entry fun
+	0xd880::profile
+vesting_balance
+	public fun
+	0xd880::profile
+vesting_owner
+	public fun
+	0xd880::profile
+vesting_start_time
+	public fun
+	0xd880::profile
+vesting_duration
+	public fun
+	0xd880::profile
+vesting_total_amount
+	public fun
+	0xd880::profile
+vesting_claimed_amount
+	public fun
+	0xd880::profile
+vesting_curve_factor
+	public fun
+	0xd880::profile
 GovernanceDAO
 	public struct
 	0xd880::governance
@@ -5125,10 +5173,7 @@ submit_proposal
 submit_ecosystem_proposal
 	public entry fun
 	0xd880::governance
-submit_reputation_dispute
-	public entry fun
-	0xd880::governance
-submit_community_note
+submit_proof_of_creativity_proposal
 	public entry fun
 	0xd880::governance
 submit_proposal_internal
@@ -5860,6 +5905,12 @@ ExchangeConfig
 TokenRegistry
 	public struct
 	0xd880::token_exchange
+StakePool
+	public struct
+	0xd880::token_exchange
+StakeInfo
+	public struct
+	0xd880::token_exchange
 TokenInfo
 	public struct
 	0xd880::token_exchange
@@ -5869,10 +5920,7 @@ TokenPool
 SocialToken
 	public struct
 	0xd880::token_exchange
-AuctionInfo
-	public struct
-	0xd880::token_exchange
-AuctionPool
+StakePoolObject
 	public struct
 	0xd880::token_exchange
 TokenPoolCreatedEvent
@@ -5884,13 +5932,13 @@ TokenBoughtEvent
 TokenSoldEvent
 	public struct
 	0xd880::token_exchange
-AuctionCreatedEvent
+StakeCreatedEvent
 	public struct
 	0xd880::token_exchange
-AuctionContributionEvent
+StakeWithdrawnEvent
 	public struct
 	0xd880::token_exchange
-AuctionFinalizedEvent
+ThresholdMetEvent
 	public struct
 	0xd880::token_exchange
 ConfigUpdatedEvent
@@ -5914,25 +5962,22 @@ toggle_emergency_kill_switch
 is_trading_halted
 	public fun
 	0xd880::token_exchange
-check_post_viral_threshold
-	public fun
-	0xd880::token_exchange
-check_profile_viral_threshold
-	public fun
-	0xd880::token_exchange
-start_post_auction
+stake_towards_post
 	public entry fun
 	0xd880::token_exchange
-start_profile_auction
+stake_towards_profile
 	public entry fun
 	0xd880::token_exchange
-contribute_to_auction
+withdraw_stake
 	public entry fun
 	0xd880::token_exchange
-is_auction_ended
+create_stake_pool
+	public entry fun
+	0xd880::token_exchange
+can_create_auction
 	public fun
 	0xd880::token_exchange
-finalize_auction
+create_social_proof_token
 	public entry fun
 	0xd880::token_exchange
 update_token_poc_data
@@ -6013,10 +6058,10 @@ pool_version
 borrow_pool_version_mut
 	public fun
 	0xd880::token_exchange
-auction_version
+stake_pool_version
 	public fun
 	0xd880::token_exchange
-borrow_auction_version_mut
+borrow_stake_pool_version_mut
 	public fun
 	0xd880::token_exchange
 migrate_token_registry
@@ -6025,7 +6070,7 @@ migrate_token_registry
 migrate_token_pool
 	public entry fun
 	0xd880::token_exchange
-migrate_auction_pool
+migrate_stake_pool
 	public entry fun
 	0xd880::token_exchange
 PoCConfig

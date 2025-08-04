@@ -365,8 +365,8 @@ cat > "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
 # This file controls the epoch duration and stake subsidy parameters
 
 parameters:
-  # Chain start timestamp current time + 1 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: $(( $(date +%s) + 3600 ))000
+  # Chain start timestamp current time + 30 min (in milliseconds since epoch)
+  chain_start_timestamp_ms: $(( $(date +%s) + 1800 ))000
 
   # Protocol version
   protocol_version: 74  # Latest version

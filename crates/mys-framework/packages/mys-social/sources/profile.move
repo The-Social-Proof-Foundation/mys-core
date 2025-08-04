@@ -46,8 +46,7 @@ module social_contracts::profile {
     const EBadgeAlreadyExists: u64 = 14;
     // Vesting error codes
     const EInvalidStartTime: u64 = 15;
-    const EVestingWalletNotFound: u64 = 16;
-    const ENotVestingWalletOwner: u64 = 17;
+    const ENotVestingWalletOwner: u64 = 16;
 
     const PROFILE_SALE_FEE_BPS: u64 = 500;
     
@@ -1664,7 +1663,7 @@ module social_contracts::profile {
     /// 100% time → 100% tokens
 
     public entry fun vest_myso(
-        mut coin: Coin<MYS>,
+        coin: Coin<MYS>,
         recipient: address,
         start_time: u64,
         duration: u64,

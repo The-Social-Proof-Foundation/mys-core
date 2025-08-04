@@ -33,6 +33,7 @@ use crate::{
     types::query::{Query, MysGraphQLSchema},
 };
 use async_graphql::extensions::ApolloTracing;
+#[cfg(feature = "tracing")]
 use async_graphql::extensions::Tracing;
 use async_graphql::EmptySubscription;
 use async_graphql::{extensions::ExtensionFactory, Schema, SchemaBuilder};
@@ -495,6 +496,7 @@ impl ServerBuilder {
             builder = builder.extension(Timeout);
         }
 
+        #[cfg(feature = "tracing")]
         if config.internal_features.tracing {
             builder = builder.extension(Tracing);
         }

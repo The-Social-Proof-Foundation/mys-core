@@ -22,7 +22,7 @@ use mys_types::object::{MoveObject, Object, Owner, OBJECT_START_VERSION};
 use mys_types::{gas_coin::TOTAL_SUPPLY_MIST, transaction::GasData};
 
 use proptest::prelude::*;
-use rand::{rngs::StdRng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 fn new_gas_coin_with_balance_and_owner(balance: u64, owner: Owner) -> Object {
     Object::new_move(
