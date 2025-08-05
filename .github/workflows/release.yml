@@ -227,7 +227,7 @@ jobs:
         run: |
           echo "mys_tag=$(echo ${{ env.TAG_NAME }} | sed s/'refs\/tags\/'//)" >> $GITHUB_ENV
           echo "versionless_tag=$(echo ${{ env.TAG_NAME }} | sed s/'refs\/tags\/'// | sed s/'testnet\-v'//)" >> $GITHUB_ENV
-      - uses: mislav/bump-homebrew-formula-action@b3327118b2153c82da63fd9cbf58942146ee99f0 # pin@v3
+      - uses: mislav/bump-homebrew-formula-action@37c544ffe02cc3f4eb1987db8fa63c96e0b37098 # pin@v3
         with:
           formula-name: mys
           create-pullrequest: true
