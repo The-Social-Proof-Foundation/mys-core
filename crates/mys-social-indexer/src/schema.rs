@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 // Import diesel table macros
@@ -544,15 +544,15 @@ table! {
     }
 }
 
-// Define spt_stake_pools table
+// Define spt_reservation_pools table
 table! {
-    spt_stake_pools (id, time) {
+    spt_reservation_pools (id, time) {
         id -> Int4,
         pool_id -> Varchar,
         associated_id -> Varchar,
         token_type -> Int2,
         owner -> Varchar,
-        total_staked -> Int8,
+        total_reserved -> Int8,
         required_threshold -> Int8,
         status -> Varchar,
         created_at -> Int8,
@@ -561,14 +561,14 @@ table! {
     }
 }
 
-// Define spt_stakes table
+// Define spt_reservations table
 table! {
-    spt_stakes (id, time) {
+    spt_reservations (id, time) {
         id -> Int4,
         pool_id -> Varchar,
-        staker_address -> Varchar,
+        reserver_address -> Varchar,
         amount -> Int8,
-        staked_at -> Int8,
+        reserved_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
     }
@@ -581,7 +581,7 @@ table! {
         updated_by -> Varchar,
         post_threshold -> Int8,
         profile_threshold -> Int8,
-        max_individual_stake_bps -> Int8,
+        max_individual_reservation_bps -> Int8,
         total_fee_bps -> Int8,
         creator_fee_bps -> Int8,
         platform_fee_bps -> Int8,
@@ -1052,12 +1052,12 @@ table! {
 }
 
 // ===========================================================================
-// TOKEN EXCHANGE KILL SWITCH TABLES
+// SOCIAL PROOF TOKENS KILL SWITCH TABLES
 // ===========================================================================
 
-// Define token exchange config table (for kill switch)
+// Define social proof tokens config table (for kill switch)
 table! {
-    token_exchange_config (id) {
+    social_proof_tokens_config (id) {
         id -> Int4,
         trading_halted -> Bool,
         admin_address -> Varchar,
@@ -1068,9 +1068,9 @@ table! {
     }
 }
 
-// Define token exchange events table (for kill switch event history)
+// Define social proof tokens events table (for kill switch event history)
 table! {
-    token_exchange_events (id) {
+    social_proof_tokens_events (id) {
         id -> Int4,
         event_type -> Varchar,
         event_data -> Jsonb,
@@ -1184,8 +1184,8 @@ allow_tables_to_appear_in_same_query!(
     social_proof_token_pools,
     spt_holdings,
     spt_transactions,
-    spt_stake_pools,
-    spt_stakes,
+    spt_reservation_pools,
+    spt_reservations,
     spt_exchange_config,
     spt_price_history,
     // Governance tables
@@ -1217,9 +1217,9 @@ allow_tables_to_appear_in_same_query!(
     // Revenue aggregation tables
     spt_revenue,
     unified_revenue,
-    // Token exchange config tables
-    token_exchange_config,
-    token_exchange_events,
+    // Social proof tokens config tables
+    social_proof_tokens_config,
+    social_proof_tokens_events,
     // Promotion tables
     promoted_posts,
     promotion_views,

@@ -3,8 +3,8 @@
 # This file controls the epoch duration and stake subsidy parameters
 
 parameters:
-  # Chain start timestamp current time + 1 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1752059201000
+  # Chain start timestamp current time + 30 min (in milliseconds since epoch)
+  chain_start_timestamp_ms: 1754341477000
 
   # Protocol version
   protocol_version: 74  # Latest version
@@ -37,31 +37,31 @@ parameters:
 # Accounts to add tokens to
 accounts:
   # Fullnode allocation
-  - address: "0xcd79352f432066fc1dbadef1ddbcbe3d00450d24bcd3c0efc7d0b010ffd0ab8d"
+  - address: "0xde595fa65df608beb68fec269aa192a4d1d23401a9c5d59498a4686e1d004e70"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 1
-  - address: "0xadcf2f3a95223bcfd76297de8ab042bd814772199a29047ff216e5eb317e2b12"
+  - address: "0x5499d93ab0e4bcebc710b1db0e6585d4e559e810fb44fae6f48a8fd5d2927554"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 2
-  - address: "0x24d33c7e248fe612120079cc69d4e42230ea247c971f9faa97de64e9a98aadd3"
+  - address: "0x00f46d6dfabdcdbb9152d4478ca141de75a6874734ebdf0a1c81c6e6e6eff50a"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 3
-  - address: "0x4332672c56969e1216e8a03341d798c381663d7b7a5478445467f07556a861fd"
+  - address: "0xd4a5eb89bdc924e90f2f6c31bd1a4a28d881f209c6b535c72f93594722294450"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Faucet
-  - address: "0x85354b9888c0f88d49ee45880bbe5927833a69dacb223ea749f88cd33bd97baa"
+  - address: "0x2aacd2f890b1d9ba6d7ad57a16fe09c81f3a3c2ef687ac68e49ed191afa300b8"
     gas_amounts:
       - 1000000000000000 # 1,000,000 MySo
   # Social Proof Foundation
-  - address: ""
+  - address: "0xf80b71c350962f600625a700ea4baf350808a87bf5c259eeb52f34ed35a2a5f2"
     gas_amounts:
       - 235000000000000000 # 240,000,000 MySo (24% - 2mill for owning fullnode & validator - 3mill for 3 validators init staking)
-  # Core Team & Marketing
-  - address: ""
+  # Core Team
+  - address: "0x75e7bdde9fcc2ffac75842509b8d05e1b9567749baf2b8e87ead2bfc99c6273b"
     gas_amounts:
       - 250000000000000000 # 250,000,000 MySo (25% 12.5% core & 12.5 marketing)
 
@@ -93,6 +93,6 @@ validator_config_info:
     narwhal_primary_address: "/ip4/69.10.63.78/udp/59230"
     narwhal_worker_address: "/ip4/69.10.63.78/udp/59240"
     consensus_address: "/ip4/69.10.63.78/tcp/59250/http"
-    gas_price: 100
+    gas_price: 0
     commission_rate: 500
     stake: 1000000000000000  # 1 million MySo in MIST units

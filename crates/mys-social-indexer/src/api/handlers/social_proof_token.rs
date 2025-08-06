@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::{
@@ -16,7 +16,7 @@ use crate::db::Database;
 use crate::models::social_proof_token::{
     SocialProofTokenPoolWithPrice,
     SocialProofTokenTransaction, SocialProofTokenHolding,
-    SptStakePool, SptStake,
+    SptReservationPool, SptReservation,
     SocialProofPriceAggregation,
     PopularTokenPool, UserTokenHoldings, UserTokenHolding,
 };
@@ -755,11 +755,11 @@ pub async fn get_spt_price_history(
     }))
 }
 
-/// Get active stake pools
-pub async fn get_spt_stake_pools(
+/// Get active reservation pools
+pub async fn get_spt_reservation_pools(
     State(db): State<Arc<Database>>,
     Query(pagination): Query<PaginationParams>,
-) -> Result<Json<ApiResponse<Vec<SptStakePool>>>, StatusCode> {
+) -> Result<Json<ApiResponse<Vec<SptReservationPool>>>, StatusCode> {
     let limit = pagination.get_limit();
     let offset = pagination.get_offset();
     
@@ -769,24 +769,24 @@ pub async fn get_spt_stake_pools(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     
-    // Get active stake pools
-    let stake_pools = diesel::sql_query(
+    // Get active reservation pools
+    let reservation_pools = diesel::sql_query(
         r#"
-        WITH latest_stake_pools AS (
+        WITH latest_reservation_pools AS (
             SELECT DISTINCT ON (pool_id) *
-            FROM spt_stake_pools
+            FROM spt_reservation_pools
             ORDER BY pool_id, time DESC
         )
         SELECT *
-        FROM latest_stake_pools
+        FROM latest_reservation_pools
         WHERE status = 'active' OR status = 'threshold_met'
-        ORDER BY total_staked DESC
+        ORDER BY total_reservationd DESC
         LIMIT $1 OFFSET $2
         "#
     )
     .bind::<diesel::sql_types::BigInt, _>(limit)
     .bind::<diesel::sql_types::BigInt, _>(offset)
-    .load::<SptStakePool>(&mut conn)
+    .load::<SptReservationPool>(&mut conn)
     .await
     .map_err(|e| {
         error!("Database error: {}", e);
@@ -796,13 +796,13 @@ pub async fn get_spt_stake_pools(
     // Count total for pagination
     let total_count = diesel::sql_query(
         r#"
-        WITH latest_stake_pools AS (
+        WITH latest_reservation_pools AS (
             SELECT DISTINCT ON (pool_id) *
-            FROM spt_stake_pools
+            FROM spt_reservation_pools
             ORDER BY pool_id, time DESC
         )
         SELECT COUNT(*) as count
-        FROM latest_stake_pools
+        FROM latest_reservation_pools
         WHERE status = 'active' OR status = 'threshold_met'
         "#
     )
@@ -817,7 +817,7 @@ pub async fn get_spt_stake_pools(
     let total_pages = (total + limit - 1) / limit;
     
     Ok(Json(ApiResponse {
-        data: stake_pools,
+        data: reservation_pools,
         pagination: Some(PaginationInfo {
             page: pagination.get_page(),
             limit,
@@ -827,11 +827,11 @@ pub async fn get_spt_stake_pools(
     }))
 }
 
-/// Get stake pool by ID
-pub async fn get_spt_stake_pool_by_id(
+/// Get reservation pool by ID
+pub async fn get_spt_reservation_pool_by_id(
     State(db): State<Arc<Database>>,
     Path(id): Path<String>,
-) -> Result<Json<ApiResponse<SptStakePool>>, StatusCode> {
+) -> Result<Json<ApiResponse<SptReservationPool>>, StatusCode> {
     // Get a connection from the pool
     let mut conn = db.get_connection().await.map_err(|e| {
         error!("Database error: {}", e);
@@ -841,14 +841,14 @@ pub async fn get_spt_stake_pool_by_id(
     let result = diesel::sql_query(
         r#"
         SELECT *
-        FROM spt_stake_pools
+        FROM spt_reservation_pools
         WHERE pool_id = $1
         ORDER BY time DESC
         LIMIT 1
         "#
     )
     .bind::<diesel::sql_types::Text, _>(id)
-    .get_result::<SptStakePool>(&mut conn)
+    .get_result::<SptReservationPool>(&mut conn)
     .await
     .optional()
     .map_err(|e| {
@@ -857,20 +857,20 @@ pub async fn get_spt_stake_pool_by_id(
     })?;
     
     match result {
-        Some(stake_pool) => Ok(Json(ApiResponse {
-            data: stake_pool,
+        Some(reservation_pool) => Ok(Json(ApiResponse {
+            data: reservation_pool,
             pagination: None,
         })),
         None => Err(StatusCode::NOT_FOUND),
     }
 }
 
-/// Get stakes for a pool
-pub async fn get_spt_stakes_by_pool(
+/// Get reservations for a pool
+pub async fn get_spt_reservations_by_pool(
     State(db): State<Arc<Database>>,
     Path(id): Path<String>,
     Query(pagination): Query<PaginationParams>,
-) -> Result<Json<ApiResponse<Vec<SptStake>>>, StatusCode> {
+) -> Result<Json<ApiResponse<Vec<SptReservation>>>, StatusCode> {
     let limit = pagination.get_limit();
     let offset = pagination.get_offset();
     
@@ -880,17 +880,17 @@ pub async fn get_spt_stakes_by_pool(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     
-    // Get stakes - latest per staker
-    let stakes = diesel::sql_query(
+    // Get reservations - latest per reservatior
+    let reservations = diesel::sql_query(
         r#"
-        WITH latest_stakes AS (
-            SELECT DISTINCT ON (staker_address) *
-            FROM spt_stakes
+        WITH latest_reservations AS (
+            SELECT DISTINCT ON (reservatior_address) *
+            FROM spt_reservations
             WHERE pool_id = $1
-            ORDER BY staker_address, time DESC
+            ORDER BY reservatior_address, time DESC
         )
         SELECT *
-        FROM latest_stakes
+        FROM latest_reservations
         WHERE amount > 0
         ORDER BY amount DESC
         LIMIT $2 OFFSET $3
@@ -899,7 +899,7 @@ pub async fn get_spt_stakes_by_pool(
     .bind::<diesel::sql_types::Text, _>(id.clone())
     .bind::<diesel::sql_types::BigInt, _>(limit)
     .bind::<diesel::sql_types::BigInt, _>(offset)
-    .load::<SptStake>(&mut conn)
+    .load::<SptReservation>(&mut conn)
     .await
     .map_err(|e| {
         error!("Database error: {}", e);
@@ -909,14 +909,14 @@ pub async fn get_spt_stakes_by_pool(
     // Count total for pagination
     let total_count = diesel::sql_query(
         r#"
-        WITH latest_stakes AS (
-            SELECT DISTINCT ON (staker_address) *
-            FROM spt_stakes
+        WITH latest_reservations AS (
+            SELECT DISTINCT ON (reservatior_address) *
+            FROM spt_reservations
             WHERE pool_id = $1
-            ORDER BY staker_address, time DESC
+            ORDER BY reservatior_address, time DESC
         )
         SELECT COUNT(*) as count
-        FROM latest_stakes
+        FROM latest_reservations
         WHERE amount > 0
         "#
     )
@@ -932,7 +932,7 @@ pub async fn get_spt_stakes_by_pool(
     let total_pages = (total + limit - 1) / limit;
     
     Ok(Json(ApiResponse {
-        data: stakes,
+        data: reservations,
         pagination: Some(PaginationInfo {
             page: pagination.get_page(),
             limit,

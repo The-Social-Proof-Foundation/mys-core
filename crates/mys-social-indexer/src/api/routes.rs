@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::{
@@ -97,9 +97,9 @@ use crate::api::handlers::social_proof_token::{
     get_spt_transactions,
     get_spt_holdings,
     get_spt_price_history,
-    get_spt_stake_pools,
-    get_spt_stake_pool_by_id,
-    get_spt_stakes_by_pool,
+    get_spt_reservation_pools,
+    get_spt_reservation_pool_by_id,
+    get_spt_reservations_by_pool,
     get_user_spt_holdings,
     get_popular_tokens,
     get_top_performing_tokens,
@@ -301,9 +301,9 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/social-proof-token/pools/:id/transactions", get(get_spt_transactions))
         .route("/social-proof-token/pools/:id/holdings", get(get_spt_holdings))
         .route("/social-proof-token/pools/:id/price-history", get(get_spt_price_history))
-        .route("/social-proof-token/stake-pools", get(get_spt_stake_pools))
-        .route("/social-proof-token/stake-pools/:id", get(get_spt_stake_pool_by_id))
-        .route("/social-proof-token/stake-pools/:id/stakes", get(get_spt_stakes_by_pool))
+        .route("/social-proof-token/reservation-pools", get(get_spt_reservation_pools))
+        .route("/social-proof-token/reservation-pools/:id", get(get_spt_reservation_pool_by_id))
+        .route("/social-proof-token/reservation-pools/:id/reservations", get(get_spt_reservations_by_pool))
         .route("/social-proof-token/popular", get(get_popular_tokens))
         .route("/social-proof-token/users/:address/holdings", get(get_user_spt_holdings))
         .route("/social-proof-token/analytics/top-performers", get(get_top_performing_tokens))

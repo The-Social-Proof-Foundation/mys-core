@@ -2,8 +2,8 @@
 name = "mys-social-indexer"
 version = "0.1.0"
 edition = "2021"
-authors = ["MySocial Team"]
-description = "Social network indexer for MySocial blockchain"
+authors = ["The Social Proof Foundation"]
+description = "The social indexer for the MySocial blockchain."
 license = "Apache-2.0"
 
 [dependencies]

@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 /// Module to manage package upgrades for MySocialContracts.
@@ -45,29 +45,21 @@ module social_contracts::upgrade {
     }
 
     /// Module initializer - runs once when the package is published
-    fun init(ctx: &mut tx_context::TxContext) {
-        // Get the publisher (sender of the publish transaction)
-        let publisher = tx_context::sender(ctx);
-        
-        // Create admin capability
-        let admin_cap = UpgradeAdminCap {
-            id: object::new(ctx)
-        };
-        
-        // Transfer admin capability to publisher
-        transfer::transfer(admin_cap, publisher);
-        
+    fun init(_ctx: &mut tx_context::TxContext) {
+        // Admin capability creation is now handled by the bootstrap module
         // The UpgradeCap will be automatically transferred to the publisher
         // by the MySocial system when the package is published
     }
     
     #[test_only]
     /// Initialize the upgrade module for testing
+    /// Note: In testing, we create admin caps directly for convenience
+    /// In production, admin caps are created via bootstrap.move
     public fun init_for_testing(ctx: &mut TxContext) {
         // Get the publisher (sender of the publish transaction)
         let publisher = tx_context::sender(ctx);
         
-        // Create admin capability
+        // Create admin capability for testing
         let admin_cap = UpgradeAdminCap {
             id: object::new(ctx)
         };
@@ -141,6 +133,14 @@ module social_contracts::upgrade {
             new_version: CURRENT_VERSION,
             migrated_by
         });
+    }
+    
+    /// Create an UpgradeAdminCap for bootstrap (package visibility only)
+    /// This function is only callable by other modules in the same package
+    public(package) fun create_upgrade_admin_cap(ctx: &mut TxContext): UpgradeAdminCap {
+        UpgradeAdminCap {
+            id: object::new(ctx)
+        }
     }
     
     // Test utilities

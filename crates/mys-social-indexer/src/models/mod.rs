@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod profile;
@@ -14,7 +14,7 @@ pub mod social_proof_token;
 pub mod poc;
 pub mod subscription;
 pub mod revenue;
-pub mod token_exchange;
+pub mod social_proof_tokens_config;
 pub mod vesting;
 
 pub use profile::*;
@@ -67,7 +67,7 @@ pub use revenue::{
     myso_from_blockchain_units, myso_to_blockchain_units, format_myso_amount,
     calculate_percentage, calculate_growth_rate
 };
-pub use token_exchange::*;
+pub use social_proof_tokens_config::*;
 // Import vesting types
 pub use vesting::{
     VestingWallet, NewVestingWallet, UpdateVestingWallet,

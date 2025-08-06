@@ -293,5 +293,5 @@ The upgrade system allows for seamless contract updates while preserving user da
 
 ## License
 
-Copyright (c) The Social Proof Foundation LLC  
+Copyright (c) The Social Proof Foundation, LLC.  
 SPDX-License-Identifier: Apache-2.0

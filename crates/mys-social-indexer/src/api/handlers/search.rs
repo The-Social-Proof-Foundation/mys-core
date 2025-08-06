@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::{
@@ -215,35 +215,35 @@ pub async fn global_search(
         
         UNION ALL
         
-        -- Staking Pool search
+        -- Reservation Pool search
         SELECT 
             pool_id::TEXT as id,
-            'spt-stake-pool' as entity_type,
+            'spt-reservation-pool' as entity_type,
             CASE 
-                WHEN token_type = 1 THEN 'Profile Stake Pool: ' || associated_id
-                WHEN token_type = 2 THEN 'Post Stake Pool: ' || associated_id
-                ELSE 'Stake Pool: ' || pool_id
+                WHEN token_type = 1 THEN 'Profile Reservation Pool: ' || associated_id
+                WHEN token_type = 2 THEN 'Post Reservation Pool: ' || associated_id
+                ELSE 'Reservation Pool: ' || pool_id
             END as title,
             CASE 
-                WHEN status = 'active' THEN 'Active staking pool - ' || total_staked || '/' || required_threshold || ' MYS staked'
+                WHEN status = 'active' THEN 'Active reservation pool - ' || total_reserved || '/' || required_threshold || ' MySo reserved'
                 WHEN status = 'threshold_met' THEN 'Threshold met - ready for token creation'
-                ELSE 'Stake pool status: ' || status
+                ELSE 'Reservation pool status: ' || status
             END as description,
             NULL as image_url,
-            '/social-proof-token/stake-pools/' || pool_id as url_path,
+            '/social-proof-token/reservation-pools/' || pool_id as url_path,
             pool_id as primary_field,
             owner as secondary_field,
             created_at as timestamp,
             jsonb_build_object(
                 'token_type', token_type,
-                'total_staked', total_staked,
+                'total_reserved', total_reserved,
                 'required_threshold', required_threshold,
                 'status', status,
                 'associated_id', associated_id,
-                'progress_percentage', ROUND((total_staked::NUMERIC / required_threshold::NUMERIC) * 100, 2)
+                'progress_percentage', ROUND((total_reserved::NUMERIC / required_threshold::NUMERIC) * 100, 2)
             ) as metadata,
             4 as priority
-        FROM spt_stake_pools
+        FROM spt_reservation_pools
         WHERE (
             LOWER(pool_id) LIKE LOWER($1) OR
             LOWER(associated_id) LIKE LOWER($1) OR
@@ -251,10 +251,10 @@ pub async fn global_search(
             LOWER(status) LIKE LOWER($1)
         )
         AND time = (
-            SELECT MAX(time) FROM spt_stake_pools sub
-            WHERE sub.pool_id = spt_stake_pools.pool_id
+            SELECT MAX(time) FROM spt_reservation_pools sub
+            WHERE sub.pool_id = spt_reservation_pools.pool_id
         )
-        AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'spt-stake-pool' = ANY($4))
+        AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'spt-reservation-pool' = ANY($4))
         
         UNION ALL
         
@@ -427,19 +427,19 @@ pub async fn global_search(
             
             UNION ALL
             
-            -- Staking Pool search
+            -- Reservation Pool search
             SELECT pool_id as id
-            FROM spt_stake_pools
+            FROM spt_reservation_pools
             WHERE (
                 LOWER(pool_id) LIKE LOWER($1) OR
                 LOWER(associated_id) LIKE LOWER($1) OR
                 LOWER(owner) LIKE LOWER($1) OR
                 LOWER(status) LIKE LOWER($1)
             )
-            AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'spt-stake-pool' = ANY($2))
+            AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'spt-reservation-pool' = ANY($2))
             AND time = (
-                SELECT MAX(time) FROM spt_stake_pools sub
-                WHERE sub.pool_id = spt_stake_pools.pool_id
+                SELECT MAX(time) FROM spt_reservation_pools sub
+                WHERE sub.pool_id = spt_reservation_pools.pool_id
             )
             
             UNION ALL

@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 /// Proof of Creativity module for the MySocial network
@@ -17,8 +17,7 @@ module social_contracts::proof_of_creativity {
         event,
         table::{Self, Table},
         coin::{Self, Coin},
-        balance::{Self, Balance},
-        package::{Self, Publisher}
+        balance::{Self, Balance}
     };
     use mys::mys::MYS;
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
@@ -61,6 +60,11 @@ module social_contracts::proof_of_creativity {
     const DEFAULT_MIN_VOTE_STAKE: u64 = 1_000_000_000; // 1 MYS minimum to vote
     const DEFAULT_MAX_VOTE_STAKE: u64 = 100_000_000_000; // 100 MYS maximum per vote
     const DEFAULT_VOTING_DURATION_EPOCHS: u64 = 7; // 7 epochs voting period
+
+    /// Admin capability for Proof of Creativity system management
+    public struct PoCAdminCap has key, store {
+        id: UID,
+    }
 
     /// Global configuration for Proof of Creativity system
     public struct PoCConfig has key {
@@ -269,7 +273,7 @@ module social_contracts::proof_of_creativity {
                 max_vote_stake: DEFAULT_MAX_VOTE_STAKE,
                 voting_duration_epochs: DEFAULT_VOTING_DURATION_EPOCHS,
                 dispute_governance_id: object::id_from_address(@0x0), // Placeholder for future governance
-                ecosystem_treasury: sender, // Initially set to deployer
+                ecosystem_treasury: sender, // Auto-configured by bootstrap service during bootstrap
                 version: upgrade::current_version(),
             }
         );
@@ -289,7 +293,7 @@ module social_contracts::proof_of_creativity {
 
     /// Update PoC configuration (admin only)
     public entry fun update_poc_config(
-        publisher: &Publisher,
+        _: &PoCAdminCap,
         config: &mut PoCConfig,
         oracle_address: address,
         image_threshold: u64,
@@ -304,8 +308,7 @@ module social_contracts::proof_of_creativity {
         ecosystem_treasury: address,
         ctx: &mut TxContext
     ) {
-        // Verify the publisher is for this module
-        assert!(package::from_module<PoCConfig>(publisher), EUnauthorized);
+        // Admin capability verification is handled by type system
         
         // Validate thresholds (0-100)
         assert!(image_threshold <= 100, EInvalidThreshold);
@@ -351,7 +354,7 @@ module social_contracts::proof_of_creativity {
     public entry fun analyze_and_update_post(
         config: &PoCConfig,
         registry: &mut PoCRegistry,
-        token_registry: &social_contracts::token_exchange::TokenRegistry,
+        token_registry: &social_contracts::social_proof_tokens::TokenRegistry,
         post: &mut social_contracts::post::Post,
         media_type: u8,
         highest_similarity_score: u64,
@@ -457,14 +460,14 @@ module social_contracts::proof_of_creativity {
     /// Helper function to check if token pool sync is needed
     /// This ensures token pools are automatically synchronized with PoC results
     fun update_token_pool_if_exists(
-        token_registry: &social_contracts::token_exchange::TokenRegistry,
+        token_registry: &social_contracts::social_proof_tokens::TokenRegistry,
         post: &social_contracts::post::Post,
         _ctx: &mut TxContext
     ) {
         let post_id = social_contracts::post::get_id_address(post);
         
         // Check if a token pool exists for this post
-        if (social_contracts::token_exchange::token_exists(token_registry, post_id)) {
+        if (social_contracts::social_proof_tokens::token_exists(token_registry, post_id)) {
             // Token pool exists - emit event for automatic synchronization
             // The off-chain system can listen for this event and call update_token_poc_data
             event::emit(TokenPoolSyncNeededEvent {
@@ -623,7 +626,7 @@ module social_contracts::proof_of_creativity {
     public entry fun resolve_dispute_voting(
         dispute: &mut PoCDispute,
         post: &mut social_contracts::post::Post,
-        token_registry: &social_contracts::token_exchange::TokenRegistry,
+        token_registry: &social_contracts::social_proof_tokens::TokenRegistry,
         ctx: &mut TxContext
     ) {
         let current_epoch = tx_context::epoch(ctx);
@@ -909,6 +912,23 @@ module social_contracts::proof_of_creativity {
             old_version,
             tx_context::sender(ctx)
         );
+    }
+
+    /// Create a PoCAdminCap for bootstrap (package visibility only)
+    /// This function is only callable by other modules in the same package
+    public(package) fun create_poc_admin_cap(ctx: &mut TxContext): PoCAdminCap {
+        PoCAdminCap {
+            id: object::new(ctx)
+        }
+    }
+
+    /// Auto-configure ecosystem treasury for bootstrap (package visibility only)
+    /// This function is only callable by other modules in the same package
+    public(package) fun auto_configure_ecosystem_treasury(
+        config: &mut PoCConfig,
+        treasury_address: address
+    ) {
+        config.ecosystem_treasury = treasury_address;
     }
 
     // === Test-only functions ===

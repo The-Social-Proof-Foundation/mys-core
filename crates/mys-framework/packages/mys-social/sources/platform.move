@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 /// Platform module for the MySocial network
@@ -18,7 +18,6 @@ module social_contracts::platform {
         coin::{Self, Coin},
         balance::{Self, Balance},
         mys::MYS,
-        package::{Self, Publisher},
         event
     };
     
@@ -32,12 +31,11 @@ module social_contracts::platform {
     const EAlreadyBlocked: u64 = 2;
     const ENotBlocked: u64 = 3;
     const EInvalidTokenAmount: u64 = 4;
-    const ENotContractOwner: u64 = 5;
-    const EAlreadyJoined: u64 = 6;
-    const ENotJoined: u64 = 7;
-    const EWrongVersion: u64 = 8;
-    const EInsufficientTreasuryFunds: u64 = 9;
-    const EEmptyRecipientsList: u64 = 10;
+    const EAlreadyJoined: u64 = 5;
+    const ENotJoined: u64 = 6;
+    const EWrongVersion: u64 = 7;
+    const EInsufficientTreasuryFunds: u64 = 8;
+    const EEmptyRecipientsList: u64 = 9;
 
     /// Field names for dynamic fields
     const MODERATORS_FIELD: vector<u8> = b"moderators";
@@ -56,6 +54,11 @@ module social_contracts::platform {
     /// Platform status enum
     public struct PlatformStatus has copy, drop, store {
         status: u8,
+    }
+
+    /// Admin capability for Platform system management
+    public struct PlatformAdminCap has key, store {
+        id: UID,
     }
 
     /// Platform object that contains information about a social media platform
@@ -567,14 +570,13 @@ module social_contracts::platform {
         });
     }
 
-    /// Toggle platform approval status (requires Publisher)
+    /// Toggle platform approval status (requires PlatformAdminCap)
     public entry fun toggle_platform_approval(
         platform: &mut Platform,
-        publisher: &Publisher,
+        _: &PlatformAdminCap,
         ctx: &mut TxContext
     ) {
-        // Verify caller has a valid publisher for this module
-        assert!(package::from_module<Platform>(publisher), ENotContractOwner);
+        // Admin capability verification is handled by type system
         
         // Toggle approval status
         platform.approved = !platform.approved;
@@ -1159,6 +1161,14 @@ module social_contracts::platform {
         if (!vec_set::contains(joined_profiles, &profile_id)) {
             vec_set::insert(joined_profiles, profile_id);
         };
+    }
+
+    /// Create a PlatformAdminCap for bootstrap (package visibility only)
+    /// This function is only callable by other modules in the same package
+    public(package) fun create_platform_admin_cap(ctx: &mut TxContext): PlatformAdminCap {
+        PlatformAdminCap {
+            id: object::new(ctx)
+        }
     }
     
     #[test_only]

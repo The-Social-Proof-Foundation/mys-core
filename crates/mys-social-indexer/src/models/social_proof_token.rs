@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use chrono::{DateTime, Utc};
@@ -9,10 +9,10 @@ use serde::{Deserialize, Serialize};
 pub const TOKEN_TYPE_PROFILE: i16 = 1;
 pub const TOKEN_TYPE_POST: i16 = 2;
 
-/// Stake pool status constants
-pub const STAKE_POOL_STATUS_ACTIVE: &str = "active";
-pub const STAKE_POOL_STATUS_THRESHOLD_MET: &str = "threshold_met";
-pub const STAKE_POOL_STATUS_CONVERTED: &str = "converted";
+// Reservation pool status constants
+pub const RESERVATION_POOL_STATUS_ACTIVE: &str = "active";
+pub const RESERVATION_POOL_STATUS_THRESHOLD_MET: &str = "threshold_met";
+pub const RESERVATION_POOL_STATUS_CONVERTED: &str = "converted";
 
 /// Transaction types
 pub const TRANSACTION_TYPE_BUY: &str = "BUY";
@@ -156,11 +156,11 @@ pub struct NewSocialProofTokenTransaction {
     pub transaction_id: String,
 }
 
-/// SptStakePool represents a stake pool in the database
+/// SptReservationPool represents a reservation pool in the database
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, QueryableByName)]
-#[diesel(table_name = crate::schema::spt_stake_pools)]
+#[diesel(table_name = crate::schema::spt_reservation_pools)]
 #[diesel(primary_key(pool_id, time))]
-pub struct SptStakePool {
+pub struct SptReservationPool {
     #[diesel(sql_type = diesel::sql_types::Integer)]
     pub id: i32,
     #[diesel(sql_type = diesel::sql_types::Text)]
@@ -172,7 +172,7 @@ pub struct SptStakePool {
     #[diesel(sql_type = diesel::sql_types::Text)]
     pub owner: String,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub total_staked: i64,
+    pub total_reserved: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub required_threshold: i64,
     #[diesel(sql_type = diesel::sql_types::Text)]
@@ -185,15 +185,15 @@ pub struct SptStakePool {
     pub transaction_id: String,
 }
 
-/// NewSptStakePool is used for inserting a new stake pool
+/// NewSptReservationPool is used for inserting a new reservation pool
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = crate::schema::spt_stake_pools)]
-pub struct NewSptStakePool {
+#[diesel(table_name = crate::schema::spt_reservation_pools)]
+pub struct NewSptReservationPool {
     pub pool_id: String,
     pub associated_id: String,
     pub token_type: i16,
     pub owner: String,
-    pub total_staked: i64,
+    pub total_reserved: i64,
     pub required_threshold: i64,
     pub status: String,
     pub created_at: i64,
@@ -201,35 +201,35 @@ pub struct NewSptStakePool {
     pub transaction_id: String,
 }
 
-/// SptStake represents an individual stake in the database
+/// SptReservation represents an individual reservation in the database
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, QueryableByName)]
-#[diesel(table_name = crate::schema::spt_stakes)]
-#[diesel(primary_key(pool_id, staker_address, time))]
-pub struct SptStake {
+#[diesel(table_name = crate::schema::spt_reservations)]
+#[diesel(primary_key(pool_id, reserver_address, time))]
+pub struct SptReservation {
     #[diesel(sql_type = diesel::sql_types::Integer)]
     pub id: i32,
     #[diesel(sql_type = diesel::sql_types::Text)]
     pub pool_id: String,
     #[diesel(sql_type = diesel::sql_types::Text)]
-    pub staker_address: String,
+    pub reserver_address: String,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub amount: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub staked_at: i64,
+    pub reserved_at: i64,
     #[diesel(sql_type = diesel::sql_types::Timestamptz)]
     pub time: DateTime<Utc>,
     #[diesel(sql_type = diesel::sql_types::Text)]
     pub transaction_id: String,
 }
 
-/// NewSptStake is used for inserting a new stake
+/// NewSptReservation is used for inserting a new reservation
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = crate::schema::spt_stakes)]
-pub struct NewSptStake {
+#[diesel(table_name = crate::schema::spt_reservations)]
+pub struct NewSptReservation {
     pub pool_id: String,
-    pub staker_address: String,
+    pub reserver_address: String,
     pub amount: i64,
-    pub staked_at: i64,
+    pub reserved_at: i64,
     pub time: DateTime<Utc>,
     pub transaction_id: String,
 }
@@ -359,7 +359,7 @@ pub struct SptExchangeConfig {
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub profile_threshold: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub max_individual_stake_bps: i64,
+    pub max_individual_reservation_bps: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub total_fee_bps: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
@@ -393,7 +393,7 @@ pub struct NewSptExchangeConfig {
     pub updated_by: String,
     pub post_threshold: i64,
     pub profile_threshold: i64,
-    pub max_individual_stake_bps: i64,
+    pub max_individual_reservation_bps: i64,
     pub total_fee_bps: i64,
     pub creator_fee_bps: i64,
     pub platform_fee_bps: i64,

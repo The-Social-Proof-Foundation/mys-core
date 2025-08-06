@@ -1,14 +1,14 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-/// Token Exchange module for MySocial platform.
+/// Social Proof Tokens module for MySocial platform.
 /// This module provides functionality for creation and trading of both profile tokens
 /// and post tokens using an Automated Market Maker (AMM) with a quadratic pricing curve.
 /// It includes fee distribution mechanisms for transactions, splitting between profile owner,
 /// platform, and ecosystem treasury.
 
 #[allow(unused_field, deprecated_usage, unused_const, duplicate_alias, unused_use)]
-module social_contracts::token_exchange {
+module social_contracts::social_proof_tokens {
     use std::string::{Self, String};
     use std::option::{Self, Option};
     use std::vector;
@@ -96,22 +96,22 @@ module social_contracts::token_exchange {
     const DEFAULT_BASE_PRICE: u64 = 100_000_000; // 0.1 MYS in smallest units
     const DEFAULT_QUADRATIC_COEFFICIENT: u64 = 100_000; // Coefficient for quadratic curve
 
-    // Staking threshold constants for social proof token creation
+    // Reservation threshold constants for social proof token creation
     const DEFAULT_POST_THRESHOLD: u64 = 1_000_000_000_000; // 1,000 MYS in smallest units (9 decimals)
     const DEFAULT_PROFILE_THRESHOLD: u64 = 10_000_000_000_000; // 10,000 MYS in smallest units (9 decimals)
-    const DEFAULT_MAX_INDIVIDUAL_STAKE_BPS: u64 = 2000; // 20% (1/5 of threshold)
+    const DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS: u64 = 2000; // 20% (1/5 of threshold)
 
 
 
     // === Structs ===
 
-    /// Admin capability for the token exchange
-    public struct ExchangeAdminCap has key, store {
+    /// Admin capability for the social proof tokens system
+    public struct SocialProofTokensAdminCap has key, store {
         id: UID,
     }
 
-    /// Global exchange configuration
-    public struct ExchangeConfig has key {
+    /// Global social proof tokens configuration
+    public struct SocialProofTokensConfig has key {
         id: UID,
         /// Total fee percentage in basis points
         total_fee_bps: u64,
@@ -129,11 +129,11 @@ module social_contracts::token_exchange {
         ecosystem_treasury: address,
         /// Maximum percentage a single wallet can hold of any token
         max_hold_percent_bps: u64,
-        /// Staking thresholds for social proof token creation
+        /// Reservation thresholds for social proof token creation
         post_threshold: u64,
         profile_threshold: u64,
-        /// Maximum percentage any individual can stake towards a single post/profile
-        max_individual_stake_bps: u64,
+        /// Maximum percentage any individual can reserve towards a single post/profile
+        max_individual_reservation_bps: u64,
         /// Emergency kill switch - when true, all trading is halted
         trading_halted: bool,
     }
@@ -143,38 +143,38 @@ module social_contracts::token_exchange {
         id: UID,
         /// Table from token ID to token info
         tokens: Table<address, TokenInfo>,
-        /// Table from profile/post ID to staking pool info
-        stake_pools: Table<address, StakePool>,
+        /// Table from profile/post ID to reservation pool info
+        reservation_pools: Table<address, ReservationPool>,
         /// Version for upgrades
         version: u64,
     }
 
-    /// Staking pool for a specific post or profile
-    public struct StakePool has store, copy, drop {
+    /// Reservation pool for a specific post or profile
+    public struct ReservationPool has store, copy, drop {
         /// Associated profile or post ID
         associated_id: address,
         /// Token type (1=profile, 2=post)
         token_type: u8,
         /// Owner of the profile/post
         owner: address,
-        /// Total MYS staked towards this post/profile
-        total_staked: u64,
+        /// Total MYS reserved towards this post/profile
+        total_reserved: u64,
         /// Required threshold to enable auction creation
         required_threshold: u64,
-        /// List of all stakers (for efficient iteration)
-        stakers: vector<address>,
+        /// List of all reservers (for efficient iteration)
+        reservers: vector<address>,
         /// Creation timestamp
         created_at: u64,
     }
 
-    /// Individual stake information
-    public struct StakeInfo has store, copy, drop {
-        /// Staker's address
-        staker: address,
-        /// Amount staked in MYS
+    /// Individual reservation information
+    public struct ReservationInfo has store, copy, drop {
+        /// Reserver's address
+        reserver: address,
+        /// Amount reserved in MYS
         amount: u64,
-        /// Timestamp when stake was created
-        staked_at: u64,
+        /// Timestamp when reservation was created
+        reserved_at: u64,
     }
 
     /// Information about a token
@@ -229,17 +229,15 @@ module social_contracts::token_exchange {
         amount: u64,
     }
 
-
-
-    /// Staking pool for collecting MYS stakes towards posts/profiles
-    public struct StakePoolObject has key {
+    /// Reservation pool for collecting MYS reservations towards posts/profiles
+    public struct ReservationPoolObject has key {
         id: UID,
-        /// Stake pool info
-        info: StakePool,
-        /// MYS balance staked in this pool
+        /// Reservation pool info
+        info: ReservationPool,
+        /// MYS balance reserved in this pool
         mys_balance: Balance<MYS>,
-        /// Mapping of stakers' addresses to their stake amounts
-        stakes: Table<address, u64>,
+        /// Mapping of reservers' addresses to their reservation amounts
+        reservations: Table<address, u64>,
         /// Version for upgrades
         version: u64,
     }
@@ -286,38 +284,38 @@ module social_contracts::token_exchange {
 
 
 
-    /// Event emitted when MYS is staked towards a post/profile
-    public struct StakeCreatedEvent has copy, drop {
+    /// Event emitted when MYS is reserved towards a post/profile
+    public struct ReservationCreatedEvent has copy, drop {
         associated_id: address,
         token_type: u8,
-        staker: address,
+        reserver: address,
         amount: u64,
-        total_staked: u64,
+        total_reserved: u64,
         threshold_met: bool,
-        staked_at: u64,
+        reserved_at: u64,
     }
 
-    /// Event emitted when MYS stake is withdrawn
-    public struct StakeWithdrawnEvent has copy, drop {
+    /// Event emitted when MYS reservation is withdrawn
+    public struct ReservationWithdrawnEvent has copy, drop {
         associated_id: address,
         token_type: u8,
-        staker: address,
+        reserver: address,
         amount: u64,
-        total_staked: u64,
+        total_reserved: u64,
         withdrawn_at: u64,
     }
 
-    /// Event emitted when staking threshold is met for the first time
+    /// Event emitted when reservation threshold is met for the first time
     public struct ThresholdMetEvent has copy, drop {
         associated_id: address,
         token_type: u8,
         owner: address,
-        total_staked: u64,
+        total_reserved: u64,
         required_threshold: u64,
         timestamp: u64,
     }
 
-    /// Event emitted when exchange config is updated
+    /// Event emitted when social proof tokens config is updated
     public struct ConfigUpdatedEvent has copy, drop {
         /// Who performed the update
         updated_by: address,
@@ -335,10 +333,10 @@ module social_contracts::token_exchange {
         ecosystem_treasury: address,
         /// Maximum hold percentage
         max_hold_percent_bps: u64,
-        /// Staking thresholds
+        /// Reservation thresholds
         post_threshold: u64,
         profile_threshold: u64,
-        max_individual_stake_bps: u64,
+        max_individual_reservation_bps: u64,
     }
 
     /// Event emitted when tokens are purchased by someone who already has a social token
@@ -362,21 +360,11 @@ module social_contracts::token_exchange {
 
     // === Initialization ===
     
-    /// Initialize the token exchange system
+    /// Initialize the social proof tokens system
     fun init(ctx: &mut TxContext) {
-        let sender = tx_context::sender(ctx);
-        
-        // Create and transfer admin capability to the transaction sender
-        transfer::public_transfer(
-            ExchangeAdminCap {
-                id: object::new(ctx),
-            },
-            sender
-        );
-        
-        // Create and share exchange config
+        // Create and share social proof tokens config
         transfer::share_object(
-            ExchangeConfig {
+            SocialProofTokensConfig {
                 id: object::new(ctx),
                 total_fee_bps: DEFAULT_TOTAL_FEE_BPS,
                 creator_fee_bps: DEFAULT_CREATOR_FEE_BPS,
@@ -384,12 +372,12 @@ module social_contracts::token_exchange {
                 treasury_fee_bps: DEFAULT_TREASURY_FEE_BPS,
                 base_price: DEFAULT_BASE_PRICE,
                 quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
-                ecosystem_treasury: sender, // Initially set to sender, should be updated
+                ecosystem_treasury: @0x0, // Auto-configured by bootstrap during bootstrap
                 max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
                 post_threshold: DEFAULT_POST_THRESHOLD,
                 profile_threshold: DEFAULT_PROFILE_THRESHOLD,
-                max_individual_stake_bps: DEFAULT_MAX_INDIVIDUAL_STAKE_BPS,
-                trading_halted: false, // Trading is enabled by default
+                max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
+                trading_halted: true, // Auto-enabled by bootstrap during bootstrap
             }
         );
         
@@ -398,7 +386,7 @@ module social_contracts::token_exchange {
             TokenRegistry {
                 id: object::new(ctx),
                 tokens: table::new(ctx),
-                stake_pools: table::new(ctx),
+                reservation_pools: table::new(ctx),
                 version: upgrade::current_version(),
             }
         );
@@ -406,10 +394,10 @@ module social_contracts::token_exchange {
 
     // === Admin Functions ===
 
-    /// Update exchange configuration
-    public entry fun update_exchange_config(
-        _admin_cap: &ExchangeAdminCap,
-        config: &mut ExchangeConfig,
+    /// Update social proof tokens configuration
+    public entry fun update_social_proof_tokens_config(
+        _admin_cap: &SocialProofTokensAdminCap,
+        config: &mut SocialProofTokensConfig,
         total_fee_bps: u64, 
         creator_fee_bps: u64,
         platform_fee_bps: u64,
@@ -420,7 +408,7 @@ module social_contracts::token_exchange {
         max_hold_percent_bps: u64,
         post_threshold: u64,
         profile_threshold: u64,
-        max_individual_stake_bps: u64,
+        max_individual_reservation_bps: u64,
         ctx: &mut TxContext
     ) {
         // Verify sum of fee percentages equals total
@@ -443,10 +431,10 @@ module social_contracts::token_exchange {
         config.ecosystem_treasury = ecosystem_treasury;
         config.max_hold_percent_bps = max_hold_percent_bps;
         
-        // Update staking thresholds
+        // Update reservation thresholds
         config.post_threshold = post_threshold;
         config.profile_threshold = profile_threshold;
-        config.max_individual_stake_bps = max_individual_stake_bps;
+        config.max_individual_reservation_bps = max_individual_reservation_bps;
         
         // Emit config updated event
         event::emit(ConfigUpdatedEvent {
@@ -462,15 +450,15 @@ module social_contracts::token_exchange {
             max_hold_percent_bps,
             post_threshold,
             profile_threshold,
-            max_individual_stake_bps,
+            max_individual_reservation_bps,
         });
     }
 
     /// Emergency kill switch function - only callable by admin
     /// This function can immediately halt all trading on the platform
     public entry fun toggle_emergency_kill_switch(
-        _admin_cap: &ExchangeAdminCap,
-        config: &mut ExchangeConfig,
+        _admin_cap: &SocialProofTokensAdminCap,
+        config: &mut SocialProofTokensConfig,
         halt_trading: bool,
         reason: vector<u8>,
         ctx: &mut TxContext
@@ -488,17 +476,17 @@ module social_contracts::token_exchange {
     }
 
     /// Check if trading is currently halted
-    public fun is_trading_halted(config: &ExchangeConfig): bool {
+    public fun is_trading_halted(config: &SocialProofTokensConfig): bool {
         config.trading_halted
     }
 
-    // === Staking Functions ===
+    // === Reservation Functions ===
 
-    /// Stake MYS tokens towards a post to support social proof token creation
-    public entry fun stake_towards_post(
+    /// Reserve MYS tokens towards a post to support social proof token creation
+    public entry fun reserve_towards_post(
         registry: &mut TokenRegistry,
-        config: &ExchangeConfig,
-        stake_pool_object: &mut StakePoolObject,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
         post: &Post,
         mut payment: Coin<MYS>,
         amount: u64,
@@ -507,73 +495,73 @@ module social_contracts::token_exchange {
         // Check if trading is halted
         assert!(!config.trading_halted, ETradingHalted);
         
-        let staker = tx_context::sender(ctx);
+        let reserver = tx_context::sender(ctx);
         let post_id = post::get_id_address(post);
         let post_owner = post::get_post_owner(post);
         let now = tx_context::epoch(ctx);
         
-        // Verify stake pool matches the post
-        assert!(stake_pool_object.info.associated_id == post_id, EInvalidID);
-        assert!(stake_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
+        // Verify reservation pool matches the post
+        assert!(reservation_pool_object.info.associated_id == post_id, EInvalidID);
+        assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
         
-        // Ensure staker has enough funds
+        // Ensure reserver has enough funds
         assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
         
-        // Check individual stake limit
-        let max_individual_stake = (config.post_threshold * config.max_individual_stake_bps) / 10000;
-        let current_stake = if (table::contains(&stake_pool_object.stakes, staker)) {
-            *table::borrow(&stake_pool_object.stakes, staker)
+        // Check individual reservation limit
+        let max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / 10000;
+        let current_reservation = if (table::contains(&reservation_pool_object.reservations, reserver)) {
+            *table::borrow(&reservation_pool_object.reservations, reserver)
         } else {
             0
         };
-        assert!(current_stake + amount <= max_individual_stake, EExceededMaxHold);
+        assert!(current_reservation + amount <= max_individual_reservation, EExceededMaxHold);
         
-        // Extract stake payment
-        let stake_payment = coin::split(&mut payment, amount, ctx);
-        balance::join(&mut stake_pool_object.mys_balance, coin::into_balance(stake_payment));
+        // Extract reservation payment
+        let reservation_payment = coin::split(&mut payment, amount, ctx);
+        balance::join(&mut reservation_pool_object.mys_balance, coin::into_balance(reservation_payment));
         
-        // Update staker's balance in the pool
-        if (table::contains(&stake_pool_object.stakes, staker)) {
-            let stake_balance = table::borrow_mut(&mut stake_pool_object.stakes, staker);
-            *stake_balance = *stake_balance + amount;
+        // Update reserver's balance in the pool
+        if (table::contains(&reservation_pool_object.reservations, reserver)) {
+            let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
+            *reservation_balance = *reservation_balance + amount;
         } else {
-            table::add(&mut stake_pool_object.stakes, staker, amount);
-            // Add to stakers list for tracking
-            vector::push_back(&mut stake_pool_object.info.stakers, staker);
+            table::add(&mut reservation_pool_object.reservations, reserver, amount);
+            // Add to reservers list for tracking
+            vector::push_back(&mut reservation_pool_object.info.reservers, reserver);
         };
         
-        // Update total staked
-        stake_pool_object.info.total_staked = stake_pool_object.info.total_staked + amount;
+        // Update total reserved
+        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + amount;
         
         // Update registry
-        if (table::contains(&registry.stake_pools, post_id)) {
-            let registry_pool = table::borrow_mut(&mut registry.stake_pools, post_id);
-            registry_pool.total_staked = stake_pool_object.info.total_staked;
+        if (table::contains(&registry.reservation_pools, post_id)) {
+            let registry_pool = table::borrow_mut(&mut registry.reservation_pools, post_id);
+            registry_pool.total_reserved = reservation_pool_object.info.total_reserved;
         } else {
             // Create registry entry if it doesn't exist
-            let stake_pool = StakePool {
+            let reservation_pool = ReservationPool {
                 associated_id: post_id,
                 token_type: TOKEN_TYPE_POST,
                 owner: post_owner,
-                total_staked: stake_pool_object.info.total_staked,
+                total_reserved: reservation_pool_object.info.total_reserved,
                 required_threshold: config.post_threshold,
-                stakers: stake_pool_object.info.stakers,
+                reservers: reservation_pool_object.info.reservers,
                 created_at: now,
             };
-            table::add(&mut registry.stake_pools, post_id, stake_pool);
+            table::add(&mut registry.reservation_pools, post_id, reservation_pool);
         };
         
         // Check if threshold was just met
-        let threshold_met = stake_pool_object.info.total_staked >= config.post_threshold;
-        let was_threshold_met = (stake_pool_object.info.total_staked - amount) >= config.post_threshold;
+        let threshold_met = reservation_pool_object.info.total_reserved >= config.post_threshold;
+        let was_threshold_met = (reservation_pool_object.info.total_reserved - amount) >= config.post_threshold;
         
-        // Emit threshold met event if this stake pushed us over the threshold
+        // Emit threshold met event if this reservation pushed us over the threshold
         if (threshold_met && !was_threshold_met) {
             event::emit(ThresholdMetEvent {
                 associated_id: post_id,
                 token_type: TOKEN_TYPE_POST,
                 owner: post_owner,
-                total_staked: stake_pool_object.info.total_staked,
+                total_reserved: reservation_pool_object.info.total_reserved,
                 required_threshold: config.post_threshold,
                 timestamp: now,
             });
@@ -581,28 +569,28 @@ module social_contracts::token_exchange {
         
         // Return excess payment
         if (coin::value(&payment) > 0) {
-            transfer::public_transfer(payment, staker);
+            transfer::public_transfer(payment, reserver);
         } else {
             coin::destroy_zero(payment);
         };
         
-        // Emit stake created event
-        event::emit(StakeCreatedEvent {
+        // Emit reservation created event
+        event::emit(ReservationCreatedEvent {
             associated_id: post_id,
             token_type: TOKEN_TYPE_POST,
-            staker,
+            reserver,
             amount,
-            total_staked: stake_pool_object.info.total_staked,
+            total_reserved: reservation_pool_object.info.total_reserved,
             threshold_met,
-            staked_at: now,
+            reserved_at: now,
         });
     }
 
-    /// Stake MYS tokens towards a profile to support social proof token creation
-    public entry fun stake_towards_profile(
+    /// Reserve MYS tokens towards a profile to support social proof token creation
+    public entry fun reserve_towards_profile(
         registry: &mut TokenRegistry,
-        config: &ExchangeConfig,
-        stake_pool_object: &mut StakePoolObject,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
         profile: &Profile,
         mut payment: Coin<MYS>,
         amount: u64,
@@ -611,73 +599,73 @@ module social_contracts::token_exchange {
         // Check if trading is halted
         assert!(!config.trading_halted, ETradingHalted);
         
-        let staker = tx_context::sender(ctx);
+        let reserver = tx_context::sender(ctx);
         let profile_id = profile::get_id_address(profile);
         let profile_owner = profile::get_owner(profile);
         let now = tx_context::epoch(ctx);
         
-        // Verify stake pool matches the profile
-        assert!(stake_pool_object.info.associated_id == profile_id, EInvalidID);
-        assert!(stake_pool_object.info.token_type == TOKEN_TYPE_PROFILE, EInvalidTokenType);
+        // Verify reservation pool matches the profile
+        assert!(reservation_pool_object.info.associated_id == profile_id, EInvalidID);
+        assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE, EInvalidTokenType);
         
-        // Ensure staker has enough funds
+        // Ensure reserver has enough funds
         assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
         
-        // Check individual stake limit
-        let max_individual_stake = (config.profile_threshold * config.max_individual_stake_bps) / 10000;
-        let current_stake = if (table::contains(&stake_pool_object.stakes, staker)) {
-            *table::borrow(&stake_pool_object.stakes, staker)
+        // Check individual reservation limit
+        let max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / 10000;
+        let current_reservation = if (table::contains(&reservation_pool_object.reservations, reserver)) {
+            *table::borrow(&reservation_pool_object.reservations, reserver)
         } else {
             0
         };
-        assert!(current_stake + amount <= max_individual_stake, EExceededMaxHold);
+        assert!(current_reservation + amount <= max_individual_reservation, EExceededMaxHold);
         
-        // Extract stake payment
-        let stake_payment = coin::split(&mut payment, amount, ctx);
-        balance::join(&mut stake_pool_object.mys_balance, coin::into_balance(stake_payment));
+        // Extract reservation payment
+        let reservation_payment = coin::split(&mut payment, amount, ctx);
+        balance::join(&mut reservation_pool_object.mys_balance, coin::into_balance(reservation_payment));
         
-        // Update staker's balance in the pool
-        if (table::contains(&stake_pool_object.stakes, staker)) {
-            let stake_balance = table::borrow_mut(&mut stake_pool_object.stakes, staker);
-            *stake_balance = *stake_balance + amount;
+        // Update reserver's balance in the pool
+        if (table::contains(&reservation_pool_object.reservations, reserver)) {
+            let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
+            *reservation_balance = *reservation_balance + amount;
         } else {
-            table::add(&mut stake_pool_object.stakes, staker, amount);
-            // Add to stakers list for tracking
-            vector::push_back(&mut stake_pool_object.info.stakers, staker);
+            table::add(&mut reservation_pool_object.reservations, reserver, amount);
+            // Add to reservers list for tracking
+            vector::push_back(&mut reservation_pool_object.info.reservers, reserver);
         };
         
-        // Update total staked
-        stake_pool_object.info.total_staked = stake_pool_object.info.total_staked + amount;
+        // Update total reserved
+        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + amount;
         
         // Update registry
-        if (table::contains(&registry.stake_pools, profile_id)) {
-            let registry_pool = table::borrow_mut(&mut registry.stake_pools, profile_id);
-            registry_pool.total_staked = stake_pool_object.info.total_staked;
+        if (table::contains(&registry.reservation_pools, profile_id)) {
+            let registry_pool = table::borrow_mut(&mut registry.reservation_pools, profile_id);
+            registry_pool.total_reserved = reservation_pool_object.info.total_reserved;
         } else {
             // Create registry entry if it doesn't exist
-            let stake_pool = StakePool {
+            let reservation_pool = ReservationPool {
                 associated_id: profile_id,
                 token_type: TOKEN_TYPE_PROFILE,
                 owner: profile_owner,
-                total_staked: stake_pool_object.info.total_staked,
+                total_reserved: reservation_pool_object.info.total_reserved,
                 required_threshold: config.profile_threshold,
-                stakers: stake_pool_object.info.stakers,
+                reservers: reservation_pool_object.info.reservers,
                 created_at: now,
             };
-            table::add(&mut registry.stake_pools, profile_id, stake_pool);
+            table::add(&mut registry.reservation_pools, profile_id, reservation_pool);
         };
         
         // Check if threshold was just met
-        let threshold_met = stake_pool_object.info.total_staked >= config.profile_threshold;
-        let was_threshold_met = (stake_pool_object.info.total_staked - amount) >= config.profile_threshold;
+        let threshold_met = reservation_pool_object.info.total_reserved >= config.profile_threshold;
+        let was_threshold_met = (reservation_pool_object.info.total_reserved - amount) >= config.profile_threshold;
         
-        // Emit threshold met event if this stake pushed us over the threshold
+        // Emit threshold met event if this reservation pushed us over the threshold
         if (threshold_met && !was_threshold_met) {
             event::emit(ThresholdMetEvent {
                 associated_id: profile_id,
                 token_type: TOKEN_TYPE_PROFILE,
                 owner: profile_owner,
-                total_staked: stake_pool_object.info.total_staked,
+                total_reserved: reservation_pool_object.info.total_reserved,
                 required_threshold: config.profile_threshold,
                 timestamp: now,
             });
@@ -685,90 +673,90 @@ module social_contracts::token_exchange {
         
         // Return excess payment
         if (coin::value(&payment) > 0) {
-            transfer::public_transfer(payment, staker);
+            transfer::public_transfer(payment, reserver);
         } else {
             coin::destroy_zero(payment);
         };
         
-        // Emit stake created event
-        event::emit(StakeCreatedEvent {
+        // Emit reservation created event
+        event::emit(ReservationCreatedEvent {
             associated_id: profile_id,
             token_type: TOKEN_TYPE_PROFILE,
-            staker,
+            reserver,
             amount,
-            total_staked: stake_pool_object.info.total_staked,
+            total_reserved: reservation_pool_object.info.total_reserved,
             threshold_met,
-            staked_at: now,
+            reserved_at: now,
         });
     }
 
-    /// Withdraw MYS stake from a post or profile
-    public entry fun withdraw_stake(
+    /// Withdraw MYS reservation from a post or profile
+    public entry fun withdraw_reservation(
         registry: &mut TokenRegistry,
-        stake_pool_object: &mut StakePoolObject,
+        reservation_pool_object: &mut ReservationPoolObject,
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let staker = tx_context::sender(ctx);
-        let associated_id = stake_pool_object.info.associated_id;
+        let reserver = tx_context::sender(ctx);
+        let associated_id = reservation_pool_object.info.associated_id;
         let now = tx_context::epoch(ctx);
         
-        // Verify staker has a stake
-        assert!(table::contains(&stake_pool_object.stakes, staker), ENoTokensOwned);
+        // Verify reserver has a reservation
+        assert!(table::contains(&reservation_pool_object.reservations, reserver), ENoTokensOwned);
         
-        let current_stake = *table::borrow(&stake_pool_object.stakes, staker);
-        assert!(current_stake >= amount, EInsufficientLiquidity);
+        let current_reservation = *table::borrow(&reservation_pool_object.reservations, reserver);
+        assert!(current_reservation >= amount, EInsufficientLiquidity);
         
-        // Update staker's balance
-        if (current_stake == amount) {
-            // Remove staker completely
-            table::remove(&mut stake_pool_object.stakes, staker);
+        // Update reserver's balance
+        if (current_reservation == amount) {
+            // Remove reserver completely
+            table::remove(&mut reservation_pool_object.reservations, reserver);
             
-            // Remove from stakers list
+            // Remove from reservers list
             let mut i = 0;
-            let len = vector::length(&stake_pool_object.info.stakers);
+            let len = vector::length(&reservation_pool_object.info.reservers);
             while (i < len) {
-                if (*vector::borrow(&stake_pool_object.info.stakers, i) == staker) {
-                    vector::remove(&mut stake_pool_object.info.stakers, i);
+                if (*vector::borrow(&reservation_pool_object.info.reservers, i) == reserver) {
+                    vector::remove(&mut reservation_pool_object.info.reservers, i);
                     break
                 };
                 i = i + 1;
             };
         } else {
-            // Reduce stake amount
-            let stake_balance = table::borrow_mut(&mut stake_pool_object.stakes, staker);
-            *stake_balance = *stake_balance - amount;
+            // Reduce reservation amount
+            let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
+            *reservation_balance = *reservation_balance - amount;
         };
         
-        // Update total staked
-        stake_pool_object.info.total_staked = stake_pool_object.info.total_staked - amount;
+        // Update total reserved
+        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved - amount;
         
         // Update registry
-        if (table::contains(&registry.stake_pools, associated_id)) {
-            let registry_pool = table::borrow_mut(&mut registry.stake_pools, associated_id);
-            registry_pool.total_staked = stake_pool_object.info.total_staked;
+        if (table::contains(&registry.reservation_pools, associated_id)) {
+            let registry_pool = table::borrow_mut(&mut registry.reservation_pools, associated_id);
+            registry_pool.total_reserved = reservation_pool_object.info.total_reserved;
         };
         
-        // Transfer staked MYS back to staker
-        let refund_balance = balance::split(&mut stake_pool_object.mys_balance, amount);
+        // Transfer reserved MYS back to reserver
+        let refund_balance = balance::split(&mut reservation_pool_object.mys_balance, amount);
         let refund_coin = coin::from_balance(refund_balance, ctx);
-        transfer::public_transfer(refund_coin, staker);
+        transfer::public_transfer(refund_coin, reserver);
         
-        // Emit stake withdrawn event
-        event::emit(StakeWithdrawnEvent {
+        // Emit reservation withdrawn event
+        event::emit(ReservationWithdrawnEvent {
             associated_id,
-            token_type: stake_pool_object.info.token_type,
-            staker,
+            token_type: reservation_pool_object.info.token_type,
+            reserver,
             amount,
-            total_staked: stake_pool_object.info.total_staked,
+            total_reserved: reservation_pool_object.info.total_reserved,
             withdrawn_at: now,
         });
     }
 
-    /// Create a new stake pool for a post or profile
-    public entry fun create_stake_pool(
+    /// Create a new reservation pool for a post or profile
+    public entry fun create_reservation_pool(
         registry: &mut TokenRegistry,
-        config: &ExchangeConfig,
+        config: &SocialProofTokensConfig,
         associated_id: address,
         token_type: u8,
         owner: address,
@@ -780,8 +768,8 @@ module social_contracts::token_exchange {
         // Verify caller is the owner
         assert!(tx_context::sender(ctx) == owner, ENotAuthorized);
         
-        // Check if stake pool already exists
-        assert!(!table::contains(&registry.stake_pools, associated_id), ETokenAlreadyExists);
+        // Check if reservation pool already exists
+        assert!(!table::contains(&registry.reservation_pools, associated_id), ETokenAlreadyExists);
         
         let now = tx_context::epoch(ctx);
         let required_threshold = if (token_type == TOKEN_TYPE_POST) {
@@ -792,80 +780,80 @@ module social_contracts::token_exchange {
             abort EInvalidTokenType
         };
         
-        // Create stake pool info
-        let stake_pool = StakePool {
+        // Create reservation pool info
+        let reservation_pool = ReservationPool {
             associated_id,
             token_type,
             owner,
-            total_staked: 0,
+            total_reserved: 0,
             required_threshold,
-            stakers: vector::empty(),
+            reservers: vector::empty(),
             created_at: now,
         };
         
         // Add to registry
-        table::add(&mut registry.stake_pools, associated_id, stake_pool);
+        table::add(&mut registry.reservation_pools, associated_id, reservation_pool);
         
-        // Create stake pool object
-        let stake_pool_object = StakePoolObject {
+        // Create reservation pool object
+        let reservation_pool_object = ReservationPoolObject {
             id: object::new(ctx),
-            info: stake_pool,
+            info: reservation_pool,
             mys_balance: balance::zero(),
-            stakes: table::new(ctx),
+            reservations: table::new(ctx),
             version: upgrade::current_version(),
         };
         
-        transfer::share_object(stake_pool_object);
+        transfer::share_object(reservation_pool_object);
     }
 
-    /// Check if staking threshold is met for auction creation
+    /// Check if reservation threshold is met for auction creation
     public fun can_create_auction(
         registry: &TokenRegistry,
         associated_id: address
     ): bool {
-        if (!table::contains(&registry.stake_pools, associated_id)) {
+        if (!table::contains(&registry.reservation_pools, associated_id)) {
             return false
         };
         
-        let stake_pool = table::borrow(&registry.stake_pools, associated_id);
-        stake_pool.total_staked >= stake_pool.required_threshold
+        let reservation_pool = table::borrow(&registry.reservation_pools, associated_id);
+        reservation_pool.total_reserved >= reservation_pool.required_threshold
     }
     
-    /// Create a social proof token directly from a stake pool once threshold is met
+    /// Create a social proof token directly from a reservation pool once threshold is met
     /// This replaces the auction system - only the post/profile owner can call this
     public entry fun create_social_proof_token(
         registry: &mut TokenRegistry,
-        config: &ExchangeConfig,
-        stake_pool_object: &mut StakePoolObject,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
         assert!(!config.trading_halted, ETradingHalted);
         
         let caller = tx_context::sender(ctx);
-        let associated_id = stake_pool_object.info.associated_id;
+        let associated_id = reservation_pool_object.info.associated_id;
         
         // Verify caller is the owner of the post/profile
-        assert!(caller == stake_pool_object.info.owner, ENotAuthorized);
+        assert!(caller == reservation_pool_object.info.owner, ENotAuthorized);
         
-        // Check if staking threshold has been met
+        // Check if reservation threshold has been met
         assert!(can_create_auction(registry, associated_id), EViralThresholdNotMet);
         
         // Verify token has not already been created
         assert!(!table::contains(&registry.tokens, associated_id), ETokenAlreadyExists);
         
-        // Calculate initial token supply based on total staked amount
+        // Calculate initial token supply based on total reserved amount
         // Use the same scaling formula as the old auction system
-        let total_staked = stake_pool_object.info.total_staked;
-        let sqrt_staked = math::sqrt(total_staked);
-        let cbrt_staked = math::sqrt(sqrt_staked); // approximation of cube root
-        let mut scale_factor = sqrt_staked * cbrt_staked; // staked^0.75
+        let total_reserved = reservation_pool_object.info.total_reserved;
+        let sqrt_reserved = math::sqrt(total_reserved);
+        let cbrt_reserved = math::sqrt(sqrt_reserved); // approximation of cube root
+        let mut scale_factor = sqrt_reserved * cbrt_reserved; // reserved^0.75
         
         // Divide the scale factor to make each token worth more than 1 MYS
         scale_factor = scale_factor / 1000;
         
         // Apply different base multipliers for profile vs post tokens
-        let mut initial_token_supply = if (stake_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
+        let mut initial_token_supply = if (reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
             // Profile tokens - lower supply (more valuable per token)
             scale_factor
         } else {
@@ -881,15 +869,15 @@ module social_contracts::token_exchange {
         // Create token info
         let token_info = TokenInfo {
             id: @0x0, // Temporary, will be updated
-            token_type: stake_pool_object.info.token_type,
-            owner: stake_pool_object.info.owner,
+            token_type: reservation_pool_object.info.token_type,
+            owner: reservation_pool_object.info.owner,
             associated_id,
-            symbol: if (stake_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
+            symbol: if (reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
                 string::utf8(b"PUSER")
             } else {
                 string::utf8(b"PPOST")
             },
-            name: if (stake_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
+            name: if (reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE) {
                 string::utf8(b"Profile Token")
             } else {
                 string::utf8(b"Post Token")
@@ -918,43 +906,43 @@ module social_contracts::token_exchange {
             version: upgrade::current_version(),
         };
         
-        // Distribute tokens to stakers proportionally
-        let stakers = &stake_pool_object.info.stakers;
-        let num_stakers = vector::length(stakers);
+        // Distribute tokens to reservers proportionally
+        let reservers = &reservation_pool_object.info.reservers;
+        let num_reservers = vector::length(reservers);
         
         let mut i = 0;
-        while (i < num_stakers) {
-            let staker = *vector::borrow(stakers, i);
-            let stake_amount = *table::borrow(&stake_pool_object.stakes, staker);
+        while (i < num_reservers) {
+            let reserver = *vector::borrow(reservers, i);
+            let reservation_amount = *table::borrow(&reservation_pool_object.reservations, reserver);
             
-            // Calculate token amount based on staker's proportion of total stake
-            let token_amount = (stake_amount * initial_token_supply) / total_staked;
+            // Calculate token amount based on reserver's proportion of total reservation
+            let token_amount = (reservation_amount * initial_token_supply) / total_reserved;
             
             if (token_amount > 0) {
                 // Update holder's balance in the pool
-                table::add(&mut token_pool.holders, staker, token_amount);
+                table::add(&mut token_pool.holders, reserver, token_amount);
                 
-                // Create social token for the staker
+                // Create social token for the reserver
                 let social_token = SocialToken {
                     id: object::new(ctx),
                     pool_id: pool_address,
-                    token_type: stake_pool_object.info.token_type,
+                    token_type: reservation_pool_object.info.token_type,
                     amount: token_amount,
                 };
                 
-                // Transfer social token to staker
-                transfer::public_transfer(social_token, staker);
+                // Transfer social token to reserver
+                transfer::public_transfer(social_token, reserver);
             };
             
             i = i + 1;
         };
         
-        // Transfer all staked MYS to the token pool as initial liquidity
-        balance::join(&mut token_pool.mys_balance, balance::withdraw_all(&mut stake_pool_object.mys_balance));
+        // Transfer all reserved MYS to the token pool as initial liquidity
+        balance::join(&mut token_pool.mys_balance, balance::withdraw_all(&mut reservation_pool_object.mys_balance));
         
-        // Clear the stake pool since it's now converted to a token
-        stake_pool_object.info.total_staked = 0;
-        // Note: We keep the stakes table for reference but it's no longer active
+        // Clear the reservation pool since it's now converted to a token
+        reservation_pool_object.info.total_reserved = 0;
+        // Note: We keep the reservations table for reference but it's no longer active
         
         // Add to registry
         table::add(&mut registry.tokens, associated_id, updated_token_info);
@@ -1101,7 +1089,7 @@ module social_contracts::token_exchange {
     public entry fun buy_tokens(
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
-        config: &ExchangeConfig,
+        config: &SocialProofTokensConfig,
         block_list_registry: &BlockListRegistry,
         platform: &mut social_contracts::platform::Platform,
         mut payment: Coin<MYS>,
@@ -1228,7 +1216,7 @@ module social_contracts::token_exchange {
     public entry fun buy_more_tokens(
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
-        config: &ExchangeConfig,
+        config: &SocialProofTokensConfig,
         block_list_registry: &BlockListRegistry,
         platform: &mut social_contracts::platform::Platform,
         mut payment: Coin<MYS>,
@@ -1354,7 +1342,7 @@ module social_contracts::token_exchange {
     public entry fun sell_tokens(
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
-        config: &ExchangeConfig,
+        config: &SocialProofTokensConfig,
         platform: &mut social_contracts::platform::Platform,
         social_token: &mut SocialToken,
         amount: u64,
@@ -1595,15 +1583,68 @@ module social_contracts::token_exchange {
 
     // Test-only functions
     #[test_only]
-    /// Initialize the token exchange for testing
+    /// Initialize the social proof tokens system for testing
+    /// In testing, we create admin caps directly for convenience
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx)
+        let sender = tx_context::sender(ctx);
+        
+        // Create and transfer admin capability to the transaction sender
+        transfer::public_transfer(
+            SocialProofTokensAdminCap {
+                id: object::new(ctx),
+            },
+            sender
+        );
+        
+        // Create and share social proof tokens config (same as production init)
+        transfer::share_object(
+            SocialProofTokensConfig {
+                id: object::new(ctx),
+                total_fee_bps: DEFAULT_TOTAL_FEE_BPS,
+                creator_fee_bps: DEFAULT_CREATOR_FEE_BPS,
+                platform_fee_bps: DEFAULT_PLATFORM_FEE_BPS,
+                treasury_fee_bps: DEFAULT_TREASURY_FEE_BPS,
+                base_price: DEFAULT_BASE_PRICE,
+                quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
+                ecosystem_treasury: sender,
+                max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
+                post_threshold: DEFAULT_POST_THRESHOLD,
+                profile_threshold: DEFAULT_PROFILE_THRESHOLD,
+                max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
+                trading_halted: false,
+            }
+        );
+        
+        // Create and share token registry
+        transfer::share_object(
+            TokenRegistry {
+                id: object::new(ctx),
+                tokens: table::new(ctx),
+                reservation_pools: table::new(ctx),
+                version: upgrade::current_version(),
+            }
+        );
     }
 
-    /// Create a new ExchangeAdminCap for testing
+    /// Auto-configure ecosystem treasury for bootstrap (package visibility only)
+    /// This function is only callable by other modules in the same package
+    public(package) fun auto_configure_treasury(
+        config: &mut SocialProofTokensConfig,
+        treasury_address: address
+    ) {
+        config.ecosystem_treasury = treasury_address;
+    }
+
+    /// Auto-enable trading for bootstrap (package visibility only)
+    /// This function is only callable by other modules in the same package
+    public(package) fun auto_enable_trading(config: &mut SocialProofTokensConfig) {
+        config.trading_halted = false;
+    }
+
+    /// Create a new SocialProofTokensAdminCap for testing
     #[test_only]
-    public fun create_admin_cap_for_testing(ctx: &mut TxContext): ExchangeAdminCap {
-        ExchangeAdminCap {
+    public fun create_admin_cap_for_testing(ctx: &mut TxContext): SocialProofTokensAdminCap {
+        SocialProofTokensAdminCap {
             id: object::new(ctx)
         }
     }
@@ -1675,13 +1716,13 @@ module social_contracts::token_exchange {
         &mut pool.version
     }
 
-    /// Get the version of a stake pool
-    public fun stake_pool_version(pool: &StakePoolObject): u64 {
+    /// Get the version of a reservation pool
+    public fun reservation_pool_version(pool: &ReservationPoolObject): u64 {
         pool.version
     }
 
-    /// Get a mutable reference to the stake pool version (for upgrade module)
-    public fun borrow_stake_pool_version_mut(pool: &mut StakePoolObject): &mut u64 {
+    /// Get a mutable reference to the reservation pool version (for upgrade module)
+    public fun borrow_reservation_pool_version_mut(pool: &mut ReservationPoolObject): &mut u64 {
         &mut pool.version
     }
 
@@ -1739,9 +1780,9 @@ module social_contracts::token_exchange {
         // Any migration logic can be added here for future upgrades
     }
 
-    /// Migration function for StakePoolObject
-    public entry fun migrate_stake_pool(
-        pool: &mut StakePoolObject,
+    /// Migration function for ReservationPoolObject
+    public entry fun migrate_reservation_pool(
+        pool: &mut ReservationPoolObject,
         _: &UpgradeAdminCap,
         ctx: &mut TxContext
     ) {
@@ -1758,11 +1799,19 @@ module social_contracts::token_exchange {
         let pool_id = object::id(pool);
         upgrade::emit_migration_event(
             pool_id,
-            string::utf8(b"StakePoolObject"),
+            string::utf8(b"ReservationPoolObject"),
             old_version,
             tx_context::sender(ctx)
         );
         
         // Any migration logic can be added here for future upgrades
+    }
+    
+    /// Create a SocialProofTokensAdminCap for bootstrap (package visibility only)
+    /// This function is only callable by other modules in the same package
+    public(package) fun create_social_proof_tokens_admin_cap(ctx: &mut TxContext): SocialProofTokensAdminCap {
+        SocialProofTokensAdminCap {
+            id: object::new(ctx)
+        }
     }
 } 

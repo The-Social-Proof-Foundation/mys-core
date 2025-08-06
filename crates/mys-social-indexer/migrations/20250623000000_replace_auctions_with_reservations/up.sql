@@ -1,5 +1,4 @@
--- REPLACE AUCTION SYSTEM WITH STAKING SYSTEM
--- Production-ready implementation for stake pools and stakes
+-- Production-ready implementation for reservation pools and reservations
 
 -- ============================================================================
 -- 1. REMOVE AUCTION SYSTEM
@@ -28,51 +27,51 @@ DROP TABLE IF EXISTS spt_auction_pools CASCADE;
 -- 2. CREATE STAKING SYSTEM TABLES
 -- ============================================================================
 
--- Stake Pools table with time dimension
-CREATE TABLE IF NOT EXISTS spt_stake_pools (
+-- Reservation Pools table with time dimension
+CREATE TABLE IF NOT EXISTS spt_reservation_pools (
     id SERIAL NOT NULL,
     pool_id VARCHAR NOT NULL,
     associated_id VARCHAR NOT NULL,
     token_type SMALLINT NOT NULL,  -- 1: Profile, 2: Post
     owner VARCHAR NOT NULL,
-    total_staked BIGINT NOT NULL DEFAULT 0,
+    total_reserved BIGINT NOT NULL DEFAULT 0,
     required_threshold BIGINT NOT NULL,
     status VARCHAR NOT NULL DEFAULT 'active', -- 'active', 'threshold_met', 'converted'
     created_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     transaction_id VARCHAR NOT NULL,
-    CONSTRAINT pk_spt_stake_pools PRIMARY KEY (id, time)
+    CONSTRAINT pk_spt_reservation_pools PRIMARY KEY (id, time)
 );
 
 -- Create TimescaleDB hypertable
-SELECT create_hypertable('spt_stake_pools', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable('spt_reservation_pools', 'time', if_not_exists => TRUE, migrate_data => TRUE);
 
--- Enable compression on stake pools table
-ALTER TABLE spt_stake_pools SET (
+-- Enable compression on reservation pools table
+ALTER TABLE spt_reservation_pools SET (
     timescaledb.compress,
     timescaledb.compress_segmentby = 'pool_id,associated_id,owner',
     timescaledb.compress_orderby = 'time DESC'
 );
 
--- Individual Stakes table with time dimension
-CREATE TABLE IF NOT EXISTS spt_stakes (
+-- Individual Reservations table with time dimension
+CREATE TABLE IF NOT EXISTS spt_reservations (
     id SERIAL NOT NULL,
     pool_id VARCHAR NOT NULL,
-    staker_address VARCHAR NOT NULL,
+    reservatior_address VARCHAR NOT NULL,
     amount BIGINT NOT NULL,
-    staked_at BIGINT NOT NULL,
+    reserved_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     transaction_id VARCHAR NOT NULL,
-    CONSTRAINT pk_spt_stakes PRIMARY KEY (id, time)
+    CONSTRAINT pk_spt_reservations PRIMARY KEY (id, time)
 );
 
 -- Create TimescaleDB hypertable
-SELECT create_hypertable('spt_stakes', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable('spt_reservations', 'time', if_not_exists => TRUE, migrate_data => TRUE);
 
--- Enable compression on stakes table
-ALTER TABLE spt_stakes SET (
+-- Enable compression on reservations table
+ALTER TABLE spt_reservations SET (
     timescaledb.compress,
-    timescaledb.compress_segmentby = 'pool_id,staker_address',
+    timescaledb.compress_segmentby = 'pool_id,reservatior_address',
     timescaledb.compress_orderby = 'time DESC'
 );
 
@@ -82,7 +81,7 @@ CREATE TABLE IF NOT EXISTS spt_exchange_config (
     updated_by VARCHAR NOT NULL,
     post_threshold BIGINT NOT NULL,
     profile_threshold BIGINT NOT NULL,
-    max_individual_stake_bps BIGINT NOT NULL,
+    max_individual_reservation_bps BIGINT NOT NULL,
     total_fee_bps BIGINT NOT NULL,
     creator_fee_bps BIGINT NOT NULL,
     platform_fee_bps BIGINT NOT NULL,
@@ -112,16 +111,16 @@ ALTER TABLE spt_exchange_config SET (
 -- 3. CREATE INDEXES
 -- ============================================================================
 
--- Stake pool indexes
-CREATE INDEX IF NOT EXISTS idx_spt_stake_pools_pool_id ON spt_stake_pools(pool_id);
-CREATE INDEX IF NOT EXISTS idx_spt_stake_pools_associated_id ON spt_stake_pools(associated_id);
-CREATE INDEX IF NOT EXISTS idx_spt_stake_pools_owner ON spt_stake_pools(owner);
-CREATE INDEX IF NOT EXISTS idx_spt_stake_pools_status ON spt_stake_pools(status);
-CREATE INDEX IF NOT EXISTS idx_spt_stake_pools_token_type ON spt_stake_pools(token_type);
+-- Reservation pool indexes
+CREATE INDEX IF NOT EXISTS idx_spt_reservation_pools_pool_id ON spt_reservation_pools(pool_id);
+CREATE INDEX IF NOT EXISTS idx_spt_reservation_pools_associated_id ON spt_reservation_pools(associated_id);
+CREATE INDEX IF NOT EXISTS idx_spt_reservation_pools_owner ON spt_reservation_pools(owner);
+CREATE INDEX IF NOT EXISTS idx_spt_reservation_pools_status ON spt_reservation_pools(status);
+CREATE INDEX IF NOT EXISTS idx_spt_reservation_pools_token_type ON spt_reservation_pools(token_type);
 
--- Stakes indexes
-CREATE INDEX IF NOT EXISTS idx_spt_stakes_pool_id ON spt_stakes(pool_id);
-CREATE INDEX IF NOT EXISTS idx_spt_stakes_staker_address ON spt_stakes(staker_address);
+-- Reservations indexes
+CREATE INDEX IF NOT EXISTS idx_spt_reservations_pool_id ON spt_reservations(pool_id);
+CREATE INDEX IF NOT EXISTS idx_spt_reservations_reservatior_address ON spt_reservations(reservatior_address);
 
 -- Exchange config indexes
 CREATE INDEX IF NOT EXISTS idx_spt_exchange_config_updated_by ON spt_exchange_config(updated_by);
@@ -166,60 +165,60 @@ GROUP BY
 ORDER BY 
     total_volume DESC;
 
--- Create view for active stake pools with aggregated data
-CREATE OR REPLACE VIEW active_stake_pools AS
+-- Create view for active reservation pools with aggregated data
+CREATE OR REPLACE VIEW active_reservation_pools AS
 SELECT
     sp.pool_id,
     sp.associated_id,
     sp.token_type,
     sp.owner,
-    sp.total_staked,
+    sp.total_reserved,
     sp.required_threshold,
     sp.status,
     sp.created_at,
-    (sp.total_staked >= sp.required_threshold) AS threshold_met,
-    COUNT(s.id) AS staker_count,
+    (sp.total_reserved >= sp.required_threshold) AS threshold_met,
+    COUNT(s.id) AS reservatior_count,
     COALESCE(MAX(s.time), sp.time) AS last_activity
 FROM 
-    spt_stake_pools sp
+    spt_reservation_pools sp
 LEFT JOIN 
-    spt_stakes s ON sp.pool_id = s.pool_id
+    spt_reservations s ON sp.pool_id = s.pool_id
 WHERE 
     sp.time = (
-        SELECT MAX(time) FROM spt_stake_pools sub
+        SELECT MAX(time) FROM spt_reservation_pools sub
         WHERE sub.pool_id = sp.pool_id
     )
 GROUP BY 
     sp.pool_id, sp.associated_id, sp.token_type, sp.owner, 
-    sp.total_staked, sp.required_threshold, sp.status, sp.created_at, sp.time
+    sp.total_reserved, sp.required_threshold, sp.status, sp.created_at, sp.time
 ORDER BY 
-    sp.total_staked DESC;
+    sp.total_reserved DESC;
 
--- Create view for user stake holdings across all pools
-CREATE OR REPLACE VIEW user_stake_holdings AS
+-- Create view for user reservation holdings across all pools
+CREATE OR REPLACE VIEW user_reservation_holdings AS
 SELECT
-    s.staker_address,
+    s.reservatior_address,
     s.pool_id,
     sp.associated_id,
     sp.token_type,
     sp.owner,
     s.amount,
-    s.staked_at,
-    sp.total_staked,
+    s.reserved_at,
+    sp.total_reserved,
     sp.required_threshold,
-    (sp.total_staked >= sp.required_threshold) AS threshold_met,
+    (sp.total_reserved >= sp.required_threshold) AS threshold_met,
     sp.status AS pool_status
 FROM 
-    spt_stakes s
+    spt_reservations s
 JOIN 
-    spt_stake_pools sp ON s.pool_id = sp.pool_id
+    spt_reservation_pools sp ON s.pool_id = sp.pool_id
 WHERE 
     s.time = (
-        SELECT MAX(time) FROM spt_stakes sub
-        WHERE sub.pool_id = s.pool_id AND sub.staker_address = s.staker_address
+        SELECT MAX(time) FROM spt_reservations sub
+        WHERE sub.pool_id = s.pool_id AND sub.reservatior_address = s.reservatior_address
     )
     AND sp.time = (
-        SELECT MAX(time) FROM spt_stake_pools sub
+        SELECT MAX(time) FROM spt_reservation_pools sub
         WHERE sub.pool_id = sp.pool_id
     )
     AND s.amount > 0
@@ -231,12 +230,12 @@ ORDER BY
 -- ============================================================================
 
 -- Add compression policies to compress chunks after 7 days
-SELECT add_compression_policy('spt_stake_pools', INTERVAL '7 days');
-SELECT add_compression_policy('spt_stakes', INTERVAL '7 days');
+SELECT add_compression_policy('spt_reservation_pools', INTERVAL '7 days');
+SELECT add_compression_policy('spt_reservations', INTERVAL '7 days');
 SELECT add_compression_policy('spt_exchange_config', INTERVAL '7 days');
 
 -- ============================================================================
--- 6. CREATE FUNCTIONS FOR STAKE POOL MANAGEMENT
+-- 6. CREATE FUNCTIONS FOR RESERVATION POOL MANAGEMENT
 -- ============================================================================
 
 -- Function to get current exchange configuration
@@ -244,7 +243,7 @@ CREATE OR REPLACE FUNCTION get_current_exchange_config()
 RETURNS TABLE(
     post_threshold BIGINT,
     profile_threshold BIGINT,
-    max_individual_stake_bps BIGINT,
+    max_individual_reservation_bps BIGINT,
     trading_halted BOOLEAN
 ) AS $$
 BEGIN
@@ -252,7 +251,7 @@ BEGIN
     SELECT 
         c.post_threshold,
         c.profile_threshold, 
-        c.max_individual_stake_bps,
+        c.max_individual_reservation_bps,
         c.trading_halted
     FROM spt_exchange_config c
     ORDER BY c.time DESC
@@ -260,14 +259,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to check if stake pool threshold is met
-CREATE OR REPLACE FUNCTION is_stake_threshold_met(pool_id_param VARCHAR)
+-- Function to check if reservation pool threshold is met
+CREATE OR REPLACE FUNCTION is_reservation_threshold_met(pool_id_param VARCHAR)
 RETURNS BOOLEAN AS $$
 DECLARE
     result BOOLEAN;
 BEGIN
-    SELECT (sp.total_staked >= sp.required_threshold) INTO result
-    FROM spt_stake_pools sp
+    SELECT (sp.total_reserved >= sp.required_threshold) INTO result
+    FROM spt_reservation_pools sp
     WHERE sp.pool_id = pool_id_param
     ORDER BY sp.time DESC
     LIMIT 1;

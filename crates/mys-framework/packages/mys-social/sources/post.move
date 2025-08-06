@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 /// Post module for the MySocial network
@@ -19,7 +19,6 @@ module social_contracts::post {
         coin::{Self, Coin},
         balance::{Self, Balance},
         url::{Self, Url},
-        package::{Self, Publisher},
         clock::{Self, Clock}
     };
     use mys::mys::MYS;
@@ -552,15 +551,13 @@ module social_contracts::post {
 
     /// Initialize the post module
     fun init(ctx: &mut TxContext) {
-        let sender = tx_context::sender(ctx);
-        
         // Create and share post configuration
         transfer::share_object(
             PostConfig {
                 id: object::new(ctx),
                 predictions_enabled: false, // Predictions disabled by default
                 prediction_fee_bps: 500, // Default 5% fee
-                prediction_treasury: sender, // Initially set to publisher
+                prediction_treasury: @0x0, // Auto-configured by bootstrap during bootstrap
                 max_content_length: MAX_CONTENT_LENGTH,
                 max_media_urls: MAX_MEDIA_URLS,
                 max_mentions: MAX_MENTIONS,
@@ -572,24 +569,16 @@ module social_contracts::post {
                 max_prediction_options: MAX_PREDICTION_OPTIONS,
             }
         );
-        
-        // Create and transfer the admin capability to the module publisher
-        let admin_cap = PostAdminCap {
-            id: object::new(ctx),
-        };
-        
-        transfer::transfer(admin_cap, sender);
     }
     
     /// Enable or disable prediction functionality (admin only)
     public entry fun set_predictions_enabled(
-        publisher: &Publisher,
+        _: &PostAdminCap,
         config: &mut PostConfig,
         enabled: bool,
         _ctx: &mut TxContext
     ) {
-        // Verify the publisher is for this module
-        assert!(package::from_module<Post>(publisher), EUnauthorized);
+        // Admin capability verification is handled by type system
         
         // Update configuration
         config.predictions_enabled = enabled;
@@ -597,14 +586,13 @@ module social_contracts::post {
     
     /// Set prediction fee (admin only)
     public entry fun set_prediction_fee(
-        publisher: &Publisher,
+        _: &PostAdminCap,
         config: &mut PostConfig,
         fee_bps: u64,
         treasury: address,
         _ctx: &mut TxContext
     ) {
-        // Verify the publisher is for this module
-        assert!(package::from_module<Post>(publisher), EUnauthorized);
+        // Admin capability verification is handled by type system
         
         // Ensure fee is reasonable (max 25%)
         assert!(fee_bps <= 2500, EInvalidTipAmount);
@@ -2236,16 +2224,15 @@ module social_contracts::post {
         });
     }
 
-    /// Admin function to transfer post ownership (requires Publisher)
+    /// Admin function to transfer post ownership (requires PostAdminCap)
     public entry fun admin_transfer_post_ownership(
-        publisher: &Publisher,
+        _: &PostAdminCap,
         post: &mut Post,
         new_owner: address,
         registry: &UsernameRegistry,
         _ctx: &mut TxContext
     ) {
-        // Verify the publisher is for this module
-        assert!(package::from_module<Post>(publisher), EUnauthorizedTransfer);
+        // Admin capability verification is handled by type system
         
         // Look up the profile ID for the new owner (for reference, not ownership)
         let mut profile_id_option = social_contracts::profile::lookup_profile_by_owner(registry, new_owner);
@@ -3410,6 +3397,55 @@ module social_contracts::post {
     public fun set_comment_count_for_testing(post: &mut Post, count: u64) {
         post.comment_count = count;
     }
+    
+    /// Create a PostAdminCap for bootstrap (package visibility only)
+    /// This function is only callable by other modules in the same package
+    public(package) fun create_post_admin_cap(ctx: &mut TxContext): PostAdminCap {
+        PostAdminCap {
+            id: object::new(ctx)
+        }
+    }
 
-
+    /// Auto-configure prediction treasury for bootstrap (package visibility only)
+    /// This function is only callable by other modules in the same package
+    public(package) fun auto_configure_prediction_treasury(
+        config: &mut PostConfig,
+        treasury_address: address
+    ) {
+        config.prediction_treasury = treasury_address;
+    }
+    
+    #[test_only]
+    /// Initialize the post module for testing
+    /// In testing, we create admin caps directly for convenience
+    public fun init_for_testing(ctx: &mut TxContext) {
+        let sender = tx_context::sender(ctx);
+        
+        // Create and transfer admin capability to the transaction sender
+        transfer::public_transfer(
+            PostAdminCap {
+                id: object::new(ctx),
+            },
+            sender
+        );
+        
+        // Create and share post configuration (same as production init)
+        transfer::share_object(
+            PostConfig {
+                id: object::new(ctx),
+                predictions_enabled: false, // Predictions disabled by default
+                prediction_fee_bps: 500, // Default 5% fee
+                prediction_treasury: sender, // Set to sender for testing
+                max_content_length: MAX_CONTENT_LENGTH,
+                max_media_urls: MAX_MEDIA_URLS,
+                max_mentions: MAX_MENTIONS,
+                max_metadata_size: MAX_METADATA_SIZE,
+                max_description_length: MAX_DESCRIPTION_LENGTH,
+                max_reaction_length: MAX_REACTION_LENGTH,
+                commenter_tip_percentage: COMMENTER_TIP_PERCENTAGE,
+                repost_tip_percentage: REPOST_TIP_PERCENTAGE,
+                max_prediction_options: MAX_PREDICTION_OPTIONS,
+            }
+        );
+    }
 }

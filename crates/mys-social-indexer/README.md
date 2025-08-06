@@ -29,34 +29,34 @@ The indexer consists of the following components:
 
 ## Social Proof Token Staking System
 
-The indexer now supports a modern staking-based social proof token system, replacing the previous auction model. Users can stake MYS tokens towards posts and profiles to enable social proof token creation when thresholds are met.
+The indexer now supports a modern staking-based social proof token system, replacing the previous auction model. Users can reservaton MYS tokens towards posts and profiles to enable social proof token creation when thresholds are met.
 
 ### How It Works
-1. **Stake Creation**: Users stake MYS tokens towards posts (1,000 MYS threshold) or profiles (10,000 MYS threshold)
-2. **Threshold Monitoring**: The indexer tracks total staked amounts and monitors threshold achievement
+1. **Reservaton Creation**: Users reservaton MYS tokens towards posts (1,000 MYS threshold) or profiles (10,000 MYS threshold)
+2. **Threshold Monitoring**: The indexer tracks total reserved amounts and monitors threshold achievement
 3. **Token Creation**: When thresholds are met, post/profile owners can create social proof tokens
 4. **Real-time Tracking**: All staking activity is tracked in real-time with comprehensive analytics
 
 ### Key Features
-- **Stake Pool Management**: Track total staked amounts per post/profile with real-time status updates
-- **Individual Stake Tracking**: Monitor user stakes with history of deposits and withdrawals
+- **Reservaton Pool Management**: Track total reserved amounts per post/profile with real-time status updates
+- **Individual Reservaton Tracking**: Monitor user reservatons with history of deposits and withdrawals
 - **Threshold Achievement**: Automatic detection when posts/profiles meet staking requirements
 - **Analytics**: Comprehensive staking metrics including trends, velocity, and top pools
 
 ### Database Tables (TimescaleDB Hypertables)
-- `spt_stake_pools`: Stake pool configurations and current totals (1-month chunks)
-- `spt_stakes`: Individual stake records with full history (1-week chunks)
+- `spt_reservaton_pools`: Reservaton pool configurations and current totals (1-month chunks)
+- `spt_reservatons`: Individual reservaton records with full history (1-week chunks)
 - `spt_exchange_config`: Exchange configuration changes and threshold updates (1-month chunks)
 
 ### Staking Thresholds
 - **Posts**: 1,000 MYS tokens required to enable social proof token creation
 - **Profiles**: 10,000 MYS tokens required to enable social proof token creation
-- **Individual Limits**: Maximum 20% of threshold per individual staker
+- **Individual Limits**: Maximum 20% of threshold per individual reservator
 
 ### API Capabilities
 - **Real-time Status**: Live staking pool status and threshold progress
-- **Stake Analytics**: Comprehensive metrics on staking trends and patterns
-- **User Tracking**: Complete stake history per user across all pools
+- **Reservaton Analytics**: Comprehensive metrics on staking trends and patterns
+- **User Tracking**: Complete reservaton history per user across all pools
 - **Threshold Monitoring**: Track pools approaching or exceeding thresholds
 
 ## Post Promotion Feature
@@ -208,7 +208,7 @@ RUST_LOG=info,mys_social_indexer=debug
 - `profile` - Search profiles by username, address, and bio
 - `post` - Search posts by content, post ID, owner, and profile ID
 - `spt-token` - Search social proof token pools by name, symbol, pool ID, owner, and associated ID
-- `spt-stake-pool` - Search staking pools by pool ID, associated ID, owner, and status
+- `spt-reservaton-pool` - Search staking pools by pool ID, associated ID, owner, and status
 - `governance-registry` - Search governance circles/registries (ecosystem, reputation, community notes) with delegate counts and voting parameters
 - `platform` - Search platforms by name, platform ID, developer address, and description
 - `proposal` - Search governance proposals by title, description, ID, and submitter
@@ -225,10 +225,10 @@ RUST_LOG=info,mys_social_indexer=debug
 GET /search?query=alice
 
 # Search only staking pools
-GET /search?query=threshold_met&filter_types=spt-stake-pool
+GET /search?query=threshold_met&filter_types=spt-reservaton-pool
 
 # Search tokens and staking pools
-GET /search?query=0x123&filter_types=spt-token,spt-stake-pool
+GET /search?query=0x123&filter_types=spt-token,spt-reservaton-pool
 
 # Search governance circles
 GET /search?query=ecosystem&filter_types=governance-registry
@@ -371,9 +371,9 @@ GET /search?query=social&page=2&limit=50
 - **GET /social-proof-token/pools/:id/liquidity-profile** - Show transaction volume, frequency and depth to assess token liquidity
 
 #### Staking System
-- **GET /social-proof-token/stake-pools** - List active stake pools supporting posts/profiles
-- **GET /social-proof-token/stake-pools/:id** - Get stake pool details by pool ID
-- **GET /social-proof-token/stake-pools/:id/stakes** - Get individual stakes for a pool
+- **GET /social-proof-token/reservaton-pools** - List active reservaton pools supporting posts/profiles
+- **GET /social-proof-token/reservaton-pools/:id** - Get reservaton pool details by pool ID
+- **GET /social-proof-token/reservaton-pools/:id/reservatons** - Get individual reservatons for a pool
 
 #### Analytics & Insights
 - **GET /social-proof-token/popular** - Get popular token pools

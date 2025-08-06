@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod profile_events;
@@ -93,8 +93,8 @@ pub use social_proof_token_events::{
     TokenBoughtEvent,
     TokenSoldEvent,
     TokensAddedEvent,
-    StakeCreatedEvent,
-    StakeWithdrawnEvent,
+    ReservationCreatedEvent,
+    ReservationWithdrawnEvent,
     ThresholdMetEvent,
     ConfigUpdatedEvent,
 };

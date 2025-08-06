@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod api;
@@ -25,6 +25,7 @@ pub const BLOCK_LIST_MODULE_NAME: &str = "block_list";
 pub const POST_MODULE_NAME: &str = "post";
 pub const GOVERNANCE_MODULE_NAME: &str = "governance";
 pub const SUBSCRIPTION_MODULE_NAME: &str = "subscription";
+pub const SOCIAL_PROOF_TOKENS_MODULE_NAME: &str = "social_proof_tokens";
 
 /// Common struct names
 pub const PROFILE_STRUCT_NAME: &str = "Profile";

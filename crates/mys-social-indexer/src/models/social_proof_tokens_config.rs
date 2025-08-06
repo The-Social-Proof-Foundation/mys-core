@@ -1,16 +1,16 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::schema::token_exchange_config;
+use crate::schema::social_proof_tokens_config;
 
-/// Model for token_exchange_config table
+/// Model for social_proof_tokens_config table
 #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
-#[diesel(table_name = token_exchange_config)]
-pub struct TokenExchangeConfig {
+#[diesel(table_name = social_proof_tokens_config)]
+pub struct SocialProofTokensConfig {
     pub id: i32,
     pub trading_halted: bool,
     pub admin_address: String,
@@ -20,10 +20,10 @@ pub struct TokenExchangeConfig {
     pub transaction_id: String,
 }
 
-/// Model for creating new token exchange config entries
+/// Model for creating new social proof tokens config entries
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = token_exchange_config)]
-pub struct NewTokenExchangeConfig {
+#[diesel(table_name = social_proof_tokens_config)]
+pub struct NewSocialProofTokensConfig {
     pub trading_halted: bool,
     pub admin_address: String,
     pub reason: String,
@@ -32,14 +32,14 @@ pub struct NewTokenExchangeConfig {
     pub transaction_id: String,
 }
 
-/// Model for updating token exchange config
+/// Model for updating social proof tokens config
 #[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
-#[diesel(table_name = token_exchange_config)]
-pub struct UpdateTokenExchangeConfig {
+#[diesel(table_name = social_proof_tokens_config)]
+pub struct UpdateSocialProofTokensConfig {
     pub trading_halted: Option<bool>,
     pub admin_address: Option<String>,
     pub reason: Option<String>,
     pub timestamp_ms: Option<i64>,
     pub updated_at: Option<DateTime<Utc>>,
     pub transaction_id: Option<String>,
-} 
+}

@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 /// Social Proof Token event types enumeration
@@ -12,10 +12,10 @@ pub enum SocialProofTokenEventType {
     TokenSold,
     /// Tokens were added to an existing holding
     TokensAdded,
-    /// MYS was staked towards a post/profile
-    StakeCreated,
-    /// MYS stake was withdrawn
-    StakeWithdrawn,
+    /// MySo was reserved towards a post/profile
+    ReservationCreated,
+    /// MySo reservation was withdrawn
+    ReservationWithdrawn,
     /// Staking threshold was met for the first time
     ThresholdMet,
     /// Exchange configuration was updated
@@ -32,8 +32,8 @@ impl SocialProofTokenEventType {
             Self::TokenBought => "TokenBought",
             Self::TokenSold => "TokenSold",
             Self::TokensAdded => "TokensAdded",
-            Self::StakeCreated => "StakeCreated",
-            Self::StakeWithdrawn => "StakeWithdrawn",
+            Self::ReservationCreated => "ReservationCreated",
+            Self::ReservationWithdrawn => "ReservationWithdrawn",
             Self::ThresholdMet => "ThresholdMet",
             Self::ConfigUpdated => "ConfigUpdated",
             Self::EmergencyKillSwitch => "EmergencyKillSwitch",
@@ -47,8 +47,8 @@ impl SocialProofTokenEventType {
             "TokenBought" => Some(Self::TokenBought),
             "TokenSold" => Some(Self::TokenSold),
             "TokensAdded" => Some(Self::TokensAdded), 
-            "StakeCreated" => Some(Self::StakeCreated),
-            "StakeWithdrawn" => Some(Self::StakeWithdrawn),
+            "ReservationCreated" => Some(Self::ReservationCreated),
+            "ReservationWithdrawn" => Some(Self::ReservationWithdrawn),
             "ThresholdMet" => Some(Self::ThresholdMet),
             "ConfigUpdated" => Some(Self::ConfigUpdated),
             "EmergencyKillSwitch" => Some(Self::EmergencyKillSwitch),

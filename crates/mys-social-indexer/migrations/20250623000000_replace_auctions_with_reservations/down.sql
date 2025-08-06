@@ -6,30 +6,30 @@
 -- ============================================================================
 
 -- Drop views that depend on staking tables
-DROP VIEW IF EXISTS active_stake_pools CASCADE;
-DROP VIEW IF EXISTS user_stake_holdings CASCADE;
+DROP VIEW IF EXISTS active_reservation_pools CASCADE;
+DROP VIEW IF EXISTS user_reservation_holdings CASCADE;
 DROP VIEW IF EXISTS popular_token_pools CASCADE;
 
 -- Drop functions
 DROP FUNCTION IF EXISTS get_current_exchange_config() CASCADE;
-DROP FUNCTION IF EXISTS is_stake_threshold_met(VARCHAR) CASCADE;
+DROP FUNCTION IF EXISTS is_reservation_threshold_met(VARCHAR) CASCADE;
 
 -- Remove compression policies for staking tables
-SELECT remove_compression_policy('spt_stake_pools', if_exists => true);
-SELECT remove_compression_policy('spt_stakes', if_exists => true);
+SELECT remove_compression_policy('spt_reservation_pools', if_exists => true);
+SELECT remove_compression_policy('spt_reservations', if_exists => true);
 SELECT remove_compression_policy('spt_exchange_config', if_exists => true);
 
 -- Drop staking tables and indexes
-DROP INDEX IF EXISTS idx_spt_stake_pools_pool_id;
-DROP INDEX IF EXISTS idx_spt_stake_pools_associated_id;
-DROP INDEX IF EXISTS idx_spt_stake_pools_owner;
-DROP INDEX IF EXISTS idx_spt_stake_pools_status;
-DROP INDEX IF EXISTS idx_spt_stake_pools_token_type;
-DROP TABLE IF EXISTS spt_stake_pools CASCADE;
+DROP INDEX IF EXISTS idx_spt_reservation_pools_pool_id;
+DROP INDEX IF EXISTS idx_spt_reservation_pools_associated_id;
+DROP INDEX IF EXISTS idx_spt_reservation_pools_owner;
+DROP INDEX IF EXISTS idx_spt_reservation_pools_status;
+DROP INDEX IF EXISTS idx_spt_reservation_pools_token_type;
+DROP TABLE IF EXISTS spt_reservation_pools CASCADE;
 
-DROP INDEX IF EXISTS idx_spt_stakes_pool_id;
-DROP INDEX IF EXISTS idx_spt_stakes_staker_address;
-DROP TABLE IF EXISTS spt_stakes CASCADE;
+DROP INDEX IF EXISTS idx_spt_reservations_pool_id;
+DROP INDEX IF EXISTS idx_spt_reservations_reservatior_address;
+DROP TABLE IF EXISTS spt_reservations CASCADE;
 
 DROP INDEX IF EXISTS idx_spt_exchange_config_updated_by;
 DROP TABLE IF EXISTS spt_exchange_config CASCADE;

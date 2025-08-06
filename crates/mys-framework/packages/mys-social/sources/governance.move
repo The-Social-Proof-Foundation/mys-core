@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 /// Governance module for the MySocial network
@@ -21,7 +21,6 @@ module social_contracts::governance {
         balance::{Self, Balance}
     };
     use mys::mys::MYS;
-    use mys::package::{Self, Publisher};
 
     use seal::bf_hmac_encryption::{EncryptedObject, VerifiedDerivedKey, PublicKey, decrypt};
     
@@ -70,6 +69,11 @@ module social_contracts::governance {
     const DELEGATE_REASONS_FIELD: vector<u8> = b"delegate_reasons";
     const ENCRYPTED_VOTES_FIELD: vector<u8> = b"encrypted_votes";
     const ANON_VOTERS_FIELD: vector<u8> = b"anon_voters";
+
+    /// Admin capability for Governance system management
+    public struct GovernanceAdminCap has key, store {
+        id: UID,
+    }
 
     /// Governance registry that keeps track of all delegates and proposals
     public struct GovernanceDAO has key {
@@ -343,10 +347,10 @@ module social_contracts::governance {
     }
 
     /// Update governance parameters
-    /// Can only be called by the contract owner with a valid publisher
+    /// Can only be called by the governance admin
     public entry fun update_governance_parameters(
         registry: &mut GovernanceDAO,
-        publisher: &Publisher,
+        _: &GovernanceAdminCap,
         delegate_count: u64,
         delegate_term_epochs: u64,
         proposal_submission_cost: u64,
@@ -357,8 +361,7 @@ module social_contracts::governance {
         quorum_votes: u64,
         _ctx: &mut TxContext
     ) {
-        // Verify caller has a valid publisher for this module
-        assert!(package::from_module<GovernanceDAO>(publisher), EUnauthorized);
+        // Admin capability verification is handled by type system
         // Ensure parameters are sensible
         assert!(delegate_count > 1, EInvalidParameter);
         assert!(delegate_term_epochs > 0, EInvalidParameter);
@@ -1943,5 +1946,13 @@ module social_contracts::governance {
         // Version-specific migrations would go here when needed
         
         registry.version = latest_version;
+    }
+
+    /// Create a GovernanceAdminCap for bootstrap (package visibility only)
+    /// This function is only callable by other modules in the same package
+    public(package) fun create_governance_admin_cap(ctx: &mut TxContext): GovernanceAdminCap {
+        GovernanceAdminCap {
+            id: object::new(ctx)
+        }
     }
 }

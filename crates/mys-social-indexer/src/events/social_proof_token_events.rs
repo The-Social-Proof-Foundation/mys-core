@@ -1,4 +1,4 @@
-// Copyright (c) The Social Proof Foundation LLC
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, Result};
@@ -9,10 +9,10 @@ use chrono::{DateTime, Utc};
 use crate::models::social_proof_token::{
     NewSocialProofTokenPool, NewSocialProofTokenTransaction,
     NewSocialProofTokenHolding, NewSocialProofPriceHistory,
-    NewSptStakePool, NewSptStake, NewSptExchangeConfig,
+    NewSptReservationPool, NewSptReservation, NewSptExchangeConfig,
     TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL,
     TOKEN_TYPE_PROFILE, TOKEN_TYPE_POST, 
-    STAKE_POOL_STATUS_ACTIVE, STAKE_POOL_STATUS_THRESHOLD_MET
+    RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET
 };
 
 /// Event emitted when a token pool is created
@@ -333,58 +333,58 @@ impl TokensAddedEvent {
     }
 }
 
-/// Event emitted when MYS is staked towards a post/profile
+/// Event emitted when MYS is reserved towards a post/profile
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StakeCreatedEvent {
+pub struct ReservationCreatedEvent {
     pub associated_id: String,
     pub token_type: u8,
-    pub staker: String,
+    pub reserver: String,
     pub amount: u64,
-    pub total_staked: u64,
+    pub total_reserved: u64,
     pub threshold_met: bool,
-    pub staked_at: u64,
+    pub reserved_at: u64,
 }
 
-impl StakeCreatedEvent {
-    /// Convert the event to a stake model
-    pub fn into_stake_model(&self, timestamp: u64, transaction_id: String) -> Result<NewSptStake> {
-        let pool_id = format!("stake_pool_{}", self.associated_id);
+impl ReservationCreatedEvent {
+    /// Convert the event to a reservation model
+    pub fn into_reservation_model(&self, timestamp: u64, transaction_id: String) -> Result<NewSptReservation> {
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
         
-        Ok(NewSptStake {
+        Ok(NewSptReservation {
             pool_id,
-            staker_address: self.staker.clone(),
+            reserver_address: self.reserver.clone(),
             amount: self.amount as i64,
-            staked_at: self.staked_at as i64,
+            reserved_at: self.reserved_at as i64,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,
         })
     }
     
-    /// Convert the event to a stake pool model (for updating total)
-    pub fn into_stake_pool_model(&self, timestamp: u64, transaction_id: String, required_threshold: i64) -> Result<NewSptStakePool> {
+    /// Convert the event to a reservation pool model (for updating total)
+    pub fn into_reservation_pool_model(&self, timestamp: u64, transaction_id: String, required_threshold: i64) -> Result<NewSptReservationPool> {
         let token_type = match self.token_type {
             1 => TOKEN_TYPE_PROFILE,
             2 => TOKEN_TYPE_POST,
             _ => return Err(anyhow!("Invalid token type: {}", self.token_type)),
         };
         
-        let pool_id = format!("stake_pool_{}", self.associated_id);
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
         let status = if self.threshold_met {
-            STAKE_POOL_STATUS_THRESHOLD_MET.to_string()
+            RESERVATION_POOL_STATUS_THRESHOLD_MET.to_string()
         } else {
-            STAKE_POOL_STATUS_ACTIVE.to_string()
+            RESERVATION_POOL_STATUS_ACTIVE.to_string()
         };
         
-        Ok(NewSptStakePool {
+        Ok(NewSptReservationPool {
             pool_id,
             associated_id: self.associated_id.clone(),
             token_type,
             owner: "".to_string(), // Will be filled from the actual event data
-            total_staked: self.total_staked as i64,
+            total_reserved: self.total_reserved as i64,
             required_threshold,
             status,
-            created_at: self.staked_at as i64,
+            created_at: self.reserved_at as i64,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,
@@ -392,28 +392,28 @@ impl StakeCreatedEvent {
     }
 }
 
-/// Event emitted when MYS stake is withdrawn
+/// Event emitted when MYS reservation is withdrawn
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StakeWithdrawnEvent {
+pub struct ReservationWithdrawnEvent {
     pub associated_id: String,
     pub token_type: u8,
-    pub staker: String,
+    pub reserver: String,
     pub amount: u64,
-    pub total_staked: u64,
+    pub total_reserved: u64,
     pub withdrawn_at: u64,
 }
 
-impl StakeWithdrawnEvent {
-    /// Convert the event to a stake model (for withdrawals, amount is negative)
-    pub fn into_stake_model(&self, timestamp: u64, transaction_id: String) -> Result<NewSptStake> {
-        let pool_id = format!("stake_pool_{}", self.associated_id);
+impl ReservationWithdrawnEvent {
+    /// Convert the event to a reservation model (for withdrawals, amount is negative)
+    pub fn into_reservation_model(&self, timestamp: u64, transaction_id: String) -> Result<NewSptReservation> {
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
         
         // For withdrawals, we store the remaining amount, not the withdrawn amount
-        Ok(NewSptStake {
+        Ok(NewSptReservation {
             pool_id,
-            staker_address: self.staker.clone(),
+            reserver_address: self.reserver.clone(),
             amount: 0, // This represents the final amount after withdrawal
-            staked_at: self.withdrawn_at as i64,
+            reserved_at: self.withdrawn_at as i64,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,
@@ -421,36 +421,36 @@ impl StakeWithdrawnEvent {
     }
 }
 
-/// Event emitted when staking threshold is met for the first time
+/// Event emitted when reservation threshold is met for the first time
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThresholdMetEvent {
     pub associated_id: String,
     pub token_type: u8,
     pub owner: String,
-    pub total_staked: u64,
+    pub total_reserved: u64,
     pub required_threshold: u64,
     pub timestamp: u64,
 }
 
 impl ThresholdMetEvent {
-    /// Convert the event to update stake pool status
-    pub fn into_stake_pool_model(&self, timestamp: u64, transaction_id: String) -> Result<NewSptStakePool> {
+    /// Convert the event to update reservation pool status
+    pub fn into_reservation_pool_model(&self, timestamp: u64, transaction_id: String) -> Result<NewSptReservationPool> {
         let token_type = match self.token_type {
             1 => TOKEN_TYPE_PROFILE,
             2 => TOKEN_TYPE_POST,
             _ => return Err(anyhow!("Invalid token type: {}", self.token_type)),
         };
         
-        let pool_id = format!("stake_pool_{}", self.associated_id);
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
         
-        Ok(NewSptStakePool {
+        Ok(NewSptReservationPool {
             pool_id,
             associated_id: self.associated_id.clone(),
             token_type,
             owner: self.owner.clone(),
-            total_staked: self.total_staked as i64,
+            total_reserved: self.total_reserved as i64,
             required_threshold: self.required_threshold as i64,
-            status: STAKE_POOL_STATUS_THRESHOLD_MET.to_string(),
+            status: RESERVATION_POOL_STATUS_THRESHOLD_MET.to_string(),
             created_at: self.timestamp as i64,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
@@ -474,7 +474,7 @@ pub struct ConfigUpdatedEvent {
     pub max_hold_percent_bps: u64,
     pub post_threshold: u64,
     pub profile_threshold: u64,
-    pub max_individual_stake_bps: u64,
+    pub max_individual_reservation_bps: u64,
 }
 
 impl TryFrom<Value> for ConfigUpdatedEvent {
@@ -522,9 +522,9 @@ impl TryFrom<Value> for ConfigUpdatedEvent {
             profile_threshold: obj.get("profile_threshold")
                 .and_then(|v| v.as_u64())
                 .ok_or_else(|| anyhow!("Missing or invalid profile_threshold"))?,
-            max_individual_stake_bps: obj.get("max_individual_stake_bps")
+            max_individual_reservation_bps: obj.get("max_individual_reservation_bps")
                 .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid max_individual_stake_bps"))?,
+                .ok_or_else(|| anyhow!("Missing or invalid max_individual_reservation_bps"))?,
         })
     }
 }
@@ -536,7 +536,7 @@ impl ConfigUpdatedEvent {
             updated_by: self.updated_by.clone(),
             post_threshold: self.post_threshold as i64,
             profile_threshold: self.profile_threshold as i64,
-            max_individual_stake_bps: self.max_individual_stake_bps as i64,
+            max_individual_reservation_bps: self.max_individual_reservation_bps as i64,
             total_fee_bps: self.total_fee_bps as i64,
             creator_fee_bps: self.creator_fee_bps as i64,
             platform_fee_bps: self.platform_fee_bps as i64,
@@ -980,19 +980,19 @@ impl SocialProofSellEvent {
     }
 }
 
-// Stake created event parsing from Move contract
+// Reservation created event parsing from Move contract
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SocialProofStakeCreatedEvent {
+pub struct SocialProofReservationCreatedEvent {
     pub associated_id: String,
     pub token_type: i16,
-    pub staker: String,
+    pub reserver: String,
     pub amount: i64,
-    pub total_staked: i64,
+    pub total_reserved: i64,
     pub threshold_met: bool,
-    pub staked_at: i64,
+    pub reserved_at: i64,
 }
 
-impl TryFrom<Value> for SocialProofStakeCreatedEvent {
+impl TryFrom<Value> for SocialProofReservationCreatedEvent {
     type Error = anyhow::Error;
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
@@ -1007,35 +1007,35 @@ impl TryFrom<Value> for SocialProofStakeCreatedEvent {
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid token_type"))?
                 as i16,
-            staker: obj.get("staker")
+            reserver: obj.get("reserver")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| anyhow!("Missing or invalid staker"))?
+                .ok_or_else(|| anyhow!("Missing or invalid reserver"))?
                 .to_string(),
             amount: obj.get("amount")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid amount"))?,
-            total_staked: obj.get("total_staked")
+            total_reserved: obj.get("total_reserved")
                 .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid total_staked"))?,
+                .ok_or_else(|| anyhow!("Missing or invalid total_reserved"))?,
             threshold_met: obj.get("threshold_met")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false),
-            staked_at: obj.get("staked_at")
+            reserved_at: obj.get("reserved_at")
                 .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid staked_at"))?,
+                .ok_or_else(|| anyhow!("Missing or invalid reserved_at"))?,
         })
     }
 }
 
-impl SocialProofStakeCreatedEvent {
-    pub fn into_stake_model(&self, time: i64, transaction_id: String) -> Result<NewSptStake> {
-        let pool_id = format!("stake_pool_{}", self.associated_id);
+impl SocialProofReservationCreatedEvent {
+    pub fn into_reservation_model(&self, time: i64, transaction_id: String) -> Result<NewSptReservation> {
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
         
-        Ok(NewSptStake {
+        Ok(NewSptReservation {
             pool_id,
-            staker_address: self.staker.clone(),
+            reserver_address: self.reserver.clone(),
             amount: self.amount,
-            staked_at: self.staked_at,
+            reserved_at: self.reserved_at,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(time, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,
@@ -1043,18 +1043,18 @@ impl SocialProofStakeCreatedEvent {
     }
 }
 
-// Stake withdrawn event parsing from Move contract
+// Reservation withdrawn event parsing from Move contract
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SocialProofStakeWithdrawnEvent {
+pub struct SocialProofReservationWithdrawnEvent {
     pub associated_id: String,
     pub token_type: i16,
-    pub staker: String,
+    pub reserver: String,
     pub amount: i64,
-    pub total_staked: i64,
+    pub total_reserved: i64,
     pub withdrawn_at: i64,
 }
 
-impl TryFrom<Value> for SocialProofStakeWithdrawnEvent {
+impl TryFrom<Value> for SocialProofReservationWithdrawnEvent {
     type Error = anyhow::Error;
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
@@ -1069,16 +1069,16 @@ impl TryFrom<Value> for SocialProofStakeWithdrawnEvent {
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid token_type"))?
                 as i16,
-            staker: obj.get("staker")
+            reserver: obj.get("reserver")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| anyhow!("Missing or invalid staker"))?
+                .ok_or_else(|| anyhow!("Missing or invalid reserver"))?
                 .to_string(),
             amount: obj.get("amount")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid amount"))?,
-            total_staked: obj.get("total_staked")
+            total_reserved: obj.get("total_reserved")
                 .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid total_staked"))?,
+                .ok_or_else(|| anyhow!("Missing or invalid total_reserved"))?,
             withdrawn_at: obj.get("withdrawn_at")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid withdrawn_at"))?,
@@ -1086,16 +1086,16 @@ impl TryFrom<Value> for SocialProofStakeWithdrawnEvent {
     }
 }
 
-impl SocialProofStakeWithdrawnEvent {
-    pub fn into_stake_model(&self, time: i64, transaction_id: String) -> Result<NewSptStake> {
-        let pool_id = format!("stake_pool_{}", self.associated_id);
+impl SocialProofReservationWithdrawnEvent {
+    pub fn into_reservation_model(&self, time: i64, transaction_id: String) -> Result<NewSptReservation> {
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
         
         // For withdrawals, we record the remaining amount (0 means full withdrawal)
-        Ok(NewSptStake {
+        Ok(NewSptReservation {
             pool_id,
-            staker_address: self.staker.clone(),
+            reserver_address: self.reserver.clone(),
             amount: 0, // Represents final amount after withdrawal
-            staked_at: self.withdrawn_at,
+            reserved_at: self.withdrawn_at,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(time, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,
@@ -1109,7 +1109,7 @@ pub struct SocialProofThresholdMetEvent {
     pub associated_id: String,
     pub token_type: i16,
     pub owner: String,
-    pub total_staked: i64,
+    pub total_reserved: i64,
     pub required_threshold: i64,
     pub timestamp: i64,
 }
@@ -1133,9 +1133,9 @@ impl TryFrom<Value> for SocialProofThresholdMetEvent {
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid owner"))?
                 .to_string(),
-            total_staked: obj.get("total_staked")
+            total_reserved: obj.get("total_reserved")
                 .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid total_staked"))?,
+                .ok_or_else(|| anyhow!("Missing or invalid total_reserved"))?,
             required_threshold: obj.get("required_threshold")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid required_threshold"))?,
@@ -1147,17 +1147,17 @@ impl TryFrom<Value> for SocialProofThresholdMetEvent {
 }
 
 impl SocialProofThresholdMetEvent {
-    pub fn into_stake_pool_model(&self, time: i64, transaction_id: String) -> Result<NewSptStakePool> {
-        let pool_id = format!("stake_pool_{}", self.associated_id);
+    pub fn into_reservation_pool_model(&self, time: i64, transaction_id: String) -> Result<NewSptReservationPool> {
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
         
-        Ok(NewSptStakePool {
+        Ok(NewSptReservationPool {
             pool_id,
             associated_id: self.associated_id.clone(),
             token_type: self.token_type,
             owner: self.owner.clone(),
-            total_staked: self.total_staked,
+            total_reserved: self.total_reserved,
             required_threshold: self.required_threshold,
-            status: STAKE_POOL_STATUS_THRESHOLD_MET.to_string(),
+            status: RESERVATION_POOL_STATUS_THRESHOLD_MET.to_string(),
             created_at: self.timestamp,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(time, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
