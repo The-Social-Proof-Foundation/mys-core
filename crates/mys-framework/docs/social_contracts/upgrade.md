@@ -18,6 +18,7 @@ Provides versioning support for all shared objects.
 -  [Function `current_version`](#social_contracts_upgrade_current_version)
 -  [Function `assert_version`](#social_contracts_upgrade_assert_version)
 -  [Function `emit_migration_event`](#social_contracts_upgrade_emit_migration_event)
+-  [Function `create_upgrade_admin_cap`](#social_contracts_upgrade_create_upgrade_admin_cap)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
@@ -184,7 +185,7 @@ Event emitted when a shared object is migrated to a new version
 Module initializer - runs once when the package is published
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade_init">init</a>(_ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -193,15 +194,8 @@ Module initializer - runs once when the package is published
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade_init">init</a>(ctx: &<b>mut</b> tx_context::TxContext) {
-    // Get the publisher (sender of the publish transaction)
-    <b>let</b> publisher = tx_context::sender(ctx);
-    // Create admin capability
-    <b>let</b> admin_cap = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">UpgradeAdminCap</a> {
-        id: object::new(ctx)
-    };
-    // Transfer admin capability to publisher
-    transfer::transfer(admin_cap, publisher);
+<pre><code><b>fun</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade_init">init</a>(_ctx: &<b>mut</b> tx_context::TxContext) {
+    // Admin capability creation is now handled by the <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> <b>module</b>
     // The UpgradeCap will be automatically transferred to the publisher
     // by the MySocial system when the package is published
 }
@@ -408,6 +402,34 @@ This can be called directly by other modules implementing their own migration
         new_version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_CURRENT_VERSION">CURRENT_VERSION</a>,
         migrated_by
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_upgrade_create_upgrade_admin_cap"></a>
+
+## Function `create_upgrade_admin_cap`
+
+Create an UpgradeAdminCap for bootstrap (package visibility only)
+This function is only callable by other modules in the same package
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade_create_upgrade_admin_cap">create_upgrade_admin_cap</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade_create_upgrade_admin_cap">create_upgrade_admin_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">UpgradeAdminCap</a> {
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">UpgradeAdminCap</a> {
+        id: object::new(ctx)
+    }
 }
 </code></pre>
 

@@ -7,6 +7,7 @@ Manages content originality verification through oracle analysis,
 PoC badge issuance, revenue redirection, and community dispute voting
 
 
+-  [Struct `PoCAdminCap`](#social_contracts_proof_of_creativity_PoCAdminCap)
 -  [Struct `PoCConfig`](#social_contracts_proof_of_creativity_PoCConfig)
 -  [Struct `Vote`](#social_contracts_proof_of_creativity_Vote)
 -  [Struct `PoCDispute`](#social_contracts_proof_of_creativity_PoCDispute)
@@ -42,6 +43,8 @@ PoC badge issuance, revenue redirection, and community dispute voting
 -  [Function `migrate_poc_config`](#social_contracts_proof_of_creativity_migrate_poc_config)
 -  [Function `migrate_poc_dispute`](#social_contracts_proof_of_creativity_migrate_poc_dispute)
 -  [Function `migrate_poc_registry`](#social_contracts_proof_of_creativity_migrate_poc_registry)
+-  [Function `create_poc_admin_cap`](#social_contracts_proof_of_creativity_create_poc_admin_cap)
+-  [Function `auto_configure_ecosystem_treasury`](#social_contracts_proof_of_creativity_auto_configure_ecosystem_treasury)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
@@ -80,8 +83,8 @@ PoC badge issuance, revenue redirection, and community dispute voting
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
 <b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
+<b>use</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens">social_contracts::social_proof_tokens</a>;
 <b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
-<b>use</b> <a href="../social_contracts/token_exchange.md#social_contracts_token_exchange">social_contracts::token_exchange</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -96,6 +99,33 @@ PoC badge issuance, revenue redirection, and community dispute voting
 </code></pre>
 
 
+
+<a name="social_contracts_proof_of_creativity_PoCAdminCap"></a>
+
+## Struct `PoCAdminCap`
+
+Admin capability for Proof of Creativity system management
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCAdminCap">PoCAdminCap</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>id: <a href="../mys/object.md#mys_object_UID">mys::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
 
 <a name="social_contracts_proof_of_creativity_PoCConfig"></a>
 
@@ -1211,7 +1241,7 @@ Initialize the Proof of Creativity system
             max_vote_stake: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_MAX_VOTE_STAKE">DEFAULT_MAX_VOTE_STAKE</a>,
             voting_duration_epochs: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_VOTING_DURATION_EPOCHS">DEFAULT_VOTING_DURATION_EPOCHS</a>,
             dispute_governance_id: object::id_from_address(@0x0), // Placeholder <b>for</b> future <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>
-            ecosystem_treasury: sender, // Initially set to deployer
+            ecosystem_treasury: sender, // Auto-configured by <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> service during <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
             version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
         }
     );
@@ -1240,7 +1270,7 @@ Initialize the Proof of Creativity system
 Update PoC configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_update_poc_config">update_poc_config</a>(publisher: &<a href="../mys/package.md#mys_package_Publisher">mys::package::Publisher</a>, config: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">social_contracts::proof_of_creativity::PoCConfig</a>, oracle_address: <b>address</b>, image_threshold: u64, video_threshold: u64, audio_threshold: u64, revenue_redirect_percentage: u64, dispute_cost: u64, dispute_protocol_fee: u64, min_vote_stake: u64, max_vote_stake: u64, voting_duration_epochs: u64, ecosystem_treasury: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_update_poc_config">update_poc_config</a>(_: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCAdminCap">social_contracts::proof_of_creativity::PoCAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">social_contracts::proof_of_creativity::PoCConfig</a>, oracle_address: <b>address</b>, image_threshold: u64, video_threshold: u64, audio_threshold: u64, revenue_redirect_percentage: u64, dispute_cost: u64, dispute_protocol_fee: u64, min_vote_stake: u64, max_vote_stake: u64, voting_duration_epochs: u64, ecosystem_treasury: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1250,7 +1280,7 @@ Update PoC configuration (admin only)
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_update_poc_config">update_poc_config</a>(
-    publisher: &Publisher,
+    _: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCAdminCap">PoCAdminCap</a>,
     config: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">PoCConfig</a>,
     oracle_address: <b>address</b>,
     image_threshold: u64,
@@ -1265,8 +1295,7 @@ Update PoC configuration (admin only)
     ecosystem_treasury: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Verify the publisher is <b>for</b> this <b>module</b>
-    <b>assert</b>!(package::from_module&lt;<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">PoCConfig</a>&gt;(publisher), <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EUnauthorized">EUnauthorized</a>);
+    // Admin capability verification is handled by type system
     // Validate thresholds (0-100)
     <b>assert</b>!(image_threshold &lt;= 100, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidThreshold">EInvalidThreshold</a>);
     <b>assert</b>!(video_threshold &lt;= 100, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidThreshold">EInvalidThreshold</a>);
@@ -1316,7 +1345,7 @@ This is the ONLY function the PoC server needs to call
 Automatically updates token pool if it exists
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_analyze_and_update_post">analyze_and_update_post</a>(config: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">social_contracts::proof_of_creativity::PoCConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCRegistry">social_contracts::proof_of_creativity::PoCRegistry</a>, token_registry: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, media_type: u8, highest_similarity_score: u64, original_creator: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_analyze_and_update_post">analyze_and_update_post</a>(config: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">social_contracts::proof_of_creativity::PoCConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCRegistry">social_contracts::proof_of_creativity::PoCRegistry</a>, token_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, media_type: u8, highest_similarity_score: u64, original_creator: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1328,7 +1357,7 @@ Automatically updates token pool if it exists
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_analyze_and_update_post">analyze_and_update_post</a>(
     config: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">PoCConfig</a>,
     registry: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCRegistry">PoCRegistry</a>,
-    token_registry: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>,
+    token_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>,
     media_type: u8,
     highest_similarity_score: u64,
@@ -1430,7 +1459,7 @@ Helper function to check if token pool sync is needed
 This ensures token pools are automatically synchronized with PoC results
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_update_token_pool_if_exists">update_token_pool_if_exists</a>(token_registry: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_update_token_pool_if_exists">update_token_pool_if_exists</a>(token_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1440,13 +1469,13 @@ This ensures token pools are automatically synchronized with PoC results
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_update_token_pool_if_exists">update_token_pool_if_exists</a>(
-    token_registry: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>,
+    token_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>,
     _ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">social_contracts::post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     // Check <b>if</b> a token pool exists <b>for</b> this <a href="../social_contracts/post.md#social_contracts_post">post</a>
-    <b>if</b> (<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_token_exists">social_contracts::token_exchange::token_exists</a>(token_registry, post_id)) {
+    <b>if</b> (<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_token_exists">social_contracts::social_proof_tokens::token_exists</a>(token_registry, post_id)) {
         // Token pool exists - emit event <b>for</b> automatic synchronization
         // The off-chain system can listen <b>for</b> this event and call update_token_poc_data
         event::emit(<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_TokenPoolSyncNeededEvent">TokenPoolSyncNeededEvent</a> {
@@ -1632,7 +1661,7 @@ Cast a vote on a PoC dispute (community voting)
 Resolve PoC dispute after voting period ends
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_resolve_dispute_voting">resolve_dispute_voting</a>(dispute: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCDispute">social_contracts::proof_of_creativity::PoCDispute</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, token_registry: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_resolve_dispute_voting">resolve_dispute_voting</a>(dispute: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCDispute">social_contracts::proof_of_creativity::PoCDispute</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, token_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1644,7 +1673,7 @@ Resolve PoC dispute after voting period ends
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_resolve_dispute_voting">resolve_dispute_voting</a>(
     dispute: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCDispute">PoCDispute</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>,
-    token_registry: &<a href="../social_contracts/token_exchange.md#social_contracts_token_exchange_TokenRegistry">social_contracts::token_exchange::TokenRegistry</a>,
+    token_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> current_epoch = tx_context::epoch(ctx);
@@ -2175,6 +2204,63 @@ Migration function for PoCRegistry
         old_version,
         tx_context::sender(ctx)
     );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_proof_of_creativity_create_poc_admin_cap"></a>
+
+## Function `create_poc_admin_cap`
+
+Create a PoCAdminCap for bootstrap (package visibility only)
+This function is only callable by other modules in the same package
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_create_poc_admin_cap">create_poc_admin_cap</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCAdminCap">social_contracts::proof_of_creativity::PoCAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_create_poc_admin_cap">create_poc_admin_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCAdminCap">PoCAdminCap</a> {
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCAdminCap">PoCAdminCap</a> {
+        id: object::new(ctx)
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_proof_of_creativity_auto_configure_ecosystem_treasury"></a>
+
+## Function `auto_configure_ecosystem_treasury`
+
+Auto-configure ecosystem treasury for bootstrap (package visibility only)
+This function is only callable by other modules in the same package
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_auto_configure_ecosystem_treasury">auto_configure_ecosystem_treasury</a>(config: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">social_contracts::proof_of_creativity::PoCConfig</a>, treasury_address: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_auto_configure_ecosystem_treasury">auto_configure_ecosystem_treasury</a>(
+    config: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">PoCConfig</a>,
+    treasury_address: <b>address</b>
+) {
+    config.ecosystem_treasury = treasury_address;
 }
 </code></pre>
 

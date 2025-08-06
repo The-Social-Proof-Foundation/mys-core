@@ -109,6 +109,8 @@ Implements features like comments, reposts, quotes, and predictions
 -  [Function `get_promotion_id`](#social_contracts_post_get_promotion_id)
 -  [Function `set_moderation_status`](#social_contracts_post_set_moderation_status)
 -  [Function `is_content_approved`](#social_contracts_post_is_content_approved)
+-  [Function `create_post_admin_cap`](#social_contracts_post_create_post_admin_cap)
+-  [Function `auto_configure_prediction_treasury`](#social_contracts_post_auto_configure_prediction_treasury)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
@@ -2748,14 +2750,13 @@ Initialize the post module
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_init">init</a>(ctx: &<b>mut</b> TxContext) {
-    <b>let</b> sender = tx_context::sender(ctx);
     // Create and share <a href="../social_contracts/post.md#social_contracts_post">post</a> configuration
     transfer::share_object(
         <a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a> {
             id: object::new(ctx),
             predictions_enabled: <b>false</b>, // Predictions disabled by default
             prediction_fee_bps: 500, // Default 5% fee
-            prediction_treasury: sender, // Initially set to publisher
+            prediction_treasury: @0x0, // Auto-configured by <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> during <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
             max_content_length: <a href="../social_contracts/post.md#social_contracts_post_MAX_CONTENT_LENGTH">MAX_CONTENT_LENGTH</a>,
             max_media_urls: <a href="../social_contracts/post.md#social_contracts_post_MAX_MEDIA_URLS">MAX_MEDIA_URLS</a>,
             max_mentions: <a href="../social_contracts/post.md#social_contracts_post_MAX_MENTIONS">MAX_MENTIONS</a>,
@@ -2767,11 +2768,6 @@ Initialize the post module
             max_prediction_options: <a href="../social_contracts/post.md#social_contracts_post_MAX_PREDICTION_OPTIONS">MAX_PREDICTION_OPTIONS</a>,
         }
     );
-    // Create and transfer the admin capability to the <b>module</b> publisher
-    <b>let</b> admin_cap = <a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">PostAdminCap</a> {
-        id: object::new(ctx),
-    };
-    transfer::transfer(admin_cap, sender);
 }
 </code></pre>
 
@@ -2786,7 +2782,7 @@ Initialize the post module
 Enable or disable prediction functionality (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_predictions_enabled">set_predictions_enabled</a>(publisher: &<a href="../mys/package.md#mys_package_Publisher">mys::package::Publisher</a>, config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, enabled: bool, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_predictions_enabled">set_predictions_enabled</a>(_: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">social_contracts::post::PostAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, enabled: bool, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2796,13 +2792,12 @@ Enable or disable prediction functionality (admin only)
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_predictions_enabled">set_predictions_enabled</a>(
-    publisher: &Publisher,
+    _: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">PostAdminCap</a>,
     config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     enabled: bool,
     _ctx: &<b>mut</b> TxContext
 ) {
-    // Verify the publisher is <b>for</b> this <b>module</b>
-    <b>assert</b>!(package::from_module&lt;<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>&gt;(publisher), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    // Admin capability verification is handled by type system
     // Update configuration
     config.predictions_enabled = enabled;
 }
@@ -2819,7 +2814,7 @@ Enable or disable prediction functionality (admin only)
 Set prediction fee (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_prediction_fee">set_prediction_fee</a>(publisher: &<a href="../mys/package.md#mys_package_Publisher">mys::package::Publisher</a>, config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, fee_bps: u64, treasury: <b>address</b>, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_prediction_fee">set_prediction_fee</a>(_: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">social_contracts::post::PostAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, fee_bps: u64, treasury: <b>address</b>, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2829,14 +2824,13 @@ Set prediction fee (admin only)
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_prediction_fee">set_prediction_fee</a>(
-    publisher: &Publisher,
+    _: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">PostAdminCap</a>,
     config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     fee_bps: u64,
     treasury: <b>address</b>,
     _ctx: &<b>mut</b> TxContext
 ) {
-    // Verify the publisher is <b>for</b> this <b>module</b>
-    <b>assert</b>!(package::from_module&lt;<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>&gt;(publisher), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    // Admin capability verification is handled by type system
     // Ensure fee is reasonable (max 25%)
     <b>assert</b>!(fee_bps &lt;= 2500, <a href="../social_contracts/post.md#social_contracts_post_EInvalidTipAmount">EInvalidTipAmount</a>);
     // Update configuration
@@ -4648,10 +4642,10 @@ Transfer post ownership to another user (by post owner)
 
 ## Function `admin_transfer_post_ownership`
 
-Admin function to transfer post ownership (requires Publisher)
+Admin function to transfer post ownership (requires PostAdminCap)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_admin_transfer_post_ownership">admin_transfer_post_ownership</a>(publisher: &<a href="../mys/package.md#mys_package_Publisher">mys::package::Publisher</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, new_owner: <b>address</b>, registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_admin_transfer_post_ownership">admin_transfer_post_ownership</a>(_: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">social_contracts::post::PostAdminCap</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, new_owner: <b>address</b>, registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4661,14 +4655,13 @@ Admin function to transfer post ownership (requires Publisher)
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_admin_transfer_post_ownership">admin_transfer_post_ownership</a>(
-    publisher: &Publisher,
+    _: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">PostAdminCap</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     new_owner: <b>address</b>,
     registry: &UsernameRegistry,
     _ctx: &<b>mut</b> TxContext
 ) {
-    // Verify the publisher is <b>for</b> this <b>module</b>
-    <b>assert</b>!(package::from_module&lt;<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>&gt;(publisher), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorizedTransfer">EUnauthorizedTransfer</a>);
+    // Admin capability verification is handled by type system
     // Look up the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID <b>for</b> the new owner (<b>for</b> reference, not ownership)
     <b>let</b> <b>mut</b> profile_id_option = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">social_contracts::profile::lookup_profile_by_owner</a>(registry, new_owner);
     <b>assert</b>!(option::is_some(&profile_id_option), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
@@ -6332,6 +6325,63 @@ Check if content is approved (not flagged)
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_is_content_approved">is_content_approved</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): bool {
     !<a href="../social_contracts/post.md#social_contracts_post">post</a>.removed_from_platform
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_create_post_admin_cap"></a>
+
+## Function `create_post_admin_cap`
+
+Create a PostAdminCap for bootstrap (package visibility only)
+This function is only callable by other modules in the same package
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_admin_cap">create_post_admin_cap</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">social_contracts::post::PostAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_admin_cap">create_post_admin_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">PostAdminCap</a> {
+    <a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">PostAdminCap</a> {
+        id: object::new(ctx)
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_auto_configure_prediction_treasury"></a>
+
+## Function `auto_configure_prediction_treasury`
+
+Auto-configure prediction treasury for bootstrap (package visibility only)
+This function is only callable by other modules in the same package
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_auto_configure_prediction_treasury">auto_configure_prediction_treasury</a>(config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, treasury_address: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_auto_configure_prediction_treasury">auto_configure_prediction_treasury</a>(
+    config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
+    treasury_address: <b>address</b>
+) {
+    config.prediction_treasury = treasury_address;
 }
 </code></pre>
 

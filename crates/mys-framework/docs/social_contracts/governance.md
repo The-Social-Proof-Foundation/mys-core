@@ -7,6 +7,7 @@ Manages the decentralized governance system with delegate council and community 
 Implements proposal submission, voting, and execution processes
 
 
+-  [Struct `GovernanceAdminCap`](#social_contracts_governance_GovernanceAdminCap)
 -  [Struct `GovernanceDAO`](#social_contracts_governance_GovernanceDAO)
 -  [Struct `Delegate`](#social_contracts_governance_Delegate)
 -  [Struct `NominatedDelegate`](#social_contracts_governance_NominatedDelegate)
@@ -63,6 +64,7 @@ Implements proposal submission, voting, and execution processes
 -  [Function `version`](#social_contracts_governance_version)
 -  [Function `set_version`](#social_contracts_governance_set_version)
 -  [Function `migrate_registry`](#social_contracts_governance_migrate_registry)
+-  [Function `create_governance_admin_cap`](#social_contracts_governance_create_governance_admin_cap)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
@@ -109,6 +111,33 @@ Implements proposal submission, voting, and execution processes
 </code></pre>
 
 
+
+<a name="social_contracts_governance_GovernanceAdminCap"></a>
+
+## Struct `GovernanceAdminCap`
+
+Admin capability for Governance system management
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">GovernanceAdminCap</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>id: <a href="../mys/object.md#mys_object_UID">mys::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
 
 <a name="social_contracts_governance_GovernanceDAO"></a>
 
@@ -1581,10 +1610,10 @@ Create and share separate governance registries for each proposal type
 ## Function `update_governance_parameters`
 
 Update governance parameters
-Can only be called by the contract owner with a valid publisher
+Can only be called by the governance admin
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, publisher: &<a href="../mys/package.md#mys_package_Publisher">mys::package::Publisher</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">social_contracts::governance::GovernanceAdminCap</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1595,7 +1624,7 @@ Can only be called by the contract owner with a valid publisher
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    publisher: &Publisher,
+    _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">GovernanceAdminCap</a>,
     delegate_count: u64,
     delegate_term_epochs: u64,
     proposal_submission_cost: u64,
@@ -1606,8 +1635,7 @@ Can only be called by the contract owner with a valid publisher
     quorum_votes: u64,
     _ctx: &<b>mut</b> TxContext
 ) {
-    // Verify caller <b>has</b> a valid publisher <b>for</b> this <b>module</b>
-    <b>assert</b>!(package::from_module&lt;<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>&gt;(publisher), <a href="../social_contracts/governance.md#social_contracts_governance_EUnauthorized">EUnauthorized</a>);
+    // Admin capability verification is handled by type system
     // Ensure parameters are sensible
     <b>assert</b>!(delegate_count &gt; 1, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
     <b>assert</b>!(delegate_term_epochs &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
@@ -3644,6 +3672,34 @@ Public entry function that migrates registry to the latest version
     <b>assert</b>!(current_version &lt; latest_version, <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     // Version-specific migrations would go here when needed
     registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> = latest_version;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_create_governance_admin_cap"></a>
+
+## Function `create_governance_admin_cap`
+
+Create a GovernanceAdminCap for bootstrap (package visibility only)
+This function is only callable by other modules in the same package
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_governance_admin_cap">create_governance_admin_cap</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">social_contracts::governance::GovernanceAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_governance_admin_cap">create_governance_admin_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">GovernanceAdminCap</a> {
+    <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">GovernanceAdminCap</a> {
+        id: object::new(ctx)
+    }
 }
 </code></pre>
 

@@ -7,6 +7,7 @@ Manages social media platforms and their timelines
 
 
 -  [Struct `PlatformStatus`](#social_contracts_platform_PlatformStatus)
+-  [Struct `PlatformAdminCap`](#social_contracts_platform_PlatformAdminCap)
 -  [Struct `Platform`](#social_contracts_platform_Platform)
 -  [Struct `PlatformRegistry`](#social_contracts_platform_PlatformRegistry)
 -  [Struct `PlatformCreatedEvent`](#social_contracts_platform_PlatformCreatedEvent)
@@ -70,6 +71,7 @@ Manages social media platforms and their timelines
 -  [Function `revoke_badge`](#social_contracts_platform_revoke_badge)
 -  [Function `add_moderator_register`](#social_contracts_platform_add_moderator_register)
 -  [Function `remove_moderator_unregister`](#social_contracts_platform_remove_moderator_unregister)
+-  [Function `create_platform_admin_cap`](#social_contracts_platform_create_platform_admin_cap)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
@@ -137,6 +139,33 @@ Platform status enum
 <dl>
 <dt>
 <code><a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>: u8</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_PlatformAdminCap"></a>
+
+## Struct `PlatformAdminCap`
+
+Admin capability for Platform system management
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: <a href="../mys/object.md#mys_object_UID">mys::object::UID</a></code>
 </dt>
 <dd>
 </dd>
@@ -878,7 +907,7 @@ Event emitted when tokens are airdropped from the platform treasury
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EAlreadyJoined">EAlreadyJoined</a>: u64 = 6;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EAlreadyJoined">EAlreadyJoined</a>: u64 = 5;
 </code></pre>
 
 
@@ -887,7 +916,7 @@ Event emitted when tokens are airdropped from the platform treasury
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EEmptyRecipientsList">EEmptyRecipientsList</a>: u64 = 10;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EEmptyRecipientsList">EEmptyRecipientsList</a>: u64 = 9;
 </code></pre>
 
 
@@ -896,7 +925,7 @@ Event emitted when tokens are airdropped from the platform treasury
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EInsufficientTreasuryFunds">EInsufficientTreasuryFunds</a>: u64 = 9;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EInsufficientTreasuryFunds">EInsufficientTreasuryFunds</a>: u64 = 8;
 </code></pre>
 
 
@@ -919,20 +948,11 @@ Event emitted when tokens are airdropped from the platform treasury
 
 
 
-<a name="social_contracts_platform_ENotContractOwner"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_ENotContractOwner">ENotContractOwner</a>: u64 = 5;
-</code></pre>
-
-
-
 <a name="social_contracts_platform_ENotJoined"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_ENotJoined">ENotJoined</a>: u64 = 7;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_ENotJoined">ENotJoined</a>: u64 = 6;
 </code></pre>
 
 
@@ -960,7 +980,7 @@ Error codes
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>: u64 = 8;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>: u64 = 7;
 </code></pre>
 
 
@@ -1610,10 +1630,10 @@ Unblock a profile from the platform
 
 ## Function `toggle_platform_approval`
 
-Toggle platform approval status (requires Publisher)
+Toggle platform approval status (requires PlatformAdminCap)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_toggle_platform_approval">toggle_platform_approval</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, publisher: &<a href="../mys/package.md#mys_package_Publisher">mys::package::Publisher</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_toggle_platform_approval">toggle_platform_approval</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1624,11 +1644,10 @@ Toggle platform approval status (requires Publisher)
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_toggle_platform_approval">toggle_platform_approval</a>(
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
-    publisher: &Publisher,
+    _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a>,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Verify caller <b>has</b> a valid publisher <b>for</b> this <b>module</b>
-    <b>assert</b>!(package::from_module&lt;<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>&gt;(publisher), <a href="../social_contracts/platform.md#social_contracts_platform_ENotContractOwner">ENotContractOwner</a>);
+    // Admin capability verification is handled by type system
     // Toggle approval <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.approved = !<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.approved;
     // If <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is now approved and wants DAO <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>, create <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> registry
@@ -2858,6 +2877,34 @@ When removing a moderator from a platform
             removed_by: caller,
         });
     };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_create_platform_admin_cap"></a>
+
+## Function `create_platform_admin_cap`
+
+Create a PlatformAdminCap for bootstrap (package visibility only)
+This function is only callable by other modules in the same package
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_create_platform_admin_cap">create_platform_admin_cap</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_create_platform_admin_cap">create_platform_admin_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a> {
+    <a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a> {
+        <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: object::new(ctx)
+    }
 }
 </code></pre>
 
