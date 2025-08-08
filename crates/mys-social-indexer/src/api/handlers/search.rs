@@ -172,10 +172,10 @@ pub async fn global_search(
             2 as priority
         FROM posts
         WHERE (
-            LOWER(content) LIKE LOWER($1) OR
-            LOWER(post_id) LIKE LOWER($1) OR
-            LOWER(owner) LIKE LOWER($1) OR
-            LOWER(profile_id) LIKE LOWER($1)
+            LOWER(COALESCE(content, '')) LIKE LOWER($1) OR
+            LOWER(COALESCE(post_id, '')) LIKE LOWER($1) OR
+            LOWER(COALESCE(owner, '')) LIKE LOWER($1) OR
+            LOWER(COALESCE(profile_id, '')) LIKE LOWER($1)
         )
         AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'post' = ANY($4))
         
@@ -201,11 +201,11 @@ pub async fn global_search(
             3 as priority
         FROM social_proof_token_pools
         WHERE (
-            LOWER(pool_id) LIKE LOWER($1) OR
-            LOWER(name) LIKE LOWER($1) OR
-            LOWER(symbol) LIKE LOWER($1) OR
-            LOWER(owner) LIKE LOWER($1) OR
-            LOWER(associated_id) LIKE LOWER($1)
+            LOWER(COALESCE(pool_id, '')) LIKE LOWER($1) OR
+            LOWER(COALESCE(name, '')) LIKE LOWER($1) OR
+            LOWER(COALESCE(symbol, '')) LIKE LOWER($1) OR
+            LOWER(COALESCE(owner, '')) LIKE LOWER($1) OR
+            LOWER(COALESCE(associated_id, '')) LIKE LOWER($1)
         )
         AND time = (
             SELECT MAX(time) FROM social_proof_token_pools sub
@@ -220,14 +220,14 @@ pub async fn global_search(
             pool_id::TEXT as id,
             'spt-reservation-pool' as entity_type,
             CASE 
-                WHEN token_type = 1 THEN 'Profile Reservation Pool: ' || associated_id
-                WHEN token_type = 2 THEN 'Post Reservation Pool: ' || associated_id
-                ELSE 'Reservation Pool: ' || pool_id
+                WHEN COALESCE(token_type, 0) = 1 THEN 'Profile Reservation Pool: ' || COALESCE(associated_id, '')
+                WHEN COALESCE(token_type, 0) = 2 THEN 'Post Reservation Pool: ' || COALESCE(associated_id, '')
+                ELSE 'Reservation Pool: ' || COALESCE(pool_id, '')
             END as title,
             CASE 
-                WHEN status = 'active' THEN 'Active reservation pool - ' || total_reserved || '/' || required_threshold || ' MySo reserved'
-                WHEN status = 'threshold_met' THEN 'Threshold met - ready for token creation'
-                ELSE 'Reservation pool status: ' || status
+                WHEN COALESCE(status, '') = 'active' THEN 'Active reservation pool - ' || COALESCE(total_reserved, 0) || '/' || COALESCE(required_threshold, 0) || ' MySo reserved'
+                WHEN COALESCE(status, '') = 'threshold_met' THEN 'Threshold met - ready for token creation'
+                ELSE 'Reservation pool status: ' || COALESCE(status, '')
             END as description,
             NULL as image_url,
             '/social-proof-token/reservation-pools/' || pool_id as url_path,
@@ -245,10 +245,10 @@ pub async fn global_search(
             4 as priority
         FROM spt_reservation_pools
         WHERE (
-            LOWER(pool_id) LIKE LOWER($1) OR
-            LOWER(associated_id) LIKE LOWER($1) OR
-            LOWER(owner) LIKE LOWER($1) OR
-            LOWER(status) LIKE LOWER($1)
+            LOWER(COALESCE(pool_id, '')) LIKE LOWER($1) OR
+            LOWER(COALESCE(associated_id, '')) LIKE LOWER($1) OR
+            LOWER(COALESCE(owner, '')) LIKE LOWER($1) OR
+            LOWER(COALESCE(status, '')) LIKE LOWER($1)
         )
         AND time = (
             SELECT MAX(time) FROM spt_reservation_pools sub
@@ -400,10 +400,10 @@ pub async fn global_search(
             SELECT post_id as id
             FROM posts
             WHERE (
-                LOWER(content) LIKE LOWER($1) OR
-                LOWER(post_id) LIKE LOWER($1) OR
-                LOWER(owner) LIKE LOWER($1) OR
-                LOWER(profile_id) LIKE LOWER($1)
+                LOWER(COALESCE(content, '')) LIKE LOWER($1) OR
+                LOWER(COALESCE(post_id, '')) LIKE LOWER($1) OR
+                LOWER(COALESCE(owner, '')) LIKE LOWER($1) OR
+                LOWER(COALESCE(profile_id, '')) LIKE LOWER($1)
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'post' = ANY($2))
             
@@ -413,11 +413,11 @@ pub async fn global_search(
             SELECT pool_id as id
             FROM social_proof_token_pools
             WHERE (
-                LOWER(pool_id) LIKE LOWER($1) OR
-                LOWER(name) LIKE LOWER($1) OR
-                LOWER(symbol) LIKE LOWER($1) OR
-                LOWER(owner) LIKE LOWER($1) OR
-                LOWER(associated_id) LIKE LOWER($1)
+                LOWER(COALESCE(pool_id, '')) LIKE LOWER($1) OR
+                LOWER(COALESCE(name, '')) LIKE LOWER($1) OR
+                LOWER(COALESCE(symbol, '')) LIKE LOWER($1) OR
+                LOWER(COALESCE(owner, '')) LIKE LOWER($1) OR
+                LOWER(COALESCE(associated_id, '')) LIKE LOWER($1)
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'spt-token' = ANY($2))
             AND time = (
@@ -431,10 +431,10 @@ pub async fn global_search(
             SELECT pool_id as id
             FROM spt_reservation_pools
             WHERE (
-                LOWER(pool_id) LIKE LOWER($1) OR
-                LOWER(associated_id) LIKE LOWER($1) OR
-                LOWER(owner) LIKE LOWER($1) OR
-                LOWER(status) LIKE LOWER($1)
+                LOWER(COALESCE(pool_id, '')) LIKE LOWER($1) OR
+                LOWER(COALESCE(associated_id, '')) LIKE LOWER($1) OR
+                LOWER(COALESCE(owner, '')) LIKE LOWER($1) OR
+                LOWER(COALESCE(status, '')) LIKE LOWER($1)
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'spt-reservation-pool' = ANY($2))
             AND time = (
