@@ -164,11 +164,7 @@ pub async fn global_search(
             NULL as primary_field,
             owner as secondary_field,
             EXTRACT(EPOCH FROM time)::BIGINT as timestamp,
-            jsonb_build_object(
-                'owner', COALESCE(owner, ''),
-                'profile_id', COALESCE(profile_id, ''),
-                'has_media', CASE WHEN media_urls IS NOT NULL THEN true ELSE false END
-            ) as metadata,
+            NULL::JSONB as metadata,
             2 as priority
         FROM posts
         WHERE (
@@ -192,12 +188,7 @@ pub async fn global_search(
             symbol as primary_field,
             owner as secondary_field,
             created_at as timestamp,
-            jsonb_build_object(
-                'token_type', COALESCE(token_type, 0),
-                'base_price', COALESCE(base_price, 0),
-                'circulating_supply', COALESCE(circulating_supply, 0),
-                'associated_id', COALESCE(associated_id, '')
-            ) as metadata,
+            NULL::JSONB as metadata,
             3 as priority
         FROM social_proof_token_pools
         WHERE (
@@ -220,28 +211,17 @@ pub async fn global_search(
             pool_id::TEXT as id,
             'spt-reservation-pool' as entity_type,
             CASE 
-                WHEN COALESCE(token_type, 0) = 1 THEN 'Profile Reservation Pool: ' || COALESCE(associated_id, '')
-                WHEN COALESCE(token_type, 0) = 2 THEN 'Post Reservation Pool: ' || COALESCE(associated_id, '')
-                ELSE 'Reservation Pool: ' || COALESCE(pool_id, '')
+                WHEN token_type = 1 THEN 'Profile Reservation Pool'
+                WHEN token_type = 2 THEN 'Post Reservation Pool'
+                ELSE 'Reservation Pool'
             END as title,
-            CASE 
-                WHEN COALESCE(status, '') = 'active' THEN 'Active reservation pool - ' || COALESCE(total_reserved, 0) || '/' || COALESCE(required_threshold, 0) || ' MySo reserved'
-                WHEN COALESCE(status, '') = 'threshold_met' THEN 'Threshold met - ready for token creation'
-                ELSE 'Reservation pool status: ' || COALESCE(status, '')
-            END as description,
+            'Reservation pool for MySocial tokens' as description,
             NULL as image_url,
             '/social-proof-token/reservation-pools/' || pool_id as url_path,
             pool_id as primary_field,
             owner as secondary_field,
             created_at as timestamp,
-            jsonb_build_object(
-                'token_type', COALESCE(token_type, 0),
-                'total_reserved', COALESCE(total_reserved, 0),
-                'required_threshold', COALESCE(required_threshold, 0),
-                'status', COALESCE(status, ''),
-                'associated_id', COALESCE(associated_id, ''),
-                'progress_percentage', ROUND((COALESCE(total_reserved, 0)::NUMERIC / COALESCE(required_threshold, 1)::NUMERIC) * 100, 2)
-            ) as metadata,
+            NULL::JSONB as metadata,
             4 as priority
         FROM spt_reservation_pools
         WHERE (
@@ -263,25 +243,18 @@ pub async fn global_search(
             id::TEXT as id,
             'governance-registry' as entity_type,
             CASE 
-                WHEN COALESCE(registry_type, 0) = 0 THEN 'Ecosystem Registry'
-                WHEN COALESCE(registry_type, 0) = 1 THEN 'Reputation Registry'
-                WHEN COALESCE(registry_type, 0) = 2 THEN 'Community Notes Registry'
-                ELSE 'Governance Registry #' || COALESCE(registry_type, 0)
+                WHEN registry_type = 0 THEN 'Ecosystem Registry'
+                WHEN registry_type = 1 THEN 'Reputation Registry'
+                WHEN registry_type = 2 THEN 'Community Notes Registry'
+                ELSE 'Governance Registry'
             END as title,
-            'Governance circle with ' || COALESCE(delegate_count, 0) || ' delegates, ' || COALESCE(proposal_submission_cost, 0) || ' MYS submission cost' as description,
+            'MySocial governance registry for community participation' as description,
             NULL as image_url,
-            '/governance/registries/' || COALESCE(registry_type, 0) as url_path,
+            '/governance/registries/' || registry_type as url_path,
             registry_type::TEXT as primary_field,
             delegate_count::TEXT as secondary_field,
             updated_at as timestamp,
-            jsonb_build_object(
-                'registry_type', COALESCE(registry_type, 0),
-                'delegate_count', COALESCE(delegate_count, 0),
-                'delegate_term_epochs', COALESCE(delegate_term_epochs, 0),
-                'proposal_submission_cost', COALESCE(proposal_submission_cost, 0),
-                'voting_period_epochs', COALESCE(voting_period_epochs, 0),
-                'quorum_votes', COALESCE(quorum_votes, 0)
-            ) as metadata,
+            NULL::JSONB as metadata,
             5 as priority
         FROM governance_registries
         WHERE (
@@ -308,18 +281,14 @@ pub async fn global_search(
             platform_id as primary_field,
             developer_address as secondary_field,
             EXTRACT(EPOCH FROM created_at)::BIGINT as timestamp,
-            jsonb_build_object(
-                'developer_address', COALESCE(developer_address, ''),
-                'is_approved', COALESCE(is_approved, false),
-                'status', COALESCE(status, 0)
-            ) as metadata,
+            NULL::JSONB as metadata,
             6 as priority
         FROM platforms
         WHERE (
             LOWER(platform_id) LIKE LOWER($1) OR
             LOWER(name) LIKE LOWER($1) OR
-            LOWER(COALESCE(developer_address, '')) LIKE LOWER($1) OR
-            LOWER(COALESCE(description, '')) LIKE LOWER($1)
+            LOWER(developer_address) LIKE LOWER($1) OR
+            LOWER(description) LIKE LOWER($1)
         )
         AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'platform' = ANY($4))
         
@@ -336,12 +305,7 @@ pub async fn global_search(
             id as primary_field,
             submitter as secondary_field,
             EXTRACT(EPOCH FROM time)::BIGINT as timestamp,
-            jsonb_build_object(
-                'submitter', COALESCE(submitter, ''),
-                'status', COALESCE(status, 0),
-                'community_votes_for', COALESCE(community_votes_for, 0),
-                'community_votes_against', COALESCE(community_votes_against, 0)
-            ) as metadata,
+            NULL::JSONB as metadata,
             7 as priority
         FROM proposals
         WHERE (
