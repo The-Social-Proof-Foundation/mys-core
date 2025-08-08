@@ -165,8 +165,8 @@ pub async fn global_search(
             owner as secondary_field,
             EXTRACT(EPOCH FROM time)::BIGINT as timestamp,
             jsonb_build_object(
-                'owner', owner,
-                'profile_id', profile_id,
+                'owner', COALESCE(owner, ''),
+                'profile_id', COALESCE(profile_id, ''),
                 'has_media', CASE WHEN media_urls IS NOT NULL THEN true ELSE false END
             ) as metadata,
             2 as priority
@@ -193,10 +193,10 @@ pub async fn global_search(
             owner as secondary_field,
             created_at as timestamp,
             jsonb_build_object(
-                'token_type', token_type,
-                'base_price', base_price,
-                'circulating_supply', circulating_supply,
-                'associated_id', associated_id
+                'token_type', COALESCE(token_type, 0),
+                'base_price', COALESCE(base_price, 0),
+                'circulating_supply', COALESCE(circulating_supply, 0),
+                'associated_id', COALESCE(associated_id, '')
             ) as metadata,
             3 as priority
         FROM social_proof_token_pools
@@ -235,12 +235,12 @@ pub async fn global_search(
             owner as secondary_field,
             created_at as timestamp,
             jsonb_build_object(
-                'token_type', token_type,
-                'total_reserved', total_reserved,
-                'required_threshold', required_threshold,
-                'status', status,
-                'associated_id', associated_id,
-                'progress_percentage', ROUND((total_reserved::NUMERIC / required_threshold::NUMERIC) * 100, 2)
+                'token_type', COALESCE(token_type, 0),
+                'total_reserved', COALESCE(total_reserved, 0),
+                'required_threshold', COALESCE(required_threshold, 0),
+                'status', COALESCE(status, ''),
+                'associated_id', COALESCE(associated_id, ''),
+                'progress_percentage', ROUND((COALESCE(total_reserved, 0)::NUMERIC / COALESCE(required_threshold, 1)::NUMERIC) * 100, 2)
             ) as metadata,
             4 as priority
         FROM spt_reservation_pools
@@ -275,12 +275,12 @@ pub async fn global_search(
             delegate_count::TEXT as secondary_field,
             updated_at as timestamp,
             jsonb_build_object(
-                'registry_type', registry_type,
-                'delegate_count', delegate_count,
-                'delegate_term_epochs', delegate_term_epochs,
-                'proposal_submission_cost', proposal_submission_cost,
-                'voting_period_epochs', voting_period_epochs,
-                'quorum_votes', quorum_votes
+                'registry_type', COALESCE(registry_type, 0),
+                'delegate_count', COALESCE(delegate_count, 0),
+                'delegate_term_epochs', COALESCE(delegate_term_epochs, 0),
+                'proposal_submission_cost', COALESCE(proposal_submission_cost, 0),
+                'voting_period_epochs', COALESCE(voting_period_epochs, 0),
+                'quorum_votes', COALESCE(quorum_votes, 0)
             ) as metadata,
             5 as priority
         FROM governance_registries
@@ -309,17 +309,17 @@ pub async fn global_search(
             developer_address as secondary_field,
             EXTRACT(EPOCH FROM created_at)::BIGINT as timestamp,
             jsonb_build_object(
-                'developer_address', developer_address,
-                'is_approved', is_approved,
-                'status', status
+                'developer_address', COALESCE(developer_address, ''),
+                'is_approved', COALESCE(is_approved, false),
+                'status', COALESCE(status, 0)
             ) as metadata,
             6 as priority
         FROM platforms
         WHERE (
             LOWER(platform_id) LIKE LOWER($1) OR
             LOWER(name) LIKE LOWER($1) OR
-            LOWER(developer_address) LIKE LOWER($1) OR
-            LOWER(description) LIKE LOWER($1)
+            LOWER(COALESCE(developer_address, '')) LIKE LOWER($1) OR
+            LOWER(COALESCE(description, '')) LIKE LOWER($1)
         )
         AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'platform' = ANY($4))
         
@@ -337,10 +337,10 @@ pub async fn global_search(
             submitter as secondary_field,
             EXTRACT(EPOCH FROM time)::BIGINT as timestamp,
             jsonb_build_object(
-                'submitter', submitter,
-                'status', status,
-                'community_votes_for', community_votes_for,
-                'community_votes_against', community_votes_against
+                'submitter', COALESCE(submitter, ''),
+                'status', COALESCE(status, ''),
+                'community_votes_for', COALESCE(community_votes_for, 0),
+                'community_votes_against', COALESCE(community_votes_against, 0)
             ) as metadata,
             7 as priority
         FROM proposals
@@ -466,8 +466,8 @@ pub async fn global_search(
             WHERE (
                 LOWER(platform_id) LIKE LOWER($1) OR
                 LOWER(name) LIKE LOWER($1) OR
-                LOWER(developer_address) LIKE LOWER($1) OR
-                LOWER(description) LIKE LOWER($1)
+                LOWER(COALESCE(developer_address, '')) LIKE LOWER($1) OR
+                LOWER(COALESCE(description, '')) LIKE LOWER($1)
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'platform' = ANY($2))
             

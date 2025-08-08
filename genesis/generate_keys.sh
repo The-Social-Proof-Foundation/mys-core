@@ -365,8 +365,8 @@ cat > "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
 # This file controls the epoch duration and stake subsidy parameters
 
 parameters:
-  # Chain start timestamp current time + 30 min (in milliseconds since epoch)
-  chain_start_timestamp_ms: $(( $(date +%s) + 1800 ))000
+  # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
+  chain_start_timestamp_ms: $(( $(date +%s) * 1000 ))
 
   # Protocol version
   protocol_version: 74  # Latest version
@@ -437,13 +437,13 @@ for i in {0..2}; do
   
   cat >> "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
   # Validator $i (dynamic ports)
-  - name: "MySo Core Validator $i"
+  - name: "MySo Validator $i"
     network_address: "/ip4/$BASE_IP/tcp/$NETWORK_PORT/http"
     p2p_address: "/ip4/$BASE_IP/udp/$P2P_PORT"
     narwhal_primary_address: "/ip4/$BASE_IP/udp/$NARWHAL_PRIMARY_PORT"
     narwhal_worker_address: "/ip4/$BASE_IP/udp/$NARWHAL_WORKER_PORT"
     consensus_address: "/ip4/$BASE_IP/tcp/$CONSENSUS_PORT/http"
-    gas_price: 0
+    gas_price: 1
     commission_rate: 500
     stake: 1000000000000000  # 1 million MySo in MIST units
 EOL
