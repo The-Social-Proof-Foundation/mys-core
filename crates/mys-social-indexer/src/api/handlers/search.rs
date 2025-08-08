@@ -263,14 +263,14 @@ pub async fn global_search(
             id::TEXT as id,
             'governance-registry' as entity_type,
             CASE 
-                WHEN registry_type = 0 THEN 'Ecosystem Registry'
-                WHEN registry_type = 1 THEN 'Reputation Registry'
-                WHEN registry_type = 2 THEN 'Community Notes Registry'
-                ELSE 'Governance Registry #' || registry_type
+                WHEN COALESCE(registry_type, 0) = 0 THEN 'Ecosystem Registry'
+                WHEN COALESCE(registry_type, 0) = 1 THEN 'Reputation Registry'
+                WHEN COALESCE(registry_type, 0) = 2 THEN 'Community Notes Registry'
+                ELSE 'Governance Registry #' || COALESCE(registry_type, 0)
             END as title,
-            'Governance circle with ' || delegate_count || ' delegates, ' || proposal_submission_cost || ' MYS submission cost' as description,
+            'Governance circle with ' || COALESCE(delegate_count, 0) || ' delegates, ' || COALESCE(proposal_submission_cost, 0) || ' MYS submission cost' as description,
             NULL as image_url,
-            '/governance/registries/' || registry_type as url_path,
+            '/governance/registries/' || COALESCE(registry_type, 0) as url_path,
             registry_type::TEXT as primary_field,
             delegate_count::TEXT as secondary_field,
             updated_at as timestamp,
@@ -338,7 +338,7 @@ pub async fn global_search(
             EXTRACT(EPOCH FROM time)::BIGINT as timestamp,
             jsonb_build_object(
                 'submitter', COALESCE(submitter, ''),
-                'status', COALESCE(status, ''),
+                'status', COALESCE(status, 0),
                 'community_votes_for', COALESCE(community_votes_for, 0),
                 'community_votes_against', COALESCE(community_votes_against, 0)
             ) as metadata,

@@ -61,7 +61,7 @@ The indexer now supports a modern staking-based social proof token system, repla
 
 ## Post Promotion Feature
 
-The indexer now supports tracking promoted posts, a pay-per-view system where post creators can allocate MYS tokens to promote their content. This feature is fully optimized for TimescaleDB to handle high-volume time-series data efficiently.
+The indexer now supports tracking promoted posts, a pay-per-view system where post creators can allocate MYS tokens to promote their creativity. This feature is fully optimized for TimescaleDB to handle high-volume time-series data efficiently.
 
 ### How It Works
 1. **Promotion Creation**: When a post is promoted, a `PromotedPostCreatedEvent` is emitted containing the promotion budget and payment per view
@@ -206,7 +206,7 @@ RUST_LOG=info,mys_social_indexer=debug
 
 #### Searchable Entity Types
 - `profile` - Search profiles by username, address, and bio
-- `post` - Search posts by content, post ID, owner, and profile ID
+- `post` - Search posts by creativity, post ID, owner, and profile ID
 - `spt-token` - Search social proof token pools by name, symbol, pool ID, owner, and associated ID
 - `spt-reservaton-pool` - Search staking pools by pool ID, associated ID, owner, and status
 - `governance-registry` - Search governance circles/registries (ecosystem, reputation, community notes) with delegate counts and voting parameters
@@ -297,15 +297,15 @@ GET /search?query=social&page=2&limit=50
 - **GET /vesting/analytics** - Get platform-wide vesting statistics and metrics
 - **GET /vesting/leaderboard** - Get vesting leaderboard (top users by vested amounts)
 
-### Proof of Content (PoC) API
-- **GET /poc/badges** - List all proof of content badges
-- **GET /poc/badges/:id** - Get specific proof of content badge details
+### Proof of Creativity (PoC) API
+- **GET /poc/badges** - List all proof of creativity badges
+- **GET /poc/badges/:id** - Get specific proof of creativity badge details
 - **GET /poc/revenue-redirections** - List all revenue redirections
-- **GET /poc/analysis-results** - List AI analysis results for content
-- **GET /poc/disputes** - List all content disputes
+- **GET /poc/analysis-results** - List AI analysis results for creativity
+- **GET /poc/disputes** - List all creativity disputes
 - **GET /poc/disputes/:id** - Get specific dispute details
 - **GET /poc/disputes/:id/votes** - Get votes for a specific dispute
-- **GET /poc/analytics** - Get proof of content analytics
+- **GET /poc/analytics** - Get proof of creativity analytics
 - **GET /poc/configuration** - Get current PoC system configuration
 - **GET /posts/:id/poc-badges** - Get PoC badges for a specific post
 - **GET /posts/:id/revenue-redirections** - Get revenue redirections for a specific post
