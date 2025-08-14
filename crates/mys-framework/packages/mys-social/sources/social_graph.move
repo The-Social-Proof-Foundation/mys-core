@@ -50,8 +50,8 @@ module social_contracts::social_graph {
         unfollowed: address,
     }
 
-    /// Module initializer to create the social graph
-    fun init(ctx: &mut TxContext) {
+    /// Bootstrap initialization function - creates the social graph shared object
+    public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let social_graph = SocialGraph {
             id: object::new(ctx),
             following: table::new(ctx),
@@ -62,11 +62,11 @@ module social_contracts::social_graph {
         // Share the social graph to make it globally accessible
         transfer::share_object(social_graph);
     }
-    
+
     #[test_only]
     /// Initialize the social graph for testing
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx)
+        bootstrap_init(ctx)
     }
 
     /// Follow a profile by address

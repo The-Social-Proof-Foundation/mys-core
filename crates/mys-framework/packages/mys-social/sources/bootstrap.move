@@ -56,9 +56,6 @@ module social_contracts::bootstrap {
     public entry fun claim_all_admin_capabilities(
         key: &mut BootstrapKey,
         publisher: &Publisher,
-        social_proof_tokens_config: &mut social_contracts::social_proof_tokens::SocialProofTokensConfig,
-        post_config: &mut social_contracts::post::PostConfig,
-        poc_config: &mut social_contracts::proof_of_creativity::PoCConfig,
         ctx: &mut TxContext
     ) {
         // === SECURITY CHECKS ===
@@ -71,14 +68,23 @@ module social_contracts::bootstrap {
         
         let admin = tx_context::sender(ctx);
         
+        // === INITIALIZE SHARED OBJECTS ===
+        // Call init functions directly to create all missing shared objects
+        // This is secure: only bootstrap can do this because it requires the one-time BootstrapKey
+        // and Publisher capability, and can only be called once in blockchain history
+        
+        // Initialize all the missing shared objects that should have been created during publication
+        social_contracts::platform::bootstrap_init(ctx);
+        social_contracts::social_graph::bootstrap_init(ctx);
+        social_contracts::profile::bootstrap_init(ctx);
+        social_contracts::block_list::bootstrap_init(ctx);
+        social_contracts::my_ip::bootstrap_init(ctx);
+        social_contracts::governance::bootstrap_init(ctx);
+        social_contracts::post::bootstrap_init(ctx);
+        social_contracts::social_proof_tokens::bootstrap_init(ctx);
+        social_contracts::proof_of_creativity::bootstrap_init(ctx);
+        
         // === CREATE ALL ADMIN CAPABILITIES ===
-        // Creates and transfers 6 admin capabilities to solve genesis deployment issue:
-        // 1. UpgradeAdminCap - Package upgrades
-        // 2. SocialProofTokensAdminCap - Social proof tokens system configuration
-        // 3. PostAdminCap - Post system configuration  
-        // 4. PoCAdminCap - Proof of Creativity configuration
-        // 5. PlatformAdminCap - Platform approval and management
-        // 6. GovernanceAdminCap - Governance parameter updates
         
         // Create UpgradeAdminCap for package upgrades
         let upgrade_admin_cap = upgrade::create_upgrade_admin_cap(ctx);
@@ -104,29 +110,8 @@ module social_contracts::bootstrap {
         let governance_admin_cap = governance::create_governance_admin_cap(ctx);
         transfer::public_transfer(governance_admin_cap, admin);
         
-        // === AUTO-CONFIGURE ALL TREASURIES ===
-        // Automatically set all treasury addresses to the admin's address
-        // This eliminates the need for manual configuration after bootstrap
-        
-        // Configure social proof tokens ecosystem treasury
-        social_proof_tokens::auto_configure_treasury(social_proof_tokens_config, admin);
-        
-        // Configure post prediction treasury
-        post::auto_configure_prediction_treasury(post_config, admin);
-        
-        // Configure proof of creativity ecosystem treasury
-        proof_of_creativity::auto_configure_ecosystem_treasury(poc_config, admin);
-        
-        // Enable trading - system is now fully configured and ready for use
-        social_proof_tokens::auto_enable_trading(social_proof_tokens_config);
-        
-        // === PERMANENT SEAL ===
-        
         // Mark the bootstrap key as used - this cannot be undone
         key.used = true;
-        
-        // Note: The BootstrapKey object remains shared but is now permanently unusable
-        // This provides a permanent on-chain record that bootstrap has occurred
     }
     
     // === UTILITY FUNCTIONS ===

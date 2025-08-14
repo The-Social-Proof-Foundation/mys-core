@@ -549,15 +549,17 @@ module social_contracts::post {
         reason: Option<String>,
     }
 
-    /// Initialize the post module
-    fun init(ctx: &mut TxContext) {
-        // Create and share post configuration
+    /// Bootstrap initialization function - creates the post configuration
+    public(package) fun bootstrap_init(ctx: &mut TxContext) {
+        let admin = tx_context::sender(ctx);
+        
+        // Create and share post configuration with proper treasury
         transfer::share_object(
             PostConfig {
                 id: object::new(ctx),
                 predictions_enabled: false, // Predictions disabled by default
                 prediction_fee_bps: 500, // Default 5% fee
-                prediction_treasury: @0x0, // Auto-configured by bootstrap during bootstrap
+                prediction_treasury: admin, // Auto-configured to admin during bootstrap
                 max_content_length: MAX_CONTENT_LENGTH,
                 max_media_urls: MAX_MEDIA_URLS,
                 max_mentions: MAX_MENTIONS,
@@ -3404,15 +3406,6 @@ module social_contracts::post {
         PostAdminCap {
             id: object::new(ctx)
         }
-    }
-
-    /// Auto-configure prediction treasury for bootstrap (package visibility only)
-    /// This function is only callable by other modules in the same package
-    public(package) fun auto_configure_prediction_treasury(
-        config: &mut PostConfig,
-        treasury_address: address
-    ) {
-        config.prediction_treasury = treasury_address;
     }
     
     #[test_only]

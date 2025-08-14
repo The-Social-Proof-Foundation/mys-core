@@ -124,8 +124,8 @@ module social_contracts::my_ip {
 
     // === Core Functions ===
 
-    /// Initialize the MyIP registry
-    fun init(ctx: &mut TxContext) {
+    /// Bootstrap initialization function - creates the MyIP registry
+    public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let registry = MyIPRegistry {
             id: object::new(ctx),
             ip_to_owner: table::new(ctx),

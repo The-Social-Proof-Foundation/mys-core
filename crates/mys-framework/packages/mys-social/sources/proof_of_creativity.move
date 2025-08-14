@@ -254,8 +254,8 @@ module social_contracts::proof_of_creativity {
 
     // === Utility Functions ===
 
-    /// Initialize the Proof of Creativity system
-    fun init(ctx: &mut TxContext) {
+    /// Bootstrap initialization function - creates the PoC configuration and registry
+    public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
         
         // Create and share PoC configuration
@@ -922,20 +922,11 @@ module social_contracts::proof_of_creativity {
         }
     }
 
-    /// Auto-configure ecosystem treasury for bootstrap (package visibility only)
-    /// This function is only callable by other modules in the same package
-    public(package) fun auto_configure_ecosystem_treasury(
-        config: &mut PoCConfig,
-        treasury_address: address
-    ) {
-        config.ecosystem_treasury = treasury_address;
-    }
-
     // === Test-only functions ===
 
     #[test_only]
     /// Initialize the PoC system for testing
     public fun test_init(ctx: &mut TxContext) {
-        init(ctx)
+        bootstrap_init(ctx)
     }
 } 

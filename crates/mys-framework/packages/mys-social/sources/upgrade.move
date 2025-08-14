@@ -44,13 +44,6 @@ module social_contracts::upgrade {
         migrated_by: address
     }
 
-    /// Module initializer - runs once when the package is published
-    fun init(_ctx: &mut tx_context::TxContext) {
-        // Admin capability creation is now handled by the bootstrap module
-        // The UpgradeCap will be automatically transferred to the publisher
-        // by the MySocial system when the package is published
-    }
-    
     #[test_only]
     /// Initialize the upgrade module for testing
     /// Note: In testing, we create admin caps directly for convenience

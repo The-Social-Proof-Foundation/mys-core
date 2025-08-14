@@ -322,9 +322,9 @@ module social_contracts::profile {
         remaining_balance: u64,
         claimed_at: u64,
     }
-
-    /// Module initializer to create the username registry
-    fun init(ctx: &mut TxContext) {
+    
+    /// Bootstrap initialization function - creates the username registry and treasury
+    public(package) fun bootstrap_init(ctx: &mut TxContext) {
         // Import current version from upgrade module
         let current_version = upgrade::current_version();
         
@@ -1428,7 +1428,7 @@ module social_contracts::profile {
     #[test_only]
     /// Initialize the profile registry for testing
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx)
+        bootstrap_init(ctx)
     }
 
     #[test_only]

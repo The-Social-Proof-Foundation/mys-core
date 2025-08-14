@@ -275,8 +275,9 @@ module social_contracts::governance {
         refund_amount: u64,
     }
 
-    /// Create and share separate governance registries for each proposal type
-    fun init(ctx: &mut TxContext) {
+    /// Bootstrap initialization function - creates the governance registries
+    /// This function has the same logic as init() but can be called by bootstrap
+    public(package) fun bootstrap_init(ctx: &mut TxContext) {
         // Create MySocial Ecosystem Governance Registry
         let mut ecosystem_registry = GovernanceDAO {
             id: object::new(ctx),

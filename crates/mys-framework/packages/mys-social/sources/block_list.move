@@ -106,9 +106,9 @@ module social_contracts::block_list {
         // Return the block list to the caller
         transfer::transfer(block_list, sender);
     }
-
-    /// Module initializer to create the block list registry
-    fun init(ctx: &mut TxContext) {
+    
+    /// Bootstrap initialization function - creates the block list registry
+    public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let registry = BlockListRegistry {
             id: object::new(ctx),
             wallet_block_lists: table::new(ctx),
@@ -122,7 +122,7 @@ module social_contracts::block_list {
     /// Test-only initializer for the block list registry
     #[test_only]
     public fun test_init(ctx: &mut TxContext) {
-        init(ctx)
+        bootstrap_init(ctx)
     }
     
     /// Generate a unique key for storing a user's blocked wallets

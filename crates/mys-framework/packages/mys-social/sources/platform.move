@@ -215,9 +215,8 @@ module social_contracts::platform {
         timestamp: u64,
     }
 
-    /// Create and share the global platform registry
-    /// This should be called once during system initialization
-    fun init(ctx: &mut TxContext) {
+    /// Bootstrap initialization function - creates the platform registry
+    public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let registry = PlatformRegistry {
             id: object::new(ctx),
             platforms_by_name: table::new(ctx),

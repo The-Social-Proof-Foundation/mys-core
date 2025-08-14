@@ -282,8 +282,6 @@ module social_contracts::social_proof_tokens {
         new_price: u64,
     }
 
-
-
     /// Event emitted when MYS is reserved towards a post/profile
     public struct ReservationCreatedEvent has copy, drop {
         associated_id: address,
@@ -358,11 +356,11 @@ module social_contracts::social_proof_tokens {
         reason: String,
     }
 
-    // === Initialization ===
-    
-    /// Initialize the social proof tokens system
-    fun init(ctx: &mut TxContext) {
-        // Create and share social proof tokens config
+    /// Bootstrap initialization function - creates the social proof tokens configuration and registry
+    public(package) fun bootstrap_init(ctx: &mut TxContext) {
+        let admin = tx_context::sender(ctx);
+        
+        // Create and share social proof tokens config with proper treasury and trading enabled
         transfer::share_object(
             SocialProofTokensConfig {
                 id: object::new(ctx),
@@ -372,7 +370,7 @@ module social_contracts::social_proof_tokens {
                 treasury_fee_bps: DEFAULT_TREASURY_FEE_BPS,
                 base_price: DEFAULT_BASE_PRICE,
                 quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
-                ecosystem_treasury: @0x0, // Auto-configured by bootstrap during bootstrap
+                ecosystem_treasury: admin, // Auto-configured to admin during bootstrap
                 max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
                 post_threshold: DEFAULT_POST_THRESHOLD,
                 profile_threshold: DEFAULT_PROFILE_THRESHOLD,
@@ -1625,22 +1623,6 @@ module social_contracts::social_proof_tokens {
             }
         );
     }
-
-    /// Auto-configure ecosystem treasury for bootstrap (package visibility only)
-    /// This function is only callable by other modules in the same package
-    public(package) fun auto_configure_treasury(
-        config: &mut SocialProofTokensConfig,
-        treasury_address: address
-    ) {
-        config.ecosystem_treasury = treasury_address;
-    }
-
-    /// Auto-enable trading for bootstrap (package visibility only)
-    /// This function is only callable by other modules in the same package
-    public(package) fun auto_enable_trading(config: &mut SocialProofTokensConfig) {
-        config.trading_halted = false;
-    }
-
     /// Create a new SocialProofTokensAdminCap for testing
     #[test_only]
     public fun create_admin_cap_for_testing(ctx: &mut TxContext): SocialProofTokensAdminCap {
