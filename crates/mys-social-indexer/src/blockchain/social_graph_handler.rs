@@ -72,9 +72,6 @@ impl SocialGraphEventHandler {
     async fn process_follow_event(&self, event: &FollowEvent, blockchain_event: Option<&BlockchainEvent>) -> Result<()> {
         let mut conn = self.get_connection().await?;
         
-        // Convert event to database model
-        let relationship = event.into_relationship()?;
-        
         // Check if relationship already exists
         let exists = diesel::select(diesel::dsl::exists(
             schema::social_graph_relationships::table
@@ -88,6 +85,9 @@ impl SocialGraphEventHandler {
             info!("Follow relationship already exists: {} -> {}", event.follower, event.following);
             return Ok(());
         }
+        
+        // Convert event to database model
+        let relationship = event.into_relationship()?;
         
         // Insert the follow relationship
         diesel::insert_into(schema::social_graph_relationships::table)
@@ -110,21 +110,28 @@ impl SocialGraphEventHandler {
             .execute(&mut conn)
             .await?;
             
-        // Update follower's following count
+        // Update the follower's following_count (+1)
+        // Try both profile_id and owner_address since data may be stored differently
         diesel::update(schema::profiles::table)
-            .filter(schema::profiles::profile_id.eq(&event.follower))
+            .filter(
+                schema::profiles::profile_id.eq(&event.follower)
+                    .or(schema::profiles::owner_address.eq(&event.follower))
+            )
             .set(schema::profiles::following_count.eq(schema::profiles::following_count + 1))
             .execute(&mut conn)
             .await?;
             
-        // Update following's followers count
+        // Update the followed profile's followers_count (+1)
+        // Try both profile_id and owner_address since data may be stored differently
         diesel::update(schema::profiles::table)
-            .filter(schema::profiles::profile_id.eq(&event.following))
+            .filter(
+                schema::profiles::profile_id.eq(&event.following)
+                    .or(schema::profiles::owner_address.eq(&event.following))
+            )
             .set(schema::profiles::followers_count.eq(schema::profiles::followers_count + 1))
             .execute(&mut conn)
             .await?;
             
-        info!("Processed and logged follow event: {} -> {}", event.follower, event.following);
         Ok(())
     }
 
@@ -132,7 +139,7 @@ impl SocialGraphEventHandler {
     async fn process_unfollow_event(&self, event: &UnfollowEvent, blockchain_event: Option<&BlockchainEvent>) -> Result<()> {
         let mut conn = self.get_connection().await?;
         
-        // Delete the follow relationship and get the count of deleted rows
+        // Delete the follow relationship
         let deleted_count = diesel::delete(schema::social_graph_relationships::table)
             .filter(schema::social_graph_relationships::follower_address.eq(&event.follower))
             .filter(schema::social_graph_relationships::following_address.eq(&event.unfollowed))
@@ -159,23 +166,30 @@ impl SocialGraphEventHandler {
             .execute(&mut conn)
             .await?;
             
-        // Update follower's following count (with safety check to prevent negative)
+        // Update the follower's following_count (-1)
+        // Try both profile_id and owner_address since data may be stored differently
         diesel::update(schema::profiles::table)
-            .filter(schema::profiles::profile_id.eq(&event.follower))
-            .filter(schema::profiles::following_count.gt(0))
+            .filter(
+                (schema::profiles::profile_id.eq(&event.follower)
+                    .or(schema::profiles::owner_address.eq(&event.follower)))
+                .and(schema::profiles::following_count.gt(0))
+            )
             .set(schema::profiles::following_count.eq(schema::profiles::following_count - 1))
             .execute(&mut conn)
             .await?;
             
-        // Update unfollowed's followers count (with safety check to prevent negative)
+        // Update the unfollowed profile's followers_count (-1)
+        // Try both profile_id and owner_address since data may be stored differently
         diesel::update(schema::profiles::table)
-            .filter(schema::profiles::profile_id.eq(&event.unfollowed))
-            .filter(schema::profiles::followers_count.gt(0))
+            .filter(
+                (schema::profiles::profile_id.eq(&event.unfollowed)
+                    .or(schema::profiles::owner_address.eq(&event.unfollowed)))
+                .and(schema::profiles::followers_count.gt(0))
+            )
             .set(schema::profiles::followers_count.eq(schema::profiles::followers_count - 1))
             .execute(&mut conn)
             .await?;
             
-        info!("Processed and logged unfollow event: {} -> {}", event.follower, event.unfollowed);
         Ok(())
     }
 
