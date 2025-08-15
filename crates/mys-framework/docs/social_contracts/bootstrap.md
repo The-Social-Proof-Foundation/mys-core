@@ -118,16 +118,7 @@ One-time bootstrap key - can only be used once, ever
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_EAlreadyUsed">EAlreadyUsed</a>: u64 = 1;
-</code></pre>
-
-
-
-<a name="social_contracts_bootstrap_ENotAuthorized"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_ENotAuthorized">ENotAuthorized</a>: u64 = 0;
+<pre><code><b>const</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_EAlreadyUsed">EAlreadyUsed</a>: u64 = 0;
 </code></pre>
 
 
@@ -172,12 +163,11 @@ then permanently seals the bootstrap key to prevent future use.
 
 Security:
 - Can only be called once in the history of the blockchain
-- Requires valid Publisher capability
 - Transfers all admin rights to the caller
 - Auto-configures all treasuries to caller's address
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(key: &<b>mut</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">social_contracts::bootstrap::BootstrapKey</a>, publisher: &<a href="../mys/package.md#mys_package_Publisher">mys::package::Publisher</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(key: &<b>mut</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">social_contracts::bootstrap::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -188,19 +178,14 @@ Security:
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(
     key: &<b>mut</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">BootstrapKey</a>,
-    publisher: &Publisher,
     ctx: &<b>mut</b> TxContext
 ) {
     // === SECURITY CHECKS ===
     // Ensure this can only be called once, ever
     <b>assert</b>!(!key.used, <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_EAlreadyUsed">EAlreadyUsed</a>);
-    // Verify caller <b>has</b> valid publisher capability <b>for</b> this package
-    <b>assert</b>!(package::from_package&lt;<a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">BootstrapKey</a>&gt;(publisher), <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_ENotAuthorized">ENotAuthorized</a>);
     <b>let</b> admin = tx_context::sender(ctx);
     // === INITIALIZE SHARED OBJECTS ===
     // Call <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_init">init</a> functions directly to create all missing shared objects
-    // This is secure: only <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> can do this because it requires the one-time <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">BootstrapKey</a>
-    // and Publisher capability, and can only be called once in blockchain history
     // Initialize all the missing shared objects that should have been created during publication
     <a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">social_contracts::platform::bootstrap_init</a>(ctx);
     <a href="../social_contracts/social_graph.md#social_contracts_social_graph_bootstrap_init">social_contracts::social_graph::bootstrap_init</a>(ctx);
