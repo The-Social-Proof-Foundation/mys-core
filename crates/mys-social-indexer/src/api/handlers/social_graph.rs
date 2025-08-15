@@ -75,12 +75,23 @@ pub async fn get_following(
         )
     }
     
+    // Get profile's wallet address to handle legacy data
+    let wallet_address = profiles::table
+        .filter(profiles::profile_id.eq(&profile_id))
+        .select(profiles::owner_address)
+        .first::<String>(&mut conn)
+        .await
+        .unwrap_or_default();
+    
     // Get following relationships and join with profiles to get details
-    // Now using profile_id instead of owner_address
+    // Handle both profile_id and wallet_address formats
     let following_query = social_graph_relationships::table
-        .filter(social_graph_relationships::follower_address.eq(&profile_id))
+        .filter(
+            social_graph_relationships::follower_address.eq(&profile_id)
+                .or(social_graph_relationships::follower_address.eq(&wallet_address))
+        )
         .inner_join(profiles::table.on(
-            diesel::dsl::sql::<diesel::sql_types::Bool>("profiles.profile_id = social_graph_relationships.following_address")
+            diesel::dsl::sql::<diesel::sql_types::Bool>("profiles.profile_id = social_graph_relationships.following_address OR profiles.owner_address = social_graph_relationships.following_address")
         ))
         .select((
             profiles::id,
@@ -103,7 +114,10 @@ pub async fn get_following(
         
     // Also get the total count for pagination info
     let total_count = match social_graph_relationships::table
-        .filter(social_graph_relationships::follower_address.eq(&profile_id))
+        .filter(
+            social_graph_relationships::follower_address.eq(&profile_id)
+                .or(social_graph_relationships::follower_address.eq(&wallet_address))
+        )
         .count()
         .get_result::<i64>(&mut conn)
         .await {
@@ -216,12 +230,23 @@ pub async fn get_followers(
         )
     }
     
+    // Get profile's wallet address to handle legacy data  
+    let wallet_address = profiles::table
+        .filter(profiles::profile_id.eq(&profile_id))
+        .select(profiles::owner_address)
+        .first::<String>(&mut conn)
+        .await
+        .unwrap_or_default();
+    
     // Get follower relationships and join with profiles to get details
-    // Now using profile_id instead of owner_address
+    // Handle both profile_id and wallet_address formats
     let followers_query = social_graph_relationships::table
-        .filter(social_graph_relationships::following_address.eq(&profile_id))
+        .filter(
+            social_graph_relationships::following_address.eq(&profile_id)
+                .or(social_graph_relationships::following_address.eq(&wallet_address))
+        )
         .inner_join(profiles::table.on(
-            diesel::dsl::sql::<diesel::sql_types::Bool>("profiles.profile_id = social_graph_relationships.follower_address")
+            diesel::dsl::sql::<diesel::sql_types::Bool>("profiles.profile_id = social_graph_relationships.follower_address OR profiles.owner_address = social_graph_relationships.follower_address")
         ))
         .select((
             profiles::id,
@@ -244,7 +269,10 @@ pub async fn get_followers(
         
     // Also get the total count for pagination info
     let total_count = match social_graph_relationships::table
-        .filter(social_graph_relationships::following_address.eq(&profile_id))
+        .filter(
+            social_graph_relationships::following_address.eq(&profile_id)
+                .or(social_graph_relationships::following_address.eq(&wallet_address))
+        )
         .count()
         .get_result::<i64>(&mut conn)
         .await {
@@ -376,10 +404,37 @@ pub async fn check_following(
         )
     }
     
-    // Check if a relationship exists using profile_id
+    // Check if a relationship exists
+    // Note: The follower_address and following_address fields may contain either profile_ids or wallet addresses
+    // depending on when the data was created, so we need to check both possibilities
+    
+    // First, get the wallet addresses for both profiles to handle legacy data
+    let follower_wallet = profiles::table
+        .filter(profiles::profile_id.eq(&follower_profile_id))
+        .select(profiles::owner_address)
+        .first::<String>(&mut conn)
+        .await
+        .unwrap_or_default();
+        
+    let following_wallet = profiles::table
+        .filter(profiles::profile_id.eq(&following_profile_id))
+        .select(profiles::owner_address)
+        .first::<String>(&mut conn)
+        .await
+        .unwrap_or_default();
+    
+    // Check relationship exists using either profile_id or wallet_address
     let relationship_exists = social_graph_relationships::table
-        .filter(social_graph_relationships::follower_address.eq(&follower_profile_id))
-        .filter(social_graph_relationships::following_address.eq(&following_profile_id))
+        .filter(
+            // Check profile_id combination (new format)
+            (social_graph_relationships::follower_address.eq(&follower_profile_id)
+                .and(social_graph_relationships::following_address.eq(&following_profile_id)))
+            .or(
+                // Check wallet_address combination (legacy format)
+                social_graph_relationships::follower_address.eq(&follower_wallet)
+                    .and(social_graph_relationships::following_address.eq(&following_wallet))
+            )
+        )
         .count()
         .get_result::<i64>(&mut conn)
         .await;
@@ -469,3 +524,4 @@ pub async fn get_follow_stats(
         }
     }
 }
+

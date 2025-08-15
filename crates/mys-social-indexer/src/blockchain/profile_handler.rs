@@ -14,7 +14,9 @@ use crate::db::{Database, DbConnection};
 use crate::blockchain::listener::BlockchainEvent;
 use crate::events::profile_events::{ProfileCreatedEvent, ProfileUpdatedEvent, TokensVestedEvent, TokensClaimedEvent};
 use crate::events::blocking_events;
+use crate::events::profile_event_types::ProfileEventType;
 use crate::models::indexer::NewIndexerProgress;
+use crate::models::profile_events::NewProfileEvent;
 use crate::schema;
 use crate::PROFILE_MODULE_NAME;
 
@@ -198,6 +200,11 @@ impl ProfileEventListener {
 
     /// Process a profile created event
     async fn process_profile_created(&self, event: &ProfileCreatedEvent) -> Result<()> {
+        self.process_profile_created_with_context(event, None).await
+    }
+
+    /// Process a profile created event with blockchain context
+    async fn process_profile_created_with_context(&self, event: &ProfileCreatedEvent, blockchain_event: Option<&BlockchainEvent>) -> Result<()> {
         let mut conn = self.get_connection().await?;
         
         info!("Processing ProfileCreatedEvent: profile_id={}, username={:?}", 
@@ -241,13 +248,32 @@ impl ProfileEventListener {
             ))
             .execute(&mut conn)
             .await?;
+        
+        // Log the profile created event to profile_events table
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::ProfileCreated.to_str(),
+            event.profile_id.clone(),
+            serde_json::to_value(event)?,
+            blockchain_event.map(|e| e.event_id.clone()),
+            Some(event.created_at as u64),
+        );
+        
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
             
-        info!("✅ Successfully processed profile created: {}", event.profile_id);
+        info!("✅ Successfully processed and logged profile created: {}", event.profile_id);
         Ok(())
     }
 
     /// Process a profile updated event
     async fn process_profile_updated(&self, event: &ProfileUpdatedEvent) -> Result<()> {
+        self.process_profile_updated_with_context(event, None).await
+    }
+
+    /// Process a profile updated event with blockchain context
+    async fn process_profile_updated_with_context(&self, event: &ProfileUpdatedEvent, blockchain_event: Option<&BlockchainEvent>) -> Result<()> {
         let mut conn = self.get_connection().await?;
         
         info!("Processing ProfileUpdatedEvent: profile_id={}", event.profile_id);
@@ -344,8 +370,22 @@ impl ProfileEventListener {
             ))
             .execute(&mut conn)
             .await?;
+        
+        // Log the profile updated event to profile_events table
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::ProfileUpdated.to_str(),
+            event.profile_id.clone(),
+            serde_json::to_value(event)?,
+            blockchain_event.map(|e| e.event_id.clone()),
+            Some(event.updated_at as u64),
+        );
+        
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
             
-        info!("✅ Successfully processed profile updated: {}", event.profile_id);
+        info!("✅ Successfully processed and logged profile updated: {}", event.profile_id);
         Ok(())
     }
 
@@ -446,7 +486,7 @@ impl ProfileEventListener {
                         .and_then(|fields| serde_json::from_value::<ProfileCreatedEvent>(fields).map_err(|e| anyhow::anyhow!(e))) {
                         Ok(profile_event) => {
                             info!("Successfully parsed profile created event: {:?}", profile_event);
-                            if let Err(e) = self.process_profile_created(&profile_event).await {
+                            if let Err(e) = self.process_profile_created_with_context(&profile_event, Some(&event)).await {
                                 error!("Failed to process profile created event: {}", e);
                             }
                         },
@@ -471,7 +511,7 @@ impl ProfileEventListener {
                         .and_then(|fields| serde_json::from_value::<ProfileUpdatedEvent>(fields).map_err(|e| anyhow::anyhow!(e))) {
                         Ok(profile_event) => {
                             info!("Successfully parsed profile updated event: {:?}", profile_event);
-                            if let Err(e) = self.process_profile_updated(&profile_event).await {
+                            if let Err(e) = self.process_profile_updated_with_context(&profile_event, Some(&event)).await {
                                 error!("Failed to process profile updated event: {}", e);
                             }
                         },
@@ -555,6 +595,28 @@ impl ProfileEventListener {
                     error!("Failed to process user block event: {}", e);
                 } else {
                     info!("✅ Successfully processed user block event");
+                    
+                    // Log the block event to profile_events table
+                    if let Some(profile_id) = crate::events::profile_event_types::extract_profile_id(&event.data) {
+                        let profile_event = NewProfileEvent::from_blockchain_event(
+                            ProfileEventType::BlockAdded.to_str(),
+                            profile_id,
+                            event.data.clone(),
+                            Some(event.event_id.clone()),
+                            None,
+                        );
+                        
+                        if let Err(e) = diesel::insert_into(schema::profile_events::table)
+                            .values(&profile_event)
+                            .execute(&mut conn)
+                            .await {
+                            error!("Failed to log block event to profile_events: {}", e);
+                        } else {
+                            info!("✅ Successfully logged block event to profile_events");
+                        }
+                    } else {
+                        warn!("Could not extract profile_id from block event data");
+                    }
                 }
                 
                 // Update progress after processing the event
@@ -571,6 +633,28 @@ impl ProfileEventListener {
                     error!("Failed to process user unblock event: {}", e);
                 } else {
                     info!("✅ Successfully processed user unblock event");
+                    
+                    // Log the unblock event to profile_events table
+                    if let Some(profile_id) = crate::events::profile_event_types::extract_profile_id(&event.data) {
+                        let profile_event = NewProfileEvent::from_blockchain_event(
+                            ProfileEventType::BlockRemoved.to_str(),
+                            profile_id,
+                            event.data.clone(),
+                            Some(event.event_id.clone()),
+                            None,
+                        );
+                        
+                        if let Err(e) = diesel::insert_into(schema::profile_events::table)
+                            .values(&profile_event)
+                            .execute(&mut conn)
+                            .await {
+                            error!("Failed to log unblock event to profile_events: {}", e);
+                        } else {
+                            info!("✅ Successfully logged unblock event to profile_events");
+                        }
+                    } else {
+                        warn!("Could not extract profile_id from unblock event data");
+                    }
                 }
                 
                 // Update progress after processing the event

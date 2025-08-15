@@ -69,7 +69,7 @@ impl SocialGraphEventHandler {
     }
 
     /// Process a follow event
-    async fn process_follow_event(&self, event: &FollowEvent) -> Result<()> {
+    async fn process_follow_event(&self, event: &FollowEvent, blockchain_event: Option<&BlockchainEvent>) -> Result<()> {
         let mut conn = self.get_connection().await?;
         
         // Convert event to database model
@@ -95,6 +95,21 @@ impl SocialGraphEventHandler {
             .execute(&mut conn)
             .await?;
             
+        // Log the follow event to social_graph_events table
+        let event_log = crate::models::social_graph::NewSocialGraphEvent {
+            event_type: "follow".to_string(),
+            follower_address: event.follower.clone(),
+            following_address: event.following.clone(),
+            created_at: relationship.created_at,
+            event_id: blockchain_event.map(|e| e.event_id.clone()),
+            raw_event_data: Some(serde_json::to_value(event)?),
+        };
+        
+        diesel::insert_into(schema::social_graph_events::table)
+            .values(&event_log)
+            .execute(&mut conn)
+            .await?;
+            
         // Update follower's following count
         diesel::update(schema::profiles::table)
             .filter(schema::profiles::profile_id.eq(&event.follower))
@@ -109,12 +124,12 @@ impl SocialGraphEventHandler {
             .execute(&mut conn)
             .await?;
             
-        info!("Processed follow: {} -> {}", event.follower, event.following);
+        info!("Processed and logged follow event: {} -> {}", event.follower, event.following);
         Ok(())
     }
 
     /// Process an unfollow event
-    async fn process_unfollow_event(&self, event: &UnfollowEvent) -> Result<()> {
+    async fn process_unfollow_event(&self, event: &UnfollowEvent, blockchain_event: Option<&BlockchainEvent>) -> Result<()> {
         let mut conn = self.get_connection().await?;
         
         // Delete the follow relationship and get the count of deleted rows
@@ -128,6 +143,21 @@ impl SocialGraphEventHandler {
             info!("No follow relationship to remove: {} -> {}", event.follower, event.unfollowed);
             return Ok(());
         }
+        
+        // Log the unfollow event to social_graph_events table
+        let event_log = crate::models::social_graph::NewSocialGraphEvent {
+            event_type: "unfollow".to_string(),
+            follower_address: event.follower.clone(),
+            following_address: event.unfollowed.clone(),
+            created_at: chrono::Utc::now().naive_utc(),
+            event_id: blockchain_event.map(|e| e.event_id.clone()),
+            raw_event_data: Some(serde_json::to_value(event)?),
+        };
+        
+        diesel::insert_into(schema::social_graph_events::table)
+            .values(&event_log)
+            .execute(&mut conn)
+            .await?;
             
         // Update follower's following count (with safety check to prevent negative)
         diesel::update(schema::profiles::table)
@@ -145,7 +175,7 @@ impl SocialGraphEventHandler {
             .execute(&mut conn)
             .await?;
             
-        info!("Processed unfollow: {} -> {}", event.follower, event.unfollowed);
+        info!("Processed and logged unfollow event: {} -> {}", event.follower, event.unfollowed);
         Ok(())
     }
 
@@ -166,7 +196,7 @@ impl SocialGraphEventHandler {
                     match crate::events::event_utils::extract_event_fields(&event.data)
                         .and_then(|fields| serde_json::from_value::<FollowEvent>(fields).map_err(|e| anyhow::anyhow!(e))) {
                         Ok(follow_event) => {
-                            if let Err(e) = self.process_follow_event(&follow_event).await {
+                            if let Err(e) = self.process_follow_event(&follow_event, Some(&event)).await {
                                 error!("Failed to process follow event: {}", e);
                             }
                         },
@@ -182,7 +212,7 @@ impl SocialGraphEventHandler {
                     match crate::events::event_utils::extract_event_fields(&event.data)
                         .and_then(|fields| serde_json::from_value::<UnfollowEvent>(fields).map_err(|e| anyhow::anyhow!(e))) {
                         Ok(unfollow_event) => {
-                            if let Err(e) = self.process_unfollow_event(&unfollow_event).await {
+                            if let Err(e) = self.process_unfollow_event(&unfollow_event, Some(&event)).await {
                                 error!("Failed to process unfollow event: {}", e);
                             }
                         },
