@@ -100,16 +100,13 @@ pub async fn get_following(
             profiles::username,
             profiles::display_name.nullable(),
             profiles::profile_photo.nullable(),
-            profiles::bio.nullable(),
-            profiles::website.nullable(),
-            social_graph_relationships::created_at,
         ))
         .limit(limit)
         .offset(offset)
         .order_by(social_graph_relationships::created_at.desc());
         
     let following_result = following_query
-        .load::<(i32, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, chrono::NaiveDateTime)>(&mut conn)
+        .load::<(i32, Option<String>, String, String, Option<String>, Option<String>)>(&mut conn)
         .await;
         
     // Also get the total count for pagination info
@@ -129,23 +126,37 @@ pub async fn get_following(
         
     match following_result {
         Ok(follows) => {
-            // Map to FollowDetail struct
-            let follows_detail: Vec<FollowDetail> = follows
-                .into_iter()
-                .map(|(id, profile_id, owner_address, username, display_name, profile_photo, bio, website, followed_at)| {
-                    FollowDetail {
-                        id,
-                        profile_id,
-                        owner_address,
-                        username,
-                        display_name,
-                        profile_photo,
-                        bio,
-                        website,
-                        followed_at,
-                    }
-                })
-                .collect();
+            // Map to FollowDetail struct and calculate follow-back status
+            let mut follows_detail: Vec<FollowDetail> = Vec::new();
+            
+            for (id, followed_profile_id, owner_address, username, display_name, profile_photo) in follows {
+                // Check if the followed profile follows back the requesting profile
+                let follows_back = social_graph_relationships::table
+                    .filter(
+                        // Check if followed profile follows the requesting profile back
+                        (social_graph_relationships::follower_address.eq(&followed_profile_id.clone().unwrap_or(owner_address.clone()))
+                            .or(social_graph_relationships::follower_address.eq(&owner_address)))
+                        .and(
+                            social_graph_relationships::following_address.eq(&profile_id)
+                                .or(social_graph_relationships::following_address.eq(&wallet_address))
+                        )
+                    )
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0) > 0;
+                
+                follows_detail.push(FollowDetail {
+                    id,
+                    profile_id: followed_profile_id,
+                    owner_address,
+                    username,
+                    display_name,
+                    profile_photo,
+                    follows_back,
+                    is_following: true, // Always true for the get_following endpoint
+                });
+            }
                 
             (StatusCode::OK, Json(serde_json::json!({
                 "profiles": follows_detail,
@@ -255,16 +266,13 @@ pub async fn get_followers(
             profiles::username,
             profiles::display_name.nullable(),
             profiles::profile_photo.nullable(),
-            profiles::bio.nullable(),
-            profiles::website.nullable(),
-            social_graph_relationships::created_at,
         ))
         .limit(limit)
         .offset(offset)
         .order_by(social_graph_relationships::created_at.desc());
         
     let followers_result = followers_query
-        .load::<(i32, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, chrono::NaiveDateTime)>(&mut conn)
+        .load::<(i32, Option<String>, String, String, Option<String>, Option<String>)>(&mut conn)
         .await;
         
     // Also get the total count for pagination info
@@ -284,23 +292,37 @@ pub async fn get_followers(
         
     match followers_result {
         Ok(follows) => {
-            // Map to FollowDetail struct
-            let follows_detail: Vec<FollowDetail> = follows
-                .into_iter()
-                .map(|(id, profile_id, owner_address, username, display_name, profile_photo, bio, website, followed_at)| {
-                    FollowDetail {
-                        id,
-                        profile_id,
-                        owner_address,
-                        username,
-                        display_name,
-                        profile_photo,
-                        bio,
-                        website,
-                        followed_at,
-                    }
-                })
-                .collect();
+            // Map to FollowDetail struct and calculate follow-back status
+            let mut follows_detail: Vec<FollowDetail> = Vec::new();
+            
+            for (id, follower_profile_id, owner_address, username, display_name, profile_photo) in follows {
+                // Check if the requesting profile is following this follower back
+                let is_following = social_graph_relationships::table
+                    .filter(
+                        // Check if requesting profile follows this follower back
+                        (social_graph_relationships::follower_address.eq(&profile_id)
+                            .or(social_graph_relationships::follower_address.eq(&wallet_address)))
+                        .and(
+                            social_graph_relationships::following_address.eq(&follower_profile_id.clone().unwrap_or(owner_address.clone()))
+                                .or(social_graph_relationships::following_address.eq(&owner_address))
+                        )
+                    )
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0) > 0;
+                
+                follows_detail.push(FollowDetail {
+                    id,
+                    profile_id: follower_profile_id,
+                    owner_address,
+                    username,
+                    display_name,
+                    profile_photo,
+                    follows_back: true, // Always true for the get_followers endpoint
+                    is_following,
+                });
+            }
                 
             (StatusCode::OK, Json(serde_json::json!({
                 "profiles": follows_detail,

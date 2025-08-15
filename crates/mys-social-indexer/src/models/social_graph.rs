@@ -65,12 +65,10 @@ pub struct FollowDetail {
     pub display_name: Option<String>,
     // Profile photo
     pub profile_photo: Option<String>,
-    // Bio
-    pub bio: Option<String>,
-    // Website
-    pub website: Option<String>,
-    // When the relationship was created
-    pub followed_at: NaiveDateTime,
+    // Whether this profile follows back the requesting profile
+    pub follows_back: bool,
+    // Whether the requesting profile is following this profile
+    pub is_following: bool,
 }
 
 /// Query parameters for paginating followers/following lists
