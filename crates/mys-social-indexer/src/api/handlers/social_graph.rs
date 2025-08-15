@@ -126,25 +126,59 @@ pub async fn get_following(
         
     match following_result {
         Ok(follows) => {
-            // Map to FollowDetail struct and calculate follow-back status
+            // Map to FollowDetail struct and calculate relationship status from viewer's perspective
             let mut follows_detail: Vec<FollowDetail> = Vec::new();
             
-            for (id, followed_profile_id, owner_address, username, display_name, profile_photo) in follows {
-                // Check if the followed profile follows back the requesting profile
-                let follows_back = social_graph_relationships::table
-                    .filter(
-                        // Check if followed profile follows the requesting profile back
-                        (social_graph_relationships::follower_address.eq(&followed_profile_id.clone().unwrap_or(owner_address.clone()))
-                            .or(social_graph_relationships::follower_address.eq(&owner_address)))
-                        .and(
-                            social_graph_relationships::following_address.eq(&profile_id)
-                                .or(social_graph_relationships::following_address.eq(&wallet_address))
-                        )
-                    )
-                    .count()
-                    .get_result::<i64>(&mut conn)
+            // Get viewer's wallet address if viewer_id is provided
+            let viewer_wallet = if let Some(ref viewer_id) = query.viewer_id {
+                profiles::table
+                    .filter(profiles::profile_id.eq(viewer_id))
+                    .select(profiles::owner_address)
+                    .first::<String>(&mut conn)
                     .await
-                    .unwrap_or(0) > 0;
+                    .unwrap_or_default()
+            } else {
+                String::new()
+            };
+            
+            for (id, followed_profile_id, owner_address, username, display_name, profile_photo) in follows {
+                // Calculate relationship status from viewer's perspective (if viewer_id provided)
+                let (is_following, follows_back) = if let Some(ref viewer_id) = query.viewer_id {
+                    // Check if viewer is following this profile
+                    let viewer_follows_this = social_graph_relationships::table
+                        .filter(
+                            (social_graph_relationships::follower_address.eq(viewer_id)
+                                .or(social_graph_relationships::follower_address.eq(&viewer_wallet)))
+                            .and(
+                                social_graph_relationships::following_address.eq(&followed_profile_id.clone().unwrap_or(owner_address.clone()))
+                                    .or(social_graph_relationships::following_address.eq(&owner_address))
+                            )
+                        )
+                        .count()
+                        .get_result::<i64>(&mut conn)
+                        .await
+                        .unwrap_or(0) > 0;
+                    
+                    // Check if this profile follows the viewer back
+                    let this_follows_viewer = social_graph_relationships::table
+                        .filter(
+                            (social_graph_relationships::follower_address.eq(&followed_profile_id.clone().unwrap_or(owner_address.clone()))
+                                .or(social_graph_relationships::follower_address.eq(&owner_address)))
+                            .and(
+                                social_graph_relationships::following_address.eq(viewer_id)
+                                    .or(social_graph_relationships::following_address.eq(&viewer_wallet))
+                            )
+                        )
+                        .count()
+                        .get_result::<i64>(&mut conn)
+                        .await
+                        .unwrap_or(0) > 0;
+                    
+                    (viewer_follows_this, this_follows_viewer)
+                } else {
+                    // No viewer context - default to false
+                    (false, false)
+                };
                 
                 follows_detail.push(FollowDetail {
                     id,
@@ -154,7 +188,7 @@ pub async fn get_following(
                     display_name,
                     profile_photo,
                     follows_back,
-                    is_following: true, // Always true for the get_following endpoint
+                    is_following,
                 });
             }
                 
@@ -292,25 +326,59 @@ pub async fn get_followers(
         
     match followers_result {
         Ok(follows) => {
-            // Map to FollowDetail struct and calculate follow-back status
+            // Map to FollowDetail struct and calculate relationship status from viewer's perspective
             let mut follows_detail: Vec<FollowDetail> = Vec::new();
             
-            for (id, follower_profile_id, owner_address, username, display_name, profile_photo) in follows {
-                // Check if the requesting profile is following this follower back
-                let is_following = social_graph_relationships::table
-                    .filter(
-                        // Check if requesting profile follows this follower back
-                        (social_graph_relationships::follower_address.eq(&profile_id)
-                            .or(social_graph_relationships::follower_address.eq(&wallet_address)))
-                        .and(
-                            social_graph_relationships::following_address.eq(&follower_profile_id.clone().unwrap_or(owner_address.clone()))
-                                .or(social_graph_relationships::following_address.eq(&owner_address))
-                        )
-                    )
-                    .count()
-                    .get_result::<i64>(&mut conn)
+            // Get viewer's wallet address if viewer_id is provided
+            let viewer_wallet = if let Some(ref viewer_id) = query.viewer_id {
+                profiles::table
+                    .filter(profiles::profile_id.eq(viewer_id))
+                    .select(profiles::owner_address)
+                    .first::<String>(&mut conn)
                     .await
-                    .unwrap_or(0) > 0;
+                    .unwrap_or_default()
+            } else {
+                String::new()
+            };
+            
+            for (id, follower_profile_id, owner_address, username, display_name, profile_photo) in follows {
+                // Calculate relationship status from viewer's perspective (if viewer_id provided)
+                let (is_following, follows_back) = if let Some(ref viewer_id) = query.viewer_id {
+                    // Check if viewer is following this profile
+                    let viewer_follows_this = social_graph_relationships::table
+                        .filter(
+                            (social_graph_relationships::follower_address.eq(viewer_id)
+                                .or(social_graph_relationships::follower_address.eq(&viewer_wallet)))
+                            .and(
+                                social_graph_relationships::following_address.eq(&follower_profile_id.clone().unwrap_or(owner_address.clone()))
+                                    .or(social_graph_relationships::following_address.eq(&owner_address))
+                            )
+                        )
+                        .count()
+                        .get_result::<i64>(&mut conn)
+                        .await
+                        .unwrap_or(0) > 0;
+                    
+                    // Check if this profile follows the viewer back
+                    let this_follows_viewer = social_graph_relationships::table
+                        .filter(
+                            (social_graph_relationships::follower_address.eq(&follower_profile_id.clone().unwrap_or(owner_address.clone()))
+                                .or(social_graph_relationships::follower_address.eq(&owner_address)))
+                            .and(
+                                social_graph_relationships::following_address.eq(viewer_id)
+                                    .or(social_graph_relationships::following_address.eq(&viewer_wallet))
+                            )
+                        )
+                        .count()
+                        .get_result::<i64>(&mut conn)
+                        .await
+                        .unwrap_or(0) > 0;
+                    
+                    (viewer_follows_this, this_follows_viewer)
+                } else {
+                    // No viewer context - default to false
+                    (false, false)
+                };
                 
                 follows_detail.push(FollowDetail {
                     id,
@@ -319,7 +387,7 @@ pub async fn get_followers(
                     username,
                     display_name,
                     profile_photo,
-                    follows_back: true, // Always true for the get_followers endpoint
+                    follows_back,
                     is_following,
                 });
             }

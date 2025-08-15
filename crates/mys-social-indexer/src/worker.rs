@@ -22,7 +22,7 @@ use crate::events::{
     FollowEvent, UnfollowEvent,
     PlatformBlockedProfileEvent, PlatformUnblockedProfileEvent, UserJoinedPlatformEvent, UserLeftPlatformEvent,
 };
-use crate::models::profile::{NewProfile, NewFollow, NewProfilePlatformLink, UpdateProfile};
+use crate::models::profile::{NewProfile, NewProfilePlatformLink, UpdateProfile};
 use crate::models::username::{NewUsername, UpdateUsername, NewUsernameHistory};
 // These model imports will be added when we implement these features
 //use crate::models::platform::NewPlatform;
@@ -424,32 +424,86 @@ impl SocialIndexerWorker {
     async fn process_profile_follow(&self, event: &ProfileFollowEvent) -> Result<()> {
         let mut conn = self.get_connection().await?;
         
-        // Create new follow relationship
-        let follow = NewFollow {
-            follower_id: event.follower_id.clone(),
-            following_id: event.following_id.clone(),
-            followed_at: Utc::now(), // Use current time if event doesn't provide it
+        // Check if relationship already exists to avoid duplicates
+        let exists = diesel::select(diesel::dsl::exists(
+            schema::social_graph_relationships::table
+                .filter(schema::social_graph_relationships::follower_address.eq(&event.follower_id))
+                .filter(schema::social_graph_relationships::following_address.eq(&event.following_id))
+        ))
+        .get_result::<bool>(&mut conn)
+        .await?;
+        
+        if exists {
+            info!("Profile follow relationship already exists: {} -> {}", event.follower_id, event.following_id);
+            return Ok(());
+        }
+        
+        // Create new follow relationship using existing social_graph_relationships table
+        let relationship = crate::models::social_graph::NewSocialGraphRelationship {
+            follower_address: event.follower_id.clone(),
+            following_address: event.following_id.clone(),
+            created_at: if let Some(timestamp) = event.followed_at {
+                chrono::DateTime::from_timestamp(timestamp as i64, 0)
+                    .unwrap_or(chrono::Utc::now())
+                    .naive_utc()
+            } else {
+                chrono::Utc::now().naive_utc()
+            },
         };
         
         // Insert the follow relationship
-        diesel::insert_into(schema::follows::table)
-            .values(&follow)
-            .on_conflict((schema::follows::follower_id, schema::follows::following_id))
-            .do_update()
-            .set(&follow)
+        diesel::insert_into(schema::social_graph_relationships::table)
+            .values(&relationship)
             .execute(&mut conn)
             .await?;
             
-        // Update follower and following counts
-        diesel::update(schema::profiles::table.find(&event.follower_id))
+        // Log the event
+        let event_log = crate::models::social_graph::NewSocialGraphEvent {
+            event_type: "profile_follow".to_string(),
+            follower_address: event.follower_id.clone(),
+            following_address: event.following_id.clone(),
+            created_at: relationship.created_at,
+            event_id: None, // ProfileFollowEvent doesn't have blockchain event ID
+            raw_event_data: Some(serde_json::to_value(event)?),
+        };
+        
+        diesel::insert_into(schema::social_graph_events::table)
+            .values(&event_log)
+            .execute(&mut conn)
+            .await?;
+            
+        // Update follower and following counts with safe sequential logic
+        // Update the follower's following_count (+1)
+        let follower_updated = diesel::update(schema::profiles::table)
+            .filter(schema::profiles::profile_id.eq(&event.follower_id))
             .set(schema::profiles::following_count.eq(schema::profiles::following_count + 1))
             .execute(&mut conn)
             .await?;
             
-        diesel::update(schema::profiles::table.find(&event.following_id))
+        // If no rows were updated by profile_id, try owner_address
+        if follower_updated == 0 {
+            diesel::update(schema::profiles::table)
+                .filter(schema::profiles::owner_address.eq(&event.follower_id))
+                .set(schema::profiles::following_count.eq(schema::profiles::following_count + 1))
+                .execute(&mut conn)
+                .await?;
+        }
+            
+        // Update the followed profile's followers_count (+1)
+        let following_updated = diesel::update(schema::profiles::table)
+            .filter(schema::profiles::profile_id.eq(&event.following_id))
             .set(schema::profiles::followers_count.eq(schema::profiles::followers_count + 1))
             .execute(&mut conn)
             .await?;
+            
+        // If no rows were updated by profile_id, try owner_address
+        if following_updated == 0 {
+            diesel::update(schema::profiles::table)
+                .filter(schema::profiles::owner_address.eq(&event.following_id))
+                .set(schema::profiles::followers_count.eq(schema::profiles::followers_count + 1))
+                .execute(&mut conn)
+                .await?;
+        }
             
         info!("Processed profile follow: {} -> {}", event.follower_id, event.following_id);
         Ok(())

@@ -77,4 +77,6 @@ pub struct FollowsQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub page: Option<i64>,
+    /// Optional viewer profile ID to calculate is_following/follows_back from viewer's perspective
+    pub viewer_id: Option<String>,
 }

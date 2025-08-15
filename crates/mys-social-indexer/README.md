@@ -248,8 +248,8 @@ GET /search?query=social&page=2&limit=50
 - **GET /profiles/:id/blocking** - Get blocking history
 
 ### Social Graph API
-- **GET /profiles/:id/following** - List profiles followed by a profile
-- **GET /profiles/:id/followers** - List followers of a profile
+- **GET /profiles/:id/following** - List profiles followed by a profile (supports `viewer_id` parameter)
+- **GET /profiles/:id/followers** - List followers of a profile (supports `viewer_id` parameter)
 - **GET /profiles/:id/stats** - Get follow statistics
 - **GET /social-graph/check/:follower/:following** - Check if a profile follows another
 

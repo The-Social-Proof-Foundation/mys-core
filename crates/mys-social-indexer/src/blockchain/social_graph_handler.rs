@@ -111,26 +111,38 @@ impl SocialGraphEventHandler {
             .await?;
             
         // Update the follower's following_count (+1)
-        // Try both profile_id and owner_address since data may be stored differently
-        diesel::update(schema::profiles::table)
-            .filter(
-                schema::profiles::profile_id.eq(&event.follower)
-                    .or(schema::profiles::owner_address.eq(&event.follower))
-            )
+        // First try to update by profile_id, then by owner_address if no rows affected
+        let follower_updated = diesel::update(schema::profiles::table)
+            .filter(schema::profiles::profile_id.eq(&event.follower))
             .set(schema::profiles::following_count.eq(schema::profiles::following_count + 1))
             .execute(&mut conn)
             .await?;
             
+        // If no rows were updated by profile_id, try owner_address
+        if follower_updated == 0 {
+            diesel::update(schema::profiles::table)
+                .filter(schema::profiles::owner_address.eq(&event.follower))
+                .set(schema::profiles::following_count.eq(schema::profiles::following_count + 1))
+                .execute(&mut conn)
+                .await?;
+        }
+            
         // Update the followed profile's followers_count (+1)
-        // Try both profile_id and owner_address since data may be stored differently
-        diesel::update(schema::profiles::table)
-            .filter(
-                schema::profiles::profile_id.eq(&event.following)
-                    .or(schema::profiles::owner_address.eq(&event.following))
-            )
+        // First try to update by profile_id, then by owner_address if no rows affected
+        let following_updated = diesel::update(schema::profiles::table)
+            .filter(schema::profiles::profile_id.eq(&event.following))
             .set(schema::profiles::followers_count.eq(schema::profiles::followers_count + 1))
             .execute(&mut conn)
             .await?;
+            
+        // If no rows were updated by profile_id, try owner_address
+        if following_updated == 0 {
+            diesel::update(schema::profiles::table)
+                .filter(schema::profiles::owner_address.eq(&event.following))
+                .set(schema::profiles::followers_count.eq(schema::profiles::followers_count + 1))
+                .execute(&mut conn)
+                .await?;
+        }
             
         Ok(())
     }
@@ -167,28 +179,50 @@ impl SocialGraphEventHandler {
             .await?;
             
         // Update the follower's following_count (-1)
-        // Try both profile_id and owner_address since data may be stored differently
-        diesel::update(schema::profiles::table)
+        // First try to update by profile_id, then by owner_address if no rows affected
+        let follower_updated = diesel::update(schema::profiles::table)
             .filter(
-                (schema::profiles::profile_id.eq(&event.follower)
-                    .or(schema::profiles::owner_address.eq(&event.follower)))
-                .and(schema::profiles::following_count.gt(0))
+                schema::profiles::profile_id.eq(&event.follower)
+                    .and(schema::profiles::following_count.gt(0))
             )
             .set(schema::profiles::following_count.eq(schema::profiles::following_count - 1))
             .execute(&mut conn)
             .await?;
             
+        // If no rows were updated by profile_id, try owner_address
+        if follower_updated == 0 {
+            diesel::update(schema::profiles::table)
+                .filter(
+                    schema::profiles::owner_address.eq(&event.follower)
+                        .and(schema::profiles::following_count.gt(0))
+                )
+                .set(schema::profiles::following_count.eq(schema::profiles::following_count - 1))
+                .execute(&mut conn)
+                .await?;
+        }
+            
         // Update the unfollowed profile's followers_count (-1)
-        // Try both profile_id and owner_address since data may be stored differently
-        diesel::update(schema::profiles::table)
+        // First try to update by profile_id, then by owner_address if no rows affected
+        let unfollowed_updated = diesel::update(schema::profiles::table)
             .filter(
-                (schema::profiles::profile_id.eq(&event.unfollowed)
-                    .or(schema::profiles::owner_address.eq(&event.unfollowed)))
-                .and(schema::profiles::followers_count.gt(0))
+                schema::profiles::profile_id.eq(&event.unfollowed)
+                    .and(schema::profiles::followers_count.gt(0))
             )
             .set(schema::profiles::followers_count.eq(schema::profiles::followers_count - 1))
             .execute(&mut conn)
             .await?;
+            
+        // If no rows were updated by profile_id, try owner_address
+        if unfollowed_updated == 0 {
+            diesel::update(schema::profiles::table)
+                .filter(
+                    schema::profiles::owner_address.eq(&event.unfollowed)
+                        .and(schema::profiles::followers_count.gt(0))
+                )
+                .set(schema::profiles::followers_count.eq(schema::profiles::followers_count - 1))
+                .execute(&mut conn)
+                .await?;
+        }
             
         Ok(())
     }
