@@ -425,9 +425,6 @@ pub async fn check_following(
     // Note: The follower_address and following_address fields may contain various identifiers
     // (profile_ids, wallet addresses, etc.) so we check all possible combinations
     
-    debug!("Checking relationships with follower: profile_id/identifier='{}', wallet='{}', following: profile_id/identifier='{}', wallet='{}'", 
-           follower_profile_identifier, follower_wallet, following_profile_identifier, following_wallet);
-    
     let relationship_exists = social_graph_relationships::table
         .filter(
             // Check all possible combinations of identifiers stored in the relationship table
@@ -461,23 +458,40 @@ pub async fn check_following(
     match relationship_exists {
         Ok(count) => {
             let is_following = count > 0;
-            debug!("Relationship check result: count={}, is_following={}", count, is_following);
+            
+            // Check if the following profile is also following back
+            let reverse_relationship_exists = social_graph_relationships::table
+                .filter(
+                    // Check all possible combinations for reverse relationship
+                    (social_graph_relationships::follower_address.eq(&following_profile_identifier)
+                        .and(social_graph_relationships::following_address.eq(&follower_profile_identifier)))
+                    .or(
+                        social_graph_relationships::follower_address.eq(&following_profile_identifier)
+                            .and(social_graph_relationships::following_address.eq(&follower_wallet))
+                    )
+                    .or(
+                        social_graph_relationships::follower_address.eq(&following_wallet)
+                            .and(social_graph_relationships::following_address.eq(&follower_profile_identifier))
+                    )
+                    .or(
+                        social_graph_relationships::follower_address.eq(&following_wallet)
+                            .and(social_graph_relationships::following_address.eq(&follower_wallet))
+                    )
+                    .or(
+                        social_graph_relationships::follower_address.eq(&following_profile_id)
+                            .and(social_graph_relationships::following_address.eq(&follower_profile_id))
+                    )
+                )
+                .count()
+                .get_result::<i64>(&mut conn)
+                .await
+                .unwrap_or(0);
+            
+            let following_back = reverse_relationship_exists > 0;
             
             (StatusCode::OK, Json(serde_json::json!({
                 "is_following": is_following,
-                "debug_info": {
-                    "follower_input": follower_profile_id,
-                    "following_input": following_profile_id,
-                    "follower_resolved": {
-                        "profile_identifier": follower_profile_identifier,
-                        "wallet_address": follower_wallet
-                    },
-                    "following_resolved": {
-                        "profile_identifier": following_profile_identifier,
-                        "wallet_address": following_wallet
-                    },
-                    "relationship_count": count
-                }
+                "following_back": following_back
             })))
         },
         Err(e) => {
@@ -553,79 +567,6 @@ pub async fn get_follow_stats(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Failed to fetch profile stats: {}", e)
-                }))
-            )
-        }
-    }
-}
-
-/// Debug endpoint to see what's actually stored in social_graph_relationships table
-pub async fn debug_relationships(
-    State(db_pool): State<DbPool>,
-    Query(query): Query<FollowsQuery>,
-) -> impl IntoResponse {
-    let limit = query.limit.unwrap_or(20).min(100);
-    let offset = query.offset.unwrap_or(0);
-    
-    let mut conn = match db_pool.get().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            error!("Database connection error: {}", e);
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": format!("Database error: {}", e)
-                }))
-            )
-        }
-    };
-    
-    // Get sample relationships from the table
-    let relationships = social_graph_relationships::table
-        .select((
-            social_graph_relationships::id,
-            social_graph_relationships::follower_address,
-            social_graph_relationships::following_address,
-            social_graph_relationships::created_at,
-        ))
-        .order_by(social_graph_relationships::created_at.desc())
-        .limit(limit)
-        .offset(offset)
-        .load::<(i32, String, String, chrono::NaiveDateTime)>(&mut conn)
-        .await;
-        
-    let total_count = social_graph_relationships::table
-        .count()
-        .get_result::<i64>(&mut conn)
-        .await
-        .unwrap_or(0);
-    
-    match relationships {
-        Ok(rows) => {
-            let relationships_data: Vec<serde_json::Value> = rows
-                .into_iter()
-                .map(|(id, follower_addr, following_addr, created_at)| {
-                    serde_json::json!({
-                        "id": id,
-                        "follower_address": follower_addr,
-                        "following_address": following_addr,
-                        "created_at": created_at
-                    })
-                })
-                .collect();
-                
-            (StatusCode::OK, Json(serde_json::json!({
-                "relationships": relationships_data,
-                "total_count": total_count,
-                "message": "Sample relationships from social_graph_relationships table"
-            })))
-        },
-        Err(e) => {
-            error!("Failed to fetch relationships: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": format!("Failed to fetch relationships: {}", e)
                 }))
             )
         }
