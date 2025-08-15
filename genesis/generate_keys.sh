@@ -382,19 +382,19 @@ parameters:
   # Stake subsidy parameters
   #
   # When to start paying stake subsidies (0 = from beginning)
-  stake_subsidy_start_epoch: 0
+  stake_subsidy_start_epoch: 1
 
   # Initial stake subsidy distribution amount per epoch (in MIST)
-  # Default: 50,000 MySo = 50,000,000,000,000 MIST
-  stake_subsidy_initial_distribution_amount: 50000000000000
+  # Default: 538,626 MySo = 538,626,000,000,000 MIST
+  stake_subsidy_initial_distribution_amount: 538626000000000
 
   # Number of epochs before decreasing the subsidy amount
   # Default: 15 epochs
-  stake_subsidy_period_length: 15
+  stake_subsidy_period_length: 10
 
   # Rate at which subsidy decreases at end of each period (in basis points)
-  # 300 basis points = 3%
-  stake_subsidy_decrease_rate: 300
+  # 100 basis points = 1%
+  stake_subsidy_decrease_rate: 100
 
 # Accounts to add tokens to
 accounts:
