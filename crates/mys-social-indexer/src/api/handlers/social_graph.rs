@@ -345,13 +345,45 @@ pub async fn check_following(
         }
     };
     
-    // Check if both profiles exist using profile_id
-    let follower_exists = match profiles::table
-        .filter(profiles::profile_id.eq(&follower_profile_id))
-        .count()
-        .get_result::<i64>(&mut conn)
-        .await {
-        Ok(count) => count > 0,
+    // Helper function to find profile by multiple identifiers
+    async fn find_profile_identifiers(
+        conn: &mut crate::db::DbConnection,
+        identifier: &str,
+    ) -> Result<Option<(String, String)>, diesel::result::Error> {
+        // Try to find profile by profile_id, owner_address, or username
+        let result = profiles::table
+            .filter(
+                profiles::profile_id.eq(identifier)
+                    .or(profiles::owner_address.eq(identifier))
+                    .or(profiles::username.eq(identifier))
+            )
+            .select((profiles::profile_id.nullable(), profiles::owner_address))
+            .first::<(Option<String>, String)>(conn)
+            .await;
+            
+        match result {
+            Ok((profile_id, owner_address)) => {
+                // Return (profile_id_or_address, owner_address)
+                Ok(Some((profile_id.unwrap_or(owner_address.clone()), owner_address)))
+            },
+            Err(diesel::result::Error::NotFound) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+    
+    // Find follower profile identifiers
+    let (follower_profile_identifier, follower_wallet) = match find_profile_identifiers(&mut conn, &follower_profile_id).await {
+        Ok(Some((profile_id, wallet))) => (profile_id, wallet),
+        Ok(None) => {
+            debug!("Follower profile not found: {}", follower_profile_id);
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Follower profile not found",
+                    "is_following": false
+                }))
+            )
+        },
         Err(e) => {
             error!("Failed to check follower profile: {}", e);
             return (
@@ -364,23 +396,19 @@ pub async fn check_following(
         }
     };
     
-    if !follower_exists {
-        debug!("Follower profile not found: {}", follower_profile_id);
-        return (
-            StatusCode::NOT_FOUND,
-            Json(serde_json::json!({
-                "error": "Follower profile not found",
-                "is_following": false
-            }))
-        )
-    }
-    
-    let following_exists = match profiles::table
-        .filter(profiles::profile_id.eq(&following_profile_id))
-        .count()
-        .get_result::<i64>(&mut conn)
-        .await {
-        Ok(count) => count > 0,
+    // Find following profile identifiers
+    let (following_profile_identifier, following_wallet) = match find_profile_identifiers(&mut conn, &following_profile_id).await {
+        Ok(Some((profile_id, wallet))) => (profile_id, wallet),
+        Ok(None) => {
+            debug!("Following profile not found: {}", following_profile_id);
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Following profile not found",
+                    "is_following": false
+                }))
+            )
+        },
         Err(e) => {
             error!("Failed to check following profile: {}", e);
             return (
@@ -393,46 +421,37 @@ pub async fn check_following(
         }
     };
     
-    if !following_exists {
-        debug!("Following profile not found: {}", following_profile_id);
-        return (
-            StatusCode::NOT_FOUND,
-            Json(serde_json::json!({
-                "error": "Following profile not found",
-                "is_following": false
-            }))
-        )
-    }
-    
     // Check if a relationship exists
-    // Note: The follower_address and following_address fields may contain either profile_ids or wallet addresses
-    // depending on when the data was created, so we need to check both possibilities
+    // Note: The follower_address and following_address fields may contain various identifiers
+    // (profile_ids, wallet addresses, etc.) so we check all possible combinations
     
-    // First, get the wallet addresses for both profiles to handle legacy data
-    let follower_wallet = profiles::table
-        .filter(profiles::profile_id.eq(&follower_profile_id))
-        .select(profiles::owner_address)
-        .first::<String>(&mut conn)
-        .await
-        .unwrap_or_default();
-        
-    let following_wallet = profiles::table
-        .filter(profiles::profile_id.eq(&following_profile_id))
-        .select(profiles::owner_address)
-        .first::<String>(&mut conn)
-        .await
-        .unwrap_or_default();
+    debug!("Checking relationships with follower: profile_id/identifier='{}', wallet='{}', following: profile_id/identifier='{}', wallet='{}'", 
+           follower_profile_identifier, follower_wallet, following_profile_identifier, following_wallet);
     
-    // Check relationship exists using either profile_id or wallet_address
     let relationship_exists = social_graph_relationships::table
         .filter(
-            // Check profile_id combination (new format)
-            (social_graph_relationships::follower_address.eq(&follower_profile_id)
-                .and(social_graph_relationships::following_address.eq(&following_profile_id)))
+            // Check all possible combinations of identifiers stored in the relationship table
+            (social_graph_relationships::follower_address.eq(&follower_profile_identifier)
+                .and(social_graph_relationships::following_address.eq(&following_profile_identifier)))
             .or(
-                // Check wallet_address combination (legacy format)
+                // Follower as profile_id, following as wallet
+                social_graph_relationships::follower_address.eq(&follower_profile_identifier)
+                    .and(social_graph_relationships::following_address.eq(&following_wallet))
+            )
+            .or(
+                // Follower as wallet, following as profile_id
+                social_graph_relationships::follower_address.eq(&follower_wallet)
+                    .and(social_graph_relationships::following_address.eq(&following_profile_identifier))
+            )
+            .or(
+                // Both as wallet addresses
                 social_graph_relationships::follower_address.eq(&follower_wallet)
                     .and(social_graph_relationships::following_address.eq(&following_wallet))
+            )
+            .or(
+                // Also check with original input parameters in case they're stored differently
+                social_graph_relationships::follower_address.eq(&follower_profile_id)
+                    .and(social_graph_relationships::following_address.eq(&following_profile_id))
             )
         )
         .count()
@@ -440,12 +459,27 @@ pub async fn check_following(
         .await;
         
     match relationship_exists {
-        Ok(count) => (
-            StatusCode::OK,
-            Json(serde_json::json!({
-                "is_following": count > 0
-            }))
-        ),
+        Ok(count) => {
+            let is_following = count > 0;
+            debug!("Relationship check result: count={}, is_following={}", count, is_following);
+            
+            (StatusCode::OK, Json(serde_json::json!({
+                "is_following": is_following,
+                "debug_info": {
+                    "follower_input": follower_profile_id,
+                    "following_input": following_profile_id,
+                    "follower_resolved": {
+                        "profile_identifier": follower_profile_identifier,
+                        "wallet_address": follower_wallet
+                    },
+                    "following_resolved": {
+                        "profile_identifier": following_profile_identifier,
+                        "wallet_address": following_wallet
+                    },
+                    "relationship_count": count
+                }
+            })))
+        },
         Err(e) => {
             error!("Failed to check following status: {}", e);
             (
@@ -519,6 +553,79 @@ pub async fn get_follow_stats(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Failed to fetch profile stats: {}", e)
+                }))
+            )
+        }
+    }
+}
+
+/// Debug endpoint to see what's actually stored in social_graph_relationships table
+pub async fn debug_relationships(
+    State(db_pool): State<DbPool>,
+    Query(query): Query<FollowsQuery>,
+) -> impl IntoResponse {
+    let limit = query.limit.unwrap_or(20).min(100);
+    let offset = query.offset.unwrap_or(0);
+    
+    let mut conn = match db_pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("Database connection error: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database error: {}", e)
+                }))
+            )
+        }
+    };
+    
+    // Get sample relationships from the table
+    let relationships = social_graph_relationships::table
+        .select((
+            social_graph_relationships::id,
+            social_graph_relationships::follower_address,
+            social_graph_relationships::following_address,
+            social_graph_relationships::created_at,
+        ))
+        .order_by(social_graph_relationships::created_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .load::<(i32, String, String, chrono::NaiveDateTime)>(&mut conn)
+        .await;
+        
+    let total_count = social_graph_relationships::table
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+        .unwrap_or(0);
+    
+    match relationships {
+        Ok(rows) => {
+            let relationships_data: Vec<serde_json::Value> = rows
+                .into_iter()
+                .map(|(id, follower_addr, following_addr, created_at)| {
+                    serde_json::json!({
+                        "id": id,
+                        "follower_address": follower_addr,
+                        "following_address": following_addr,
+                        "created_at": created_at
+                    })
+                })
+                .collect();
+                
+            (StatusCode::OK, Json(serde_json::json!({
+                "relationships": relationships_data,
+                "total_count": total_count,
+                "message": "Sample relationships from social_graph_relationships table"
+            })))
+        },
+        Err(e) => {
+            error!("Failed to fetch relationships: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Failed to fetch relationships: {}", e)
                 }))
             )
         }
