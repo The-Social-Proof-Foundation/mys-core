@@ -9,8 +9,7 @@ module social_contracts::bootstrap {
     use mys::{
         object::{Self, UID},
         tx_context::{Self, TxContext},
-        transfer,
-        package::{Self, Publisher}
+        transfer
     };
     
     // Import admin capability types and modules
@@ -22,8 +21,7 @@ module social_contracts::bootstrap {
     use social_contracts::governance::{Self, GovernanceAdminCap};
     
     // === ERROR CODES ===
-    const ENotAuthorized: u64 = 0;
-    const EAlreadyUsed: u64 = 1;
+    const EAlreadyUsed: u64 = 0;
     
     /// One-time bootstrap key - can only be used once, ever
     public struct BootstrapKey has key {
@@ -50,28 +48,21 @@ module social_contracts::bootstrap {
     /// 
     /// Security: 
     /// - Can only be called once in the history of the blockchain
-    /// - Requires valid Publisher capability
     /// - Transfers all admin rights to the caller
     /// - Auto-configures all treasuries to caller's address
     public entry fun claim_all_admin_capabilities(
         key: &mut BootstrapKey,
-        publisher: &Publisher,
         ctx: &mut TxContext
     ) {
         // === SECURITY CHECKS ===
         
         // Ensure this can only be called once, ever
         assert!(!key.used, EAlreadyUsed);
-        
-        // Verify caller has valid publisher capability for this package
-        assert!(package::from_package<BootstrapKey>(publisher), ENotAuthorized);
-        
+
         let admin = tx_context::sender(ctx);
         
         // === INITIALIZE SHARED OBJECTS ===
         // Call init functions directly to create all missing shared objects
-        // This is secure: only bootstrap can do this because it requires the one-time BootstrapKey
-        // and Publisher capability, and can only be called once in blockchain history
         
         // Initialize all the missing shared objects that should have been created during publication
         social_contracts::platform::bootstrap_init(ctx);

@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1754607899000
+  chain_start_timestamp_ms: 1755240666000
 
   # Protocol version
   protocol_version: 74  # Latest version
@@ -37,31 +37,31 @@ parameters:
 # Accounts to add tokens to
 accounts:
   # Fullnode allocation
-  - address: "0x2ea93c0774018faca702f06b1549c11a2a4aa5895dcdb5643ba9de826b07693c"
+  - address: "0x4b637c157f0c6e9fe4d3d3f633ed1b985900e370d2eb514302037c2cf93d374e"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 1
-  - address: "0xeb64f024bf2176c20769f02f10270cd189c339f4854dc42e75f06588ac7ae8d5"
+  - address: "0x0a62507b3a291d4af1328733b39e5ca1d17d91cf8282a7955b6ebe54c8530600"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 2
-  - address: "0xacaf5d3794c9f06f7a57913f8924e0aa20eab6d10ad60cdf7ec55f4ad80ec762"
+  - address: "0xc0e290d67beee14aef1009f397cbd21e80fddd9433b1a6d9a3652f194fa79fac"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 3
-  - address: "0xbbeae85205ed5dbc23a270389884ac485de86b461a8b84d425c3d02e8e2dfeab"
+  - address: "0xe4203a9d905e21f2470c07c842124b4ae952bb59d49e146176be960f0ad7ec5f"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Faucet
-  - address: "0xed8cb802f48cad2a51a3a047989ca78fce760b9dc0b98b7319522fef91d902d7"
+  - address: "0x49956fda144f3403af6afb67d585e1c67231d9e8c7200a9445f87cb58df33dde"
     gas_amounts:
       - 1000000000000000 # 1,000,000 MySo
   # Social Proof Foundation
-  - address: "0x8e76d366add27e1d9b661f8895e6cd998e8af488cf9129e16e9d6d9063c04a85"
+  - address: "0x5a7c85caff520ab43cda4385a4ce54977e8bab0bbb115a3e434038a2663da8f6"
     gas_amounts:
       - 235000000000000000 # 240,000,000 MySo (24% - 2mill for owning fullnode & validator - 3mill for 3 validators init staking)
   # Core Team
-  - address: "0xdb5789625cfd7728fd3af89cbfe6066e37535bc7179bb42409ede37de05b617e"
+  - address: "0x150bcb6a013df5b6aaa8d2662a9dc94d0d230d4b3ea6ef123032e6cac9146081"
     gas_amounts:
       - 250000000000000000 # 250,000,000 MySo (25% 12.5% core & 12.5 marketing)
 
