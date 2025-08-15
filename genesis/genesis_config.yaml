@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1755240666000
+  chain_start_timestamp_ms: 1755276619000
 
   # Protocol version
   protocol_version: 74  # Latest version
@@ -20,7 +20,7 @@ parameters:
   # Stake subsidy parameters
   #
   # When to start paying stake subsidies (0 = from beginning)
-  stake_subsidy_start_epoch: 1
+  stake_subsidy_start_epoch: 2
 
   # Initial stake subsidy distribution amount per epoch (in MIST)
   # Default: 538,626 MySo = 538,626,000,000,000 MIST
@@ -37,31 +37,31 @@ parameters:
 # Accounts to add tokens to
 accounts:
   # Fullnode allocation
-  - address: "0x4b637c157f0c6e9fe4d3d3f633ed1b985900e370d2eb514302037c2cf93d374e"
+  - address: "0xb33907c4104879d037d9b5264340824911ce542919304b3e79ec33195bbca532"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 1
-  - address: "0x0a62507b3a291d4af1328733b39e5ca1d17d91cf8282a7955b6ebe54c8530600"
+  - address: "0x735d3f05cbaee406dde288cfa5e6a440acbc48312051d7d1c66585bc563dfd6e"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 2
-  - address: "0xc0e290d67beee14aef1009f397cbd21e80fddd9433b1a6d9a3652f194fa79fac"
+  - address: "0xa11493ca4cdcd3d0630315ce6e5fc9c94f679dbc06744ee90fdd485e010bbcc2"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Validator 3
-  - address: "0xe4203a9d905e21f2470c07c842124b4ae952bb59d49e146176be960f0ad7ec5f"
+  - address: "0xfa388079dea5932a8c16c231f9cee50a6b730a464a1045bc4189bc5b64162ea2"
     gas_amounts:
       - 500000000000000 # 500,000 MySo
   # Faucet
-  - address: "0x49956fda144f3403af6afb67d585e1c67231d9e8c7200a9445f87cb58df33dde"
+  - address: "0x4d2fb4ad1fbe3c72f5b08cbfbca625b11aa2d15e468a6df826937dad77ea2b8f"
     gas_amounts:
       - 1000000000000000 # 1,000,000 MySo
   # Social Proof Foundation
-  - address: "0x5a7c85caff520ab43cda4385a4ce54977e8bab0bbb115a3e434038a2663da8f6"
+  - address: "0xe2c971e2f3734b7d1fd312ecbb6294da6320cb737b758d4664fcb5e9957159da"
     gas_amounts:
       - 235000000000000000 # 240,000,000 MySo (24% - 2mill for owning fullnode & validator - 3mill for 3 validators init staking)
   # Core Team
-  - address: "0x150bcb6a013df5b6aaa8d2662a9dc94d0d230d4b3ea6ef123032e6cac9146081"
+  - address: "0x68c42a52fe78f3411433a06827195f9a0dcf8ae940e14283d219204a7b5f9c75"
     gas_amounts:
       - 250000000000000000 # 250,000,000 MySo (25% 12.5% core & 12.5 marketing)
 
