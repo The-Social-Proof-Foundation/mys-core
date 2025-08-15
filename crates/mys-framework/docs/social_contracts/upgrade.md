@@ -10,7 +10,6 @@ Provides versioning support for all shared objects.
 -  [Struct `UpgradeEvent`](#social_contracts_upgrade_UpgradeEvent)
 -  [Struct `ObjectMigratedEvent`](#social_contracts_upgrade_ObjectMigratedEvent)
 -  [Constants](#@Constants_0)
--  [Function `init`](#social_contracts_upgrade_init)
 -  [Function `authorize_upgrade`](#social_contracts_upgrade_authorize_upgrade)
 -  [Function `commit_upgrade`](#social_contracts_upgrade_commit_upgrade)
 -  [Function `version`](#social_contracts_upgrade_version)
@@ -177,33 +176,6 @@ Event emitted when a shared object is migrated to a new version
 </code></pre>
 
 
-
-<a name="social_contracts_upgrade_init"></a>
-
-## Function `init`
-
-Module initializer - runs once when the package is published
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade_init">init</a>(_ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade_init">init</a>(_ctx: &<b>mut</b> tx_context::TxContext) {
-    // Admin capability creation is now handled by the <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> <b>module</b>
-    // The UpgradeCap will be automatically transferred to the publisher
-    // by the MySocial system when the package is published
-}
-</code></pre>
-
-
-
-</details>
 
 <a name="social_contracts_upgrade_authorize_upgrade"></a>
 

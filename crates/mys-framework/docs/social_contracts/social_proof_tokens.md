@@ -28,7 +28,7 @@ platform, and ecosystem treasury.
 -  [Struct `TokensAddedEvent`](#social_contracts_social_proof_tokens_TokensAddedEvent)
 -  [Struct `EmergencyKillSwitchEvent`](#social_contracts_social_proof_tokens_EmergencyKillSwitchEvent)
 -  [Constants](#@Constants_0)
--  [Function `init`](#social_contracts_social_proof_tokens_init)
+-  [Function `bootstrap_init`](#social_contracts_social_proof_tokens_bootstrap_init)
 -  [Function `update_social_proof_tokens_config`](#social_contracts_social_proof_tokens_update_social_proof_tokens_config)
 -  [Function `toggle_emergency_kill_switch`](#social_contracts_social_proof_tokens_toggle_emergency_kill_switch)
 -  [Function `is_trading_halted`](#social_contracts_social_proof_tokens_is_trading_halted)
@@ -60,8 +60,6 @@ platform, and ecosystem treasury.
 -  [Function `get_pool_associated_id`](#social_contracts_social_proof_tokens_get_pool_associated_id)
 -  [Function `set_poc_redirection`](#social_contracts_social_proof_tokens_set_poc_redirection)
 -  [Function `clear_poc_redirection`](#social_contracts_social_proof_tokens_clear_poc_redirection)
--  [Function `auto_configure_treasury`](#social_contracts_social_proof_tokens_auto_configure_treasury)
--  [Function `auto_enable_trading`](#social_contracts_social_proof_tokens_auto_enable_trading)
 -  [Function `registry_version`](#social_contracts_social_proof_tokens_registry_version)
 -  [Function `borrow_registry_version_mut`](#social_contracts_social_proof_tokens_borrow_registry_version_mut)
 -  [Function `pool_version`](#social_contracts_social_proof_tokens_pool_version)
@@ -1508,14 +1506,14 @@ Viral threshold not met
 
 
 
-<a name="social_contracts_social_proof_tokens_init"></a>
+<a name="social_contracts_social_proof_tokens_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Initialize the social proof tokens system
+Bootstrap initialization function - creates the social proof tokens configuration and registry
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1524,8 +1522,9 @@ Initialize the social proof tokens system
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_init">init</a>(ctx: &<b>mut</b> TxContext) {
-    // Create and share social proof tokens config
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
+    <b>let</b> admin = tx_context::sender(ctx);
+    // Create and share social proof tokens config with proper treasury and trading enabled
     transfer::share_object(
         <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a> {
             id: object::new(ctx),
@@ -1535,7 +1534,7 @@ Initialize the social proof tokens system
             treasury_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TREASURY_FEE_BPS">DEFAULT_TREASURY_FEE_BPS</a>,
             base_price: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_BASE_PRICE">DEFAULT_BASE_PRICE</a>,
             quadratic_coefficient: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_QUADRATIC_COEFFICIENT">DEFAULT_QUADRATIC_COEFFICIENT</a>,
-            ecosystem_treasury: @0x0, // Auto-configured by <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> during <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
+            ecosystem_treasury: admin, // Auto-configured to admin during <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
             max_hold_percent_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_HOLD_PERCENT_BPS">MAX_HOLD_PERCENT_BPS</a>,
             post_threshold: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_POST_THRESHOLD">DEFAULT_POST_THRESHOLD</a>,
             profile_threshold: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_PROFILE_THRESHOLD">DEFAULT_PROFILE_THRESHOLD</a>,
@@ -3208,61 +3207,6 @@ Clear PoC redirection data from a token pool (called by PoC system)
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_clear_poc_redirection">clear_poc_redirection</a>(pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>) {
     pool.poc_redirect_to = option::none();
     pool.poc_redirect_percentage = option::none();
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_social_proof_tokens_auto_configure_treasury"></a>
-
-## Function `auto_configure_treasury`
-
-Auto-configure ecosystem treasury for bootstrap (package visibility only)
-This function is only callable by other modules in the same package
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_auto_configure_treasury">auto_configure_treasury</a>(config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, treasury_address: <b>address</b>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_auto_configure_treasury">auto_configure_treasury</a>(
-    config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
-    treasury_address: <b>address</b>
-) {
-    config.ecosystem_treasury = treasury_address;
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_social_proof_tokens_auto_enable_trading"></a>
-
-## Function `auto_enable_trading`
-
-Auto-enable trading for bootstrap (package visibility only)
-This function is only callable by other modules in the same package
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_auto_enable_trading">auto_enable_trading</a>(config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_auto_enable_trading">auto_enable_trading</a>(config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>) {
-    config.trading_halted = <b>false</b>;
 }
 </code></pre>
 

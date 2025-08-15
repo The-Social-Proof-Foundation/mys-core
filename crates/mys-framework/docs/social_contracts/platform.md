@@ -21,7 +21,7 @@ Manages social media platforms and their timelines
 -  [Struct `UserLeftPlatformEvent`](#social_contracts_platform_UserLeftPlatformEvent)
 -  [Struct `TokenAirdropEvent`](#social_contracts_platform_TokenAirdropEvent)
 -  [Constants](#@Constants_0)
--  [Function `init`](#social_contracts_platform_init)
+-  [Function `bootstrap_init`](#social_contracts_platform_bootstrap_init)
 -  [Function `create_platform`](#social_contracts_platform_create_platform)
 -  [Function `update_platform`](#social_contracts_platform_update_platform)
 -  [Function `platform_version`](#social_contracts_platform_platform_version)
@@ -1068,15 +1068,14 @@ Platform status constants
 
 
 
-<a name="social_contracts_platform_init"></a>
+<a name="social_contracts_platform_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Create and share the global platform registry
-This should be called once during system initialization
+Bootstrap initialization function - creates the platform registry
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1085,7 +1084,7 @@ This should be called once during system initialization
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_init">init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     <b>let</b> registry = <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a> {
         <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: object::new(ctx),
         platforms_by_name: table::new(ctx),

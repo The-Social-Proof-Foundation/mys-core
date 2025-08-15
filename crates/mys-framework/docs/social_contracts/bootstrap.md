@@ -47,10 +47,12 @@ One function to claim all admin capabilities AND auto-configure treasuries.
 <b>use</b> <a href="../seal/polynomial.md#seal_polynomial">seal::polynomial</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
+<b>use</b> <a href="../social_contracts/my_ip.md#social_contracts_my_ip">social_contracts::my_ip</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
 <b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity">social_contracts::proof_of_creativity</a>;
+<b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
 <b>use</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens">social_contracts::social_proof_tokens</a>;
 <b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
@@ -175,7 +177,7 @@ Security:
 - Auto-configures all treasuries to caller's address
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(key: &<b>mut</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">social_contracts::bootstrap::BootstrapKey</a>, publisher: &<a href="../mys/package.md#mys_package_Publisher">mys::package::Publisher</a>, social_proof_tokens_config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, post_config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, poc_config: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">social_contracts::proof_of_creativity::PoCConfig</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(key: &<b>mut</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">social_contracts::bootstrap::BootstrapKey</a>, publisher: &<a href="../mys/package.md#mys_package_Publisher">mys::package::Publisher</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -187,9 +189,6 @@ Security:
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(
     key: &<b>mut</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">BootstrapKey</a>,
     publisher: &Publisher,
-    social_proof_tokens_config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>,
-    post_config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>,
-    poc_config: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">social_contracts::proof_of_creativity::PoCConfig</a>,
     ctx: &<b>mut</b> TxContext
 ) {
     // === SECURITY CHECKS ===
@@ -198,14 +197,21 @@ Security:
     // Verify caller <b>has</b> valid publisher capability <b>for</b> this package
     <b>assert</b>!(package::from_package&lt;<a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">BootstrapKey</a>&gt;(publisher), <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_ENotAuthorized">ENotAuthorized</a>);
     <b>let</b> admin = tx_context::sender(ctx);
+    // === INITIALIZE SHARED OBJECTS ===
+    // Call <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_init">init</a> functions directly to create all missing shared objects
+    // This is secure: only <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> can do this because it requires the one-time <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">BootstrapKey</a>
+    // and Publisher capability, and can only be called once in blockchain history
+    // Initialize all the missing shared objects that should have been created during publication
+    <a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">social_contracts::platform::bootstrap_init</a>(ctx);
+    <a href="../social_contracts/social_graph.md#social_contracts_social_graph_bootstrap_init">social_contracts::social_graph::bootstrap_init</a>(ctx);
+    <a href="../social_contracts/profile.md#social_contracts_profile_bootstrap_init">social_contracts::profile::bootstrap_init</a>(ctx);
+    <a href="../social_contracts/block_list.md#social_contracts_block_list_bootstrap_init">social_contracts::block_list::bootstrap_init</a>(ctx);
+    <a href="../social_contracts/my_ip.md#social_contracts_my_ip_bootstrap_init">social_contracts::my_ip::bootstrap_init</a>(ctx);
+    <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">social_contracts::governance::bootstrap_init</a>(ctx);
+    <a href="../social_contracts/post.md#social_contracts_post_bootstrap_init">social_contracts::post::bootstrap_init</a>(ctx);
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_init">social_contracts::social_proof_tokens::bootstrap_init</a>(ctx);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_bootstrap_init">social_contracts::proof_of_creativity::bootstrap_init</a>(ctx);
     // === CREATE ALL ADMIN CAPABILITIES ===
-    // Creates and transfers 6 admin capabilities to solve genesis deployment issue:
-    // 1. UpgradeAdminCap - Package upgrades
-    // 2. SocialProofTokensAdminCap - Social proof tokens system configuration
-    // 3. PostAdminCap - Post system configuration
-    // 4. PoCAdminCap - Proof of Creativity configuration
-    // 5. PlatformAdminCap - Platform approval and management
-    // 6. GovernanceAdminCap - Governance parameter updates
     // Create UpgradeAdminCap <b>for</b> package upgrades
     <b>let</b> upgrade_admin_cap = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_create_upgrade_admin_cap">upgrade::create_upgrade_admin_cap</a>(ctx);
     transfer::public_transfer(upgrade_admin_cap, admin);
@@ -224,22 +230,8 @@ Security:
     // Create GovernanceAdminCap <b>for</b> <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> administration
     <b>let</b> governance_admin_cap = <a href="../social_contracts/governance.md#social_contracts_governance_create_governance_admin_cap">governance::create_governance_admin_cap</a>(ctx);
     transfer::public_transfer(governance_admin_cap, admin);
-    // === AUTO-CONFIGURE ALL TREASURIES ===
-    // Automatically set all treasury addresses to the admin's <b>address</b>
-    // This eliminates the need <b>for</b> manual configuration after <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
-    // Configure social proof tokens ecosystem treasury
-    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_auto_configure_treasury">social_proof_tokens::auto_configure_treasury</a>(social_proof_tokens_config, admin);
-    // Configure <a href="../social_contracts/post.md#social_contracts_post">post</a> prediction treasury
-    <a href="../social_contracts/post.md#social_contracts_post_auto_configure_prediction_treasury">post::auto_configure_prediction_treasury</a>(post_config, admin);
-    // Configure proof of creativity ecosystem treasury
-    <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_auto_configure_ecosystem_treasury">proof_of_creativity::auto_configure_ecosystem_treasury</a>(poc_config, admin);
-    // Enable trading - system is now fully configured and ready <b>for</b> <b>use</b>
-    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_auto_enable_trading">social_proof_tokens::auto_enable_trading</a>(social_proof_tokens_config);
-    // === PERMANENT SEAL ===
     // Mark the <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> key <b>as</b> used - this cannot be undone
     key.used = <b>true</b>;
-    // Note: The <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">BootstrapKey</a> object remains shared but is now permanently unusable
-    // This provides a permanent on-chain record that <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> <b>has</b> occurred
 }
 </code></pre>
 

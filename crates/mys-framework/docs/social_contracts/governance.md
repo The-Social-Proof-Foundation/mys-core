@@ -29,7 +29,7 @@ Implements proposal submission, voting, and execution processes
 -  [Struct `VoteDecryptionFailedEvent`](#social_contracts_governance_VoteDecryptionFailedEvent)
 -  [Struct `ProposalRescindedEvent`](#social_contracts_governance_ProposalRescindedEvent)
 -  [Constants](#@Constants_0)
--  [Function `init`](#social_contracts_governance_init)
+-  [Function `bootstrap_init`](#social_contracts_governance_bootstrap_init)
 -  [Function `initialize_registry_tables`](#social_contracts_governance_initialize_registry_tables)
 -  [Function `update_governance_parameters`](#social_contracts_governance_update_governance_parameters)
 -  [Function `nominate_delegate`](#social_contracts_governance_nominate_delegate)
@@ -1497,14 +1497,15 @@ Field names for dynamic fields
 
 
 
-<a name="social_contracts_governance_init"></a>
+<a name="social_contracts_governance_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Create and share separate governance registries for each proposal type
+Bootstrap initialization function - creates the governance registries
+This function has the same logic as init() but can be called by bootstrap
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1513,7 +1514,7 @@ Create and share separate governance registries for each proposal type
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_init">init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     // Create MySocial Ecosystem Governance Registry
     <b>let</b> <b>mut</b> ecosystem_registry = <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a> {
         id: object::new(ctx),

@@ -13,7 +13,7 @@ Can be attached to posts (gated content) or profiles (data monetization)
 -  [Struct `PurchaseEvent`](#social_contracts_my_ip_PurchaseEvent)
 -  [Struct `AccessGrantedEvent`](#social_contracts_my_ip_AccessGrantedEvent)
 -  [Constants](#@Constants_0)
--  [Function `init`](#social_contracts_my_ip_init)
+-  [Function `bootstrap_init`](#social_contracts_my_ip_bootstrap_init)
 -  [Function `create`](#social_contracts_my_ip_create)
 -  [Function `create_and_share`](#social_contracts_my_ip_create_and_share)
 -  [Function `purchase_one_time`](#social_contracts_my_ip_purchase_one_time)
@@ -572,14 +572,14 @@ Registry for tracking MyIP ownership
 
 
 
-<a name="social_contracts_my_ip_init"></a>
+<a name="social_contracts_my_ip_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Initialize the MyIP registry
+Bootstrap initialization function - creates the MyIP registry
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/my_ip.md#social_contracts_my_ip_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/my_ip.md#social_contracts_my_ip_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -588,7 +588,7 @@ Initialize the MyIP registry
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/my_ip.md#social_contracts_my_ip_init">init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/my_ip.md#social_contracts_my_ip_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     <b>let</b> registry = <a href="../social_contracts/my_ip.md#social_contracts_my_ip_MyIPRegistry">MyIPRegistry</a> {
         id: object::new(ctx),
         ip_to_owner: table::new(ctx),

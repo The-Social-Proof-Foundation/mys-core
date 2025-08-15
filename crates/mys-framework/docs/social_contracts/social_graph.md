@@ -10,7 +10,7 @@ Manages social relationships between users (following/followers)
 -  [Struct `FollowEvent`](#social_contracts_social_graph_FollowEvent)
 -  [Struct `UnfollowEvent`](#social_contracts_social_graph_UnfollowEvent)
 -  [Constants](#@Constants_0)
--  [Function `init`](#social_contracts_social_graph_init)
+-  [Function `bootstrap_init`](#social_contracts_social_graph_bootstrap_init)
 -  [Function `follow`](#social_contracts_social_graph_follow)
 -  [Function `unfollow`](#social_contracts_social_graph_unfollow)
 -  [Function `migrate_social_graph`](#social_contracts_social_graph_migrate_social_graph)
@@ -217,14 +217,14 @@ Error codes
 
 
 
-<a name="social_contracts_social_graph_init"></a>
+<a name="social_contracts_social_graph_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Module initializer to create the social graph
+Bootstrap initialization function - creates the social graph shared object
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -233,7 +233,7 @@ Module initializer to create the social graph
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_init">init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     <b>let</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a> = <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a> {
         id: object::new(ctx),
         following: table::new(ctx),

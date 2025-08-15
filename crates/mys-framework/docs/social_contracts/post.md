@@ -43,7 +43,7 @@ Implements features like comments, reposts, quotes, and predictions
 -  [Struct `PromotionFundsWithdrawnEvent`](#social_contracts_post_PromotionFundsWithdrawnEvent)
 -  [Struct `ModerationRecord`](#social_contracts_post_ModerationRecord)
 -  [Constants](#@Constants_0)
--  [Function `init`](#social_contracts_post_init)
+-  [Function `bootstrap_init`](#social_contracts_post_bootstrap_init)
 -  [Function `set_predictions_enabled`](#social_contracts_post_set_predictions_enabled)
 -  [Function `set_prediction_fee`](#social_contracts_post_set_prediction_fee)
 -  [Function `is_predictions_enabled`](#social_contracts_post_is_predictions_enabled)
@@ -110,7 +110,6 @@ Implements features like comments, reposts, quotes, and predictions
 -  [Function `set_moderation_status`](#social_contracts_post_set_moderation_status)
 -  [Function `is_content_approved`](#social_contracts_post_is_content_approved)
 -  [Function `create_post_admin_cap`](#social_contracts_post_create_post_admin_cap)
--  [Function `auto_configure_prediction_treasury`](#social_contracts_post_auto_configure_prediction_treasury)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
@@ -2733,14 +2732,14 @@ Constants for report reason codes
 
 
 
-<a name="social_contracts_post_init"></a>
+<a name="social_contracts_post_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Initialize the post module
+Bootstrap initialization function - creates the post configuration
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2749,14 +2748,15 @@ Initialize the post module
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_init">init</a>(ctx: &<b>mut</b> TxContext) {
-    // Create and share <a href="../social_contracts/post.md#social_contracts_post">post</a> configuration
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
+    <b>let</b> admin = tx_context::sender(ctx);
+    // Create and share <a href="../social_contracts/post.md#social_contracts_post">post</a> configuration with proper treasury
     transfer::share_object(
         <a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a> {
             id: object::new(ctx),
             predictions_enabled: <b>false</b>, // Predictions disabled by default
             prediction_fee_bps: 500, // Default 5% fee
-            prediction_treasury: @0x0, // Auto-configured by <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> during <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
+            prediction_treasury: admin, // Auto-configured to admin during <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
             max_content_length: <a href="../social_contracts/post.md#social_contracts_post_MAX_CONTENT_LENGTH">MAX_CONTENT_LENGTH</a>,
             max_media_urls: <a href="../social_contracts/post.md#social_contracts_post_MAX_MEDIA_URLS">MAX_MEDIA_URLS</a>,
             max_mentions: <a href="../social_contracts/post.md#social_contracts_post_MAX_MENTIONS">MAX_MENTIONS</a>,
@@ -6353,35 +6353,6 @@ This function is only callable by other modules in the same package
     <a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">PostAdminCap</a> {
         id: object::new(ctx)
     }
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_post_auto_configure_prediction_treasury"></a>
-
-## Function `auto_configure_prediction_treasury`
-
-Auto-configure prediction treasury for bootstrap (package visibility only)
-This function is only callable by other modules in the same package
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_auto_configure_prediction_treasury">auto_configure_prediction_treasury</a>(config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, treasury_address: <b>address</b>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_auto_configure_prediction_treasury">auto_configure_prediction_treasury</a>(
-    config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
-    treasury_address: <b>address</b>
-) {
-    config.prediction_treasury = treasury_address;
 }
 </code></pre>
 

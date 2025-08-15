@@ -23,7 +23,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `TokensVestedEvent`](#social_contracts_profile_TokensVestedEvent)
 -  [Struct `TokensClaimedEvent`](#social_contracts_profile_TokensClaimedEvent)
 -  [Constants](#@Constants_0)
--  [Function `init`](#social_contracts_profile_init)
+-  [Function `bootstrap_init`](#social_contracts_profile_bootstrap_init)
 -  [Function `is_reserved_name`](#social_contracts_profile_is_reserved_name)
 -  [Function `to_lowercase_bytes`](#social_contracts_profile_to_lowercase_bytes)
 -  [Function `to_lowercase_byte`](#social_contracts_profile_to_lowercase_byte)
@@ -1327,14 +1327,14 @@ Field names for dynamic fields
 
 
 
-<a name="social_contracts_profile_init"></a>
+<a name="social_contracts_profile_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Module initializer to create the username registry
+Bootstrap initialization function - creates the username registry and treasury
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1343,7 +1343,7 @@ Module initializer to create the username registry
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_init">init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     // Import current <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> from <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> <b>module</b>
     <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
     <b>let</b> registry = <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a> {

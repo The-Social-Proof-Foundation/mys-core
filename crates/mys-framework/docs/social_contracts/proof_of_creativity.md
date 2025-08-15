@@ -22,7 +22,7 @@ PoC badge issuance, revenue redirection, and community dispute voting
 -  [Struct `PoCConfigUpdatedEvent`](#social_contracts_proof_of_creativity_PoCConfigUpdatedEvent)
 -  [Struct `TokenPoolSyncNeededEvent`](#social_contracts_proof_of_creativity_TokenPoolSyncNeededEvent)
 -  [Constants](#@Constants_0)
--  [Function `init`](#social_contracts_proof_of_creativity_init)
+-  [Function `bootstrap_init`](#social_contracts_proof_of_creativity_bootstrap_init)
 -  [Function `update_poc_config`](#social_contracts_proof_of_creativity_update_poc_config)
 -  [Function `analyze_and_update_post`](#social_contracts_proof_of_creativity_analyze_and_update_post)
 -  [Function `update_token_pool_if_exists`](#social_contracts_proof_of_creativity_update_token_pool_if_exists)
@@ -44,7 +44,6 @@ PoC badge issuance, revenue redirection, and community dispute voting
 -  [Function `migrate_poc_dispute`](#social_contracts_proof_of_creativity_migrate_poc_dispute)
 -  [Function `migrate_poc_registry`](#social_contracts_proof_of_creativity_migrate_poc_registry)
 -  [Function `create_poc_admin_cap`](#social_contracts_proof_of_creativity_create_poc_admin_cap)
--  [Function `auto_configure_ecosystem_treasury`](#social_contracts_proof_of_creativity_auto_configure_ecosystem_treasury)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
@@ -1208,14 +1207,14 @@ Vote option constants
 
 
 
-<a name="social_contracts_proof_of_creativity_init"></a>
+<a name="social_contracts_proof_of_creativity_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Initialize the Proof of Creativity system
+Bootstrap initialization function - creates the PoC configuration and registry
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1224,7 +1223,7 @@ Initialize the Proof of Creativity system
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_init">init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     <b>let</b> sender = tx_context::sender(ctx);
     // Create and share PoC configuration
     transfer::share_object(
@@ -2232,35 +2231,6 @@ This function is only callable by other modules in the same package
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCAdminCap">PoCAdminCap</a> {
         id: object::new(ctx)
     }
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_proof_of_creativity_auto_configure_ecosystem_treasury"></a>
-
-## Function `auto_configure_ecosystem_treasury`
-
-Auto-configure ecosystem treasury for bootstrap (package visibility only)
-This function is only callable by other modules in the same package
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_auto_configure_ecosystem_treasury">auto_configure_ecosystem_treasury</a>(config: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">social_contracts::proof_of_creativity::PoCConfig</a>, treasury_address: <b>address</b>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_auto_configure_ecosystem_treasury">auto_configure_ecosystem_treasury</a>(
-    config: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">PoCConfig</a>,
-    treasury_address: <b>address</b>
-) {
-    config.ecosystem_treasury = treasury_address;
 }
 </code></pre>
 

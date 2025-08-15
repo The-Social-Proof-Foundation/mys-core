@@ -14,7 +14,7 @@ Manages user blocking between wallet addresses
 -  [Constants](#@Constants_0)
 -  [Function `create_block_list`](#social_contracts_block_list_create_block_list)
 -  [Function `create_block_list_for_sender`](#social_contracts_block_list_create_block_list_for_sender)
--  [Function `init`](#social_contracts_block_list_init)
+-  [Function `bootstrap_init`](#social_contracts_block_list_bootstrap_init)
 -  [Function `get_blocked_wallets_key`](#social_contracts_block_list_get_blocked_wallets_key)
 -  [Function `block_wallet`](#social_contracts_block_list_block_wallet)
 -  [Function `unblock_wallet`](#social_contracts_block_list_unblock_wallet)
@@ -358,14 +358,14 @@ This is an explicit operation to create a block list, even if not blocking anyon
 
 </details>
 
-<a name="social_contracts_block_list_init"></a>
+<a name="social_contracts_block_list_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Module initializer to create the block list registry
+Bootstrap initialization function - creates the block list registry
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -374,7 +374,7 @@ Module initializer to create the block list registry
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_init">init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     <b>let</b> registry = <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a> {
         id: object::new(ctx),
         wallet_block_lists: table::new(ctx),

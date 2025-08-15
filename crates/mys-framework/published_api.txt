@@ -4663,9 +4663,6 @@ UpgradeEvent
 ObjectMigratedEvent
 	public struct
 	0xd880::upgrade
-init
-	fun
-	0xd880::upgrade
 authorize_upgrade
 	public fun
 	0xd880::upgrade
@@ -4711,8 +4708,8 @@ create_block_list
 create_block_list_for_sender
 	public entry fun
 	0xd880::block_list
-init
-	fun
+bootstrap_init
+	public(package) fun
 	0xd880::block_list
 get_blocked_wallets_key
 	fun
@@ -4873,8 +4870,8 @@ TokensVestedEvent
 TokensClaimedEvent
 	public struct
 	0xd880::profile
-init
-	fun
+bootstrap_init
+	public(package) fun
 	0xd880::profile
 is_reserved_name
 	public fun
@@ -5155,8 +5152,8 @@ VoteDecryptionFailedEvent
 ProposalRescindedEvent
 	public struct
 	0xd880::governance
-init
-	fun
+bootstrap_init
+	public(package) fun
 	0xd880::governance
 initialize_registry_tables
 	fun
@@ -5305,8 +5302,8 @@ UserLeftPlatformEvent
 TokenAirdropEvent
 	public struct
 	0xd880::platform
-init
-	fun
+bootstrap_init
+	public(package) fun
 	0xd880::platform
 create_platform
 	public entry fun
@@ -5563,8 +5560,8 @@ PromotionFundsWithdrawnEvent
 ModerationRecord
 	public struct
 	0xd880::post
-init
-	fun
+bootstrap_init
+	public(package) fun
 	0xd880::post
 set_predictions_enabled
 	public entry fun
@@ -5764,9 +5761,6 @@ is_content_approved
 create_post_admin_cap
 	public(package) fun
 	0xd880::post
-auto_configure_prediction_treasury
-	public(package) fun
-	0xd880::post
 SocialProofTokensAdminCap
 	public struct
 	0xd880::social_proof_tokens
@@ -5821,8 +5815,8 @@ TokensAddedEvent
 EmergencyKillSwitchEvent
 	public struct
 	0xd880::social_proof_tokens
-init
-	fun
+bootstrap_init
+	public(package) fun
 	0xd880::social_proof_tokens
 update_social_proof_tokens_config
 	public entry fun
@@ -5917,12 +5911,6 @@ set_poc_redirection
 clear_poc_redirection
 	public fun
 	0xd880::social_proof_tokens
-auto_configure_treasury
-	public(package) fun
-	0xd880::social_proof_tokens
-auto_enable_trading
-	public(package) fun
-	0xd880::social_proof_tokens
 registry_version
 	public fun
 	0xd880::social_proof_tokens
@@ -5953,6 +5941,48 @@ migrate_reservation_pool
 create_social_proof_tokens_admin_cap
 	public(package) fun
 	0xd880::social_proof_tokens
+SocialGraph
+	public struct
+	0xd880::social_graph
+FollowEvent
+	public struct
+	0xd880::social_graph
+UnfollowEvent
+	public struct
+	0xd880::social_graph
+bootstrap_init
+	public(package) fun
+	0xd880::social_graph
+follow
+	public entry fun
+	0xd880::social_graph
+unfollow
+	public entry fun
+	0xd880::social_graph
+migrate_social_graph
+	public entry fun
+	0xd880::social_graph
+borrow_version_mut
+	public fun
+	0xd880::social_graph
+version
+	public fun
+	0xd880::social_graph
+is_following
+	public fun
+	0xd880::social_graph
+following_count
+	public fun
+	0xd880::social_graph
+follower_count
+	public fun
+	0xd880::social_graph
+get_following
+	public fun
+	0xd880::social_graph
+get_followers
+	public fun
+	0xd880::social_graph
 PoCAdminCap
 	public struct
 	0xd880::proof_of_creativity
@@ -5995,8 +6025,8 @@ PoCConfigUpdatedEvent
 TokenPoolSyncNeededEvent
 	public struct
 	0xd880::proof_of_creativity
-init
-	fun
+bootstrap_init
+	public(package) fun
 	0xd880::proof_of_creativity
 update_poc_config
 	public entry fun
@@ -6061,24 +6091,6 @@ migrate_poc_registry
 create_poc_admin_cap
 	public(package) fun
 	0xd880::proof_of_creativity
-auto_configure_ecosystem_treasury
-	public(package) fun
-	0xd880::proof_of_creativity
-BootstrapKey
-	public struct
-	0xd880::bootstrap
-init
-	fun
-	0xd880::bootstrap
-claim_all_admin_capabilities
-	public entry fun
-	0xd880::bootstrap
-is_used
-	public fun
-	0xd880::bootstrap
-version
-	public fun
-	0xd880::bootstrap
 MyIP
 	public struct
 	0xd880::my_ip
@@ -6094,8 +6106,8 @@ PurchaseEvent
 AccessGrantedEvent
 	public struct
 	0xd880::my_ip
-init
-	fun
+bootstrap_init
+	public(package) fun
 	0xd880::my_ip
 create
 	public fun
@@ -6229,48 +6241,21 @@ migrate_my_ip
 migrate_registry
 	public entry fun
 	0xd880::my_ip
-SocialGraph
+BootstrapKey
 	public struct
-	0xd880::social_graph
-FollowEvent
-	public struct
-	0xd880::social_graph
-UnfollowEvent
-	public struct
-	0xd880::social_graph
+	0xd880::bootstrap
 init
 	fun
-	0xd880::social_graph
-follow
+	0xd880::bootstrap
+claim_all_admin_capabilities
 	public entry fun
-	0xd880::social_graph
-unfollow
-	public entry fun
-	0xd880::social_graph
-migrate_social_graph
-	public entry fun
-	0xd880::social_graph
-borrow_version_mut
+	0xd880::bootstrap
+is_used
 	public fun
-	0xd880::social_graph
+	0xd880::bootstrap
 version
 	public fun
-	0xd880::social_graph
-is_following
-	public fun
-	0xd880::social_graph
-following_count
-	public fun
-	0xd880::social_graph
-follower_count
-	public fun
-	0xd880::social_graph
-get_following
-	public fun
-	0xd880::social_graph
-get_followers
-	public fun
-	0xd880::social_graph
+	0xd880::bootstrap
 log
 	fun
 	0x5ea1::gf256
