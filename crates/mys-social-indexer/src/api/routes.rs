@@ -156,6 +156,8 @@ use crate::api::handlers::revenue::{
     get_unified_revenue,
     get_spt_pool_revenue,
 };
+// Import stats handlers
+use crate::api::handlers::stats::get_system_stats;
 
 /// Build the application router with all API routes
 pub fn build_router(db: Arc<Database>) -> Router {
@@ -166,6 +168,9 @@ pub fn build_router(db: Arc<Database>) -> Router {
     let main_router = Router::new()
         // Health check endpoint
         .route("/health", get(health_check))
+        
+        // Stats endpoints
+        .route("/stats/system", get(get_system_stats))
         
         // Profile endpoints
         .route("/profiles", get(latest_profiles))

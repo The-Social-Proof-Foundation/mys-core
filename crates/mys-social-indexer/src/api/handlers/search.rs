@@ -147,7 +147,7 @@ pub async fn global_search(
         WHERE (
             LOWER(owner_address) LIKE LOWER($1) OR
             LOWER(username) LIKE LOWER($1) OR
-            LOWER(bio) LIKE LOWER($1)
+            LOWER(display_name) LIKE LOWER($1)
         )
         AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'profile' = ANY($4))
         
@@ -259,12 +259,7 @@ pub async fn global_search(
         FROM governance_registries
         WHERE (
             registry_type::TEXT LIKE $1 OR
-            delegate_count::TEXT LIKE $1 OR
-            LOWER('ecosystem') LIKE LOWER($1) OR
-            LOWER('reputation') LIKE LOWER($1) OR
-            LOWER('community notes') LIKE LOWER($1) OR
-            LOWER('governance') LIKE LOWER($1) OR
-            LOWER('registry') LIKE LOWER($1)
+            LOWER(transaction_id) LIKE LOWER($1)
         )
         AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'governance-registry' = ANY($4))
         
@@ -287,8 +282,7 @@ pub async fn global_search(
         WHERE (
             LOWER(platform_id) LIKE LOWER($1) OR
             LOWER(name) LIKE LOWER($1) OR
-            LOWER(developer_address) LIKE LOWER($1) OR
-            LOWER(description) LIKE LOWER($1)
+            LOWER(COALESCE(developer_address, '')) LIKE LOWER($1)
         )
         AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'platform' = ANY($4))
         
@@ -312,7 +306,7 @@ pub async fn global_search(
             LOWER(id) LIKE LOWER($1) OR
             LOWER(title) LIKE LOWER($1) OR
             LOWER(submitter) LIKE LOWER($1) OR
-            LOWER(description) LIKE LOWER($1)
+            LOWER(transaction_id) LIKE LOWER($1)
         )
         AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'proposal' = ANY($4))
     )
@@ -354,7 +348,7 @@ pub async fn global_search(
             WHERE (
                 LOWER(owner_address) LIKE LOWER($1) OR
                 LOWER(username) LIKE LOWER($1) OR
-                LOWER(bio) LIKE LOWER($1)
+                LOWER(display_name) LIKE LOWER($1)
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'profile' = ANY($2))
             
@@ -413,12 +407,7 @@ pub async fn global_search(
             FROM governance_registries
             WHERE (
                 registry_type::TEXT LIKE $1 OR
-                delegate_count::TEXT LIKE $1 OR
-                LOWER('ecosystem') LIKE LOWER($1) OR
-                LOWER('reputation') LIKE LOWER($1) OR
-                LOWER('community notes') LIKE LOWER($1) OR
-                LOWER('governance') LIKE LOWER($1) OR
-                LOWER('registry') LIKE LOWER($1)
+                LOWER(transaction_id) LIKE LOWER($1)
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'governance-registry' = ANY($2))
             
@@ -430,8 +419,7 @@ pub async fn global_search(
             WHERE (
                 LOWER(platform_id) LIKE LOWER($1) OR
                 LOWER(name) LIKE LOWER($1) OR
-                LOWER(COALESCE(developer_address, '')) LIKE LOWER($1) OR
-                LOWER(COALESCE(description, '')) LIKE LOWER($1)
+                LOWER(COALESCE(developer_address, '')) LIKE LOWER($1)
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'platform' = ANY($2))
             
@@ -444,7 +432,7 @@ pub async fn global_search(
                 LOWER(id) LIKE LOWER($1) OR
                 LOWER(title) LIKE LOWER($1) OR
                 LOWER(submitter) LIKE LOWER($1) OR
-                LOWER(description) LIKE LOWER($1)
+                LOWER(transaction_id) LIKE LOWER($1)
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'proposal' = ANY($2))
         ) combined_results

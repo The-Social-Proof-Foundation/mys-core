@@ -195,6 +195,9 @@ RUST_LOG=info,mys_social_indexer=debug
 ### Health Check
 - **GET /health** - Check the indexer's health
 
+### Statistics
+- **GET /stats/system** - Get overall system statistics (tokens, posts, comments, reactions, relationships)
+
 ### Search API
 - **GET /search** - Global search across profiles, posts, spt tokens, spt staking pools, governance circles, platforms, myip, and governance proposals
 
