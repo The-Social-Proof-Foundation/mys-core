@@ -148,11 +148,42 @@ pub async fn process_profile_block_event(
         .execute(conn)
         .await;
     
-    // 2. Insert or update blocked_profiles for current state
+    // 2. Fetch blocked user's profile data for rich information
+    let (blocked_profile_id, blocked_username, blocked_display_name, blocked_profile_photo) = {
+        use crate::schema::profiles;
+        
+        match profiles::table
+            .filter(profiles::owner_address.eq(&block_event.blocked))
+            .select((
+                profiles::profile_id.nullable(),
+                profiles::username,
+                profiles::display_name.nullable(),
+                profiles::profile_photo.nullable(),
+            ))
+            .first::<(Option<String>, String, Option<String>, Option<String>)>(conn)
+            .await
+        {
+            Ok((profile_id, username, display_name, profile_photo)) => {
+                info!("Found rich profile data for blocked user {}: username={}", block_event.blocked, username);
+                (profile_id, username, display_name, profile_photo)
+            },
+            Err(e) => {
+                info!("Could not find profile data for blocked user {}: {}. Using address as username", block_event.blocked, e);
+                // Fallback: use the wallet address as username if profile not found
+                (None, block_event.blocked.clone(), None, None)
+            }
+        }
+    };
+
+    // 3. Insert or update blocked_profiles for current state with rich data
     let new_blocked_profile = NewBlockedProfile::new(
         block_event.blocker.clone(),
         block_event.blocked.clone(),
         block_list_address.clone(),
+        blocked_profile_id,
+        blocked_username,
+        blocked_display_name,
+        blocked_profile_photo,
         now,
     );
     
@@ -161,8 +192,13 @@ pub async fn process_profile_block_event(
         .on_conflict((blocked_profiles::blocker_address, blocked_profiles::blocked_address))
         .do_update()
         .set((
-            blocked_profiles::block_list_address.eq(block_list_address),
+            blocked_profiles::block_list_address.eq(&block_list_address),
             blocked_profiles::last_blocked_at.eq(now),
+            // Update rich profile data in case it has changed
+            blocked_profiles::blocked_profile_id.eq(&blocked_profile_id),
+            blocked_profiles::blocked_username.eq(&blocked_username),
+            blocked_profiles::blocked_display_name.eq(&blocked_display_name),
+            blocked_profiles::blocked_profile_photo.eq(&blocked_profile_photo),
             // Increment count only when re-blocking the same profile
             blocked_profiles::total_block_count.eq(blocked_profiles::total_block_count + 1_i32),
         ))

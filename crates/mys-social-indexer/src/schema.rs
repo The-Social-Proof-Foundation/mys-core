@@ -174,13 +174,19 @@ table! {
     }
 }
 
-// Blocked profiles table for current blocking state
+// Blocked profiles table for current blocking state with rich profile data
 table! {
     blocked_profiles (id) {
         id -> Integer,
         blocker_address -> Varchar,
         blocked_address -> Varchar,
         block_list_address -> Nullable<Varchar>,
+        // Rich profile data for performance (denormalized from profiles table)
+        blocked_profile_id -> Nullable<Varchar>,
+        blocked_username -> Varchar,
+        blocked_display_name -> Nullable<Varchar>,
+        blocked_profile_photo -> Nullable<Varchar>,
+        // Blocking metadata
         first_blocked_at -> Timestamp,
         last_blocked_at -> Timestamp,
         total_block_count -> Integer,

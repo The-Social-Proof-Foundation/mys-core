@@ -11,7 +11,7 @@ use diesel_async::RunQueryDsl;
 
 use crate::db::DbPool;
 use crate::schema::{blocked_profiles, profiles};
-use crate::models::blocking::{EnrichedBlockedProfile, PaginatedBlockedProfilesResponse, PaginationMetadata};
+use crate::models::blocking::{BlockedProfile, EnrichedBlockedProfile, PaginatedBlockedProfilesResponse, PaginationMetadata};
 
 /// Response type for blocked platforms list
 #[derive(Debug, Serialize)]
@@ -60,7 +60,7 @@ pub async fn get_blocked_profiles(
         }
     };
     
-    // Enhanced query: Join blocked_profiles with profiles to get rich profile information
+    // Optimized query: blocked_profiles now contains all rich data directly (no JOINs needed!)
     // First, determine if profile_id is a wallet address or profile_id
     let blocker_address = if profile_id.starts_with("0x") {
         // It's already a wallet address
@@ -83,62 +83,25 @@ pub async fn get_blocked_profiles(
     
     debug!("Resolved blocker wallet address: {}", blocker_address);
     
-    // Query blocked_profiles joined with profiles for rich information
-    let enriched_blocked_profiles: Vec<EnrichedBlockedProfile> = match blocked_profiles::table
-        .inner_join(profiles::table.on(
-            blocked_profiles::blocked_address.eq(profiles::owner_address)
-        ))
+    // Fast query: blocked_profiles table contains all rich data directly
+    let blocked_profiles: Vec<BlockedProfile> = match blocked_profiles::table
         .filter(blocked_profiles::blocker_address.eq(&blocker_address))
-        .select((
-            // From blocked_profiles
-            blocked_profiles::blocked_address,
-            blocked_profiles::first_blocked_at,
-            blocked_profiles::last_blocked_at,
-            blocked_profiles::total_block_count,
-            blocked_profiles::block_list_address,
-            // From profiles  
-            profiles::profile_id.nullable(),
-            profiles::username,
-            profiles::display_name.nullable(),
-            profiles::profile_photo.nullable(),
-        ))
         .order_by(blocked_profiles::last_blocked_at.desc())
-        .load::<(
-            String, // blocked_address
-            chrono::NaiveDateTime, // first_blocked_at
-            chrono::NaiveDateTime, // last_blocked_at
-            i32, // total_block_count
-            Option<String>, // block_list_address
-            Option<String>, // profile_id
-            String, // username
-            Option<String>, // display_name
-            Option<String>, // profile_photo
-        )>(&mut conn)
+        .load::<BlockedProfile>(&mut conn)
         .await
     {
-        Ok(results) => {
-            results
-                .into_iter()
-                .map(|(blocked_address, first_blocked_at, last_blocked_at, total_block_count, block_list_address, profile_id, username, display_name, profile_photo)| {
-                    EnrichedBlockedProfile {
-                        profile_id,
-                        wallet_address: blocked_address,
-                        username,
-                        display_name,
-                        profile_photo,
-                        blocked_at: last_blocked_at,
-                        first_blocked_at,
-                        total_block_count,
-                        block_list_address,
-                    }
-                })
-                .collect()
-        },
+        Ok(results) => results,
         Err(e) => {
-            error!("Failed to query enriched blocked profiles: {}", e);
+            error!("Failed to query blocked profiles: {}", e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
+    
+    // Convert directly from BlockedProfile to EnrichedBlockedProfile (uses From trait)
+    let enriched_blocked_profiles: Vec<EnrichedBlockedProfile> = blocked_profiles
+        .into_iter()
+        .map(|blocked_profile| blocked_profile.into())
+        .collect();
     
     let total_count = enriched_blocked_profiles.len() as i64;
     

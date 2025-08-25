@@ -17,12 +17,20 @@ CREATE TABLE blocked_events (
     created_at TIMESTAMP NOT NULL             -- Blockchain timestamp
 );
 
--- Create blocked_profiles table for current blocking state
+-- Create blocked_profiles table for current blocking state with rich profile data
 CREATE TABLE blocked_profiles (
     id SERIAL PRIMARY KEY,
     blocker_address VARCHAR NOT NULL,          -- Profile doing the blocking  
     blocked_address VARCHAR NOT NULL,          -- Profile being blocked
     block_list_address VARCHAR,                -- Reference to block list object
+    
+    -- Rich profile data for performance (denormalized from profiles table)
+    blocked_profile_id VARCHAR,                -- Blockchain profile ID of blocked user
+    blocked_username VARCHAR NOT NULL,         -- Username of blocked user
+    blocked_display_name VARCHAR,              -- Display name of blocked user  
+    blocked_profile_photo VARCHAR,             -- Profile photo URL of blocked user
+    
+    -- Blocking metadata
     first_blocked_at TIMESTAMP NOT NULL,       -- When first blocked
     last_blocked_at TIMESTAMP NOT NULL,        -- Most recent block event
     total_block_count INTEGER DEFAULT 1 NOT NULL,   -- How many times blocked (if re-blocked)
@@ -42,6 +50,8 @@ CREATE INDEX idx_blocked_profiles_blocker ON blocked_profiles(blocker_address, l
 CREATE INDEX idx_blocked_profiles_blocked ON blocked_profiles(blocked_address);
 CREATE INDEX idx_blocked_profiles_pagination ON blocked_profiles(blocker_address, id);
 CREATE INDEX idx_blocked_profiles_block_list ON blocked_profiles(block_list_address);
+CREATE INDEX idx_blocked_profiles_username ON blocked_profiles(blocked_username);
+CREATE INDEX idx_blocked_profiles_profile_id ON blocked_profiles(blocked_profile_id);
 
 -- Add table comments
 COMMENT ON TABLE blocked_events IS 'Complete audit trail of all blocking/unblocking events from blockchain';
@@ -51,6 +61,10 @@ COMMENT ON TABLE blocked_profiles IS 'Current blocking relationships - represent
 COMMENT ON COLUMN blocked_events.event_id IS 'Unique blockchain event identifier for deduplication';
 COMMENT ON COLUMN blocked_events.event_type IS 'Type of blocking event: block, unblock, or block_list_created';
 COMMENT ON COLUMN blocked_events.blocked_address IS 'NULL for block_list_created events';
+COMMENT ON COLUMN blocked_profiles.blocked_profile_id IS 'Blockchain profile ID of the blocked user';
+COMMENT ON COLUMN blocked_profiles.blocked_username IS 'Username of the blocked user for fast API responses';
+COMMENT ON COLUMN blocked_profiles.blocked_display_name IS 'Display name of the blocked user for fast API responses';
+COMMENT ON COLUMN blocked_profiles.blocked_profile_photo IS 'Profile photo URL of the blocked user for fast API responses';
 COMMENT ON COLUMN blocked_profiles.first_blocked_at IS 'Timestamp when this profile was first blocked by this blocker';
 COMMENT ON COLUMN blocked_profiles.last_blocked_at IS 'Most recent blocking event timestamp';
 COMMENT ON COLUMN blocked_profiles.total_block_count IS 'Number of times this profile has been blocked by this blocker';
