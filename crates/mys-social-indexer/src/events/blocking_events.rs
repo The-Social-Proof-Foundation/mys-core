@@ -149,7 +149,7 @@ pub async fn process_profile_block_event(
         .await;
     
     // 2. Fetch blocked user's profile data for rich information
-    let (blocked_profile_id, blocked_username, blocked_display_name, blocked_profile_photo) = {
+    let profile_data = {
         use crate::schema::profiles;
         
         match profiles::table
@@ -174,16 +174,21 @@ pub async fn process_profile_block_event(
             }
         }
     };
+    
+    let blocked_profile_id = &profile_data.0;
+    let blocked_username = &profile_data.1;
+    let blocked_display_name = &profile_data.2;
+    let blocked_profile_photo = &profile_data.3;
 
     // 3. Insert or update blocked_profiles for current state with rich data
     let new_blocked_profile = NewBlockedProfile::new(
         block_event.blocker.clone(),
         block_event.blocked.clone(),
         block_list_address.clone(),
-        blocked_profile_id,
-        blocked_username,
-        blocked_display_name,
-        blocked_profile_photo,
+        blocked_profile_id.clone(),
+        blocked_username.clone(),
+        blocked_display_name.clone(),
+        blocked_profile_photo.clone(),
         now,
     );
     
@@ -195,10 +200,10 @@ pub async fn process_profile_block_event(
             blocked_profiles::block_list_address.eq(&block_list_address),
             blocked_profiles::last_blocked_at.eq(now),
             // Update rich profile data in case it has changed
-            blocked_profiles::blocked_profile_id.eq(&blocked_profile_id),
-            blocked_profiles::blocked_username.eq(&blocked_username),
-            blocked_profiles::blocked_display_name.eq(&blocked_display_name),
-            blocked_profiles::blocked_profile_photo.eq(&blocked_profile_photo),
+            blocked_profiles::blocked_profile_id.eq(blocked_profile_id),
+            blocked_profiles::blocked_username.eq(blocked_username),
+            blocked_profiles::blocked_display_name.eq(blocked_display_name),
+            blocked_profiles::blocked_profile_photo.eq(blocked_profile_photo),
             // Increment count only when re-blocking the same profile
             blocked_profiles::total_block_count.eq(blocked_profiles::total_block_count + 1_i32),
         ))
