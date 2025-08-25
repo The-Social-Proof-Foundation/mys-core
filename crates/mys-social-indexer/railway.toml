@@ -4,7 +4,7 @@ dockerfilePath = "crates/mys-social-indexer/Dockerfile"
 buildCommand = "cargo build --release --bin mys-social-indexer"
 
 [deploy]
-startCommand = "mys-social-indexer"
+startCommand = "sh -c 'echo \"Running migrations before start...\"; cargo install diesel_cli --no-default-features --features postgres --quiet 2>/dev/null || echo \"diesel_cli ready\"; diesel migration run --database-url=\"$DATABASE_URL\" || { echo \"Migration failed, trying reset...\"; diesel migration revert --database-url=\"$DATABASE_URL\" --all || true; diesel migration run --database-url=\"$DATABASE_URL\"; }; echo \"Starting indexer...\"; mys-social-indexer'"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
