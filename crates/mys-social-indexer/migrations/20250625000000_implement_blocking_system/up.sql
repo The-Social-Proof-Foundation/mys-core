@@ -1,0 +1,57 @@
+-- PRODUCTION BLOCKING SYSTEM IMPLEMENTATION
+-- Drop old profiles_blocked table and implement new production-ready blocking system
+
+-- Drop the old profiles_blocked table if it exists
+DROP TABLE IF EXISTS profiles_blocked;
+
+-- Create blocked_events table for comprehensive audit trail
+CREATE TABLE blocked_events (
+    id SERIAL PRIMARY KEY,
+    event_id VARCHAR UNIQUE,                    -- Blockchain event ID for deduplication
+    event_type VARCHAR NOT NULL,                -- 'block' | 'unblock' | 'block_list_created'
+    blocker_address VARCHAR NOT NULL,           -- Profile doing the blocking
+    blocked_address VARCHAR,                    -- Profile being blocked (NULL for block_list_created)
+    block_list_address VARCHAR,                 -- Block list object ID
+    raw_event_data JSONB,                      -- Full blockchain event data
+    processed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL             -- Blockchain timestamp
+);
+
+-- Create blocked_profiles table for current blocking state
+CREATE TABLE blocked_profiles (
+    id SERIAL PRIMARY KEY,
+    blocker_address VARCHAR NOT NULL,          -- Profile doing the blocking  
+    blocked_address VARCHAR NOT NULL,          -- Profile being blocked
+    block_list_address VARCHAR,                -- Reference to block list object
+    first_blocked_at TIMESTAMP NOT NULL,       -- When first blocked
+    last_blocked_at TIMESTAMP NOT NULL,        -- Most recent block event
+    total_block_count INTEGER DEFAULT 1 NOT NULL,   -- How many times blocked (if re-blocked)
+    
+    UNIQUE(blocker_address, blocked_address)
+);
+
+-- Create indexes for blocked_events
+CREATE INDEX idx_blocked_events_blocker ON blocked_events(blocker_address);
+CREATE INDEX idx_blocked_events_blocked ON blocked_events(blocked_address);
+CREATE INDEX idx_blocked_events_type ON blocked_events(event_type);
+CREATE INDEX idx_blocked_events_created_at ON blocked_events(created_at);
+CREATE INDEX idx_blocked_events_event_id ON blocked_events(event_id);
+
+-- Create indexes for blocked_profiles
+CREATE INDEX idx_blocked_profiles_blocker ON blocked_profiles(blocker_address, last_blocked_at DESC);
+CREATE INDEX idx_blocked_profiles_blocked ON blocked_profiles(blocked_address);
+CREATE INDEX idx_blocked_profiles_pagination ON blocked_profiles(blocker_address, id);
+CREATE INDEX idx_blocked_profiles_block_list ON blocked_profiles(block_list_address);
+
+-- Add table comments
+COMMENT ON TABLE blocked_events IS 'Complete audit trail of all blocking/unblocking events from blockchain';
+COMMENT ON TABLE blocked_profiles IS 'Current blocking relationships - represents live blocking state';
+
+-- Add column comments
+COMMENT ON COLUMN blocked_events.event_id IS 'Unique blockchain event identifier for deduplication';
+COMMENT ON COLUMN blocked_events.event_type IS 'Type of blocking event: block, unblock, or block_list_created';
+COMMENT ON COLUMN blocked_events.blocked_address IS 'NULL for block_list_created events';
+COMMENT ON COLUMN blocked_profiles.first_blocked_at IS 'Timestamp when this profile was first blocked by this blocker';
+COMMENT ON COLUMN blocked_profiles.last_blocked_at IS 'Most recent blocking event timestamp';
+COMMENT ON COLUMN blocked_profiles.total_block_count IS 'Number of times this profile has been blocked by this blocker';
+COMMENT ON COLUMN blocked_profiles.block_list_address IS 'Reference to the blockchain block list object';

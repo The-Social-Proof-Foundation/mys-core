@@ -9,11 +9,9 @@ use tracing::{info, error};
 use serde::{Deserialize, Serialize};
 
 use crate::db::DbConnection;
-use crate::schema::profile_events;
-use crate::schema::profiles_blocked;
-use crate::models::blocking::profile_blocks::NewProfileBlock;
-use crate::models::blocking::profile_blocks::UserBlockEvent;
-use crate::models::blocking::profile_blocks::UserUnblockEvent;
+use crate::schema::{profile_events, blocked_events, blocked_profiles};
+use crate::models::blocking::{UserBlockEvent, UserUnblockEvent};
+use crate::models::blocking::{NewBlockedEvent, NewBlockedProfile};
 use crate::models::profile_events::NewProfileEvent;
 use crate::events::profile_event_types::{BlockAddedEvent, BlockRemovedEvent};
 
@@ -110,24 +108,71 @@ pub async fn process_profile_block_event(
         block_event.blocker, block_event.blocked
     );
     
-    // Create a profile block record
     let now = chrono::Utc::now().naive_utc();
-    let profile_block = NewProfileBlock {
-        blocker_wallet_address: block_event.blocker.clone(),
-        blocked_address: block_event.blocked.clone(),
-        created_at: now,
+    
+    // Look up the blocker's block_list_address from profiles table
+    let block_list_address = {
+        use crate::schema::profiles;
+        
+        match profiles::table
+            .filter(profiles::owner_address.eq(&block_event.blocker))
+            .select(profiles::block_list_address)
+            .first::<Option<String>>(conn)
+            .await
+        {
+            Ok(addr) => {
+                if let Some(ref addr) = addr {
+                    info!("Found block_list_address for blocker {}: {}", block_event.blocker, addr);
+                }
+                addr
+            },
+            Err(e) => {
+                info!("Could not find profile or block_list_address for blocker {}: {}", block_event.blocker, e);
+                None
+            }
+        }
     };
     
-    // Insert the block record
-    let result = diesel::insert_into(profiles_blocked::table)
-        .values(&profile_block)
-        .on_conflict_do_nothing()
+    // 1. Insert into blocked_events for audit trail
+    let blocked_event = NewBlockedEvent::new_block_event(
+        None, // event_id - could be extracted from blockchain if available
+        block_event.blocker.clone(),
+        block_event.blocked.clone(),
+        block_list_address.clone(),
+        Some(event_data.clone()),
+        now,
+    );
+    
+    let event_result = diesel::insert_into(blocked_events::table)
+        .values(&blocked_event)
         .execute(conn)
         .await;
-        
-    match result {
-        Ok(_) => {
-            info!("Successfully created/updated profile block record");
+    
+    // 2. Insert or update blocked_profiles for current state
+    let new_blocked_profile = NewBlockedProfile::new(
+        block_event.blocker.clone(),
+        block_event.blocked.clone(),
+        block_list_address.clone(),
+        now,
+    );
+    
+    let profile_result = diesel::insert_into(blocked_profiles::table)
+        .values(&new_blocked_profile)
+        .on_conflict((blocked_profiles::blocker_address, blocked_profiles::blocked_address))
+        .do_update()
+        .set((
+            blocked_profiles::block_list_address.eq(block_list_address),
+            blocked_profiles::last_blocked_at.eq(now),
+            // Increment count only when re-blocking the same profile
+            blocked_profiles::total_block_count.eq(blocked_profiles::total_block_count + 1_i32),
+        ))
+        .execute(conn)
+        .await;
+    
+    // Log results
+    match (event_result, profile_result) {
+        (Ok(_), Ok(_)) => {
+            info!("✅ Successfully wrote block event to production blocking system");
             
             // Create a profile_events entry to track in user history
             let block_timestamp = chrono::Utc::now().timestamp() as u64;
@@ -160,9 +205,13 @@ pub async fn process_profile_block_event(
                 }
             }
         },
-        Err(e) => {
-            error!("Failed to insert profile block record: {}", e);
-            return Err(anyhow::anyhow!("Database error: {}", e));
+        (Err(e), _) => {
+            error!("Failed to insert into blocked_events table: {}", e);
+            return Err(anyhow::anyhow!("Failed to write audit event: {}", e));
+        },
+        (_, Err(e)) => {
+            error!("Failed to insert/update blocked_profiles table: {}", e);
+            return Err(anyhow::anyhow!("Failed to update blocking state: {}", e));
         }
     }
     
@@ -230,23 +279,57 @@ pub async fn process_profile_unblock_event(
         unblock_event.blocker, unblock_event.unblocked
     );
     
-    // Delete the block record instead of updating it
-    let result = diesel::delete(crate::schema::profiles_blocked::table)
-        .filter(
-            crate::schema::profiles_blocked::blocker_wallet_address.eq(unblock_event.blocker.clone())
-        )
-        .filter(
-            crate::schema::profiles_blocked::blocked_address.eq(unblock_event.unblocked.clone())
-        )
+    let now = chrono::Utc::now().naive_utc();
+    
+    // Look up the blocker's block_list_address from profiles table
+    let block_list_address = {
+        use crate::schema::profiles;
+        
+        match profiles::table
+            .filter(profiles::owner_address.eq(&unblock_event.blocker))
+            .select(profiles::block_list_address)
+            .first::<Option<String>>(conn)
+            .await
+        {
+            Ok(addr) => {
+                if let Some(ref addr) = addr {
+                    info!("Found block_list_address for blocker {}: {}", unblock_event.blocker, addr);
+                }
+                addr
+            },
+            Err(e) => {
+                info!("Could not find profile or block_list_address for blocker {}: {}", unblock_event.blocker, e);
+                None
+            }
+        }
+    };
+    
+    // 1. Insert into blocked_events for audit trail
+    let blocked_event = NewBlockedEvent::new_unblock_event(
+        None, // event_id - could be extracted from blockchain if available
+        unblock_event.blocker.clone(),
+        unblock_event.unblocked.clone(),
+        block_list_address,
+        Some(event_data.clone()),
+        now,
+    );
+    
+    let event_result = diesel::insert_into(blocked_events::table)
+        .values(&blocked_event)
         .execute(conn)
         .await;
-        
-    match result {
-        Ok(rows) => {
-            info!("Deleted {} profile block records", rows);
-            if rows == 0 {
-                info!("Note: No rows were deleted - the block record may not exist");
-            }
+    
+    // 2. Delete from blocked_profiles for current state
+    let profile_result = diesel::delete(blocked_profiles::table)
+        .filter(blocked_profiles::blocker_address.eq(unblock_event.blocker.clone()))
+        .filter(blocked_profiles::blocked_address.eq(unblock_event.unblocked.clone()))
+        .execute(conn)
+        .await;
+    
+    // Log results
+    match (event_result, profile_result) {
+        (Ok(_), Ok(deleted_rows)) => {
+            info!("✅ Successfully processed unblock in production system: {} records deleted", deleted_rows);
             
             // Create a profile_events entry to track in user history
             let unblock_timestamp = chrono::Utc::now().timestamp() as u64;
@@ -279,9 +362,13 @@ pub async fn process_profile_unblock_event(
                 }
             }
         },
-        Err(e) => {
-            error!("Failed to delete records from profiles_blocked table: {}", e);
-            return Err(anyhow::anyhow!("Database error: {}", e));
+        (Err(e), _) => {
+            error!("Failed to insert into blocked_events table: {}", e);
+            return Err(anyhow::anyhow!("Failed to write audit event: {}", e));
+        },
+        (_, Err(e)) => {
+            error!("Failed to delete from blocked_profiles table: {}", e);
+            return Err(anyhow::anyhow!("Failed to update blocking state: {}", e));
         }
     }
     
@@ -560,7 +647,35 @@ pub async fn process_block_list_created_event(
         block_list_event.block_list_id, block_list_event.owner
     );
     
-    // Update the profile to set the block list address
+    // ==================== DUAL-WRITE IMPLEMENTATION ====================
+    let now = chrono::Utc::now().naive_utc();
+    
+    // PHASE 1: Write to NEW system (blocked_events)
+    // Record this event in our audit trail
+    let blocked_event = NewBlockedEvent::new_block_list_created_event(
+        None, // event_id - could be extracted from blockchain if available
+        block_list_event.owner.clone(),
+        block_list_event.block_list_id.clone(),
+        Some(event_data.clone()),
+        now,
+    );
+    
+    let event_result = diesel::insert_into(blocked_events::table)
+        .values(&blocked_event)
+        .execute(conn)
+        .await;
+    
+    match event_result {
+        Ok(_) => {
+            info!("✅ Successfully recorded BlockListCreatedEvent in blocked_events");
+        },
+        Err(e) => {
+            error!("Failed to record BlockListCreatedEvent in blocked_events: {}", e);
+            // Don't return error here, continue with profile update
+        }
+    }
+    
+    // PHASE 2: Update the profile to set the block list address
     use crate::schema::profiles;
     use crate::models::profile::UpdateProfile;
     

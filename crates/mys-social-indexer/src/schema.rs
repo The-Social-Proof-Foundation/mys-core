@@ -158,13 +158,32 @@ table! {
 
 // Note: platform_relationships table has been removed in favor of platform_memberships
 
-// Profile blocking table
+// Production blocking system tables
+// Blocked events table for complete audit trail
 table! {
-    profiles_blocked (id) {
+    blocked_events (id) {
         id -> Integer,
-        blocker_wallet_address -> Varchar,
-        blocked_address -> Varchar,
+        event_id -> Nullable<Varchar>,
+        event_type -> Varchar,
+        blocker_address -> Varchar,
+        blocked_address -> Nullable<Varchar>,
+        block_list_address -> Nullable<Varchar>,
+        raw_event_data -> Nullable<Jsonb>,
+        processed_at -> Timestamp,
         created_at -> Timestamp,
+    }
+}
+
+// Blocked profiles table for current blocking state
+table! {
+    blocked_profiles (id) {
+        id -> Integer,
+        blocker_address -> Varchar,
+        blocked_address -> Varchar,
+        block_list_address -> Nullable<Varchar>,
+        first_blocked_at -> Timestamp,
+        last_blocked_at -> Timestamp,
+        total_block_count -> Integer,
     }
 }
 
@@ -1159,7 +1178,8 @@ allow_tables_to_appear_in_same_query!(
     platform_blocked_profiles,
     platform_events,
     platform_memberships,
-    profiles_blocked,
+    blocked_events,
+    blocked_profiles,
     profile_events,
     // Vesting tables
     vesting_wallets,

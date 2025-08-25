@@ -10,21 +10,8 @@ use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 
 use crate::db::DbPool;
-use crate::schema::profiles_blocked;
-
-/// Response type for blocked profiles list
-#[derive(Debug, Serialize)]
-pub struct BlockedProfilesResponse {
-    pub blocked_profiles: Vec<ProfileBlockInfo>,
-    pub total: i64,
-}
-
-/// Profile block information
-#[derive(Debug, Serialize)]
-pub struct ProfileBlockInfo {
-    pub profile_id: String,
-    pub blocked_at: chrono::NaiveDateTime,
-}
+use crate::schema::{blocked_profiles, profiles};
+use crate::models::blocking::{EnrichedBlockedProfile, PaginatedBlockedProfilesResponse, PaginationMetadata};
 
 /// Response type for blocked platforms list
 #[derive(Debug, Serialize)]
@@ -46,12 +33,12 @@ pub struct BlockCheckResponse {
     pub is_blocked: bool,
 }
 
-/// Get profiles blocked by a user
+/// Get profiles blocked by a user with rich profile information and pagination
 pub async fn get_blocked_profiles(
     Path(profile_id): Path<String>,
     State(pool): State<DbPool>,
-) -> Result<Json<BlockedProfilesResponse>, StatusCode> {
-    debug!("Getting profiles blocked by profile_id: {}", profile_id);
+) -> Result<Json<PaginatedBlockedProfilesResponse>, StatusCode> {
+    debug!("Getting enriched profiles blocked by profile_id: {}", profile_id);
     
     // Input validation
     if profile_id.trim().is_empty() {
@@ -73,32 +60,106 @@ pub async fn get_blocked_profiles(
         }
     };
     
-    // Query the profiles_blocked table for blocks where this profile is the blocker
-    // Note: profile_id could be either a wallet address or profile ID, so we'll try both
-    let blocked_profiles: Vec<ProfileBlockInfo> = match profiles_blocked::table
-        .filter(profiles_blocked::blocker_wallet_address.eq(&profile_id))
-        .select((profiles_blocked::blocked_address, profiles_blocked::created_at))
-        .load::<(String, chrono::NaiveDateTime)>(&mut conn)
+    // Enhanced query: Join blocked_profiles with profiles to get rich profile information
+    // First, determine if profile_id is a wallet address or profile_id
+    let blocker_address = if profile_id.starts_with("0x") {
+        // It's already a wallet address
+        profile_id.clone()
+    } else {
+        // It might be a profile ID, look up the wallet address
+        match profiles::table
+            .filter(profiles::profile_id.eq(&profile_id))
+            .select(profiles::owner_address)
+            .first::<String>(&mut conn)
+            .await
+        {
+            Ok(addr) => addr,
+            Err(_) => {
+                // Assume it's a wallet address if lookup fails
+                profile_id.clone()
+            }
+        }
+    };
+    
+    debug!("Resolved blocker wallet address: {}", blocker_address);
+    
+    // Query blocked_profiles joined with profiles for rich information
+    let enriched_blocked_profiles: Vec<EnrichedBlockedProfile> = match blocked_profiles::table
+        .inner_join(profiles::table.on(
+            blocked_profiles::blocked_address.eq(profiles::owner_address)
+        ))
+        .filter(blocked_profiles::blocker_address.eq(&blocker_address))
+        .select((
+            // From blocked_profiles
+            blocked_profiles::blocked_address,
+            blocked_profiles::first_blocked_at,
+            blocked_profiles::last_blocked_at,
+            blocked_profiles::total_block_count,
+            blocked_profiles::block_list_address,
+            // From profiles  
+            profiles::profile_id.nullable(),
+            profiles::username,
+            profiles::display_name.nullable(),
+            profiles::profile_photo.nullable(),
+        ))
+        .order_by(blocked_profiles::last_blocked_at.desc())
+        .load::<(
+            String, // blocked_address
+            chrono::NaiveDateTime, // first_blocked_at
+            chrono::NaiveDateTime, // last_blocked_at
+            i32, // total_block_count
+            Option<String>, // block_list_address
+            Option<String>, // profile_id
+            String, // username
+            Option<String>, // display_name
+            Option<String>, // profile_photo
+        )>(&mut conn)
         .await
     {
-        Ok(blocks) => blocks
-            .into_iter()
-            .map(|(blocked_address, created_at)| ProfileBlockInfo {
-                profile_id: blocked_address,
-                blocked_at: created_at,
-            })
-            .collect::<Vec<ProfileBlockInfo>>(),
+        Ok(results) => {
+            results
+                .into_iter()
+                .map(|(blocked_address, first_blocked_at, last_blocked_at, total_block_count, block_list_address, profile_id, username, display_name, profile_photo)| {
+                    EnrichedBlockedProfile {
+                        profile_id,
+                        wallet_address: blocked_address,
+                        username,
+                        display_name,
+                        profile_photo,
+                        blocked_at: last_blocked_at,
+                        first_blocked_at,
+                        total_block_count,
+                        block_list_address,
+                    }
+                })
+                .collect()
+        },
         Err(e) => {
-            error!("Failed to query blocked profiles: {}", e);
+            error!("Failed to query enriched blocked profiles: {}", e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
     
-    let total = blocked_profiles.len() as i64;
+    let total_count = enriched_blocked_profiles.len() as i64;
     
-    Ok(Json(BlockedProfilesResponse {
-        blocked_profiles,
-        total,
+    // Create pagination metadata (for now, no pagination limits, but structure is ready)
+    let pagination = PaginationMetadata {
+        limit: total_count as i32,
+        offset: Some(0),
+        cursor: None,
+        has_next_page: false,
+        has_previous_page: false,
+    };
+    
+    debug!(
+        "Found {} enriched blocked profiles for blocker {}",
+        total_count, blocker_address
+    );
+    
+    Ok(Json(PaginatedBlockedProfilesResponse {
+        blocked_profiles: enriched_blocked_profiles,
+        pagination,
+        total_count,
     }))
 }
 
@@ -128,18 +189,56 @@ pub async fn check_profile_blocked(
         }
     };
     
-    // Check if there's a block record for this combination
-    let is_blocked = match profiles_blocked::table
-        .filter(profiles_blocked::blocker_wallet_address.eq(&blocker_profile_id))
-        .filter(profiles_blocked::blocked_address.eq(&blocked_profile_id))
-        .select(profiles_blocked::id)
+    // Resolve blocker address (could be profile_id or wallet address)
+    let blocker_address = if blocker_profile_id.starts_with("0x") {
+        blocker_profile_id.clone()
+    } else {
+        match profiles::table
+            .filter(profiles::profile_id.eq(&blocker_profile_id))
+            .select(profiles::owner_address)
+            .first::<String>(&mut conn)
+            .await
+        {
+            Ok(addr) => addr,
+            Err(_) => blocker_profile_id.clone(), // Fallback to original value
+        }
+    };
+    
+    // Resolve blocked address (could be profile_id or wallet address)
+    let blocked_address = if blocked_profile_id.starts_with("0x") {
+        blocked_profile_id.clone()
+    } else {
+        match profiles::table
+            .filter(profiles::profile_id.eq(&blocked_profile_id))
+            .select(profiles::owner_address)
+            .first::<String>(&mut conn)
+            .await
+        {
+            Ok(addr) => addr,
+            Err(_) => blocked_profile_id.clone(), // Fallback to original value
+        }
+    };
+    
+    debug!("Resolved addresses: blocker={}, blocked={}", blocker_address, blocked_address);
+    
+    // Check production blocking system (blocked_profiles table)
+    let is_blocked = match blocked_profiles::table
+        .filter(blocked_profiles::blocker_address.eq(&blocker_address))
+        .filter(blocked_profiles::blocked_address.eq(&blocked_address))
+        .select(blocked_profiles::id)
         .first::<i32>(&mut conn)
         .await
     {
-        Ok(_) => true,  // Found a record, so it's blocked
-        Err(diesel::result::Error::NotFound) => false,  // No record found, not blocked
+        Ok(_) => {
+            debug!("Found blocking relationship in production system");
+            true
+        },
+        Err(diesel::result::Error::NotFound) => {
+            debug!("No blocking relationship found");
+            false
+        },
         Err(e) => {
-            error!("Failed to check if profile is blocked: {}", e);
+            error!("Error querying blocked_profiles table: {}", e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
