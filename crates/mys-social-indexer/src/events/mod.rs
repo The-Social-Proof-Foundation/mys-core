@@ -59,12 +59,15 @@ pub use social_graph_events::{
     UnfollowEvent,
 };
 
-// Re-export blocking events
+// Re-export blocking events  
 pub use crate::models::blocking::{
     // Block events
     UserBlockEvent,
     UserUnblockEvent,
-    // Platform events
+};
+
+// Re-export platform events (from models::platform)
+pub use crate::models::platform::{
     PlatformBlockedProfileEvent,
     PlatformUnblockedProfileEvent,
 };

@@ -18,7 +18,7 @@ use crate::models::profile_events::NewProfileEvent;
 use crate::events::profile_event_types::{BlockAddedEvent, BlockRemovedEvent};
 
 // Import platform event types
-use crate::events::{
+use crate::models::platform::{
     PlatformBlockedProfileEvent, PlatformUnblockedProfileEvent,
 };
 
@@ -358,7 +358,7 @@ pub async fn process_platform_block_event(
     // Create record in profile_events - we'll use BlockAdded event type
     // with custom fields for platform blocking
     let profile_event = NewProfileEvent::from_blockchain_event(
-        crate::events::profile_event_types::ProfileEventType::BlockAdded,
+        "BlockAdded",
         block_event.profile_id.clone(),
         serde_json::json!({
             "platform_id": block_event.platform_id,
@@ -456,7 +456,7 @@ pub async fn process_platform_unblock_event(
     // Create record in profile_events - we'll use BlockRemoved event type
     // with custom fields for platform unblocking
     let profile_event = NewProfileEvent::from_blockchain_event(
-        crate::events::profile_event_types::ProfileEventType::BlockRemoved,
+        "BlockRemoved",
         unblock_event.profile_id.clone(),
         serde_json::json!({
             "platform_id": unblock_event.platform_id,

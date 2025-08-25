@@ -24,6 +24,7 @@ use crate::events::{
 };
 use crate::models::profile::{NewProfile, NewProfilePlatformLink, UpdateProfile};
 use crate::models::username::{NewUsername, UpdateUsername, NewUsernameHistory};
+use crate::models::platform::NewPlatformBlockedProfile;
 // These model imports will be added when we implement these features
 //use crate::models::platform::NewPlatform;
 //use crate::models::content::{NewContent, NewContentInteraction};
@@ -1246,30 +1247,7 @@ impl Worker for SocialIndexerWorker {
                         }
                     },
                     
-                    // Block list events
-                    t if t.starts_with(MODULE_PREFIX_BLOCK_LIST) && t.ends_with("BlockListCreatedEvent") => {
-                        info!("Found a BlockListCreatedEvent: {}", serde_json::to_string_pretty(event).unwrap_or_default());
-                        match parse_event::<BlockListCreatedEvent>(event) {
-                            Ok(evt) => {
-                                let mut conn = match self.get_connection().await {
-                                    Ok(conn) => conn,
-                                    Err(e) => {
-                                        error!("Failed to get database connection: {}", e);
-                                        continue;
-                                    }
-                                };
-                                
-                                if let Err(e) = crate::events::blocking_events::process_block_list_created_event(&mut conn, event).await {
-                                    error!("Failed to process BlockListCreatedEvent: {}", e);
-                                }
-                            },
-                            Err(e) => {
-                                error!("Failed to parse BlockListCreatedEvent: {}", e);
-                                // Log the raw event for debugging
-                                error!("Raw event data: {}", serde_json::to_string_pretty(event).unwrap_or_default());
-                            }
-                        }
-                    },
+                    // Block list events are now handled by block_list_handler.rs
                     // Note: UserBlockEvent is handled directly in blockchain/events.rs
                     // Handle only things not covered in blockchain/events.rs
                     t if t.starts_with(MODULE_PREFIX_BLOCK_LIST) && t.ends_with("EntityBlockedEvent") => {
