@@ -16,7 +16,7 @@ use super::object::{self, ObjectFilter, ObjectImpl, ObjectLookup, ObjectOwner, O
 use super::owner::OwnerImpl;
 use super::stake::StakedMysDowncastError;
 use super::mys_address::MysAddress;
-use super::mysns_registration::{DomainFormat, MysnsRegistration, MysnsRegistrationDowncastError};
+
 use super::transaction_block::{self, TransactionBlock, TransactionBlockFilter};
 use super::type_filter::ExactTypeFilter;
 use super::uint53::UInt53;
@@ -27,7 +27,7 @@ use crate::error::Error;
 use crate::types::stake::StakedMys;
 use async_graphql::connection::Connection;
 use async_graphql::*;
-use mys_json_rpc::name_service::NameServiceConfig;
+
 use mys_types::object::{Data, MoveObject as NativeMoveObject};
 use mys_types::TypeTag;
 
@@ -115,7 +115,6 @@ pub(crate) enum IMoveObject {
     Coin(Coin),
     CoinMetadata(CoinMetadata),
     StakedMys(StakedMys),
-    MysnsRegistration(MysnsRegistration),
 }
 
 /// The representation of an object as a Move Object, which exposes additional information
@@ -196,31 +195,7 @@ impl MoveObject {
             .await
     }
 
-    /// The domain explicitly configured as the default domain pointing to this object.
-    pub(crate) async fn default_mysns_name(
-        &self,
-        ctx: &Context<'_>,
-        format: Option<DomainFormat>,
-    ) -> Result<Option<String>> {
-        OwnerImpl::from(&self.super_)
-            .default_mysns_name(ctx, format)
-            .await
-    }
 
-    /// The MysnsRegistration NFTs owned by this object. These grant the owner the capability to
-    /// manage the associated domain.
-    pub(crate) async fn mysns_registrations(
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<object::Cursor>,
-        last: Option<u64>,
-        before: Option<object::Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        OwnerImpl::from(&self.super_)
-            .mysns_registrations(ctx, first, after, last, before)
-            .await
-    }
 
     pub(crate) async fn version(&self) -> UInt53 {
         ObjectImpl(&self.super_).version().await
@@ -409,20 +384,7 @@ impl MoveObject {
         }
     }
 
-    /// Attempts to convert the Move object into a `MysnsRegistration` object.
-    async fn as_mysns_registration(&self, ctx: &Context<'_>) -> Result<Option<MysnsRegistration>> {
-        let cfg: &NameServiceConfig = ctx.data_unchecked();
-        let tag = MysnsRegistration::type_(cfg.package_address.into());
 
-        match MysnsRegistration::try_from(self, &tag) {
-            Ok(registration) => Ok(Some(registration)),
-            Err(MysnsRegistrationDowncastError::NotAMysnsRegistration) => Ok(None),
-            Err(MysnsRegistrationDowncastError::Bcs(e)) => Err(Error::Internal(format!(
-                "Failed to deserialize MysnsRegistration: {e}",
-            )))
-            .extend(),
-        }
-    }
 }
 
 impl MoveObjectImpl<'_> {

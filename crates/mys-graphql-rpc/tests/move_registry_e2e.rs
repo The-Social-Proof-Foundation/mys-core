@@ -13,7 +13,7 @@ use mys_graphql_rpc::{
     },
 };
 use mys_graphql_rpc_client::simple_client::SimpleClient;
-use mys_json_rpc::name_service::{Domain, DomainFormat};
+
 use mys_json_rpc_types::ObjectChange;
 use mys_move_build::BuildConfig;
 use mys_pg_db::temp::get_available_port;
@@ -137,8 +137,8 @@ async fn test_move_registry_e2e() {
     .await;
 
     let mvr_name = format!(
-        "{}/{}",
-        Domain::from_str(&org).unwrap().format(DomainFormat::At),
+        "@{}/{}",
+        org,
         name
     );
 
