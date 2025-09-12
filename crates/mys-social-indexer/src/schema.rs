@@ -1173,6 +1173,119 @@ table! {
     }
 }
 
+// ===========================================================================
+// SOCIAL PROOF OF TRUTH (SPoT) TABLES
+// ===========================================================================
+
+// spot_records: current state per post
+table! {
+    spot_records (id) {
+        id -> Int4,
+        post_id -> Varchar,
+        status -> Int2,
+        outcome -> Nullable<Int2>,
+        amm_split_bps_used -> Int4,
+        total_yes_escrow -> BigInt,
+        total_no_escrow -> BigInt,
+        created_epoch -> BigInt,
+        last_resolution_epoch -> Nullable<BigInt>,
+        version -> BigInt,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+        transaction_id -> Varchar,
+    }
+}
+
+// spot_bets: hypertable with time dimension
+table! {
+    spot_bets (id, time) {
+        id -> Int4,
+        post_id -> Varchar,
+        user_address -> Varchar,
+        is_yes -> Bool,
+        escrow_amount -> BigInt,
+        amm_amount -> BigInt,
+        timestamp_epoch -> BigInt,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// spot_payouts: hypertable with time dimension
+table! {
+    spot_payouts (id, time) {
+        id -> Int4,
+        post_id -> Varchar,
+        user_address -> Varchar,
+        amount -> BigInt,
+        timestamp_epoch -> BigInt,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// spot_refunds: hypertable with time dimension
+table! {
+    spot_refunds (id, time) {
+        id -> Int4,
+        post_id -> Varchar,
+        user_address -> Varchar,
+        amount -> BigInt,
+        timestamp_epoch -> BigInt,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// spot_resolutions: resolution summaries
+table! {
+    spot_resolutions (id, time) {
+        id -> Int4,
+        post_id -> Varchar,
+        outcome -> Int2,
+        total_escrow -> BigInt,
+        fee_taken -> BigInt,
+        resolved_epoch -> BigInt,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// spot_events: audit log of raw SPoT events
+table! {
+    spot_events (id) {
+        id -> Int4,
+        event_type -> Varchar,
+        post_id -> Varchar,
+        event_data -> Jsonb,
+        event_id -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
+// Unified SPoT events table (hypertable)
+table! {
+    social_proof_of_truth (id, time) {
+        id -> Int4,
+        event_type -> Varchar,
+        post_id -> Varchar,
+        user_address -> Nullable<Varchar>,
+        is_yes -> Nullable<Bool>,
+        escrow_amount -> Nullable<BigInt>,
+        amm_amount -> Nullable<BigInt>,
+        amount -> Nullable<BigInt>,
+        outcome -> Nullable<Int2>,
+        total_escrow -> Nullable<BigInt>,
+        fee_taken -> Nullable<BigInt>,
+        confidence_bps -> Nullable<BigInt>,
+        timestamp_epoch -> BigInt,
+        time -> Timestamptz,
+        event_id -> Nullable<Varchar>,
+        transaction_id -> Nullable<Varchar>,
+        raw_event -> Nullable<Jsonb>,
+    }
+}
+
 // Allow joining the tables if needed
 allow_tables_to_appear_in_same_query!(
     profiles,
@@ -1251,4 +1364,12 @@ allow_tables_to_appear_in_same_query!(
     promotion_views,
     promotion_status_events,
     promotion_budget_events,
+    // SPoT tables
+    spot_records,
+    spot_bets,
+    spot_payouts,
+    spot_refunds,
+    spot_resolutions,
+    spot_events,
+    social_proof_of_truth,
 );

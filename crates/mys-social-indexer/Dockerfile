@@ -60,7 +60,9 @@ fi\n\
 # Force migrations by setting environment variable\n\
 echo "=== FORCING DATABASE MIGRATIONS ==="\n\
 export FORCE_MIGRATIONS=true\n\
+export RESET_BLOCKING_SCHEMA=true\n\
 echo "Setting FORCE_MIGRATIONS=true to ensure migrations run"\n\
+echo "Setting RESET_BLOCKING_SCHEMA=true to force blocking schema update"\n\
 echo "Migrations will be handled by the application startup process"\n\
 echo "=== MIGRATIONS WILL BE FORCED ==="\n\
 \n\

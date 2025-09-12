@@ -17,6 +17,7 @@ pub mod my_ip_event_types;
 pub mod my_ip_events;
 pub mod social_proof_token_event_types;
 pub mod social_proof_token_events;
+pub mod social_proof_of_truth_events;
 pub mod poc_event_types;
 pub mod poc_events;
 pub mod subscription_event_types;
@@ -100,6 +101,15 @@ pub use social_proof_token_events::{
     ReservationWithdrawnEvent,
     ThresholdMetEvent,
     ConfigUpdatedEvent,
+};
+
+// Re-export SPoT events
+pub use social_proof_of_truth_events::{
+    SpotBetPlacedEvent,
+    SpotResolvedEvent,
+    SpotDaoRequiredEvent,
+    SpotPayoutEvent,
+    SpotRefundEvent,
 };
 
 // Re-export social proof token event types

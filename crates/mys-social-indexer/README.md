@@ -386,6 +386,16 @@ GET /search?query=social&page=2&limit=50
 - **GET /social-proof-token/creators/:address/revenue-streams** - Break down creator revenue from token fees across content
 - **GET /social-proof-token/market-sentiment** - Aggregate buy/sell patterns to create market momentum indicators
 
+### Social Proof of Truth (SPoT) API
+- **GET /spot/:post_id/record** - Get SPoT state for a post (status, outcome, escrow totals)
+- **GET /spot/:post_id/bets** - List SPoT bets for a post
+- **GET /spot/:post_id/payouts** - List SPoT payouts made to winning participants
+- **GET /spot/:post_id/refunds** - List SPoT refunds issued on unresolved or draw outcomes
+
+#### Query Parameters
+- `page` (optional) - Page number for pagination (default: 1)
+- `limit` (optional) - Results per page, max 100 (default: 20)
+
 ## License
 
 Apache License 2.0

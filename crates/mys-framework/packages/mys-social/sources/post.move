@@ -156,8 +156,24 @@ module social_contracts::post {
         my_ip_id: Option<address>,
         /// Optional promotion data ID for promoted posts
         promotion_id: Option<address>,
+        /// Opt-out flag to disable auto SPT pool initialization by SPoT
+        disable_auto_pool: bool,
         /// Version for upgrades
         version: u64,
+    }
+
+    /// Query: per-post opt-out for auto SPT pool init
+    public fun is_auto_pool_disabled(post: &Post): bool { post.disable_auto_pool }
+
+    /// Owner-only: set per-post opt-out flag
+    public entry fun set_auto_pool_disabled(
+        post: &mut Post,
+        disabled: bool,
+        ctx: &mut TxContext
+    ) {
+        let caller = tx_context::sender(ctx);
+        assert!(caller == post.owner, EUnauthorized);
+        post.disable_auto_pool = disabled;
     }
 
     /// Comment object for posts, supporting nested comments
@@ -614,6 +630,7 @@ module social_contracts::post {
         config: &PostConfig,
         _admin_cap: &PostAdminCap,
         registry: &UsernameRegistry,
+        platform_registry: &platform::PlatformRegistry,
         platform: &platform::Platform,
         block_list_registry: &block_list::BlockListRegistry,
         content: String,
@@ -640,7 +657,8 @@ module social_contracts::post {
         let profile_id = option::extract(&mut profile_id_option);
         
         // Check if platform is approved
-        assert!(platform::is_approved(platform), EUnauthorized);
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
         
         // Check if user has joined the platform
         let profile_id_obj = object::id_from_address(profile_id);
@@ -1209,6 +1227,7 @@ module social_contracts::post {
             revenue_redirect_percentage,
             my_ip_id,
             promotion_id,
+            disable_auto_pool: false,
             version: upgrade::current_version(),
         };
         
@@ -1225,6 +1244,7 @@ module social_contracts::post {
     /// Create a new post with interaction permissions
     public entry fun create_post(
         registry: &UsernameRegistry,
+        platform_registry: &platform::PlatformRegistry,
         platform: &platform::Platform,
         block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
@@ -1247,7 +1267,8 @@ module social_contracts::post {
         let profile_id = option::extract(&mut profile_id_option);
         
         // Check if platform is approved
-        assert!(platform::is_approved(platform), EUnauthorized);
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
         
         // Check if user has joined the platform
         let profile_id_obj = object::id_from_address(profile_id);
@@ -1484,6 +1505,7 @@ module social_contracts::post {
     /// If content is empty/none, it's treated as a standard repost
     public entry fun create_repost(
         registry: &UsernameRegistry,
+        platform_registry: &platform::PlatformRegistry,
         platform: &platform::Platform,
         block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
@@ -1507,7 +1529,8 @@ module social_contracts::post {
         let profile_id = option::extract(&mut profile_id_option);
         
         // Check if platform is approved
-        assert!(platform::is_approved(platform), EUnauthorized);
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
         
         // Check if user has joined the platform
         let profile_id_obj = object::id_from_address(profile_id);
@@ -1722,6 +1745,7 @@ module social_contracts::post {
             revenue_redirect_percentage: _,
             my_ip_id: _,
             promotion_id: _,
+            disable_auto_pool: _,
             version: _,
         } = post;
         
@@ -3068,6 +3092,7 @@ module social_contracts::post {
     /// Create a promoted post with MYS tokens for viewer payments
     public fun create_promoted_post(
         registry: &UsernameRegistry,
+        platform_registry: &platform::PlatformRegistry,
         platform: &platform::Platform,
         _block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
@@ -3093,7 +3118,8 @@ module social_contracts::post {
         let profile_id = option::extract(&mut profile_id_option);
         
         // Check if platform is approved 
-        assert!(platform::is_approved(platform), EUnauthorized);
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
         
         // Validate block list - simplified for this implementation
         // assert!(!block_list::is_profile_blocked(block_list_registry, profile_id), EUserBlockedByPlatform);

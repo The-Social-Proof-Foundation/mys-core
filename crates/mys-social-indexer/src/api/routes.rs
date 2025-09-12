@@ -158,6 +158,12 @@ use crate::api::handlers::revenue::{
 };
 // Import stats handlers
 use crate::api::handlers::stats::get_system_stats;
+use crate::api::handlers::spot::{
+    get_spot_record,
+    list_spot_bets,
+    list_spot_payouts,
+    list_spot_refunds,
+};
 
 /// Build the application router with all API routes
 pub fn build_router(db: Arc<Database>) -> Router {
@@ -263,6 +269,12 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/revenue/creators/:address/stats", get(get_creator_revenue_stats))
         .route("/revenue/platforms/:address/stats", get(get_platform_revenue_stats))
         .route("/revenue/spt/pools/:pool_id", get(get_spt_pool_revenue))
+        
+        // SPoT (Social Proof of Truth) endpoints
+        .route("/spot/:post_id/record", get(get_spot_record))
+        .route("/spot/:post_id/bets", get(list_spot_bets))
+        .route("/spot/:post_id/payouts", get(list_spot_payouts))
+        .route("/spot/:post_id/refunds", get(list_spot_refunds))
         
         // MyIP Marketplace endpoints (using TimescaleDB)
         .route("/marketplace", get(list_marketplace_data))

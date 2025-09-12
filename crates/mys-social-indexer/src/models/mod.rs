@@ -16,6 +16,7 @@ pub mod subscription;
 pub mod revenue;
 pub mod social_proof_tokens_config;
 pub mod vesting;
+pub mod social_proof_of_truth;
 
 pub use profile::*;
 pub use indexer::*;
@@ -75,3 +76,6 @@ pub use vesting::{
     VESTING_EVENT_TYPE_VESTED, VESTING_EVENT_TYPE_CLAIMED,
     CURVE_FACTOR_LINEAR, CURVE_FACTOR_MIN, CURVE_FACTOR_MAX
 };
+// SPoT types
+pub use social_proof_of_truth::*;
+pub use social_proof_of_truth::NewSocialProofOfTruthEvent;

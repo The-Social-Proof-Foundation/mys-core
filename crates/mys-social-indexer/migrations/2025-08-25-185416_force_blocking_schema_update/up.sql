@@ -1,10 +1,10 @@
--- PRODUCTION BLOCKING SYSTEM IMPLEMENTATION
--- Drop old tables and implement new production-ready blocking system
+-- FORCE BLOCKING SCHEMA UPDATE
+-- This migration ensures the blocking system schema is correctly applied
 
--- Drop any existing blocking tables to ensure clean state
-DROP TABLE IF EXISTS profiles_blocked CASCADE;
+-- First, drop ANY existing blocking tables to ensure clean state
 DROP TABLE IF EXISTS blocked_profiles CASCADE;
 DROP TABLE IF EXISTS blocked_events CASCADE;
+DROP TABLE IF EXISTS profiles_blocked CASCADE;
 
 -- Create blocked_events table for comprehensive audit trail
 CREATE TABLE blocked_events (
@@ -71,3 +71,8 @@ COMMENT ON COLUMN blocked_profiles.first_blocked_at IS 'Timestamp when this prof
 COMMENT ON COLUMN blocked_profiles.last_blocked_at IS 'Most recent blocking event timestamp';
 COMMENT ON COLUMN blocked_profiles.total_block_count IS 'Number of times this profile has been blocked by this blocker';
 COMMENT ON COLUMN blocked_profiles.block_list_address IS 'Reference to the blockchain block list object';
+
+
+
+
+

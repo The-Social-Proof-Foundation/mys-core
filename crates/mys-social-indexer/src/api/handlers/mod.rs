@@ -17,3 +17,4 @@ pub mod subscriptions;
 pub mod revenue;
 pub mod vesting;
 pub mod stats;
+pub mod spot;

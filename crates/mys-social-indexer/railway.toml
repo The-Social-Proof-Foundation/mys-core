@@ -39,3 +39,4 @@ RPC_URL = "https://fullnode.testnet.mysocial.network:9000"
 
 # Force migrations on startup
 FORCE_MIGRATIONS = "true"
+RESET_BLOCKING_SCHEMA = "true"
