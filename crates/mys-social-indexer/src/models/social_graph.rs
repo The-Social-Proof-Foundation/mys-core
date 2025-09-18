@@ -79,4 +79,8 @@ pub struct FollowsQuery {
     pub page: Option<i64>,
     /// Optional viewer profile ID to calculate is_following/follows_back from viewer's perspective
     pub viewer_id: Option<String>,
+    /// Optional sort: latest | earliest | alphabetical
+    pub sort: Option<String>,
+    /// Optional search across username, display_name, and wallet address
+    pub search: Option<String>,
 }

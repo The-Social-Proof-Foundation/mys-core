@@ -138,3 +138,12 @@ pub struct PaginationMetadata {
     pub has_next_page: bool,
     pub has_previous_page: bool,
 }
+
+/// Query parameters for listing blocked profiles
+#[derive(Debug, Deserialize)]
+pub struct BlockedListQuery {
+    /// Optional sort: latest | earliest | alphabetical
+    pub sort: Option<String>,
+    /// Optional search across username, display name, and wallet address
+    pub search: Option<String>,
+}

@@ -83,15 +83,16 @@ pub async fn get_following(
         .await
         .unwrap_or_default();
     
-    // Get following relationships and join with profiles to get details
-    // Handle both profile_id and wallet_address formats
-    let following_query = social_graph_relationships::table
+    // Build base query: following relationships joined with profiles for details
+    let mut following_query = social_graph_relationships::table
         .filter(
             social_graph_relationships::follower_address.eq(&profile_id)
                 .or(social_graph_relationships::follower_address.eq(&wallet_address))
         )
         .inner_join(profiles::table.on(
-            diesel::dsl::sql::<diesel::sql_types::Bool>("profiles.profile_id = social_graph_relationships.following_address OR profiles.owner_address = social_graph_relationships.following_address")
+            diesel::dsl::sql::<diesel::sql_types::Bool>(
+                "profiles.profile_id = social_graph_relationships.following_address OR profiles.owner_address = social_graph_relationships.following_address",
+            )
         ))
         .select((
             profiles::id,
@@ -101,23 +102,73 @@ pub async fn get_following(
             profiles::display_name.nullable(),
             profiles::profile_photo.nullable(),
         ))
-        .limit(limit)
-        .offset(offset)
-        .order_by(social_graph_relationships::created_at.desc());
-        
+        .into_boxed();
+
+    // Apply search filter if provided
+    if let Some(ref term) = query.search {
+        if !term.trim().is_empty() {
+            let pattern = format!("%{}%", term.trim());
+            following_query = following_query.filter(
+                profiles::username
+                    .ilike(pattern.clone())
+                    .or(profiles::display_name.ilike(pattern.clone()))
+                    .or(profiles::owner_address.ilike(pattern.clone())),
+            );
+        }
+    }
+
+    // Apply sort option
+    match query
+        .sort
+        .as_ref()
+        .map(|s| s.to_lowercase())
+        .as_deref()
+    {
+        Some("earliest") => {
+            following_query = following_query.order(social_graph_relationships::created_at.asc());
+        }
+        Some("alphabetical") => {
+            following_query = following_query.order(profiles::username.asc());
+        }
+        _ => {
+            // Default: latest
+            following_query = following_query.order(social_graph_relationships::created_at.desc());
+        }
+    }
+
+    // Pagination
+    following_query = following_query.limit(limit).offset(offset);
+
     let following_result = following_query
         .load::<(i32, Option<String>, String, String, Option<String>, Option<String>)>(&mut conn)
         .await;
         
-    // Also get the total count for pagination info
-    let total_count = match social_graph_relationships::table
+    // Also get the total count for pagination info (with same search filter)
+    let mut count_query = social_graph_relationships::table
         .filter(
             social_graph_relationships::follower_address.eq(&profile_id)
                 .or(social_graph_relationships::follower_address.eq(&wallet_address))
         )
-        .count()
-        .get_result::<i64>(&mut conn)
-        .await {
+        .inner_join(profiles::table.on(
+            diesel::dsl::sql::<diesel::sql_types::Bool>(
+                "profiles.profile_id = social_graph_relationships.following_address OR profiles.owner_address = social_graph_relationships.following_address",
+            )
+        ))
+        .into_boxed();
+
+    if let Some(ref term) = query.search {
+        if !term.trim().is_empty() {
+            let pattern = format!("%{}%", term.trim());
+            count_query = count_query.filter(
+                profiles::username
+                    .ilike(pattern.clone())
+                    .or(profiles::display_name.ilike(pattern.clone()))
+                    .or(profiles::owner_address.ilike(pattern.clone())),
+            );
+        }
+    }
+
+    let total_count = match count_query.count().get_result::<i64>(&mut conn).await {
         Ok(count) => count,
         Err(_) => 0,
     };
@@ -283,15 +334,16 @@ pub async fn get_followers(
         .await
         .unwrap_or_default();
     
-    // Get follower relationships and join with profiles to get details
-    // Handle both profile_id and wallet_address formats
-    let followers_query = social_graph_relationships::table
+    // Build base query: followers joined with profiles for details
+    let mut followers_query = social_graph_relationships::table
         .filter(
             social_graph_relationships::following_address.eq(&profile_id)
                 .or(social_graph_relationships::following_address.eq(&wallet_address))
         )
         .inner_join(profiles::table.on(
-            diesel::dsl::sql::<diesel::sql_types::Bool>("profiles.profile_id = social_graph_relationships.follower_address OR profiles.owner_address = social_graph_relationships.follower_address")
+            diesel::dsl::sql::<diesel::sql_types::Bool>(
+                "profiles.profile_id = social_graph_relationships.follower_address OR profiles.owner_address = social_graph_relationships.follower_address",
+            )
         ))
         .select((
             profiles::id,
@@ -301,23 +353,73 @@ pub async fn get_followers(
             profiles::display_name.nullable(),
             profiles::profile_photo.nullable(),
         ))
-        .limit(limit)
-        .offset(offset)
-        .order_by(social_graph_relationships::created_at.desc());
-        
+        .into_boxed();
+
+    // Apply search filter if provided
+    if let Some(ref term) = query.search {
+        if !term.trim().is_empty() {
+            let pattern = format!("%{}%", term.trim());
+            followers_query = followers_query.filter(
+                profiles::username
+                    .ilike(pattern.clone())
+                    .or(profiles::display_name.ilike(pattern.clone()))
+                    .or(profiles::owner_address.ilike(pattern.clone())),
+            );
+        }
+    }
+
+    // Apply sort option
+    match query
+        .sort
+        .as_ref()
+        .map(|s| s.to_lowercase())
+        .as_deref()
+    {
+        Some("earliest") => {
+            followers_query = followers_query.order(social_graph_relationships::created_at.asc());
+        }
+        Some("alphabetical") => {
+            followers_query = followers_query.order(profiles::username.asc());
+        }
+        _ => {
+            // Default: latest
+            followers_query = followers_query.order(social_graph_relationships::created_at.desc());
+        }
+    }
+
+    // Pagination
+    followers_query = followers_query.limit(limit).offset(offset);
+
     let followers_result = followers_query
         .load::<(i32, Option<String>, String, String, Option<String>, Option<String>)>(&mut conn)
         .await;
         
-    // Also get the total count for pagination info
-    let total_count = match social_graph_relationships::table
+    // Also get the total count for pagination info (with same search filter)
+    let mut count_query = social_graph_relationships::table
         .filter(
             social_graph_relationships::following_address.eq(&profile_id)
                 .or(social_graph_relationships::following_address.eq(&wallet_address))
         )
-        .count()
-        .get_result::<i64>(&mut conn)
-        .await {
+        .inner_join(profiles::table.on(
+            diesel::dsl::sql::<diesel::sql_types::Bool>(
+                "profiles.profile_id = social_graph_relationships.follower_address OR profiles.owner_address = social_graph_relationships.follower_address",
+            )
+        ))
+        .into_boxed();
+
+    if let Some(ref term) = query.search {
+        if !term.trim().is_empty() {
+            let pattern = format!("%{}%", term.trim());
+            count_query = count_query.filter(
+                profiles::username
+                    .ilike(pattern.clone())
+                    .or(profiles::display_name.ilike(pattern.clone()))
+                    .or(profiles::owner_address.ilike(pattern.clone())),
+            );
+        }
+    }
+
+    let total_count = match count_query.count().get_result::<i64>(&mut conn).await {
         Ok(count) => count,
         Err(_) => 0,
     };
@@ -662,4 +764,3 @@ pub async fn get_follow_stats(
         }
     }
 }
-

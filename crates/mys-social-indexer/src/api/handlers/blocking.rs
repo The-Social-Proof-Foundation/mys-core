@@ -1,7 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use axum::extract::{Path, State};
+use axum::extract::{Path, State, Query};
 use axum::http::StatusCode;
 use axum::Json;
 use serde::Serialize;
@@ -11,7 +11,7 @@ use diesel_async::RunQueryDsl;
 
 use crate::db::DbPool;
 use crate::schema::{blocked_profiles, profiles};
-use crate::models::blocking::{BlockedProfile, EnrichedBlockedProfile, PaginatedBlockedProfilesResponse, PaginationMetadata};
+use crate::models::blocking::{BlockedProfile, EnrichedBlockedProfile, PaginatedBlockedProfilesResponse, PaginationMetadata, BlockedListQuery};
 
 /// Response type for blocked platforms list
 #[derive(Debug, Serialize)]
@@ -36,6 +36,7 @@ pub struct BlockCheckResponse {
 /// Get profiles blocked by a user with rich profile information and pagination
 pub async fn get_blocked_profiles(
     Path(profile_id): Path<String>,
+    Query(query): Query<BlockedListQuery>,
     State(pool): State<DbPool>,
 ) -> Result<Json<PaginatedBlockedProfilesResponse>, StatusCode> {
     debug!("Getting enriched profiles blocked by profile_id: {}", profile_id);
@@ -83,13 +84,45 @@ pub async fn get_blocked_profiles(
     
     debug!("Resolved blocker wallet address: {}", blocker_address);
     
-    // Fast query: blocked_profiles table contains all rich data directly
-    let blocked_profiles: Vec<BlockedProfile> = match blocked_profiles::table
+    // Build fast query with dynamic search and sorting
+    let mut query_builder = blocked_profiles::table
         .filter(blocked_profiles::blocker_address.eq(&blocker_address))
-        .order_by(blocked_profiles::last_blocked_at.desc())
-        .load::<BlockedProfile>(&mut conn)
-        .await
+        .into_boxed();
+
+    // Apply search if provided
+    if let Some(ref term) = query.search {
+        if !term.trim().is_empty() {
+            let pattern = format!("%{}%", term.trim());
+            query_builder = query_builder.filter(
+                blocked_profiles::blocked_username
+                    .ilike(pattern.clone())
+                    .or(blocked_profiles::blocked_display_name.ilike(pattern.clone()))
+                    .or(blocked_profiles::blocked_address.ilike(pattern.clone())),
+            );
+        }
+    }
+
+    // Apply sort option
+    match query
+        .sort
+        .as_ref()
+        .map(|s| s.to_lowercase())
+        .as_deref()
     {
+        Some("earliest") => {
+            query_builder = query_builder.order(blocked_profiles::last_blocked_at.asc());
+        }
+        Some("alphabetical") => {
+            query_builder = query_builder.order(blocked_profiles::blocked_username.asc());
+        }
+        _ => {
+            // Default to latest
+            query_builder = query_builder.order(blocked_profiles::last_blocked_at.desc());
+        }
+    }
+
+    // Execute
+    let blocked_profiles: Vec<BlockedProfile> = match query_builder.load::<BlockedProfile>(&mut conn).await {
         Ok(results) => results,
         Err(e) => {
             error!("Failed to query blocked profiles: {}", e);

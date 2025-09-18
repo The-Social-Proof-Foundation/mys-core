@@ -251,13 +251,18 @@ GET /search?query=social&page=2&limit=50
 - **GET /profiles/:id/blocking** - Get blocking history
 
 ### Social Graph API
-- **GET /profiles/:id/following** - List profiles followed by a profile (supports `viewer_id` parameter)
-- **GET /profiles/:id/followers** - List followers of a profile (supports `viewer_id` parameter)
+- **GET /profiles/:id/following** - List profiles followed by a profile
+  - Query: `viewer_id` (optional), `limit`, `offset`, `page`
+  - New Query: `sort` (latest | earliest | alphabetical; default latest), `search` (matches username, display name, or wallet address)
+- **GET /profiles/:id/followers** - List followers of a profile
+  - Query: `viewer_id` (optional), `limit`, `offset`, `page`
+  - New Query: `sort` (latest | earliest | alphabetical; default latest), `search` (matches username, display name, or wallet address)
 - **GET /profiles/:id/stats** - Get follow statistics
 - **GET /social-graph/check/:follower/:following** - Check if a profile follows another
 
 ### Blocking API
 - **GET /profiles/:id/blocked** - List profiles blocked by a profile
+  - New Query: `sort` (latest | earliest | alphabetical; default latest), `search` (matches username, display name, or wallet address)
 - **GET /profiles/:id/blocked-platforms** - List platforms blocked by a profile
 - **GET /blocklist/check/profile/:blocker/:blocked** - Check if a profile is blocked
 - **GET /blocklist/check/platform/:profile/:platform** - Check if a platform is blocked
