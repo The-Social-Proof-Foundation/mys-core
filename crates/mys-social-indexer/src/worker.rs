@@ -215,6 +215,7 @@ impl SocialIndexerWorker {
             // Keep existing counts unchanged during profile updates
             followers_count: None,
             following_count: None,
+            blocked_count: None,
             post_count: None,
             min_offer_amount: event.min_offer_amount.map(|v| v as i64),
             birthdate: event.birthdate.clone(),

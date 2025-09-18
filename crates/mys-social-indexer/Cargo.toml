@@ -19,7 +19,7 @@ tokio = { workspace = true }
 async-trait = { workspace = true }
 
 # Database
-diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json", "numeric"] }
+diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json", "numeric", "64-column-tables"] }
 diesel-async = { version = "0.6", features = ["postgres", "deadpool", "async-connection-wrapper"] }
 diesel_migrations = { workspace = true }
 

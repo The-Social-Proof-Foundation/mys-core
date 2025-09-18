@@ -43,8 +43,7 @@ impl BlockListEventHandler {
     async fn process_event(&self, event: BlockchainEvent) -> Result<()> {
         debug!("BlockList handler examining event: {}", event.event_type);
         
-        // Only process events from the block_list module, but exclude BlockListCreatedEvent 
-        // since that's handled by profile_handler to avoid duplicate processing
+        // Only process events from the block_list module
         if !event.event_type.contains("::block_list::") {
             // Not from block_list module, skip it
             return Ok(());
@@ -72,7 +71,8 @@ impl BlockListEventHandler {
         // Process based on specific event type - use more flexible matching
         let event_type_lower = event.event_type.to_lowercase();
         
-        if event_type_lower.contains("blockprofileevent") || 
+        if event_type_lower.contains("blockaddedevent") ||
+           event_type_lower.contains("blockprofileevent") || 
            event_type_lower.contains("userblockevent") ||
            event_type_lower.contains("profileblockevent") {
             info!("Processing profile block event");
@@ -80,7 +80,8 @@ impl BlockListEventHandler {
                 error!("Failed to process profile block event: {}", e);
                 return Err(e);
             }
-        } else if event_type_lower.contains("unblockprofileevent") || 
+        } else if event_type_lower.contains("blockremovedevent") ||
+                  event_type_lower.contains("unblockprofileevent") || 
                   event_type_lower.contains("userunblockevent") ||
                   event_type_lower.contains("profileunblockevent") {
             info!("Processing profile unblock event");
@@ -108,7 +109,9 @@ impl BlockListEventHandler {
             warn!("Event data: {}", serde_json::to_string_pretty(&event.data).unwrap_or_default());
             
             // Still try to process as a generic blocking event if it has the right fields
-            if event.data.as_object().map_or(false, |obj| {
+            let fields = crate::events::event_utils::extract_event_fields(&event.data)
+                .unwrap_or_else(|_| event.data.clone());
+            if fields.as_object().map_or(false, |obj| {
                 (obj.contains_key("blocker") && obj.contains_key("blocked")) ||
                 (obj.contains_key("blocker") && obj.contains_key("unblocked")) ||
                 (obj.contains_key("platform_id") && obj.contains_key("profile_id"))
@@ -116,29 +119,29 @@ impl BlockListEventHandler {
                 info!("Attempting to process unknown event as generic blocking event");
                 
                 // Try as profile block event
-                if event.data.get("blocker").is_some() && event.data.get("blocked").is_some() {
+                if fields.get("blocker").is_some() && fields.get("blocked").is_some() {
                     info!("Processing unknown event as profile block");
-                    if let Err(e) = process_profile_block_event(&mut conn, &event.data).await {
+                    if let Err(e) = process_profile_block_event(&mut conn, &fields).await {
                         warn!("Failed to process as profile block event: {}", e);
                     }
                 }
                 // Try as profile unblock event
-                else if event.data.get("blocker").is_some() && event.data.get("unblocked").is_some() {
+                else if fields.get("blocker").is_some() && fields.get("unblocked").is_some() {
                     info!("Processing unknown event as profile unblock");
-                    if let Err(e) = process_profile_unblock_event(&mut conn, &event.data).await {
+                    if let Err(e) = process_profile_unblock_event(&mut conn, &fields).await {
                         warn!("Failed to process as profile unblock event: {}", e);
                     }
                 }
                 // Try as platform event
-                else if event.data.get("platform_id").is_some() && event.data.get("profile_id").is_some() {
+                else if fields.get("platform_id").is_some() && fields.get("profile_id").is_some() {
                     info!("Processing unknown event as platform block/unblock");
                     // Could be either platform block or unblock - try both based on event structure
-                    if event.data.get("blocked_by").is_some() {
-                        if let Err(e) = crate::events::blocking_events::process_platform_block_event(&mut conn, &event.data).await {
+                    if fields.get("blocked_by").is_some() {
+                        if let Err(e) = crate::events::blocking_events::process_platform_block_event(&mut conn, &fields).await {
                             warn!("Failed to process as platform block event: {}", e);
                         }
-                    } else if event.data.get("unblocked_by").is_some() {
-                        if let Err(e) = crate::events::blocking_events::process_platform_unblock_event(&mut conn, &event.data).await {
+                    } else if fields.get("unblocked_by").is_some() {
+                        if let Err(e) = crate::events::blocking_events::process_platform_unblock_event(&mut conn, &fields).await {
                             warn!("Failed to process as platform unblock event: {}", e);
                         }
                     }

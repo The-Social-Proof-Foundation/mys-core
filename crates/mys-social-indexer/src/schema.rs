@@ -23,6 +23,8 @@ table! {
         followers_count -> Integer,
         // Following count - updated when follow/unfollow occurs
         following_count -> Integer,
+        // Blocked count - number of users this profile has currently blocked
+        blocked_count -> Integer,
         // Post count - updated when posts are created/deleted
         post_count -> Integer,
         // Minimum offer amount for profile sales (NULL = not for sale)

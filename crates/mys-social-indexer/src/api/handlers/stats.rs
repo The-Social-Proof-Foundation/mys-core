@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use axum::Json;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 use tracing::{debug, error};
 
 use crate::db::DbPool;

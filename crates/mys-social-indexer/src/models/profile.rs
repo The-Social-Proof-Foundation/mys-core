@@ -23,6 +23,8 @@ pub struct Profile {
     // Social graph statistics
     pub followers_count: i32,
     pub following_count: i32,
+    // Blocking statistics
+    pub blocked_count: i32,
     // Post count - number of top-level, non-deleted posts
     pub post_count: i32,
     // Minimum offer amount for profile sales (NULL = not for sale)
@@ -66,6 +68,9 @@ pub struct NewProfile {
     pub followers_count: i32,
     #[serde(default)]
     pub following_count: i32,
+    // Blocking statistics - initialize to 0
+    #[serde(default)]
+    pub blocked_count: i32,
     // Post count - initialize to 0
     #[serde(default)]
     pub post_count: i32,
@@ -104,6 +109,7 @@ pub struct UpdateProfile {
     // Social graph statistics - optional for when they need to be updated
     pub followers_count: Option<i32>,
     pub following_count: Option<i32>,
+    pub blocked_count: Option<i32>,
     // Post count - optional for when it needs to be updated
     pub post_count: Option<i32>,
     // Minimum offer amount for profile sales - optional for when it needs to be updated

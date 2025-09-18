@@ -180,6 +180,19 @@ pub async fn process_profile_block_event(
     let blocked_display_name = &profile_data.2;
     let blocked_profile_photo = &profile_data.3;
 
+    // Before upsert, check if an active block record already exists (to maintain accurate blocked_count)
+    let existed_before = {
+        use diesel::dsl::exists;
+        diesel::select(exists(
+            blocked_profiles::table
+                .filter(blocked_profiles::blocker_address.eq(&block_event.blocker))
+                .filter(blocked_profiles::blocked_address.eq(&block_event.blocked))
+        ))
+        .get_result::<bool>(conn)
+        .await
+        .unwrap_or(false)
+    };
+
     // 3. Insert or update blocked_profiles for current state with rich data
     let new_blocked_profile = NewBlockedProfile::new(
         block_event.blocker.clone(),
@@ -214,6 +227,15 @@ pub async fn process_profile_block_event(
     match (event_result, profile_result) {
         (Ok(_), Ok(_)) => {
             info!("✅ Successfully wrote block event to production blocking system");
+
+            // Increment blocker's blocked_count if this is a new active block relationship
+            if !existed_before {
+                use crate::schema::profiles;
+                let _ = diesel::update(profiles::table.filter(profiles::owner_address.eq(&block_event.blocker)))
+                    .set(profiles::blocked_count.eq(profiles::blocked_count + 1))
+                    .execute(conn)
+                    .await;
+            }
             
             // Create a profile_events entry to track in user history
             let block_timestamp = chrono::Utc::now().timestamp() as u64;
@@ -401,6 +423,15 @@ pub async fn process_profile_unblock_event(
                 Err(e) => {
                     error!("Failed to insert unblock event into profile_events: {}", e);
                 }
+            }
+
+            // Decrement blocker's blocked_count only if an active relationship was removed
+            if deleted_rows > 0 {
+                use crate::schema::profiles;
+                let _ = diesel::update(profiles::table.filter(profiles::owner_address.eq(&unblock_event.blocker)))
+                    .set(profiles::blocked_count.eq(profiles::blocked_count - 1))
+                    .execute(conn)
+                    .await;
             }
         },
         (Err(e), _) => {
@@ -748,6 +779,7 @@ pub async fn process_block_list_created_event(
                 cover_photo: None,
                 followers_count: None,
                 following_count: None,
+                blocked_count: None,
                 post_count: None,
                 min_offer_amount: None,
                 birthdate: None,
@@ -785,5 +817,83 @@ pub async fn process_block_list_created_event(
         }
     }
     
+    // PHASE 3: If the creation event also contains an initial blocked address,
+    // record that relationship in blocked_profiles to keep state consistent.
+    // This guards against chains where the first block emits only BlockListCreated.
+    if let Ok(fields) = crate::events::event_utils::extract_event_fields(event_data) {
+        // Try common field names for the initially blocked address
+        let maybe_blocked = fields.get("blocked")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .or_else(|| fields.get("blocked_address").and_then(|v| v.as_str()).map(|s| s.to_string()));
+
+        if let Some(blocked_addr) = maybe_blocked {
+            if !blocked_addr.is_empty() {
+                use diesel::dsl::exists;
+                // Check if this block relationship already exists
+                let already_exists = diesel::select(exists(
+                    blocked_profiles::table
+                        .filter(blocked_profiles::blocker_address.eq(&block_list_event.owner))
+                        .filter(blocked_profiles::blocked_address.eq(&blocked_addr))
+                ))
+                .get_result::<bool>(conn)
+                .await
+                .unwrap_or(false);
+
+                if !already_exists {
+                    // Fetch rich profile data for blocked user (if available)
+                    let (blocked_profile_id, blocked_username, blocked_display_name, blocked_profile_photo) =
+                        match profiles::table
+                            .filter(profiles::owner_address.eq(&blocked_addr))
+                            .select((
+                                profiles::profile_id.nullable(),
+                                profiles::username,
+                                profiles::display_name.nullable(),
+                                profiles::profile_photo.nullable(),
+                            ))
+                            .first::<(Option<String>, String, Option<String>, Option<String>)>(conn)
+                            .await
+                        {
+                            Ok(data) => data,
+                            Err(_) => (None, blocked_addr.clone(), None, None),
+                        };
+
+                    let new_blocked_profile = NewBlockedProfile::new(
+                        block_list_event.owner.clone(),
+                        blocked_addr.clone(),
+                        Some(block_list_event.block_list_id.clone()),
+                        blocked_profile_id,
+                        blocked_username,
+                        blocked_display_name,
+                        blocked_profile_photo,
+                        now,
+                    );
+
+                    let inserted = diesel::insert_into(blocked_profiles::table)
+                        .values(&new_blocked_profile)
+                        .on_conflict((blocked_profiles::blocker_address, blocked_profiles::blocked_address))
+                        .do_nothing()
+                        .execute(conn)
+                        .await
+                        .unwrap_or(0);
+
+                    // If we inserted a new active block, increment blocked_count
+                    if inserted > 0 {
+                        let _ = diesel::update(profiles::table.filter(profiles::owner_address.eq(&block_list_event.owner)))
+                            .set(profiles::blocked_count.eq(profiles::blocked_count + 1))
+                            .execute(conn)
+                            .await;
+                    }
+
+                    info!(
+                        "Ensured initial block relationship exists for owner {} -> {} after block list creation",
+                        block_list_event.owner,
+                        blocked_addr
+                    );
+                }
+            }
+        }
+    }
+
     Ok(())
 }

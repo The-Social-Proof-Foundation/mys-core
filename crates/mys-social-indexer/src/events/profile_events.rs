@@ -157,6 +157,7 @@ impl ProfileCreatedEvent {
             // Initialize follower/following counts to 0
             followers_count: 0,
             following_count: 0,
+            blocked_count: 0,
             // Initialize post count to 0
             post_count: 0,
             // Initialize minimum offer amount as None (not for sale)
