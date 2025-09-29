@@ -1,0 +1,53 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/mys-bridge/Dockerfile"
+
+[deploy]
+startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key && cargo run --release --bin mys-bridge -- --config-path /app/bridge-config-validator-3.yaml'"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+
+[variables]
+BRIDGE_AUTHORITY_KEY = ""
+
+# Optional: Logging configuration
+RUST_LOG = "info,mys_bridge=debug"
+
+# Database Configuration (optional for observer nodes)
+# DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+
+# Bridge Node Configuration
+BRIDGE_NODE_PORT = "8082"
+BRIDGE_METRICS_PORT = "9092"
+
+# Contract Addresses (Base Sepolia)
+BRIDGE_COMMITTEE_ADDRESS = "0x2e37B4ffCE8B1F00dFD7234f8D2637715A473628"
+BRIDGE_CONFIG_ADDRESS = "0x93e073F0bE555e3CAA1c9cE3e7d825496f2a5f02"
+BRIDGE_LIMITER_ADDRESS = "0x5B5691521f695c0D5743Cc7D786821b5Fda2718f"
+BRIDGE_VAULT_ADDRESS = "0xBCD346797E5DEc586B0c4Fa19b82a4E2cAd5DD67"
+
+# Bridge Authority Configuration
+BRIDGE_COMMITTEE_MEMBER = "true"
+
+# Network Configuration
+SOURCE_CHAIN_ID = "12"  # Base Sepolia
+TARGET_CHAIN_ID = "1"      # Mys Network
+
+# Monitoring and Logging
+LOG_LEVEL = "info"
+METRICS_ENABLED = "true"
+PROMETHEUS_PORT = "9092"
+
+# Performance Settings
+SYNC_BATCH_SIZE = "100"
+SYNC_INTERVAL_MS = "5000"
+MAX_CONCURRENT_REQUESTS = "10"
+
+# Security Settings
+ENABLE_CORS = "true"
+TRUSTED_PROXY_COUNT = "1"
+
+# Feature Flags
+ENABLE_EMERGENCY_PAUSE = "true"
+ENABLE_RATE_LIMITING = "true"
+ENABLE_TRANSFER_LIMITS = "true"

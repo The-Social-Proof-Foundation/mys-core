@@ -3,13 +3,13 @@
 # URL of the remote store
 remote_store_url: https://storage.googleapis.com/mysocial-testnet-checkpoints
 # URL for MySocial RPC  
-mys_rpc_url: https://fullnode.testnet.mysocial.network:9000
+mys_rpc_url: http://fullnode.testnet.mysocial.network:8082
 # URL for Ethereum RPC
 eth_rpc_url: https://base-sepolia.g.alchemy.com/v2/CTLwBwcLSgKAIYyujNUnfn6ThiSLHVNS
 # URL for Ethereum WebSocket RPC
 eth_ws_url: wss://base-sepolia.g.alchemy.com/v2/CTLwBwcLSgKAIYyujNUnfn6ThiSLHVNS
 # Database connection URL
-db_url: postgresql://postgres:ETTZFVeKtrUyuVDlYKzGQqYCjINNjbWH@centerbeam.proxy.rlwy.net:54474/railway
+db_url: postgresql://postgres:ETTZFVeKtrUyuVDlYKzGQqYCjINNjbWH@postgres-6eso.railway.internal:5432/railway
 # Path to the checkpoints (optional)
 # checkpoints_path: <path>
 # Number of concurrent operations
