@@ -15,4 +15,4 @@ eth:
   eth-contracts-start-block-fallback: 0
 
 metrics:
-  push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics" 
+  push-url: "https://mys-bridge-testnet.up.railway.app:8080/publish/metrics" 
