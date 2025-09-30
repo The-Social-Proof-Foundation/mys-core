@@ -19,6 +19,7 @@ platform, and ecosystem treasury.
 -  [Struct `SocialToken`](#social_contracts_social_proof_tokens_SocialToken)
 -  [Struct `ReservationPoolObject`](#social_contracts_social_proof_tokens_ReservationPoolObject)
 -  [Struct `TokenPoolCreatedEvent`](#social_contracts_social_proof_tokens_TokenPoolCreatedEvent)
+-  [Struct `PostPoolAutoInitializedEvent`](#social_contracts_social_proof_tokens_PostPoolAutoInitializedEvent)
 -  [Struct `TokenBoughtEvent`](#social_contracts_social_proof_tokens_TokenBoughtEvent)
 -  [Struct `TokenSoldEvent`](#social_contracts_social_proof_tokens_TokenSoldEvent)
 -  [Struct `ReservationCreatedEvent`](#social_contracts_social_proof_tokens_ReservationCreatedEvent)
@@ -70,6 +71,7 @@ platform, and ecosystem treasury.
 -  [Function `migrate_token_pool`](#social_contracts_social_proof_tokens_migrate_token_pool)
 -  [Function `migrate_reservation_pool`](#social_contracts_social_proof_tokens_migrate_reservation_pool)
 -  [Function `create_social_proof_tokens_admin_cap`](#social_contracts_social_proof_tokens_create_social_proof_tokens_admin_cap)
+-  [Function `ensure_post_token_pool`](#social_contracts_social_proof_tokens_ensure_post_token_pool)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
@@ -243,6 +245,29 @@ Global social proof tokens configuration
 </dt>
 <dd>
  Emergency kill switch - when true, all trading is halted
+</dd>
+<dt>
+<code>allow_auto_pool_init: bool</code>
+</dt>
+<dd>
+ Allow auto-initialization of post token pools by package-restricted callers
+</dd>
+<dt>
+<code>auto_init_max_per_epoch: u64</code>
+</dt>
+<dd>
+ Throttle: max auto-inits per epoch (0 = unlimited)
+</dd>
+<dt>
+<code>auto_init_epoch: u64</code>
+</dt>
+<dd>
+ Internal counter epoch and count (for throttling)
+</dd>
+<dt>
+<code>auto_init_count_in_epoch: u64</code>
+</dt>
+<dd>
 </dd>
 </dl>
 
@@ -693,6 +718,53 @@ Event emitted when a token pool is created
 </dd>
 <dt>
 <code>quadratic_coefficient: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_PostPoolAutoInitializedEvent"></a>
+
+## Struct `PostPoolAutoInitializedEvent`
+
+Event emitted when a post pool is auto-initialized by SPoT flow
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_PostPoolAutoInitializedEvent">PostPoolAutoInitializedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>base_price: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>quadratic_coefficient: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>by: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -1540,6 +1612,10 @@ Bootstrap initialization function - creates the social proof tokens configuratio
             profile_threshold: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_PROFILE_THRESHOLD">DEFAULT_PROFILE_THRESHOLD</a>,
             max_individual_reservation_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS">DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS</a>,
             trading_halted: <b>true</b>, // Auto-enabled by <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> during <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
+            allow_auto_pool_init: <b>false</b>,
+            auto_init_max_per_epoch: 0,
+            auto_init_epoch: 0,
+            auto_init_count_in_epoch: 0,
         }
     );
     // Create and share token registry
@@ -3514,6 +3590,101 @@ This function is only callable by other modules in the same package
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensAdminCap">SocialProofTokensAdminCap</a> {
         id: object::new(ctx)
     }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_ensure_post_token_pool"></a>
+
+## Function `ensure_post_token_pool`
+
+Ensure a post token pool exists; if missing and allowed, create a minimal pool.
+Guardrails:
+- Requires config.allow_auto_pool_init = true
+- Respects post.disable_auto_pool opt-out
+- Throttles by epoch via auto_init_max_per_epoch
+- Package visibility prevents arbitrary external calls
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ensure_post_token_pool">ensure_post_token_pool</a>(registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ensure_post_token_pool">ensure_post_token_pool</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>,
+    ctx: &<b>mut</b> TxContext
+): Option&lt;<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>&gt; {
+    // If token already exists, no-op
+    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">social_contracts::post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>if</b> (table::contains(&registry.tokens, post_id)) {
+        <b>return</b> option::none&lt;<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>&gt;()
+    };
+    // Trading halted check
+    <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
+    // Global opt-in
+    <b>assert</b>!(config.allow_auto_pool_init, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
+    // Per-<a href="../social_contracts/post.md#social_contracts_post">post</a> opt-out
+    <b>assert</b>!(!<a href="../social_contracts/post.md#social_contracts_post_is_auto_pool_disabled">social_contracts::post::is_auto_pool_disabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
+    // Epoch throttle (best-effort): limit creations within same epoch
+    <b>let</b> now_epoch = tx_context::epoch(ctx);
+    <b>if</b> (config.auto_init_max_per_epoch &gt; 0) {
+        <b>if</b> (config.auto_init_epoch == now_epoch) {
+            <b>assert</b>!(config.auto_init_count_in_epoch + 1 &lt;= config.auto_init_max_per_epoch, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
+            config.auto_init_count_in_epoch = config.auto_init_count_in_epoch + 1;
+        } <b>else</b> {
+            config.auto_init_epoch = now_epoch;
+            config.auto_init_count_in_epoch = 1;
+        };
+    };
+    // Create minimal pool (initial supply = 1, no liquidity)
+    <b>let</b> owner = <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">social_contracts::post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
+    <b>let</b> token_info = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenInfo">TokenInfo</a> {
+        id: @0x0,
+        token_type: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
+        owner,
+        associated_id: post_id,
+        symbol: string::utf8(b"PPOST"),
+        name: string::utf8(b"Post Token"),
+        circulating_supply: 1,
+        base_price: config.base_price,
+        quadratic_coefficient: config.quadratic_coefficient,
+        created_at: now_epoch,
+    };
+    <b>let</b> pool_id = object::new(ctx);
+    <b>let</b> pool_address = object::uid_to_address(&pool_id);
+    <b>let</b> <b>mut</b> updated_token_info = token_info;
+    updated_token_info.id = pool_address;
+    <b>let</b> pool = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a> {
+        id: pool_id,
+        info: updated_token_info,
+        mys_balance: balance::zero(),
+        holders: table::new(ctx),
+        poc_redirect_to: option::none(),
+        poc_redirect_percentage: option::none(),
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
+    };
+    // Register token <b>for</b> associated <a href="../social_contracts/post.md#social_contracts_post">post</a> id
+    table::add(&<b>mut</b> registry.tokens, post_id, updated_token_info);
+    // Emit audit event
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_PostPoolAutoInitializedEvent">PostPoolAutoInitializedEvent</a> {
+        post_id,
+        owner,
+        base_price: config.base_price,
+        quadratic_coefficient: config.quadratic_coefficient,
+        by: tx_context::sender(ctx),
+    });
+    // Return the unshared pool to caller so it can be used in-tx and shared after
+    option::some(pool)
 }
 </code></pre>
 

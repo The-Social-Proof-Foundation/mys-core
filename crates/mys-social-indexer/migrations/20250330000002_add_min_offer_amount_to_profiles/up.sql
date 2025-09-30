@@ -1,5 +1,5 @@
 -- Migration: Add min_offer_amount to Profiles
--- Version: 20250126000001
+-- Version: 20250330000002
 -- Purpose: Add min_offer_amount field to track minimum MYSO token offer amounts for profile sales
 
 -- ============================================================================

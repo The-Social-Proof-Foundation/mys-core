@@ -5560,6 +5560,12 @@ PromotionFundsWithdrawnEvent
 ModerationRecord
 	public struct
 	0xd880::post
+is_auto_pool_disabled
+	public fun
+	0xd880::post
+set_auto_pool_disabled
+	public entry fun
+	0xd880::post
 bootstrap_init
 	public(package) fun
 	0xd880::post
@@ -5791,6 +5797,9 @@ ReservationPoolObject
 TokenPoolCreatedEvent
 	public struct
 	0xd880::social_proof_tokens
+PostPoolAutoInitializedEvent
+	public struct
+	0xd880::social_proof_tokens
 TokenBoughtEvent
 	public struct
 	0xd880::social_proof_tokens
@@ -5939,6 +5948,9 @@ migrate_reservation_pool
 	public entry fun
 	0xd880::social_proof_tokens
 create_social_proof_tokens_admin_cap
+	public(package) fun
+	0xd880::social_proof_tokens
+ensure_post_token_pool
 	public(package) fun
 	0xd880::social_proof_tokens
 SocialGraph
@@ -6256,6 +6268,75 @@ is_used
 version
 	public fun
 	0xd880::bootstrap
+SpotAdminCap
+	public struct
+	0xd880::social_proof_of_truth
+SpotConfig
+	public struct
+	0xd880::social_proof_of_truth
+SpotBet
+	public struct
+	0xd880::social_proof_of_truth
+SpotRecord
+	public struct
+	0xd880::social_proof_of_truth
+SpotBetPlacedEvent
+	public struct
+	0xd880::social_proof_of_truth
+SpotResolvedEvent
+	public struct
+	0xd880::social_proof_of_truth
+SpotDaoRequiredEvent
+	public struct
+	0xd880::social_proof_of_truth
+SpotPayoutEvent
+	public struct
+	0xd880::social_proof_of_truth
+SpotRefundEvent
+	public struct
+	0xd880::social_proof_of_truth
+get_status
+	public fun
+	0xd880::social_proof_of_truth
+get_total_yes_escrow
+	public fun
+	0xd880::social_proof_of_truth
+get_total_no_escrow
+	public fun
+	0xd880::social_proof_of_truth
+get_bets_len
+	public fun
+	0xd880::social_proof_of_truth
+bootstrap_init
+	public(package) fun
+	0xd880::social_proof_of_truth
+update_spot_config
+	public entry fun
+	0xd880::social_proof_of_truth
+split_amount
+	fun
+	0xd880::social_proof_of_truth
+create_spot_record_for_post
+	public entry fun
+	0xd880::social_proof_of_truth
+place_spot_bet_with_pool
+	public entry fun
+	0xd880::social_proof_of_truth
+place_spot_bet_auto_init
+	public entry fun
+	0xd880::social_proof_of_truth
+oracle_resolve
+	public entry fun
+	0xd880::social_proof_of_truth
+finalize_via_dao
+	public entry fun
+	0xd880::social_proof_of_truth
+refund_unresolved
+	public entry fun
+	0xd880::social_proof_of_truth
+finalize_resolution_and_payout
+	fun
+	0xd880::social_proof_of_truth
 log
 	fun
 	0x5ea1::gf256

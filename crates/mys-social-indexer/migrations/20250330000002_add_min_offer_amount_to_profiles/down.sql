@@ -1,5 +1,5 @@
 -- Migration Down: Remove min_offer_amount from Profiles
--- Version: 20250126000001
+-- Version: 20250330000002
 
 -- ============================================================================
 -- 1. REMOVE INDEXES

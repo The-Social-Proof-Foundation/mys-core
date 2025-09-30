@@ -1,5 +1,5 @@
 -- Migration: Update Profiles - Remove sensitive_data_updated_at and Add post_count
--- Version: 20250126000000
+-- Version: 20250330000001
 -- Purpose: Clean up profiles table by removing unused sensitive_data_updated_at field and adding post_count tracking
 
 -- ============================================================================

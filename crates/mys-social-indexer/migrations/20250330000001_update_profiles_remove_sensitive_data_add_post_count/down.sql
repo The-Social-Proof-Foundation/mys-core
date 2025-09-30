@@ -1,5 +1,5 @@
 -- Migration Down: Rollback Profiles Changes - Restore sensitive_data_updated_at and Remove post_count
--- Version: 20250126000000
+-- Version: 20250330000001
 
 -- ============================================================================
 -- 1. REMOVE POST_COUNT FIELD AND RELATED OBJECTS
