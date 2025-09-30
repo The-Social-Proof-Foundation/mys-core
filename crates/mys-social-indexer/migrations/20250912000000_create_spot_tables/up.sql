@@ -11,7 +11,7 @@ $$;
 -- Core record per post
 CREATE TABLE IF NOT EXISTS spot_records (
     id SERIAL PRIMARY KEY,
-    post_id VARCHAR NOT NULL UNIQUE,
+    post_id TEXT NOT NULL UNIQUE,
     status SMALLINT NOT NULL,
     outcome SMALLINT,
     amm_split_bps_used INTEGER NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS spot_records (
     version BIGINT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_spot_records_post_id ON spot_records(post_id);
@@ -31,14 +31,14 @@ CREATE INDEX IF NOT EXISTS idx_spot_records_status ON spot_records(status);
 -- Bets hypertable
 CREATE TABLE IF NOT EXISTS spot_bets (
     id SERIAL NOT NULL,
-    post_id VARCHAR NOT NULL,
-    user_address VARCHAR NOT NULL,
+    post_id TEXT NOT NULL,
+    user_address TEXT NOT NULL,
     is_yes BOOLEAN NOT NULL,
     escrow_amount BIGINT NOT NULL,
     amm_amount BIGINT NOT NULL,
     timestamp_epoch BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 SELECT create_hypertable('spot_bets', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '7 days');
@@ -50,12 +50,12 @@ CREATE INDEX IF NOT EXISTS idx_spot_bets_created_at ON spot_bets(timestamp_epoch
 -- Payouts hypertable
 CREATE TABLE IF NOT EXISTS spot_payouts (
     id SERIAL NOT NULL,
-    post_id VARCHAR NOT NULL,
-    user_address VARCHAR NOT NULL,
+    post_id TEXT NOT NULL,
+    user_address TEXT NOT NULL,
     amount BIGINT NOT NULL,
     timestamp_epoch BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 SELECT create_hypertable('spot_payouts', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '7 days');
 ALTER TABLE spot_payouts ADD PRIMARY KEY (id, time);
@@ -65,12 +65,12 @@ CREATE INDEX IF NOT EXISTS idx_spot_payouts_user ON spot_payouts(user_address, t
 -- Refunds hypertable
 CREATE TABLE IF NOT EXISTS spot_refunds (
     id SERIAL NOT NULL,
-    post_id VARCHAR NOT NULL,
-    user_address VARCHAR NOT NULL,
+    post_id TEXT NOT NULL,
+    user_address TEXT NOT NULL,
     amount BIGINT NOT NULL,
     timestamp_epoch BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 SELECT create_hypertable('spot_refunds', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '7 days');
 ALTER TABLE spot_refunds ADD PRIMARY KEY (id, time);
@@ -80,13 +80,13 @@ CREATE INDEX IF NOT EXISTS idx_spot_refunds_user ON spot_refunds(user_address, t
 -- Resolution summaries hypertable
 CREATE TABLE IF NOT EXISTS spot_resolutions (
     id SERIAL NOT NULL,
-    post_id VARCHAR NOT NULL,
+    post_id TEXT NOT NULL,
     outcome SMALLINT NOT NULL,
     total_escrow BIGINT NOT NULL,
     fee_taken BIGINT NOT NULL,
     resolved_epoch BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 SELECT create_hypertable('spot_resolutions', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '30 days');
 ALTER TABLE spot_resolutions ADD PRIMARY KEY (id, time);
@@ -95,10 +95,10 @@ CREATE INDEX IF NOT EXISTS idx_spot_resolutions_post_id ON spot_resolutions(post
 -- Event audit log
 CREATE TABLE IF NOT EXISTS spot_events (
     id SERIAL PRIMARY KEY,
-    event_type VARCHAR NOT NULL,
-    post_id VARCHAR NOT NULL,
+    event_type TEXT NOT NULL,
+    post_id TEXT NOT NULL,
     event_data JSONB NOT NULL,
-    event_id VARCHAR NOT NULL,
+    event_id TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_spot_events_type ON spot_events(event_type);

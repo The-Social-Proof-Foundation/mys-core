@@ -263,7 +263,7 @@ CREATE TABLE IF NOT EXISTS checkpoint_processing (
     follows_removed INT DEFAULT 0,
     platform_events INT DEFAULT 0,
     block_events INT DEFAULT 0,
-    processing_status VARCHAR(50) DEFAULT 'in_progress',
+    processing_status TEXT DEFAULT 'in_progress',
     processing_duration_ms INT,
     error_message TEXT,
     -- Include the time column in the primary key for hypertables

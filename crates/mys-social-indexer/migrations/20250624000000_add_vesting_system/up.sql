@@ -7,8 +7,8 @@
 
 -- Vesting Wallets table - Core vesting wallet configurations and current balances
 CREATE TABLE IF NOT EXISTS vesting_wallets (
-    wallet_id VARCHAR PRIMARY KEY,
-    owner_address VARCHAR NOT NULL,
+    wallet_id TEXT PRIMARY KEY,
+    owner_address TEXT NOT NULL,
     total_amount BIGINT NOT NULL,
     start_time BIGINT NOT NULL,
     duration BIGINT NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS vesting_wallets (
     remaining_balance BIGINT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- ============================================================================
@@ -27,9 +27,9 @@ CREATE TABLE IF NOT EXISTS vesting_wallets (
 -- Vesting Events table - Complete event history for all vesting actions
 CREATE TABLE IF NOT EXISTS vesting_events (
     id SERIAL NOT NULL,
-    wallet_id VARCHAR NOT NULL,
-    event_type VARCHAR NOT NULL,
-    owner_address VARCHAR NOT NULL,
+    wallet_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    owner_address TEXT NOT NULL,
     amount BIGINT NOT NULL,
     remaining_balance BIGINT,
     start_time BIGINT,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS vesting_events (
     curve_factor BIGINT,
     event_time BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_vesting_events PRIMARY KEY (id, time)
 );
 
@@ -158,7 +158,7 @@ CREATE OR REPLACE FUNCTION get_vesting_status(
     duration_param BIGINT,
     current_time_param BIGINT
 )
-RETURNS VARCHAR AS $$
+RETURNS TEXT AS $$
 BEGIN
     IF current_time_param < start_time_param THEN
         RETURN 'not_started';

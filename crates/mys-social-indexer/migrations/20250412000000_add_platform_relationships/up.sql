@@ -1,8 +1,8 @@
 -- Create platform_relationships table
 CREATE TABLE platform_relationships (
     id SERIAL PRIMARY KEY,
-    platform_id VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
+    platform_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
     joined_at TIMESTAMP NOT NULL,
     left_at TIMESTAMP,
     -- Add unique constraint to prevent duplicate active relationships

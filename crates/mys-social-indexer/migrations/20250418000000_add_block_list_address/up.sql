@@ -1,6 +1,6 @@
 -- Your SQL goes here
 ALTER TABLE profiles
-ADD COLUMN block_list_address VARCHAR;
+ADD COLUMN block_list_address TEXT;
 
 -- Add index for faster lookups
 CREATE INDEX idx_profiles_block_list_address ON profiles (block_list_address);

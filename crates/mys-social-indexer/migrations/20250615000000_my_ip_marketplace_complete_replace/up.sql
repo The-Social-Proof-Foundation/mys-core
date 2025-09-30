@@ -59,11 +59,11 @@ $$;
 
 -- Main data marketplace entries (Regular table - reference data)
 CREATE TABLE my_ip_data (
-    ip_id VARCHAR NOT NULL PRIMARY KEY,
-    owner VARCHAR NOT NULL,
-    media_type VARCHAR NOT NULL,
+    ip_id TEXT NOT NULL PRIMARY KEY,
+    owner TEXT NOT NULL,
+    media_type TEXT NOT NULL,
     tags JSONB NOT NULL DEFAULT '[]'::JSONB,
-    platform_id VARCHAR,
+    platform_id TEXT,
     timestamp_start BIGINT NOT NULL,
     timestamp_end BIGINT,
     created_at BIGINT NOT NULL,
@@ -71,27 +71,27 @@ CREATE TABLE my_ip_data (
     one_time_price BIGINT,
     subscription_price BIGINT,
     subscription_duration_days BIGINT NOT NULL DEFAULT 30,
-    geographic_region VARCHAR,
-    data_quality VARCHAR CHECK (data_quality IN ('high', 'medium', 'low')),
+    geographic_region TEXT,
+    data_quality TEXT CHECK (data_quality IN ('high', 'medium', 'low')),
     sample_size BIGINT,
-    collection_method VARCHAR,
+    collection_method TEXT,
     is_updating BOOLEAN NOT NULL DEFAULT false,
-    update_frequency VARCHAR CHECK (update_frequency IN ('hourly', 'daily', 'weekly', 'monthly', 'yearly')),
+    update_frequency TEXT CHECK (update_frequency IN ('hourly', 'daily', 'weekly', 'monthly', 'yearly')),
     version BIGINT NOT NULL DEFAULT 1,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Purchase records (TimescaleDB hypertable - high volume)
 CREATE TABLE my_ip_purchases (
     id SERIAL NOT NULL,
-    ip_id VARCHAR NOT NULL,
-    buyer VARCHAR NOT NULL,
+    ip_id TEXT NOT NULL,
+    buyer TEXT NOT NULL,
     price BIGINT NOT NULL,
-    purchase_type VARCHAR NOT NULL CHECK (purchase_type IN ('one_time', 'subscription')),
+    purchase_type TEXT NOT NULL CHECK (purchase_type IN ('one_time', 'subscription')),
     purchase_time BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_my_ip_purchases PRIMARY KEY (id, time)
 );
 
@@ -101,13 +101,13 @@ SELECT create_hypertable('my_ip_purchases', 'time', chunk_time_interval => INTER
 -- Subscription records (TimescaleDB hypertable - moderate volume)
 CREATE TABLE my_ip_subscriptions (
     id SERIAL NOT NULL,
-    ip_id VARCHAR NOT NULL,
-    subscriber VARCHAR NOT NULL,
+    ip_id TEXT NOT NULL,
+    subscriber TEXT NOT NULL,
     subscription_start BIGINT NOT NULL,
     subscription_end BIGINT NOT NULL,
     price BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_my_ip_subscriptions PRIMARY KEY (id, time)
 );
 
@@ -117,14 +117,14 @@ SELECT create_hypertable('my_ip_subscriptions', 'time', chunk_time_interval => I
 -- Revenue tracking (TimescaleDB hypertable - high volume)
 CREATE TABLE my_ip_revenue (
     id SERIAL NOT NULL,
-    ip_id VARCHAR NOT NULL,
-    from_address VARCHAR NOT NULL,
-    to_address VARCHAR NOT NULL,
+    ip_id TEXT NOT NULL,
+    from_address TEXT NOT NULL,
+    to_address TEXT NOT NULL,
     amount BIGINT NOT NULL,
-    revenue_type VARCHAR NOT NULL CHECK (revenue_type IN ('one_time', 'subscription', 'grant')),
+    revenue_type TEXT NOT NULL CHECK (revenue_type IN ('one_time', 'subscription', 'grant')),
     revenue_time BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_my_ip_revenue PRIMARY KEY (id, time)
 );
 
@@ -134,12 +134,12 @@ SELECT create_hypertable('my_ip_revenue', 'time', chunk_time_interval => INTERVA
 -- Access logs for analytics (TimescaleDB hypertable - very high volume)
 CREATE TABLE my_ip_access_logs (
     id SERIAL NOT NULL,
-    ip_id VARCHAR NOT NULL,
-    user_address VARCHAR NOT NULL,
-    access_type VARCHAR NOT NULL CHECK (access_type IN ('one_time', 'subscription', 'grant', 'preview')),
+    ip_id TEXT NOT NULL,
+    user_address TEXT NOT NULL,
+    access_type TEXT NOT NULL CHECK (access_type IN ('one_time', 'subscription', 'grant', 'preview')),
     access_time BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_my_ip_access_logs PRIMARY KEY (id, time)
 );
 
@@ -344,12 +344,12 @@ ORDER BY total_revenue DESC NULLS LAST;
 
 -- Function to check if user has access to data
 CREATE OR REPLACE FUNCTION user_has_access(
-    p_ip_id VARCHAR,
-    p_user_address VARCHAR,
+    p_ip_id TEXT,
+    p_user_address TEXT,
     p_current_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
 ) RETURNS BOOLEAN AS $$
 DECLARE
-    data_owner VARCHAR;
+    data_owner TEXT;
     subscription_end BIGINT;
     has_purchase BOOLEAN := FALSE;
 BEGIN
@@ -385,9 +385,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to get data pricing info
-CREATE OR REPLACE FUNCTION get_data_pricing(p_ip_id VARCHAR)
+CREATE OR REPLACE FUNCTION get_data_pricing(p_ip_id TEXT)
 RETURNS TABLE(
-    ip_id VARCHAR,
+    ip_id TEXT,
     one_time_price BIGINT,
     subscription_price BIGINT,
     subscription_duration_days BIGINT,
@@ -441,8 +441,8 @@ $$ LANGUAGE plpgsql;
 -- GRANT SELECT ON active_marketplace_data TO app_user;
 -- GRANT SELECT ON popular_data_30d TO app_user;
 -- GRANT SELECT ON creator_revenue_summary TO app_user;
--- GRANT EXECUTE ON FUNCTION user_has_access(VARCHAR, VARCHAR, BIGINT) TO app_user;
--- GRANT EXECUTE ON FUNCTION get_data_pricing(VARCHAR) TO app_user;
+-- GRANT EXECUTE ON FUNCTION user_has_access(TEXT, TEXT, BIGINT) TO app_user;
+-- GRANT EXECUTE ON FUNCTION get_data_pricing(TEXT) TO app_user;
 
 COMMENT ON TABLE my_ip_data IS 'Main marketplace data entries with metadata and pricing';
 COMMENT ON TABLE my_ip_purchases IS 'Purchase records for one-time and subscription access (TimescaleDB)';

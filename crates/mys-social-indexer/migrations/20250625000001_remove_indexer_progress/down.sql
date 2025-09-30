@@ -1,5 +1,5 @@
 CREATE TABLE indexer_progress (
-    id VARCHAR PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     last_checkpoint_processed BIGINT NOT NULL,
     last_processed_at TIMESTAMP NOT NULL
 );

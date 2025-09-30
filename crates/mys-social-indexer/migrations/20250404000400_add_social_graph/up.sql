@@ -8,8 +8,8 @@ CREATE TABLE social_graph_relationships (
     id SERIAL PRIMARY KEY,
     follower_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     following_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    follower_address VARCHAR NOT NULL,
-    following_address VARCHAR NOT NULL,
+    follower_address TEXT NOT NULL,
+    following_address TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     
     -- Add unique constraint to prevent duplicate relationships

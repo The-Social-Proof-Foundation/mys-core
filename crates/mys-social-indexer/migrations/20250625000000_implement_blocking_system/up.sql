@@ -9,11 +9,11 @@ DROP TABLE IF EXISTS blocked_events CASCADE;
 -- Create blocked_events table for comprehensive audit trail
 CREATE TABLE blocked_events (
     id SERIAL PRIMARY KEY,
-    event_id VARCHAR UNIQUE,                    -- Blockchain event ID for deduplication
-    event_type VARCHAR NOT NULL,                -- 'block' | 'unblock' | 'block_list_created'
-    blocker_address VARCHAR NOT NULL,           -- Profile doing the blocking
-    blocked_address VARCHAR,                    -- Profile being blocked (NULL for block_list_created)
-    block_list_address VARCHAR,                 -- Block list object ID
+    event_id TEXT UNIQUE,                    -- Blockchain event ID for deduplication
+    event_type TEXT NOT NULL,                -- 'block' | 'unblock' | 'block_list_created'
+    blocker_address TEXT NOT NULL,           -- Profile doing the blocking
+    blocked_address TEXT,                    -- Profile being blocked (NULL for block_list_created)
+    block_list_address TEXT,                 -- Block list object ID
     raw_event_data JSONB,                      -- Full blockchain event data
     processed_at TIMESTAMP NOT NULL DEFAULT NOW(),
     created_at TIMESTAMP NOT NULL             -- Blockchain timestamp
@@ -22,15 +22,15 @@ CREATE TABLE blocked_events (
 -- Create blocked_profiles table for current blocking state with rich profile data
 CREATE TABLE blocked_profiles (
     id SERIAL PRIMARY KEY,
-    blocker_address VARCHAR NOT NULL,          -- Profile doing the blocking  
-    blocked_address VARCHAR NOT NULL,          -- Profile being blocked
-    block_list_address VARCHAR,                -- Reference to block list object
+    blocker_address TEXT NOT NULL,          -- Profile doing the blocking  
+    blocked_address TEXT NOT NULL,          -- Profile being blocked
+    block_list_address TEXT,                -- Reference to block list object
     
     -- Rich profile data for performance (denormalized from profiles table)
-    blocked_profile_id VARCHAR,                -- Blockchain profile ID of blocked user
-    blocked_username VARCHAR NOT NULL,         -- Username of blocked user
-    blocked_display_name VARCHAR,              -- Display name of blocked user  
-    blocked_profile_photo VARCHAR,             -- Profile photo URL of blocked user
+    blocked_profile_id TEXT,                -- Blockchain profile ID of blocked user
+    blocked_username TEXT NOT NULL,         -- Username of blocked user
+    blocked_display_name TEXT,              -- Display name of blocked user  
+    blocked_profile_photo TEXT,             -- Profile photo URL of blocked user
     
     -- Blocking metadata
     first_blocked_at TIMESTAMP NOT NULL,       -- When first blocked

@@ -12,7 +12,7 @@ DROP VIEW IF EXISTS popular_token_pools CASCADE;
 
 -- Drop functions
 DROP FUNCTION IF EXISTS get_current_exchange_config() CASCADE;
-DROP FUNCTION IF EXISTS is_reservation_threshold_met(VARCHAR) CASCADE;
+DROP FUNCTION IF EXISTS is_reservation_threshold_met(TEXT) CASCADE;
 
 -- Remove compression policies for staking tables
 SELECT remove_compression_policy('spt_reservation_pools', if_exists => true);
@@ -41,10 +41,10 @@ DROP TABLE IF EXISTS spt_exchange_config CASCADE;
 -- Token Auction Pools table with time dimension
 CREATE TABLE IF NOT EXISTS spt_auction_pools (
     id SERIAL NOT NULL,
-    auction_id VARCHAR NOT NULL,
-    associated_id VARCHAR NOT NULL,
+    auction_id TEXT NOT NULL,
+    associated_id TEXT NOT NULL,
     token_type SMALLINT NOT NULL,
-    owner VARCHAR NOT NULL,
+    owner TEXT NOT NULL,
     status SMALLINT NOT NULL,  -- 0: Pending, 1: Active, 2: Ended, 3: Finalized
     start_time BIGINT NOT NULL,
     duration BIGINT NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS spt_auction_pools (
     total_tokens BIGINT NOT NULL,
     finalized_at BIGINT,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_spt_auction_pools PRIMARY KEY (id, time)
 );
 
@@ -69,12 +69,12 @@ ALTER TABLE spt_auction_pools SET (
 -- Auction Contributions table with time dimension
 CREATE TABLE IF NOT EXISTS spt_auction_contributions (
     id SERIAL NOT NULL,
-    auction_id VARCHAR NOT NULL,
-    contributor_address VARCHAR NOT NULL,
+    auction_id TEXT NOT NULL,
+    contributor_address TEXT NOT NULL,
     amount BIGINT NOT NULL,
     contributed_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_spt_auction_contributions PRIMARY KEY (id, time)
 );
 

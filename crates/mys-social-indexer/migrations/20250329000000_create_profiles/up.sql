@@ -1,12 +1,12 @@
 -- Create profiles table
 CREATE TABLE profiles (
     id SERIAL PRIMARY KEY,
-    owner_address VARCHAR(255) NOT NULL,
-    username VARCHAR(100) NOT NULL,
-    display_name VARCHAR(255),
+    owner_address TEXT NOT NULL,
+    username TEXT NOT NULL,
+    display_name TEXT,
     bio TEXT,
-    avatar_url VARCHAR(255),
-    website_url VARCHAR(255),
+    avatar_url TEXT,
+    website_url TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

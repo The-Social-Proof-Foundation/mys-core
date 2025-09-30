@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS governance_registries (
     quorum_votes BIGINT NOT NULL,
     updated_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set time column based on updated_at
@@ -59,8 +59,8 @@ CREATE INDEX IF NOT EXISTS idx_governance_registries_transaction_id ON governanc
 -- Delegates table - elected representatives
 CREATE TABLE IF NOT EXISTS delegates (
     id SERIAL NOT NULL,
-    address VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
+    address TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
     registry_type SMALLINT NOT NULL,
     upvotes BIGINT NOT NULL DEFAULT 0,
     downvotes BIGINT NOT NULL DEFAULT 0,
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS delegates (
     created_at BIGINT NOT NULL,
     updated_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set time column based on created_at/updated_at
@@ -125,8 +125,8 @@ END $$;
 -- Nominated delegates table - candidates for delegate positions
 CREATE TABLE IF NOT EXISTS nominated_delegates (
     id SERIAL NOT NULL,
-    address VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
+    address TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
     registry_type SMALLINT NOT NULL,
     upvotes BIGINT NOT NULL DEFAULT 0,
     downvotes BIGINT NOT NULL DEFAULT 0,
@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS nominated_delegates (
     nomination_time BIGINT NOT NULL,
     status SMALLINT NOT NULL DEFAULT 0, -- 0: Pending, 1: Elected, 2: Rejected
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set time column based on nomination_time
@@ -184,13 +184,13 @@ END $$;
 
 -- Proposals table - governance proposals
 CREATE TABLE IF NOT EXISTS proposals (
-    id VARCHAR NOT NULL,
-    title VARCHAR NOT NULL,
+    id TEXT NOT NULL,
+    title TEXT NOT NULL,
     description TEXT NOT NULL,
     proposal_type SMALLINT NOT NULL, -- 0: Ecosystem, 1: Reputation, 2: Community Notes
-    reference_id VARCHAR,
+    reference_id TEXT,
     metadata_json JSONB,
-    submitter VARCHAR NOT NULL,
+    submitter TEXT NOT NULL,
     submission_time BIGINT NOT NULL,
     delegate_approval_count BIGINT NOT NULL DEFAULT 0,
     delegate_rejection_count BIGINT NOT NULL DEFAULT 0,
@@ -204,7 +204,7 @@ CREATE TABLE IF NOT EXISTS proposals (
     implementation_time BIGINT,
     rescind_time BIGINT,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set time column based on submission_time
@@ -257,14 +257,14 @@ END $$;
 -- Delegate ratings table - feedback on delegates
 CREATE TABLE IF NOT EXISTS delegate_ratings (
     id SERIAL NOT NULL,
-    target_address VARCHAR NOT NULL,
-    voter_address VARCHAR NOT NULL,
+    target_address TEXT NOT NULL,
+    voter_address TEXT NOT NULL,
     registry_type SMALLINT NOT NULL,
     is_active_delegate BOOLEAN NOT NULL,
     upvote BOOLEAN NOT NULL,
     rated_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set time column based on rated_at
@@ -314,13 +314,13 @@ END $$;
 -- Delegate votes table - how delegates vote on proposals
 CREATE TABLE IF NOT EXISTS delegate_votes (
     id SERIAL NOT NULL,
-    proposal_id VARCHAR NOT NULL,
-    delegate_address VARCHAR NOT NULL,
+    proposal_id TEXT NOT NULL,
+    delegate_address TEXT NOT NULL,
     approve BOOLEAN NOT NULL,
     vote_time BIGINT NOT NULL,
     reason TEXT,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set time column based on vote_time
@@ -386,14 +386,14 @@ END $$;
 -- Community votes table - how community members vote on proposals
 CREATE TABLE IF NOT EXISTS community_votes (
     id SERIAL NOT NULL,
-    proposal_id VARCHAR NOT NULL,
-    voter_address VARCHAR NOT NULL,
+    proposal_id TEXT NOT NULL,
+    voter_address TEXT NOT NULL,
     vote_weight BIGINT NOT NULL,
     approve BOOLEAN NOT NULL,
     vote_time BIGINT NOT NULL,
     vote_cost BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set time column based on vote_time
@@ -460,13 +460,13 @@ END $$;
 -- Reward distributions table - payouts for proposal participation
 CREATE TABLE IF NOT EXISTS reward_distributions (
     id SERIAL NOT NULL,
-    proposal_id VARCHAR NOT NULL,
-    recipient_address VARCHAR NOT NULL,
+    proposal_id TEXT NOT NULL,
+    recipient_address TEXT NOT NULL,
     amount BIGINT NOT NULL,
     distribution_time BIGINT NOT NULL,
-    distribution_type VARCHAR, -- 'winner_reward', 'refund', 'rescind_refund'
+    distribution_type TEXT, -- 'winner_reward', 'refund', 'rescind_refund'
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set time column based on distribution_time

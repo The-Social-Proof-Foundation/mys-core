@@ -23,7 +23,7 @@ BEGIN
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'posts' AND column_name = 'poc_badge_id'
     ) THEN
-        ALTER TABLE posts ADD COLUMN poc_badge_id VARCHAR NULL;
+        ALTER TABLE posts ADD COLUMN poc_badge_id TEXT NULL;
     END IF;
     
     -- Add revenue_redirect_to column if it doesn't exist
@@ -31,7 +31,7 @@ BEGIN
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'posts' AND column_name = 'revenue_redirect_to'
     ) THEN
-        ALTER TABLE posts ADD COLUMN revenue_redirect_to VARCHAR NULL;
+        ALTER TABLE posts ADD COLUMN revenue_redirect_to TEXT NULL;
     END IF;
     
     -- Add revenue_redirect_percentage column if it doesn't exist
@@ -52,14 +52,14 @@ CREATE INDEX IF NOT EXISTS idx_posts_revenue_redirect_to ON posts(revenue_redire
 -- 3. CREATE POC BADGES TABLE (TIMESCALEDB HYPERTABLE)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS poc_badges (
-    badge_id VARCHAR NOT NULL,
-    post_id VARCHAR NOT NULL,
+    badge_id TEXT NOT NULL,
+    post_id TEXT NOT NULL,
     media_type SMALLINT NOT NULL,
-    issued_by VARCHAR NOT NULL,
+    issued_by TEXT NOT NULL,
     issued_at BIGINT NOT NULL,
     revoked BOOLEAN DEFAULT FALSE,
     revoked_at BIGINT NULL,
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -104,15 +104,15 @@ SELECT add_compression_policy('poc_badges', INTERVAL '30 days');
 -- 4. CREATE POC REVENUE REDIRECTIONS TABLE (TIMESCALEDB HYPERTABLE)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS poc_revenue_redirections (
-    redirection_id VARCHAR NOT NULL,
-    accused_post_id VARCHAR NOT NULL,
-    original_post_id VARCHAR NOT NULL,
+    redirection_id TEXT NOT NULL,
+    accused_post_id TEXT NOT NULL,
+    original_post_id TEXT NOT NULL,
     redirect_percentage BIGINT NOT NULL,
     similarity_score BIGINT NOT NULL,
     created_at BIGINT NOT NULL,
     removed BOOLEAN DEFAULT FALSE,
     removed_at BIGINT NULL,
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -157,14 +157,14 @@ SELECT add_compression_policy('poc_revenue_redirections', INTERVAL '90 days');
 -- 5. CREATE POC ANALYSIS RESULTS TABLE (TIMESCALEDB HYPERTABLE)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS poc_analysis_results (
-    post_id VARCHAR NOT NULL,
+    post_id TEXT NOT NULL,
     media_type SMALLINT NOT NULL,
     similarity_detected BOOLEAN NOT NULL,
     highest_similarity_score BIGINT NOT NULL,
-    oracle_address VARCHAR NOT NULL,
-    original_creator VARCHAR NULL,
+    oracle_address TEXT NOT NULL,
+    original_creator TEXT NULL,
     analysis_timestamp BIGINT NOT NULL,
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -208,9 +208,9 @@ SELECT add_compression_policy('poc_analysis_results', INTERVAL '7 days');
 -- 6. CREATE POC DISPUTES TABLE (TIMESCALEDB HYPERTABLE)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS poc_disputes (
-    dispute_id VARCHAR NOT NULL,
-    post_id VARCHAR NOT NULL,
-    disputer VARCHAR NOT NULL,
+    dispute_id TEXT NOT NULL,
+    post_id TEXT NOT NULL,
+    disputer TEXT NOT NULL,
     dispute_type SMALLINT NOT NULL,
     evidence TEXT NOT NULL,
     status SMALLINT NOT NULL,
@@ -223,7 +223,7 @@ CREATE TABLE IF NOT EXISTS poc_disputes (
     total_losing_stake BIGINT NULL,
     submitted_at BIGINT NOT NULL,
     resolved_at BIGINT NULL,
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -268,14 +268,14 @@ SELECT add_compression_policy('poc_disputes', INTERVAL '90 days');
 -- 7. CREATE POC DISPUTE VOTES TABLE (TIMESCALEDB HYPERTABLE)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS poc_dispute_votes (
-    dispute_id VARCHAR NOT NULL,
-    voter VARCHAR NOT NULL,
+    dispute_id TEXT NOT NULL,
+    voter TEXT NOT NULL,
     vote_choice SMALLINT NOT NULL,
     stake_amount BIGINT NOT NULL,
     voted_at BIGINT NOT NULL,
     reward_claimed BOOLEAN DEFAULT FALSE,
     reward_amount BIGINT NULL,
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -331,9 +331,9 @@ CREATE TABLE IF NOT EXISTS poc_configuration (
     min_vote_stake BIGINT NOT NULL,
     max_vote_stake BIGINT NOT NULL,
     voting_duration_epochs BIGINT NOT NULL,
-    updated_by VARCHAR NOT NULL,
+    updated_by TEXT NOT NULL,
     updated_at BIGINT NOT NULL,
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

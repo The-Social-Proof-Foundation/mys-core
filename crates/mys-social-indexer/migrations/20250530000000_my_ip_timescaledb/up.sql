@@ -18,22 +18,22 @@ $$;
 -- Primary table for intellectual property licenses
 CREATE TABLE IF NOT EXISTS my_ip (
     id SERIAL NOT NULL,
-    license_id VARCHAR NOT NULL,
-    name VARCHAR NOT NULL,
+    license_id TEXT NOT NULL,
+    name TEXT NOT NULL,
     description TEXT,
-    creator VARCHAR NOT NULL,
+    creator TEXT NOT NULL,
     creation_time BIGINT NOT NULL,
     license_type SMALLINT NOT NULL,  -- 0: Creative Commons, 1: Token Bound, 2: Custom
     permission_flags BIGINT NOT NULL, -- Bitfield of permissions
     license_state SMALLINT NOT NULL, -- 0: Active, 1: Expired, 2: Revoked
-    proof_of_creativity_id VARCHAR,
+    proof_of_creativity_id TEXT,
     custom_license_uri TEXT,
-    revenue_recipient VARCHAR,
+    revenue_recipient TEXT,
     transferable BOOLEAN NOT NULL DEFAULT false,
     expires_at BIGINT,
     version INTEGER NOT NULL DEFAULT 1,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_my_ip PRIMARY KEY (id, time)
 );
 
@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_my_ip_license_id ON my_ip(license_id);
 -- Permissions definitions table (for reference)
 CREATE TABLE IF NOT EXISTS my_ip_permissions (
     id SERIAL PRIMARY KEY,
-    permission_name VARCHAR NOT NULL,
+    permission_name TEXT NOT NULL,
     bit_position INTEGER NOT NULL,
     description TEXT NOT NULL
 );
@@ -82,13 +82,13 @@ WHERE NOT EXISTS (SELECT 1 FROM my_ip_permissions);
 -- License events table with time dimension
 CREATE TABLE IF NOT EXISTS my_ip_events (
     id SERIAL NOT NULL,
-    event_type VARCHAR NOT NULL,
-    license_id VARCHAR NOT NULL,
+    event_type TEXT NOT NULL,
+    license_id TEXT NOT NULL,
     event_data JSONB NOT NULL,
-    created_by VARCHAR NOT NULL,
+    created_by TEXT NOT NULL,
     created_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_my_ip_events PRIMARY KEY (id, time)
 );
 
@@ -105,16 +105,16 @@ ALTER TABLE my_ip_events SET (
 -- License grants/transfers table with time dimension
 CREATE TABLE IF NOT EXISTS my_ip_grants (
     id SERIAL NOT NULL,
-    license_id VARCHAR NOT NULL,
-    grantor VARCHAR NOT NULL,
-    grantee VARCHAR NOT NULL,
-    grant_type VARCHAR NOT NULL, -- 'TRANSFER', 'LICENSE'
+    license_id TEXT NOT NULL,
+    grantor TEXT NOT NULL,
+    grantee TEXT NOT NULL,
+    grant_type TEXT NOT NULL, -- 'TRANSFER', 'LICENSE'
     payment_amount BIGINT NOT NULL DEFAULT 0,
-    payment_token VARCHAR,
+    payment_token TEXT,
     grant_time BIGINT NOT NULL,
     expiration_time BIGINT,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_my_ip_grants PRIMARY KEY (id, time)
 );
 
@@ -131,15 +131,15 @@ ALTER TABLE my_ip_grants SET (
 -- Revenue distribution table with time dimension
 CREATE TABLE IF NOT EXISTS my_ip_revenue (
     id SERIAL NOT NULL,
-    license_id VARCHAR NOT NULL,
-    post_id VARCHAR,
-    from_address VARCHAR NOT NULL,
-    to_address VARCHAR NOT NULL,
+    license_id TEXT NOT NULL,
+    post_id TEXT,
+    from_address TEXT NOT NULL,
+    to_address TEXT NOT NULL,
     amount BIGINT NOT NULL,
-    revenue_type VARCHAR NOT NULL, -- 'TIP', 'LICENSE_FEE', etc.
+    revenue_type TEXT NOT NULL, -- 'TIP', 'LICENSE_FEE', etc.
     revenue_time BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_my_ip_revenue PRIMARY KEY (id, time)
 );
 
@@ -160,14 +160,14 @@ BEGIN
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'posts' AND column_name = 'my_ip_id'
     ) THEN
-        ALTER TABLE posts ADD COLUMN my_ip_id VARCHAR;
+        ALTER TABLE posts ADD COLUMN my_ip_id TEXT;
     END IF;
     
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'posts' AND column_name = 'revenue_recipient'
     ) THEN
-        ALTER TABLE posts ADD COLUMN revenue_recipient VARCHAR;
+        ALTER TABLE posts ADD COLUMN revenue_recipient TEXT;
     END IF;
 END
 $$;

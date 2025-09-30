@@ -3,12 +3,12 @@
 
 CREATE TABLE IF NOT EXISTS progress_store (
     id SERIAL PRIMARY KEY,
-    worker_id VARCHAR NOT NULL,
-    module_name VARCHAR NOT NULL,
+    worker_id TEXT NOT NULL,
+    module_name TEXT NOT NULL,
     last_processed_checkpoint BIGINT NOT NULL DEFAULT 0,
-    last_processed_event_id VARCHAR,
+    last_processed_event_id TEXT,
     last_processed_timestamp BIGINT NOT NULL,
-    processing_state VARCHAR NOT NULL DEFAULT 'running',
+    processing_state TEXT NOT NULL DEFAULT 'running',
     error_count INTEGER NOT NULL DEFAULT 0,
     last_error_message TEXT,
     last_error_at TIMESTAMP,

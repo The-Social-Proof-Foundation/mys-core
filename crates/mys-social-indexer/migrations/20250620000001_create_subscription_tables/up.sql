@@ -4,16 +4,16 @@
 -- 1. Profile Subscription Services Table (Regular Table)
 -- Services don't change frequently, so regular table is sufficient
 CREATE TABLE profile_subscription_services (
-    service_id VARCHAR NOT NULL PRIMARY KEY,
-    profile_owner VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
+    service_id TEXT NOT NULL PRIMARY KEY,
+    profile_owner TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
     monthly_fee BIGINT NOT NULL,
     active BOOLEAN NOT NULL DEFAULT true,
     subscriber_count BIGINT NOT NULL DEFAULT 0,
     created_at BIGINT NOT NULL,
     updated_at BIGINT,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Optimized indexes for service lookups
@@ -24,9 +24,9 @@ CREATE INDEX idx_profile_services_active ON profile_subscription_services (activ
 -- 2. Profile Subscriptions Table (TimescaleDB Hypertable)
 -- Individual subscription records with time partitioning for analytics
 CREATE TABLE profile_subscriptions (
-    subscription_id VARCHAR NOT NULL,
-    service_id VARCHAR NOT NULL,
-    subscriber VARCHAR NOT NULL,
+    subscription_id TEXT NOT NULL,
+    service_id TEXT NOT NULL,
+    subscriber TEXT NOT NULL,
     created_at BIGINT NOT NULL,
     expires_at BIGINT NOT NULL,
     auto_renew BOOLEAN NOT NULL DEFAULT false,
@@ -34,7 +34,7 @@ CREATE TABLE profile_subscriptions (
     renewal_count BIGINT NOT NULL DEFAULT 0,
     cancelled_at BIGINT,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     processing_success BOOLEAN NOT NULL DEFAULT true,
     processing_error TEXT
 );
@@ -52,14 +52,14 @@ CREATE INDEX idx_profile_subscriptions_expires ON profile_subscriptions (expires
 -- 3. Subscription Events Table (TimescaleDB Hypertable)
 -- All subscription-related events for audit trail and compliance
 CREATE TABLE subscription_events (
-    event_type VARCHAR NOT NULL,
-    subscription_id VARCHAR,
-    service_id VARCHAR,
-    subscriber VARCHAR,
+    event_type TEXT NOT NULL,
+    subscription_id TEXT,
+    service_id TEXT,
+    subscriber TEXT,
     event_data JSONB NOT NULL,
     event_time BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     processing_success BOOLEAN NOT NULL DEFAULT true,
     processing_error TEXT
 );
@@ -75,15 +75,15 @@ CREATE INDEX idx_subscription_events_service_time ON subscription_events (servic
 -- 4. Subscription Revenue Table (TimescaleDB Hypertable)
 -- Revenue analytics for subscriptions with time partitioning
 CREATE TABLE subscription_revenue (
-    service_id VARCHAR NOT NULL,
-    subscription_id VARCHAR,
-    from_address VARCHAR NOT NULL,
-    to_address VARCHAR NOT NULL,
+    service_id TEXT NOT NULL,
+    subscription_id TEXT,
+    from_address TEXT NOT NULL,
+    to_address TEXT NOT NULL,
     amount BIGINT NOT NULL,
-    revenue_type VARCHAR NOT NULL, -- 'subscription', 'renewal', 'refund'
+    revenue_type TEXT NOT NULL, -- 'subscription', 'renewal', 'refund'
     payment_time BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     processing_success BOOLEAN NOT NULL DEFAULT true,
     processing_error TEXT
 );
@@ -99,14 +99,14 @@ CREATE INDEX idx_subscription_revenue_type_time ON subscription_revenue (revenue
 -- 5. Subscription Access Logs Table (TimescaleDB Hypertable)
 -- Track content access for analytics with shorter retention
 CREATE TABLE subscription_access_logs (
-    subscription_id VARCHAR NOT NULL,
-    subscriber VARCHAR NOT NULL,
-    content_type VARCHAR NOT NULL, -- 'profile', 'post'
-    content_id VARCHAR NOT NULL,
+    subscription_id TEXT NOT NULL,
+    subscriber TEXT NOT NULL,
+    content_type TEXT NOT NULL, -- 'profile', 'post'
+    content_id TEXT NOT NULL,
     access_time BIGINT NOT NULL,
-    seal_id VARCHAR, -- For encrypted content access
+    seal_id TEXT, -- For encrypted content access
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     processing_success BOOLEAN NOT NULL DEFAULT true,
     processing_error TEXT
 );
@@ -165,12 +165,12 @@ SELECT add_continuous_aggregate_policy('subscription_daily_metrics',
 
 -- Schema Updates: Add subscription-related fields to posts table
 ALTER TABLE posts ADD COLUMN requires_subscription BOOLEAN DEFAULT false;
-ALTER TABLE posts ADD COLUMN subscription_service_id VARCHAR;
+ALTER TABLE posts ADD COLUMN subscription_service_id TEXT;
 ALTER TABLE posts ADD COLUMN subscription_price BIGINT;
-ALTER TABLE posts ADD COLUMN encrypted_content_hash VARCHAR;
+ALTER TABLE posts ADD COLUMN encrypted_content_hash TEXT;
 
 -- Schema Updates: Add subscription service reference to profiles table  
-ALTER TABLE profiles ADD COLUMN subscription_service_id VARCHAR;
+ALTER TABLE profiles ADD COLUMN subscription_service_id TEXT;
 ALTER TABLE profiles ADD COLUMN subscription_enabled BOOLEAN DEFAULT false;
 
 -- Advanced TimescaleDB Features Implementation

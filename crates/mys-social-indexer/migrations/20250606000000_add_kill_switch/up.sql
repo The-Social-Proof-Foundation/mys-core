@@ -6,11 +6,11 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS token_exchange_config (
     id SERIAL PRIMARY KEY,
     trading_halted BOOLEAN NOT NULL DEFAULT false,
-    admin_address VARCHAR NOT NULL,
-    reason VARCHAR(512) NOT NULL DEFAULT 'System initialized', -- Limit reason length
+    admin_address TEXT NOT NULL,
+    reason TEXT NOT NULL DEFAULT 'System initialized', -- Limit reason length
     timestamp_ms BIGINT NOT NULL DEFAULT 0,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     -- Enhanced constraints for production
     CONSTRAINT valid_timestamp CHECK (timestamp_ms >= 0),
     CONSTRAINT valid_admin_address CHECK (length(admin_address) > 0),
@@ -32,9 +32,9 @@ ON CONFLICT (id) DO NOTHING;
 -- Create table for token exchange events (for kill switch tracking)
 CREATE TABLE IF NOT EXISTS token_exchange_events (
     id SERIAL PRIMARY KEY,
-    event_type VARCHAR NOT NULL,
+    event_type TEXT NOT NULL,
     event_data JSONB NOT NULL DEFAULT '{}'::jsonb,
-    event_id VARCHAR NOT NULL,
+    event_id TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     -- Enhanced constraints
     CONSTRAINT valid_event_type CHECK (length(event_type) > 0 AND length(event_type) <= 100),

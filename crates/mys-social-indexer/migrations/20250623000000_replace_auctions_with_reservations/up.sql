@@ -30,16 +30,16 @@ DROP TABLE IF EXISTS spt_auction_pools CASCADE;
 -- Reservation Pools table with time dimension
 CREATE TABLE IF NOT EXISTS spt_reservation_pools (
     id SERIAL NOT NULL,
-    pool_id VARCHAR NOT NULL,
-    associated_id VARCHAR NOT NULL,
+    pool_id TEXT NOT NULL,
+    associated_id TEXT NOT NULL,
     token_type SMALLINT NOT NULL,  -- 1: Profile, 2: Post
-    owner VARCHAR NOT NULL,
+    owner TEXT NOT NULL,
     total_reserved BIGINT NOT NULL DEFAULT 0,
     required_threshold BIGINT NOT NULL,
-    status VARCHAR NOT NULL DEFAULT 'active', -- 'active', 'threshold_met', 'converted'
+    status TEXT NOT NULL DEFAULT 'active', -- 'active', 'threshold_met', 'converted'
     created_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_spt_reservation_pools PRIMARY KEY (id, time)
 );
 
@@ -56,12 +56,12 @@ ALTER TABLE spt_reservation_pools SET (
 -- Individual Reservations table with time dimension
 CREATE TABLE IF NOT EXISTS spt_reservations (
     id SERIAL NOT NULL,
-    pool_id VARCHAR NOT NULL,
-    reservatior_address VARCHAR NOT NULL,
+    pool_id TEXT NOT NULL,
+    reservatior_address TEXT NOT NULL,
     amount BIGINT NOT NULL,
     reserved_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_spt_reservations PRIMARY KEY (id, time)
 );
 
@@ -78,7 +78,7 @@ ALTER TABLE spt_reservations SET (
 -- Exchange Configuration table to track thresholds and settings
 CREATE TABLE IF NOT EXISTS spt_exchange_config (
     id SERIAL NOT NULL,
-    updated_by VARCHAR NOT NULL,
+    updated_by TEXT NOT NULL,
     post_threshold BIGINT NOT NULL,
     profile_threshold BIGINT NOT NULL,
     max_individual_reservation_bps BIGINT NOT NULL,
@@ -88,12 +88,12 @@ CREATE TABLE IF NOT EXISTS spt_exchange_config (
     treasury_fee_bps BIGINT NOT NULL,
     base_price BIGINT NOT NULL,
     quadratic_coefficient BIGINT NOT NULL,
-    ecosystem_treasury VARCHAR NOT NULL,
+    ecosystem_treasury TEXT NOT NULL,
     max_hold_percent_bps BIGINT NOT NULL,
     trading_halted BOOLEAN NOT NULL DEFAULT false,
     updated_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_spt_exchange_config PRIMARY KEY (id, time)
 );
 
@@ -260,7 +260,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to check if reservation pool threshold is met
-CREATE OR REPLACE FUNCTION is_reservation_threshold_met(pool_id_param VARCHAR)
+CREATE OR REPLACE FUNCTION is_reservation_threshold_met(pool_id_param TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE
     result BOOLEAN;

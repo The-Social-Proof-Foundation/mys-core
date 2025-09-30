@@ -24,8 +24,8 @@ CREATE INDEX IF NOT EXISTS idx_proposals_pending_decryption ON proposals(pending
 -- Store encrypted votes with TimescaleDB optimization
 CREATE TABLE IF NOT EXISTS anonymous_votes (
     id SERIAL NOT NULL,
-    proposal_id VARCHAR NOT NULL,
-    voter_address VARCHAR NOT NULL,
+    proposal_id TEXT NOT NULL,
+    voter_address TEXT NOT NULL,
     encrypted_vote_data BYTEA, -- Encrypted vote data from blockchain event
     submitted_at BIGINT NOT NULL,
     decrypted BOOLEAN DEFAULT FALSE,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS anonymous_votes (
     decryption_status SMALLINT DEFAULT 0, -- 0: pending, 1: success, 2: failed
     decryption_error TEXT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     processing_success BOOLEAN DEFAULT TRUE,
     processing_error TEXT NULL
 );
@@ -100,13 +100,13 @@ SELECT add_compression_policy('anonymous_votes', INTERVAL '30 days');
 -- Track decryption failures for transparency and debugging
 CREATE TABLE IF NOT EXISTS vote_decryption_failures (
     id SERIAL NOT NULL,
-    proposal_id VARCHAR NOT NULL,
-    voter_address VARCHAR NOT NULL,
+    proposal_id TEXT NOT NULL,
+    voter_address TEXT NOT NULL,
     failure_reason TEXT NOT NULL,
     attempted_at BIGINT NOT NULL,
     encrypted_vote_length INTEGER, -- For debugging
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set time column based on attempted_at

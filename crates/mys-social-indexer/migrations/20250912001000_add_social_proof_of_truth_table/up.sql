@@ -10,9 +10,9 @@ $$;
 
 CREATE TABLE IF NOT EXISTS social_proof_of_truth (
     id SERIAL NOT NULL,
-    event_type VARCHAR NOT NULL,
-    post_id VARCHAR NOT NULL,
-    user_address VARCHAR,
+    event_type TEXT NOT NULL,
+    post_id TEXT NOT NULL,
+    user_address TEXT,
     is_yes BOOLEAN,
     escrow_amount BIGINT,
     amm_amount BIGINT,
@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS social_proof_of_truth (
     confidence_bps BIGINT,
     timestamp_epoch BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    event_id VARCHAR,
-    transaction_id VARCHAR,
+    event_id TEXT,
+    transaction_id TEXT,
     raw_event JSONB
 );
 

@@ -21,7 +21,7 @@ DROP COLUMN following_id;
 
 -- Add raw blockchain IDs to profiles table for better tracking
 ALTER TABLE profiles
-ADD COLUMN blockchain_tx_id VARCHAR NULL;
+ADD COLUMN blockchain_tx_id TEXT NULL;
 
 -- Delete placeholder profiles (rows 3 and 4) that were automatically created
 DELETE FROM profiles WHERE id IN (3, 4);

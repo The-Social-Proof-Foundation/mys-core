@@ -1,8 +1,8 @@
 -- Create the profiles_blocked table
 CREATE TABLE IF NOT EXISTS profiles_blocked (
     id SERIAL PRIMARY KEY,
-    blocker_profile_id VARCHAR NOT NULL,
-    blocked_profile_id VARCHAR NOT NULL,
+    blocker_profile_id TEXT NOT NULL,
+    blocked_profile_id TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL,
     is_blocked BOOLEAN NOT NULL DEFAULT TRUE,
     unblocked_at TIMESTAMP,

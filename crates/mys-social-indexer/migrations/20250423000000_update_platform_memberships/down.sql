@@ -2,7 +2,7 @@
 
 -- Add back the removed columns
 ALTER TABLE platform_memberships 
-    ADD COLUMN role VARCHAR NOT NULL DEFAULT 'member',
+    ADD COLUMN role TEXT NOT NULL DEFAULT 'member',
     ADD COLUMN left_at TIMESTAMP NULL;
 
 -- Remove the comment

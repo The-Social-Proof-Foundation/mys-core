@@ -4,8 +4,8 @@ DROP TABLE IF EXISTS profile_events;
 -- Re-create platform_relationships table
 CREATE TABLE platform_relationships (
     id SERIAL PRIMARY KEY,
-    platform_id VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
+    platform_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
     joined_at TIMESTAMP NOT NULL,
     left_at TIMESTAMP
 );
@@ -19,13 +19,13 @@ CREATE INDEX idx_platform_relationships_left_at ON platform_relationships (left_
 -- Re-create platforms_blocked table
 CREATE TABLE platforms_blocked (
     id SERIAL PRIMARY KEY,
-    profile_id VARCHAR NOT NULL,
-    platform_id VARCHAR NOT NULL,
-    blocked_by VARCHAR NOT NULL,
+    profile_id TEXT NOT NULL,
+    platform_id TEXT NOT NULL,
+    blocked_by TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL,
     is_blocked BOOLEAN NOT NULL,
     unblocked_at TIMESTAMP,
-    unblocked_by VARCHAR
+    unblocked_by TEXT
 );
 
 -- Re-create indexes for platforms_blocked

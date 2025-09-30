@@ -8,12 +8,12 @@
 
 -- SPT Revenue Table (TimescaleDB hypertable for high-volume swap fee tracking)
 CREATE TABLE spt_revenue (
-    pool_id VARCHAR NOT NULL,
-    transaction_type VARCHAR NOT NULL CHECK (transaction_type IN ('buy', 'sell')), 
-    trader VARCHAR NOT NULL,
-    creator_address VARCHAR NOT NULL,
-    platform_address VARCHAR NOT NULL,
-    treasury_address VARCHAR NOT NULL,
+    pool_id TEXT NOT NULL,
+    transaction_type TEXT NOT NULL CHECK (transaction_type IN ('buy', 'sell')), 
+    trader TEXT NOT NULL,
+    creator_address TEXT NOT NULL,
+    platform_address TEXT NOT NULL,
+    treasury_address TEXT NOT NULL,
     creator_fee BIGINT NOT NULL,
     platform_fee BIGINT NOT NULL,
     treasury_fee BIGINT NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE spt_revenue (
     token_price BIGINT NOT NULL,
     revenue_time BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Convert to TimescaleDB hypertable with 1-hour chunks for real-time SPT analytics
@@ -42,19 +42,19 @@ CREATE INDEX idx_spt_revenue_trader_time ON spt_revenue (trader, time DESC);
 
 -- Unified Revenue Summary (TimescaleDB hypertable for cross-platform analytics)
 CREATE TABLE unified_revenue (
-    revenue_source VARCHAR NOT NULL CHECK (revenue_source IN ('subscription', 'my_ip', 'spt', 'tips', 'posts')),
-    revenue_type VARCHAR NOT NULL, 
-    creator_address VARCHAR NOT NULL,
-    platform_address VARCHAR,
+    revenue_source TEXT NOT NULL CHECK (revenue_source IN ('subscription', 'my_ip', 'spt', 'tips', 'posts')),
+    revenue_type TEXT NOT NULL, 
+    creator_address TEXT NOT NULL,
+    platform_address TEXT,
     amount BIGINT NOT NULL,
-    currency VARCHAR NOT NULL DEFAULT 'MYSO',
-    content_id VARCHAR, -- post_id, ip_id, service_id, pool_id
-    content_type VARCHAR, -- post, profile, service, data, token
-    payer_address VARCHAR NOT NULL,
-    recipient_address VARCHAR NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'MYSO',
+    content_id TEXT, -- post_id, ip_id, service_id, pool_id
+    content_type TEXT, -- post, profile, service, data, token
+    payer_address TEXT NOT NULL,
+    recipient_address TEXT NOT NULL,
     revenue_time BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Convert to TimescaleDB hypertable with 1-hour chunks for unified analytics

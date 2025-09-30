@@ -3,8 +3,8 @@
 
 CREATE TABLE IF NOT EXISTS watermarks (
     id SERIAL PRIMARY KEY,
-    worker_id VARCHAR NOT NULL,
-    stream_name VARCHAR NOT NULL,
+    worker_id TEXT NOT NULL,
+    stream_name TEXT NOT NULL,
     watermark_timestamp BIGINT NOT NULL,
     checkpoint_sequence BIGINT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),

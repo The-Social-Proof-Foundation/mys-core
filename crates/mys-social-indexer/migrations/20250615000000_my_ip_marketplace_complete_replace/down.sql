@@ -25,8 +25,8 @@ DROP VIEW IF EXISTS creator_revenue_summary CASCADE;
 -- ============================================================================
 -- 4. DROP FUNCTIONS
 -- ============================================================================
-DROP FUNCTION IF EXISTS user_has_access(VARCHAR, VARCHAR, BIGINT) CASCADE;
-DROP FUNCTION IF EXISTS get_data_pricing(VARCHAR) CASCADE;
+DROP FUNCTION IF EXISTS user_has_access(TEXT, TEXT, BIGINT) CASCADE;
+DROP FUNCTION IF EXISTS get_data_pricing(TEXT) CASCADE;
 
 -- ============================================================================
 -- 5. REMOVE COMPRESSION AND RETENTION POLICIES

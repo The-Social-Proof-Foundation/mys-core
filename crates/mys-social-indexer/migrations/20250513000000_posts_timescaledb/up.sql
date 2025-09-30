@@ -17,16 +17,16 @@ $$;
 -- ============================================================================
 -- Posts table - core content storage
 CREATE TABLE IF NOT EXISTS posts (
-    id VARCHAR NOT NULL,
-    post_id VARCHAR NOT NULL,
-    owner VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
+    id TEXT NOT NULL,
+    post_id TEXT NOT NULL,
+    owner TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
     content TEXT NOT NULL,
     media_urls JSONB,
     mentions JSONB,
     metadata_json JSONB,
-    post_type VARCHAR NOT NULL,
-    parent_post_id VARCHAR,
+    post_type TEXT NOT NULL,
+    parent_post_id TEXT,
     created_at BIGINT NOT NULL,
     updated_at BIGINT,
     deleted_at BIGINT,
@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS posts (
     repost_count BIGINT DEFAULT 0,
     tips_received BIGINT DEFAULT 0,
     removed_from_platform BOOLEAN DEFAULT FALSE,
-    removed_by VARCHAR,
-    transaction_id VARCHAR NOT NULL,
+    removed_by TEXT,
+    transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -90,12 +90,12 @@ END $$;
 
 -- Comments table
 CREATE TABLE IF NOT EXISTS comments (
-    id VARCHAR NOT NULL,
-    comment_id VARCHAR NOT NULL,
-    post_id VARCHAR NOT NULL,
-    parent_comment_id VARCHAR,
-    owner VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
+    id TEXT NOT NULL,
+    comment_id TEXT NOT NULL,
+    post_id TEXT NOT NULL,
+    parent_comment_id TEXT,
+    owner TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
     content TEXT NOT NULL,
     media_urls JSONB,
     mentions JSONB,
@@ -108,8 +108,8 @@ CREATE TABLE IF NOT EXISTS comments (
     repost_count BIGINT DEFAULT 0,
     tips_received BIGINT DEFAULT 0,
     removed_from_platform BOOLEAN DEFAULT FALSE,
-    removed_by VARCHAR,
-    transaction_id VARCHAR NOT NULL,
+    removed_by TEXT,
+    transaction_id TEXT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -185,13 +185,13 @@ END $$;
 -- Reactions table - convert to TimescaleDB hypertable for time-series data
 CREATE TABLE IF NOT EXISTS reactions (
     id SERIAL NOT NULL,
-    object_id VARCHAR NOT NULL,
-    user_address VARCHAR NOT NULL,
-    reaction_text VARCHAR NOT NULL,
+    object_id TEXT NOT NULL,
+    user_address TEXT NOT NULL,
+    reaction_text TEXT NOT NULL,
     is_post BOOLEAN NOT NULL,
     created_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set the time column based on created_at for all rows
@@ -244,8 +244,8 @@ END $$;
 -- Reaction counts table (for faster lookups)
 CREATE TABLE IF NOT EXISTS reaction_counts (
     id SERIAL PRIMARY KEY,
-    object_id VARCHAR NOT NULL,
-    reaction_text VARCHAR NOT NULL,
+    object_id TEXT NOT NULL,
+    reaction_text TEXT NOT NULL,
     count BIGINT NOT NULL DEFAULT 0
 );
 
@@ -259,16 +259,16 @@ CREATE INDEX IF NOT EXISTS idx_reaction_counts_reaction_text ON reaction_counts(
 
 -- Reposts table - convert to TimescaleDB hypertable
 CREATE TABLE IF NOT EXISTS reposts (
-    id VARCHAR NOT NULL,
-    repost_id VARCHAR NOT NULL,
-    original_id VARCHAR NOT NULL,
-    original_post_id VARCHAR NOT NULL,
+    id TEXT NOT NULL,
+    repost_id TEXT NOT NULL,
+    original_id TEXT NOT NULL,
+    original_post_id TEXT NOT NULL,
     is_original_post BOOLEAN NOT NULL,
-    owner VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
+    owner TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
     created_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set the time column based on created_at for all rows
@@ -322,14 +322,14 @@ END $$;
 -- Tips table - convert to TimescaleDB hypertable
 CREATE TABLE IF NOT EXISTS tips (
     id SERIAL NOT NULL,
-    tipper VARCHAR NOT NULL,
-    recipient VARCHAR NOT NULL,
-    object_id VARCHAR NOT NULL,
+    tipper TEXT NOT NULL,
+    recipient TEXT NOT NULL,
+    object_id TEXT NOT NULL,
     amount BIGINT NOT NULL,
     is_post BOOLEAN NOT NULL,
     created_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set the time column based on created_at for all rows
@@ -381,14 +381,14 @@ END $$;
 -- Reports table
 CREATE TABLE IF NOT EXISTS posts_reports (
     id SERIAL NOT NULL,
-    object_id VARCHAR NOT NULL,
+    object_id TEXT NOT NULL,
     is_comment BOOLEAN NOT NULL,
-    reporter VARCHAR NOT NULL,
+    reporter TEXT NOT NULL,
     reason_code SMALLINT NOT NULL,
     description TEXT NOT NULL,
     reported_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set the time column based on reported_at for all rows
@@ -436,13 +436,13 @@ END $$;
 -- Transfers table
 CREATE TABLE IF NOT EXISTS posts_transfers (
     id SERIAL NOT NULL,
-    object_id VARCHAR NOT NULL,
-    previous_owner VARCHAR NOT NULL,
-    new_owner VARCHAR NOT NULL,
+    object_id TEXT NOT NULL,
+    previous_owner TEXT NOT NULL,
+    new_owner TEXT NOT NULL,
     is_post BOOLEAN NOT NULL,
     transferred_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set the time column based on transferred_at for all rows
@@ -491,13 +491,13 @@ END $$;
 -- Moderation events table
 CREATE TABLE IF NOT EXISTS posts_moderation_events (
     id SERIAL NOT NULL,
-    object_id VARCHAR NOT NULL,
-    platform_id VARCHAR NOT NULL,
+    object_id TEXT NOT NULL,
+    platform_id TEXT NOT NULL,
     removed BOOLEAN NOT NULL,
-    moderated_by VARCHAR NOT NULL,
+    moderated_by TEXT NOT NULL,
     moderated_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set the time column based on moderated_at for all rows
@@ -546,15 +546,15 @@ END $$;
 -- Deletion events table
 CREATE TABLE IF NOT EXISTS posts_deletion_events (
     id SERIAL NOT NULL,
-    object_id VARCHAR NOT NULL,
-    owner VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
+    object_id TEXT NOT NULL,
+    owner TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
     is_post BOOLEAN NOT NULL,
-    post_type VARCHAR,
-    post_id VARCHAR,
+    post_type TEXT,
+    post_id TEXT,
     deleted_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set the time column based on deleted_at for all rows

@@ -2,13 +2,13 @@
 DO $$ 
 BEGIN
     BEGIN
-        ALTER TABLE profiles ADD COLUMN cover_photo VARCHAR;
+        ALTER TABLE profiles ADD COLUMN cover_photo TEXT;
     EXCEPTION
         WHEN duplicate_column THEN NULL;
     END;
     
     BEGIN
-        ALTER TABLE profiles ADD COLUMN profile_id VARCHAR;
+        ALTER TABLE profiles ADD COLUMN profile_id TEXT;
     EXCEPTION
         WHEN duplicate_column THEN NULL;
     END;

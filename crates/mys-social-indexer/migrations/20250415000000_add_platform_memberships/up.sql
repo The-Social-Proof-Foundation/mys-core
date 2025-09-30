@@ -1,9 +1,9 @@
 -- Create platform_memberships table
 CREATE TABLE platform_memberships (
     id SERIAL PRIMARY KEY,
-    platform_id VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
-    role VARCHAR NOT NULL,
+    platform_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
+    role TEXT NOT NULL,
     joined_at TIMESTAMP NOT NULL,
     left_at TIMESTAMP,
     -- Add unique constraint to prevent duplicate active memberships
