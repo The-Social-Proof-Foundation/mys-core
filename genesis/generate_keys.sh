@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to generate fullnode and faucet keys with dynamic port configuration
+# Script to generate account addresses and network configuration for genesis
 
 # Set up colors for output
 GREEN='\033[0;32m'
@@ -9,9 +9,9 @@ NC='\033[0m' # No Color
 
 # Help function
 show_help() {
-    echo -e "${GREEN}MySocial Genesis Key Generator${NC}"
+    echo -e "${GREEN}MySocial Genesis Account Generator${NC}"
     echo "-----------------------------------"
-    echo "This script generates validator, fullnode, and faucet keys with dynamic port configuration."
+    echo "This script generates account addresses for validators, fullnode, faucet, and foundation accounts."
     echo
     echo "Usage: $0 [OPTIONS]"
     echo
@@ -51,7 +51,7 @@ done
 # Store the original directory
 GENESIS_DIR=$(pwd)
 
-echo -e "${GREEN}MySocial Genesis Key Generator${NC}"
+echo -e "${GREEN}MySocial Genesis Account Generator${NC}"
 echo "-----------------------------------"
 
 # Array to store validator addresses and port information
@@ -87,272 +87,185 @@ fi
 
 echo "Using base IP address: $BASE_IP"
 
-# Function to generate a unique port number
-# Takes a base port and validator index as parameters
-generate_port() {
-  local base_port=$1
-  local validator_index=$2
-  echo $((base_port + (validator_index * 20)))
-}
-
-# Function to check if port is available (optional enhancement)
-is_port_available() {
-  local port=$1
-  if command -v ss &> /dev/null; then
-    ! ss -tuln | grep -q ":$port "
-  elif command -v netstat &> /dev/null; then
-    ! netstat -tuln | grep -q ":$port "
-  else
-    # If no port checking tools available, assume available
-    true
-  fi
-}
-
 # Generate port configurations for all validators
 echo -e "${YELLOW}Generating port configurations...${NC}"
 for i in {0..2}; do
   # Each validator gets a 100-port range to avoid any conflicts
   # Validator 0: 59000-59099, Validator 1: 59100-59199, Validator 2: 59200-59299
   BASE_VALIDATOR_PORT=$((59000 + (i * 100)))
-  
+
   NETWORK_PORT=$((BASE_VALIDATOR_PORT + 10))      # 59010, 59110, 59210
   P2P_PORT=$((BASE_VALIDATOR_PORT + 20))          # 59020, 59120, 59220
   NARWHAL_PRIMARY_PORT=$((BASE_VALIDATOR_PORT + 30))  # 59030, 59130, 59230
   NARWHAL_WORKER_PORT=$((BASE_VALIDATOR_PORT + 40))   # 59040, 59140, 59240
   CONSENSUS_PORT=$((BASE_VALIDATOR_PORT + 50))    # 59050, 59150, 59250
-  
+
   VALIDATOR_PORTS[$i]="$NETWORK_PORT,$P2P_PORT,$NARWHAL_PRIMARY_PORT,$NARWHAL_WORKER_PORT,$CONSENSUS_PORT"
-  
+
   echo "Validator $i ports: Network=$NETWORK_PORT, P2P=$P2P_PORT, Primary=$NARWHAL_PRIMARY_PORT, Worker=$NARWHAL_WORKER_PORT, Consensus=$CONSENSUS_PORT"
 done
 echo
 
-# Step 1: Generate validator keys
-echo -e "${YELLOW}Generating validator keys...${NC}"
+# Step 1: Generate faucet account address
+echo -e "${YELLOW}Generating faucet account address...${NC}"
 
-for i in {1..3}; do
-  echo -e "Creating keys for validator $i..."
-  # Create directory if it doesn't exist
-  mkdir -p "${GENESIS_DIR}/validators/validator$i"
-  
-  # Change to the validator directory for key generation
-  pushd "${GENESIS_DIR}/validators/validator$i" > /dev/null
-  
-  echo "  • Generating account keys..."
-  cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519 > account_output.txt
-  
-  echo "  • Generating protocol keys..."
-  cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate bls12381 > protocol_output.txt
-  
-  echo "  • Generating network keys..."
-  cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519 > network_output.txt
-  
-  echo "  • Generating worker keys..."
-  cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519 > worker_output.txt
-  
-  # Extract keys and addresses from the output
-  echo "  • Extracting keys and addresses..."
-  
-  # Extract addresses - properly handle table formatting
-  ACCOUNT_ADDRESS=$(grep "mysAddress" account_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
-  PROTOCOL_ADDRESS=$(grep "mysAddress" protocol_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
-  NETWORK_ADDRESS=$(grep "mysAddress" network_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
-  WORKER_ADDRESS=$(grep "mysAddress" worker_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
-  
-  # Add to validator addresses array
-  VALIDATOR_ADDRESSES[$i-1]=$ACCOUNT_ADDRESS
-  
-  echo "$ACCOUNT_ADDRESS" > address.txt
-  
-  # Save mnemonics for recovery
-  grep "mnemonic" account_output.txt | sed 's/│//g' | awk '{$1=""; print $0}' | xargs > account.mnemonic
-  grep "mnemonic" protocol_output.txt | sed 's/│//g' | awk '{$1=""; print $0}' | xargs > protocol.mnemonic
-  grep "mnemonic" network_output.txt | sed 's/│//g' | awk '{$1=""; print $0}' | xargs > network.mnemonic
-  grep "mnemonic" worker_output.txt | sed 's/│//g' | awk '{$1=""; print $0}' | xargs > worker.mnemonic
-  
-  # Extract public keys - properly handle table formatting
-  grep "publicBase64Key" protocol_output.txt | sed 's/│//g' | awk '{print $2}' | xargs > protocol.pub
-  grep "publicBase64Key" network_output.txt | sed 's/│//g' | awk '{print $2}' | xargs > network.pub
-  grep "publicBase64Key" worker_output.txt | sed 's/│//g' | awk '{print $2}' | xargs > worker.pub
-  grep "publicBase64Key" account_output.txt | sed 's/│//g' | awk '{print $2}' | xargs > account.pub
-  
-  # Move automatically generated .key files to standardized names
-  if [ -f "${ACCOUNT_ADDRESS}.key" ]; then
-    mv "${ACCOUNT_ADDRESS}.key" account.key
-    echo "  • Created account.key"
-  fi
-  
-  if [ -f "${PROTOCOL_ADDRESS}.key" ]; then
-    mv "${PROTOCOL_ADDRESS}.key" protocol.key
-    echo "  • Created protocol.key"
-  fi
-  
-  if [ -f "${NETWORK_ADDRESS}.key" ]; then
-    mv "${NETWORK_ADDRESS}.key" network.key
-    echo "  • Created network.key"
-  fi
-  
-  if [ -f "${WORKER_ADDRESS}.key" ]; then
-    mv "${WORKER_ADDRESS}.key" worker.key
-    echo "  • Created worker.key"
-  fi
-  
-  # Save the entire output files as well for reference
-  cp protocol_output.txt protocol.json
-  cp network_output.txt network.json
-  cp worker_output.txt worker.json
-  cp account_output.txt account.json
-  
-  # Return to the genesis directory
-  popd > /dev/null
-  
-  echo -e "${GREEN}Validator $i keys generated successfully!${NC}"
-  echo "  Account Address: $ACCOUNT_ADDRESS"
-  echo "  Keys saved to validators/validator$i/"
-  echo
-done
-
-# Step 2: Generate fullnode key
-echo -e "${YELLOW}Generating fullnode key...${NC}"
-
-# Create the key in its own directory
-mkdir -p "${GENESIS_DIR}/fullnode"
-pushd "${GENESIS_DIR}/fullnode" > /dev/null
-
-cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519 > fullnode_output.txt
-
-# Extract key information
-FULLNODE_ADDRESS=$(grep "mysAddress" fullnode_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
-FULLNODE_MNEMONIC=$(grep "mnemonic" fullnode_output.txt | sed 's/│//g' | awk '{$1=""; print $0}' | xargs)
-
-echo "Fullnode Address: $FULLNODE_ADDRESS"
-echo "Fullnode Mnemonic: $FULLNODE_MNEMONIC"
-
-# Save fullnode info for reference
-echo "Fullnode Address: $FULLNODE_ADDRESS" > fullnode_info.txt
-echo "Fullnode Mnemonic: $FULLNODE_MNEMONIC" >> fullnode_info.txt
-cp fullnode_output.txt fullnode.json
-
-# Move fullnode key file if it exists
-if [ -f "${FULLNODE_ADDRESS}.key" ]; then
-    mv "${FULLNODE_ADDRESS}.key" fullnode.key
-    echo "Created fullnode.key"
-fi
-
-# Return to genesis directory
-popd > /dev/null
-
-echo -e "${GREEN}Fullnode key generated successfully!${NC}"
-echo "Address: $FULLNODE_ADDRESS"
-echo "Key saved to fullnode/"
-echo
-
-# Step 3: Generate faucet key
-echo -e "${YELLOW}Generating faucet key...${NC}"
-
-# Create the key in its own directory
+# Create faucet directory
 mkdir -p "${GENESIS_DIR}/faucet"
-pushd "${GENESIS_DIR}/faucet" > /dev/null
 
-cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519 > faucet_output.txt
+# Change to faucet directory so the .key file is generated there
+cd "${GENESIS_DIR}/faucet"
+
+FAUCET_OUTPUT=$(cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519)
+FAUCET_ADDRESS=$(echo "$FAUCET_OUTPUT" | grep "mysAddress" | sed 's/│//g' | awk '{print $2}' | xargs)
 
 # Extract key information
-FAUCET_ADDRESS=$(grep "mysAddress" faucet_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
-FAUCET_MNEMONIC=$(grep "mnemonic" faucet_output.txt | sed 's/│//g' | awk '{$1=""; print $0}' | xargs)
+FAUCET_PUBLIC_KEY=$(echo "$FAUCET_OUTPUT" | grep "publicBase64Key" | sed 's/│//g' | awk '{print $2}' | xargs)
+FAUCET_KEY_SCHEME=$(echo "$FAUCET_OUTPUT" | grep "keyScheme" | sed 's/│//g' | awk '{print $2}' | xargs)
+FAUCET_FLAG=$(echo "$FAUCET_OUTPUT" | grep "flag" | sed 's/│//g' | awk '{print $2}' | xargs)
+FAUCET_MNEMONIC=$(echo "$FAUCET_OUTPUT" | grep "mnemonic" | sed 's/│//g' | cut -d'│' -f3 | xargs)
+FAUCET_PEER_ID=$(echo "$FAUCET_OUTPUT" | grep "peerId" | sed 's/│//g' | awk '{print $2}' | xargs)
 
-echo "Faucet Address: $FAUCET_ADDRESS"
-echo "Faucet Mnemonic: $FAUCET_MNEMONIC"
-
-# Save faucet info for later use
-echo "Faucet Address: $FAUCET_ADDRESS" > faucet_info.txt
-echo "Faucet Mnemonic: $FAUCET_MNEMONIC" >> faucet_info.txt
-cp faucet_output.txt faucet.json
-
-# Move faucet key file if it exists
-if [ -f "${FAUCET_ADDRESS}.key" ]; then
-    mv "${FAUCET_ADDRESS}.key" faucet.key
-    echo "Created faucet.key"
-fi
+# Rename the generated .key file to faucet.key
+mv "${FAUCET_ADDRESS}.key" "faucet.key" 2>/dev/null || true
 
 # Return to genesis directory
-popd > /dev/null
+cd "${GENESIS_DIR}"
 
-echo -e "${GREEN}Faucet key generated successfully!${NC}"
+# Calculate the maximum length for proper formatting
+MAX_LEN=$(printf "%s\n%s\n%s\n%s\n%s\n%s\n%s" "faucet" "$FAUCET_ADDRESS" "$FAUCET_PUBLIC_KEY" "$FAUCET_KEY_SCHEME" "$FAUCET_FLAG" "$FAUCET_MNEMONIC" "$FAUCET_PEER_ID" | awk '{print length}' | sort -rn | head -1)
+# Ensure minimum width of 77 characters for the value column
+if [ "$MAX_LEN" -lt 77 ]; then
+    MAX_LEN=77
+fi
+# Create the border line
+BORDER_LINE=$(printf '─%.0s' $(seq 1 $MAX_LEN))
+
+# Save in table format with proper padding
+cat > "${GENESIS_DIR}/faucet/faucet_wallet_info.json" << EOL
+╭─────────────────┬─${BORDER_LINE}─╮
+│ alias           │ $(printf "%-${MAX_LEN}s" "faucet") │
+│ mysAddress      │ $(printf "%-${MAX_LEN}s" "$FAUCET_ADDRESS") │
+│ publicBase64Key │ $(printf "%-${MAX_LEN}s" "$FAUCET_PUBLIC_KEY") │
+│ keyScheme       │ $(printf "%-${MAX_LEN}s" "$FAUCET_KEY_SCHEME") │
+│ flag            │ $(printf "%-${MAX_LEN}s" "$FAUCET_FLAG") │
+│ mnemonic        │ $(printf "%-${MAX_LEN}s" "$FAUCET_MNEMONIC") │
+│ peerId          │ $(printf "%-${MAX_LEN}s" "$FAUCET_PEER_ID") │
+╰─────────────────┴─${BORDER_LINE}─╯
+EOL
+
+echo -e "${GREEN}Faucet account generated!${NC}"
 echo "Address: $FAUCET_ADDRESS"
-echo "Key saved to faucet/"
+echo "Key saved to: ${GENESIS_DIR}/faucet/faucet.key"
+echo "Wallet information saved to: ${GENESIS_DIR}/faucet/faucet_wallet_info.json"
 echo
 
-# Step 4: Generate social-proof-foundation key
-echo -e "${YELLOW}Generating social-proof-foundation key...${NC}"
+# Step 2: Generate social-proof-foundation account address
+echo -e "${YELLOW}Generating social-proof-foundation account address...${NC}"
 
-# Create the key in its own directory
+# Create social-proof-foundation directory
 mkdir -p "${GENESIS_DIR}/social-proof-foundation"
-pushd "${GENESIS_DIR}/social-proof-foundation" > /dev/null
 
-cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519 > social_proof_foundation_output.txt
+# Change to social-proof-foundation directory so the .key file is generated there
+cd "${GENESIS_DIR}/social-proof-foundation"
+
+SOCIAL_PROOF_FOUNDATION_OUTPUT=$(cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519)
+SOCIAL_PROOF_FOUNDATION_ADDRESS=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep "mysAddress" | sed 's/│//g' | awk '{print $2}' | xargs)
 
 # Extract key information
-SOCIAL_PROOF_FOUNDATION_ADDRESS=$(grep "mysAddress" social_proof_foundation_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
-SOCIAL_PROOF_FOUNDATION_MNEMONIC=$(grep "mnemonic" social_proof_foundation_output.txt | sed 's/│//g' | awk '{$1=""; print $0}' | xargs)
+SPF_PUBLIC_KEY=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep "publicBase64Key" | sed 's/│//g' | awk '{print $2}' | xargs)
+SPF_KEY_SCHEME=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep "keyScheme" | sed 's/│//g' | awk '{print $2}' | xargs)
+SPF_FLAG=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep "flag" | sed 's/│//g' | awk '{print $2}' | xargs)
+SPF_MNEMONIC=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep "mnemonic" | sed 's/│//g' | cut -d'│' -f3 | xargs)
+SPF_PEER_ID=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep "peerId" | sed 's/│//g' | awk '{print $2}' | xargs)
 
-echo "Social Proof Foundation Address: $SOCIAL_PROOF_FOUNDATION_ADDRESS"
-echo "Social Proof Foundation Mnemonic: $SOCIAL_PROOF_FOUNDATION_MNEMONIC"
-
-# Save social-proof-foundation info for reference
-echo "Social Proof Foundation Address: $SOCIAL_PROOF_FOUNDATION_ADDRESS" > social_proof_foundation_info.txt
-echo "Social Proof Foundation Mnemonic: $SOCIAL_PROOF_FOUNDATION_MNEMONIC" >> social_proof_foundation_info.txt
-cp social_proof_foundation_output.txt social_proof_foundation.json
-
-# Move social-proof-foundation key file if it exists
-if [ -f "${SOCIAL_PROOF_FOUNDATION_ADDRESS}.key" ]; then
-    mv "${SOCIAL_PROOF_FOUNDATION_ADDRESS}.key" social_proof_foundation.key
-    echo "Created social_proof_foundation.key"
-fi
+# Rename the generated .key file to social-proof-foundation.key
+mv "${SOCIAL_PROOF_FOUNDATION_ADDRESS}.key" "social-proof-foundation.key" 2>/dev/null || true
 
 # Return to genesis directory
-popd > /dev/null
+cd "${GENESIS_DIR}"
 
-echo -e "${GREEN}Social Proof Foundation key generated successfully!${NC}"
+# Calculate the maximum length for proper formatting
+MAX_LEN=$(printf "%s\n%s\n%s\n%s\n%s\n%s\n%s" "social-proof-foundation" "$SOCIAL_PROOF_FOUNDATION_ADDRESS" "$SPF_PUBLIC_KEY" "$SPF_KEY_SCHEME" "$SPF_FLAG" "$SPF_MNEMONIC" "$SPF_PEER_ID" | awk '{print length}' | sort -rn | head -1)
+# Ensure minimum width of 77 characters for the value column
+if [ "$MAX_LEN" -lt 77 ]; then
+    MAX_LEN=77
+fi
+# Create the border line
+BORDER_LINE=$(printf '─%.0s' $(seq 1 $MAX_LEN))
+
+# Save in table format with proper padding
+cat > "${GENESIS_DIR}/social-proof-foundation/social-proof-foundation_wallet_info.json" << EOL
+╭─────────────────┬─${BORDER_LINE}─╮
+│ alias           │ $(printf "%-${MAX_LEN}s" "social-proof-foundation") │
+│ mysAddress      │ $(printf "%-${MAX_LEN}s" "$SOCIAL_PROOF_FOUNDATION_ADDRESS") │
+│ publicBase64Key │ $(printf "%-${MAX_LEN}s" "$SPF_PUBLIC_KEY") │
+│ keyScheme       │ $(printf "%-${MAX_LEN}s" "$SPF_KEY_SCHEME") │
+│ flag            │ $(printf "%-${MAX_LEN}s" "$SPF_FLAG") │
+│ mnemonic        │ $(printf "%-${MAX_LEN}s" "$SPF_MNEMONIC") │
+│ peerId          │ $(printf "%-${MAX_LEN}s" "$SPF_PEER_ID") │
+╰─────────────────┴─${BORDER_LINE}─╯
+EOL
+
+echo -e "${GREEN}Social Proof Foundation account generated!${NC}"
 echo "Address: $SOCIAL_PROOF_FOUNDATION_ADDRESS"
-echo "Key saved to social-proof-foundation/"
+echo "Key saved to: ${GENESIS_DIR}/social-proof-foundation/social-proof-foundation.key"
+echo "Wallet information saved to: ${GENESIS_DIR}/social-proof-foundation/social-proof-foundation_wallet_info.json"
 echo
 
-# Step 5: Generate core-team key
-echo -e "${YELLOW}Generating core-team key...${NC}"
+# Step 3: Generate core-team account address
+echo -e "${YELLOW}Generating core-team account address...${NC}"
 
-# Create the key in its own directory
+# Create core-team directory
 mkdir -p "${GENESIS_DIR}/core-team"
-pushd "${GENESIS_DIR}/core-team" > /dev/null
 
-cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519 > core_team_output.txt
+# Change to core-team directory so the .key file is generated there
+cd "${GENESIS_DIR}/core-team"
+
+CORE_TEAM_OUTPUT=$(cargo run --bin myso --manifest-path="${GENESIS_DIR}/../Cargo.toml" -- keytool generate ed25519)
+CORE_TEAM_ADDRESS=$(echo "$CORE_TEAM_OUTPUT" | grep "mysAddress" | sed 's/│//g' | awk '{print $2}' | xargs)
 
 # Extract key information
-CORE_TEAM_ADDRESS=$(grep "mysAddress" core_team_output.txt | sed 's/│//g' | awk '{print $2}' | xargs)
-CORE_TEAM_MNEMONIC=$(grep "mnemonic" core_team_output.txt | sed 's/│//g' | awk '{$1=""; print $0}' | xargs)
+CORE_PUBLIC_KEY=$(echo "$CORE_TEAM_OUTPUT" | grep "publicBase64Key" | sed 's/│//g' | awk '{print $2}' | xargs)
+CORE_KEY_SCHEME=$(echo "$CORE_TEAM_OUTPUT" | grep "keyScheme" | sed 's/│//g' | awk '{print $2}' | xargs)
+CORE_FLAG=$(echo "$CORE_TEAM_OUTPUT" | grep "flag" | sed 's/│//g' | awk '{print $2}' | xargs)
+CORE_MNEMONIC=$(echo "$CORE_TEAM_OUTPUT" | grep "mnemonic" | sed 's/│//g' | cut -d'│' -f3 | xargs)
+CORE_PEER_ID=$(echo "$CORE_TEAM_OUTPUT" | grep "peerId" | sed 's/│//g' | awk '{print $2}' | xargs)
 
-echo "Core Team Address: $CORE_TEAM_ADDRESS"
-echo "Core Team Mnemonic: $CORE_TEAM_MNEMONIC"
-
-# Save core-team info for later use
-echo "Core Team Address: $CORE_TEAM_ADDRESS" > core_team_info.txt
-echo "Core Team Mnemonic: $CORE_TEAM_MNEMONIC" >> core_team_info.txt
-cp core_team_output.txt core_team.json
-
-# Move core-team key file if it exists
-if [ -f "${CORE_TEAM_ADDRESS}.key" ]; then
-    mv "${CORE_TEAM_ADDRESS}.key" core_team.key
-    echo "Created core_team.key"
-fi
+# Rename the generated .key file to core-team.key
+mv "${CORE_TEAM_ADDRESS}.key" "core-team.key" 2>/dev/null || true
 
 # Return to genesis directory
-popd > /dev/null
+cd "${GENESIS_DIR}"
 
-echo -e "${GREEN}Core Team key generated successfully!${NC}"
+# Calculate the maximum length for proper formatting
+MAX_LEN=$(printf "%s\n%s\n%s\n%s\n%s\n%s\n%s" "core-team" "$CORE_TEAM_ADDRESS" "$CORE_PUBLIC_KEY" "$CORE_KEY_SCHEME" "$CORE_FLAG" "$CORE_MNEMONIC" "$CORE_PEER_ID" | awk '{print length}' | sort -rn | head -1)
+# Ensure minimum width of 77 characters for the value column
+if [ "$MAX_LEN" -lt 77 ]; then
+    MAX_LEN=77
+fi
+# Create the border line
+BORDER_LINE=$(printf '─%.0s' $(seq 1 $MAX_LEN))
+
+# Save in table format with proper padding
+cat > "${GENESIS_DIR}/core-team/core-team_wallet_info.json" << EOL
+╭─────────────────┬─${BORDER_LINE}─╮
+│ alias           │ $(printf "%-${MAX_LEN}s" "core-team") │
+│ mysAddress      │ $(printf "%-${MAX_LEN}s" "$CORE_TEAM_ADDRESS") │
+│ publicBase64Key │ $(printf "%-${MAX_LEN}s" "$CORE_PUBLIC_KEY") │
+│ keyScheme       │ $(printf "%-${MAX_LEN}s" "$CORE_KEY_SCHEME") │
+│ flag            │ $(printf "%-${MAX_LEN}s" "$CORE_FLAG") │
+│ mnemonic        │ $(printf "%-${MAX_LEN}s" "$CORE_MNEMONIC") │
+│ peerId          │ $(printf "%-${MAX_LEN}s" "$CORE_PEER_ID") │
+╰─────────────────┴─${BORDER_LINE}─╯
+EOL
+
+echo -e "${GREEN}Core Team account generated!${NC}"
 echo "Address: $CORE_TEAM_ADDRESS"
-echo "Key saved to core-team/"
+echo "Key saved to: ${GENESIS_DIR}/core-team/core-team.key"
+echo "Wallet information saved to: ${GENESIS_DIR}/core-team/core-team_wallet_info.json"
 echo
 
-# Step 6: Update genesis_config.yaml with generated addresses
+# Step 4: Update genesis_config.yaml with generated addresses
 echo -e "${YELLOW}Updating genesis_config.yaml with generated addresses...${NC}"
 
 # Make a backup of the original file
@@ -366,7 +279,7 @@ cat > "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: $(( $(date +%s) * 1000 ))
+  chain_start_timestamp_ms: 1759215000 # $(( $(date +%s) * 1000 ))
 
   # Protocol version
   protocol_version: 74  # Latest version
@@ -377,12 +290,12 @@ parameters:
   # Epoch duration in milliseconds (default: 24 hours)
   # 1 hour = 3,600,000 ms
   # 24 hours = 86,400,000 ms
-  epoch_duration_ms: 7200000  # 2 hours for testnet (faster epochs)
+  epoch_duration_ms: 14400000  # 4 hours for testnet (faster epochs)
 
   # Stake subsidy parameters
   #
   # When to start paying stake subsidies (0 = from beginning)
-  stake_subsidy_start_epoch: 2
+  stake_subsidy_start_epoch: 15
 
   # Initial stake subsidy distribution amount per epoch (in MIST)
   # Default: 538,626 MySo = 538,626,000,000,000 MIST
@@ -390,30 +303,14 @@ parameters:
 
   # Number of epochs before decreasing the subsidy amount
   # Default: 15 epochs
-  stake_subsidy_period_length: 10
+  stake_subsidy_period_length: 3
 
   # Rate at which subsidy decreases at end of each period (in basis points)
-  # 100 basis points = 1%
-  stake_subsidy_decrease_rate: 100
+  # 150 basis points = 1.5%
+  stake_subsidy_decrease_rate: 150
 
 # Accounts to add tokens to
 accounts:
-  # Fullnode allocation
-  - address: "$FULLNODE_ADDRESS"
-    gas_amounts:
-      - 500000000000000 # 500,000 MySo
-  # Validator 1
-  - address: "${VALIDATOR_ADDRESSES[0]}"
-    gas_amounts:
-      - 500000000000000 # 500,000 MySo
-  # Validator 2
-  - address: "${VALIDATOR_ADDRESSES[1]}"
-    gas_amounts:
-      - 500000000000000 # 500,000 MySo
-  # Validator 3
-  - address: "${VALIDATOR_ADDRESSES[2]}"
-    gas_amounts:
-      - 500000000000000 # 500,000 MySo
   # Faucet
   - address: "$FAUCET_ADDRESS"
     gas_amounts:
@@ -421,11 +318,11 @@ accounts:
   # Social Proof Foundation
   - address: "$SOCIAL_PROOF_FOUNDATION_ADDRESS"
     gas_amounts:
-      - 235000000000000000 # 240,000,000 MySo (24% - 2mill for owning fullnode & validator - 3mill for 3 validators init staking)
+      - 747000000000000000 # 747,000,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators)
   # Core Team
   - address: "$CORE_TEAM_ADDRESS"
     gas_amounts:
-      - 250000000000000000 # 250,000,000 MySo (25% 12.5% core & 12.5 marketing)
+      - 249000000000000000 # 249,000,000 MySo (25% = 12.5% core + 12.5% marketing - 1 mill faucet)
 
 validator_config_info:
 EOL
@@ -444,7 +341,7 @@ for i in {0..2}; do
     narwhal_worker_address: "/ip4/$BASE_IP/udp/$NARWHAL_WORKER_PORT"
     consensus_address: "/ip4/$BASE_IP/tcp/$CONSENSUS_PORT/http"
     gas_price: 1
-    commission_rate: 500
+    commission_rate: 250
     stake: 1000000000000000  # 1 million MySo in MIST units
 EOL
 done
@@ -479,14 +376,20 @@ echo "Backup saved as genesis_config.yaml.backup"
 echo "Port configuration saved to port_config.txt"
 echo
 
-echo -e "${GREEN}All keys generated and configurations updated!${NC}"
+echo -e "${GREEN}All account addresses generated and configuration updated!${NC}"
 echo
-echo "Generated port assignments:"
+echo "Generated accounts:"
+echo "  Faucet: $FAUCET_ADDRESS"
+echo "  Social Proof Foundation: $SOCIAL_PROOF_FOUNDATION_ADDRESS"
+echo "  Core Team: $CORE_TEAM_ADDRESS"
+echo
+echo "Port assignments:"
 for i in {0..2}; do
   IFS=',' read -r NETWORK_PORT P2P_PORT NARWHAL_PRIMARY_PORT NARWHAL_WORKER_PORT CONSENSUS_PORT <<< "${VALIDATOR_PORTS[$i]}"
   echo "  Validator $i: Network=$NETWORK_PORT, P2P=$P2P_PORT, Primary=$NARWHAL_PRIMARY_PORT, Worker=$NARWHAL_WORKER_PORT, Consensus=$CONSENSUS_PORT"
 done
 echo
 echo "Base IP: $BASE_IP (set BASE_IP environment variable to override)"
-echo "Remember to securely back up all generated keys!"
-echo "You can now run: myso genesis -f --with-faucet --committee-size 3 --from-config genesis_config.yaml" 
+echo
+echo "Next step: Run myso genesis -f --with-faucet --committee-size 3 --from-config genesis_config.yaml"
+echo "Note: Protocol, network, and worker keys will be automatically generated during genesis creation." 

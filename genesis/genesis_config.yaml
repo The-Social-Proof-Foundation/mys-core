@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1755276619000
+  chain_start_timestamp_ms: 1759215000 # 1759210235000
 
   # Protocol version
   protocol_version: 74  # Latest version
@@ -15,12 +15,12 @@ parameters:
   # Epoch duration in milliseconds (default: 24 hours)
   # 1 hour = 3,600,000 ms
   # 24 hours = 86,400,000 ms
-  epoch_duration_ms: 7200000  # 2 hours for testnet (faster epochs)
+  epoch_duration_ms: 14400000  # 4 hours for testnet (faster epochs)
 
   # Stake subsidy parameters
   #
   # When to start paying stake subsidies (0 = from beginning)
-  stake_subsidy_start_epoch: 2
+  stake_subsidy_start_epoch: 15
 
   # Initial stake subsidy distribution amount per epoch (in MIST)
   # Default: 538,626 MySo = 538,626,000,000,000 MIST
@@ -28,42 +28,26 @@ parameters:
 
   # Number of epochs before decreasing the subsidy amount
   # Default: 15 epochs
-  stake_subsidy_period_length: 10
+  stake_subsidy_period_length: 3
 
   # Rate at which subsidy decreases at end of each period (in basis points)
-  # 100 basis points = 1%
-  stake_subsidy_decrease_rate: 100
+  # 150 basis points = 1.5%
+  stake_subsidy_decrease_rate: 150
 
 # Accounts to add tokens to
 accounts:
-  # Fullnode allocation
-  - address: "0xb33907c4104879d037d9b5264340824911ce542919304b3e79ec33195bbca532"
-    gas_amounts:
-      - 500000000000000 # 500,000 MySo
-  # Validator 1
-  - address: "0x735d3f05cbaee406dde288cfa5e6a440acbc48312051d7d1c66585bc563dfd6e"
-    gas_amounts:
-      - 500000000000000 # 500,000 MySo
-  # Validator 2
-  - address: "0xa11493ca4cdcd3d0630315ce6e5fc9c94f679dbc06744ee90fdd485e010bbcc2"
-    gas_amounts:
-      - 500000000000000 # 500,000 MySo
-  # Validator 3
-  - address: "0xfa388079dea5932a8c16c231f9cee50a6b730a464a1045bc4189bc5b64162ea2"
-    gas_amounts:
-      - 500000000000000 # 500,000 MySo
   # Faucet
-  - address: "0x4d2fb4ad1fbe3c72f5b08cbfbca625b11aa2d15e468a6df826937dad77ea2b8f"
+  - address: "0x93fc8732a416c924cb7c63d81474f61a4baef642f6c581e7c0b1c0435db320cd"
     gas_amounts:
       - 1000000000000000 # 1,000,000 MySo
   # Social Proof Foundation
-  - address: "0xe2c971e2f3734b7d1fd312ecbb6294da6320cb737b758d4664fcb5e9957159da"
+  - address: "0xf56d7e439b531a1095b9abd548068127533472eb0482879275489c535aa62811"
     gas_amounts:
-      - 235000000000000000 # 240,000,000 MySo (24% - 2mill for owning fullnode & validator - 3mill for 3 validators init staking)
+      - 747000000000000000 # 747,000,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators)
   # Core Team
-  - address: "0x68c42a52fe78f3411433a06827195f9a0dcf8ae940e14283d219204a7b5f9c75"
+  - address: "0xc0ffcac3fd4a0faa2e44e8d2b74cf7212ee87ec6a39142ce487d0ace9954869a"
     gas_amounts:
-      - 250000000000000000 # 250,000,000 MySo (25% 12.5% core & 12.5 marketing)
+      - 249000000000000000 # 249,000,000 MySo (25% = 12.5% core + 12.5% marketing - 1 mill faucet)
 
 validator_config_info:
   # Validator 0 (dynamic ports)
@@ -74,7 +58,7 @@ validator_config_info:
     narwhal_worker_address: "/ip4/69.10.63.78/udp/59040"
     consensus_address: "/ip4/69.10.63.78/tcp/59050/http"
     gas_price: 1
-    commission_rate: 500
+    commission_rate: 250
     stake: 1000000000000000  # 1 million MySo in MIST units
   # Validator 1 (dynamic ports)
   - name: "MySo Validator 1"
@@ -84,7 +68,7 @@ validator_config_info:
     narwhal_worker_address: "/ip4/69.10.63.78/udp/59140"
     consensus_address: "/ip4/69.10.63.78/tcp/59150/http"
     gas_price: 1
-    commission_rate: 500
+    commission_rate: 250
     stake: 1000000000000000  # 1 million MySo in MIST units
   # Validator 2 (dynamic ports)
   - name: "MySo Validator 2"
@@ -94,5 +78,5 @@ validator_config_info:
     narwhal_worker_address: "/ip4/69.10.63.78/udp/59240"
     consensus_address: "/ip4/69.10.63.78/tcp/59250/http"
     gas_price: 1
-    commission_rate: 500
+    commission_rate: 250
     stake: 1000000000000000  # 1 million MySo in MIST units
