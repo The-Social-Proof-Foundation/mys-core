@@ -3,14 +3,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::consistency::ConsistentIndexCursor;
-use crate::data::apys::calculate_apy;
-use crate::data::{DataLoader, Db};
+use crate::data::Db;
 use crate::types::cursor::{JsonCursor, Page};
 use async_graphql::connection::{Connection, CursorType, Edge};
 use async_graphql::dataloader::Loader;
 use std::collections::{BTreeMap, HashMap};
 use mys_indexer::apis::GovernanceReadApi;
 use mys_types::committee::EpochId;
+use mys_types::gas_coin::TOTAL_SUPPLY_MIST;
 use mys_types::mys_system_state::PoolTokenExchangeRate;
 
 use mys_types::base_types::MysAddress as NativeMysAddress;
@@ -375,23 +375,25 @@ impl Validator {
     /// The APY of this validator in basis points.
     /// To get the APY in percentage, divide by 100.
     async fn apy(&self, ctx: &Context<'_>) -> Result<Option<u64>, Error> {
-        let DataLoader(loader) = ctx.data_unchecked();
-        let (stake_subsidy_start_epoch, exchange_rates) = loader
-            .load_one(self.requested_for_epoch)
-            .await?
-            .ok_or_else(|| Error::Internal("DataLoading exchange rates failed".to_string()))?;
-        let rates = exchange_rates
-            .get(&self.validator_summary.mys_address)
-            .ok_or_else(|| {
-                Error::Internal(format!(
-                    "Failed to get the exchange rate for this validator address {} for requested epoch {}",
-                    self.validator_summary.mys_address, self.requested_for_epoch
-                ))
-            })?;
-
-        let avg_apy = Some(calculate_apy(stake_subsidy_start_epoch, rates));
-
-        Ok(avg_apy.map(|x| (x * 10000.0) as u64))
+        // Get the system state to access necessary values for APY calculation
+        let system_state = ctx.data_unchecked::<Db>().inner
+            .get_latest_mys_system_state()
+            .await
+            .map_err(|_| Error::Internal("Failed to fetch latest Mys system state".to_string()))?;
+            
+        // Calculate APY using the same approach as in system_state_summary.rs
+        let circulating_supply = TOTAL_SUPPLY_MIST.saturating_sub(system_state.stake_subsidy_balance);
+        let epochs_per_year = (365_u64 * 24 * 60 * 60 * 1000) / system_state.epoch_duration_ms;
+        let yearly_subsidy = system_state
+            .stake_subsidy_current_distribution_amount
+            .saturating_mul(epochs_per_year);
+        let apy_bps = if circulating_supply > 0 {
+            yearly_subsidy.saturating_mul(10_000) / circulating_supply
+        } else {
+            0
+        };
+        
+        Ok(Some(apy_bps))
     }
 }
 
