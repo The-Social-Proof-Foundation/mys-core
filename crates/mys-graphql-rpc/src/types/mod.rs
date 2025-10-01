@@ -48,6 +48,7 @@ pub(crate) mod storage_fund;
 pub(crate) mod string_input;
 pub(crate) mod mys_address;
 pub(crate) mod mysns_registration;
+pub(crate) mod social_profile;
 pub(crate) mod system_parameters;
 pub(crate) mod system_state_summary;
 pub(crate) mod transaction_block;

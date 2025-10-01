@@ -469,6 +469,7 @@ impl ServerBuilder {
             .context_data(name_service_config)
             .context_data(zklogin_config)
             .context_data(metrics.clone())
+            .context_data(config.connection.clone())
             .context_data(config.clone())
             .context_data(move_registry_config.clone())
             .context_data(MoveRegistryDataLoader::new(
@@ -715,6 +716,7 @@ pub mod tests {
             prom_host: "127.0.0.1".to_owned(),
             prom_port: get_available_port(),
             skip_migration_consistency_check: false,
+            social_indexer_url: "https://mys-social-indexer-testnet.up.railway.app".to_owned(),
         };
         let service_config = service_config.unwrap_or_default();
 
@@ -754,6 +756,7 @@ pub mod tests {
             .context_data(db)
             .context_data(loader)
             .context_data(pg_conn_pool)
+            .context_data(connection_config)
             .context_data(service_config)
             .context_data(query_id())
             .context_data(ip_address())

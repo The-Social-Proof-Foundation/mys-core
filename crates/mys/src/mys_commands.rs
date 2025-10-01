@@ -889,6 +889,7 @@ async fn start(
             port: faucet_address.port(),
             num_coins: DEFAULT_FAUCET_NUM_COINS,
             amount: DEFAULT_FAUCET_MIST_AMOUNT,
+            max_request_queue_length: 10000,
             ..Default::default()
         };
 

@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// Implementation of decryption for Seal using Boneh-Franklin over BLS12-381 as KEM and Hmac256Ctr as DEM.
-
-#[allow(duplicate_alias)]
 module seal::bf_hmac_encryption;
 
 use seal::{hmac256ctr, kdf::{hash_to_g1_with_dst, kdf}, key_server::KeyServer, polynomial};
