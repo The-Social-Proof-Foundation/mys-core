@@ -1,10 +1,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::schema::{social_graph_events, social_graph_relationships};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::schema::{social_graph_relationships, social_graph_events};
 
 /// Model for a social graph relationship (follow)
 #[derive(Debug, Queryable, Selectable, Serialize, Deserialize)]
@@ -34,7 +34,7 @@ pub struct SocialGraphEvent {
     pub follower_address: String,
     pub following_address: String,
     pub created_at: NaiveDateTime,
-    pub event_id: Option<String>,  // Changed from blockchain_tx_hash to event_id
+    pub event_id: Option<String>, // Changed from blockchain_tx_hash to event_id
     pub raw_event_data: Option<serde_json::Value>,
 }
 
@@ -46,7 +46,7 @@ pub struct NewSocialGraphEvent {
     pub follower_address: String,
     pub following_address: String,
     pub created_at: NaiveDateTime,
-    pub event_id: Option<String>,  // Changed from blockchain_tx_hash to event_id
+    pub event_id: Option<String>, // Changed from blockchain_tx_hash to event_id
     pub raw_event_data: Option<serde_json::Value>,
 }
 

@@ -79,7 +79,7 @@ pub struct DisputeVoteCastEvent {
 pub struct PocDisputeResolvedEvent {
     pub dispute_id: String,
     pub post_id: String,
-    pub resolution: u8, // upheld or overturned
+    pub resolution: u8,   // upheld or overturned
     pub winning_side: u8, // VOTE_UPHOLD or VOTE_OVERTURN
     pub total_winning_stake: u64,
     pub total_losing_stake: u64,
@@ -131,4 +131,4 @@ pub const DISPUTE_STATUS_RESOLVED_UPHELD: u8 = 2;
 pub const DISPUTE_STATUS_RESOLVED_OVERTURNED: u8 = 3;
 
 pub const VOTE_UPHOLD: u8 = 1;
-pub const VOTE_OVERTURN: u8 = 2; 
+pub const VOTE_OVERTURN: u8 = 2;

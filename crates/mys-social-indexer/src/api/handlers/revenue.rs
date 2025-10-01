@@ -1,25 +1,24 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use anyhow::Result;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
     Json,
 };
+use bigdecimal::{BigDecimal, ToPrimitive};
+use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use serde::Deserialize;
-use chrono::{DateTime, NaiveDateTime, Utc, Duration};
-use anyhow::Result;
-use bigdecimal::{BigDecimal, ToPrimitive};
 
 use crate::db::DbPool;
 use crate::models::{
-    CreatorRevenueStats, PlatformRevenueStats, RevenueTimeSeriesPoint,
-    RevenueLeaderboardEntry, 
-    RevenueDashboard, RevenueSourceStats, SptRevenueStats,
-    format_myso_amount, calculate_percentage
+    calculate_percentage, format_myso_amount, CreatorRevenueStats, PlatformRevenueStats,
+    RevenueDashboard, RevenueLeaderboardEntry, RevenueSourceStats, RevenueTimeSeriesPoint,
+    SptRevenueStats,
 };
 use crate::schema;
 
@@ -65,9 +64,7 @@ pub struct ChartQuery {
 // ==============================================================================
 
 /// Get unified revenue dashboard (24-hour overview)
-pub async fn get_revenue_dashboard(
-    State(db_pool): State<DbPool>,
-) -> impl IntoResponse {
+pub async fn get_revenue_dashboard(State(db_pool): State<DbPool>) -> impl IntoResponse {
     let mut conn = match db_pool.get().await {
         Ok(conn) => conn,
         Err(e) => {
@@ -75,21 +72,18 @@ pub async fn get_revenue_dashboard(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Database connection error: {}", e)
-                }))
+                })),
             )
         }
     };
 
     match build_revenue_dashboard(&mut conn).await {
-        Ok(dashboard) => (
-            StatusCode::OK,
-            Json(serde_json::json!(dashboard))
-        ),
+        Ok(dashboard) => (StatusCode::OK, Json(serde_json::json!(dashboard))),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "error": format!("Failed to build dashboard: {}", e)
-            }))
+            })),
         ),
     }
 }
@@ -109,7 +103,7 @@ pub async fn get_revenue_leaderboard(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Database connection error: {}", e)
-                }))
+                })),
             )
         }
     };
@@ -121,13 +115,13 @@ pub async fn get_revenue_leaderboard(
                 "leaderboard": leaderboard,
                 "min_revenue": min_revenue,
                 "limit": limit
-            }))
+            })),
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "error": format!("Failed to build leaderboard: {}", e)
-            }))
+            })),
         ),
     }
 }
@@ -140,14 +134,12 @@ pub async fn get_revenue_chart_data(
     let period = params.period.as_deref().unwrap_or("day");
     let points = params.points.unwrap_or(30);
     let end_date = params.end_date.unwrap_or_else(|| Utc::now().naive_utc());
-    let start_date = params.start_date.unwrap_or_else(|| {
-        match period {
-            "hour" => end_date - Duration::hours(points),
-            "day" => end_date - Duration::days(points),
-            "week" => end_date - Duration::weeks(points),
-            "month" => end_date - Duration::days(points * 30),
-            _ => end_date - Duration::days(points),
-        }
+    let start_date = params.start_date.unwrap_or_else(|| match period {
+        "hour" => end_date - Duration::hours(points),
+        "day" => end_date - Duration::days(points),
+        "week" => end_date - Duration::weeks(points),
+        "month" => end_date - Duration::days(points * 30),
+        _ => end_date - Duration::days(points),
     });
 
     let mut conn = match db_pool.get().await {
@@ -157,7 +149,7 @@ pub async fn get_revenue_chart_data(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Database connection error: {}", e)
-                }))
+                })),
             )
         }
     };
@@ -170,13 +162,13 @@ pub async fn get_revenue_chart_data(
                 "period": period,
                 "start_date": start_date,
                 "end_date": end_date
-            }))
+            })),
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "error": format!("Failed to build chart data: {}", e)
-            }))
+            })),
         ),
     }
 }
@@ -194,21 +186,18 @@ pub async fn get_creator_revenue_stats(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Database connection error: {}", e)
-                }))
+                })),
             )
         }
     };
 
     match build_creator_revenue_stats(&mut conn, &creator_address, &params).await {
-        Ok(stats) => (
-            StatusCode::OK,
-            Json(serde_json::json!(stats))
-        ),
+        Ok(stats) => (StatusCode::OK, Json(serde_json::json!(stats))),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "error": format!("Failed to build creator stats: {}", e)
-            }))
+            })),
         ),
     }
 }
@@ -226,21 +215,18 @@ pub async fn get_platform_revenue_stats(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Database connection error: {}", e)
-                }))
+                })),
             )
         }
     };
 
     match build_platform_revenue_stats(&mut conn, &platform_address, &params).await {
-        Ok(stats) => (
-            StatusCode::OK,
-            Json(serde_json::json!(stats))
-        ),
+        Ok(stats) => (StatusCode::OK, Json(serde_json::json!(stats))),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "error": format!("Failed to build platform stats: {}", e)
-            }))
+            })),
         ),
     }
 }
@@ -260,7 +246,7 @@ pub async fn get_unified_revenue(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Database connection error: {}", e)
-                }))
+                })),
             )
         }
     };
@@ -268,39 +254,39 @@ pub async fn get_unified_revenue(
     // Build dynamic query
     let build_query = || {
         let mut query = schema::unified_revenue::table.into_boxed();
-        
+
         if let Some(creator_address) = &params.creator_address {
             query = query.filter(schema::unified_revenue::creator_address.eq(creator_address));
         }
-        
+
         if let Some(platform_address) = &params.platform_address {
             query = query.filter(schema::unified_revenue::platform_address.eq(platform_address));
         }
-        
+
         if let Some(revenue_source) = &params.revenue_source {
             query = query.filter(schema::unified_revenue::revenue_source.eq(revenue_source));
         }
-        
+
         if let Some(revenue_type) = &params.revenue_type {
             query = query.filter(schema::unified_revenue::revenue_type.eq(revenue_type));
         }
-        
+
         if let Some(content_id) = &params.content_id {
             query = query.filter(schema::unified_revenue::content_id.eq(content_id));
         }
-        
+
         if let Some(content_type) = &params.content_type {
             query = query.filter(schema::unified_revenue::content_type.eq(content_type));
         }
-        
+
         if let Some(start_date) = &params.start_date {
             query = query.filter(schema::unified_revenue::time.ge(start_date));
         }
-        
+
         if let Some(end_date) = &params.end_date {
             query = query.filter(schema::unified_revenue::time.le(end_date));
         }
-        
+
         query
     };
 
@@ -312,7 +298,7 @@ pub async fn get_unified_revenue(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Failed to count revenue records: {}", e)
-                }))
+                })),
             );
         }
     };
@@ -328,7 +314,7 @@ pub async fn get_unified_revenue(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Failed to aggregate revenue: {}", e)
-                }))
+                })),
             );
         }
     };
@@ -347,7 +333,7 @@ pub async fn get_unified_revenue(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Failed to fetch revenue records: {}", e)
-                }))
+                })),
             );
         }
     };
@@ -368,7 +354,7 @@ pub async fn get_unified_revenue(
                 "page": (offset / limit) + 1,
                 "total_pages": total_pages,
             }
-        }))
+        })),
     )
 }
 
@@ -384,27 +370,24 @@ pub async fn get_spt_pool_revenue(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Database connection error: {}", e)
-                }))
+                })),
             )
         }
     };
 
     match build_spt_pool_revenue_stats(&mut conn, &pool_id).await {
-        Ok(Some(stats)) => (
-            StatusCode::OK,
-            Json(serde_json::json!(stats))
-        ),
+        Ok(Some(stats)) => (StatusCode::OK, Json(serde_json::json!(stats))),
         Ok(None) => (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({
                 "error": "SPT pool not found or no revenue data"
-            }))
+            })),
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "error": format!("Failed to build SPT stats: {}", e)
-            }))
+            })),
         ),
     }
 }
@@ -413,7 +396,9 @@ pub async fn get_spt_pool_revenue(
 // HELPER FUNCTIONS
 // ==============================================================================
 
-async fn build_revenue_dashboard(conn: &mut diesel_async::AsyncPgConnection) -> Result<RevenueDashboard> {
+async fn build_revenue_dashboard(
+    conn: &mut diesel_async::AsyncPgConnection,
+) -> Result<RevenueDashboard> {
     let now = Utc::now().naive_utc();
     let twenty_four_hours_ago = now - Duration::hours(24);
 
@@ -455,10 +440,25 @@ async fn build_revenue_dashboard(conn: &mut diesel_async::AsyncPgConnection) -> 
 
     // Calculate totals
     let total_revenue_24h = dashboard_results.iter().map(|r| r.total_revenue_24h).sum();
-    let total_transactions_24h = dashboard_results.iter().map(|r| r.total_transactions_24h).sum();
-    let unique_creators_24h = dashboard_results.iter().map(|r| r.unique_creators_24h).max().unwrap_or(0);
-    let unique_payers_24h = dashboard_results.iter().map(|r| r.unique_payers_24h).max().unwrap_or(0);
-    let largest_transaction_24h = dashboard_results.iter().map(|r| r.largest_transaction_24h).max().unwrap_or(0);
+    let total_transactions_24h = dashboard_results
+        .iter()
+        .map(|r| r.total_transactions_24h)
+        .sum();
+    let unique_creators_24h = dashboard_results
+        .iter()
+        .map(|r| r.unique_creators_24h)
+        .max()
+        .unwrap_or(0);
+    let unique_payers_24h = dashboard_results
+        .iter()
+        .map(|r| r.unique_payers_24h)
+        .max()
+        .unwrap_or(0);
+    let largest_transaction_24h = dashboard_results
+        .iter()
+        .map(|r| r.largest_transaction_24h)
+        .max()
+        .unwrap_or(0);
 
     // Build revenue by source
     let revenue_by_source: Vec<RevenueSourceStats> = dashboard_results
@@ -510,7 +510,8 @@ async fn build_revenue_leaderboard(
             ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as rank
         FROM creator_revenue_summary
         WHERE total_revenue >= $1
-    ".to_string();
+    "
+    .to_string();
 
     if let Some(revenue_source) = &params.revenue_source {
         match revenue_source.as_str() {
@@ -604,9 +605,13 @@ async fn build_revenue_chart_data(
         GROUP BY bucket, revenue_source ORDER BY bucket ASC
         ",
         time_bucket,
-        if params.creator_address.is_some() { " AND creator_address = $3" } else { "" }
+        if params.creator_address.is_some() {
+            " AND creator_address = $3"
+        } else {
+            ""
+        }
     );
-    
+
     #[derive(QueryableByName, Debug)]
     struct ChartQueryResult {
         #[diesel(sql_type = diesel::sql_types::Timestamp)]
@@ -622,7 +627,7 @@ async fn build_revenue_chart_data(
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         unique_payers: i64,
     }
-    
+
     let results: Vec<ChartQueryResult> = if let Some(creator_address) = &params.creator_address {
         diesel::sql_query(chart_data_query)
             .bind::<diesel::sql_types::Timestamp, _>(start_date)
@@ -719,7 +724,9 @@ async fn build_creator_revenue_stats(
         unique_payers: result.total_unique_payers,
         largest_transaction: result.largest_single_transaction,
         active_days: result.active_days,
-        last_revenue_date: result.last_revenue_date.map(|d| DateTime::from_naive_utc_and_offset(d.and_hms_opt(0, 0, 0).unwrap(), Utc)),
+        last_revenue_date: result
+            .last_revenue_date
+            .map(|d| DateTime::from_naive_utc_and_offset(d.and_hms_opt(0, 0, 0).unwrap(), Utc)),
         revenue_rank: None, // Would need to calculate ranking
     })
 }
@@ -789,7 +796,9 @@ async fn build_platform_revenue_stats(
         unique_payers: result.total_payers,
         avg_transaction_amount: result.avg_transaction_amount,
         active_months: result.active_months,
-        last_active_month: result.last_active_month.map(|d| DateTime::from_naive_utc_and_offset(d.and_hms_opt(0, 0, 0).unwrap(), Utc)),
+        last_active_month: result
+            .last_active_month
+            .map(|d| DateTime::from_naive_utc_and_offset(d.and_hms_opt(0, 0, 0).unwrap(), Utc)),
     })
 }
 
@@ -1003,4 +1012,4 @@ async fn build_recent_trends(
         .collect();
 
     Ok(trends)
-} 
+}

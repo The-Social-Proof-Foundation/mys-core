@@ -1,10 +1,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::schema::blocked_events;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::schema::blocked_events;
 
 /// Blocked event model - represents a complete audit trail of blocking events
 #[derive(Debug, Queryable, Selectable, Serialize, Deserialize)]

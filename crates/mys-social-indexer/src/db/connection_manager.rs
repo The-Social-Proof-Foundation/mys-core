@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, Result};
+use diesel_async::RunQueryDsl;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::timeout;
 use tracing::{debug, error, warn};
-use diesel_async::RunQueryDsl;
 
 use crate::db::{Database, DbConnection};
 
@@ -73,19 +73,20 @@ impl ConnectionManager {
 
     /// Create a connection manager with custom retry configuration
     pub fn with_retry_config(db: Arc<Database>, retry_config: RetryConfig) -> Self {
-        Self {
-            db,
-            retry_config,
-        }
+        Self { db, retry_config }
     }
 
     /// Get a database connection with retry logic
     pub async fn get_connection(&self) -> Result<DbConnection> {
-        self.get_connection_with_timeout(Duration::from_secs(10)).await
+        self.get_connection_with_timeout(Duration::from_secs(10))
+            .await
     }
 
     /// Get a database connection with custom timeout
-    pub async fn get_connection_with_timeout(&self, connection_timeout: Duration) -> Result<DbConnection> {
+    pub async fn get_connection_with_timeout(
+        &self,
+        connection_timeout: Duration,
+    ) -> Result<DbConnection> {
         let mut delay = self.retry_config.initial_delay;
         let mut last_error = None;
 
@@ -93,11 +94,11 @@ impl ConnectionManager {
             if attempt > 0 {
                 debug!("Retrying database connection (attempt {})", attempt + 1);
                 tokio::time::sleep(delay).await;
-                
+
                 // Exponential backoff
                 delay = Duration::from_millis(
                     ((delay.as_millis() as f64 * self.retry_config.backoff_multiplier) as u64)
-                        .min(self.retry_config.max_delay.as_millis() as u64)
+                        .min(self.retry_config.max_delay.as_millis() as u64),
                 );
             }
 
@@ -113,13 +114,21 @@ impl ConnectionManager {
                     warn!("Database connection attempt {} failed: {}", attempt + 1, e);
                 }
                 Err(_) => {
-                    last_error = Some(anyhow!("Database connection timed out after {:?}", connection_timeout));
+                    last_error = Some(anyhow!(
+                        "Database connection timed out after {:?}",
+                        connection_timeout
+                    ));
                     warn!("Database connection attempt {} timed out", attempt + 1);
                 }
             }
         }
 
-        Err(last_error.unwrap_or_else(|| anyhow!("Failed to get database connection after {} attempts", self.retry_config.max_retries + 1)))
+        Err(last_error.unwrap_or_else(|| {
+            anyhow!(
+                "Failed to get database connection after {} attempts",
+                self.retry_config.max_retries + 1
+            )
+        }))
     }
 
     /// Execute a function with a database connection, with automatic retry on connection failure
@@ -138,7 +147,8 @@ impl ConnectionManager {
         F: Fn(&mut DbConnection) -> futures::future::BoxFuture<'_, Result<T>> + Send + Sync,
         T: Send,
     {
-        self.with_transaction_config(f, TransactionConfig::default()).await
+        self.with_transaction_config(f, TransactionConfig::default())
+            .await
     }
 
     /// Execute a function within a database transaction with custom configuration
@@ -148,7 +158,7 @@ impl ConnectionManager {
         T: Send,
     {
         let mut conn = self.get_connection().await?;
-        
+
         // Set isolation level
         match config.isolation_level {
             IsolationLevel::ReadCommitted => {
@@ -199,7 +209,10 @@ impl ConnectionManager {
             Err(_) => {
                 // Rollback on timeout
                 if let Err(rollback_err) = diesel::sql_query("ROLLBACK").execute(&mut conn).await {
-                    error!("Failed to rollback transaction after timeout: {}", rollback_err);
+                    error!(
+                        "Failed to rollback transaction after timeout: {}",
+                        rollback_err
+                    );
                 }
                 Err(anyhow!("Transaction timed out after {:?}", config.timeout))
             }
@@ -208,14 +221,16 @@ impl ConnectionManager {
 
     /// Check database connectivity
     pub async fn health_check(&self) -> Result<()> {
-        let mut conn = self.get_connection_with_timeout(Duration::from_secs(5)).await?;
-        
+        let mut conn = self
+            .get_connection_with_timeout(Duration::from_secs(5))
+            .await?;
+
         // Simple query to check connectivity
         diesel::sql_query("SELECT 1")
             .execute(&mut conn)
             .await
             .map_err(|e| anyhow!("Database health check failed: {}", e))?;
-        
+
         Ok(())
     }
 
@@ -232,13 +247,11 @@ pub trait DatabaseAccess {
     fn get_connection_manager(&self) -> &ConnectionManager;
 
     /// Convenience method to get a connection
-    fn get_connection(&self) -> impl std::future::Future<Output = Result<DbConnection>> + Send 
-    where 
+    fn get_connection(&self) -> impl std::future::Future<Output = Result<DbConnection>> + Send
+    where
         Self: Sync,
     {
-        async move {
-            self.get_connection_manager().get_connection().await
-        }
+        async move { self.get_connection_manager().get_connection().await }
     }
 
     /// Convenience method to execute with connection
@@ -248,9 +261,7 @@ pub trait DatabaseAccess {
         T: Send,
         Self: Sync,
     {
-        async move {
-            self.get_connection_manager().with_connection(f).await
-        }
+        async move { self.get_connection_manager().with_connection(f).await }
     }
 
     /// Convenience method to execute with transaction
@@ -260,9 +271,7 @@ pub trait DatabaseAccess {
         T: Send,
         Self: Sync,
     {
-        async move {
-            self.get_connection_manager().with_transaction(f).await
-        }
+        async move { self.get_connection_manager().with_transaction(f).await }
     }
 }
 

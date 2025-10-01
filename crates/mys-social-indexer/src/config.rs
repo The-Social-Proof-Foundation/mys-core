@@ -56,8 +56,9 @@ impl Config {
                     .expect("PORT/SERVER_PORT must be a number"),
             },
             blockchain: BlockchainConfig {
-                rpc_url: env::var("RPC_URL")
-                    .unwrap_or_else(|_| "http://fullnode.testnet.mysocial.network:9000".to_string()),
+                rpc_url: env::var("RPC_URL").unwrap_or_else(|_| {
+                    "http://fullnode.testnet.mysocial.network:9000".to_string()
+                }),
                 ws_url: env::var("WS_URL")
                     .unwrap_or_else(|_| "wss://fullnode.testnet.mysocial.network:9000".to_string()),
                 poll_interval_ms: env::var("POLL_INTERVAL_MS")
@@ -71,15 +72,15 @@ impl Config {
             },
         }
     }
-    
+
     /// Get database URL with Railway PostgreSQL support and SSL configuration
     fn get_database_url() -> String {
         tracing::info!("🔍 Getting database URL...");
-        
+
         // PRIORITY 1: Try Railway's provided DATABASE_URL first (now with password!)
         if let Ok(url) = env::var("DATABASE_URL") {
             tracing::info!("✅ Using Railway's DATABASE_URL");
-            
+
             // Log masked URL for debugging
             let masked_url = if let Some(at_pos) = url.find('@') {
                 let (before_at, after_at) = url.split_at(at_pos);
@@ -92,7 +93,7 @@ impl Config {
                 format!("{}...", &url[..20.min(url.len())])
             };
             tracing::info!("  DATABASE_URL (masked): {}", masked_url);
-            
+
             // Validate that the URL contains authentication
             if !url.contains('@') {
                 tracing::warn!("DATABASE_URL missing authentication credentials");
@@ -101,7 +102,7 @@ impl Config {
             } else {
                 tracing::info!("DATABASE_URL appears to have authentication credentials ✅");
             }
-            
+
             // Railway's DATABASE_URL should already include proper SSL configuration
             // Temporarily disable SSL to test basic connectivity
             if url.contains("?sslmode=require") {
@@ -117,20 +118,20 @@ impl Config {
                 tracing::info!("Added SSL disabled for testing basic connectivity");
                 return no_ssl_url;
             }
-            
+
             return url;
         }
-        
+
         // PRIORITY 2: Fallback to individual PostgreSQL environment variables
         if let (Ok(host), Ok(user), Ok(password), Ok(database)) = (
             env::var("PGHOST"),
-            env::var("PGUSER"), 
+            env::var("PGUSER"),
             env::var("PGPASSWORD"),
-            env::var("PGDATABASE")
+            env::var("PGDATABASE"),
         ) {
             tracing::info!("⬇️ Fallback: Using individual PostgreSQL environment variables");
             let port = env::var("PGPORT").unwrap_or_else(|_| "5432".to_string());
-            
+
             if password.is_empty() {
                 tracing::error!("PGPASSWORD is empty!");
             } else {
@@ -144,7 +145,7 @@ impl Config {
         } else {
             tracing::info!("Individual PostgreSQL environment variables not complete");
         }
-        
+
         // PRIORITY 3: Local development fallback
         tracing::warn!("⬇️ Using local development database URL");
         "postgres://postgres:postgres@localhost:5432/mys_social_indexer".to_string()

@@ -504,4 +504,4 @@ pub fn calculate_growth_rate(current: i64, previous: i64) -> Option<f64> {
     } else {
         Some(((current - previous) as f64 / previous as f64) * 100.0)
     }
-} 
+}

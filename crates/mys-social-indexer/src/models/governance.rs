@@ -6,9 +6,9 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    delegates, governance_events, governance_registries, nominated_delegates, 
-    proposals, delegate_ratings, delegate_votes, community_votes, reward_distributions,
-    anonymous_votes, vote_decryption_failures,
+    anonymous_votes, community_votes, delegate_ratings, delegate_votes, delegates,
+    governance_events, governance_registries, nominated_delegates, proposals, reward_distributions,
+    vote_decryption_failures,
 };
 
 /// Model for governance_registries table
@@ -373,4 +373,4 @@ pub struct NewVoteDecryptionFailure {
     pub attempted_at: i64,
     pub encrypted_vote_length: Option<i32>,
     pub transaction_id: String,
-} 
+}

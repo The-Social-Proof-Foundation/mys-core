@@ -1,25 +1,20 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use crate::db::DbPool;
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use chrono;
 use serde_json::json;
 use tokio::time::{timeout, Duration};
 use tracing::{error, info, warn};
-use chrono;
-use crate::db::DbPool;
 
 /// Health check endpoint with enhanced error handling for Railway deployments
 pub async fn health_check(State(pool): State<DbPool>) -> impl IntoResponse {
     info!("Health check requested");
-    
+
     // Add timeout to prevent hanging health checks
     let connection_timeout = Duration::from_secs(10);
-    
+
     match timeout(connection_timeout, pool.get()).await {
         Ok(Ok(_conn)) => {
             info!("Health check passed: database connection successful");
@@ -29,11 +24,14 @@ pub async fn health_check(State(pool): State<DbPool>) -> impl IntoResponse {
                     "status": "healthy",
                     "message": "API server is running and database is accessible",
                     "timestamp": chrono::Utc::now().to_rfc3339()
-                }))
+                })),
             )
-        },
+        }
         Ok(Err(pool_error)) => {
-            error!("Health check failed: database connection error: {}", pool_error);
+            error!(
+                "Health check failed: database connection error: {}",
+                pool_error
+            );
             warn!("This might be due to: 1) Database not ready, 2) Wrong DATABASE_URL, 3) Missing SSL/TLS config, 4) Network issues");
             (
                 StatusCode::SERVICE_UNAVAILABLE,
@@ -48,9 +46,9 @@ pub async fn health_check(State(pool): State<DbPool>) -> impl IntoResponse {
                         "Ensure firewall allows database connections"
                     ],
                     "timestamp": chrono::Utc::now().to_rfc3339()
-                }))
+                })),
             )
-        },
+        }
         Err(_timeout_error) => {
             error!("Health check failed: connection pool timeout after 10 seconds");
             (
@@ -65,7 +63,7 @@ pub async fn health_check(State(pool): State<DbPool>) -> impl IntoResponse {
                         "Database server overloaded"
                     ],
                     "timestamp": chrono::Utc::now().to_rfc3339()
-                }))
+                })),
             )
         }
     }

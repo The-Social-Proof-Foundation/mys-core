@@ -35,13 +35,13 @@ impl EventPattern {
                 // Handle both full and short package address formats
                 let package_matches = if package.len() > 10 && package.starts_with("0x") {
                     // Full format: extract last 4 characters after 0x
-                    let short_package = format!("0x{}", &package[package.len()-4..]);
+                    let short_package = format!("0x{}", &package[package.len() - 4..]);
                     event_type.starts_with(&short_package) || event_type.starts_with(package)
                 } else {
                     // Short format or other format
                     event_type.starts_with(package)
                 };
-                
+
                 package_matches && event_type.contains(&format!("::{module}::"))
             }
         }
@@ -96,7 +96,7 @@ impl EventRouter {
         buffer_size: usize,
     ) -> mpsc::Receiver<BlockchainEvent> {
         let (sender, receiver) = mpsc::channel(buffer_size);
-        
+
         let registration = EventHandlerRegistration {
             handler_name: handler_name.clone(),
             patterns,
@@ -105,13 +105,12 @@ impl EventRouter {
         };
 
         // Initialize handler stats
-        self.metrics.handler_stats.insert(
-            handler_name.clone(),
-            HandlerStats::default(),
-        );
+        self.metrics
+            .handler_stats
+            .insert(handler_name.clone(), HandlerStats::default());
 
         self.handlers.insert(handler_name.clone(), registration);
-        
+
         info!(
             "Registered event handler '{}' with {} patterns and buffer size {}",
             handler_name,
@@ -125,7 +124,7 @@ impl EventRouter {
     /// Route an event to all matching handlers
     pub async fn route_event(&mut self, event: BlockchainEvent) -> Result<()> {
         self.metrics.total_events_received += 1;
-        
+
         debug!(
             "Routing event: type={}, tx_digest={}, event_id={}",
             event.event_type, event.tx_digest, event.event_id
@@ -173,9 +172,7 @@ impl EventRouter {
 
             if matches {
                 // Get handler stats
-                let handler_stats = self.metrics.handler_stats
-                    .get_mut(handler_name)
-                    .unwrap();
+                let handler_stats = self.metrics.handler_stats.get_mut(handler_name).unwrap();
 
                 // Try to send the event
                 match registration.sender.try_send(event.clone()) {
@@ -230,14 +227,22 @@ impl EventRouter {
     /// Log current metrics
     pub fn log_metrics(&self) {
         info!("Event Router Metrics:");
-        info!("  Total events received: {}", self.metrics.total_events_received);
-        info!("  Total events routed: {}", self.metrics.total_events_routed);
+        info!(
+            "  Total events received: {}",
+            self.metrics.total_events_received
+        );
+        info!(
+            "  Total events routed: {}",
+            self.metrics.total_events_routed
+        );
         info!("  Events dropped: {}", self.metrics.events_dropped);
         info!("  Routing errors: {}", self.metrics.routing_errors);
-        
+
         for (handler_name, stats) in &self.metrics.handler_stats {
-            info!("  Handler '{}': sent={}, failures={}, drops={}",
-                handler_name, stats.events_sent, stats.send_failures, stats.queue_full_drops);
+            info!(
+                "  Handler '{}': sent={}, failures={}, drops={}",
+                handler_name, stats.events_sent, stats.send_failures, stats.queue_full_drops
+            );
         }
     }
 
@@ -340,7 +345,7 @@ mod tests {
     #[test]
     fn test_event_pattern_matching() {
         let package_addr = "0x123";
-        
+
         // Test exact match
         let exact = EventPattern::Exact("exact::match".to_string());
         assert!(exact.matches("exact::match"));
@@ -364,14 +369,11 @@ mod tests {
     #[tokio::test]
     async fn test_event_routing() {
         let mut router = EventRouter::new();
-        
+
         // Register handler for profile events
         let profile_patterns = vec![EventPattern::Contains("::profile::".to_string())];
-        let mut profile_rx = router.register_handler(
-            "profile-handler".to_string(),
-            profile_patterns,
-            10,
-        );
+        let mut profile_rx =
+            router.register_handler("profile-handler".to_string(), profile_patterns, 10);
 
         // Create test event
         let event = BlockchainEvent {

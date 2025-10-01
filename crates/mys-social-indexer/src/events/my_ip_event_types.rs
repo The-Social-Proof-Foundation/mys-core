@@ -275,4 +275,4 @@ impl SubscriptionCreatedEvent {
             timestamp: self.subscription_start,
         }
     }
-} 
+}

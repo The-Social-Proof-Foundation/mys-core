@@ -3,13 +3,13 @@
 
 use anyhow::Result;
 use serde_json::Value;
-use tracing::{debug, info};
-use tokio::sync::mpsc;
 use std::sync::Arc;
+use tokio::sync::mpsc;
+use tracing::{debug, info};
 
-use crate::db::DbConnection;
-use crate::db::Database;
 use crate::blockchain::listener::BlockchainEvent;
+use crate::db::Database;
+use crate::db::DbConnection;
 use crate::events::governance_events::*;
 use crate::GOVERNANCE_MODULE_NAME;
 
@@ -37,7 +37,7 @@ impl GovernanceEventHandler {
     /// Start the governance event handler
     pub async fn start(&mut self) -> Result<()> {
         info!("Starting governance event handler: {}", self.worker_name);
-        
+
         while let Some(event) = self.receiver.recv().await {
             // Extract the module name from the event type
             // Example: 0x123::governance::ProposalSubmittedEvent
@@ -45,17 +45,23 @@ impl GovernanceEventHandler {
             if parts.len() < 2 {
                 continue; // Skip malformed event types
             }
-            
+
             let module_name = parts[1]; // Second part is the module name
-            
+
             // Get the function/event name, which is the last part
-            let function_name = parts.last().unwrap_or(&"")
-                .replace("Event", ""); // Remove "Event" suffix if present
-            
+            let function_name = parts.last().unwrap_or(&"").replace("Event", ""); // Remove "Event" suffix if present
+
             let mut conn = self.db.get_connection().await?;
-            self.process_event(&mut conn, module_name, &function_name, &event.data, &event.event_id).await?;
+            self.process_event(
+                &mut conn,
+                module_name,
+                &function_name,
+                &event.data,
+                &event.event_id,
+            )
+            .await?;
         }
-        
+
         Ok(())
     }
 
@@ -130,4 +136,4 @@ impl GovernanceEventHandler {
         info!("Processed governance event: {}", function_name);
         Ok(())
     }
-} 
+}

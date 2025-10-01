@@ -7,9 +7,9 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use diesel::sql_types::*;
+use diesel::deserialize::QueryableByName;
 use diesel::pg::Pg;
-use diesel::deserialize::{QueryableByName};
+use diesel::sql_types::*;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 
@@ -41,37 +41,37 @@ pub struct PromotionQuery {
 pub struct PostBasic {
     #[diesel(sql_type = Text)]
     pub post_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub owner: String,
-    
+
     #[diesel(sql_type = Nullable<Text>)]
     pub profile_id: Option<String>,
-    
+
     #[diesel(sql_type = Text)]
     pub content: String,
-    
+
     #[diesel(sql_type = BigInt)]
     pub created_at: i64,
-    
+
     #[diesel(sql_type = Nullable<BigInt>)]
     pub deleted_at: Option<i64>,
-    
+
     #[diesel(sql_type = Bool)]
     pub removed_from_platform: bool,
-    
+
     #[diesel(sql_type = BigInt)]
     pub reaction_count: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub comment_count: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub repost_count: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub tips_received: i64,
-    
+
     #[diesel(sql_type = Nullable<Text>)]
     pub promotion_id: Option<String>,
 }
@@ -91,19 +91,19 @@ pub struct PostResponse {
 pub struct CommentInfo {
     #[diesel(sql_type = Text)]
     pub comment_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub post_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub owner: String,
-    
+
     #[diesel(sql_type = Nullable<Text>)]
     pub profile_id: Option<String>,
-    
+
     #[diesel(sql_type = Text)]
     pub content: String,
-    
+
     #[diesel(sql_type = BigInt)]
     pub created_at: i64,
 }
@@ -114,22 +114,22 @@ pub struct CommentInfo {
 pub struct ReactionInfo {
     #[diesel(sql_type = Text)]
     pub reaction_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub object_id: String,
-    
+
     #[diesel(sql_type = Bool)]
     pub is_post: bool,
-    
+
     #[diesel(sql_type = Text)]
     pub owner: String,
-    
+
     #[diesel(sql_type = Nullable<Text>)]
     pub profile_id: Option<String>,
-    
+
     #[diesel(sql_type = Int2)]
     pub reaction_type: i16,
-    
+
     #[diesel(sql_type = BigInt)]
     pub created_at: i64,
 }
@@ -140,19 +140,19 @@ pub struct ReactionInfo {
 pub struct RepostInfo {
     #[diesel(sql_type = Text)]
     pub repost_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub original_id: String,
-    
+
     #[diesel(sql_type = Bool)]
     pub is_original_post: bool,
-    
+
     #[diesel(sql_type = Text)]
     pub owner: String,
-    
+
     #[diesel(sql_type = Nullable<Text>)]
     pub profile_id: Option<String>,
-    
+
     #[diesel(sql_type = BigInt)]
     pub created_at: i64,
 }
@@ -163,43 +163,43 @@ pub struct RepostInfo {
 pub struct PostWithEngagementInfo {
     #[diesel(sql_type = Text)]
     pub post_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub owner: String,
-    
+
     #[diesel(sql_type = Nullable<Text>)]
     pub profile_id: Option<String>,
-    
+
     #[diesel(sql_type = Text)]
     pub content: String,
-    
+
     #[diesel(sql_type = BigInt)]
     pub created_at: i64,
-    
+
     #[diesel(sql_type = Nullable<BigInt>)]
     pub deleted_at: Option<i64>,
-    
+
     #[diesel(sql_type = Bool)]
     pub removed_from_platform: bool,
-    
+
     #[diesel(sql_type = BigInt)]
     pub reaction_count: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub comment_count: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub repost_count: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub tips_received: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub engagement_score: i64,
-    
+
     #[diesel(sql_type = Float8)]
     pub trending_score: f64,
-    
+
     #[diesel(sql_type = Nullable<Text>)]
     pub promotion_id: Option<String>,
 }
@@ -210,34 +210,34 @@ pub struct PostWithEngagementInfo {
 pub struct PromotedPostInfo {
     #[diesel(sql_type = Text)]
     pub promotion_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub post_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub owner: String,
-    
+
     #[diesel(sql_type = Text)]
     pub profile_id: String,
-    
+
     #[diesel(sql_type = BigInt)]
     pub payment_per_view: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub total_budget: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub remaining_budget: i64,
-    
+
     #[diesel(sql_type = Bool)]
     pub active: bool,
-    
+
     #[diesel(sql_type = BigInt)]
     pub created_at: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub view_count: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub total_spent: i64,
 }
@@ -248,22 +248,22 @@ pub struct PromotedPostInfo {
 pub struct PromotionViewInfo {
     #[diesel(sql_type = Text)]
     pub post_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub promotion_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub viewer: String,
-    
+
     #[diesel(sql_type = BigInt)]
     pub payment_amount: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub view_duration: i64,
-    
+
     #[diesel(sql_type = Text)]
     pub platform_id: String,
-    
+
     #[diesel(sql_type = BigInt)]
     pub timestamp: i64,
 }
@@ -274,34 +274,31 @@ pub struct PromotionViewInfo {
 pub struct PromotionStats {
     #[diesel(sql_type = Text)]
     pub promotion_id: String,
-    
+
     #[diesel(sql_type = BigInt)]
     pub total_views: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub unique_viewers: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub total_spent: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub avg_view_duration: i64,
-    
+
     #[diesel(sql_type = Float8)]
     pub avg_payment_per_view: f64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub views_last_24h: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub views_last_7d: i64,
 }
 
 // Get a post by ID
-pub async fn get_post_by_id(
-    State(pool): State<DbPool>,
-    Path(post_id): Path<String>,
-) -> Response {
+pub async fn get_post_by_id(State(pool): State<DbPool>, Path(post_id): Path<String>) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
         Err(e) => {
@@ -312,27 +309,25 @@ pub async fn get_post_by_id(
                 .into_response();
         }
     };
-    
+
     // Use diesel sql_query instead of QueryDsl since there might be schema definition issues
     let query = "SELECT post_id, owner, profile_id, content, created_at, deleted_at, removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id FROM posts WHERE post_id = $1";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&post_id)
         .get_result::<PostBasic>(&mut conn)
         .await;
-    
+
     match result {
         Ok(post) => Json(post).into_response(),
         Err(diesel::result::Error::NotFound) => {
             (StatusCode::NOT_FOUND, "Post not found").into_response()
-        },
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
         }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -352,10 +347,10 @@ pub async fn get_post_comments(
                 .into_response();
         }
     };
-    
+
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     // Use direct SQL query
     let query = "
         SELECT comment_id, post_id, owner, profile_id, content, created_at FROM comments 
@@ -363,31 +358,26 @@ pub async fn get_post_comments(
         ORDER BY created_at DESC 
         LIMIT $2 OFFSET $3
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&post_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<CommentInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(comments) => Json(comments).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
 // List posts with pagination and filtering
-pub async fn list_posts(
-    State(pool): State<DbPool>, 
-    Query(params): Query<PostQuery>
-) -> Response {
+pub async fn list_posts(State(pool): State<DbPool>, Query(params): Query<PostQuery>) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
         Err(e) => {
@@ -402,7 +392,7 @@ pub async fn list_posts(
     // Build the query
     let limit = params.limit.unwrap_or(20).min(100); // Max 100 posts
     let offset = params.offset.unwrap_or(0);
-    
+
     // Simplified query that just returns basic post info
     let query = "
         SELECT post_id, owner, profile_id, content, created_at, deleted_at, 
@@ -412,22 +402,20 @@ pub async fn list_posts(
         ORDER BY created_at DESC 
         LIMIT $1 OFFSET $2
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<PostBasic>(&mut conn)
         .await;
-        
+
     match result {
         Ok(posts) => Json(posts).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -450,7 +438,7 @@ pub async fn get_post_reactions(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     // Use a SQL query instead of the ORM to avoid type issues
     let query = "
         SELECT reaction_id, object_id, is_post, owner, profile_id, reaction_type, created_at 
@@ -459,23 +447,21 @@ pub async fn get_post_reactions(
         ORDER BY created_at DESC
         LIMIT $2 OFFSET $3
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(post_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<ReactionInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(reactions) => Json(reactions).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -498,7 +484,7 @@ pub async fn get_post_reposts(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     // Use a SQL query instead of the ORM to avoid type issues
     let query = "
         SELECT repost_id, original_id, is_original_post, owner, profile_id, created_at
@@ -507,23 +493,21 @@ pub async fn get_post_reposts(
         ORDER BY created_at DESC
         LIMIT $2 OFFSET $3
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(post_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<RepostInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(reposts) => Json(reposts).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -545,7 +529,7 @@ pub async fn get_trending_posts(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     // Simplified query - just get posts ordered by created_at
     let query = "
         SELECT post_id, owner, profile_id, content, created_at, deleted_at, 
@@ -555,22 +539,20 @@ pub async fn get_trending_posts(
         ORDER BY (reaction_count + comment_count * 2 + repost_count * 3) DESC, created_at DESC
         LIMIT $1 OFFSET $2
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<PostBasic>(&mut conn)
         .await;
-        
+
     match result {
         Ok(posts) => Json(posts).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -594,7 +576,7 @@ pub async fn get_profile_posts(
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
     let include_deleted = params.include_deleted.unwrap_or(false);
-    
+
     let mut query = "
         SELECT 
             p.post_id, p.owner, p.profile_id, p.content, p.created_at, p.deleted_at, p.removed_from_platform, 
@@ -608,30 +590,33 @@ pub async fn get_profile_posts(
         WHERE 
             p.profile_id = $1
     ".to_string();
-    
+
     if !include_deleted {
         query.push_str(" AND p.deleted_at IS NULL AND p.removed_from_platform = false");
     }
-    
+
     // Filter by platform_id if provided
     if let Some(platform_id) = &params.platform_id {
-        query.push_str(&format!("
+        query.push_str(&format!(
+            "
             AND EXISTS (
                 SELECT 1 FROM posts_moderation_events pme 
                 WHERE pme.object_id = p.post_id AND pme.platform_id = '{}'
                 AND pme.removed = false
-            )", platform_id));
+            )",
+            platform_id
+        ));
     }
-    
+
     query.push_str(" ORDER BY p.created_at DESC LIMIT $2 OFFSET $3");
-    
+
     let posts_result = diesel::sql_query(&query)
         .bind::<Text, _>(profile_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<PostWithEngagementInfo>(&mut conn)
         .await;
-    
+
     match posts_result {
         Ok(posts_with_engagement) => {
             // Convert the posts to PostResponse
@@ -656,16 +641,14 @@ pub async fn get_profile_posts(
                     trending_score: p.trending_score,
                 })
                 .collect();
-                
+
             Json(post_responses).into_response()
-        },
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
         }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -688,7 +671,7 @@ pub async fn get_promoted_posts(
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
     let active_only = params.active_only.unwrap_or(true);
-    
+
     let mut query = "
         SELECT DISTINCT
             pp.promotion_id,
@@ -705,47 +688,51 @@ pub async fn get_promoted_posts(
         FROM promoted_posts pp
         LEFT JOIN promotion_views pv ON pp.promotion_id = pv.promotion_id
         WHERE 1=1
-    ".to_string();
-    
+    "
+    .to_string();
+
     if active_only {
         query.push_str(" AND pp.active = true AND pp.remaining_budget > 0");
     }
-    
+
     if let Some(owner) = &params.owner {
         query.push_str(&format!(" AND pp.owner = '{}'", owner));
     }
-    
+
     if let Some(platform_id) = &params.platform_id {
-        query.push_str(&format!(" AND EXISTS (
+        query.push_str(&format!(
+            " AND EXISTS (
             SELECT 1 FROM promotion_views pv2 
             WHERE pv2.promotion_id = pp.promotion_id 
             AND pv2.platform_id = '{}'
-        )", platform_id));
+        )",
+            platform_id
+        ));
     }
-    
-    query.push_str("
+
+    query.push_str(
+        "
         GROUP BY pp.promotion_id, pp.post_id, pp.owner, pp.profile_id, 
                  pp.payment_per_view, pp.total_budget, pp.remaining_budget, 
                  pp.active, pp.created_at
         ORDER BY pp.created_at DESC
         LIMIT $1 OFFSET $2
-    ");
-    
+    ",
+    );
+
     let result = diesel::sql_query(&query)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<PromotedPostInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(promoted_posts) => Json(promoted_posts).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -764,7 +751,7 @@ pub async fn get_post_promotion(
                 .into_response();
         }
     };
-    
+
     let query = "
         SELECT 
             pp.promotion_id,
@@ -785,24 +772,22 @@ pub async fn get_post_promotion(
                  pp.payment_per_view, pp.total_budget, pp.remaining_budget, 
                  pp.active, pp.created_at
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&post_id)
         .get_result::<PromotedPostInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(promotion) => Json(promotion).into_response(),
         Err(diesel::result::Error::NotFound) => {
             (StatusCode::NOT_FOUND, "No promotion found for this post").into_response()
-        },
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
         }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -822,10 +807,10 @@ pub async fn get_promotion_views(
                 .into_response();
         }
     };
-    
+
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     let query = "
         SELECT 
             post_id,
@@ -840,23 +825,21 @@ pub async fn get_promotion_views(
         ORDER BY timestamp DESC
         LIMIT $2 OFFSET $3
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&promotion_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<PromotionViewInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(views) => Json(views).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -866,13 +849,13 @@ pub async fn get_promotion_views(
 pub struct PromotionTimeBucket {
     #[diesel(sql_type = Timestamptz)]
     pub bucket: chrono::DateTime<chrono::Utc>,
-    
+
     #[diesel(sql_type = BigInt)]
     pub view_count: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub total_payments: i64,
-    
+
     #[diesel(sql_type = Float8)]
     pub avg_view_duration: f64,
 }
@@ -883,22 +866,22 @@ pub struct PromotionTimeBucket {
 pub struct PromotionPerformance {
     #[diesel(sql_type = Text)]
     pub promotion_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub post_id: String,
-    
+
     #[diesel(sql_type = BigInt)]
     pub total_views: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub unique_viewers: i64,
-    
+
     #[diesel(sql_type = Float8)]
     pub views_per_hour: f64,
-    
+
     #[diesel(sql_type = Float8)]
     pub budget_utilization_percent: f64,
-    
+
     #[diesel(sql_type = Float8)]
     pub actual_cost_per_view: f64,
 }
@@ -918,7 +901,7 @@ pub async fn get_promotion_stats(
                 .into_response();
         }
     };
-    
+
     // Enhanced query using TimescaleDB time_bucket for better time-based analytics
     let query = "
         WITH current_stats AS (
@@ -949,21 +932,19 @@ pub async fn get_promotion_stats(
             ts.views_last_7d
         FROM current_stats cs, time_based_stats ts
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&promotion_id)
         .get_result::<PromotionStats>(&mut conn)
         .await;
-        
+
     match result {
         Ok(stats) => Json(stats).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -983,7 +964,7 @@ pub async fn get_promotion_time_analytics(
                 .into_response();
         }
     };
-    
+
     // Use time_bucket for efficient time-series aggregation
     let query = "
         SELECT 
@@ -998,24 +979,22 @@ pub async fn get_promotion_time_analytics(
         ORDER BY bucket DESC
         LIMIT $2
     ";
-    
+
     let limit = params.limit.unwrap_or(168).min(168); // Max 7 days of hourly data
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&promotion_id)
         .bind::<BigInt, _>(limit)
         .load::<PromotionTimeBucket>(&mut conn)
         .await;
-        
+
     match result {
         Ok(buckets) => Json(buckets).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -1034,9 +1013,9 @@ pub async fn get_top_performing_promotions(
                 .into_response();
         }
     };
-    
+
     let limit = params.limit.unwrap_or(20).min(100);
-    
+
     // Query the pre-computed view for better performance
     let query = "
         SELECT 
@@ -1052,21 +1031,19 @@ pub async fn get_top_performing_promotions(
         ORDER BY views_per_hour DESC
         LIMIT $1
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .load::<PromotionPerformance>(&mut conn)
         .await;
-        
+
     match result {
         Ok(promotions) => Json(promotions).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -1085,7 +1062,7 @@ pub async fn get_promotion_hourly_stats(
                 .into_response();
         }
     };
-    
+
     // Query the continuous aggregate instead of raw data
     let query = "
         SELECT 
@@ -1098,21 +1075,19 @@ pub async fn get_promotion_hourly_stats(
         AND bucket >= NOW() - INTERVAL '7 days'
         ORDER BY bucket DESC
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&promotion_id)
         .load::<PromotionTimeBucket>(&mut conn)
         .await;
-        
+
     match result {
         Ok(stats) => Json(stats).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -1131,7 +1106,7 @@ pub async fn get_promotion_spending_trends(
                 .into_response();
         }
     };
-    
+
     // Query the daily spending continuous aggregate
     let query = "
         SELECT 
@@ -1144,22 +1119,20 @@ pub async fn get_promotion_spending_trends(
         ORDER BY bucket DESC
         LIMIT $1
     ";
-    
+
     let limit = params.limit.unwrap_or(30).min(90);
-    
+
     let result = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .load::<PromotionTimeBucket>(&mut conn)
         .await;
-        
+
     match result {
         Ok(trends) => Json(trends).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
-} 
+}

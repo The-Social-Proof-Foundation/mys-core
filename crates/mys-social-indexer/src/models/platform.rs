@@ -1,10 +1,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::schema::{
+    platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
+    platforms,
+};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::schema::{platforms, platform_moderators, platform_events, platform_memberships, platform_blocked_profiles};
 
 /// Platform status constants
 pub const PLATFORM_STATUS_DEVELOPMENT: i16 = 0;
@@ -253,7 +256,11 @@ where
                 Ok(ts) => Ok(ts),
                 Err(e) => {
                     // Log the error but don't fail - use current time instead
-                    tracing::warn!("Failed to parse timestamp string '{}': {}. Using current time instead.", value, e);
+                    tracing::warn!(
+                        "Failed to parse timestamp string '{}': {}. Using current time instead.",
+                        value,
+                        e
+                    );
                     let current_time = std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .unwrap_or_default()
@@ -262,7 +269,7 @@ where
                 }
             }
         }
-        
+
         // Handle null or missing values
         fn visit_none<E>(self) -> Result<Self::Value, E>
         where
@@ -270,7 +277,7 @@ where
         {
             self.visit_unit()
         }
-        
+
         fn visit_unit<E>(self) -> Result<Self::Value, E>
         where
             E: serde::de::Error,
@@ -296,15 +303,12 @@ where
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis() as u64;
-        
-    Option::deserialize(deserializer)
-        .map(|opt_val: Option<serde_json::Value>| {
-            match opt_val {
-                Some(serde_json::Value::Number(n)) => n.as_u64().unwrap_or(current_time),
-                Some(serde_json::Value::String(s)) => s.parse::<u64>().unwrap_or(current_time),
-                _ => current_time
-            }
-        })
+
+    Option::deserialize(deserializer).map(|opt_val: Option<serde_json::Value>| match opt_val {
+        Some(serde_json::Value::Number(n)) => n.as_u64().unwrap_or(current_time),
+        Some(serde_json::Value::String(s)) => s.parse::<u64>().unwrap_or(current_time),
+        _ => current_time,
+    })
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -382,5 +386,5 @@ pub struct NewPlatformMembership {
     pub joined_at: NaiveDateTime,
 }
 
-// Note: PlatformRelationship, NewPlatformRelationship, and UpdatePlatformRelationship 
+// Note: PlatformRelationship, NewPlatformRelationship, and UpdatePlatformRelationship
 // have been removed in favor of using platform_memberships table

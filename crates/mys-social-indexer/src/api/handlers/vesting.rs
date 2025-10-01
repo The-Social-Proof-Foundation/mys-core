@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, error};
 
 use crate::db::DbPool;
-use crate::models::{VestingWallet, VestingEvent, VestingWalletWithStatus};
-use crate::schema::{vesting_wallets, vesting_events};
+use crate::models::{VestingEvent, VestingWallet, VestingWalletWithStatus};
+use crate::schema::{vesting_events, vesting_wallets};
 
 // ===========================================================================
 // REQUEST/RESPONSE TYPES
@@ -113,29 +113,27 @@ pub async fn get_vesting_wallets(
     State(pool): State<DbPool>,
 ) -> Result<Json<VestingWalletsResponse>, StatusCode> {
     debug!("Getting vesting wallets with query: {:?}", query);
-    
-    let mut conn = pool.get()
-        .await
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-    
+
+    let mut conn = pool.get().await.map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
     // Calculate offset from page if provided
     let offset = if query.page > 1 {
         (query.page - 1) * query.limit
     } else {
         query.offset
     };
-    
+
     // Build the base query
     let mut query_builder = vesting_wallets::table.into_boxed();
-    
+
     // Apply owner address filter if provided
     if let Some(owner) = &query.owner_address {
         query_builder = query_builder.filter(vesting_wallets::owner_address.eq(owner));
     }
-    
+
     // Get total count - rebuild the query since BoxedSelectStatement doesn't implement Clone
     let mut count_query = vesting_wallets::table.into_boxed();
     if let Some(owner) = &query.owner_address {
@@ -149,7 +147,7 @@ pub async fn get_vesting_wallets(
             error!("Failed to get vesting wallets count: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-    
+
     // Get the actual wallets
     let wallets = query_builder
         .order_by(vesting_wallets::created_at.desc())
@@ -161,16 +159,16 @@ pub async fn get_vesting_wallets(
             error!("Failed to get vesting wallets: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-    
+
     // Convert to wallets with status (using current timestamp)
     let current_time = chrono::Utc::now().timestamp_millis() as u64;
     let wallets_with_status: Vec<VestingWalletWithStatus> = wallets
         .into_iter()
         .map(|wallet| VestingWalletWithStatus::from_wallet(wallet, current_time))
         .collect();
-    
+
     let total_pages = (total as f64 / query.limit as f64).ceil() as i64;
-    
+
     Ok(Json(VestingWalletsResponse {
         wallets: wallets_with_status,
         total,
@@ -190,14 +188,12 @@ pub async fn get_vesting_wallet_by_id(
     State(pool): State<DbPool>,
 ) -> Result<Json<VestingWalletWithStatus>, StatusCode> {
     debug!("Getting vesting wallet: {}", wallet_id);
-    
-    let mut conn = pool.get()
-        .await
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-    
+
+    let mut conn = pool.get().await.map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
     let wallet = vesting_wallets::table
         .filter(vesting_wallets::wallet_id.eq(&wallet_id))
         .first::<VestingWallet>(&mut conn)
@@ -209,11 +205,11 @@ pub async fn get_vesting_wallet_by_id(
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }
         })?;
-    
+
     // Convert to wallet with status
     let current_time = chrono::Utc::now().timestamp_millis() as u64;
     let wallet_with_status = VestingWalletWithStatus::from_wallet(wallet, current_time);
-    
+
     Ok(Json(wallet_with_status))
 }
 
@@ -224,21 +220,19 @@ pub async fn get_vesting_wallet_events(
     State(pool): State<DbPool>,
 ) -> Result<Json<VestingEventsResponse>, StatusCode> {
     debug!("Getting vesting wallet events: {}", wallet_id);
-    
-    let mut conn = pool.get()
-        .await
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-    
+
+    let mut conn = pool.get().await.map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
     // Calculate offset from page if provided
     let offset = if query.page > 1 {
         (query.page - 1) * query.limit
     } else {
         query.offset
     };
-    
+
     // Get total count
     let total = vesting_events::table
         .filter(vesting_events::wallet_id.eq(&wallet_id))
@@ -249,7 +243,7 @@ pub async fn get_vesting_wallet_events(
             error!("Failed to get vesting events count: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-    
+
     // Get the events
     let events = vesting_events::table
         .filter(vesting_events::wallet_id.eq(&wallet_id))
@@ -262,9 +256,9 @@ pub async fn get_vesting_wallet_events(
             error!("Failed to get vesting events: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-    
+
     let total_pages = (total as f64 / query.limit as f64).ceil() as i64;
-    
+
     Ok(Json(VestingEventsResponse {
         events,
         total,
@@ -284,14 +278,12 @@ pub async fn get_vesting_wallet_claimable(
     State(pool): State<DbPool>,
 ) -> Result<Json<ClaimableResponse>, StatusCode> {
     debug!("Getting claimable amount for wallet: {}", wallet_id);
-    
-    let mut conn = pool.get()
-        .await
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-    
+
+    let mut conn = pool.get().await.map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
     let wallet = vesting_wallets::table
         .filter(vesting_wallets::wallet_id.eq(&wallet_id))
         .first::<VestingWallet>(&mut conn)
@@ -303,13 +295,13 @@ pub async fn get_vesting_wallet_claimable(
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }
         })?;
-    
+
     let current_time = chrono::Utc::now().timestamp_millis() as u64;
     let progress = wallet.vesting_progress(current_time);
-    
+
     // Calculate claimable amount based on the curve factor and current time
     let claimable_amount = calculate_claimable_amount(&wallet, current_time);
-    
+
     let vesting_status = if !wallet.has_started(current_time) {
         "not_started".to_string()
     } else if wallet.has_ended(current_time) {
@@ -317,7 +309,7 @@ pub async fn get_vesting_wallet_claimable(
     } else {
         "in_progress".to_string()
     };
-    
+
     Ok(Json(ClaimableResponse {
         wallet_id: wallet.wallet_id,
         claimable_amount,
@@ -334,21 +326,19 @@ pub async fn get_user_vesting_wallets(
     State(pool): State<DbPool>,
 ) -> Result<Json<VestingWalletsResponse>, StatusCode> {
     debug!("Getting vesting wallets for user: {}", address);
-    
-    let mut conn = pool.get()
-        .await
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-    
+
+    let mut conn = pool.get().await.map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
     // Calculate offset from page if provided
     let offset = if query.page > 1 {
         (query.page - 1) * query.limit
     } else {
         query.offset
     };
-    
+
     // Get total count
     let total = vesting_wallets::table
         .filter(vesting_wallets::owner_address.eq(&address))
@@ -359,7 +349,7 @@ pub async fn get_user_vesting_wallets(
             error!("Failed to get user vesting wallets count: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-    
+
     // Get the wallets
     let wallets = vesting_wallets::table
         .filter(vesting_wallets::owner_address.eq(&address))
@@ -372,16 +362,16 @@ pub async fn get_user_vesting_wallets(
             error!("Failed to get user vesting wallets: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-    
+
     // Convert to wallets with status
     let current_time = chrono::Utc::now().timestamp_millis() as u64;
     let wallets_with_status: Vec<VestingWalletWithStatus> = wallets
         .into_iter()
         .map(|wallet| VestingWalletWithStatus::from_wallet(wallet, current_time))
         .collect();
-    
+
     let total_pages = (total as f64 / query.limit as f64).ceil() as i64;
-    
+
     Ok(Json(VestingWalletsResponse {
         wallets: wallets_with_status,
         total,
@@ -401,29 +391,27 @@ pub async fn get_vesting_events(
     State(pool): State<DbPool>,
 ) -> Result<Json<VestingEventsResponse>, StatusCode> {
     debug!("Getting vesting events with query: {:?}", query);
-    
-    let mut conn = pool.get()
-        .await
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-    
+
+    let mut conn = pool.get().await.map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
     // Calculate offset from page if provided
     let offset = if query.page > 1 {
         (query.page - 1) * query.limit
     } else {
         query.offset
     };
-    
+
     // Build the base query
     let mut query_builder = vesting_events::table.into_boxed();
-    
+
     // Apply owner address filter if provided
     if let Some(owner) = &query.owner_address {
         query_builder = query_builder.filter(vesting_events::owner_address.eq(owner));
     }
-    
+
     // Get total count - rebuild the query since BoxedSelectStatement doesn't implement Clone
     let mut count_query = vesting_events::table.into_boxed();
     if let Some(owner) = &query.owner_address {
@@ -437,7 +425,7 @@ pub async fn get_vesting_events(
             error!("Failed to get vesting events count: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-    
+
     // Get the events
     let events = query_builder
         .order_by(vesting_events::event_time.desc())
@@ -449,9 +437,9 @@ pub async fn get_vesting_events(
             error!("Failed to get vesting events: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-    
+
     let total_pages = (total as f64 / query.limit as f64).ceil() as i64;
-    
+
     Ok(Json(VestingEventsResponse {
         events,
         total,
@@ -470,50 +458,50 @@ pub async fn get_vesting_analytics(
     State(pool): State<DbPool>,
 ) -> Result<Json<VestingAnalyticsResponse>, StatusCode> {
     debug!("Getting vesting analytics");
-    
-    let mut conn = pool.get()
-        .await
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-    
+
+    let mut conn = pool.get().await.map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
     // Get basic statistics
     let total_wallets = vesting_wallets::table
         .count()
         .get_result::<i64>(&mut conn)
         .await
         .unwrap_or(0);
-    
+
     // For now, we'll calculate simple statistics without complex aggregations
     // In production, you'd want to use raw SQL or more sophisticated queries
-    
+
     // Load all wallets to calculate statistics (not efficient for large datasets)
     let all_wallets = vesting_wallets::table
         .load::<VestingWallet>(&mut conn)
         .await
         .unwrap_or_default();
-    
+
     let total_vested_amount: i64 = all_wallets.iter().map(|w| w.total_amount).sum();
     let total_claimed_amount: i64 = all_wallets.iter().map(|w| w.claimed_amount).sum();
     let total_remaining_amount: i64 = all_wallets.iter().map(|w| w.remaining_balance).sum();
-    
+
     let current_time = chrono::Utc::now().timestamp_millis();
-    
+
     // Count active wallets (started but not finished)
-    let active_wallets = all_wallets.iter()
+    let active_wallets = all_wallets
+        .iter()
         .filter(|w| {
             let start_time = w.start_time;
             let end_time = start_time + w.duration;
             current_time >= start_time && current_time < end_time && w.remaining_balance > 0
         })
         .count() as i64;
-    
+
     // Count completed wallets
-    let completed_wallets = all_wallets.iter()
+    let completed_wallets = all_wallets
+        .iter()
         .filter(|w| w.remaining_balance == 0)
         .count() as i64;
-    
+
     // Calculate average vesting duration (in days)
     let average_vesting_duration = if !all_wallets.is_empty() {
         let total_duration: i64 = all_wallets.iter().map(|w| w.duration).sum();
@@ -522,7 +510,7 @@ pub async fn get_vesting_analytics(
     } else {
         0.0
     };
-    
+
     // Get most common curve factor
     let mut curve_factors: std::collections::HashMap<i64, usize> = std::collections::HashMap::new();
     for wallet in &all_wallets {
@@ -533,7 +521,7 @@ pub async fn get_vesting_analytics(
         .max_by_key(|(_, count)| *count)
         .map(|(factor, _)| factor)
         .unwrap_or(1000);
-    
+
     Ok(Json(VestingAnalyticsResponse {
         total_wallets,
         total_vested_amount,
@@ -552,14 +540,12 @@ pub async fn get_vesting_leaderboard(
     State(pool): State<DbPool>,
 ) -> Result<Json<VestingLeaderboardResponse>, StatusCode> {
     debug!("Getting vesting leaderboard");
-    
-    let mut conn = pool.get()
-        .await
-        .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-    
+
+    let mut conn = pool.get().await.map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
     // This would be a complex aggregation query in real implementation
     // For now, we'll return a simplified version
     let total = vesting_wallets::table
@@ -569,15 +555,12 @@ pub async fn get_vesting_leaderboard(
         .get_result::<i64>(&mut conn)
         .await
         .unwrap_or(0);
-    
+
     // Note: This is a simplified implementation
     // In production, you'd want to use proper SQL aggregation
     let entries: Vec<VestingLeaderboardEntry> = vec![];
-    
-    Ok(Json(VestingLeaderboardResponse {
-        entries,
-        total,
-    }))
+
+    Ok(Json(VestingLeaderboardResponse { entries, total }))
 }
 
 // ===========================================================================
@@ -587,21 +570,21 @@ pub async fn get_vesting_leaderboard(
 /// Calculate claimable amount based on vesting schedule and curve factor
 fn calculate_claimable_amount(wallet: &VestingWallet, current_time_ms: u64) -> i64 {
     let current_time = current_time_ms as i64;
-    
+
     // If vesting hasn't started yet, nothing is claimable
     if current_time < wallet.start_time {
         return 0;
     }
-    
+
     // If vesting period is complete, all remaining balance is claimable
     if current_time >= wallet.start_time + wallet.duration {
         return wallet.remaining_balance;
     }
-    
+
     // Calculate progress through vesting period (0.0 to 1.0)
     let elapsed = current_time - wallet.start_time;
     let progress = elapsed as f64 / wallet.duration as f64;
-    
+
     // Apply curve factor to the progress
     let curve_factor = wallet.curve_factor as f64 / 1000.0; // Convert to decimal
     let adjusted_progress = if curve_factor == 1.0 {
@@ -614,13 +597,13 @@ fn calculate_claimable_amount(wallet: &VestingWallet, current_time_ms: u64) -> i
         // Logarithmic curve (more tokens at the start)
         1.0 - (1.0 - progress).powf(curve_factor * 2.0)
     };
-    
+
     // Calculate total amount that should be claimable by now
     let total_claimable = (wallet.total_amount as f64 * adjusted_progress) as i64;
-    
+
     // Subtract already claimed amount to get newly claimable amount
     let newly_claimable = total_claimable - wallet.claimed_amount;
-    
+
     // Make sure we don't exceed remaining balance
     std::cmp::min(newly_claimable, wallet.remaining_balance).max(0)
 }

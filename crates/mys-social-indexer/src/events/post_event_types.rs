@@ -108,19 +108,22 @@ pub struct TipEvent {
 
 impl TipEvent {
     /// Create unified revenue record for tip
-    pub fn create_unified_revenue_record(&self, transaction_id: String) -> anyhow::Result<crate::models::NewUnifiedRevenue> {
+    pub fn create_unified_revenue_record(
+        &self,
+        transaction_id: String,
+    ) -> anyhow::Result<crate::models::NewUnifiedRevenue> {
         let revenue_type = if self.is_post {
             crate::models::revenue::REVENUE_TYPE_TIPS_POST.to_string()
         } else {
             crate::models::revenue::REVENUE_TYPE_TIPS_COMMENT.to_string()
         };
-        
+
         let content_type = if self.is_post {
             crate::models::revenue::CONTENT_TYPE_POST.to_string()
         } else {
             crate::models::revenue::CONTENT_TYPE_COMMENT.to_string()
         };
-        
+
         Ok(crate::models::NewUnifiedRevenue::from_tip(
             revenue_type,
             self.to.clone(),
@@ -201,7 +204,6 @@ pub struct PromotedPostViewConfirmedEvent {
     pub timestamp: u64,
 }
 
-
 /// Promotion status toggled event from blockchain
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PromotionStatusToggledEvent {
@@ -218,4 +220,4 @@ pub struct PromotionFundsWithdrawnEvent {
     pub owner: String,
     pub withdrawn_amount: u64,
     pub timestamp: u64,
-} 
+}

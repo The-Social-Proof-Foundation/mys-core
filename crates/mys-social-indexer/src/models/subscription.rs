@@ -1,16 +1,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
-use chrono::NaiveDateTime;
 use crate::schema::{
-    profile_subscription_services, 
-    profile_subscriptions,
-    subscription_events,
-    subscription_revenue,
-    subscription_access_logs
+    profile_subscription_services, profile_subscriptions, subscription_access_logs,
+    subscription_events, subscription_revenue,
 };
+use chrono::NaiveDateTime;
+use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 // ==============================================================================
 // PROFILE SUBSCRIPTION SERVICES
@@ -321,17 +318,17 @@ impl ProfileSubscription {
     pub fn is_active(&self, current_time: i64) -> bool {
         self.cancelled_at.is_none() && self.expires_at > current_time
     }
-    
+
     /// Check if subscription is expired
     pub fn is_expired(&self, current_time: i64) -> bool {
         self.expires_at <= current_time
     }
-    
+
     /// Check if subscription is cancelled
     pub fn is_cancelled(&self) -> bool {
         self.cancelled_at.is_some()
     }
-    
+
     /// Get subscription status as string
     pub fn status(&self, current_time: i64) -> String {
         if self.is_cancelled() {
@@ -342,7 +339,7 @@ impl ProfileSubscription {
             "active".to_string()
         }
     }
-    
+
     /// Calculate days until expiration
     pub fn days_until_expiration(&self, current_time: i64) -> Option<i64> {
         if self.is_cancelled() || self.is_expired(current_time) {
@@ -352,7 +349,7 @@ impl ProfileSubscription {
             Some(seconds_remaining / (24 * 60 * 60))
         }
     }
-    
+
     /// Check if subscription is eligible for auto-renewal
     pub fn can_auto_renew(&self, service_fee: i64) -> bool {
         self.auto_renew && self.renewal_balance >= service_fee && self.cancelled_at.is_none()
@@ -364,7 +361,7 @@ impl ProfileSubscriptionService {
     pub fn expected_monthly_revenue(&self) -> i64 {
         self.monthly_fee * self.subscriber_count
     }
-    
+
     /// Check if service accepts new subscriptions
     pub fn accepts_subscriptions(&self) -> bool {
         self.active
@@ -376,12 +373,12 @@ impl SubscriptionRevenue {
     pub fn is_revenue(&self) -> bool {
         self.amount > 0 && !self.is_refund()
     }
-    
+
     /// Check if this is a refund transaction
     pub fn is_refund(&self) -> bool {
         self.revenue_type == "refund" || self.amount < 0
     }
-    
+
     /// Get absolute amount (useful for refunds which are negative)
     pub fn absolute_amount(&self) -> i64 {
         self.amount.abs()
@@ -433,12 +430,12 @@ pub fn calculate_subscription_end_time(start_time: i64, duration_days: i64) -> i
 mod tests {
     use super::*;
     use chrono::Utc;
-    
+
     #[test]
     fn test_subscription_is_active() {
         let current_time = Utc::now().timestamp_millis();
         let future_time = current_time + 100000;
-        
+
         let subscription = ProfileSubscription {
             subscription_id: "test".to_string(),
             service_id: "service".to_string(),
@@ -454,17 +451,17 @@ mod tests {
             processing_success: true,
             processing_error: None,
         };
-        
+
         assert!(subscription.is_active(current_time));
         assert!(!subscription.is_expired(current_time));
         assert!(!subscription.is_cancelled());
     }
-    
+
     #[test]
     fn test_subscription_is_expired() {
         let current_time = Utc::now().timestamp_millis();
         let past_time = current_time - 100000;
-        
+
         let subscription = ProfileSubscription {
             subscription_id: "test".to_string(),
             service_id: "service".to_string(),
@@ -480,17 +477,17 @@ mod tests {
             processing_success: true,
             processing_error: None,
         };
-        
+
         assert!(!subscription.is_active(current_time));
         assert!(subscription.is_expired(current_time));
         assert_eq!(subscription.status(current_time), "expired");
     }
-    
+
     #[test]
     fn test_subscription_is_cancelled() {
         let current_time = Utc::now().timestamp_millis();
         let future_time = current_time + 100000;
-        
+
         let subscription = ProfileSubscription {
             subscription_id: "test".to_string(),
             service_id: "service".to_string(),
@@ -506,12 +503,12 @@ mod tests {
             processing_success: true,
             processing_error: None,
         };
-        
+
         assert!(!subscription.is_active(current_time));
         assert!(subscription.is_cancelled());
         assert_eq!(subscription.status(current_time), "cancelled");
     }
-    
+
     #[test]
     fn test_validate_monthly_fee() {
         assert!(validate_monthly_fee(1000).is_ok());
@@ -519,7 +516,7 @@ mod tests {
         assert!(validate_monthly_fee(0).is_err());
         assert!(validate_monthly_fee(2_000_000_000).is_err());
     }
-    
+
     #[test]
     fn test_revenue_type_detection() {
         let revenue = SubscriptionRevenue {
@@ -535,10 +532,10 @@ mod tests {
             processing_success: true,
             processing_error: None,
         };
-        
+
         assert!(revenue.is_revenue());
         assert!(!revenue.is_refund());
-        
+
         let refund = SubscriptionRevenue {
             service_id: "service".to_string(),
             subscription_id: Some("sub".to_string()),
@@ -552,9 +549,9 @@ mod tests {
             processing_success: true,
             processing_error: None,
         };
-        
+
         assert!(!refund.is_revenue());
         assert!(refund.is_refund());
         assert_eq!(refund.absolute_amount(), 500);
     }
-} 
+}

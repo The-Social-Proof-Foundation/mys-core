@@ -24,4 +24,4 @@ pub struct UnfollowEventDetails {
     pub follower_address: String,
     pub following_address: String,
     pub timestamp: u64,
-} 
+}

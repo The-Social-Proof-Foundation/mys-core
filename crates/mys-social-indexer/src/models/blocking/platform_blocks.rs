@@ -18,5 +18,3 @@ pub struct PlatformUnblockedProfileEvent {
     pub profile_id: String,
     pub unblocked_by: String,
 }
-
- 

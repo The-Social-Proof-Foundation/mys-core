@@ -5,7 +5,7 @@ use chrono::NaiveDateTime;
 use diesel::prelude::*;
 
 use crate::schema::{
-    spot_records, spot_bets, spot_events, spot_payouts, spot_refunds, spot_resolutions,
+    spot_bets, spot_events, spot_payouts, spot_records, spot_refunds, spot_resolutions,
 };
 
 // =============================================================================

@@ -1,10 +1,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::*;
-use diesel::{Insertable, Selectable, QueryableByName};
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use diesel::sql_types::*;
+use diesel::{Insertable, QueryableByName, Selectable};
+use serde::{Deserialize, Serialize};
 
 /// PoC badge model for database
 #[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
@@ -446,12 +446,12 @@ impl PocBadge {
     pub fn is_active(&self) -> bool {
         !self.revoked
     }
-    
+
     /// Get media type as string
     pub fn media_type_string(&self) -> &'static str {
         match self.media_type {
             1 => "image",
-            2 => "video", 
+            2 => "video",
             3 => "audio",
             _ => "unknown",
         }
@@ -463,12 +463,12 @@ impl PocRevenueRedirection {
     pub fn is_active(&self) -> bool {
         !self.removed
     }
-    
+
     /// Calculate the actual redirect amount from a given tip
     pub fn calculate_redirect_amount(&self, tip_amount: i64) -> i64 {
         (tip_amount * self.redirect_percentage) / 100
     }
-    
+
     /// Calculate the amount retained by the accused post owner
     pub fn calculate_retained_amount(&self, tip_amount: i64) -> i64 {
         tip_amount - self.calculate_redirect_amount(tip_amount)
@@ -482,12 +482,12 @@ impl PocDispute {
         current_epoch >= self.voting_start_epoch &&
         current_epoch <= self.voting_end_epoch
     }
-    
+
     /// Check if the dispute is resolved
     pub fn is_resolved(&self) -> bool {
         self.status == 2 || self.status == 3 // RESOLVED_UPHELD or RESOLVED_OVERTURNED
     }
-    
+
     /// Get dispute status as string
     pub fn status_string(&self) -> &'static str {
         match self.status {
@@ -508,7 +508,7 @@ impl PocDisputeVote {
             _ => "unknown",
         }
     }
-    
+
     /// Check if the vote is on the winning side
     pub fn is_winning_vote(&self, winning_side: i16) -> bool {
         self.vote_choice == winning_side
@@ -520,13 +520,17 @@ impl PocConfiguration {
     pub fn is_latest(&self, other_id: i32) -> bool {
         self.id >= other_id
     }
-    
+
     /// Validate that thresholds are within valid ranges (0-100)
     pub fn validate_thresholds(&self) -> bool {
-        self.image_threshold >= 0 && self.image_threshold <= 100 &&
-        self.video_threshold >= 0 && self.video_threshold <= 100 &&
-        self.audio_threshold >= 0 && self.audio_threshold <= 100 &&
-        self.revenue_redirect_percentage >= 0 && self.revenue_redirect_percentage <= 100
+        self.image_threshold >= 0
+            && self.image_threshold <= 100
+            && self.video_threshold >= 0
+            && self.video_threshold <= 100
+            && self.audio_threshold >= 0
+            && self.audio_threshold <= 100
+            && self.revenue_redirect_percentage >= 0
+            && self.revenue_redirect_percentage <= 100
     }
 }
 
@@ -582,7 +586,7 @@ mod tests {
         assert!(!redirection.removed);
         assert!(redirection.removed_at.is_none());
         assert!(redirection.is_active());
-        
+
         // Test calculation methods
         assert_eq!(redirection.calculate_redirect_amount(1000), 500);
         assert_eq!(redirection.calculate_retained_amount(1000), 500);
@@ -772,7 +776,7 @@ mod tests {
         assert_eq!(voting_dispute.status_string(), "voting");
         assert_eq!(upheld_dispute.status_string(), "resolved_upheld");
         assert_eq!(overturned_dispute.status_string(), "resolved_overturned");
-        
+
         assert!(!voting_dispute.is_resolved());
         assert!(upheld_dispute.is_resolved());
         assert!(overturned_dispute.is_resolved());
@@ -800,7 +804,7 @@ mod tests {
 
         assert_eq!(uphold_vote.vote_choice_string(), "uphold");
         assert_eq!(overturn_vote.vote_choice_string(), "overturn");
-        
+
         assert!(uphold_vote.is_winning_vote(1)); // UPHOLD wins
         assert!(!uphold_vote.is_winning_vote(2)); // OVERTURN wins
         assert!(!overturn_vote.is_winning_vote(1)); // UPHOLD wins
@@ -825,11 +829,11 @@ mod tests {
         // Test calculations with different tip amounts
         assert_eq!(redirection.calculate_redirect_amount(1000), 750);
         assert_eq!(redirection.calculate_retained_amount(1000), 250);
-        
+
         assert_eq!(redirection.calculate_redirect_amount(500), 375);
         assert_eq!(redirection.calculate_retained_amount(500), 125);
-        
+
         assert_eq!(redirection.calculate_redirect_amount(0), 0);
         assert_eq!(redirection.calculate_retained_amount(0), 0);
     }
-} 
+}

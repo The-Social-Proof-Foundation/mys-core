@@ -158,4 +158,4 @@ pub struct VoteDecryptionFailedEvent {
     pub voter: String,
     pub failure_reason: String,
     pub timestamp: u64,
-} 
+}

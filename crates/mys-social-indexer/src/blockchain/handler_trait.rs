@@ -49,13 +49,13 @@ pub trait BlockchainEventHandler: Send + Sync {
     /// Start the handler's main processing loop
     async fn start(&mut self, mut receiver: mpsc::Receiver<BlockchainEvent>) -> Result<()> {
         info!("Starting blockchain event handler: {}", self.name());
-        
+
         let mut stats = HandlerStats::default();
-        
+
         while let Some(event) = receiver.recv().await {
             // Update last processed timestamp
             stats.last_processed_timestamp = Some(event.timestamp_ms);
-            
+
             // Process the event
             match self.process_event(event.clone()).await {
                 Ok(_) => {
@@ -72,7 +72,7 @@ pub trait BlockchainEventHandler: Send + Sync {
                         event.event_id, event.event_type, e
                     );
                     error!("{}", error_msg);
-                    
+
                     // Keep only last 10 errors to prevent memory bloat
                     stats.processing_errors.push(error_msg);
                     if stats.processing_errors.len() > 10 {
@@ -80,7 +80,7 @@ pub trait BlockchainEventHandler: Send + Sync {
                     }
                 }
             }
-            
+
             // Log progress every 100 events
             if stats.events_processed % 100 == 0 && stats.events_processed > 0 {
                 info!(
@@ -91,7 +91,7 @@ pub trait BlockchainEventHandler: Send + Sync {
                 );
             }
         }
-        
+
         warn!("Handler {} stopped - channel closed", self.name());
         Ok(())
     }
@@ -121,16 +121,20 @@ impl BaseHandler {
 
     /// Get a database connection with proper error handling
     pub async fn get_connection(&self) -> Result<crate::db::DbConnection> {
-        self.db.get_connection()
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to get database connection for handler {}: {}", self.name, e))
+        self.db.get_connection().await.map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to get database connection for handler {}: {}",
+                self.name,
+                e
+            )
+        })
     }
 
     /// Update handler statistics
     pub fn update_stats_success(&mut self, timestamp: u64) {
         self.stats.events_processed += 1;
         self.stats.last_processed_timestamp = Some(timestamp);
-        
+
         // Clear errors on successful processing
         if !self.stats.processing_errors.is_empty() {
             self.stats.processing_errors.clear();
@@ -141,7 +145,7 @@ impl BaseHandler {
     pub fn update_stats_failure(&mut self, error: String) {
         self.stats.events_failed += 1;
         self.stats.processing_errors.push(error);
-        
+
         // Keep only last 10 errors
         if self.stats.processing_errors.len() > 10 {
             self.stats.processing_errors.remove(0);
@@ -151,13 +155,13 @@ impl BaseHandler {
     /// Get handler health based on error rate
     pub fn get_health(&self) -> HandlerHealth {
         let total_events = self.stats.events_processed + self.stats.events_failed;
-        
+
         if total_events == 0 {
             return HandlerHealth::Healthy;
         }
-        
+
         let error_rate = self.stats.events_failed as f64 / total_events as f64;
-        
+
         if error_rate > 0.5 {
             HandlerHealth::Unhealthy(format!(
                 "High error rate: {:.1}% ({}/{})",
@@ -214,7 +218,5 @@ pub fn spawn_handler_task<H>(
 where
     H: BlockchainEventHandler + 'static,
 {
-    tokio::spawn(async move {
-        handler.start(receiver).await
-    })
+    tokio::spawn(async move { handler.start(receiver).await })
 }

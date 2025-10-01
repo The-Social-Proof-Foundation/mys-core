@@ -7,9 +7,9 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use diesel::sql_types::*;
+use diesel::deserialize::QueryableByName;
 use diesel::pg::Pg;
-use diesel::deserialize::{QueryableByName};
+use diesel::sql_types::*;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 
@@ -34,28 +34,28 @@ pub struct PocQuery {
 pub struct PocBadgeInfo {
     #[diesel(sql_type = Text)]
     pub badge_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub post_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub oracle_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub media_type: String,
-    
+
     #[diesel(sql_type = Float8)]
     pub authenticity_score: f64,
-    
+
     #[diesel(sql_type = Float8)]
     pub creativity_score: f64,
-    
+
     #[diesel(sql_type = Bool)]
     pub revoked: bool,
-    
+
     #[diesel(sql_type = BigInt)]
     pub issued_at: i64,
-    
+
     #[diesel(sql_type = Nullable<BigInt>)]
     pub revoked_at: Option<i64>,
 }
@@ -66,22 +66,22 @@ pub struct PocBadgeInfo {
 pub struct RevenueRedirectionInfo {
     #[diesel(sql_type = Text)]
     pub redirection_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub accused_post_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub original_post_id: String,
-    
+
     #[diesel(sql_type = BigInt)]
     pub redirect_percentage: i64,
-    
+
     #[diesel(sql_type = Bool)]
     pub removed: bool,
-    
+
     #[diesel(sql_type = BigInt)]
     pub activated_at: i64,
-    
+
     #[diesel(sql_type = Nullable<BigInt>)]
     pub removed_at: Option<i64>,
 }
@@ -92,22 +92,22 @@ pub struct RevenueRedirectionInfo {
 pub struct PocAnalysisInfo {
     #[diesel(sql_type = Text)]
     pub analysis_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub post_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub oracle_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub media_type: String,
-    
+
     #[diesel(sql_type = Float8)]
     pub authenticity_score: f64,
-    
+
     #[diesel(sql_type = Float8)]
     pub creativity_score: f64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub analyzed_at: i64,
 }
@@ -118,25 +118,25 @@ pub struct PocAnalysisInfo {
 pub struct PocDisputeInfo {
     #[diesel(sql_type = Text)]
     pub dispute_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub post_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub challenger: String,
-    
+
     #[diesel(sql_type = BigInt)]
     pub stake_amount: i64,
-    
+
     #[diesel(sql_type = Text)]
     pub status: String,
-    
+
     #[diesel(sql_type = Nullable<Text>)]
     pub resolution: Option<String>,
-    
+
     #[diesel(sql_type = BigInt)]
     pub submitted_at: i64,
-    
+
     #[diesel(sql_type = Nullable<BigInt>)]
     pub resolved_at: Option<i64>,
 }
@@ -147,19 +147,19 @@ pub struct PocDisputeInfo {
 pub struct DisputeVoteInfo {
     #[diesel(sql_type = Text)]
     pub dispute_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub voter: String,
-    
+
     #[diesel(sql_type = BigInt)]
     pub stake_amount: i64,
-    
+
     #[diesel(sql_type = Text)]
     pub vote_choice: String,
-    
+
     #[diesel(sql_type = Bool)]
     pub reward_claimed: bool,
-    
+
     #[diesel(sql_type = BigInt)]
     pub voted_at: i64,
 }
@@ -170,22 +170,22 @@ pub struct DisputeVoteInfo {
 pub struct PocAnalytics {
     #[diesel(sql_type = BigInt)]
     pub total_badges: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub active_badges: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub revoked_badges: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub total_disputes: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub resolved_disputes: i64,
-    
+
     #[diesel(sql_type = Float8)]
     pub avg_authenticity_score: f64,
-    
+
     #[diesel(sql_type = Float8)]
     pub avg_creativity_score: f64,
 }
@@ -196,16 +196,16 @@ pub struct PocAnalytics {
 pub struct PocConfigInfo {
     #[diesel(sql_type = BigInt)]
     pub min_stake_amount: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub dispute_duration: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub voting_duration: i64,
-    
+
     #[diesel(sql_type = Float8)]
     pub slash_percentage: f64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
 }
@@ -228,7 +228,7 @@ pub async fn get_poc_badges(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     // Build simple query with optional filters
     let query = if let Some(_post_id) = &params.post_id {
         "
@@ -266,7 +266,7 @@ pub async fn get_poc_badges(
             LIMIT $1 OFFSET $2
         "
     };
-    
+
     let result = if let Some(_post_id) = &params.post_id {
         diesel::sql_query(query)
             .bind::<Text, _>(_post_id)
@@ -295,16 +295,14 @@ pub async fn get_poc_badges(
             .load::<PocBadgeInfo>(&mut conn)
             .await
     };
-        
+
     match result {
         Ok(badges) => Json(badges).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -323,31 +321,29 @@ pub async fn get_poc_badge_by_id(
                 .into_response();
         }
     };
-    
+
     let query = "
         SELECT badge_id, post_id, oracle_id, media_type, authenticity_score, 
                creativity_score, revoked, issued_at, revoked_at
         FROM poc_badges 
         WHERE badge_id = $1
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&badge_id)
         .get_result::<PocBadgeInfo>(&mut conn)
         .await;
-    
+
     match result {
         Ok(badge) => Json(badge).into_response(),
         Err(diesel::result::Error::NotFound) => {
             (StatusCode::NOT_FOUND, "PoC badge not found").into_response()
-        },
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
         }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -369,7 +365,7 @@ pub async fn get_revenue_redirections(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     let query = "
         SELECT redirection_id, accused_post_id, original_post_id, redirect_percentage, 
                removed, activated_at, removed_at
@@ -377,22 +373,20 @@ pub async fn get_revenue_redirections(
         ORDER BY activated_at DESC
         LIMIT $1 OFFSET $2
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<RevenueRedirectionInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(redirections) => Json(redirections).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -414,7 +408,7 @@ pub async fn get_poc_analysis_results(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     let query = "
         SELECT analysis_id, post_id, oracle_id, media_type, authenticity_score, 
                creativity_score, analyzed_at
@@ -422,22 +416,20 @@ pub async fn get_poc_analysis_results(
         ORDER BY analyzed_at DESC
         LIMIT $1 OFFSET $2
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<PocAnalysisInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(analyses) => Json(analyses).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -459,7 +451,7 @@ pub async fn get_poc_disputes(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     let query = "
         SELECT dispute_id, post_id, challenger, stake_amount, status, 
                resolution, submitted_at, resolved_at
@@ -467,22 +459,20 @@ pub async fn get_poc_disputes(
         ORDER BY submitted_at DESC
         LIMIT $1 OFFSET $2
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<PocDisputeInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(disputes) => Json(disputes).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -501,31 +491,29 @@ pub async fn get_poc_dispute_by_id(
                 .into_response();
         }
     };
-    
+
     let query = "
         SELECT dispute_id, post_id, challenger, stake_amount, status, 
                resolution, submitted_at, resolved_at
         FROM poc_disputes 
         WHERE dispute_id = $1
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&dispute_id)
         .get_result::<PocDisputeInfo>(&mut conn)
         .await;
-    
+
     match result {
         Ok(dispute) => Json(dispute).into_response(),
         Err(diesel::result::Error::NotFound) => {
             (StatusCode::NOT_FOUND, "PoC dispute not found").into_response()
-        },
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
         }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -548,7 +536,7 @@ pub async fn get_dispute_votes(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     let query = "
         SELECT dispute_id, voter, stake_amount, vote_choice, reward_claimed, voted_at
         FROM poc_dispute_votes
@@ -556,30 +544,26 @@ pub async fn get_dispute_votes(
         ORDER BY voted_at DESC
         LIMIT $2 OFFSET $3
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&dispute_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<DisputeVoteInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(votes) => Json(votes).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
 /// Get PoC analytics and statistics
-pub async fn get_poc_analytics(
-    State(pool): State<DbPool>,
-) -> Response {
+pub async fn get_poc_analytics(State(pool): State<DbPool>) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
         Err(e) => {
@@ -590,7 +574,7 @@ pub async fn get_poc_analytics(
                 .into_response();
         }
     };
-    
+
     let query = "
         SELECT 
             (SELECT COUNT(*) FROM poc_badges) as total_badges,
@@ -601,27 +585,23 @@ pub async fn get_poc_analytics(
             (SELECT COALESCE(AVG(authenticity_score), 0.0) FROM poc_badges) as avg_authenticity_score,
             (SELECT COALESCE(AVG(creativity_score), 0.0) FROM poc_badges) as avg_creativity_score
     ";
-    
+
     let result = diesel::sql_query(query)
         .get_result::<PocAnalytics>(&mut conn)
         .await;
-    
+
     match result {
         Ok(analytics) => Json(analytics).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
 /// Get current PoC configuration
-pub async fn get_poc_configuration(
-    State(pool): State<DbPool>,
-) -> Response {
+pub async fn get_poc_configuration(State(pool): State<DbPool>) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
         Err(e) => {
@@ -632,30 +612,28 @@ pub async fn get_poc_configuration(
                 .into_response();
         }
     };
-    
+
     let query = "
         SELECT min_stake_amount, dispute_duration, voting_duration, slash_percentage, updated_at
         FROM poc_configuration
         ORDER BY updated_at DESC
         LIMIT 1
     ";
-    
+
     let result = diesel::sql_query(query)
         .get_result::<PocConfigInfo>(&mut conn)
         .await;
-    
+
     match result {
         Ok(config) => Json(config).into_response(),
         Err(diesel::result::Error::NotFound) => {
             (StatusCode::NOT_FOUND, "PoC configuration not found").into_response()
-        },
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
         }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -674,7 +652,7 @@ pub async fn get_post_poc_badges(
                 .into_response();
         }
     };
-    
+
     let query = "
         SELECT badge_id, post_id, oracle_id, media_type, authenticity_score, 
                creativity_score, revoked, issued_at, revoked_at
@@ -682,21 +660,19 @@ pub async fn get_post_poc_badges(
         WHERE post_id = $1
         ORDER BY issued_at DESC
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&post_id)
         .load::<PocBadgeInfo>(&mut conn)
         .await;
-    
+
     match result {
         Ok(badges) => Json(badges).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -715,7 +691,7 @@ pub async fn get_post_revenue_redirections(
                 .into_response();
         }
     };
-    
+
     let query = "
         SELECT redirection_id, accused_post_id, original_post_id, redirect_percentage, 
                removed, activated_at, removed_at
@@ -723,21 +699,19 @@ pub async fn get_post_revenue_redirections(
         WHERE accused_post_id = $1 OR original_post_id = $1
         ORDER BY activated_at DESC
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&post_id)
         .bind::<Text, _>(&post_id)
         .load::<RevenueRedirectionInfo>(&mut conn)
         .await;
-    
+
     match result {
         Ok(redirections) => Json(redirections).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
-} 
+}

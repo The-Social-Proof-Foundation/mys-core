@@ -2,30 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
-use serde_json::Value;
 use chrono::Utc;
+use serde_json::Value;
 
 // Import marketplace event types
 use crate::events::my_ip_event_types::{
-    DataCreatedEvent,
-    DataPurchasedEvent,
-    SubscriptionCreatedEvent,
-    SubscriptionRenewedEvent,
-    DataAccessGrantedEvent,
-    RevenueDistributedEvent,
-    DataAccessedEvent,
-    AnalyticsEvent,
-    DataTrendingEvent,
-    OperationFailedEvent,
+    AnalyticsEvent, DataAccessGrantedEvent, DataAccessedEvent, DataCreatedEvent,
+    DataPurchasedEvent, DataTrendingEvent, OperationFailedEvent, RevenueDistributedEvent,
+    SubscriptionCreatedEvent, SubscriptionRenewedEvent,
 };
 
 // Import marketplace model types
 use crate::models::my_ip::{
-    NewMyIPData,
-    NewMyIPPurchase,
-    NewMyIPSubscription,
-    NewMyIPRevenue,
-    NewMyIPAccessLog,
+    NewMyIPAccessLog, NewMyIPData, NewMyIPPurchase, NewMyIPRevenue, NewMyIPSubscription,
 };
 
 // ============================================================================
@@ -39,11 +28,7 @@ impl DataCreatedEvent {
             ip_id: self.ip_id.clone(),
             owner: self.owner.clone(),
             media_type: self.media_type.clone(),
-            tags: Value::Array(
-                self.tags.iter()
-                    .map(|t| Value::String(t.clone()))
-                    .collect()
-            ),
+            tags: Value::Array(self.tags.iter().map(|t| Value::String(t.clone())).collect()),
             platform_id: self.platform_id.clone(),
             timestamp_start: self.timestamp_start as i64,
             timestamp_end: self.timestamp_end.map(|t| t as i64),
@@ -76,7 +61,7 @@ impl DataPurchasedEvent {
             transaction_id,
         })
     }
-    
+
     pub fn into_access_log(&self, transaction_id: String) -> Result<NewMyIPAccessLog> {
         Ok(NewMyIPAccessLog {
             ip_id: self.ip_id.clone(),
@@ -100,7 +85,7 @@ impl SubscriptionCreatedEvent {
             transaction_id,
         })
     }
-    
+
     pub fn into_purchase(&self, transaction_id: String) -> Result<NewMyIPPurchase> {
         Ok(NewMyIPPurchase {
             ip_id: self.ip_id.clone(),
@@ -111,7 +96,7 @@ impl SubscriptionCreatedEvent {
             transaction_id,
         })
     }
-    
+
     pub fn into_access_log(&self, transaction_id: String) -> Result<NewMyIPAccessLog> {
         Ok(NewMyIPAccessLog {
             ip_id: self.ip_id.clone(),
@@ -259,40 +244,67 @@ impl EventBatch {
             access_logs: vec![],
         }
     }
-    
-    pub fn add_data_created(&mut self, event: &DataCreatedEvent, transaction_id: String) -> Result<()> {
+
+    pub fn add_data_created(
+        &mut self,
+        event: &DataCreatedEvent,
+        transaction_id: String,
+    ) -> Result<()> {
         self.data_entries.push(event.into_model(transaction_id)?);
         Ok(())
     }
-    
-    pub fn add_data_purchased(&mut self, event: &DataPurchasedEvent, transaction_id: String) -> Result<()> {
-        self.purchases.push(event.into_purchase(transaction_id.clone())?);
-        self.access_logs.push(event.into_access_log(transaction_id)?);
+
+    pub fn add_data_purchased(
+        &mut self,
+        event: &DataPurchasedEvent,
+        transaction_id: String,
+    ) -> Result<()> {
+        self.purchases
+            .push(event.into_purchase(transaction_id.clone())?);
+        self.access_logs
+            .push(event.into_access_log(transaction_id)?);
         Ok(())
     }
-    
-    pub fn add_subscription_created(&mut self, event: &SubscriptionCreatedEvent, transaction_id: String) -> Result<()> {
-        self.subscriptions.push(event.into_subscription(transaction_id.clone())?);
-        self.purchases.push(event.into_purchase(transaction_id.clone())?);
-        self.access_logs.push(event.into_access_log(transaction_id)?);
+
+    pub fn add_subscription_created(
+        &mut self,
+        event: &SubscriptionCreatedEvent,
+        transaction_id: String,
+    ) -> Result<()> {
+        self.subscriptions
+            .push(event.into_subscription(transaction_id.clone())?);
+        self.purchases
+            .push(event.into_purchase(transaction_id.clone())?);
+        self.access_logs
+            .push(event.into_access_log(transaction_id)?);
         Ok(())
     }
-    
-    pub fn add_revenue_distributed(&mut self, event: &RevenueDistributedEvent, transaction_id: String) -> Result<()> {
-        self.revenue_records.push(event.into_revenue(transaction_id)?);
+
+    pub fn add_revenue_distributed(
+        &mut self,
+        event: &RevenueDistributedEvent,
+        transaction_id: String,
+    ) -> Result<()> {
+        self.revenue_records
+            .push(event.into_revenue(transaction_id)?);
         Ok(())
     }
-    
-    pub fn add_data_accessed(&mut self, event: &DataAccessedEvent, transaction_id: String) -> Result<()> {
-        self.access_logs.push(event.into_access_log(transaction_id)?);
+
+    pub fn add_data_accessed(
+        &mut self,
+        event: &DataAccessedEvent,
+        transaction_id: String,
+    ) -> Result<()> {
+        self.access_logs
+            .push(event.into_access_log(transaction_id)?);
         Ok(())
     }
-    
+
     pub fn is_empty(&self) -> bool {
-        self.data_entries.is_empty() 
-            && self.purchases.is_empty() 
-            && self.subscriptions.is_empty() 
-            && self.revenue_records.is_empty() 
+        self.data_entries.is_empty()
+            && self.purchases.is_empty()
+            && self.subscriptions.is_empty()
+            && self.revenue_records.is_empty()
             && self.access_logs.is_empty()
     }
-} 
+}

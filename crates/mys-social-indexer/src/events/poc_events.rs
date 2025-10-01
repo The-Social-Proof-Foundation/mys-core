@@ -5,25 +5,15 @@ use anyhow::Result;
 
 // Import specific PoC event types
 use crate::events::poc_event_types::{
-    AnalysisSubmittedEvent,
-    PocBadgeIssuedEvent,
-    RevenueRedirectionActivatedEvent,
-    PocDisputeSubmittedEvent,
-    DisputeVoteCastEvent,
-    PocDisputeResolvedEvent,
-    VotingRewardClaimedEvent,
-    PocConfigUpdatedEvent,
-    TokenPoolSyncNeededEvent,
+    AnalysisSubmittedEvent, DisputeVoteCastEvent, PocBadgeIssuedEvent, PocConfigUpdatedEvent,
+    PocDisputeResolvedEvent, PocDisputeSubmittedEvent, RevenueRedirectionActivatedEvent,
+    TokenPoolSyncNeededEvent, VotingRewardClaimedEvent,
 };
 
 // Import PoC model types (will be created in Phase 3)
 use crate::models::poc::{
-    NewPocBadge,
+    NewPocAnalysisResult, NewPocBadge, NewPocConfiguration, NewPocDispute, NewPocDisputeVote,
     NewPocRevenueRedirection,
-    NewPocAnalysisResult,
-    NewPocDispute,
-    NewPocDisputeVote,
-    NewPocConfiguration,
 };
 
 // Model conversion impl for AnalysisSubmittedEvent
@@ -126,11 +116,11 @@ impl PocDisputeResolvedEvent {
             self.timestamp as i64,
         )
     }
-    
+
     pub fn should_revoke_badge(&self) -> bool {
         self.badge_revoked
     }
-    
+
     pub fn should_remove_redirection(&self) -> bool {
         self.redirection_removed
     }
@@ -168,7 +158,7 @@ impl TokenPoolSyncNeededEvent {
     pub fn get_post_id(&self) -> &str {
         &self.post_id
     }
-    
+
     pub fn get_timestamp(&self) -> u64 {
         self.timestamp
     }
@@ -177,36 +167,43 @@ impl TokenPoolSyncNeededEvent {
 /// Utility functions for PoC event validation and parsing
 pub mod validation {
     use crate::events::poc_event_types::{
-        MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO, MEDIA_TYPE_AUDIO,
-        VOTE_UPHOLD, VOTE_OVERTURN,
-        DISPUTE_STATUS_VOTING, DISPUTE_STATUS_RESOLVED_UPHELD, DISPUTE_STATUS_RESOLVED_OVERTURNED,
+        DISPUTE_STATUS_RESOLVED_OVERTURNED, DISPUTE_STATUS_RESOLVED_UPHELD, DISPUTE_STATUS_VOTING,
+        MEDIA_TYPE_AUDIO, MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO, VOTE_OVERTURN, VOTE_UPHOLD,
     };
-    
+
     /// Validate media type
     pub fn is_valid_media_type(media_type: u8) -> bool {
-        matches!(media_type, MEDIA_TYPE_IMAGE | MEDIA_TYPE_VIDEO | MEDIA_TYPE_AUDIO)
+        matches!(
+            media_type,
+            MEDIA_TYPE_IMAGE | MEDIA_TYPE_VIDEO | MEDIA_TYPE_AUDIO
+        )
     }
-    
+
     /// Validate vote choice
     pub fn is_valid_vote_choice(vote_choice: u8) -> bool {
         matches!(vote_choice, VOTE_UPHOLD | VOTE_OVERTURN)
     }
-    
+
     /// Validate dispute status
     pub fn is_valid_dispute_status(status: u8) -> bool {
-        matches!(status, DISPUTE_STATUS_VOTING | DISPUTE_STATUS_RESOLVED_UPHELD | DISPUTE_STATUS_RESOLVED_OVERTURNED)
+        matches!(
+            status,
+            DISPUTE_STATUS_VOTING
+                | DISPUTE_STATUS_RESOLVED_UPHELD
+                | DISPUTE_STATUS_RESOLVED_OVERTURNED
+        )
     }
-    
+
     /// Validate similarity score (0-100 as percentage)
     pub fn is_valid_similarity_score(score: u64) -> bool {
         score <= 100
     }
-    
+
     /// Validate redirect percentage (0-100)
     pub fn is_valid_redirect_percentage(percentage: u64) -> bool {
         percentage <= 100
     }
-    
+
     /// Validate threshold value (0-100)
     pub fn is_valid_threshold(threshold: u64) -> bool {
         threshold <= 100
@@ -218,47 +215,51 @@ pub mod validation {
 pub enum PocEventError {
     #[error("Invalid media type: {0}")]
     InvalidMediaType(u8),
-    
+
     #[error("Invalid vote choice: {0}")]
     InvalidVoteChoice(u8),
-    
+
     #[error("Invalid dispute status: {0}")]
     InvalidDisputeStatus(u8),
-    
+
     #[error("Invalid similarity score: {0} (must be 0-100)")]
     InvalidSimilarityScore(u64),
-    
+
     #[error("Invalid redirect percentage: {0} (must be 0-100)")]
     InvalidRedirectPercentage(u64),
-    
+
     #[error("Invalid threshold: {0} (must be 0-100)")]
     InvalidThreshold(u64),
-    
+
     #[error("Missing required field: {0}")]
     MissingField(String),
-    
+
     #[error("Event parsing error: {0}")]
     ParseError(String),
 }
 
 /// Comprehensive event validation
-pub fn validate_analysis_submitted_event(event: &AnalysisSubmittedEvent) -> Result<(), PocEventError> {
+pub fn validate_analysis_submitted_event(
+    event: &AnalysisSubmittedEvent,
+) -> Result<(), PocEventError> {
     if !validation::is_valid_media_type(event.media_type) {
         return Err(PocEventError::InvalidMediaType(event.media_type));
     }
-    
+
     if !validation::is_valid_similarity_score(event.highest_similarity_score) {
-        return Err(PocEventError::InvalidSimilarityScore(event.highest_similarity_score));
+        return Err(PocEventError::InvalidSimilarityScore(
+            event.highest_similarity_score,
+        ));
     }
-    
+
     if event.post_id.is_empty() {
         return Err(PocEventError::MissingField("post_id".to_string()));
     }
-    
+
     if event.oracle_address.is_empty() {
         return Err(PocEventError::MissingField("oracle_address".to_string()));
     }
-    
+
     Ok(())
 }
 
@@ -266,63 +267,73 @@ pub fn validate_badge_issued_event(event: &PocBadgeIssuedEvent) -> Result<(), Po
     if !validation::is_valid_media_type(event.media_type) {
         return Err(PocEventError::InvalidMediaType(event.media_type));
     }
-    
+
     if event.badge_id.is_empty() {
         return Err(PocEventError::MissingField("badge_id".to_string()));
     }
-    
+
     if event.post_id.is_empty() {
         return Err(PocEventError::MissingField("post_id".to_string()));
     }
-    
+
     if event.issued_by.is_empty() {
         return Err(PocEventError::MissingField("issued_by".to_string()));
     }
-    
+
     Ok(())
 }
 
-pub fn validate_redirection_activated_event(event: &RevenueRedirectionActivatedEvent) -> Result<(), PocEventError> {
+pub fn validate_redirection_activated_event(
+    event: &RevenueRedirectionActivatedEvent,
+) -> Result<(), PocEventError> {
     if !validation::is_valid_redirect_percentage(event.redirect_percentage) {
-        return Err(PocEventError::InvalidRedirectPercentage(event.redirect_percentage));
+        return Err(PocEventError::InvalidRedirectPercentage(
+            event.redirect_percentage,
+        ));
     }
-    
+
     if !validation::is_valid_similarity_score(event.similarity_score) {
-        return Err(PocEventError::InvalidSimilarityScore(event.similarity_score));
+        return Err(PocEventError::InvalidSimilarityScore(
+            event.similarity_score,
+        ));
     }
-    
+
     if event.redirection_id.is_empty() {
         return Err(PocEventError::MissingField("redirection_id".to_string()));
     }
-    
+
     if event.accused_post_id.is_empty() {
         return Err(PocEventError::MissingField("accused_post_id".to_string()));
     }
-    
+
     if event.original_post_id.is_empty() {
         return Err(PocEventError::MissingField("original_post_id".to_string()));
     }
-    
+
     Ok(())
 }
 
-pub fn validate_dispute_submitted_event(event: &PocDisputeSubmittedEvent) -> Result<(), PocEventError> {
+pub fn validate_dispute_submitted_event(
+    event: &PocDisputeSubmittedEvent,
+) -> Result<(), PocEventError> {
     if event.dispute_id.is_empty() {
         return Err(PocEventError::MissingField("dispute_id".to_string()));
     }
-    
+
     if event.post_id.is_empty() {
         return Err(PocEventError::MissingField("post_id".to_string()));
     }
-    
+
     if event.disputer.is_empty() {
         return Err(PocEventError::MissingField("disputer".to_string()));
     }
-    
+
     if event.voting_start_epoch >= event.voting_end_epoch {
-        return Err(PocEventError::ParseError("Invalid voting epoch range".to_string()));
+        return Err(PocEventError::ParseError(
+            "Invalid voting epoch range".to_string(),
+        ));
     }
-    
+
     Ok(())
 }
 
@@ -330,19 +341,21 @@ pub fn validate_vote_cast_event(event: &DisputeVoteCastEvent) -> Result<(), PocE
     if !validation::is_valid_vote_choice(event.vote_choice) {
         return Err(PocEventError::InvalidVoteChoice(event.vote_choice));
     }
-    
+
     if event.dispute_id.is_empty() {
         return Err(PocEventError::MissingField("dispute_id".to_string()));
     }
-    
+
     if event.voter.is_empty() {
         return Err(PocEventError::MissingField("voter".to_string()));
     }
-    
+
     if event.stake_amount == 0 {
-        return Err(PocEventError::ParseError("Stake amount must be greater than 0".to_string()));
+        return Err(PocEventError::ParseError(
+            "Stake amount must be greater than 0".to_string(),
+        ));
     }
-    
+
     Ok(())
 }
 
@@ -350,26 +363,30 @@ pub fn validate_config_updated_event(event: &PocConfigUpdatedEvent) -> Result<()
     if !validation::is_valid_threshold(event.image_threshold) {
         return Err(PocEventError::InvalidThreshold(event.image_threshold));
     }
-    
+
     if !validation::is_valid_threshold(event.video_threshold) {
         return Err(PocEventError::InvalidThreshold(event.video_threshold));
     }
-    
+
     if !validation::is_valid_threshold(event.audio_threshold) {
         return Err(PocEventError::InvalidThreshold(event.audio_threshold));
     }
-    
+
     if !validation::is_valid_redirect_percentage(event.revenue_redirect_percentage) {
-        return Err(PocEventError::InvalidRedirectPercentage(event.revenue_redirect_percentage));
+        return Err(PocEventError::InvalidRedirectPercentage(
+            event.revenue_redirect_percentage,
+        ));
     }
-    
+
     if event.updated_by.is_empty() {
         return Err(PocEventError::MissingField("updated_by".to_string()));
     }
-    
+
     if event.min_vote_stake > event.max_vote_stake {
-        return Err(PocEventError::ParseError("Min vote stake cannot be greater than max vote stake".to_string()));
+        return Err(PocEventError::ParseError(
+            "Min vote stake cannot be greater than max vote stake".to_string(),
+        ));
     }
-    
+
     Ok(())
-} 
+}

@@ -1,13 +1,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-pub mod platform_blocks;
 pub mod blocked_events;
 pub mod blocked_profiles;
+pub mod platform_blocks;
 
-pub use platform_blocks::*;
 pub use blocked_events::*;
 pub use blocked_profiles::*;
+pub use platform_blocks::*;
 
 // Event types for compatibility
 use serde::{Deserialize, Serialize};
@@ -23,4 +23,4 @@ pub struct UserBlockEvent {
 pub struct UserUnblockEvent {
     pub blocker: String,
     pub unblocked: String,
-} 
+}

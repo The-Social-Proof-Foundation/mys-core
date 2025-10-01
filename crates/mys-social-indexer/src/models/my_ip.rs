@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 // Import tables from schema
-use crate::schema::{my_ip_data, my_ip_purchases, my_ip_subscriptions, my_ip_revenue, my_ip_access_logs};
+use crate::schema::{
+    my_ip_access_logs, my_ip_data, my_ip_purchases, my_ip_revenue, my_ip_subscriptions,
+};
 
 // ============================================================================
 // MARKETPLACE DATA MODELS
@@ -206,22 +208,25 @@ impl MyIPData {
             true
         }
     }
-    
+
     // Get pricing model
     pub fn pricing_model(&self) -> String {
-        match (self.one_time_price.is_some(), self.subscription_price.is_some()) {
+        match (
+            self.one_time_price.is_some(),
+            self.subscription_price.is_some(),
+        ) {
             (true, true) => "both".to_string(),
             (true, false) => "one_time".to_string(),
             (false, true) => "subscription".to_string(),
             (false, false) => "free".to_string(),
         }
     }
-    
+
     // Check if data has pricing
     pub fn is_free(&self) -> bool {
         self.one_time_price.is_none() && self.subscription_price.is_none()
     }
-    
+
     // Check if user has access based on current time
     pub fn has_subscription_access(&self, subscription_end: i64, current_time: i64) -> bool {
         subscription_end >= current_time
@@ -233,7 +238,7 @@ impl MyIPSubscription {
     pub fn is_active(&self, current_time: i64) -> bool {
         current_time >= self.subscription_start && current_time <= self.subscription_end
     }
-    
+
     // Get remaining subscription time in seconds
     pub fn remaining_time(&self, current_time: i64) -> i64 {
         if self.is_active(current_time) {
@@ -353,28 +358,21 @@ impl MyIPData {
             vec![]
         }
     }
-    
+
     pub fn add_tag(&mut self, tag: String) {
         let mut tags = self.get_tags_array();
         if !tags.contains(&tag) {
             tags.push(tag);
-            self.tags = Value::Array(
-                tags.into_iter()
-                    .map(|t| Value::String(t))
-                    .collect()
-            );
+            self.tags = Value::Array(tags.into_iter().map(|t| Value::String(t)).collect());
         }
     }
-    
+
     pub fn remove_tag(&mut self, tag: &str) {
-        let tags: Vec<String> = self.get_tags_array()
+        let tags: Vec<String> = self
+            .get_tags_array()
             .into_iter()
             .filter(|t| t != tag)
             .collect();
-        self.tags = Value::Array(
-            tags.into_iter()
-                .map(|t| Value::String(t))
-                .collect()
-        );
+        self.tags = Value::Array(tags.into_iter().map(|t| Value::String(t)).collect());
     }
-} 
+}

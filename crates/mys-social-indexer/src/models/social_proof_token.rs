@@ -425,4 +425,4 @@ pub struct UserTokenHolding {
     pub amount: i64,
     pub current_price: i64,
     pub value: i64,
-} 
+}

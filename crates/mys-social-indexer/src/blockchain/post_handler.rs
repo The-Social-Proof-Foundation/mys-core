@@ -1,41 +1,32 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 use crate::db::{Database, DbConnection};
 // Import event types specifically to avoid ambiguity
 use crate::events::post_event_types::{
-    PostCreatedEvent,
-    CommentCreatedEvent,
-    ReactionEvent,
-    RemoveReactionEvent,
-    RepostEvent,
-    TipEvent,
-    ModerationEvent as PostModerationEvent,
-    ContentUpdateEvent,
-    ReportEvent,
-    DeletionEvent as PostDeletionEvent,
-    PromotedPostCreatedEvent,
-    PromotedPostViewConfirmedEvent,
-    PromotionStatusToggledEvent,
-    PromotionFundsWithdrawnEvent,
+    CommentCreatedEvent, ContentUpdateEvent, DeletionEvent as PostDeletionEvent,
+    ModerationEvent as PostModerationEvent, PostCreatedEvent, PromotedPostCreatedEvent,
+    PromotedPostViewConfirmedEvent, PromotionFundsWithdrawnEvent, PromotionStatusToggledEvent,
+    ReactionEvent, RemoveReactionEvent, ReportEvent, RepostEvent, TipEvent,
 };
-use crate::events::{parse_event, event_utils::parse_json_event};
+use crate::events::{event_utils::parse_json_event, parse_event};
 use crate::models::indexer::NewIndexerProgress;
 use crate::schema;
 use mys_types::event::Event as MysEvent;
 
-use crate::schema::{posts, comments, reactions, reaction_counts, reposts, tips, 
-                   posts_reports, posts_moderation_events, posts_deletion_events,
-                   promoted_posts, promotion_views, 
-                   promotion_status_events, promotion_budget_events};
+use crate::schema::{
+    comments, posts, posts_deletion_events, posts_moderation_events, posts_reports, promoted_posts,
+    promotion_budget_events, promotion_status_events, promotion_views, reaction_counts, reactions,
+    reposts, tips,
+};
 
 use super::listener::BlockchainEvent;
 
@@ -52,55 +43,53 @@ pub struct PostEventHandler {
 impl PostEventHandler {
     /// Create a new post event handler
     pub fn new(db: Arc<Database>, rx: mpsc::Receiver<BlockchainEvent>, worker_id: String) -> Self {
-        Self {
-            db,
-            rx,
-            worker_id,
-        }
+        Self { db, rx, worker_id }
     }
-    
+
     /// Get a database connection from the pool
     async fn get_connection(&self) -> Result<DbConnection> {
-        self.db.get_connection()
+        self.db
+            .get_connection()
             .await
             .map_err(|e| anyhow!("Failed to get database connection: {}", e))
     }
-    
+
     /// Update worker progress with timestamp
     async fn update_progress(&self, timestamp: u64) -> Result<()> {
         let mut conn = self.get_connection().await?;
         let now = Utc::now().naive_utc();
-        
+
         let progress = NewIndexerProgress {
             id: self.worker_id.clone(),
             last_checkpoint_processed: timestamp as i64,
             last_processed_at: now,
         };
-        
+
         diesel::insert_into(schema::indexer_progress::table)
             .values(&progress)
             .on_conflict(schema::indexer_progress::id)
             .do_update()
             .set((
-                schema::indexer_progress::last_checkpoint_processed.eq(progress.last_checkpoint_processed),
+                schema::indexer_progress::last_checkpoint_processed
+                    .eq(progress.last_checkpoint_processed),
                 schema::indexer_progress::last_processed_at.eq(progress.last_processed_at),
             ))
             .execute(&mut conn)
             .await?;
-            
+
         Ok(())
     }
-    
+
     /// Process a post created event
     async fn process_post_created(&self, event: &PostCreatedEvent, tx_id: &str) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
+
         info!("Processing post created: {}", event.post_id);
-        
+
         // Convert event to database model
         let mut new_post = event.into_model()?;
         new_post.transaction_id = tx_id.to_string();
-        
+
         // Insert into the database
         diesel::insert_into(schema::posts::table)
             .values(new_post)
@@ -115,35 +104,48 @@ impl PostEventHandler {
             .filter(crate::schema::profiles::owner_address.eq(&event.owner))
             .set(crate::schema::profiles::post_count.eq(crate::schema::profiles::post_count + 1))
             .execute(&mut conn)
-            .await 
+            .await
         {
             Ok(updated_rows) => {
                 if updated_rows > 0 {
-                    info!("Successfully incremented post_count for profile: {}", event.owner);
+                    info!(
+                        "Successfully incremented post_count for profile: {}",
+                        event.owner
+                    );
                 } else {
-                    warn!("No profile found to increment post_count for owner: {}", event.owner);
+                    warn!(
+                        "No profile found to increment post_count for owner: {}",
+                        event.owner
+                    );
                 }
             }
             Err(e) => {
                 // Log error but don't fail the transaction
-                error!("Failed to increment post_count for profile {}: {}. Post creation succeeded.", event.owner, e);
+                error!(
+                    "Failed to increment post_count for profile {}: {}. Post creation succeeded.",
+                    event.owner, e
+                );
             }
         }
-            
+
         info!("Successfully processed post created: {}", event.post_id);
         Ok(())
     }
-    
+
     /// Process a comment created event
-    async fn process_comment_created(&self, event: &CommentCreatedEvent, tx_id: &str) -> Result<()> {
+    async fn process_comment_created(
+        &self,
+        event: &CommentCreatedEvent,
+        tx_id: &str,
+    ) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
+
         info!("Processing comment created: {}", event.comment_id);
-        
+
         // Convert event to database model
         let mut new_comment = event.into_model()?;
         new_comment.transaction_id = tx_id.to_string();
-        
+
         // Insert the comment
         diesel::insert_into(schema::comments::table)
             .values(new_comment)
@@ -152,14 +154,14 @@ impl PostEventHandler {
             .set(schema::comments::transaction_id.eq(tx_id))
             .execute(&mut conn)
             .await?;
-            
+
         // Update post comment count
         diesel::update(schema::posts::table)
             .filter(schema::posts::post_id.eq(&event.post_id))
             .set(schema::posts::comment_count.eq(schema::posts::comment_count + 1))
             .execute(&mut conn)
             .await?;
-            
+
         // If this is a comment on another comment, update parent comment count
         if let Some(parent_comment_id) = &event.parent_comment_id {
             diesel::update(schema::comments::table)
@@ -168,41 +170,53 @@ impl PostEventHandler {
                 .execute(&mut conn)
                 .await?;
         }
-            
-        info!("Successfully processed comment created: {}", event.comment_id);
+
+        info!(
+            "Successfully processed comment created: {}",
+            event.comment_id
+        );
         Ok(())
     }
-    
+
     /// Process a reaction event
     async fn process_reaction(&self, event: &ReactionEvent, tx_id: &str) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
-        info!("Processing reaction: {} {} {}", event.user_address, event.reaction_text, event.object_id);
-        
+
+        info!(
+            "Processing reaction: {} {} {}",
+            event.user_address, event.reaction_text, event.object_id
+        );
+
         // Convert event to database model
         let mut new_reaction = event.into_model()?;
         new_reaction.transaction_id = tx_id.to_string();
-        
+
         // Insert into reactions table (replacing existing if needed)
         diesel::insert_into(schema::reactions::table)
             .values(new_reaction)
-            .on_conflict((schema::reactions::object_id, schema::reactions::user_address))
+            .on_conflict((
+                schema::reactions::object_id,
+                schema::reactions::user_address,
+            ))
             .do_update()
             .set(schema::reactions::transaction_id.eq(tx_id))
             .execute(&mut conn)
             .await?;
-            
+
         // Update or insert into reaction_counts
         let reaction_count = event.into_reaction_count()?;
-        
+
         diesel::insert_into(schema::reaction_counts::table)
             .values(reaction_count)
-            .on_conflict((schema::reaction_counts::object_id, schema::reaction_counts::reaction_text))
+            .on_conflict((
+                schema::reaction_counts::object_id,
+                schema::reaction_counts::reaction_text,
+            ))
             .do_update()
             .set(schema::reaction_counts::count.eq(schema::reaction_counts::count + 1))
             .execute(&mut conn)
             .await?;
-            
+
         // Update the post or comment reaction count
         if event.is_post {
             diesel::update(schema::posts::table)
@@ -217,36 +231,43 @@ impl PostEventHandler {
                 .execute(&mut conn)
                 .await?;
         }
-            
+
         info!("Successfully processed reaction");
         Ok(())
     }
-    
+
     /// Process a remove reaction event
-    async fn process_remove_reaction(&self, event: &RemoveReactionEvent, _tx_id: &str) -> Result<()> {
+    async fn process_remove_reaction(
+        &self,
+        event: &RemoveReactionEvent,
+        _tx_id: &str,
+    ) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
-        info!("Processing remove reaction: {} {} {}", event.user_address, event.reaction_text, event.object_id);
-        
+
+        info!(
+            "Processing remove reaction: {} {} {}",
+            event.user_address, event.reaction_text, event.object_id
+        );
+
         // First get the reaction to be removed to know the reaction_text
         let reaction_row = diesel::sql_query(
-            "SELECT reaction_text FROM reactions WHERE object_id = $1 AND user_address = $2"
+            "SELECT reaction_text FROM reactions WHERE object_id = $1 AND user_address = $2",
         )
         .bind::<diesel::sql_types::Text, _>(&event.object_id)
         .bind::<diesel::sql_types::Text, _>(&event.user_address)
         .get_result::<ReactionTextResult>(&mut conn)
         .await;
-        
+
         if let Ok(reaction) = reaction_row {
             let reaction_text = reaction.reaction_text;
-            
+
             // Delete the reaction
             diesel::delete(schema::reactions::table)
                 .filter(schema::reactions::object_id.eq(&event.object_id))
                 .filter(schema::reactions::user_address.eq(&event.user_address))
                 .execute(&mut conn)
                 .await?;
-                
+
             // Update reaction_counts
             diesel::update(schema::reaction_counts::table)
                 .filter(schema::reaction_counts::object_id.eq(&event.object_id))
@@ -254,7 +275,7 @@ impl PostEventHandler {
                 .set(schema::reaction_counts::count.eq(schema::reaction_counts::count - 1))
                 .execute(&mut conn)
                 .await?;
-                
+
             // Clean up zero counts
             diesel::delete(schema::reaction_counts::table)
                 .filter(schema::reaction_counts::object_id.eq(&event.object_id))
@@ -262,7 +283,7 @@ impl PostEventHandler {
                 .filter(schema::reaction_counts::count.le(0))
                 .execute(&mut conn)
                 .await?;
-                
+
             // Update the post or comment reaction count
             if event.is_post {
                 diesel::update(schema::posts::table)
@@ -278,23 +299,26 @@ impl PostEventHandler {
                     .await?;
             }
         } else {
-            info!("No reaction found to remove for user {} on object {}", event.user_address, event.object_id);
+            info!(
+                "No reaction found to remove for user {} on object {}",
+                event.user_address, event.object_id
+            );
         }
-            
+
         info!("Successfully processed remove reaction");
         Ok(())
     }
-    
+
     /// Process a repost event
     async fn process_repost(&self, event: &RepostEvent, tx_id: &str) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
+
         info!("Processing repost: {}", event.repost_id);
-        
+
         // Convert event to database model
         let mut new_repost = event.into_model()?;
         new_repost.transaction_id = tx_id.to_string();
-        
+
         // Insert the repost
         diesel::insert_into(schema::reposts::table)
             .values(new_repost)
@@ -303,7 +327,7 @@ impl PostEventHandler {
             .set(schema::reposts::transaction_id.eq(tx_id))
             .execute(&mut conn)
             .await?;
-            
+
         // Update original content repost count
         if event.is_original_post {
             diesel::update(schema::posts::table)
@@ -318,70 +342,82 @@ impl PostEventHandler {
                 .execute(&mut conn)
                 .await?;
         }
-            
+
         info!("Successfully processed repost: {}", event.repost_id);
         Ok(())
     }
-    
+
     /// Process a tip event
     async fn process_tip(&self, event: &TipEvent, tx_id: &str) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
-        info!("Processing tip: {} to {} for {}", event.from, event.to, event.object_id);
-        
+
+        info!(
+            "Processing tip: {} to {} for {}",
+            event.from, event.to, event.object_id
+        );
+
         // Convert event to database model
         let mut new_tip = event.into_model()?;
         new_tip.transaction_id = tx_id.to_string();
-        
+
         // Insert the tip
         diesel::insert_into(schema::tips::table)
             .values(&new_tip)
             .execute(&mut conn)
             .await?;
-            
+
         // Update the tips received amount on the post or comment
         if event.is_post {
             diesel::update(schema::posts::table)
                 .filter(schema::posts::post_id.eq(&event.object_id))
-                .set(schema::posts::tips_received.eq(schema::posts::tips_received + event.amount as i64))
+                .set(
+                    schema::posts::tips_received
+                        .eq(schema::posts::tips_received + event.amount as i64),
+                )
                 .execute(&mut conn)
                 .await?;
         } else {
             diesel::update(schema::comments::table)
                 .filter(schema::comments::comment_id.eq(&event.object_id))
-                .set(schema::comments::tips_received.eq(schema::comments::tips_received + event.amount as i64))
+                .set(
+                    schema::comments::tips_received
+                        .eq(schema::comments::tips_received + event.amount as i64),
+                )
                 .execute(&mut conn)
                 .await?;
         }
-        
+
         // Create unified revenue record for the tip
         let unified_revenue = event.create_unified_revenue_record(tx_id.to_string())?;
-        
+
         diesel::insert_into(crate::schema::unified_revenue::table)
             .values(&unified_revenue)
             .execute(&mut conn)
             .await?;
-        
+
         info!("Processed TipEvent with revenue tracking successfully");
         Ok(())
     }
-    
+
     /// Process a moderation event
     async fn process_moderation(&self, event: &PostModerationEvent, tx_id: &str) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
-        info!("Processing moderation: {} by {}", event.object_id, event.moderated_by);
-        
+
+        info!(
+            "Processing moderation: {} by {}",
+            event.object_id, event.moderated_by
+        );
+
         // Convert event to database model
         let mut new_moderation = event.into_model()?;
         new_moderation.transaction_id = tx_id.to_string();
-        
+
         // Insert the moderation event
         diesel::insert_into(schema::posts_moderation_events::table)
             .values(new_moderation)
             .execute(&mut conn)
             .await?;
-            
+
         // Try to update post moderation status
         let post_updated = diesel::update(schema::posts::table)
             .filter(schema::posts::post_id.eq(&event.object_id))
@@ -391,7 +427,7 @@ impl PostEventHandler {
             ))
             .execute(&mut conn)
             .await?;
-            
+
         if post_updated == 0 {
             // If no post was updated, try comment
             diesel::update(schema::comments::table)
@@ -403,31 +439,34 @@ impl PostEventHandler {
                 .execute(&mut conn)
                 .await?;
         }
-            
+
         info!("Successfully processed moderation");
         Ok(())
     }
-    
+
     /// Process a content update event
     async fn process_content_update(&self, event: &ContentUpdateEvent, _tx_id: &str) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
+
         info!("Processing content update: {}", event.object_id);
-        
+
         // Convert media_urls and mentions to JSON if present
-        let media_urls_json = event.media_urls.as_ref().map(|urls| {
-            serde_json::to_value(urls).unwrap_or(serde_json::json!(null))
-        });
-        
-        let mentions_json = event.mentions.as_ref().map(|mentions| {
-            serde_json::to_value(mentions).unwrap_or(serde_json::json!(null))
-        });
-        
+        let media_urls_json = event
+            .media_urls
+            .as_ref()
+            .map(|urls| serde_json::to_value(urls).unwrap_or(serde_json::json!(null)));
+
+        let mentions_json = event
+            .mentions
+            .as_ref()
+            .map(|mentions| serde_json::to_value(mentions).unwrap_or(serde_json::json!(null)));
+
         // Parse metadata JSON if present
-        let metadata_json = event.metadata_json.as_ref().map(|json_str| {
-            serde_json::from_str(json_str).unwrap_or(serde_json::json!(null))
-        });
-        
+        let metadata_json = event
+            .metadata_json
+            .as_ref()
+            .map(|json_str| serde_json::from_str(json_str).unwrap_or(serde_json::json!(null)));
+
         // Update the content
         if event.is_post {
             diesel::update(schema::posts::table)
@@ -454,47 +493,50 @@ impl PostEventHandler {
                 .execute(&mut conn)
                 .await?;
         }
-            
+
         info!("Successfully processed content update: {}", event.object_id);
         Ok(())
     }
-    
+
     /// Process a report event
     async fn process_report(&self, event: &ReportEvent, tx_id: &str) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
-        info!("Processing report: {} by {}", event.object_id, event.reporter);
-        
+
+        info!(
+            "Processing report: {} by {}",
+            event.object_id, event.reporter
+        );
+
         // Convert event to database model
         let mut new_report = event.into_model()?;
         new_report.transaction_id = tx_id.to_string();
-        
+
         // Insert the report
         diesel::insert_into(schema::posts_reports::table)
             .values(new_report)
             .execute(&mut conn)
             .await?;
-            
+
         info!("Successfully processed report");
         Ok(())
     }
-    
+
     /// Process a deletion event
     async fn process_deletion(&self, event: &PostDeletionEvent, tx_id: &str) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
+
         info!("Processing deletion: {}", event.object_id);
-        
+
         // Convert event to database model
         let mut new_deletion = event.into_model()?;
         new_deletion.transaction_id = tx_id.to_string();
-        
+
         // Insert the deletion event
         diesel::insert_into(schema::posts_deletion_events::table)
             .values(new_deletion)
             .execute(&mut conn)
             .await?;
-            
+
         // Mark content as deleted
         if event.is_post {
             diesel::update(schema::posts::table)
@@ -507,15 +549,23 @@ impl PostEventHandler {
             // Decrement post_count for the profile (with graceful error handling)
             match diesel::update(crate::schema::profiles::table)
                 .filter(crate::schema::profiles::owner_address.eq(&event.owner))
-                .set(crate::schema::profiles::post_count.eq(crate::schema::profiles::post_count - 1))
+                .set(
+                    crate::schema::profiles::post_count.eq(crate::schema::profiles::post_count - 1),
+                )
                 .execute(&mut conn)
-                .await 
+                .await
             {
                 Ok(updated_rows) => {
                     if updated_rows > 0 {
-                        info!("Successfully decremented post_count for profile: {}", event.owner);
+                        info!(
+                            "Successfully decremented post_count for profile: {}",
+                            event.owner
+                        );
                     } else {
-                        warn!("No profile found to decrement post_count for owner: {}", event.owner);
+                        warn!(
+                            "No profile found to decrement post_count for owner: {}",
+                            event.owner
+                        );
                     }
                 }
                 Err(e) => {
@@ -526,16 +576,16 @@ impl PostEventHandler {
         } else {
             // Get post_id to update comment count
             let post_id_result = diesel::sql_query(
-                "SELECT post_id FROM comments WHERE comment_id = $1 AND owner = $2"
+                "SELECT post_id FROM comments WHERE comment_id = $1 AND owner = $2",
             )
             .bind::<diesel::sql_types::Text, _>(&event.object_id)
             .bind::<diesel::sql_types::Text, _>(&event.owner)
             .get_result::<PostIdResult>(&mut conn)
             .await;
-            
+
             if let Ok(post_id_row) = post_id_result {
                 let post_id = post_id_row.post_id;
-                
+
                 // Mark comment as deleted
                 diesel::update(schema::comments::table)
                     .filter(schema::comments::comment_id.eq(&event.object_id))
@@ -543,7 +593,7 @@ impl PostEventHandler {
                     .set(schema::comments::deleted_at.eq(event.deleted_at as i64))
                     .execute(&mut conn)
                     .await?;
-                    
+
                 // Decrement post comment count
                 diesel::update(schema::posts::table)
                     .filter(schema::posts::post_id.eq(&post_id))
@@ -552,20 +602,28 @@ impl PostEventHandler {
                     .await?;
             }
         }
-            
+
         info!("Successfully processed deletion: {}", event.object_id);
         Ok(())
     }
-    
+
     /// Process a promoted post created event
-    async fn process_promoted_post_created(&self, event: &PromotedPostCreatedEvent, tx_id: &str) -> Result<()> {
+    async fn process_promoted_post_created(
+        &self,
+        event: &PromotedPostCreatedEvent,
+        tx_id: &str,
+    ) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
+
         info!("Processing promoted post created: {}", event.post_id);
-        
+
         // Generate unique promotion_id using timestamp and post_id
-        let promotion_id = format!("promo_{}_{}", event.created_at, event.post_id.replace("0x", ""));
-        
+        let promotion_id = format!(
+            "promo_{}_{}",
+            event.created_at,
+            event.post_id.replace("0x", "")
+        );
+
         // Create promoted post record
         diesel::insert_into(promoted_posts::table)
             .values((
@@ -582,14 +640,14 @@ impl PostEventHandler {
             ))
             .execute(&mut conn)
             .await?;
-            
+
         // Update post with promotion_id
         diesel::update(posts::table)
             .filter(posts::post_id.eq(&event.post_id))
             .set(posts::promotion_id.eq(&promotion_id))
             .execute(&mut conn)
             .await?;
-            
+
         // Create initial budget event
         diesel::insert_into(promotion_budget_events::table)
             .values((
@@ -603,24 +661,34 @@ impl PostEventHandler {
             ))
             .execute(&mut conn)
             .await?;
-            
-        info!("Successfully processed promoted post created: {}", event.post_id);
+
+        info!(
+            "Successfully processed promoted post created: {}",
+            event.post_id
+        );
         Ok(())
     }
-    
+
     /// Process a promoted post view confirmed event
-    async fn process_promoted_post_view_confirmed(&self, event: &PromotedPostViewConfirmedEvent, tx_id: &str) -> Result<()> {
+    async fn process_promoted_post_view_confirmed(
+        &self,
+        event: &PromotedPostViewConfirmedEvent,
+        tx_id: &str,
+    ) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
-        info!("Processing promoted post view confirmed: {} by {}", event.post_id, event.viewer);
-        
+
+        info!(
+            "Processing promoted post view confirmed: {} by {}",
+            event.post_id, event.viewer
+        );
+
         // Get promotion_id from post
         let promotion_id_result: Option<String> = posts::table
             .filter(posts::post_id.eq(&event.post_id))
             .select(posts::promotion_id)
             .first(&mut conn)
             .await?;
-            
+
         if let Some(promotion_id) = promotion_id_result {
             // Record the view
             diesel::insert_into(promotion_views::table)
@@ -636,16 +704,17 @@ impl PostEventHandler {
                 ))
                 .execute(&mut conn)
                 .await?;
-                
+
             // Update remaining budget
             diesel::update(promoted_posts::table)
                 .filter(promoted_posts::promotion_id.eq(&promotion_id))
-                .set(promoted_posts::remaining_budget.eq(
-                    promoted_posts::remaining_budget - event.payment_amount as i64
-                ))
+                .set(
+                    promoted_posts::remaining_budget
+                        .eq(promoted_posts::remaining_budget - event.payment_amount as i64),
+                )
                 .execute(&mut conn)
                 .await?;
-                
+
             // Create budget event for the payment
             diesel::insert_into(promotion_budget_events::table)
                 .values((
@@ -653,38 +722,45 @@ impl PostEventHandler {
                     promotion_budget_events::post_id.eq(&event.post_id),
                     promotion_budget_events::event_type.eq("view_payment"),
                     promotion_budget_events::amount.eq(event.payment_amount as i64),
-                    promotion_budget_events::remaining_budget.eq(
-                        promoted_posts::table
-                            .filter(promoted_posts::promotion_id.eq(&promotion_id))
-                            .select(promoted_posts::remaining_budget)
-                            .first::<i64>(&mut conn)
-                            .await?
-                    ),
+                    promotion_budget_events::remaining_budget.eq(promoted_posts::table
+                        .filter(promoted_posts::promotion_id.eq(&promotion_id))
+                        .select(promoted_posts::remaining_budget)
+                        .first::<i64>(&mut conn)
+                        .await?),
                     promotion_budget_events::timestamp.eq(event.timestamp as i64),
                     promotion_budget_events::transaction_id.eq(tx_id),
                 ))
                 .execute(&mut conn)
                 .await?;
         }
-            
-        info!("Successfully processed promoted post view confirmed: {}", event.post_id);
+
+        info!(
+            "Successfully processed promoted post view confirmed: {}",
+            event.post_id
+        );
         Ok(())
     }
-    
-    
+
     /// Process a promotion status toggled event
-    async fn process_promotion_status_toggled(&self, event: &PromotionStatusToggledEvent, tx_id: &str) -> Result<()> {
+    async fn process_promotion_status_toggled(
+        &self,
+        event: &PromotionStatusToggledEvent,
+        tx_id: &str,
+    ) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
-        info!("Processing promotion status toggled: {} to {}", event.post_id, event.new_status);
-        
+
+        info!(
+            "Processing promotion status toggled: {} to {}",
+            event.post_id, event.new_status
+        );
+
         // Get promotion_id from post
         let promotion_id_result: Option<String> = posts::table
             .filter(posts::post_id.eq(&event.post_id))
             .select(posts::promotion_id)
             .first(&mut conn)
             .await?;
-            
+
         if let Some(promotion_id) = promotion_id_result {
             // Update promotion status
             diesel::update(promoted_posts::table)
@@ -692,7 +768,7 @@ impl PostEventHandler {
                 .set(promoted_posts::active.eq(event.new_status))
                 .execute(&mut conn)
                 .await?;
-                
+
             // Create status event
             diesel::insert_into(promotion_status_events::table)
                 .values((
@@ -707,24 +783,34 @@ impl PostEventHandler {
                 .execute(&mut conn)
                 .await?;
         }
-            
-        info!("Successfully processed promotion status toggled: {}", event.post_id);
+
+        info!(
+            "Successfully processed promotion status toggled: {}",
+            event.post_id
+        );
         Ok(())
     }
-    
+
     /// Process a promotion funds withdrawn event
-    async fn process_promotion_funds_withdrawn(&self, event: &PromotionFundsWithdrawnEvent, tx_id: &str) -> Result<()> {
+    async fn process_promotion_funds_withdrawn(
+        &self,
+        event: &PromotionFundsWithdrawnEvent,
+        tx_id: &str,
+    ) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        
-        info!("Processing promotion funds withdrawn: {} amount: {}", event.post_id, event.withdrawn_amount);
-        
+
+        info!(
+            "Processing promotion funds withdrawn: {} amount: {}",
+            event.post_id, event.withdrawn_amount
+        );
+
         // Get promotion_id from post
         let promotion_id_result: Option<String> = posts::table
             .filter(posts::post_id.eq(&event.post_id))
             .select(posts::promotion_id)
             .first(&mut conn)
             .await?;
-            
+
         if let Some(promotion_id) = promotion_id_result {
             // Update promotion - set active to false and remaining budget to 0
             diesel::update(promoted_posts::table)
@@ -735,7 +821,7 @@ impl PostEventHandler {
                 ))
                 .execute(&mut conn)
                 .await?;
-                
+
             // Create status event
             diesel::insert_into(promotion_status_events::table)
                 .values((
@@ -750,7 +836,7 @@ impl PostEventHandler {
                 ))
                 .execute(&mut conn)
                 .await?;
-                
+
             // Create budget event
             diesel::insert_into(promotion_budget_events::table)
                 .values((
@@ -765,25 +851,31 @@ impl PostEventHandler {
                 .execute(&mut conn)
                 .await?;
         }
-            
-        info!("Successfully processed promotion funds withdrawn: {}", event.post_id);
+
+        info!(
+            "Successfully processed promotion funds withdrawn: {}",
+            event.post_id
+        );
         Ok(())
     }
-    
+
     /// Start listening for post events
     pub async fn start(&mut self) -> Result<()> {
         info!("Starting post event handler");
-        
+
         while let Some(event) = self.rx.recv().await {
             debug!("Received blockchain event: {:?}", event);
-            
+
             // Check if this is a post-related event
-            if event.event_type.contains("::post::") || event.event_type.contains("::PostCreated") || 
-               event.event_type.contains("::Comment") || event.event_type.contains("::Reaction") {
+            if event.event_type.contains("::post::")
+                || event.event_type.contains("::PostCreated")
+                || event.event_type.contains("::Comment")
+                || event.event_type.contains("::Reaction")
+            {
                 info!("Processing post event: {}", event.event_type);
-                
+
                 let tx_id = event.tx_digest.clone();
-                
+
                 // Handle post created event
                 if event.event_type.ends_with("::PostCreatedEvent") {
                     match parse_json_event::<PostCreatedEvent>(&event.data) {
@@ -791,7 +883,7 @@ impl PostEventHandler {
                             if let Err(e) = self.process_post_created(&post_event, &tx_id).await {
                                 error!("Failed to process post created event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
                             error!("Failed to deserialize post created event: {}", e);
                         }
@@ -801,10 +893,12 @@ impl PostEventHandler {
                 else if event.event_type.ends_with("::CommentCreatedEvent") {
                     match parse_json_event::<CommentCreatedEvent>(&event.data) {
                         Ok(comment_event) => {
-                            if let Err(e) = self.process_comment_created(&comment_event, &tx_id).await {
+                            if let Err(e) =
+                                self.process_comment_created(&comment_event, &tx_id).await
+                            {
                                 error!("Failed to process comment created event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
                             error!("Failed to deserialize comment created event: {}", e);
                         }
@@ -817,7 +911,7 @@ impl PostEventHandler {
                             if let Err(e) = self.process_reaction(&reaction_event, &tx_id).await {
                                 error!("Failed to process reaction event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
                             error!("Failed to deserialize reaction event: {}", e);
                         }
@@ -827,10 +921,13 @@ impl PostEventHandler {
                 else if event.event_type.ends_with("::RemoveReactionEvent") {
                     match parse_json_event::<RemoveReactionEvent>(&event.data) {
                         Ok(remove_reaction_event) => {
-                            if let Err(e) = self.process_remove_reaction(&remove_reaction_event, &tx_id).await {
+                            if let Err(e) = self
+                                .process_remove_reaction(&remove_reaction_event, &tx_id)
+                                .await
+                            {
                                 error!("Failed to process remove reaction event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
                             error!("Failed to deserialize remove reaction event: {}", e);
                         }
@@ -843,7 +940,7 @@ impl PostEventHandler {
                             if let Err(e) = self.process_repost(&repost_event, &tx_id).await {
                                 error!("Failed to process repost event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
                             error!("Failed to deserialize repost event: {}", e);
                         }
@@ -856,7 +953,7 @@ impl PostEventHandler {
                             if let Err(e) = self.process_tip(&tip_event, &tx_id).await {
                                 error!("Failed to process tip event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
                             error!("Failed to deserialize tip event: {}", e);
                         }
@@ -866,55 +963,60 @@ impl PostEventHandler {
                 else if event.event_type.ends_with("::ModerationEvent") {
                     match parse_json_event::<PostModerationEvent>(&event.data) {
                         Ok(moderation_event) => {
-                            if let Err(e) = self.process_moderation(&moderation_event, &tx_id).await {
+                            if let Err(e) = self.process_moderation(&moderation_event, &tx_id).await
+                            {
                                 error!("Failed to process moderation event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
                             error!("Failed to deserialize moderation event: {}", e);
                         }
                     }
                 }
                 // Handle content update event
-                else if event.event_type.ends_with("::ContentUpdateEvent") || 
-                         event.event_type.ends_with("::PostUpdatedEvent") || 
-                         event.event_type.ends_with("::CommentUpdatedEvent") {
+                else if event.event_type.ends_with("::ContentUpdateEvent")
+                    || event.event_type.ends_with("::PostUpdatedEvent")
+                    || event.event_type.ends_with("::CommentUpdatedEvent")
+                {
                     match parse_json_event::<ContentUpdateEvent>(&event.data) {
                         Ok(update_event) => {
-                            if let Err(e) = self.process_content_update(&update_event, &tx_id).await {
+                            if let Err(e) = self.process_content_update(&update_event, &tx_id).await
+                            {
                                 error!("Failed to process content update event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
                             error!("Failed to deserialize content update event: {}", e);
                         }
                     }
                 }
                 // Handle report event
-                else if event.event_type.ends_with("::ReportEvent") || 
-                         event.event_type.ends_with("::PostReportedEvent") || 
-                         event.event_type.ends_with("::CommentReportedEvent") {
+                else if event.event_type.ends_with("::ReportEvent")
+                    || event.event_type.ends_with("::PostReportedEvent")
+                    || event.event_type.ends_with("::CommentReportedEvent")
+                {
                     match parse_json_event::<ReportEvent>(&event.data) {
                         Ok(report_event) => {
                             if let Err(e) = self.process_report(&report_event, &tx_id).await {
                                 error!("Failed to process report event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
                             error!("Failed to deserialize report event: {}", e);
                         }
                     }
                 }
                 // Handle deletion event
-                else if event.event_type.ends_with("::DeletionEvent") || 
-                         event.event_type.ends_with("::PostDeletedEvent") || 
-                         event.event_type.ends_with("::CommentDeletedEvent") {
+                else if event.event_type.ends_with("::DeletionEvent")
+                    || event.event_type.ends_with("::PostDeletedEvent")
+                    || event.event_type.ends_with("::CommentDeletedEvent")
+                {
                     match parse_json_event::<PostDeletionEvent>(&event.data) {
                         Ok(deletion_event) => {
                             if let Err(e) = self.process_deletion(&deletion_event, &tx_id).await {
                                 error!("Failed to process deletion event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
                             error!("Failed to deserialize deletion event: {}", e);
                         }
@@ -924,39 +1026,59 @@ impl PostEventHandler {
                 else if event.event_type.ends_with("::PromotedPostCreatedEvent") {
                     match parse_json_event::<PromotedPostCreatedEvent>(&event.data) {
                         Ok(promoted_post_event) => {
-                            if let Err(e) = self.process_promoted_post_created(&promoted_post_event, &tx_id).await {
+                            if let Err(e) = self
+                                .process_promoted_post_created(&promoted_post_event, &tx_id)
+                                .await
+                            {
                                 error!("Failed to process promoted post created event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
                             error!("Failed to deserialize promoted post created event: {}", e);
                         }
                     }
                 }
                 // Handle promoted post view confirmed event
-                else if event.event_type.ends_with("::PromotedPostViewConfirmedEvent") {
+                else if event
+                    .event_type
+                    .ends_with("::PromotedPostViewConfirmedEvent")
+                {
                     match parse_json_event::<PromotedPostViewConfirmedEvent>(&event.data) {
                         Ok(view_event) => {
-                            if let Err(e) = self.process_promoted_post_view_confirmed(&view_event, &tx_id).await {
-                                error!("Failed to process promoted post view confirmed event: {}", e);
+                            if let Err(e) = self
+                                .process_promoted_post_view_confirmed(&view_event, &tx_id)
+                                .await
+                            {
+                                error!(
+                                    "Failed to process promoted post view confirmed event: {}",
+                                    e
+                                );
                             }
-                        },
+                        }
                         Err(e) => {
-                            error!("Failed to deserialize promoted post view confirmed event: {}", e);
+                            error!(
+                                "Failed to deserialize promoted post view confirmed event: {}",
+                                e
+                            );
                         }
                     }
                 }
-
                 // Handle promotion status toggled event
                 else if event.event_type.ends_with("::PromotionStatusToggledEvent") {
                     match parse_json_event::<PromotionStatusToggledEvent>(&event.data) {
                         Ok(status_event) => {
-                            if let Err(e) = self.process_promotion_status_toggled(&status_event, &tx_id).await {
+                            if let Err(e) = self
+                                .process_promotion_status_toggled(&status_event, &tx_id)
+                                .await
+                            {
                                 error!("Failed to process promotion status toggled event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
-                            error!("Failed to deserialize promotion status toggled event: {}", e);
+                            error!(
+                                "Failed to deserialize promotion status toggled event: {}",
+                                e
+                            );
                         }
                     }
                 }
@@ -964,23 +1086,29 @@ impl PostEventHandler {
                 else if event.event_type.ends_with("::PromotionFundsWithdrawnEvent") {
                     match parse_json_event::<PromotionFundsWithdrawnEvent>(&event.data) {
                         Ok(withdrawn_event) => {
-                            if let Err(e) = self.process_promotion_funds_withdrawn(&withdrawn_event, &tx_id).await {
+                            if let Err(e) = self
+                                .process_promotion_funds_withdrawn(&withdrawn_event, &tx_id)
+                                .await
+                            {
                                 error!("Failed to process promotion funds withdrawn event: {}", e);
                             }
-                        },
+                        }
                         Err(e) => {
-                            error!("Failed to deserialize promotion funds withdrawn event: {}", e);
+                            error!(
+                                "Failed to deserialize promotion funds withdrawn event: {}",
+                                e
+                            );
                         }
                     }
                 }
-                
+
                 // Update progress after processing the event
                 if let Err(e) = self.update_progress(event.timestamp_ms).await {
                     error!("Failed to update progress: {}", e);
                 }
             }
         }
-        
+
         info!("Post event handler terminated");
         Ok(())
     }
@@ -1001,11 +1129,15 @@ struct PostIdResult {
 }
 
 /// Handle post-related events from the blockchain
-pub async fn handle_event(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) -> Result<()> {
+pub async fn handle_event(
+    db: &Arc<Database>,
+    event: &MysEvent,
+    transaction_id: &str,
+) -> Result<()> {
     let event_type = &event.type_.to_string(); // Convert StructTag to String
-    
+
     info!("Processing post event: {}", event_type);
-    
+
     // Process each event type
     if event_type.ends_with("::PostCreatedEvent") {
         handle_post_created(db, event, transaction_id).await?;
@@ -1021,36 +1153,44 @@ pub async fn handle_event(db: &Arc<Database>, event: &MysEvent, transaction_id: 
         handle_tip(db, event, transaction_id).await?;
     } else if event_type.ends_with("::PostModerationEvent") {
         handle_moderation(db, event, transaction_id).await?;
-    } else if event_type.ends_with("::PostReportedEvent") || event_type.ends_with("::CommentReportedEvent") {
+    } else if event_type.ends_with("::PostReportedEvent")
+        || event_type.ends_with("::CommentReportedEvent")
+    {
         handle_report(db, event, transaction_id).await?;
-    } else if event_type.ends_with("::PostDeletedEvent") || event_type.ends_with("::CommentDeletedEvent") {
+    } else if event_type.ends_with("::PostDeletedEvent")
+        || event_type.ends_with("::CommentDeletedEvent")
+    {
         handle_deletion(db, event, transaction_id).await?;
     } else {
         debug!("Unhandled post event type: {}", event_type);
     }
-    
+
     Ok(())
 }
 
 /// Handle post created event
-async fn handle_post_created(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) -> Result<()> {
+async fn handle_post_created(
+    db: &Arc<Database>,
+    event: &MysEvent,
+    transaction_id: &str,
+) -> Result<()> {
     info!("Processing PostCreatedEvent");
-    
+
     // Parse the event
     let parsed_event = parse_event::<PostCreatedEvent>(event)
         .map_err(|e| anyhow!("Failed to parse PostCreatedEvent: {}", e))?;
-    
+
     info!("Parsed PostCreatedEvent: post_id={}", parsed_event.post_id);
-    
+
     // Get a database connection
     let mut conn = db.get_connection().await?;
-    
+
     // Convert event to model
     let mut new_post = parsed_event.into_model()?;
-    
+
     // Set the transaction ID
     new_post.transaction_id = transaction_id.to_string();
-    
+
     // Insert the new post into the database with explicit field updates
     diesel::insert_into(posts::table)
         .values(&new_post)
@@ -1065,36 +1205,41 @@ async fn handle_post_created(db: &Arc<Database>, event: &MysEvent, transaction_i
             posts::metadata_json.eq(&new_post.metadata_json),
             posts::my_ip_id.eq(&new_post.my_ip_id),
             posts::created_at.eq(&new_post.created_at),
-            posts::transaction_id.eq(transaction_id)
+            posts::transaction_id.eq(transaction_id),
         ))
         .execute(&mut conn)
         .await?;
-    
+
     info!("Processed PostCreatedEvent successfully");
     Ok(())
 }
 
 /// Handle comment created event
-async fn handle_comment_created(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) -> Result<()> {
+async fn handle_comment_created(
+    db: &Arc<Database>,
+    event: &MysEvent,
+    transaction_id: &str,
+) -> Result<()> {
     info!("Processing CommentCreatedEvent");
-    
+
     // Parse the event
     let parsed_event = parse_event::<CommentCreatedEvent>(event)
         .map_err(|e| anyhow!("Failed to parse CommentCreatedEvent: {}", e))?;
-    
-    info!("Parsed CommentCreatedEvent: comment_id={}, post_id={}", 
-          parsed_event.comment_id, parsed_event.post_id);
-    
+
+    info!(
+        "Parsed CommentCreatedEvent: comment_id={}, post_id={}",
+        parsed_event.comment_id, parsed_event.post_id
+    );
+
     // Get a database connection
     let mut conn = db.get_connection().await?;
-    
-    
+
     // Convert event to model
     let mut new_comment = parsed_event.into_model()?;
-    
+
     // Set the transaction ID
     new_comment.transaction_id = transaction_id.to_string();
-    
+
     // Insert the new comment into the database with explicit field updates
     diesel::insert_into(comments::table)
         .values(&new_comment)
@@ -1110,11 +1255,11 @@ async fn handle_comment_created(db: &Arc<Database>, event: &MysEvent, transactio
             comments::mentions.eq(&new_comment.mentions),
             comments::metadata_json.eq(&new_comment.metadata_json),
             comments::created_at.eq(&new_comment.created_at),
-            comments::transaction_id.eq(transaction_id)
+            comments::transaction_id.eq(transaction_id),
         ))
         .execute(&mut conn)
         .await?;
-    
+
     info!("Processed CommentCreatedEvent successfully");
     Ok(())
 }
@@ -1122,34 +1267,34 @@ async fn handle_comment_created(db: &Arc<Database>, event: &MysEvent, transactio
 /// Handle reaction event
 async fn handle_reaction(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) -> Result<()> {
     info!("Processing ReactionEvent");
-    
+
     // Parse the event
     let parsed_event = parse_event::<ReactionEvent>(event)
         .map_err(|e| anyhow!("Failed to parse ReactionEvent: {}", e))?;
-    
-    info!("Parsed ReactionEvent: object_id={}, reaction={}", 
-          parsed_event.object_id, parsed_event.reaction_text);
-    
+
+    info!(
+        "Parsed ReactionEvent: object_id={}, reaction={}",
+        parsed_event.object_id, parsed_event.reaction_text
+    );
+
     // Get a database connection
     let mut conn = db.get_connection().await?;
-    
 
-    
     // Convert event to model
     let mut new_reaction = parsed_event.into_model()?;
-    
+
     // Set the transaction ID
     new_reaction.transaction_id = transaction_id.to_string();
-    
+
     // Insert the reaction
     diesel::insert_into(reactions::table)
         .values(&new_reaction)
         .execute(&mut conn)
         .await?;
-    
+
     // Update or insert the reaction count
     let reaction_count = parsed_event.into_reaction_count()?;
-    
+
     diesel::insert_into(reaction_counts::table)
         .values(&reaction_count)
         .on_conflict((reaction_counts::object_id, reaction_counts::reaction_text))
@@ -1157,7 +1302,7 @@ async fn handle_reaction(db: &Arc<Database>, event: &MysEvent, transaction_id: &
         .set(reaction_counts::count.eq(reaction_counts::count + 1))
         .execute(&mut conn)
         .await?;
-    
+
     // Update the reaction count on the post or comment
     if parsed_event.is_post {
         diesel::update(posts::table)
@@ -1172,7 +1317,7 @@ async fn handle_reaction(db: &Arc<Database>, event: &MysEvent, transaction_id: &
             .execute(&mut conn)
             .await?;
     }
-    
+
     info!("Processed ReactionEvent successfully");
     Ok(())
 }
@@ -1180,23 +1325,25 @@ async fn handle_reaction(db: &Arc<Database>, event: &MysEvent, transaction_id: &
 /// Handle repost event
 async fn handle_repost(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) -> Result<()> {
     info!("Processing RepostEvent");
-    
+
     // Parse the event
     let parsed_event = parse_event::<RepostEvent>(event)
         .map_err(|e| anyhow!("Failed to parse RepostEvent: {}", e))?;
-    
-    info!("Parsed RepostEvent: repost_id={}, original_id={}", 
-          parsed_event.repost_id, parsed_event.original_id);
-    
+
+    info!(
+        "Parsed RepostEvent: repost_id={}, original_id={}",
+        parsed_event.repost_id, parsed_event.original_id
+    );
+
     // Get a database connection
     let mut conn = db.get_connection().await?;
-    
+
     // Convert event to model
     let mut new_repost = parsed_event.into_model()?;
-    
+
     // Set the transaction ID
     new_repost.transaction_id = transaction_id.to_string();
-    
+
     // Insert the repost with explicit field updates
     diesel::insert_into(reposts::table)
         .values(&new_repost)
@@ -1209,11 +1356,11 @@ async fn handle_repost(db: &Arc<Database>, event: &MysEvent, transaction_id: &st
             reposts::is_original_post.eq(&new_repost.is_original_post),
             reposts::owner.eq(&new_repost.owner),
             reposts::created_at.eq(&new_repost.created_at),
-            reposts::transaction_id.eq(transaction_id)
+            reposts::transaction_id.eq(transaction_id),
         ))
         .execute(&mut conn)
         .await?;
-    
+
     // Update the repost count on the original post
     if parsed_event.is_original_post {
         diesel::update(posts::table)
@@ -1228,7 +1375,7 @@ async fn handle_repost(db: &Arc<Database>, event: &MysEvent, transaction_id: &st
             .execute(&mut conn)
             .await?;
     }
-    
+
     info!("Processed RepostEvent successfully");
     Ok(())
 }
@@ -1236,29 +1383,31 @@ async fn handle_repost(db: &Arc<Database>, event: &MysEvent, transaction_id: &st
 /// Handle tip event
 async fn handle_tip(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) -> Result<()> {
     info!("Processing TipEvent");
-    
+
     // Parse the event
-    let parsed_event = parse_event::<TipEvent>(event)
-        .map_err(|e| anyhow!("Failed to parse TipEvent: {}", e))?;
-    
-    info!("Parsed TipEvent: from={}, to={}, amount={}", 
-          parsed_event.from, parsed_event.to, parsed_event.amount);
-    
+    let parsed_event =
+        parse_event::<TipEvent>(event).map_err(|e| anyhow!("Failed to parse TipEvent: {}", e))?;
+
+    info!(
+        "Parsed TipEvent: from={}, to={}, amount={}",
+        parsed_event.from, parsed_event.to, parsed_event.amount
+    );
+
     // Get a database connection
     let mut conn = db.get_connection().await?;
-    
+
     // Convert event to model
     let mut new_tip = parsed_event.into_model()?;
-    
+
     // Set the transaction ID
     new_tip.transaction_id = transaction_id.to_string();
-    
+
     // Insert the tip
     diesel::insert_into(tips::table)
         .values(&new_tip)
         .execute(&mut conn)
         .await?;
-    
+
     // Update the tips received amount on the post or comment
     if parsed_event.is_post {
         diesel::update(posts::table)
@@ -1273,70 +1422,77 @@ async fn handle_tip(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) 
             .execute(&mut conn)
             .await?;
     }
-    
+
     // Create unified revenue record for the tip
     let unified_revenue = parsed_event.create_unified_revenue_record(transaction_id.to_string())?;
-    
+
     diesel::insert_into(crate::schema::unified_revenue::table)
         .values(&unified_revenue)
         .execute(&mut conn)
         .await?;
-    
+
     info!("Processed TipEvent with revenue tracking successfully");
     Ok(())
 }
 
 /// Handle moderation event
-async fn handle_moderation(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) -> Result<()> {
+async fn handle_moderation(
+    db: &Arc<Database>,
+    event: &MysEvent,
+    transaction_id: &str,
+) -> Result<()> {
     info!("Processing PostModerationEvent");
-    
+
     // Parse the event
     let parsed_event = parse_event::<PostModerationEvent>(event)
         .map_err(|e| anyhow!("Failed to parse PostModerationEvent: {}", e))?;
-    
-    info!("Parsed PostModerationEvent: object_id={}, platform_id={}, removed={}", 
-          parsed_event.object_id, parsed_event.platform_id, parsed_event.removed);
-    
+
+    info!(
+        "Parsed PostModerationEvent: object_id={}, platform_id={}, removed={}",
+        parsed_event.object_id, parsed_event.platform_id, parsed_event.removed
+    );
+
     // Get a database connection
     let mut conn = db.get_connection().await?;
-    
+
     // Convert event to model
     let mut new_moderation = parsed_event.into_model()?;
-    
+
     // Set the transaction ID
     new_moderation.transaction_id = transaction_id.to_string();
-    
+
     // Insert the moderation event
     diesel::insert_into(posts_moderation_events::table)
         .values(&new_moderation)
         .execute(&mut conn)
         .await?;
-    
+
     // Update the post or comment removed status
     // (Assumes we have a way to tell if this is for a post or comment)
-    match true { // Change based on how to detect if this is post or comment
+    match true {
+        // Change based on how to detect if this is post or comment
         true => {
             diesel::update(posts::table)
                 .filter(posts::post_id.eq(&parsed_event.object_id))
                 .set((
                     posts::removed_from_platform.eq(parsed_event.removed),
-                    posts::removed_by.eq(Some(parsed_event.moderated_by.clone()))
+                    posts::removed_by.eq(Some(parsed_event.moderated_by.clone())),
                 ))
                 .execute(&mut conn)
                 .await?;
-        },
+        }
         false => {
             diesel::update(comments::table)
                 .filter(comments::comment_id.eq(&parsed_event.object_id))
                 .set((
                     comments::removed_from_platform.eq(parsed_event.removed),
-                    comments::removed_by.eq(Some(parsed_event.moderated_by.clone()))
+                    comments::removed_by.eq(Some(parsed_event.moderated_by.clone())),
                 ))
                 .execute(&mut conn)
                 .await?;
         }
     }
-    
+
     info!("Processed PostModerationEvent successfully");
     Ok(())
 }
@@ -1344,29 +1500,31 @@ async fn handle_moderation(db: &Arc<Database>, event: &MysEvent, transaction_id:
 /// Handle report event
 async fn handle_report(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) -> Result<()> {
     info!("Processing ReportEvent");
-    
+
     // Parse the event
     let parsed_event = parse_event::<ReportEvent>(event)
         .map_err(|e| anyhow!("Failed to parse ReportEvent: {}", e))?;
-    
-    info!("Parsed ReportEvent: object_id={}, reporter={}, reason={}", 
-          parsed_event.object_id, parsed_event.reporter, parsed_event.reason_code);
-    
+
+    info!(
+        "Parsed ReportEvent: object_id={}, reporter={}, reason={}",
+        parsed_event.object_id, parsed_event.reporter, parsed_event.reason_code
+    );
+
     // Get a database connection
     let mut conn = db.get_connection().await?;
-    
+
     // Convert event to model
     let mut new_report = parsed_event.into_model()?;
-    
+
     // Set the transaction ID
     new_report.transaction_id = transaction_id.to_string();
-    
+
     // Insert the report
     diesel::insert_into(posts_reports::table)
         .values(&new_report)
         .execute(&mut conn)
         .await?;
-    
+
     info!("Processed ReportEvent successfully");
     Ok(())
 }
@@ -1374,29 +1532,31 @@ async fn handle_report(db: &Arc<Database>, event: &MysEvent, transaction_id: &st
 /// Handle deletion event
 async fn handle_deletion(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) -> Result<()> {
     info!("Processing DeletionEvent");
-    
+
     // Parse the event
     let parsed_event = parse_event::<PostDeletionEvent>(event)
         .map_err(|e| anyhow!("Failed to parse DeletionEvent: {}", e))?;
-    
-    info!("Parsed DeletionEvent: object_id={}, is_post={}", 
-          parsed_event.object_id, parsed_event.is_post);
-    
+
+    info!(
+        "Parsed DeletionEvent: object_id={}, is_post={}",
+        parsed_event.object_id, parsed_event.is_post
+    );
+
     // Get a database connection
     let mut conn = db.get_connection().await?;
-    
+
     // Convert event to model
     let mut new_deletion = parsed_event.into_model()?;
-    
+
     // Set the transaction ID
     new_deletion.transaction_id = transaction_id.to_string();
-    
+
     // Insert the deletion event
     diesel::insert_into(posts_deletion_events::table)
         .values(&new_deletion)
         .execute(&mut conn)
         .await?;
-    
+
     // Update the post or comment deleted_at field
     if parsed_event.is_post {
         diesel::update(posts::table)
@@ -1411,7 +1571,7 @@ async fn handle_deletion(db: &Arc<Database>, event: &MysEvent, transaction_id: &
             .execute(&mut conn)
             .await?;
     }
-    
+
     info!("Processed DeletionEvent successfully");
     Ok(())
-} 
+}

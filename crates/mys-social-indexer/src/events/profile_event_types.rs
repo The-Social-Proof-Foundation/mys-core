@@ -34,16 +34,24 @@ impl ProfileEventType {
             s if s.contains("::ProfileTransferredEvent") => Some(Self::ProfileTransferred),
             s if s.contains("::ServiceAuthorizedEvent") => Some(Self::ServiceAuthorized),
             s if s.contains("::ServiceRevokedEvent") => Some(Self::ServiceRevoked),
-            s if s.contains("::BlockAddedEvent") || s.contains("::UserBlockEvent") => Some(Self::BlockAdded),
-            s if s.contains("::BlockRemovedEvent") || s.contains("::UserUnblockEvent") => Some(Self::BlockRemoved),
-            s if s.contains("::UserJoinedPlatformEvent") || s.contains("::PlatformJoinedEvent") => Some(Self::PlatformJoined),
-            s if s.contains("::UserLeftPlatformEvent") || s.contains("::PlatformLeftEvent") => Some(Self::PlatformLeft),
+            s if s.contains("::BlockAddedEvent") || s.contains("::UserBlockEvent") => {
+                Some(Self::BlockAdded)
+            }
+            s if s.contains("::BlockRemovedEvent") || s.contains("::UserUnblockEvent") => {
+                Some(Self::BlockRemoved)
+            }
+            s if s.contains("::UserJoinedPlatformEvent") || s.contains("::PlatformJoinedEvent") => {
+                Some(Self::PlatformJoined)
+            }
+            s if s.contains("::UserLeftPlatformEvent") || s.contains("::PlatformLeftEvent") => {
+                Some(Self::PlatformLeft)
+            }
             s if s.contains("::TokensVestedEvent") => Some(Self::TokensVested),
             s if s.contains("::TokensClaimedEvent") => Some(Self::TokensClaimed),
             _ => None,
         }
     }
-    
+
     pub fn to_str(&self) -> &'static str {
         match self {
             Self::ProfileCreated => "ProfileCreatedEvent",
@@ -70,14 +78,15 @@ impl From<ProfileEventType> for String {
 /// Helper method to extract a profile ID from an event
 pub fn extract_profile_id(event_data: &Value) -> Option<String> {
     // Try standard format first
-    let profile_id = event_data.get("profile_id")
+    let profile_id = event_data
+        .get("profile_id")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
-    
+
     if profile_id.is_some() {
         return profile_id;
     }
-    
+
     // Try blockchain object format with fields.profile_id
     if let Some(fields) = event_data.get("fields") {
         if let Some(profile_id) = fields.get("profile_id") {
@@ -86,7 +95,7 @@ pub fn extract_profile_id(event_data: &Value) -> Option<String> {
             }
         }
     }
-    
+
     // Try content.fields format
     if let Some(content) = event_data.get("content") {
         if let Some(fields) = content.get("fields") {
@@ -97,16 +106,17 @@ pub fn extract_profile_id(event_data: &Value) -> Option<String> {
             }
         }
     }
-    
+
     // Try with blocker_profile_id for block events
-    let blocker_id = event_data.get("blocker_profile_id")
+    let blocker_id = event_data
+        .get("blocker_profile_id")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
-    
+
     if blocker_id.is_some() {
         return blocker_id;
     }
-    
+
     // Try array/tuple formats that might be in the move structure
     if let Some(array) = event_data.as_array() {
         if !array.is_empty() {
@@ -115,11 +125,13 @@ pub fn extract_profile_id(event_data: &Value) -> Option<String> {
             }
         }
     }
-    
+
     // Log failure for debugging
-    tracing::warn!("Failed to extract profile_id from event data: {}", 
-        serde_json::to_string_pretty(event_data).unwrap_or_default());
-    
+    tracing::warn!(
+        "Failed to extract profile_id from event data: {}",
+        serde_json::to_string_pretty(event_data).unwrap_or_default()
+    );
+
     None
 }
 
@@ -177,14 +189,15 @@ pub struct TokensClaimedEvent {
 /// Helper method to extract a wallet ID from a vesting event
 pub fn extract_wallet_id(event_data: &Value) -> Option<String> {
     // Try standard format first
-    let wallet_id = event_data.get("wallet_id")
+    let wallet_id = event_data
+        .get("wallet_id")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
-    
+
     if wallet_id.is_some() {
         return wallet_id;
     }
-    
+
     // Try blockchain object format with fields.wallet_id
     if let Some(fields) = event_data.get("fields") {
         if let Some(wallet_id) = fields.get("wallet_id") {
@@ -193,7 +206,7 @@ pub fn extract_wallet_id(event_data: &Value) -> Option<String> {
             }
         }
     }
-    
+
     // Try content.fields format
     if let Some(content) = event_data.get("content") {
         if let Some(fields) = content.get("fields") {
@@ -204,6 +217,6 @@ pub fn extract_wallet_id(event_data: &Value) -> Option<String> {
             }
         }
     }
-    
+
     None
 }

@@ -51,5 +51,9 @@ pub struct HandlerOptions {
 #[async_trait]
 pub trait BlockchainHandler: Send + Sync {
     /// Handle a blockchain event
-    async fn handle_event(&self, event: MysEventWithMetadata, options: &HandlerOptions) -> Result<()>;
-} 
+    async fn handle_event(
+        &self,
+        event: MysEventWithMetadata,
+        options: &HandlerOptions,
+    ) -> Result<()>;
+}

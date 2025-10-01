@@ -1,10 +1,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use serde::{Deserialize, Serialize};
+use crate::models::subscription::*;
 use anyhow::Result;
 use chrono::Utc;
-use crate::models::subscription::*;
+use serde::{Deserialize, Serialize};
 
 /// Subscription event types from the Move contract
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -18,14 +18,22 @@ pub enum SubscriptionEventType {
 impl SubscriptionEventType {
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            s if s.contains("::ProfileSubscriptionCreatedEvent") => Some(Self::ProfileSubscriptionCreated),
-            s if s.contains("::ProfileSubscriptionRenewedEvent") => Some(Self::ProfileSubscriptionRenewed),
-            s if s.contains("::ProfileSubscriptionCancelledEvent") => Some(Self::ProfileSubscriptionCancelled),
-            s if s.contains("::ProfileSubscriptionUpdatedEvent") => Some(Self::ProfileSubscriptionUpdated),
+            s if s.contains("::ProfileSubscriptionCreatedEvent") => {
+                Some(Self::ProfileSubscriptionCreated)
+            }
+            s if s.contains("::ProfileSubscriptionRenewedEvent") => {
+                Some(Self::ProfileSubscriptionRenewed)
+            }
+            s if s.contains("::ProfileSubscriptionCancelledEvent") => {
+                Some(Self::ProfileSubscriptionCancelled)
+            }
+            s if s.contains("::ProfileSubscriptionUpdatedEvent") => {
+                Some(Self::ProfileSubscriptionUpdated)
+            }
             _ => None,
         }
     }
-    
+
     pub fn to_str(&self) -> &'static str {
         match self {
             Self::ProfileSubscriptionCreated => "ProfileSubscriptionCreatedEvent",
@@ -71,7 +79,11 @@ impl ProfileSubscriptionCreatedEvent {
         })
     }
 
-    pub fn into_revenue_model(&self, tx_id: String, profile_owner: String) -> Result<NewSubscriptionRevenue> {
+    pub fn into_revenue_model(
+        &self,
+        tx_id: String,
+        profile_owner: String,
+    ) -> Result<NewSubscriptionRevenue> {
         Ok(NewSubscriptionRevenue {
             service_id: self.service_id.clone(),
             subscription_id: Some(generate_subscription_id()),
@@ -89,7 +101,9 @@ impl ProfileSubscriptionCreatedEvent {
 
     pub fn into_event_model(&self, tx_id: String) -> Result<NewSubscriptionEvent> {
         Ok(NewSubscriptionEvent {
-            event_type: SubscriptionEventType::ProfileSubscriptionCreated.to_str().to_string(),
+            event_type: SubscriptionEventType::ProfileSubscriptionCreated
+                .to_str()
+                .to_string(),
             subscription_id: Some(generate_subscription_id()),
             service_id: Some(self.service_id.clone()),
             subscriber: Some(self.subscriber.clone()),
@@ -116,7 +130,9 @@ pub struct ProfileSubscriptionRenewedEvent {
 impl ProfileSubscriptionRenewedEvent {
     pub fn into_event_model(&self, tx_id: String) -> Result<NewSubscriptionEvent> {
         Ok(NewSubscriptionEvent {
-            event_type: SubscriptionEventType::ProfileSubscriptionRenewed.to_str().to_string(),
+            event_type: SubscriptionEventType::ProfileSubscriptionRenewed
+                .to_str()
+                .to_string(),
             subscription_id: Some(self.subscription_id.clone()),
             service_id: None, // Will be fetched from existing subscription
             subscriber: Some(self.subscriber.clone()),
@@ -129,14 +145,24 @@ impl ProfileSubscriptionRenewedEvent {
         })
     }
 
-    pub fn into_revenue_model(&self, tx_id: String, service_id: String, monthly_fee: u64, profile_owner: String) -> Result<NewSubscriptionRevenue> {
+    pub fn into_revenue_model(
+        &self,
+        tx_id: String,
+        service_id: String,
+        monthly_fee: u64,
+        profile_owner: String,
+    ) -> Result<NewSubscriptionRevenue> {
         Ok(NewSubscriptionRevenue {
             service_id,
             subscription_id: Some(self.subscription_id.clone()),
             from_address: self.subscriber.clone(),
             to_address: profile_owner,
             amount: monthly_fee as i64,
-            revenue_type: if self.auto_renewed { "auto_renewal".to_string() } else { "renewal".to_string() },
+            revenue_type: if self.auto_renewed {
+                "auto_renewal".to_string()
+            } else {
+                "renewal".to_string()
+            },
             payment_time: self.new_expires_at as i64 - (30 * 24 * 60 * 60 * 1000),
             time: Utc::now().naive_utc(),
             transaction_id: tx_id,
@@ -157,7 +183,9 @@ pub struct ProfileSubscriptionCancelledEvent {
 impl ProfileSubscriptionCancelledEvent {
     pub fn into_event_model(&self, tx_id: String) -> Result<NewSubscriptionEvent> {
         Ok(NewSubscriptionEvent {
-            event_type: SubscriptionEventType::ProfileSubscriptionCancelled.to_str().to_string(),
+            event_type: SubscriptionEventType::ProfileSubscriptionCancelled
+                .to_str()
+                .to_string(),
             subscription_id: Some(self.subscription_id.clone()),
             service_id: None, // Will be fetched from existing subscription
             subscriber: Some(self.subscriber.clone()),
@@ -170,7 +198,12 @@ impl ProfileSubscriptionCancelledEvent {
         })
     }
 
-    pub fn into_revenue_model(&self, tx_id: String, service_id: String, profile_owner: String) -> Result<Option<NewSubscriptionRevenue>> {
+    pub fn into_revenue_model(
+        &self,
+        tx_id: String,
+        service_id: String,
+        profile_owner: String,
+    ) -> Result<Option<NewSubscriptionRevenue>> {
         if self.refunded_amount > 0 {
             Ok(Some(NewSubscriptionRevenue {
                 service_id,
@@ -203,7 +236,9 @@ pub struct ProfileSubscriptionUpdatedEvent {
 impl ProfileSubscriptionUpdatedEvent {
     pub fn into_event_model(&self, tx_id: String) -> Result<NewSubscriptionEvent> {
         Ok(NewSubscriptionEvent {
-            event_type: SubscriptionEventType::ProfileSubscriptionUpdated.to_str().to_string(),
+            event_type: SubscriptionEventType::ProfileSubscriptionUpdated
+                .to_str()
+                .to_string(),
             subscription_id: None,
             service_id: Some(self.service_id.clone()),
             subscriber: None,
@@ -229,31 +264,34 @@ pub fn validate_subscription_event(event_data: &serde_json::Value) -> Result<()>
     if event_data.get("service_id").is_none() {
         return Err(anyhow::anyhow!("Missing service_id in subscription event"));
     }
-    
+
     if event_data.get("subscriber").is_none() {
         return Err(anyhow::anyhow!("Missing subscriber in subscription event"));
     }
-    
+
     Ok(())
 }
 
 /// Extract service ID from subscription event data
 pub fn extract_service_id(event_data: &serde_json::Value) -> Option<String> {
-    event_data.get("service_id")
+    event_data
+        .get("service_id")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
 }
 
 /// Extract subscriber from subscription event data
 pub fn extract_subscriber(event_data: &serde_json::Value) -> Option<String> {
-    event_data.get("subscriber")
+    event_data
+        .get("subscriber")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
 }
 
 /// Extract subscription ID from subscription event data
 pub fn extract_subscription_id(event_data: &serde_json::Value) -> Option<String> {
-    event_data.get("subscription_id")
+    event_data
+        .get("subscription_id")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
 }
@@ -261,25 +299,26 @@ pub fn extract_subscription_id(event_data: &serde_json::Value) -> Option<String>
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_subscription_event_type_from_str() {
         assert_eq!(
-            SubscriptionEventType::from_str("social_contracts::subscription::ProfileSubscriptionCreatedEvent"),
+            SubscriptionEventType::from_str(
+                "social_contracts::subscription::ProfileSubscriptionCreatedEvent"
+            ),
             Some(SubscriptionEventType::ProfileSubscriptionCreated)
         );
-        
+
         assert_eq!(
-            SubscriptionEventType::from_str("social_contracts::subscription::ProfileSubscriptionRenewedEvent"),
+            SubscriptionEventType::from_str(
+                "social_contracts::subscription::ProfileSubscriptionRenewedEvent"
+            ),
             Some(SubscriptionEventType::ProfileSubscriptionRenewed)
         );
-        
-        assert_eq!(
-            SubscriptionEventType::from_str("invalid_event"),
-            None
-        );
+
+        assert_eq!(SubscriptionEventType::from_str("invalid_event"), None);
     }
-    
+
     #[test]
     fn test_profile_subscription_created_event_conversion() {
         let event = ProfileSubscriptionCreatedEvent {
@@ -289,13 +328,13 @@ mod tests {
             monthly_fee: 1000,
             auto_renew: true,
         };
-        
+
         let model = event.into_model(1640995200, "tx_123".to_string()).unwrap();
         assert_eq!(model.service_id, "service_123");
         assert_eq!(model.subscriber, "subscriber_456");
         assert_eq!(model.auto_renew, true);
     }
-    
+
     #[test]
     fn test_validate_subscription_event() {
         let valid_event = serde_json::json!({
@@ -303,13 +342,13 @@ mod tests {
             "subscriber": "subscriber_456",
             "expires_at": 1640995200000i64
         });
-        
+
         assert!(validate_subscription_event(&valid_event).is_ok());
-        
+
         let invalid_event = serde_json::json!({
             "expires_at": 1640995200000i64
         });
-        
+
         assert!(validate_subscription_event(&invalid_event).is_err());
     }
-} 
+}

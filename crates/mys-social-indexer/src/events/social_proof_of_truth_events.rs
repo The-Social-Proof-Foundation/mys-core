@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use chrono::Utc;
 
 use crate::models::{
-    NewSpotRecord, NewSpotBet, NewSpotPayout, NewSpotRefund, NewSpotResolution, NewSpotEventLog,
+    NewSpotBet, NewSpotEventLog, NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution,
 };
 
 // Matches social_contracts::social_proof_of_truth::SpotBetPlacedEvent
@@ -108,7 +108,13 @@ impl SpotRefundEvent {
 }
 
 // Helper to create initial record if needed
-pub fn default_record_for_post(post_id: &str, amm_split_bps_used: i32, created_epoch: i64, version: i64, tx: String) -> NewSpotRecord {
+pub fn default_record_for_post(
+    post_id: &str,
+    amm_split_bps_used: i32,
+    created_epoch: i64,
+    version: i64,
+    tx: String,
+) -> NewSpotRecord {
     let now = Utc::now().naive_utc();
     NewSpotRecord {
         post_id: post_id.to_string(),
@@ -126,7 +132,12 @@ pub fn default_record_for_post(post_id: &str, amm_split_bps_used: i32, created_e
     }
 }
 
-pub fn new_event_log(event_type: &str, post_id: &str, event_data: &Value, event_id: &str) -> NewSpotEventLog {
+pub fn new_event_log(
+    event_type: &str,
+    post_id: &str,
+    event_data: &Value,
+    event_id: &str,
+) -> NewSpotEventLog {
     NewSpotEventLog {
         event_type: event_type.to_string(),
         post_id: post_id.to_string(),
@@ -135,4 +146,3 @@ pub fn new_event_log(event_type: &str, post_id: &str, event_data: &Value, event_
         created_at: Utc::now(),
     }
 }
-

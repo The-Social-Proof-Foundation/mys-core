@@ -1,10 +1,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::schema::blocked_profiles;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::schema::blocked_profiles;
 
 /// Blocked profile model - represents current blocking relationships with rich profile data
 #[derive(Debug, Queryable, Selectable, Serialize, Deserialize)]
@@ -89,19 +89,19 @@ impl NewBlockedProfile {
 #[derive(Debug, Serialize)]
 pub struct EnrichedBlockedProfile {
     // Profile Identity
-    pub profile_id: Option<String>,           // Blockchain profile ID
-    pub wallet_address: String,               // Wallet address
-    pub username: String,                     // @username
-    pub display_name: Option<String>,         // Display name
-    
+    pub profile_id: Option<String>,   // Blockchain profile ID
+    pub wallet_address: String,       // Wallet address
+    pub username: String,             // @username
+    pub display_name: Option<String>, // Display name
+
     // Profile Media
-    pub profile_photo: Option<String>,        // Profile photo URL
-    
-    // Blocking Metadata  
-    pub blocked_at: NaiveDateTime,            // When last blocked
-    pub first_blocked_at: NaiveDateTime,      // When first blocked
-    pub total_block_count: i32,               // Times blocked
-    pub block_list_address: Option<String>,   // Block list object ID
+    pub profile_photo: Option<String>, // Profile photo URL
+
+    // Blocking Metadata
+    pub blocked_at: NaiveDateTime,          // When last blocked
+    pub first_blocked_at: NaiveDateTime,    // When first blocked
+    pub total_block_count: i32,             // Times blocked
+    pub block_list_address: Option<String>, // Block list object ID
 }
 
 impl From<BlockedProfile> for EnrichedBlockedProfile {
@@ -133,8 +133,8 @@ pub struct PaginatedBlockedProfilesResponse {
 #[derive(Debug, Serialize)]
 pub struct PaginationMetadata {
     pub limit: i32,
-    pub offset: Option<i32>,                  // For offset-based pagination
-    pub cursor: Option<String>,               // For cursor-based pagination  
+    pub offset: Option<i32>,    // For offset-based pagination
+    pub cursor: Option<String>, // For cursor-based pagination
     pub has_next_page: bool,
     pub has_previous_page: bool,
 }

@@ -1,10 +1,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::schema::profiles;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::schema::profiles;
 
 #[derive(Debug, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = profiles)]
@@ -15,7 +15,7 @@ pub struct Profile {
     pub display_name: Option<String>,
     pub bio: Option<String>,
     pub profile_photo: Option<String>,
-    pub website: Option<String>,     // Website field from contract
+    pub website: Option<String>, // Website field from contract
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub cover_photo: Option<String>,
@@ -58,7 +58,7 @@ pub struct NewProfile {
     pub display_name: Option<String>,
     pub bio: Option<String>,
     pub profile_photo: Option<String>,
-    pub website: Option<String>,     // Website field from contract
+    pub website: Option<String>, // Website field from contract
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub cover_photo: Option<String>,
@@ -104,7 +104,7 @@ pub struct UpdateProfile {
     pub display_name: Option<String>,
     pub bio: Option<String>,
     pub profile_photo: Option<String>,
-    pub website: Option<String>,     // Website field from contract
+    pub website: Option<String>, // Website field from contract
     pub cover_photo: Option<String>,
     // Social graph statistics - optional for when they need to be updated
     pub followers_count: Option<i32>,

@@ -4,8 +4,8 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    Json,
     response::{IntoResponse, Response},
+    Json,
 };
 use diesel::prelude::*;
 use diesel::sql_types::*;
@@ -76,52 +76,52 @@ pub struct AccessAnalytics {
 pub struct MarketplaceDataBasic {
     #[diesel(sql_type = Text)]
     pub ip_id: String,
-    
+
     #[diesel(sql_type = Text)]
     pub owner: String,
-    
+
     #[diesel(sql_type = Text)]
     pub media_type: String,
-    
+
     #[diesel(sql_type = Jsonb)]
     pub tags: serde_json::Value,
-    
+
     #[diesel(sql_type = Nullable<Text>)]
     pub platform_id: Option<String>,
-    
+
     #[diesel(sql_type = BigInt)]
     pub timestamp_start: i64,
-    
+
     #[diesel(sql_type = Nullable<BigInt>)]
     pub timestamp_end: Option<i64>,
-    
+
     #[diesel(sql_type = BigInt)]
     pub created_at: i64,
-    
+
     #[diesel(sql_type = BigInt)]
     pub last_updated: i64,
-    
+
     #[diesel(sql_type = Nullable<BigInt>)]
     pub one_time_price: Option<i64>,
-    
+
     #[diesel(sql_type = Nullable<BigInt>)]
     pub subscription_price: Option<i64>,
-    
+
     #[diesel(sql_type = BigInt)]
     pub subscription_duration_days: i64,
-    
+
     #[diesel(sql_type = Nullable<Text>)]
     pub geographic_region: Option<String>,
-    
+
     #[diesel(sql_type = Nullable<Text>)]
     pub data_quality: Option<String>,
-    
+
     #[diesel(sql_type = Nullable<BigInt>)]
     pub sample_size: Option<i64>,
-    
+
     #[diesel(sql_type = Bool)]
     pub is_updating: bool,
-    
+
     #[diesel(sql_type = Nullable<Text>)]
     pub update_frequency: Option<String>,
 }
@@ -149,7 +149,7 @@ pub async fn get_marketplace_data_by_id(
         FROM my_ip_data 
         WHERE ip_id = $1
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&ip_id)
         .get_result::<MarketplaceDataBasic>(&mut conn)
@@ -159,21 +159,19 @@ pub async fn get_marketplace_data_by_id(
         Ok(data) => Json(data).into_response(),
         Err(diesel::result::Error::NotFound) => {
             (StatusCode::NOT_FOUND, "Marketplace data not found").into_response()
-        },
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
         }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
 /// List marketplace data with filtering and pagination
 pub async fn list_marketplace_data(
-    State(pool): State<DbPool>, 
-    Query(params): Query<MarketplaceQuery>
+    State(pool): State<DbPool>,
+    Query(params): Query<MarketplaceQuery>,
 ) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
@@ -188,43 +186,49 @@ pub async fn list_marketplace_data(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     // Build dynamic SQL query based on filters
     let mut query = "
         SELECT ip_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
                geographic_region, data_quality, sample_size, is_updating, update_frequency
         FROM my_ip_data WHERE 1=1".to_string();
-    
+
     // Apply filters
     if let Some(creator) = &params.creator {
         query.push_str(&format!(" AND owner = '{}'", creator));
     }
-    
+
     if let Some(media_type) = &params.media_type {
         query.push_str(&format!(" AND media_type = '{}'", media_type));
     }
-    
+
     if let Some(platform_id) = &params.platform_id {
         query.push_str(&format!(" AND platform_id = '{}'", platform_id));
     }
-    
+
     if let Some(data_quality) = &params.data_quality {
         query.push_str(&format!(" AND data_quality = '{}'", data_quality));
     }
-    
+
     if let Some(geographic_region) = &params.geographic_region {
         query.push_str(&format!(" AND geographic_region = '{}'", geographic_region));
     }
-    
+
     if let Some(min_price) = params.min_price {
-        query.push_str(&format!(" AND (one_time_price >= {} OR subscription_price >= {})", min_price, min_price));
+        query.push_str(&format!(
+            " AND (one_time_price >= {} OR subscription_price >= {})",
+            min_price, min_price
+        ));
     }
-    
+
     if let Some(max_price) = params.max_price {
-        query.push_str(&format!(" AND (one_time_price <= {} OR subscription_price <= {})", max_price, max_price));
+        query.push_str(&format!(
+            " AND (one_time_price <= {} OR subscription_price <= {})",
+            max_price, max_price
+        ));
     }
-    
+
     if let Some(is_free) = params.is_free {
         if is_free {
             query.push_str(" AND one_time_price IS NULL AND subscription_price IS NULL");
@@ -232,11 +236,11 @@ pub async fn list_marketplace_data(
             query.push_str(" AND (one_time_price IS NOT NULL OR subscription_price IS NOT NULL)");
         }
     }
-    
+
     if let Some(tags) = &params.tags {
         query.push_str(&format!(" AND tags @> '[\"{}\"]\\'", tags));
     }
-    
+
     // Apply sorting
     let sort_clause = match params.sort_by.as_deref() {
         Some("price") => " ORDER BY COALESCE(one_time_price, subscription_price) DESC",
@@ -245,22 +249,20 @@ pub async fn list_marketplace_data(
         _ => " ORDER BY created_at DESC", // Default sort
     };
     query.push_str(sort_clause);
-    
+
     query.push_str(&format!(" LIMIT {} OFFSET {}", limit, offset));
-    
+
     let result = diesel::sql_query(&query)
         .load::<MarketplaceDataBasic>(&mut conn)
         .await;
-    
+
     match result {
         Ok(data) => Json(data).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -283,7 +285,7 @@ pub async fn get_ip_purchases(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     let query = "
         SELECT id, ip_id, buyer, price, purchase_type, purchase_time, time, transaction_id
         FROM my_ip_purchases 
@@ -291,7 +293,7 @@ pub async fn get_ip_purchases(
         ORDER BY purchase_time DESC 
         LIMIT $2 OFFSET $3
     ";
-    
+
     #[derive(QueryableByName, Serialize)]
     struct PurchaseInfo {
         #[diesel(sql_type = Integer)]
@@ -311,23 +313,21 @@ pub async fn get_ip_purchases(
         #[diesel(sql_type = Text)]
         transaction_id: String,
     }
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&ip_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<PurchaseInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(purchases) => Json(purchases).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -350,7 +350,7 @@ pub async fn get_ip_subscriptions(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     let query = "
         SELECT id, ip_id, subscriber, subscription_start, subscription_end, price, time, transaction_id
         FROM my_ip_subscriptions 
@@ -358,7 +358,7 @@ pub async fn get_ip_subscriptions(
         ORDER BY subscription_start DESC 
         LIMIT $2 OFFSET $3
     ";
-    
+
     #[derive(QueryableByName, Serialize)]
     struct SubscriptionInfo {
         #[diesel(sql_type = Integer)]
@@ -378,23 +378,21 @@ pub async fn get_ip_subscriptions(
         #[diesel(sql_type = Text)]
         transaction_id: String,
     }
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&ip_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<SubscriptionInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(subscriptions) => Json(subscriptions).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -417,7 +415,7 @@ pub async fn get_ip_revenue(
 
     let limit = params.limit.unwrap_or(30).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     let query = "
         SELECT id, ip_id, from_address, to_address, amount, revenue_type, revenue_time, time, transaction_id
         FROM my_ip_revenue 
@@ -425,7 +423,7 @@ pub async fn get_ip_revenue(
         ORDER BY revenue_time DESC 
         LIMIT $2 OFFSET $3
     ";
-    
+
     #[derive(QueryableByName, Serialize)]
     struct RevenueInfo {
         #[diesel(sql_type = Integer)]
@@ -447,23 +445,21 @@ pub async fn get_ip_revenue(
         #[diesel(sql_type = Text)]
         transaction_id: String,
     }
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&ip_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<RevenueInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(revenue) => Json(revenue).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -486,7 +482,7 @@ pub async fn get_ip_access_logs(
 
     let limit = params.limit.unwrap_or(50).min(200);
     let offset = params.offset.unwrap_or(0);
-    
+
     let query = "
         SELECT id, ip_id, user_address, access_type, access_time, time, transaction_id
         FROM my_ip_access_logs 
@@ -494,7 +490,7 @@ pub async fn get_ip_access_logs(
         ORDER BY access_time DESC 
         LIMIT $2 OFFSET $3
     ";
-    
+
     #[derive(QueryableByName, Serialize)]
     struct AccessLogInfo {
         #[diesel(sql_type = Integer)]
@@ -512,23 +508,21 @@ pub async fn get_ip_access_logs(
         #[diesel(sql_type = Text)]
         transaction_id: String,
     }
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&ip_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<AccessLogInfo>(&mut conn)
         .await;
-        
+
     match result {
         Ok(access_logs) => Json(access_logs).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -551,7 +545,7 @@ pub async fn get_creator_data(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     let query = "
         SELECT ip_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
@@ -561,23 +555,21 @@ pub async fn get_creator_data(
         ORDER BY created_at DESC 
         LIMIT $2 OFFSET $3
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&creator)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<MarketplaceDataBasic>(&mut conn)
         .await;
-    
+
     match result {
         Ok(data) => Json(data).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -603,7 +595,7 @@ pub async fn get_marketplace_stats(
         FROM my_ip_data 
         WHERE ip_id = $1
     ";
-    
+
     #[derive(QueryableByName)]
     struct DataInfo {
         #[diesel(sql_type = Text)]
@@ -621,7 +613,7 @@ pub async fn get_marketplace_stats(
         #[diesel(sql_type = BigInt)]
         last_updated: i64,
     }
-    
+
     let data_info = match diesel::sql_query(data_query)
         .bind::<Text, _>(&ip_id)
         .get_result::<DataInfo>(&mut conn)
@@ -630,7 +622,7 @@ pub async fn get_marketplace_stats(
         Ok(data) => data,
         Err(diesel::result::Error::NotFound) => {
             return (StatusCode::NOT_FOUND, "Marketplace data not found").into_response();
-        },
+        }
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -639,7 +631,7 @@ pub async fn get_marketplace_stats(
                 .into_response();
         }
     };
-    
+
     // Get aggregated stats
     let stats_query = "
         SELECT 
@@ -652,7 +644,7 @@ pub async fn get_marketplace_stats(
         WHERE 
             r.ip_id = $1
     ";
-    
+
     #[derive(QueryableByName)]
     struct StatsInfo {
         #[diesel(sql_type = BigInt)]
@@ -664,7 +656,7 @@ pub async fn get_marketplace_stats(
         #[diesel(sql_type = BigInt)]
         access_count: i64,
     }
-    
+
     let stats_info = match diesel::sql_query(stats_query)
         .bind::<Text, _>(&ip_id)
         .get_result::<StatsInfo>(&mut conn)
@@ -679,7 +671,7 @@ pub async fn get_marketplace_stats(
                 .into_response();
         }
     };
-    
+
     // Combine all the stats
     let stats_response = MarketplaceStatsResponse {
         ip_id: data_info.ip_id,
@@ -694,7 +686,7 @@ pub async fn get_marketplace_stats(
         created_at: data_info.created_at,
         last_updated: data_info.last_updated,
     };
-    
+
     Json(stats_response).into_response()
 }
 
@@ -713,7 +705,7 @@ pub async fn get_revenue_timeline(
                 .into_response();
         }
     };
-    
+
     // TimescaleDB query with time_bucket aggregation
     let query = "
         SELECT 
@@ -730,21 +722,19 @@ pub async fn get_revenue_timeline(
             day DESC
         LIMIT 30
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&ip_id)
         .load::<DailyRevenue>(&mut conn)
         .await;
-        
+
     match result {
         Ok(timeline) => Json(timeline).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -763,7 +753,7 @@ pub async fn get_access_analytics(
                 .into_response();
         }
     };
-    
+
     // TimescaleDB query with time_bucket aggregation
     let query = "
         SELECT 
@@ -781,21 +771,19 @@ pub async fn get_access_analytics(
             day DESC, access_type
         LIMIT 100
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&ip_id)
         .load::<AccessAnalytics>(&mut conn)
         .await;
-        
+
     match result {
         Ok(analytics) => Json(analytics).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
 }
 
@@ -817,7 +805,7 @@ pub async fn get_popular_marketplace_data(
 
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
-    
+
     // Join with revenue and purchase stats to sort by popularity
     let query = "
         SELECT DISTINCT
@@ -838,21 +826,19 @@ pub async fn get_popular_marketplace_data(
             d.created_at DESC
         LIMIT $1 OFFSET $2
     ";
-    
+
     let result = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<MarketplaceDataBasic>(&mut conn)
         .await;
-        
+
     match result {
         Ok(data) => Json(data).into_response(),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", e),
-            )
-                .into_response()
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
     }
-} 
+}

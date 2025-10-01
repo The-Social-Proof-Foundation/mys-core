@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Import diesel table macros
-use diesel::table;
 use diesel::allow_tables_to_appear_in_same_query;
+use diesel::table;
 
 // Define profile table with all fields including encrypted ones directly in the table
 table! {

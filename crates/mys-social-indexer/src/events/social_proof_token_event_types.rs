@@ -39,14 +39,14 @@ impl SocialProofTokenEventType {
             Self::EmergencyKillSwitch => "EmergencyKillSwitch",
         }
     }
-    
+
     /// Try to parse a string into an event type
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "TokenPoolCreated" => Some(Self::TokenPoolCreated),
             "TokenBought" => Some(Self::TokenBought),
             "TokenSold" => Some(Self::TokenSold),
-            "TokensAdded" => Some(Self::TokensAdded), 
+            "TokensAdded" => Some(Self::TokensAdded),
             "ReservationCreated" => Some(Self::ReservationCreated),
             "ReservationWithdrawn" => Some(Self::ReservationWithdrawn),
             "ThresholdMet" => Some(Self::ThresholdMet),
@@ -55,4 +55,4 @@ impl SocialProofTokenEventType {
             _ => None,
         }
     }
-} 
+}

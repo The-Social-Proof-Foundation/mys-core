@@ -6,10 +6,10 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use serde::{Deserialize, Serialize};
-use tracing::error;
-use std::sync::Arc;
 use diesel_async::RunQueryDsl;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tracing::error;
 
 use crate::db::Database;
 
@@ -26,15 +26,15 @@ impl SearchParams {
     fn get_page(&self) -> i64 {
         self.page.unwrap_or(1).max(1)
     }
-    
+
     fn get_limit(&self) -> i64 {
         self.limit.unwrap_or(20).clamp(1, 100)
     }
-    
+
     fn get_offset(&self) -> i64 {
         (self.get_page() - 1) * self.get_limit()
     }
-    
+
     fn get_filter_types(&self) -> Vec<String> {
         match &self.filter_types {
             Some(types) => types.split(',').map(|s| s.trim().to_string()).collect(),
@@ -63,12 +63,11 @@ pub struct ApiResponse<T> {
 #[derive(Debug, Serialize)]
 pub struct SearchResultItem {
     pub id: String,
-    pub entity_type: String, 
+    pub entity_type: String,
     pub title: String,
     pub description: Option<String>,
     pub image_url: Option<String>,
-    pub url_path: String,
-    pub primary_field: Option<String>,  // Could be address, symbol, username, etc.
+    pub primary_field: Option<String>, // Could be address, symbol, username, etc.
     pub secondary_field: Option<String>, // Could be name, title, etc.
     pub timestamp: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -80,7 +79,6 @@ pub struct SearchResultItem {
 pub struct SearchResults {
     pub results: Vec<SearchResultItem>,
     pub total_count: i64,
-    pub counts_by_type: serde_json::Value,
 }
 
 // Common fields for search result rows
@@ -96,8 +94,6 @@ struct SearchResultRow {
     pub description: Option<String>,
     #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
     pub image_url: Option<String>,
-    #[diesel(sql_type = diesel::sql_types::Text)]
-    pub url_path: String,
     #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
     pub primary_field: Option<String>,
     #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
@@ -118,15 +114,15 @@ pub async fn global_search(
         error!("Database error: {}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
-    
+
     let limit = params.get_limit();
     let offset = params.get_offset();
     let search_query = params.query.trim();
     let filter_types = params.get_filter_types();
-    
+
     // Escape the search query for SQL LIKE patterns
     let like_query = format!("%{}%", search_query.replace('%', "\\%").replace('_', "\\_"));
-    
+
     // Build the search query with type filtering logic
     let query_string = r#"
     WITH combined_results AS (
@@ -137,7 +133,6 @@ pub async fn global_search(
             COALESCE(username, 'Anonymous Profile') as title,
             bio as description,
             profile_photo as image_url,
-            '/profiles/' || owner_address as url_path,
             username as primary_field,
             owner_address as secondary_field,
             EXTRACT(EPOCH FROM created_at)::BIGINT as timestamp,
@@ -160,7 +155,6 @@ pub async fn global_search(
             CASE WHEN LENGTH(content) > 50 THEN LEFT(content, 47) || '...' ELSE content END as title,
             content as description,
             NULL as image_url,
-            '/posts/' || post_id as url_path,
             NULL as primary_field,
             owner as secondary_field,
             EXTRACT(EPOCH FROM time)::BIGINT as timestamp,
@@ -184,7 +178,6 @@ pub async fn global_search(
             name as title,
             NULL as description,
             NULL as image_url,
-            '/social-proof-token/pools/' || pool_id as url_path,
             symbol as primary_field,
             owner as secondary_field,
             created_at as timestamp,
@@ -217,7 +210,6 @@ pub async fn global_search(
             END as title,
             'Reservation pool for MySocial tokens' as description,
             NULL as image_url,
-            '/social-proof-token/reservation-pools/' || pool_id as url_path,
             pool_id as primary_field,
             owner as secondary_field,
             created_at as timestamp,
@@ -250,7 +242,6 @@ pub async fn global_search(
             END as title,
             'MySocial governance registry for community participation' as description,
             NULL as image_url,
-            '/governance/registries/' || registry_type as url_path,
             registry_type::TEXT as primary_field,
             delegate_count::TEXT as secondary_field,
             updated_at as timestamp,
@@ -272,7 +263,6 @@ pub async fn global_search(
             name as title,
             description,
             logo as image_url,
-            '/platforms/' || platform_id as url_path,
             platform_id as primary_field,
             developer_address as secondary_field,
             EXTRACT(EPOCH FROM created_at)::BIGINT as timestamp,
@@ -295,7 +285,6 @@ pub async fn global_search(
             title,
             description,
             NULL as image_url,
-            '/governance/proposals/' || id as url_path,
             id as primary_field,
             submitter as secondary_field,
             EXTRACT(EPOCH FROM time)::BIGINT as timestamp,
@@ -323,7 +312,7 @@ pub async fn global_search(
         timestamp DESC NULLS LAST
     LIMIT $2 OFFSET $5
     "#;
-    
+
     // Execute the search query
     let search_results = diesel::sql_query(query_string)
         .bind::<diesel::sql_types::Text, _>(&like_query)
@@ -337,8 +326,7 @@ pub async fn global_search(
             error!("Database error in search query: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-    
-    // Simplified count query to avoid aggregation issues
+
     let count_query = r#"
         SELECT COUNT(*) as count
         FROM (
@@ -351,9 +339,9 @@ pub async fn global_search(
                 LOWER(display_name) LIKE LOWER($1)
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'profile' = ANY($2))
-            
+
             UNION ALL
-            
+
             -- Post search
             SELECT post_id as id
             FROM posts
@@ -364,9 +352,9 @@ pub async fn global_search(
                 LOWER(COALESCE(profile_id, '')) LIKE LOWER($1)
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'post' = ANY($2))
-            
+
             UNION ALL
-            
+
             -- Social Proof Token search
             SELECT pool_id as id
             FROM social_proof_token_pools
@@ -382,9 +370,9 @@ pub async fn global_search(
                 SELECT MAX(time) FROM social_proof_token_pools sub
                 WHERE sub.pool_id = social_proof_token_pools.pool_id
             )
-            
+
             UNION ALL
-            
+
             -- Reservation Pool search
             SELECT pool_id as id
             FROM spt_reservation_pools
@@ -399,9 +387,9 @@ pub async fn global_search(
                 SELECT MAX(time) FROM spt_reservation_pools sub
                 WHERE sub.pool_id = spt_reservation_pools.pool_id
             )
-            
+
             UNION ALL
-            
+
             -- Governance Registry search
             SELECT id::TEXT as id
             FROM governance_registries
@@ -410,9 +398,9 @@ pub async fn global_search(
                 LOWER(transaction_id) LIKE LOWER($1)
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'governance-registry' = ANY($2))
-            
+
             UNION ALL
-            
+
             -- Platform search
             SELECT platform_id as id
             FROM platforms
@@ -422,9 +410,9 @@ pub async fn global_search(
                 LOWER(COALESCE(developer_address, '')) LIKE LOWER($1)
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'platform' = ANY($2))
-            
+
             UNION ALL
-            
+
             -- Governance Proposal search
             SELECT id
             FROM proposals
@@ -437,10 +425,9 @@ pub async fn global_search(
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'proposal' = ANY($2))
         ) combined_results
     "#;
-    
-    // Use the shared CountResult struct
+
     use crate::db::query_types::CountResult;
-    
+
     let count_result = diesel::sql_query(count_query)
         .bind::<diesel::sql_types::Text, _>(&like_query)
         .bind::<diesel::sql_types::Array<diesel::sql_types::Text>, _>(&filter_types)
@@ -450,7 +437,7 @@ pub async fn global_search(
             error!("Database error in count query: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-    
+
     // Convert query results to SearchResultItem objects
     let results: Vec<SearchResultItem> = search_results
         .into_iter()
@@ -460,22 +447,25 @@ pub async fn global_search(
             title: row.title,
             description: row.description,
             image_url: row.image_url,
-            url_path: row.url_path,
             primary_field: row.primary_field,
             secondary_field: row.secondary_field,
             timestamp: row.timestamp,
             metadata: row.metadata,
         })
         .collect();
-    
+
     let total = count_result.count;
-    let total_pages = (total + limit - 1) / limit;
-    
+
+    let total_pages = if total == 0 {
+        0
+    } else {
+        (total + limit - 1) / limit
+    };
+
     Ok(Json(ApiResponse {
         data: SearchResults {
             results,
-            total_count: count_result.count,
-            counts_by_type: serde_json::json!({}), // Simplified - no longer tracking counts by type
+            total_count: total,
         },
         pagination: Some(PaginationInfo {
             page: params.get_page(),
@@ -484,4 +474,4 @@ pub async fn global_search(
             total_pages,
         }),
     }))
-} 
+}

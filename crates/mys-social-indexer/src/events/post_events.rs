@@ -6,27 +6,15 @@ use serde_json::json;
 
 // Import specific event types to avoid ambiguity
 use crate::events::post_event_types::{
-    PostCreatedEvent,
-    CommentCreatedEvent,
-    ReactionEvent,
-    RepostEvent,
-    TipEvent,
-    ModerationEvent as PostModerationEvent,
-    ReportEvent,
-    DeletionEvent as PostDeletionEvent,
+    CommentCreatedEvent, DeletionEvent as PostDeletionEvent,
+    ModerationEvent as PostModerationEvent, PostCreatedEvent, ReactionEvent, ReportEvent,
+    RepostEvent, TipEvent,
 };
 
 // Import model types
 use crate::models::post::{
-    NewPost,
-    NewComment,
-    NewReaction,
-    NewReactionCount,
-    NewRepost,
-    NewTip,
-    NewModerationEvent,
-    NewReport,
-    NewDeletionEvent,
+    NewComment, NewDeletionEvent, NewModerationEvent, NewPost, NewReaction, NewReactionCount,
+    NewReport, NewRepost, NewTip,
 };
 
 // Model conversion impl for PostCreatedEvent
@@ -34,21 +22,24 @@ impl PostCreatedEvent {
     pub fn into_model(&self) -> Result<NewPost> {
         // Create a unique ID for the post
         let id = format!("{}:{}", self.post_id, self.created_at);
-        
+
         // Convert media_urls and mentions to JSON if present
-        let media_urls_json = self.media_urls.as_ref().map(|urls| {
-            serde_json::to_value(urls).unwrap_or(json!(null))
-        });
-        
-        let mentions_json = self.mentions.as_ref().map(|mentions| {
-            serde_json::to_value(mentions).unwrap_or(json!(null))
-        });
-        
+        let media_urls_json = self
+            .media_urls
+            .as_ref()
+            .map(|urls| serde_json::to_value(urls).unwrap_or(json!(null)));
+
+        let mentions_json = self
+            .mentions
+            .as_ref()
+            .map(|mentions| serde_json::to_value(mentions).unwrap_or(json!(null)));
+
         // Parse metadata JSON if present
-        let metadata_json = self.metadata_json.as_ref().map(|json_str| {
-            serde_json::from_str(json_str).unwrap_or(json!(null))
-        });
-        
+        let metadata_json = self
+            .metadata_json
+            .as_ref()
+            .map(|json_str| serde_json::from_str(json_str).unwrap_or(json!(null)));
+
         // Create the model
         Ok(NewPost {
             id,
@@ -83,21 +74,24 @@ impl CommentCreatedEvent {
     pub fn into_model(&self) -> Result<NewComment> {
         // Create a unique ID for the comment
         let id = format!("{}:{}", self.comment_id, self.created_at);
-        
+
         // Convert media_urls and mentions to JSON if present
-        let media_urls_json = self.media_urls.as_ref().map(|urls| {
-            serde_json::to_value(urls).unwrap_or(json!(null))
-        });
-        
-        let mentions_json = self.mentions.as_ref().map(|mentions| {
-            serde_json::to_value(mentions).unwrap_or(json!(null))
-        });
-        
+        let media_urls_json = self
+            .media_urls
+            .as_ref()
+            .map(|urls| serde_json::to_value(urls).unwrap_or(json!(null)));
+
+        let mentions_json = self
+            .mentions
+            .as_ref()
+            .map(|mentions| serde_json::to_value(mentions).unwrap_or(json!(null)));
+
         // Parse metadata JSON if present
-        let metadata_json = self.metadata_json.as_ref().map(|json_str| {
-            serde_json::from_str(json_str).unwrap_or(json!(null))
-        });
-        
+        let metadata_json = self
+            .metadata_json
+            .as_ref()
+            .map(|json_str| serde_json::from_str(json_str).unwrap_or(json!(null)));
+
         // Create the model
         Ok(NewComment {
             id,
@@ -136,7 +130,7 @@ impl ReactionEvent {
             transaction_id: "".to_string(), // Will be set by handler
         })
     }
-    
+
     pub fn into_reaction_count(&self) -> Result<NewReactionCount> {
         Ok(NewReactionCount {
             object_id: self.object_id.clone(),
@@ -151,7 +145,7 @@ impl RepostEvent {
     pub fn into_model(&self) -> Result<NewRepost> {
         // Create a unique ID for the repost
         let id = format!("{}:{}", self.repost_id, self.created_at);
-        
+
         Ok(NewRepost {
             id,
             repost_id: self.repost_id.clone(),
@@ -224,4 +218,4 @@ impl PostDeletionEvent {
             transaction_id: "".to_string(), // Will be set by handler
         })
     }
-} 
+}

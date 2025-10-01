@@ -5,7 +5,7 @@ use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::schema::{vesting_wallets, vesting_events};
+use crate::schema::{vesting_events, vesting_wallets};
 
 // ===========================================================================
 // VESTING WALLET MODELS
@@ -81,7 +81,7 @@ impl NewVestingWallet {
             start_time: start_time as i64,
             duration: duration as i64,
             curve_factor: curve_factor as i64,
-            claimed_amount: 0, // Initially no tokens claimed
+            claimed_amount: 0,                      // Initially no tokens claimed
             remaining_balance: total_amount as i64, // All tokens remaining initially
             created_at: now,
             updated_at: now,
@@ -164,8 +164,11 @@ impl NewVestingEvent {
         vested_at: u64,
         transaction_id: String,
     ) -> Self {
-        let event_time = chrono::DateTime::from_timestamp((vested_at / 1000) as i64, ((vested_at % 1000) * 1_000_000) as u32)
-            .unwrap_or_else(chrono::Utc::now);
+        let event_time = chrono::DateTime::from_timestamp(
+            (vested_at / 1000) as i64,
+            ((vested_at % 1000) * 1_000_000) as u32,
+        )
+        .unwrap_or_else(chrono::Utc::now);
 
         Self {
             wallet_id,
@@ -191,8 +194,11 @@ impl NewVestingEvent {
         claimed_at: u64,
         transaction_id: String,
     ) -> Self {
-        let event_time = chrono::DateTime::from_timestamp((claimed_at / 1000) as i64, ((claimed_at % 1000) * 1_000_000) as u32)
-            .unwrap_or_else(chrono::Utc::now);
+        let event_time = chrono::DateTime::from_timestamp(
+            (claimed_at / 1000) as i64,
+            ((claimed_at % 1000) * 1_000_000) as u32,
+        )
+        .unwrap_or_else(chrono::Utc::now);
 
         Self {
             wallet_id,
@@ -200,8 +206,8 @@ impl NewVestingEvent {
             owner_address,
             amount: claimed_amount as i64,
             remaining_balance: Some(remaining_balance as i64),
-            start_time: None, // Not relevant for claim events
-            duration: None,   // Not relevant for claim events
+            start_time: None,   // Not relevant for claim events
+            duration: None,     // Not relevant for claim events
             curve_factor: None, // Not relevant for claim events
             event_time: claimed_at as i64,
             time: event_time,
@@ -220,8 +226,8 @@ pub const VESTING_EVENT_TYPE_CLAIMED: &str = "TokensClaimed";
 
 /// Curve factor constants
 pub const CURVE_FACTOR_LINEAR: i64 = 1000; // Linear vesting
-pub const CURVE_FACTOR_MIN: i64 = 100;     // Minimum curve factor (logarithmic)
-pub const CURVE_FACTOR_MAX: i64 = 10000;   // Maximum curve factor (exponential)
+pub const CURVE_FACTOR_MIN: i64 = 100; // Minimum curve factor (logarithmic)
+pub const CURVE_FACTOR_MAX: i64 = 10000; // Maximum curve factor (exponential)
 
 /// Utility functions for working with vesting data
 impl VestingWallet {
