@@ -26,4 +26,8 @@ pub(crate) struct StakeSubsidy {
     /// Percentage of the current distribution amount to deduct at the end of the current subsidy
     /// period, expressed in basis points.
     pub decrease_rate: Option<u64>,
+
+    /// The annual percentage yield from the stake subsidy in basis points.
+    /// To get the APY in percentage, divide by 100.
+    pub apy: Option<u64>,
 }

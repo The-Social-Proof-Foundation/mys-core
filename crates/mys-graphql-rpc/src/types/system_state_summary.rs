@@ -7,6 +7,7 @@ use super::{
     storage_fund::StorageFund, system_parameters::SystemParameters, uint53::UInt53,
 };
 use async_graphql::*;
+use mys_types::gas_coin::TOTAL_SUPPLY_MIST;
 use mys_types::mys_system_state::mys_system_state_summary::MysSystemStateSummary as NativeSystemStateSummary;
 
 #[derive(Clone, Debug)]
@@ -78,6 +79,19 @@ impl SystemStateSummary {
 
     /// Parameters related to the subsidy that supplements staking rewards
     async fn system_stake_subsidy(&self) -> Option<StakeSubsidy> {
+        let circulating_supply =
+        TOTAL_SUPPLY_MIST.saturating_sub(self.native.stake_subsidy_balance);
+        let epochs_per_year = (365_u64 * 24 * 60 * 60 * 1000) / self.native.epoch_duration_ms;
+        let yearly_subsidy = self
+            .native
+            .stake_subsidy_current_distribution_amount
+            .saturating_mul(epochs_per_year);
+        let apy_bps = if circulating_supply > 0 {
+            yearly_subsidy.saturating_mul(10_000) / circulating_supply
+        } else {
+            0
+        };
+
         Some(StakeSubsidy {
             balance: Some(BigInt::from(self.native.stake_subsidy_balance)),
             distribution_counter: Some(self.native.stake_subsidy_distribution_counter),
@@ -86,6 +100,7 @@ impl SystemStateSummary {
             )),
             period_length: Some(self.native.stake_subsidy_period_length),
             decrease_rate: Some(self.native.stake_subsidy_decrease_rate as u64),
+            apy: Some(apy_bps),
         })
     }
 }
