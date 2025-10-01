@@ -181,7 +181,6 @@ members = [
     "crates/mys-types",
     "crates/mys-upgrade-compatibility-transactional-tests",
     "crates/mys-verifier-transactional-tests",
-    "crates/mysns-indexer",
     "crates/mysop-cli",
     "crates/telemetry-subscribers",
     "crates/test-cluster",

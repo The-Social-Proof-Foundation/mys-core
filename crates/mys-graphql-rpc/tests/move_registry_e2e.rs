@@ -13,7 +13,6 @@ use mys_graphql_rpc::{
     },
 };
 use mys_graphql_rpc_client::simple_client::SimpleClient;
-use mys_json_rpc::name_service::{Domain, DomainFormat};
 use mys_json_rpc_types::ObjectChange;
 use mys_move_build::BuildConfig;
 use mys_pg_db::temp::get_available_port;

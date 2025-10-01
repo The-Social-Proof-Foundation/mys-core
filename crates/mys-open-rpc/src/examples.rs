@@ -135,8 +135,6 @@ impl RpcExampleProvider {
             self.mys_get_chain_identifier(),
             self.mysx_get_stakes(),
             self.mysx_get_stakes_by_ids(),
-            self.mysx_resolve_name_service_address(),
-            self.mysx_resolve_name_service_names(),
             self.mys_try_multi_get_past_objects(),
         ]
         .into_iter()
@@ -1456,39 +1454,6 @@ impl RpcExampleProvider {
         )
     }
 
-    fn mysx_resolve_name_service_address(&mut self) -> Examples {
-        let result = ObjectID::new(self.rng.gen());
-        Examples::new(
-            "mysx_resolveNameServiceAddress",
-            vec![ExamplePairing::new(
-                "Returns the resolved address for the name the request provides.",
-                vec![("name", json!("example.mys".to_string()))],
-                json!(result),
-            )],
-        )
-    }
-
-    fn mysx_resolve_name_service_names(&mut self) -> Examples {
-        let next_cursor = Some(ObjectID::new(self.rng.gen()));
-        let object_id = ObjectID::new(self.rng.gen());
-        let result = Page {
-            data: vec!["example.mys".to_string()],
-            next_cursor,
-            has_next_page: false,
-        };
-        Examples::new(
-            "mysx_resolveNameServiceNames",
-            vec![ExamplePairing::new(
-                "Returns the MysNS name for the address the request provides. Currently, the API returns only the first name in cases where there are multiple. Future support will use the cursor ID and limit values in the request to control pagination of the response for addresses with multiple names.",
-                vec![
-                    ("address", json!(object_id)),
-                    ("cursor", json!(next_cursor)),
-                    ("limit", json!(3)),
-                ],
-                json!(result),
-            )],
-        )
-    }
 
     fn mys_try_multi_get_past_objects(&mut self) -> Examples {
         let object_id = ObjectID::new(self.rng.gen());

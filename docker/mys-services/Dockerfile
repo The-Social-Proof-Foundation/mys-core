@@ -13,8 +13,7 @@ COPY crates crates
 COPY mys-execution mys-execution
 COPY external-crates external-crates
 RUN cargo build --release \
-    --bin mys-oracle \
-    --bin mysns-indexer
+    --bin mys-oracle
 RUN mkdir /mys/bin/
 RUN find /mys/target/release/ -maxdepth 1 -type f -executable -print 
 RUN find /mys/target/release/ -maxdepth 1 -type f -executable -print | xargs cp -t /mys/bin/

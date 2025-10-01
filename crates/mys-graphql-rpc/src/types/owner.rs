@@ -9,7 +9,6 @@ use super::dynamic_field::DynamicField;
 use super::dynamic_field::DynamicFieldName;
 use super::move_package::MovePackage;
 use super::stake::StakedMys;
-use super::mysns_registration::{DomainFormat, NameService, MysnsRegistration};
 use crate::data::Db;
 use crate::types::balance::{self, Balance};
 use crate::types::coin::Coin;
@@ -20,7 +19,6 @@ use crate::types::type_filter::ExactTypeFilter;
 
 use async_graphql::connection::Connection;
 use async_graphql::*;
-use mys_json_rpc::name_service::NameServiceConfig;
 use mys_types::dynamic_field::DynamicFieldType;
 use mys_types::gas_coin::GAS;
 
@@ -108,22 +106,6 @@ pub(crate) struct OwnerImpl {
         ty = "Connection<String, StakedMys>",
         desc = "The `0x3::staking_pool::StakedMys` objects owned by this object or address."
     ),
-    field(
-        name = "default_mysns_name",
-        arg(name = "format", ty = "Option<DomainFormat>"),
-        ty = "Option<String>",
-        desc = "The domain explicitly configured as the default domain pointing to this object or \
-                address."
-    ),
-    field(
-        name = "mysns_registrations",
-        arg(name = "first", ty = "Option<u64>"),
-        arg(name = "after", ty = "Option<object::Cursor>"),
-        arg(name = "last", ty = "Option<u64>"),
-        arg(name = "before", ty = "Option<object::Cursor>"),
-        ty = "Connection<String, MysnsRegistration>",
-        desc = "The MysnsRegistration NFTs owned by this object or address. These grant the owner \
-                the capability to manage the associated domain."
     )
 )]
 pub(crate) enum IOwner {
@@ -135,7 +117,6 @@ pub(crate) enum IOwner {
     Coin(Coin),
     CoinMetadata(CoinMetadata),
     StakedMys(StakedMys),
-    MysnsRegistration(MysnsRegistration),
 }
 
 /// An Authenticator represents the access control rules for a ConsensusV2 object.
@@ -224,29 +205,6 @@ impl Owner {
             .await
     }
 
-    /// The domain explicitly configured as the default domain pointing to this object or address.
-    pub(crate) async fn default_mysns_name(
-        &self,
-        ctx: &Context<'_>,
-        format: Option<DomainFormat>,
-    ) -> Result<Option<String>> {
-        OwnerImpl::from(self).default_mysns_name(ctx, format).await
-    }
-
-    /// The MysnsRegistration NFTs owned by this object or address. These grant the owner the
-    /// capability to manage the associated domain.
-    pub(crate) async fn mysns_registrations(
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<object::Cursor>,
-        last: Option<u64>,
-        before: Option<object::Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        OwnerImpl::from(self)
-            .mysns_registrations(ctx, first, after, last, before)
-            .await
-    }
 
     async fn as_address(&self) -> Option<Address> {
         // For now only addresses can be owners
@@ -423,41 +381,6 @@ impl OwnerImpl {
             self.address,
             self.checkpoint_viewed_at,
         )
-        .await
-        .extend()
-    }
-
-    pub(crate) async fn default_mysns_name(
-        &self,
-        ctx: &Context<'_>,
-        format: Option<DomainFormat>,
-    ) -> Result<Option<String>> {
-        Ok(
-            NameService::reverse_resolve_to_name(ctx, self.address, self.checkpoint_viewed_at)
-                .await
-                .extend()?
-                .map(|d| d.format(format.unwrap_or(DomainFormat::Dot).into())),
-        )
-    }
-
-    pub(crate) async fn mysns_registrations(
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<object::Cursor>,
-        last: Option<u64>,
-        before: Option<object::Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        let page = Page::from_params(ctx.data_unchecked(), first, after, last, before)?;
-        MysnsRegistration::paginate(
-            ctx.data_unchecked::<Db>(),
-            ctx.data_unchecked::<NameServiceConfig>(),
-            page,
-            self.address,
-            self.checkpoint_viewed_at,
-        )
-        .await
-        .extend()
     }
 
     // Dynamic field related functions are part of the `IMoveObject` interface, but are provided

@@ -9,7 +9,6 @@ use move_core_types::language_storage::StructTag;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use mys_json_rpc::name_service::{validate_label, Domain};
 use mys_types::{
     base_types::{ObjectID, MysAddress},
     collection_types::VecMap,
@@ -156,7 +155,6 @@ impl FromStr for VersionedName {
         };
 
         // Validate our app's label.
-        validate_label(app_name).map_err(|_| MoveRegistryError::InvalidName(s.to_string()))?;
 
         let version: Option<u64> = caps
             .get(3)

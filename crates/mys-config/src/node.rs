@@ -129,15 +129,6 @@ pub struct NodeConfig {
     #[serde(default)]
     pub expensive_safety_check_config: ExpensiveSafetyCheckConfig,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name_service_package_address: Option<MysAddress>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name_service_registry_id: Option<ObjectID>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name_service_reverse_registry_id: Option<ObjectID>,
-
     #[serde(default)]
     pub transaction_deny_config: TransactionDenyConfig,
 

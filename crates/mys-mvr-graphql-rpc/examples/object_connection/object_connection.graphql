@@ -6,7 +6,6 @@
       storageRebate
       previousTransactionBlock {
         digest
-        sender { defaultMysnsName }
         gasInput {
           gasPrice
           gasBudget

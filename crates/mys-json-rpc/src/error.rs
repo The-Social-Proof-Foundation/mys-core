@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority_state::StateReadError;
-use crate::name_service::NameServiceError;
 use fastcrypto::error::FastCryptoError;
 use hyper::header::InvalidHeaderValue;
 use itertools::Itertools;
@@ -73,8 +72,6 @@ pub enum Error {
     #[error("Unsupported Feature: {0}")]
     UnsupportedFeature(String),
 
-    #[error("transparent")]
-    NameServiceError(#[from] NameServiceError),
 }
 
 impl From<MysError> for Error {
@@ -118,15 +115,6 @@ impl From<Error> for ErrorObjectOwned {
                 | MysObjectResponseError::DynamicFieldNotFound { .. }
                 | MysObjectResponseError::Deleted { .. }
                 | MysObjectResponseError::DisplayError { .. } => invalid_params(err),
-                _ => failed(err),
-            },
-            Error::NameServiceError(err) => match err {
-                NameServiceError::ExceedsMaxLength { .. }
-                | NameServiceError::InvalidHyphens { .. }
-                | NameServiceError::InvalidLength { .. }
-                | NameServiceError::InvalidUnderscore { .. }
-                | NameServiceError::LabelsEmpty { .. }
-                | NameServiceError::InvalidSeparator { .. } => invalid_params(err),
                 _ => failed(err),
             },
             Error::MysRpcInputError(err) => invalid_params(err),

@@ -19,7 +19,6 @@ use super::move_package::MovePackage;
 use super::owner::OwnerImpl;
 use super::stake::StakedMys;
 use super::mys_address::addr;
-use super::mysns_registration::{DomainFormat, MysnsRegistration};
 use super::transaction_block;
 use super::transaction_block::TransactionBlockFilter;
 use super::type_filter::{ExactTypeFilter, TypeFilter};
@@ -281,7 +280,6 @@ pub(crate) enum IObject {
     Coin(Coin),
     CoinMetadata(CoinMetadata),
     StakedMys(StakedMys),
-    MysnsRegistration(MysnsRegistration),
 }
 
 /// `DataLoader` key for fetching an `Object` at a specific version, constrained by a consistency
@@ -399,29 +397,6 @@ impl Object {
             .await
     }
 
-    /// The domain explicitly configured as the default domain pointing to this object.
-    pub(crate) async fn default_mysns_name(
-        &self,
-        ctx: &Context<'_>,
-        format: Option<DomainFormat>,
-    ) -> Result<Option<String>> {
-        OwnerImpl::from(self).default_mysns_name(ctx, format).await
-    }
-
-    /// The MysnsRegistration NFTs owned by this object. These grant the owner the capability to
-    /// manage the associated domain.
-    pub(crate) async fn mysns_registrations(
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<Cursor>,
-        last: Option<u64>,
-        before: Option<Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        OwnerImpl::from(self)
-            .mysns_registrations(ctx, first, after, last, before)
-            .await
-    }
 
     pub(crate) async fn version(&self) -> UInt53 {
         ObjectImpl(self).version().await

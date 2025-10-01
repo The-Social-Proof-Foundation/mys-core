@@ -13,7 +13,6 @@ use super::{
     owner::OwnerImpl,
     stake::StakedMys,
     mys_address::MysAddress,
-    mysns_registration::{DomainFormat, MysnsRegistration},
     transaction_block::{self, TransactionBlock, TransactionBlockFilter},
     type_filter::ExactTypeFilter,
 };
@@ -113,29 +112,8 @@ impl Address {
             .await
     }
 
-    /// The domain explicitly configured as the default domain pointing to this address.
-    pub(crate) async fn default_mysns_name(
-        &self,
-        ctx: &Context<'_>,
-        format: Option<DomainFormat>,
-    ) -> Result<Option<String>> {
-        OwnerImpl::from(self).default_mysns_name(ctx, format).await
-    }
-
-    /// The MysnsRegistration NFTs owned by this address. These grant the owner the capability to
-    /// manage the associated domain.
-    pub(crate) async fn mysns_registrations(
-        &self,
-        ctx: &Context<'_>,
-        first: Option<u64>,
-        after: Option<object::Cursor>,
-        last: Option<u64>,
-        before: Option<object::Cursor>,
-    ) -> Result<Connection<String, MysnsRegistration>> {
-        OwnerImpl::from(self)
-            .mysns_registrations(ctx, first, after, last, before)
-            .await
-    }
+    // Legacy MysNS support has been removed. Default domain and registration
+    // queries are no longer available on the Address type.
 
     /// Similar behavior to the `transactionBlocks` in Query but supporting the additional
     /// `AddressTransactionBlockRelationship` filter, which defaults to `SENT`.

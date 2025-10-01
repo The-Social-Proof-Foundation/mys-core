@@ -1,5 +1,4 @@
 {
-  resolveMysnsAddress(domain: "example.mys") {
     address
   }
   address(
@@ -13,6 +12,5 @@
       coinObjectCount
       totalBalance
     }
-    defaultMysnsName
   }
 }
