@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use chrono::{DateTime, Utc};
@@ -9,10 +9,10 @@ use serde::{Deserialize, Serialize};
 pub const TOKEN_TYPE_PROFILE: i16 = 1;
 pub const TOKEN_TYPE_POST: i16 = 2;
 
-/// Auction status constants
-pub const AUCTION_STATUS_PENDING: i16 = 0;
-pub const AUCTION_STATUS_ACTIVE: i16 = 1;
-pub const AUCTION_STATUS_FINALIZED: i16 = 2;
+// Reservation pool status constants
+pub const RESERVATION_POOL_STATUS_ACTIVE: &str = "active";
+pub const RESERVATION_POOL_STATUS_THRESHOLD_MET: &str = "threshold_met";
+pub const RESERVATION_POOL_STATUS_CONVERTED: &str = "converted";
 
 /// Transaction types
 pub const TRANSACTION_TYPE_BUY: &str = "BUY";
@@ -156,86 +156,80 @@ pub struct NewSocialProofTokenTransaction {
     pub transaction_id: String,
 }
 
-/// SocialProofAuctionPool represents an auction pool in the database
+/// SptReservationPool represents a reservation pool in the database
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, QueryableByName)]
-#[diesel(table_name = crate::schema::spt_auction_pools)]
-#[diesel(primary_key(auction_id, time))]
-pub struct SocialProofAuctionPool {
+#[diesel(table_name = crate::schema::spt_reservation_pools)]
+#[diesel(primary_key(pool_id, time))]
+pub struct SptReservationPool {
     #[diesel(sql_type = diesel::sql_types::Integer)]
     pub id: i32,
     #[diesel(sql_type = diesel::sql_types::Text)]
-    pub auction_id: String,
+    pub pool_id: String,
     #[diesel(sql_type = diesel::sql_types::Text)]
     pub associated_id: String,
     #[diesel(sql_type = diesel::sql_types::SmallInt)]
     pub token_type: i16,
     #[diesel(sql_type = diesel::sql_types::Text)]
     pub owner: String,
-    #[diesel(sql_type = diesel::sql_types::SmallInt)]
-    pub status: i16,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub start_time: i64,
+    pub total_reserved: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub duration: i64,
+    pub required_threshold: i64,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub status: String,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub total_contribution: i64,
-    #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub total_tokens: i64,
-    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
-    pub finalized_at: Option<i64>,
+    pub created_at: i64,
     #[diesel(sql_type = diesel::sql_types::Timestamptz)]
     pub time: DateTime<Utc>,
     #[diesel(sql_type = diesel::sql_types::Text)]
     pub transaction_id: String,
 }
 
-/// NewSocialProofAuctionPool is used for inserting a new auction pool
+/// NewSptReservationPool is used for inserting a new reservation pool
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = crate::schema::spt_auction_pools)]
-pub struct NewSocialProofAuctionPool {
-    pub auction_id: String,
+#[diesel(table_name = crate::schema::spt_reservation_pools)]
+pub struct NewSptReservationPool {
+    pub pool_id: String,
     pub associated_id: String,
     pub token_type: i16,
     pub owner: String,
-    pub status: i16,
-    pub start_time: i64,
-    pub duration: i64,
-    pub total_contribution: i64,
-    pub total_tokens: i64,
-    pub finalized_at: Option<i64>,
+    pub total_reserved: i64,
+    pub required_threshold: i64,
+    pub status: String,
+    pub created_at: i64,
     pub time: DateTime<Utc>,
     pub transaction_id: String,
 }
 
-/// SocialProofAuctionContribution represents an auction contribution in the database
+/// SptReservation represents an individual reservation in the database
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, QueryableByName)]
-#[diesel(table_name = crate::schema::spt_auction_contributions)]
-#[diesel(primary_key(auction_id, contributor_address, time))]
-pub struct SocialProofAuctionContribution {
+#[diesel(table_name = crate::schema::spt_reservations)]
+#[diesel(primary_key(pool_id, reserver_address, time))]
+pub struct SptReservation {
     #[diesel(sql_type = diesel::sql_types::Integer)]
     pub id: i32,
     #[diesel(sql_type = diesel::sql_types::Text)]
-    pub auction_id: String,
+    pub pool_id: String,
     #[diesel(sql_type = diesel::sql_types::Text)]
-    pub contributor_address: String,
+    pub reserver_address: String,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub amount: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub contributed_at: i64,
+    pub reserved_at: i64,
     #[diesel(sql_type = diesel::sql_types::Timestamptz)]
     pub time: DateTime<Utc>,
     #[diesel(sql_type = diesel::sql_types::Text)]
     pub transaction_id: String,
 }
 
-/// NewSocialProofAuctionContribution is used for inserting a new auction contribution
+/// NewSptReservation is used for inserting a new reservation
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = crate::schema::spt_auction_contributions)]
-pub struct NewSocialProofAuctionContribution {
-    pub auction_id: String,
-    pub contributor_address: String,
+#[diesel(table_name = crate::schema::spt_reservations)]
+pub struct NewSptReservation {
+    pub pool_id: String,
+    pub reserver_address: String,
     pub amount: i64,
-    pub contributed_at: i64,
+    pub reserved_at: i64,
     pub time: DateTime<Utc>,
     pub transaction_id: String,
 }
@@ -351,6 +345,69 @@ pub struct PopularTokenPool {
     pub current_price: i64,
 }
 
+/// SptExchangeConfig represents exchange configuration in the database
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, QueryableByName)]
+#[diesel(table_name = crate::schema::spt_exchange_config)]
+#[diesel(primary_key(id, time))]
+pub struct SptExchangeConfig {
+    #[diesel(sql_type = diesel::sql_types::Integer)]
+    pub id: i32,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub post_threshold: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub profile_threshold: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub max_individual_reservation_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub total_fee_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub creator_fee_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub platform_fee_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub treasury_fee_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub base_price: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub quadratic_coefficient: i64,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub ecosystem_treasury: String,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub max_hold_percent_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    pub trading_halted: bool,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub updated_at: i64,
+    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
+    pub time: DateTime<Utc>,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub transaction_id: String,
+}
+
+/// NewSptExchangeConfig is used for inserting a new exchange config
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::spt_exchange_config)]
+pub struct NewSptExchangeConfig {
+    pub updated_by: String,
+    pub post_threshold: i64,
+    pub profile_threshold: i64,
+    pub max_individual_reservation_bps: i64,
+    pub total_fee_bps: i64,
+    pub creator_fee_bps: i64,
+    pub platform_fee_bps: i64,
+    pub treasury_fee_bps: i64,
+    pub base_price: i64,
+    pub quadratic_coefficient: i64,
+    pub ecosystem_treasury: String,
+    pub max_hold_percent_bps: i64,
+    pub trading_halted: bool,
+    pub updated_at: i64,
+    pub time: DateTime<Utc>,
+    pub transaction_id: String,
+}
+
 /// UserTokenHoldings represents a user's holdings across different tokens
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserTokenHoldings {
@@ -368,4 +425,4 @@ pub struct UserTokenHolding {
     pub amount: i64,
     pub current_price: i64,
     pub value: i64,
-} 
+}

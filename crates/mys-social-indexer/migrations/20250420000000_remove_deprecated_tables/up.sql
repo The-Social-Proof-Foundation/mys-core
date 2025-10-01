@@ -7,10 +7,10 @@ DROP TABLE IF EXISTS platform_relationships;
 -- Create profile_events table
 CREATE TABLE profile_events (
     id SERIAL PRIMARY KEY,
-    event_type VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
+    event_type TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
     event_data JSONB NOT NULL,
-    event_id VARCHAR,
+    event_id TEXT,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );

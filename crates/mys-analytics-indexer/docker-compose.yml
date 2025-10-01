@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # Analytics Indexer - Checkpoint processor
+  analytics-indexer-checkpoints:
+    build:
+      context: ../..
+      dockerfile: crates/mys-analytics-indexer/Dockerfile
+    environment:
+      # Core configuration
+      REST_URL: "https://fullnode.testnet.mysocial.network:9000"
+      FILE_TYPE: "checkpoint"
+      FILE_FORMAT: "parquet"
+      
+      # Processing settings
+      CHECKPOINT_INTERVAL: "1000"  # Smaller for testing
+      MAX_FILE_SIZE_MB: "10"       # Smaller for testing
+      TIME_INTERVAL_S: "300"       # 5 minutes for testing
+      
+      # Metrics automatically on port 9184
+      
+      # Storage
+      CHECKPOINT_DIR: "/tmp/analytics"
+      PACKAGE_CACHE_PATH: "/opt/mys/db/package_cache"
+      REMOTE_STORE_URL: "https://checkpoints.testnet.mysocial.network"
+      
+      # Mock GCS config for testing (would need real bucket in production)
+      REMOTE_STORE_BUCKET: "test-analytics-bucket"
+      REMOTE_STORE_REGION: "us-central1"
+      
+      # Logging
+      RUST_LOG: "info,mys_analytics_indexer=debug"
+      RUST_BACKTRACE: "1"
+    ports:
+      - "9184:9184"
+    volumes:
+      - checkpoint_cache:/tmp/analytics
+      - package_cache:/opt/mys/db/package_cache
+      # Mount GCS credentials if available
+      # - ./credentials/gcs-key.json:/app/credentials/gcs-key.json:ro
+    networks:
+      - analytics
+    restart: unless-stopped
+
+  # Analytics Indexer - Transaction processor  
+  analytics-indexer-transactions:
+    build:
+      context: ../..
+      dockerfile: crates/mys-analytics-indexer/Dockerfile
+    environment:
+      REST_URL: "https://fullnode.testnet.mysocial.network:9000"
+      FILE_TYPE: "transaction"
+      FILE_FORMAT: "parquet"
+      
+      CHECKPOINT_INTERVAL: "1000"
+      MAX_FILE_SIZE_MB: "10"
+      TIME_INTERVAL_S: "300"
+      
+      # Metrics automatically on port 9184
+      
+      CHECKPOINT_DIR: "/tmp/analytics"
+      PACKAGE_CACHE_PATH: "/opt/mys/db/package_cache"
+      REMOTE_STORE_URL: "https://checkpoints.testnet.mysocial.network"
+      
+      REMOTE_STORE_BUCKET: "test-analytics-bucket"
+      REMOTE_STORE_REGION: "us-central1"
+      
+      RUST_LOG: "info,mys_analytics_indexer=debug"
+      RUST_BACKTRACE: "1"
+    ports:
+      - "9185:9184"
+    volumes:
+      - transaction_cache:/tmp/analytics
+      - package_cache:/opt/mys/db/package_cache
+    networks:
+      - analytics
+    restart: unless-stopped
+
+  # Note: Prometheus/Grafana removed - using existing MySocial monitoring infrastructure
+
+volumes:
+  checkpoint_cache:
+  transaction_cache:
+  package_cache:
+
+networks:
+  analytics:
+    driver: bridge 

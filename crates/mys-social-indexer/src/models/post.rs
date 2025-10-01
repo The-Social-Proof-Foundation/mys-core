@@ -1,11 +1,11 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use chrono::{DateTime, Utc};
 use diesel::sql_types::*;
-use diesel::{Insertable, Selectable, QueryableByName};
+use diesel::{Insertable, QueryableByName, Selectable};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use chrono::{DateTime, Utc};
 
 /// Post model for database
 #[derive(Debug, Clone, Serialize, Deserialize, QueryableByName, Selectable)]
@@ -590,4 +590,4 @@ pub struct NewPromotionBudgetEvent {
     pub remaining_budget: i64,
     pub timestamp: i64,
     pub transaction_id: String,
-} 
+}

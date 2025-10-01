@@ -83,7 +83,7 @@ Or manually initialize:
 cargo run --bin myso -- genesis-ceremony \
   --path . \
   --token-distribution token_distribution.csv \
-  --token-symbol MYS \
+  --token-symbol MySo \
   --token-name MySocial \
   --token-description "MySocial Native Token" \
   --token-supply 1000000000000000000 \

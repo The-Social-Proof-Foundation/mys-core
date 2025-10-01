@@ -1620,7 +1620,7 @@
     ]
   },
   "74": {
-    "git_revision": "b0d549db5f93-dirty",
+    "git_revision": "78c5a3fa56ea-dirty",
     "packages": [
       {
         "name": "MoveStdlib",
@@ -1643,14 +1643,14 @@
         "id": "0x00000000000000000000000000000000000000000000000000000000000075d6"
       },
       {
-        "name": "MySocialContracts",
-        "path": "crates/mys-framework/packages/mys-social",
-        "id": "0x000000000000000000000000000000000000000000000000000000000000d880"
-      },
-      {
         "name": "Seal",
         "path": "crates/mys-framework/packages/seal",
         "id": "0x0000000000000000000000000000000000000000000000000000000000005ea1"
+      },
+      {
+        "name": "MySocialContracts",
+        "path": "crates/mys-framework/packages/mys-social",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000d880"
       },
       {
         "name": "DeepBook",

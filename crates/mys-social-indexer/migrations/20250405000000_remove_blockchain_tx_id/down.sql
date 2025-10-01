@@ -1,6 +1,6 @@
 -- Add back blockchain_tx_id to profiles table
 ALTER TABLE profiles
-ADD COLUMN blockchain_tx_id VARCHAR NULL;
+ADD COLUMN blockchain_tx_id TEXT NULL;
 
 -- Remove trigger that prevents deleting social_graph_events
 DROP TRIGGER IF EXISTS no_delete_social_graph_events ON social_graph_events;

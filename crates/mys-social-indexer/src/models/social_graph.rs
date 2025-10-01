@@ -1,10 +1,10 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::schema::{social_graph_events, social_graph_relationships};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::schema::{social_graph_relationships, social_graph_events};
 
 /// Model for a social graph relationship (follow)
 #[derive(Debug, Queryable, Selectable, Serialize, Deserialize)]
@@ -34,7 +34,7 @@ pub struct SocialGraphEvent {
     pub follower_address: String,
     pub following_address: String,
     pub created_at: NaiveDateTime,
-    pub event_id: Option<String>,  // Changed from blockchain_tx_hash to event_id
+    pub event_id: Option<String>, // Changed from blockchain_tx_hash to event_id
     pub raw_event_data: Option<serde_json::Value>,
 }
 
@@ -46,7 +46,7 @@ pub struct NewSocialGraphEvent {
     pub follower_address: String,
     pub following_address: String,
     pub created_at: NaiveDateTime,
-    pub event_id: Option<String>,  // Changed from blockchain_tx_hash to event_id
+    pub event_id: Option<String>, // Changed from blockchain_tx_hash to event_id
     pub raw_event_data: Option<serde_json::Value>,
 }
 
@@ -65,12 +65,10 @@ pub struct FollowDetail {
     pub display_name: Option<String>,
     // Profile photo
     pub profile_photo: Option<String>,
-    // Bio
-    pub bio: Option<String>,
-    // Website
-    pub website: Option<String>,
-    // When the relationship was created
-    pub followed_at: NaiveDateTime,
+    // Whether this profile follows back the requesting profile
+    pub follows_back: bool,
+    // Whether the requesting profile is following this profile
+    pub is_following: bool,
 }
 
 /// Query parameters for paginating followers/following lists
@@ -79,4 +77,10 @@ pub struct FollowsQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub page: Option<i64>,
+    /// Optional viewer profile ID to calculate is_following/follows_back from viewer's perspective
+    pub viewer_id: Option<String>,
+    /// Optional sort: latest | earliest | alphabetical
+    pub sort: Option<String>,
+    /// Optional search across username, display_name, and wallet address
+    pub search: Option<String>,
 }

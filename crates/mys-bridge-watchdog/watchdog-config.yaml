@@ -1,0 +1,54 @@
+# Bridge Watchdog Configuration
+# This file configures the monitoring parameters for the bridge watchdog
+
+# Bridge nodes to monitor
+bridge_nodes:
+  - name: "validator-1"
+    url: "https://bridge-validator-1.testnet.mysocial.network"
+    expected_status: 200
+  - name: "validator-2"
+    url: "https://bridge-validator-2.testnet.mysocial.network"
+    expected_status: 200
+  - name: "validator-3"
+    url: "https://bridge-validator-3.testnet.mysocial.network"
+    expected_status: 200
+
+# Mys network configuration
+mys:
+  rpc_url: "http://fullnode.testnet.mysocial.network:8082"
+  bridge_chain_id: 1
+
+# Ethereum network configuration
+eth:
+  rpc_url: "https://sepolia.base.org"
+  bridge_proxy_address: "0x196D0E3f7b50F29531d1bd006AB3D4c2CB731DC6"
+  vault_address: "0xBCD346797E5DEc586B0c4Fa19b82a4E2cAd5DD67"
+  bridge_chain_id: 12
+
+# Monitoring intervals (in seconds)
+monitoring:
+  eth_vault_balance_check_interval: 300  # 5 minutes
+  mys_bridge_status_check_interval: 60   # 1 minute
+  eth_bridge_status_check_interval: 120  # 2 minutes
+
+# Alert thresholds
+alerts:
+  min_vault_balance_eth: 0.1
+  max_bridge_down_time_seconds: 300
+  consecutive_failures_before_alert: 3
+
+# Observables to run
+observables:
+  - name: "eth_vault_balance"
+    enabled: true
+  - name: "mys_bridge_status"
+    enabled: true
+  - name: "eth_bridge_status"
+    enabled: true
+  - name: "bridge_node_health"
+    enabled: true
+
+# Logging
+logging:
+  level: "info"
+  format: "json"

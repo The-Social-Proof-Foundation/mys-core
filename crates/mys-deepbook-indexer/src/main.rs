@@ -43,6 +43,11 @@ async fn main() -> Result<()> {
         .with_env()
         .init();
 
+    // Install default crypto provider for rustls (required for rustls 0.23+)
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     let args = Args::parse();
 
     // load config from environment variables if no config file specified
@@ -70,6 +75,16 @@ async fn main() -> Result<()> {
     info!("Running database migrations...");
     run_migrations_with_tls(&db_url).await?;
     info!("Database migrations completed successfully");
+    
+    // Log compression configuration
+    info!("TimescaleDB compression settings:");
+    info!("  Enabled: {}", config.compression.enabled);
+    if config.compression.enabled {
+        info!("  High-frequency tables compression: {} hours", config.compression.high_frequency_compress_after_hours);
+        info!("  Medium-frequency tables compression: {} hours", config.compression.medium_frequency_compress_after_hours);
+        info!("  Low-frequency tables compression: {} hours", config.compression.low_frequency_compress_after_hours);
+        info!("  Monitor compression with: SELECT * FROM compression_status;");
+    }
     
     let datastore = PgDeepbookPersistent::new(
         get_connection_pool(db_url.clone()).await,
@@ -111,16 +126,115 @@ async fn main() -> Result<()> {
         datastore,
     )
     .build();
+    // Start compression monitoring if enabled
+    if config.compression.enabled {
+        let db_url_for_monitoring = db_url.clone();
+        tokio::spawn(async move {
+            loop {
+                if let Err(e) = log_compression_stats(&db_url_for_monitoring).await {
+                    tracing::warn!("Failed to log compression stats: {}", e);
+                }
+                // Check compression stats every hour
+                tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
+            }
+        });
+    }
+
     indexer.start().await?;
 
     Ok(())
 }
 
-async fn run_migrations_with_tls(database_url: &str) -> Result<()> {
-    // Set up rustls for TLS connections
+/// Log TimescaleDB compression statistics
+async fn log_compression_stats(database_url: &str) -> Result<()> {
+    use tokio_postgres_rustls::MakeRustlsConnect;
+    
+    // Set up TLS connection
+    let certs = rustls_native_certs::load_native_certs()
+        .expect("Failed to load native root certificates");
+    
+    let mut root_store = rustls::RootCertStore::empty();
+    for cert in certs {
+        if let Err(e) = root_store.add(cert) {
+            tracing::warn!("Failed to add certificate to root store: {}", e);
+        }
+    }
+    
     let rustls_config = rustls::ClientConfig::builder()
-        .dangerous()
-        .with_custom_certificate_verifier(std::sync::Arc::new(SkipServerCertCheck))
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+    let tls = MakeRustlsConnect::new(rustls_config);
+    
+    let (client, conn) = tokio_postgres::connect(database_url, tls).await?;
+    
+    tokio::spawn(async move {
+        if let Err(e) = conn.await {
+            tracing::warn!("Database connection error during compression monitoring: {e}");
+        }
+    });
+    
+    // Query compression status
+    let rows = client
+        .query(
+            "SELECT 
+                hypertable_name,
+                total_chunks,
+                number_compressed_chunks,
+                CASE 
+                    WHEN uncompressed_heap_size > 0 THEN 
+                        ROUND((1 - compressed_heap_size::numeric / uncompressed_heap_size::numeric) * 100, 2)
+                    ELSE 0 
+                END AS compression_ratio_percent
+            FROM timescaledb_information.compression_settings cs
+            JOIN timescaledb_information.hypertables h ON cs.hypertable_name = h.hypertable_name
+            LEFT JOIN timescaledb_information.chunks c ON h.hypertable_name = c.hypertable_name
+            WHERE compression_enabled = true
+            GROUP BY 
+                cs.hypertable_name, 
+                compressed_heap_size,
+                uncompressed_heap_size,
+                total_chunks,
+                number_compressed_chunks
+            ORDER BY hypertable_name",
+            &[],
+        )
+        .await?;
+    
+    info!("=== TimescaleDB Compression Status ===");
+    for row in rows {
+        let table_name: String = row.get(0);
+        let total_chunks: Option<i64> = row.get(1);
+        let compressed_chunks: Option<i64> = row.get(2);
+        let compression_ratio: Option<f64> = row.get(3);
+        
+        info!(
+            "Table: {} | Chunks: {}/{} compressed | Savings: {}%",
+            table_name,
+            compressed_chunks.unwrap_or(0),
+            total_chunks.unwrap_or(0),
+            compression_ratio.unwrap_or(0.0)
+        );
+    }
+    info!("========================================");
+    
+    Ok(())
+}
+
+async fn run_migrations_with_tls(database_url: &str) -> Result<()> {
+    // Set up rustls for TLS connections using native certificates
+    info!("Loading native root certificates for database TLS connection...");
+    let certs = rustls_native_certs::load_native_certs()
+        .expect("Failed to load native root certificates");
+    
+    let mut root_store = rustls::RootCertStore::empty();
+    for cert in certs {
+        if let Err(e) = root_store.add(cert) {
+            tracing::warn!("Failed to add certificate to root store: {}", e);
+        }
+    }
+    
+    let rustls_config = rustls::ClientConfig::builder()
+        .with_root_certificates(root_store)
         .with_no_client_auth();
     let tls = tokio_postgres_rustls::MakeRustlsConnect::new(rustls_config);
     let (client, conn) = tokio_postgres::connect(database_url, tls)
@@ -148,50 +262,4 @@ async fn run_migrations_with_tls(database_url: &str) -> Result<()> {
     Ok(())
 }
 
-fn root_certs() -> rustls::RootCertStore {
-    rustls::RootCertStore {
-        roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
-    }
-}
 
-/// Skip performing strict certificate verification to handle cloud database certificates
-#[derive(Debug)]
-struct SkipServerCertCheck;
-
-impl rustls::client::danger::ServerCertVerifier for SkipServerCertCheck {
-    fn verify_server_cert(
-        &self,
-        _end_entity: &rustls::pki_types::CertificateDer<'_>,
-        _intermediates: &[rustls::pki_types::CertificateDer<'_>],
-        _server_name: &rustls::pki_types::ServerName<'_>,
-        _ocsp_response: &[u8],
-        _now: rustls::pki_types::UnixTime,
-    ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
-        Ok(rustls::client::danger::ServerCertVerified::assertion())
-    }
-
-    fn verify_tls12_signature(
-        &self,
-        _message: &[u8],
-        _cert: &rustls::pki_types::CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
-    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
-        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
-    }
-
-    fn verify_tls13_signature(
-        &self,
-        _message: &[u8],
-        _cert: &rustls::pki_types::CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
-    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
-        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
-    }
-
-    fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
-        rustls::client::WebPkiServerVerifier::builder(std::sync::Arc::new(root_certs()))
-            .build()
-            .unwrap()
-            .supported_verify_schemes()
-    }
-}

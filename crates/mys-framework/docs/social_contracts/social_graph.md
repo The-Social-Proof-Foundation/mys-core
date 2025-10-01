@@ -10,7 +10,7 @@ Manages social relationships between users (following/followers)
 -  [Struct `FollowEvent`](#social_contracts_social_graph_FollowEvent)
 -  [Struct `UnfollowEvent`](#social_contracts_social_graph_UnfollowEvent)
 -  [Constants](#@Constants_0)
--  [Function `init`](#social_contracts_social_graph_init)
+-  [Function `bootstrap_init`](#social_contracts_social_graph_bootstrap_init)
 -  [Function `follow`](#social_contracts_social_graph_follow)
 -  [Function `unfollow`](#social_contracts_social_graph_unfollow)
 -  [Function `migrate_social_graph`](#social_contracts_social_graph_migrate_social_graph)
@@ -26,6 +26,7 @@ Manages social relationships between users (following/followers)
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
+<b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
 <b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
@@ -43,6 +44,7 @@ Manages social relationships between users (following/followers)
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
+<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -215,14 +217,14 @@ Error codes
 
 
 
-<a name="social_contracts_social_graph_init"></a>
+<a name="social_contracts_social_graph_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Module initializer to create the social graph
+Bootstrap initialization function - creates the social graph shared object
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -231,7 +233,7 @@ Module initializer to create the social graph
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_init">init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     <b>let</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a> = <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a> {
         id: object::new(ctx),
         following: table::new(ctx),

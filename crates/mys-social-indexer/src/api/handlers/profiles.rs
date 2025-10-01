@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::{
@@ -9,7 +9,7 @@ use axum::{
 };
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::db::DbPool;
 use crate::models::Profile;
@@ -30,14 +30,10 @@ pub async fn latest_profiles(
     let limit = query.limit.unwrap_or(50);
     let offset = query.offset.unwrap_or(0);
     let page = query.page.unwrap_or(1);
-    
+
     // If page is provided, calculate the offset
-    let offset = if page > 1 {
-        (page - 1) * limit
-    } else {
-        offset
-    };
-    
+    let offset = if page > 1 { (page - 1) * limit } else { offset };
+
     let mut conn = match db_pool.get().await {
         Ok(conn) => conn,
         Err(e) => {
@@ -45,22 +41,19 @@ pub async fn latest_profiles(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Database error: {}", e)
-                }))
+                })),
             )
         }
     };
-    
+
     // Get total count for pagination info
-    let total_count = match profiles::table
-        .count()
-        .get_result::<i64>(&mut conn)
-        .await {
+    let total_count = match profiles::table.count().get_result::<i64>(&mut conn).await {
         Ok(count) => count,
         Err(_) => 0,
     };
-    
+
     let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
-    
+
     // Get profiles in descending order by id
     let profiles_result = profiles::table
         .order_by(profiles::id.desc())
@@ -68,10 +61,10 @@ pub async fn latest_profiles(
         .offset(offset)
         .load::<Profile>(&mut conn)
         .await;
-    
+
     match profiles_result {
         Ok(profiles) => (
-            StatusCode::OK, 
+            StatusCode::OK,
             Json(serde_json::json!({
                 "profiles": profiles,
                 "pagination": {
@@ -81,14 +74,14 @@ pub async fn latest_profiles(
                     "page": page,
                     "total_pages": total_pages
                 }
-            }))
+            })),
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "error": format!("Failed to fetch profiles: {}", e)
-            }))
-        )
+            })),
+        ),
     }
 }
 
@@ -104,30 +97,33 @@ pub async fn get_profile_by_address(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Database error: {}", e)
-                }))
+                })),
             )
         }
     };
-    
+
     let profile_result = profiles::table
         .filter(profiles::owner_address.eq(address))
         .first::<Profile>(&mut conn)
         .await;
-    
+
     match profile_result {
-        Ok(profile) => (StatusCode::OK, Json(serde_json::to_value(profile).unwrap_or_default())),
+        Ok(profile) => (
+            StatusCode::OK,
+            Json(serde_json::to_value(profile).unwrap_or_default()),
+        ),
         Err(diesel::result::Error::NotFound) => (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({
                 "error": "Profile not found"
-            }))
+            })),
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "error": format!("Failed to fetch profile: {}", e)
-            }))
-        )
+            })),
+        ),
     }
 }
 
@@ -143,29 +139,190 @@ pub async fn get_profile_by_username(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Database error: {}", e)
-                }))
+                })),
             )
         }
     };
-    
+
     let profile_result = profiles::table
         .filter(profiles::username.eq(username))
         .first::<Profile>(&mut conn)
         .await;
-    
+
     match profile_result {
-        Ok(profile) => (StatusCode::OK, Json(serde_json::to_value(profile).unwrap_or_default())),
+        Ok(profile) => (
+            StatusCode::OK,
+            Json(serde_json::to_value(profile).unwrap_or_default()),
+        ),
         Err(diesel::result::Error::NotFound) => (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({
                 "error": "Profile not found"
-            }))
+            })),
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "error": format!("Failed to fetch profile: {}", e)
-            }))
-        )
+            })),
+        ),
     }
+}
+
+/// Response structure for username availability check
+#[derive(Debug, Serialize)]
+pub struct UsernameAvailabilityResponse {
+    pub username: String,
+    pub available: bool,
+    pub reason: Option<String>,
+}
+
+/// Check if a username is available for registration
+///
+/// This endpoint validates the username format and checks database availability.
+/// Returns detailed information about username availability and validation.
+pub async fn check_username_availability(
+    State(db_pool): State<DbPool>,
+    Path(username): Path<String>,
+) -> impl IntoResponse {
+    // Validate username format first (before hitting database)
+    if let Some(validation_error) = validate_username(&username) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(UsernameAvailabilityResponse {
+                username: username.clone(),
+                available: false,
+                reason: Some(validation_error),
+            }),
+        );
+    }
+
+    let mut conn = match db_pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(UsernameAvailabilityResponse {
+                    username: username.clone(),
+                    available: false,
+                    reason: Some(format!("Database connection error: {}", e)),
+                }),
+            )
+        }
+    };
+
+    // Check if username exists in database (case-insensitive)
+    let username_exists = match profiles::table
+        .filter(profiles::username.eq(&username))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+    {
+        Ok(count) => count > 0,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(UsernameAvailabilityResponse {
+                    username: username.clone(),
+                    available: false,
+                    reason: Some(format!("Database query error: {}", e)),
+                }),
+            )
+        }
+    };
+
+    let available = !username_exists;
+    let reason = if username_exists {
+        Some("Username is already taken".to_string())
+    } else {
+        None
+    };
+
+    (
+        StatusCode::OK,
+        Json(UsernameAvailabilityResponse {
+            username,
+            available,
+            reason,
+        }),
+    )
+}
+
+/// Validate username format according to MySocial rules
+///
+/// Returns None if valid, Some(error_message) if invalid
+fn validate_username(username: &str) -> Option<String> {
+    // Check if username is empty
+    if username.is_empty() {
+        return Some("Username cannot be empty".to_string());
+    }
+
+    // Check length constraints (3-30 characters)
+    if username.len() < 2 {
+        return Some("Username must be at least 3 characters long".to_string());
+    }
+
+    if username.len() > 50 {
+        return Some("Username cannot be longer than 30 characters".to_string());
+    }
+
+    // Check if username starts or ends with underscore or hyphen
+    if username.starts_with('_') || username.starts_with('-') {
+        return Some("Username cannot start with underscore or hyphen".to_string());
+    }
+
+    if username.ends_with('_') || username.ends_with('-') {
+        return Some("Username cannot end with underscore or hyphen".to_string());
+    }
+
+    // Check for valid characters (alphanumeric, underscore, hyphen)
+    if !username
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    {
+        return Some(
+            "Username can only contain letters, numbers, underscores, and hyphens".to_string(),
+        );
+    }
+
+    // Check for consecutive special characters
+    if username.contains("__")
+        || username.contains("--")
+        || username.contains("_-")
+        || username.contains("-_")
+    {
+        return Some("Username cannot contain consecutive special characters".to_string());
+    }
+
+    // Check for reserved words (case-insensitive) - matches profile.move RESERVED_NAMES
+    let reserved_words = [
+        "admin",
+        "administrator",
+        "owner",
+        "mod",
+        "moderator",
+        "staff",
+        "support",
+        "myso",
+        "mysocial",
+        "system",
+        "root",
+        "official",
+        // Inappropriate names
+        "fuck",
+        "shit",
+        "ass",
+        "piss",
+        "cunt",
+        "asshole",
+        "dick",
+        "pussy",
+        "sex",
+    ];
+
+    if reserved_words.contains(&username.to_lowercase().as_str()) {
+        return Some("Username is reserved and cannot be used".to_string());
+    }
+
+    None
 }

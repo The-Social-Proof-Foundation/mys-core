@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 /// Social Proof Token event types enumeration
@@ -12,14 +12,16 @@ pub enum SocialProofTokenEventType {
     TokenSold,
     /// Tokens were added to an existing holding
     TokensAdded,
-    /// An auction was created
-    AuctionCreated,
-    /// A contribution was made to an auction
-    AuctionContribution,
-    /// An auction was finalized
-    AuctionFinalized,
+    /// MySo was reserved towards a post/profile
+    ReservationCreated,
+    /// MySo reservation was withdrawn
+    ReservationWithdrawn,
+    /// Staking threshold was met for the first time
+    ThresholdMet,
     /// Exchange configuration was updated
     ConfigUpdated,
+    /// Emergency kill switch was toggled
+    EmergencyKillSwitch,
 }
 
 impl SocialProofTokenEventType {
@@ -30,25 +32,27 @@ impl SocialProofTokenEventType {
             Self::TokenBought => "TokenBought",
             Self::TokenSold => "TokenSold",
             Self::TokensAdded => "TokensAdded",
-            Self::AuctionCreated => "AuctionCreated",
-            Self::AuctionContribution => "AuctionContribution",
-            Self::AuctionFinalized => "AuctionFinalized",
+            Self::ReservationCreated => "ReservationCreated",
+            Self::ReservationWithdrawn => "ReservationWithdrawn",
+            Self::ThresholdMet => "ThresholdMet",
             Self::ConfigUpdated => "ConfigUpdated",
+            Self::EmergencyKillSwitch => "EmergencyKillSwitch",
         }
     }
-    
+
     /// Try to parse a string into an event type
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "TokenPoolCreated" => Some(Self::TokenPoolCreated),
             "TokenBought" => Some(Self::TokenBought),
             "TokenSold" => Some(Self::TokenSold),
-            "TokensAdded" => Some(Self::TokensAdded), 
-            "AuctionCreated" => Some(Self::AuctionCreated),
-            "AuctionContribution" => Some(Self::AuctionContribution),
-            "AuctionFinalized" => Some(Self::AuctionFinalized),
+            "TokensAdded" => Some(Self::TokensAdded),
+            "ReservationCreated" => Some(Self::ReservationCreated),
+            "ReservationWithdrawn" => Some(Self::ReservationWithdrawn),
+            "ThresholdMet" => Some(Self::ThresholdMet),
             "ConfigUpdated" => Some(Self::ConfigUpdated),
+            "EmergencyKillSwitch" => Some(Self::EmergencyKillSwitch),
             _ => None,
         }
     }
-} 
+}

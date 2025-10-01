@@ -1,7 +1,7 @@
 -- Remove blockchain_tx_hash and add event_id to the social_graph_events table
 ALTER TABLE social_graph_events 
 DROP COLUMN IF EXISTS blockchain_tx_hash,
-ADD COLUMN event_id VARCHAR;
+ADD COLUMN event_id TEXT;
 
 -- Create an index on event_id for faster lookups
 CREATE INDEX idx_social_graph_events_event_id ON social_graph_events(event_id);

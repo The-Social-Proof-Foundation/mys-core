@@ -4,7 +4,7 @@
 ALTER TABLE platform_blocked_profiles 
     ADD COLUMN is_blocked BOOLEAN NOT NULL DEFAULT TRUE,
     ADD COLUMN unblocked_at TIMESTAMP NULL,
-    ADD COLUMN unblocked_by VARCHAR NULL;
+    ADD COLUMN unblocked_by TEXT NULL;
 
 -- Remove the comment
 COMMENT ON TABLE platform_blocked_profiles IS NULL; 

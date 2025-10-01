@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS usernames (
     id SERIAL PRIMARY KEY,
     profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    username VARCHAR NOT NULL UNIQUE,
+    username TEXT NOT NULL UNIQUE,
     registered_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -17,8 +17,8 @@ CREATE INDEX IF NOT EXISTS usernames_profile_id_idx ON usernames(profile_id);
 CREATE TABLE IF NOT EXISTS username_history (
     id SERIAL PRIMARY KEY,
     profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    old_username VARCHAR NOT NULL,
-    new_username VARCHAR NOT NULL,
+    old_username TEXT NOT NULL,
+    new_username TEXT NOT NULL,
     changed_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

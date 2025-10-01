@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use serde::{Deserialize, Serialize};
@@ -24,4 +24,4 @@ pub struct UnfollowEventDetails {
     pub follower_address: String,
     pub following_address: String,
     pub timestamp: u64,
-} 
+}

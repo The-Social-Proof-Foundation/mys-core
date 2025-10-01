@@ -1,11 +1,11 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::models::profile::UpdateProfile;
+use crate::models::social_graph::NewSocialGraphRelationship;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use crate::models::social_graph::{NewSocialGraphRelationship};
-use crate::models::profile::UpdateProfile;
 
 /// Event emitted when a profile follows another profile
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,24 +35,24 @@ impl FollowEvent {
     /// Convert the FollowEvent to a NewSocialGraphRelationship database model
     pub fn into_relationship(&self) -> Result<NewSocialGraphRelationship> {
         // Use provided timestamp or current time
-        let timestamp = self.timestamp.unwrap_or_else(|| 
+        let timestamp = self.timestamp.unwrap_or_else(|| {
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs()
-        );
-        
+        });
+
         let created_at = DateTime::from_timestamp(timestamp as i64, 0)
             .unwrap_or(Utc::now())
             .naive_utc();
-            
+
         Ok(NewSocialGraphRelationship {
             follower_address: self.follower.clone(),
             following_address: self.following.clone(),
             created_at,
         })
     }
-    
+
     /// Create UpdateProfile struct to increment following count
     pub fn follower_update(&self) -> UpdateProfile {
         UpdateProfile {
@@ -61,9 +61,11 @@ impl FollowEvent {
             profile_photo: None,
             website: None,
             cover_photo: None,
-            sensitive_data_updated_at: None,
             followers_count: None,
             following_count: Some(1), // This will be used in a raw SQL to increment by 1
+            blocked_count: None,
+            post_count: None,
+            min_offer_amount: None,
             birthdate: None,
             current_location: None,
             raised_location: None,
@@ -83,7 +85,7 @@ impl FollowEvent {
             block_list_address: None,
         }
     }
-    
+
     /// Create UpdateProfile struct to increment followers count
     pub fn following_update(&self) -> UpdateProfile {
         UpdateProfile {
@@ -92,9 +94,11 @@ impl FollowEvent {
             profile_photo: None,
             website: None,
             cover_photo: None,
-            sensitive_data_updated_at: None,
             followers_count: Some(1), // This will be used in a raw SQL to increment by 1
             following_count: None,
+            blocked_count: None,
+            post_count: None,
+            min_offer_amount: None,
             birthdate: None,
             current_location: None,
             raised_location: None,
@@ -125,9 +129,11 @@ impl UnfollowEvent {
             profile_photo: None,
             website: None,
             cover_photo: None,
-            sensitive_data_updated_at: None,
             followers_count: None,
             following_count: Some(-1), // This will be used in a raw SQL to decrement by 1
+            blocked_count: None,
+            post_count: None,
+            min_offer_amount: None,
             birthdate: None,
             current_location: None,
             raised_location: None,
@@ -147,7 +153,7 @@ impl UnfollowEvent {
             block_list_address: None,
         }
     }
-    
+
     /// Create UpdateProfile struct to decrement followers count
     pub fn following_update(&self) -> UpdateProfile {
         UpdateProfile {
@@ -156,9 +162,11 @@ impl UnfollowEvent {
             profile_photo: None,
             website: None,
             cover_photo: None,
-            sensitive_data_updated_at: None,
             followers_count: Some(-1), // This will be used in a raw SQL to decrement by 1
             following_count: None,
+            blocked_count: None,
+            post_count: None,
+            min_offer_amount: None,
             birthdate: None,
             current_location: None,
             raised_location: None,

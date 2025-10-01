@@ -1,8 +1,8 @@
 -- Create the platforms_blocked table
 CREATE TABLE IF NOT EXISTS platforms_blocked (
     id SERIAL PRIMARY KEY,
-    profile_id VARCHAR NOT NULL,
-    platform_id VARCHAR NOT NULL,
+    profile_id TEXT NOT NULL,
+    platform_id TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL,
     is_blocked BOOLEAN NOT NULL DEFAULT TRUE,
     unblocked_at TIMESTAMP,

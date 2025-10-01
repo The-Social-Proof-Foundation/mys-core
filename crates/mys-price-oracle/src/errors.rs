@@ -9,11 +9,7 @@ pub enum OracleError {
     #[error("GraphQL error: {0}")]
     GraphQL(String),
 
-    #[error("Price validation error: {message}")]
-    PriceValidation { message: String },
 
-    #[error("Authentication error: {0}")]
-    Authentication(String),
 
     #[error("State persistence error: {0}")]
     Persistence(#[from] sled::Error),
@@ -44,11 +40,7 @@ pub enum OracleError {
     #[error("No price data available")]
     NoPriceData,
 
-    #[error("Circuit breaker is open")]
-    CircuitBreakerOpen,
 
-    #[error("Timeout error: {0}")]
-    Timeout(String),
 
     #[error("Data format error: {0}")]
     DataFormat(String),

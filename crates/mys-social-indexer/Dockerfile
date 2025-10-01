@@ -1,61 +1,87 @@
-FROM rust:1.75-slim-bookworm as builder
+# Build application
+FROM rust:1.82-bullseye AS builder
+ARG PROFILE=release
+ARG GIT_REVISION
+ENV GIT_REVISION=$GIT_REVISION
+WORKDIR /app
 
 # Install build dependencies
-RUN apt-get update && \
-    apt-get install -y \
-    build-essential \
-    libpq-dev \
-    pkg-config \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create app user
-RUN useradd -m -u 1000 -U -s /bin/sh -d /app appuser
-
-# Set up build directory and copy source
-WORKDIR /app
-COPY --chown=appuser:appuser . .
-
-# Build the application
-RUN cargo build --release
-
-# Create runtime image
-FROM debian:bookworm-slim
-
-# Install runtime dependencies
-RUN apt-get update && \
-    apt-get install -y \
+RUN apt-get update && apt-get install -y \
+    cmake \
+    clang \
     libpq5 \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    libpq-dev \
+    postgresql
 
-# Copy app user
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
+# Copy source code
+COPY . .
 
-# Create app directories
+# Build
+RUN cargo build --release --bin mys-social-indexer
+
+# Production Image
+FROM debian:bullseye-slim AS runtime
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libjemalloc-dev \
+    ca-certificates \
+    curl \
+    libpq5 \
+    libpq-dev \
+    postgresql \
+    gettext-base
+
+# Use jemalloc as memory allocator
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
+
 WORKDIR /app
-RUN mkdir -p /app/data && chown -R appuser:appuser /app
+COPY --from=builder /app/target/release/mys-social-indexer /usr/local/bin
+COPY --from=builder /app/crates/mys-social-indexer/migrations /app/migrations
 
-# Copy binary and migrations
-COPY --from=builder --chown=appuser:appuser /app/target/release/mys-social-indexer /app/
-COPY --from=builder --chown=appuser:appuser /app/migrations /app/migrations
+# Create entrypoint script with forced migration
+RUN echo '#!/bin/sh\n\
+echo "=== ENTRYPOINT DEBUG ==="\n\
+echo "All environment variables:"\n\
+env | grep -E "(DATABASE_URL|PORT)" || echo "No matching env vars found"\n\
+echo ""\n\
+echo "=== Key Environment Variables ==="\n\
+echo "DATABASE_URL: ${DATABASE_URL:-NOT_SET}"\n\
+echo "PORT: ${PORT:-8080}"\n\
+echo "=============================="\n\
+\n\
+# Validate required environment variables\n\
+if [ -z "$DATABASE_URL" ]; then\n\
+  echo "ERROR: DATABASE_URL is not set"\n\
+  exit 1\n\
+fi\n\
+\n\
+# Force migrations by setting environment variable\n\
+echo "=== FORCING DATABASE MIGRATIONS ==="\n\
+export FORCE_MIGRATIONS=true\n\
+export RESET_BLOCKING_SCHEMA=true\n\
+echo "Setting FORCE_MIGRATIONS=true to ensure migrations run"\n\
+echo "Setting RESET_BLOCKING_SCHEMA=true to force blocking schema update"\n\
+echo "Migrations will be handled by the application startup process"\n\
+echo "=== MIGRATIONS WILL BE FORCED ==="\n\
+\n\
+# Use actual environment variable values\n\
+echo "Starting mys-social-indexer with:"\n\
+echo "  DATABASE_URL: $DATABASE_URL"\n\
+echo "  PORT: ${PORT:-8080}"\n\
+echo ""\n\
+\n\
+exec mys-social-indexer' > /usr/local/bin/entrypoint.sh && \
+    chmod +x /usr/local/bin/entrypoint.sh
 
-# Switch to app user
-USER appuser
-
-# Set default environment variables
-ENV RUST_LOG=info
-ENV DATABASE_URL=postgres://postgres:postgres@postgres:5432/myso_social_indexer
-ENV DATABASE_MAX_CONNECTIONS=10
-ENV SERVER_HOST=0.0.0.0
-ENV SERVER_PORT=8080
-ENV CHECKPOINT_URL=https://checkpoints.testnet.mysocial.network
-ENV START_CHECKPOINT=0
-ENV INDEXER_CONCURRENCY=5
+ARG BUILD_DATE
+ARG GIT_REVISION
+LABEL build-date=$BUILD_DATE
+LABEL git-revision=$GIT_REVISION
 
 # Expose API port
 EXPOSE 8080
 
-# Run the application
-CMD ["/app/mys-social-indexer"]
+# Use the entrypoint script
+ENTRYPOINT /usr/local/bin/entrypoint.sh

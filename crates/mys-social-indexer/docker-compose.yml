@@ -36,11 +36,11 @@ services:
       - DATABASE_MAX_CONNECTIONS=10
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
-      - CHECKPOINT_URL=https://checkpoints.testnet.mysocial.network
+      - CHECKPOINT_URL=https://mysocial-testnet-checkpoints.storage.googleapis.com
       - START_CHECKPOINT=0
       - INDEXER_CONCURRENCY=5
       - RUST_LOG=info,mys_social_indexer=debug
-      - PROFILE_PACKAGE_ADDRESS=0xe5759970ebb63cb02e34af3304a61600b07ed3cbd10376b3a0be98952b54aa76
+      - PROFILE_PACKAGE_ADDRESS=0x000000000000000000000000000000000000000000000000000000000000d880
     ports:
       - "8080:8080"
 

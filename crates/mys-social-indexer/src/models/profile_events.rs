@@ -1,11 +1,13 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::events::profile_event_types::{
+    BlockAddedEvent, BlockRemovedEvent, PlatformJoinedEvent, PlatformLeftEvent, ProfileEventType,
+};
+use crate::schema::profile_events;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::schema::profile_events;
-use crate::events::profile_event_types::{ProfileEventType, BlockAddedEvent, BlockRemovedEvent, PlatformJoinedEvent, PlatformLeftEvent};
 
 /// Profile event model for database storage
 #[derive(Debug, Queryable, Selectable, Serialize, Deserialize)]
@@ -49,7 +51,7 @@ impl NewProfileEvent {
         } else {
             now
         };
-        
+
         Self {
             event_type: event_type.into(),
             profile_id,
@@ -59,14 +61,14 @@ impl NewProfileEvent {
             updated_at: now,
         }
     }
-    
+
     /// Create a new profile event for a block added event
     pub fn from_block_added(event: &BlockAddedEvent, event_id: Option<String>) -> Self {
         let now = chrono::Utc::now().naive_utc();
         let created_at = chrono::DateTime::from_timestamp(event.timestamp as i64, 0)
             .unwrap_or_else(|| chrono::Utc::now())
             .naive_utc();
-        
+
         Self {
             event_type: ProfileEventType::BlockAdded.to_str().to_string(),
             profile_id: event.blocker_profile_id.clone(),
@@ -81,14 +83,14 @@ impl NewProfileEvent {
             updated_at: now,
         }
     }
-    
+
     /// Create a new profile event for a block removed event
     pub fn from_block_removed(event: &BlockRemovedEvent, event_id: Option<String>) -> Self {
         let now = chrono::Utc::now().naive_utc();
         let created_at = chrono::DateTime::from_timestamp(event.timestamp as i64, 0)
             .unwrap_or_else(|| chrono::Utc::now())
             .naive_utc();
-        
+
         Self {
             event_type: ProfileEventType::BlockRemoved.to_str().to_string(),
             profile_id: event.blocker_profile_id.clone(),
@@ -103,14 +105,14 @@ impl NewProfileEvent {
             updated_at: now,
         }
     }
-    
+
     /// Create a new profile event for a platform joined event
     pub fn from_platform_joined(event: &PlatformJoinedEvent, event_id: Option<String>) -> Self {
         let now = chrono::Utc::now().naive_utc();
         let created_at = chrono::DateTime::from_timestamp(event.timestamp as i64, 0)
             .unwrap_or_else(|| chrono::Utc::now())
             .naive_utc();
-        
+
         Self {
             event_type: ProfileEventType::PlatformJoined.to_str().to_string(),
             profile_id: event.profile_id.clone(),
@@ -124,14 +126,14 @@ impl NewProfileEvent {
             updated_at: now,
         }
     }
-    
+
     /// Create a new profile event for a platform left event
     pub fn from_platform_left(event: &PlatformLeftEvent, event_id: Option<String>) -> Self {
         let now = chrono::Utc::now().naive_utc();
         let created_at = chrono::DateTime::from_timestamp(event.timestamp as i64, 0)
             .unwrap_or_else(|| chrono::Utc::now())
             .naive_utc();
-        
+
         Self {
             event_type: ProfileEventType::PlatformLeft.to_str().to_string(),
             profile_id: event.profile_id.clone(),

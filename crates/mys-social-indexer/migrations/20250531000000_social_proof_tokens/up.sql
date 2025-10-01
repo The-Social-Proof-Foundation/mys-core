@@ -8,18 +8,18 @@
 -- Social Proof Token Pools table with time dimension
 CREATE TABLE IF NOT EXISTS social_proof_token_pools (
     id SERIAL NOT NULL,
-    pool_id VARCHAR NOT NULL,
+    pool_id TEXT NOT NULL,
     token_type SMALLINT NOT NULL,  -- 1: Profile, 2: Post
-    owner VARCHAR NOT NULL,
-    associated_id VARCHAR NOT NULL,
-    symbol VARCHAR NOT NULL,
-    name VARCHAR NOT NULL,
+    owner TEXT NOT NULL,
+    associated_id TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    name TEXT NOT NULL,
     circulating_supply BIGINT NOT NULL,
     base_price BIGINT NOT NULL,
     quadratic_coefficient BIGINT NOT NULL,
     created_at BIGINT NOT NULL, 
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_social_proof_token_pools PRIMARY KEY (id, time)
 );
 
@@ -36,12 +36,12 @@ ALTER TABLE social_proof_token_pools SET (
 -- Token Holdings table with time dimension
 CREATE TABLE IF NOT EXISTS spt_holdings (
     id SERIAL NOT NULL,
-    pool_id VARCHAR NOT NULL,
-    holder_address VARCHAR NOT NULL,
+    pool_id TEXT NOT NULL,
+    holder_address TEXT NOT NULL,
     amount BIGINT NOT NULL,
     acquired_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_spt_holdings PRIMARY KEY (id, time)
 );
 
@@ -58,9 +58,9 @@ ALTER TABLE spt_holdings SET (
 -- Token Transactions table with time dimension
 CREATE TABLE IF NOT EXISTS spt_transactions (
     id SERIAL NOT NULL,
-    pool_id VARCHAR NOT NULL,
-    transaction_type VARCHAR NOT NULL,  -- 'BUY', 'SELL'
-    sender VARCHAR NOT NULL,
+    pool_id TEXT NOT NULL,
+    transaction_type TEXT NOT NULL,  -- 'BUY', 'SELL'
+    sender TEXT NOT NULL,
     amount BIGINT NOT NULL,
     mys_amount BIGINT NOT NULL,
     fee_amount BIGINT NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS spt_transactions (
     price BIGINT NOT NULL,
     created_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_spt_transactions PRIMARY KEY (id, time)
 );
 
@@ -87,10 +87,10 @@ ALTER TABLE spt_transactions SET (
 -- Token Auction Pools table with time dimension
 CREATE TABLE IF NOT EXISTS spt_auction_pools (
     id SERIAL NOT NULL,
-    auction_id VARCHAR NOT NULL,
-    associated_id VARCHAR NOT NULL,
+    auction_id TEXT NOT NULL,
+    associated_id TEXT NOT NULL,
     token_type SMALLINT NOT NULL,
-    owner VARCHAR NOT NULL,
+    owner TEXT NOT NULL,
     status SMALLINT NOT NULL,  -- 0: Pending, 1: Active, 2: Ended, 3: Finalized
     start_time BIGINT NOT NULL,
     duration BIGINT NOT NULL,
@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS spt_auction_pools (
     total_tokens BIGINT NOT NULL,
     finalized_at BIGINT,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_spt_auction_pools PRIMARY KEY (id, time)
 );
 
@@ -115,12 +115,12 @@ ALTER TABLE spt_auction_pools SET (
 -- Auction Contributions table with time dimension
 CREATE TABLE IF NOT EXISTS spt_auction_contributions (
     id SERIAL NOT NULL,
-    auction_id VARCHAR NOT NULL,
-    contributor_address VARCHAR NOT NULL,
+    auction_id TEXT NOT NULL,
+    contributor_address TEXT NOT NULL,
     amount BIGINT NOT NULL,
     contributed_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_spt_auction_contributions PRIMARY KEY (id, time)
 );
 
@@ -137,11 +137,11 @@ ALTER TABLE spt_auction_contributions SET (
 -- Token Price History table with time dimension
 CREATE TABLE IF NOT EXISTS spt_price_history (
     id SERIAL NOT NULL,
-    pool_id VARCHAR NOT NULL,
+    pool_id TEXT NOT NULL,
     price BIGINT NOT NULL,
     circulating_supply BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL,
+    transaction_id TEXT NOT NULL,
     CONSTRAINT pk_spt_price_history PRIMARY KEY (id, time)
 );
 

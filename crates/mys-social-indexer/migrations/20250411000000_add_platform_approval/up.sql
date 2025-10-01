@@ -6,4 +6,4 @@ ALTER TABLE platforms
 ADD COLUMN approval_changed_at TIMESTAMP NULL;
 
 ALTER TABLE platforms
-ADD COLUMN approved_by VARCHAR NULL;
+ADD COLUMN approved_by TEXT NULL;

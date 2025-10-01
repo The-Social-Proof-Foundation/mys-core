@@ -19,6 +19,22 @@ pub struct IndexerConfig {
     pub concurrency: u64,
     pub metric_port: u16,
     pub service_port: u16,
+    /// TimescaleDB compression settings
+    #[serde(default = "default_compression_config")]
+    pub compression: CompressionConfig,
+}
+
+/// TimescaleDB compression configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct CompressionConfig {
+    /// Enable compression policies (default: true)
+    pub enabled: bool,
+    /// Hours after which to compress high-frequency tables (order_fills, order_updates)
+    pub high_frequency_compress_after_hours: u32,
+    /// Hours after which to compress medium-frequency tables (pool_prices, balances)  
+    pub medium_frequency_compress_after_hours: u32,
+    /// Hours after which to compress low-frequency tables (governance, flashloans)
+    pub low_frequency_compress_after_hours: u32,
 }
 
 impl IndexerConfig {
@@ -46,11 +62,41 @@ impl IndexerConfig {
             service_port: env::var("INDEXER_PORT")
                 .unwrap_or_else(|_| "8080".to_string())
                 .parse()?,
+            compression: CompressionConfig::from_env()?,
         })
     }
 }
 
 impl mys_config::Config for IndexerConfig {}
+
+impl CompressionConfig {
+    /// Create compression config from environment variables with sensible defaults
+    pub fn from_env() -> anyhow::Result<Self> {
+        Ok(Self {
+            enabled: env::var("COMPRESSION_ENABLED")
+                .unwrap_or_else(|_| "true".to_string())
+                .parse()?,
+            high_frequency_compress_after_hours: env::var("COMPRESSION_HIGH_FREQ_HOURS")
+                .unwrap_or_else(|_| "24".to_string())
+                .parse()?,
+            medium_frequency_compress_after_hours: env::var("COMPRESSION_MEDIUM_FREQ_HOURS") 
+                .unwrap_or_else(|_| "48".to_string())
+                .parse()?,
+            low_frequency_compress_after_hours: env::var("COMPRESSION_LOW_FREQ_HOURS")
+                .unwrap_or_else(|_| "24".to_string())  
+                .parse()?,
+        })
+    }
+}
+
+pub fn default_compression_config() -> CompressionConfig {
+    CompressionConfig {
+        enabled: true,
+        high_frequency_compress_after_hours: 24,
+        medium_frequency_compress_after_hours: 48,
+        low_frequency_compress_after_hours: 24,
+    }
+}
 
 pub fn default_db_url() -> String {
     env::var("DB_URL").expect("db_url must be set in config or via the $DB_URL env var")

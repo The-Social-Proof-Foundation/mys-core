@@ -1,19 +1,19 @@
 -- Create platforms table
 CREATE TABLE platforms (
     id SERIAL PRIMARY KEY,
-    platform_id VARCHAR NOT NULL UNIQUE,
-    name VARCHAR NOT NULL,
-    tagline VARCHAR NOT NULL,
+    platform_id TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    tagline TEXT NOT NULL,
     description TEXT,
-    logo VARCHAR,
-    developer_address VARCHAR NOT NULL,
+    logo TEXT,
+    developer_address TEXT NOT NULL,
     terms_of_service TEXT,
     privacy_policy TEXT,
     platforms JSONB,                  -- Array of platform names (Twitter, Instagram, etc.)
     links JSONB,                      -- Array of platform URLs
     status SMALLINT NOT NULL,         -- Platform status (0=dev, 1=alpha, 2=beta, 3=live, etc.)
-    release_date VARCHAR,
-    shutdown_date VARCHAR,
+    release_date TEXT,
+    shutdown_date TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -27,9 +27,9 @@ CREATE INDEX idx_platforms_name ON platforms(name);
 -- Create moderators table
 CREATE TABLE platform_moderators (
     id SERIAL PRIMARY KEY,
-    platform_id VARCHAR NOT NULL,
-    moderator_address VARCHAR NOT NULL,
-    added_by VARCHAR NOT NULL,
+    platform_id TEXT NOT NULL,
+    moderator_address TEXT NOT NULL,
+    added_by TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(platform_id, moderator_address)
 );
@@ -40,13 +40,13 @@ CREATE INDEX idx_platform_moderators_platform_id ON platform_moderators(platform
 -- Create blocked profiles table
 CREATE TABLE platform_blocked_profiles (
     id SERIAL PRIMARY KEY,
-    platform_id VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
-    blocked_by VARCHAR NOT NULL,
+    platform_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
+    blocked_by TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     is_blocked BOOLEAN NOT NULL DEFAULT TRUE,
     unblocked_at TIMESTAMP,
-    unblocked_by VARCHAR,
+    unblocked_by TEXT,
     UNIQUE(platform_id, profile_id)
 );
 
@@ -59,10 +59,10 @@ CREATE INDEX idx_platform_blocked_profiles_profile_id ON platform_blocked_profil
 -- Create a table for platform events
 CREATE TABLE platform_events (
     id SERIAL PRIMARY KEY,
-    event_type VARCHAR NOT NULL,
-    platform_id VARCHAR NOT NULL,
+    event_type TEXT NOT NULL,
+    platform_id TEXT NOT NULL,
     event_data JSONB NOT NULL,
-    event_id VARCHAR,  
+    event_id TEXT,  
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

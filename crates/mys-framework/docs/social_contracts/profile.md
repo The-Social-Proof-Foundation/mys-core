@@ -10,6 +10,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `UsernameRegistry`](#social_contracts_profile_UsernameRegistry)
 -  [Struct `Profile`](#social_contracts_profile_Profile)
 -  [Struct `ProfileBadge`](#social_contracts_profile_ProfileBadge)
+-  [Struct `VestingWallet`](#social_contracts_profile_VestingWallet)
 -  [Struct `BadgeAssignedEvent`](#social_contracts_profile_BadgeAssignedEvent)
 -  [Struct `BadgeRevokedEvent`](#social_contracts_profile_BadgeRevokedEvent)
 -  [Struct `ProfileCreatedEvent`](#social_contracts_profile_ProfileCreatedEvent)
@@ -19,8 +20,10 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `ProfileOfferRejectedEvent`](#social_contracts_profile_ProfileOfferRejectedEvent)
 -  [Struct `ProfileOffer`](#social_contracts_profile_ProfileOffer)
 -  [Struct `ProfileSaleFeeEvent`](#social_contracts_profile_ProfileSaleFeeEvent)
+-  [Struct `TokensVestedEvent`](#social_contracts_profile_TokensVestedEvent)
+-  [Struct `TokensClaimedEvent`](#social_contracts_profile_TokensClaimedEvent)
 -  [Constants](#@Constants_0)
--  [Function `init`](#social_contracts_profile_init)
+-  [Function `bootstrap_init`](#social_contracts_profile_bootstrap_init)
 -  [Function `is_reserved_name`](#social_contracts_profile_is_reserved_name)
 -  [Function `to_lowercase_bytes`](#social_contracts_profile_to_lowercase_bytes)
 -  [Function `to_lowercase_byte`](#social_contracts_profile_to_lowercase_byte)
@@ -54,6 +57,14 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `get_following_count`](#social_contracts_profile_get_following_count)
 -  [Function `increment_following_count`](#social_contracts_profile_increment_following_count)
 -  [Function `decrement_following_count`](#social_contracts_profile_decrement_following_count)
+-  [Function `create_subscription_service`](#social_contracts_profile_create_subscription_service)
+-  [Function `has_valid_subscription`](#social_contracts_profile_has_valid_subscription)
+-  [Function `attach_my_ip`](#social_contracts_profile_attach_my_ip)
+-  [Function `has_my_ip_attached`](#social_contracts_profile_has_my_ip_attached)
+-  [Function `detach_my_ip`](#social_contracts_profile_detach_my_ip)
+-  [Function `get_attached_my_ips`](#social_contracts_profile_get_attached_my_ips)
+-  [Function `batch_attach_my_ips`](#social_contracts_profile_batch_attach_my_ips)
+-  [Function `batch_detach_my_ips`](#social_contracts_profile_batch_detach_my_ips)
 -  [Function `create_offer`](#social_contracts_profile_create_offer)
 -  [Function `accept_offer`](#social_contracts_profile_accept_offer)
 -  [Function `reject_or_revoke_offer`](#social_contracts_profile_reject_or_revoke_offer)
@@ -72,13 +83,25 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `get_badge`](#social_contracts_profile_get_badge)
 -  [Function `get_platform_badges`](#social_contracts_profile_get_platform_badges)
 -  [Function `badge_count`](#social_contracts_profile_badge_count)
--  [Function `is_email_verified`](#social_contracts_profile_is_email_verified)
--  [Function `toggle_email_verification`](#social_contracts_profile_toggle_email_verification)
+-  [Function `vest_myso`](#social_contracts_profile_vest_myso)
+-  [Function `claim_vested_tokens`](#social_contracts_profile_claim_vested_tokens)
+-  [Function `claimable`](#social_contracts_profile_claimable)
+-  [Function `calculate_claimable`](#social_contracts_profile_calculate_claimable)
+-  [Function `sqrt_approximation`](#social_contracts_profile_sqrt_approximation)
+-  [Function `delete_vesting_wallet`](#social_contracts_profile_delete_vesting_wallet)
+-  [Function `vesting_balance`](#social_contracts_profile_vesting_balance)
+-  [Function `vesting_owner`](#social_contracts_profile_vesting_owner)
+-  [Function `vesting_start_time`](#social_contracts_profile_vesting_start_time)
+-  [Function `vesting_duration`](#social_contracts_profile_vesting_duration)
+-  [Function `vesting_total_amount`](#social_contracts_profile_vesting_total_amount)
+-  [Function `vesting_claimed_amount`](#social_contracts_profile_vesting_claimed_amount)
+-  [Function `vesting_curve_factor`](#social_contracts_profile_vesting_curve_factor)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
+<b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
 <b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
@@ -95,6 +118,7 @@ Handles user identity, profile creation, management, and username registration
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
+<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -241,84 +265,6 @@ Profile object that contains user information
  Profile owner address
 </dd>
 <dt>
-<code>birthdate: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Birthdate as encrypted string (optional)
-</dd>
-<dt>
-<code>current_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Current location as encrypted string (optional)
-</dd>
-<dt>
-<code>raised_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Raised location as encrypted string (optional)
-</dd>
-<dt>
-<code>phone: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Phone number as encrypted string (optional)
-</dd>
-<dt>
-<code>email: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Email as encrypted string (optional)
-</dd>
-<dt>
-<code><a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: bool</code>
-</dt>
-<dd>
- Is email verified flag
-</dd>
-<dt>
-<code>gender: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Gender as encrypted string (optional)
-</dd>
-<dt>
-<code>political_view: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Political view as encrypted string (optional)
-</dd>
-<dt>
-<code>religion: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Religion as encrypted string (optional)
-</dd>
-<dt>
-<code>education: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Education as encrypted string (optional)
-</dd>
-<dt>
-<code>website: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Website as encrypted string (optional)
-</dd>
-<dt>
-<code>primary_language: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Primary language as encrypted string (optional)
-</dd>
-<dt>
-<code>relationship_status: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
- Relationship status as encrypted string (optional)
-</dd>
-<dt>
 <code>x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
@@ -347,6 +293,12 @@ Profile object that contains user information
 </dt>
 <dd>
  GitHub username as encrypted string (optional)
+</dd>
+<dt>
+<code>instagram_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+ Instagram username as encrypted string (optional)
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_last_updated">last_updated</a>: u64</code>
@@ -389,6 +341,12 @@ Profile object that contains user information
 </dt>
 <dd>
  Collection of badges assigned to the profile
+</dd>
+<dt>
+<code>attached_my_ip_ids: vector&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+ Vector tracking attached MyIP IDs for efficient iteration
 </dd>
 </dl>
 
@@ -460,6 +418,75 @@ These badges cannot be transferred or sold and stay with the profile
 </dt>
 <dd>
  Badge type/tier (1-100), allows for badge hierarchy
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_VestingWallet"></a>
+
+## Struct `VestingWallet`
+
+Vesting Wallet contains MYS coins that are available for claiming over time
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: <a href="../mys/object.md#mys_object_UID">mys::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>balance: <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;</code>
+</dt>
+<dd>
+ Balance of MYS coins remaining in the wallet
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b></code>
+</dt>
+<dd>
+ Address of the wallet owner who can claim the tokens
+</dd>
+<dt>
+<code>start_time: u64</code>
+</dt>
+<dd>
+ Time when the vesting started (in milliseconds)
+</dd>
+<dt>
+<code>claimed_amount: u64</code>
+</dt>
+<dd>
+ Amount of coins that have been claimed
+</dd>
+<dt>
+<code>duration: u64</code>
+</dt>
+<dd>
+ Total duration of the vesting schedule (in milliseconds)
+</dd>
+<dt>
+<code>total_amount: u64</code>
+</dt>
+<dd>
+ Total amount originally vested
+</dd>
+<dt>
+<code>curve_factor: u64</code>
+</dt>
+<dd>
+ Curve factor (1000 = linear, >1000 = more at end, <1000 = more at start)
 </dd>
 </dl>
 
@@ -702,71 +729,6 @@ Profile updated event with all profile details
 <dd>
 </dd>
 <dt>
-<code>birthdate: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>current_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>raised_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>phone: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>email: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code><a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: bool</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>gender: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>political_view: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>religion: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>education: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>website: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>primary_language: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>relationship_status: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
@@ -788,6 +750,11 @@ Profile updated event with all profile details
 </dd>
 <dt>
 <code>github_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>instagram_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -1041,9 +1008,122 @@ Event emitted when a fee is collected from a profile sale
 
 </details>
 
+<a name="social_contracts_profile_TokensVestedEvent"></a>
+
+## Struct `TokensVestedEvent`
+
+Event emitted when MYS tokens are vested
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_TokensVestedEvent">TokensVestedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>wallet_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>start_time: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>duration: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>curve_factor: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>vested_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_TokensClaimedEvent"></a>
+
+## Struct `TokensClaimedEvent`
+
+Event emitted when vested tokens are claimed
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_TokensClaimedEvent">TokensClaimedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>wallet_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claimed_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>remaining_balance: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claimed_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
+
+
+<a name="social_contracts_profile_CURVE_PRECISION"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>: u64 = 1000;
+</code></pre>
+
 
 
 <a name="social_contracts_profile_EBadgeAlreadyExists"></a>
@@ -1082,6 +1162,15 @@ Event emitted when a fee is collected from a profile sale
 
 
 
+<a name="social_contracts_profile_EInvalidStartTime"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidStartTime">EInvalidStartTime</a>: u64 = 15;
+</code></pre>
+
+
+
 <a name="social_contracts_profile_EInvalidUsername"></a>
 
 
@@ -1096,6 +1185,15 @@ Event emitted when a fee is collected from a profile sale
 
 
 <pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_ENotAuthorizedService">ENotAuthorizedService</a>: u64 = 6;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_ENotVestingWalletOwner"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_ENotVestingWalletOwner">ENotVestingWalletOwner</a>: u64 = 16;
 </code></pre>
 
 
@@ -1182,6 +1280,15 @@ Error codes
 
 
 
+<a name="social_contracts_profile_MY_IP_DATA_FIELD"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>: vector&lt;u8&gt; = vector[109, 121, 95, 105, 112, 95, 100, 97, 116, 97];
+</code></pre>
+
+
+
 <a name="social_contracts_profile_OFFERS_FIELD"></a>
 
 
@@ -1220,14 +1327,14 @@ Field names for dynamic fields
 
 
 
-<a name="social_contracts_profile_init"></a>
+<a name="social_contracts_profile_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Module initializer to create the username registry
+Bootstrap initialization function - creates the username registry and treasury
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1236,7 +1343,7 @@ Module initializer to create the username registry
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_init">init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     // Import current <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> from <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> <b>module</b>
     <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
     <b>let</b> registry = <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a> {
@@ -1463,24 +1570,12 @@ This is the main entry point for new users, combining profile and username creat
         <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>,
         created_at: now,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
-        birthdate: option::none(),
-        current_location: option::none(),
-        raised_location: option::none(),
-        phone: option::none(),
-        email: option::none(),
-        <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: <b>false</b>,
-        gender: option::none(),
-        political_view: option::none(),
-        religion: option::none(),
-        education: option::none(),
-        website: option::none(),
-        primary_language: option::none(),
-        relationship_status: option::none(),
         x_username: option::none(),
         mastodon_username: option::none(),
         facebook_username: option::none(),
         reddit_username: option::none(),
         github_username: option::none(),
+        instagram_username: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_last_updated">last_updated</a>: now,
         followers_count: 0,
         following_count: 0,
@@ -1488,6 +1583,7 @@ This is the main entry point for new users, combining profile and username creat
         tips_received: 0,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: option::none(),
         badges: vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt;(),
+        attached_my_ip_ids: vector::empty&lt;<b>address</b>&gt;(),
     };
     // Get the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
@@ -1606,25 +1702,13 @@ The username stays with the profile, and the transfer updates registry mappings
         },
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: new_owner,
         updated_at: tx_context::epoch(ctx),
-        // Include all sensitive fields
-        birthdate: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.birthdate,
-        current_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.current_location,
-        raised_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.raised_location,
-        phone: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.phone,
-        email: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.email,
-        <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>,
-        gender: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.gender,
-        political_view: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.political_view,
-        religion: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.religion,
-        education: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.education,
-        website: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.website,
-        primary_language: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.primary_language,
-        relationship_status: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.relationship_status,
+        // Social media usernames
         x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
         mastodon_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.mastodon_username,
         facebook_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username,
         reddit_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.reddit_username,
         github_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username,
+        instagram_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.instagram_username,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
     // Transfer <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> to new <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
@@ -1644,7 +1728,7 @@ Only the profile owner can update profile information
 Authorized services (via authorize_read_service) can only read data, never modify it
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, birthdate: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, current_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, raised_location: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, phone: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, email: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, gender: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, political_view: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, religion: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, education: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, website: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, primary_language: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, relationship_status: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, mastodon_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, facebook_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, reddit_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, github_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, mastodon_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, facebook_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, reddit_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, github_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, instagram_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1660,24 +1744,13 @@ Authorized services (via authorize_read_service) can only read data, never modif
     new_bio: String,
     new_profile_picture_url: vector&lt;u8&gt;,
     new_cover_photo_url: vector&lt;u8&gt;,
-    // Sensitive <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> fields (all optional)
-    birthdate: Option&lt;String&gt;,
-    current_location: Option&lt;String&gt;,
-    raised_location: Option&lt;String&gt;,
-    phone: Option&lt;String&gt;,
-    email: Option&lt;String&gt;,
-    gender: Option&lt;String&gt;,
-    political_view: Option&lt;String&gt;,
-    religion: Option&lt;String&gt;,
-    education: Option&lt;String&gt;,
-    website: Option&lt;String&gt;,
-    primary_language: Option&lt;String&gt;,
-    relationship_status: Option&lt;String&gt;,
+    // Social media usernames (all optional)
     x_username: Option&lt;String&gt;,
     mastodon_username: Option&lt;String&gt;,
     facebook_username: Option&lt;String&gt;,
     reddit_username: Option&lt;String&gt;,
     github_username: Option&lt;String&gt;,
+    instagram_username: Option&lt;String&gt;,
     <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: Option&lt;u64&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -1697,43 +1770,7 @@ Authorized services (via authorize_read_service) can only read data, never modif
     <b>if</b> (vector::length(&new_cover_photo_url) &gt; 0) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a> = option::some(url::new_unsafe_from_bytes(new_cover_photo_url));
     };
-    // Update sensitive <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> details <b>if</b> provided
-    <b>if</b> (option::is_some(&birthdate)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.birthdate = birthdate;
-    };
-    <b>if</b> (option::is_some(&current_location)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.current_location = current_location;
-    };
-    <b>if</b> (option::is_some(&raised_location)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.raised_location = raised_location;
-    };
-    <b>if</b> (option::is_some(&phone)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.phone = phone;
-    };
-    <b>if</b> (option::is_some(&email)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.email = email;
-    };
-    <b>if</b> (option::is_some(&gender)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.gender = gender;
-    };
-    <b>if</b> (option::is_some(&political_view)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.political_view = political_view;
-    };
-    <b>if</b> (option::is_some(&religion)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.religion = religion;
-    };
-    <b>if</b> (option::is_some(&education)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.education = education;
-    };
-    <b>if</b> (option::is_some(&website)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.website = website;
-    };
-    <b>if</b> (option::is_some(&primary_language)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.primary_language = primary_language;
-    };
-    <b>if</b> (option::is_some(&relationship_status)) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.relationship_status = relationship_status;
-    };
+    // Update social media usernames <b>if</b> provided
     <b>if</b> (option::is_some(&x_username)) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username = x_username;
     };
@@ -1748,6 +1785,9 @@ Authorized services (via authorize_read_service) can only read data, never modif
     };
     <b>if</b> (option::is_some(&github_username)) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username = github_username;
+    };
+    <b>if</b> (option::is_some(&instagram_username)) {
+        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.instagram_username = instagram_username;
     };
     <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>)) {
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a> = <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>;
@@ -1784,25 +1824,13 @@ Authorized services (via authorize_read_service) can only read data, never modif
         <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: cover_photo_string,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
         updated_at: now,
-        // Include all sensitive fields
-        birthdate: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.birthdate,
-        current_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.current_location,
-        raised_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.raised_location,
-        phone: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.phone,
-        email: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.email,
-        <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>,
-        gender: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.gender,
-        political_view: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.political_view,
-        religion: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.religion,
-        education: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.education,
-        website: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.website,
-        primary_language: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.primary_language,
-        relationship_status: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.relationship_status,
+        // Social media usernames
         x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
         mastodon_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.mastodon_username,
         facebook_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username,
         reddit_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.reddit_username,
         github_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username,
+        instagram_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.instagram_username,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
 }
@@ -2529,6 +2557,321 @@ Decrement following count (called when this profile unfollows another profile)
 
 </details>
 
+<a name="social_contracts_profile_create_subscription_service"></a>
+
+## Function `create_subscription_service`
+
+Create a subscription service for this profile (creates separate service object)
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_subscription_service">create_subscription_service</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, monthly_fee: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_subscription_service">create_subscription_service</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    monthly_fee: u64,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    // Create the <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> service and share it
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_create_profile_service_entry">subscription::create_profile_service_entry</a>(monthly_fee, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_has_valid_subscription"></a>
+
+## Function `has_valid_subscription`
+
+Check if a viewer has a valid subscription (uses subscription module functions)
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_valid_subscription">has_valid_subscription</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_valid_subscription">has_valid_subscription</a>(
+    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &ProfileSubscription,
+    service: &ProfileSubscriptionService,
+    clock: &Clock,
+): bool {
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid">subscription::is_subscription_valid</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, service, clock)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_attach_my_ip"></a>
+
+## Function `attach_my_ip`
+
+Attach MyIP to profile for data monetization
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_attach_my_ip">attach_my_ip</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_attach_my_ip">attach_my_ip</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    my_ip_id: <b>address</b>,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    // Initialize table <b>if</b> it doesn't exist
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+        <b>let</b> tbl = table::new&lt;<b>address</b>, bool&gt;(ctx);
+        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>, tbl);
+    };
+    <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
+        &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+    );
+    // Only add <b>if</b> not already attached
+    <b>if</b> (!table::contains(tbl, my_ip_id)) {
+        table::add(tbl, my_ip_id, <b>true</b>);
+        // Also add to the tracking vector <b>for</b> efficient iteration
+        vector::push_back(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, my_ip_id);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_has_my_ip_attached"></a>
+
+## Function `has_my_ip_attached`
+
+Check if a MyIP is attached to this profile
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_my_ip_attached">has_my_ip_attached</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_id: <b>address</b>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_my_ip_attached">has_my_ip_attached</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, my_ip_id: <b>address</b>): bool {
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> tbl = dynamic_field::borrow&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
+        &<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+    );
+    table::contains(tbl, my_ip_id)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_detach_my_ip"></a>
+
+## Function `detach_my_ip`
+
+Remove a MyIP attachment from the profile
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_detach_my_ip">detach_my_ip</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_detach_my_ip">detach_my_ip</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    my_ip_id: <b>address</b>,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+        <b>return</b>
+    };
+    <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
+        &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+    );
+    <b>if</b> (table::contains(tbl, my_ip_id)) {
+        table::remove(tbl, my_ip_id);
+        // Also remove from the tracking vector
+        <b>let</b> <b>mut</b> i = 0;
+        <b>let</b> len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids);
+        <b>while</b> (i &lt; len) {
+            <b>if</b> (*vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, i) == my_ip_id) {
+                vector::remove(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, i);
+                <b>break</b>
+            };
+            i = i + 1;
+        };
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_get_attached_my_ips"></a>
+
+## Function `get_attached_my_ips`
+
+Get all attached MyIP IDs for this profile
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_attached_my_ips">get_attached_my_ips</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): vector&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_attached_my_ips">get_attached_my_ips</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): vector&lt;<b>address</b>&gt; {
+    // Return a <b>copy</b> of the attached MyIP IDs vector <b>for</b> efficient iteration
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_batch_attach_my_ips"></a>
+
+## Function `batch_attach_my_ips`
+
+Batch attach multiple MyIPs to profile for gas optimization
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_attach_my_ips">batch_attach_my_ips</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_ids: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_attach_my_ips">batch_attach_my_ips</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    my_ip_ids: vector&lt;<b>address</b>&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    // Initialize table <b>if</b> it doesn't exist
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+        <b>let</b> tbl = table::new&lt;<b>address</b>, bool&gt;(ctx);
+        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>, tbl);
+    };
+    <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
+        &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+    );
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> len = vector::length(&my_ip_ids);
+    <b>while</b> (i &lt; len) {
+        <b>let</b> my_ip_id = *vector::borrow(&my_ip_ids, i);
+        // Only add <b>if</b> not already attached
+        <b>if</b> (!table::contains(tbl, my_ip_id)) {
+            table::add(tbl, my_ip_id, <b>true</b>);
+            vector::push_back(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, my_ip_id);
+        };
+        i = i + 1;
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_batch_detach_my_ips"></a>
+
+## Function `batch_detach_my_ips`
+
+Batch detach multiple MyIPs from profile for gas optimization
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_detach_my_ips">batch_detach_my_ips</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_ids: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_detach_my_ips">batch_detach_my_ips</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    my_ip_ids: vector&lt;<b>address</b>&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+        <b>return</b>
+    };
+    <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
+        &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+    );
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> len = vector::length(&my_ip_ids);
+    <b>while</b> (i &lt; len) {
+        <b>let</b> my_ip_id = *vector::borrow(&my_ip_ids, i);
+        <b>if</b> (table::contains(tbl, my_ip_id)) {
+            table::remove(tbl, my_ip_id);
+            // Remove from tracking vector
+            <b>let</b> <b>mut</b> j = 0;
+            <b>let</b> vec_len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids);
+            <b>while</b> (j &lt; vec_len) {
+                <b>if</b> (*vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, j) == my_ip_id) {
+                    vector::remove(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, j);
+                    <b>break</b>
+                };
+                j = j + 1;
+            };
+        };
+        i = i + 1;
+    };
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_create_offer"></a>
 
 ## Function `create_offer`
@@ -2698,25 +3041,13 @@ Transfers tokens to the profile owner and profile ownership to the offeror
         },
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: offeror,
         updated_at: now,
-        // Include all sensitive fields
-        birthdate: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.birthdate,
-        current_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.current_location,
-        raised_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.raised_location,
-        phone: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.phone,
-        email: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.email,
-        <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>,
-        gender: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.gender,
-        political_view: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.political_view,
-        religion: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.religion,
-        education: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.education,
-        website: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.website,
-        primary_language: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.primary_language,
-        relationship_status: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.relationship_status,
+        // Social media usernames
         x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
         mastodon_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.mastodon_username,
         facebook_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username,
         reddit_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.reddit_username,
         github_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username,
+        instagram_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.instagram_username,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
     });
     // Emit a fee event
@@ -3298,14 +3629,28 @@ Count the number of badges a profile has
 
 </details>
 
-<a name="social_contracts_profile_is_email_verified"></a>
+<a name="social_contracts_profile_vest_myso"></a>
 
-## Function `is_email_verified`
+## Function `vest_myso`
 
-Get whether the email is verified for a profile
+Create a new vesting wallet with MYS tokens that vest over time with configurable curve
+The start time must be in the future and duration must be greater than 0
+curve_factor: 0 or 1000 = linear, >1000 = more tokens at end, <1000 = more tokens at start
+
+Example Curves:
+Exponential (curve_factor = 2000):
+25% time → ~6% tokens
+50% time → ~25% tokens
+75% time → ~56% tokens
+100% time → 100% tokens
+Logarithmic (curve_factor = 500):
+25% time → ~44% tokens
+50% time → ~75% tokens
+75% time → ~94% tokens
+100% time → 100% tokens
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): bool
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso">vest_myso</a>(coin: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, recipient: <b>address</b>, start_time: u64, duration: u64, curve_factor: u64, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3314,8 +3659,54 @@ Get whether the email is verified for a profile
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): bool {
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso">vest_myso</a>(
+    coin: Coin&lt;MYS&gt;,
+    recipient: <b>address</b>,
+    start_time: u64,
+    duration: u64,
+    curve_factor: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    // Validate that start time is in the future
+    <b>let</b> current_time = clock::timestamp_ms(clock);
+    <b>assert</b>!(start_time &gt; current_time, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidStartTime">EInvalidStartTime</a>);
+    // Validate that duration is greater than 0
+    <b>assert</b>!(duration &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidStartTime">EInvalidStartTime</a>);
+    <b>let</b> total_amount = coin::value(&coin);
+    <b>assert</b>!(total_amount &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInsufficientTokens">EInsufficientTokens</a>);
+    // Default to linear <b>if</b> curve_factor is 0
+    <b>let</b> final_curve_factor = <b>if</b> (curve_factor == 0) {
+        <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> // 1000 = linear
+    } <b>else</b> {
+        // Validate curve factor is reasonable (between 100 and 10000, i.e., 0.1x to 10x)
+        <b>assert</b>!(curve_factor &gt;= 100 && curve_factor &lt;= 10000, <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidStartTime">EInvalidStartTime</a>);
+        curve_factor
+    };
+    // Create the vesting wallet
+    <b>let</b> wallet = <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a> {
+        <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
+        balance: coin::into_balance(coin),
+        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: recipient,
+        start_time,
+        claimed_amount: 0,
+        duration,
+        total_amount,
+        curve_factor: final_curve_factor,
+    };
+    <b>let</b> wallet_id = object::uid_to_address(&wallet.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+    // Emit vesting event
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_TokensVestedEvent">TokensVestedEvent</a> {
+        wallet_id,
+        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: recipient,
+        total_amount,
+        start_time,
+        duration,
+        curve_factor: final_curve_factor,
+        vested_at: current_time,
+    });
+    // Transfer the vesting wallet to the recipient
+    transfer::public_transfer(wallet, recipient);
 }
 </code></pre>
 
@@ -3323,15 +3714,15 @@ Get whether the email is verified for a profile
 
 </details>
 
-<a name="social_contracts_profile_toggle_email_verification"></a>
+<a name="social_contracts_profile_claim_vested_tokens"></a>
 
-## Function `toggle_email_verification`
+## Function `claim_vested_tokens`
 
-Toggle the email verification status for a profile
-Only the admin with the UpgradeAdminCap can call this function
+Claim vested tokens from a vesting wallet
+Only the wallet owner can claim tokens, and only claimable amounts
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_toggle_email_verification">toggle_email_verification</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, _admin_cap: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, is_verified: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_vested_tokens">claim_vested_tokens</a>(wallet: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3340,63 +3731,383 @@ Only the admin with the UpgradeAdminCap can call this function
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_toggle_email_verification">toggle_email_verification</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    _admin_cap: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">upgrade::UpgradeAdminCap</a>,
-    is_verified: bool,
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_vested_tokens">claim_vested_tokens</a>(
+    wallet: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Admin check is implicit through the requirement of the UpgradeAdminCap
-    <b>let</b> _admin = tx_context::sender(ctx);
-    // Update the email verification status
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a> = is_verified;
-    // Get the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID <b>for</b> the event
-    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
-    // Emit <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> updated event to reflect the change in verification status
-    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_ProfileUpdatedEvent">ProfileUpdatedEvent</a> {
-        profile_id,
-        <a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a>: <b>if</b> (dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_FIELD">USERNAME_FIELD</a>)) {
-            option::some(*dynamic_field::borrow&lt;vector&lt;u8&gt;, String&gt;(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_FIELD">USERNAME_FIELD</a>))
-        } <b>else</b> {
-            option::none()
-        },
-        <a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>: <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>)) {
-            <b>let</b> url = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a>);
-            option::some(<a href="../social_contracts/profile.md#social_contracts_profile_ascii_to_string">ascii_to_string</a>(url::inner_url(url)))
-        } <b>else</b> {
-            option::none()
-        },
-        <a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>: <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>)) {
-            <b>let</b> url = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a>);
-            option::some(<a href="../social_contracts/profile.md#social_contracts_profile_ascii_to_string">ascii_to_string</a>(url::inner_url(url)))
-        } <b>else</b> {
-            option::none()
-        },
-        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
-        updated_at: tx_context::epoch(ctx),
-        // Include all sensitive fields
-        birthdate: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.birthdate,
-        current_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.current_location,
-        raised_location: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.raised_location,
-        phone: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.phone,
-        email: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.email,
-        <a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_is_email_verified">is_email_verified</a>,
-        gender: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.gender,
-        political_view: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.political_view,
-        religion: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.religion,
-        education: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.education,
-        website: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.website,
-        primary_language: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.primary_language,
-        relationship_status: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.relationship_status,
-        x_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.x_username,
-        mastodon_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.mastodon_username,
-        facebook_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.facebook_username,
-        reddit_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.reddit_username,
-        github_username: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.github_username,
-        <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>,
-    });
+    <b>let</b> sender = tx_context::sender(ctx);
+    // Verify sender is the wallet <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
+    <b>assert</b>!(wallet.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_ENotVestingWalletOwner">ENotVestingWalletOwner</a>);
+    <b>let</b> claimable_amount = <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(wallet, clock);
+    // Only proceed <b>if</b> there are tokens to claim
+    <b>if</b> (claimable_amount &gt; 0) {
+        // Update claimed amount
+        wallet.claimed_amount = wallet.claimed_amount + claimable_amount;
+        // Create coin from the <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a> balance and transfer to <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
+        <b>let</b> claimed_coin = coin::from_balance&lt;MYS&gt;(
+            balance::split(&<b>mut</b> wallet.balance, claimable_amount),
+            ctx
+        );
+        <b>let</b> wallet_id = object::uid_to_address(&wallet.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+        <b>let</b> remaining_balance = balance::value(&wallet.balance);
+        // Emit claim event
+        event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_TokensClaimedEvent">TokensClaimedEvent</a> {
+            wallet_id,
+            <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: sender,
+            claimed_amount: claimable_amount,
+            remaining_balance,
+            claimed_at: clock::timestamp_ms(clock),
+        });
+        // Transfer claimed tokens to the <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
+        transfer::public_transfer(claimed_coin, sender);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_claimable"></a>
+
+## Function `claimable`
+
+Calculate how many tokens can be claimed from a vesting wallet at the current time
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, clock: &Clock): u64 {
+    <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(wallet, clock)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_calculate_claimable"></a>
+
+## Function `calculate_claimable`
+
+Internal function to calculate claimable amount
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, clock: &Clock): u64 {
+    <b>let</b> current_time = clock::timestamp_ms(clock);
+    // If vesting hasn't started yet, nothing is <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>
+    <b>if</b> (current_time &lt; wallet.start_time) {
+        <b>return</b> 0
+    };
+    // If vesting period is complete, all remaining balance is <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>
+    <b>if</b> (current_time &gt;= wallet.start_time + wallet.duration) {
+        <b>return</b> balance::value(&wallet.balance)
+    };
+    // Calculate progress <b>as</b> a percentage (0 to <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>)
+    <b>let</b> elapsed_time = current_time - wallet.start_time;
+    <b>let</b> progress = ((elapsed_time <b>as</b> u128) * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)) / (wallet.duration <b>as</b> u128);
+    // Apply curve based on curve_factor
+    <b>let</b> curved_progress = <b>if</b> (wallet.curve_factor == <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>) {
+        // Linear vesting (curve_factor = 1000)
+        progress
+    } <b>else</b> <b>if</b> (wallet.curve_factor &gt; <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>) {
+        // Exponential curve - more tokens at the end
+        // Use simplified exponential: progress^2 scaled by curve_factor
+        <b>let</b> steepness = wallet.curve_factor - <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a>; // How much above linear
+        <b>let</b> quadratic = (progress * progress) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128);
+        <b>let</b> linear_part = (progress * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128);
+        // Blend between linear and quadratic based on steepness
+        (linear_part * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128) + quadratic * (steepness <b>as</b> u128)) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)
+    } <b>else</b> {
+        // Logarithmic curve - more tokens at the start
+        // Use simplified square root approximation <b>for</b> early release
+        <b>let</b> steepness = <a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> - wallet.curve_factor; // How much below linear
+        <b>let</b> sqrt_approx = <a href="../social_contracts/profile.md#social_contracts_profile_sqrt_approximation">sqrt_approximation</a>(progress * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)) * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128);
+        <b>let</b> linear_part = progress;
+        // Blend between square root and linear based on steepness
+        (sqrt_approx * (steepness <b>as</b> u128) + linear_part * (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128)
+    };
+    // Convert back to total <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a> amount
+    <b>let</b> total_claimable = ((wallet.total_amount <b>as</b> u128) * curved_progress) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128);
+    // Subtract already claimed amount to get newly <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a> amount
+    <b>let</b> newly_claimable = (total_claimable <b>as</b> u64) - wallet.claimed_amount;
+    // Ensure we don't exceed the remaining balance
+    <b>let</b> remaining_balance = balance::value(&wallet.balance);
+    <b>if</b> (newly_claimable &gt; remaining_balance) {
+        remaining_balance
+    } <b>else</b> {
+        newly_claimable
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_sqrt_approximation"></a>
+
+## Function `sqrt_approximation`
+
+Simple square root approximation using Newton's method
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_sqrt_approximation">sqrt_approximation</a>(n: u128): u128
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_sqrt_approximation">sqrt_approximation</a>(n: u128): u128 {
+    <b>if</b> (n == 0) <b>return</b> 0;
+    <b>if</b> (n == 1) <b>return</b> 1;
+    <b>let</b> <b>mut</b> x = n;
+    <b>let</b> <b>mut</b> y = (x + 1) / 2;
+    // Newton's method with limited iterations
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (y &lt; x && i &lt; 10) {
+        x = y;
+        y = (x + n / x) / 2;
+        i = i + 1;
+    };
+    x
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_delete_vesting_wallet"></a>
+
+## Function `delete_vesting_wallet`
+
+Delete an empty vesting wallet
+Can only be called when the wallet balance is zero
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_vesting_wallet">delete_vesting_wallet</a>(wallet: <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_vesting_wallet">delete_vesting_wallet</a>(wallet: <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, ctx: &<b>mut</b> TxContext) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    // Verify sender is the wallet <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
+    <b>assert</b>!(wallet.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_ENotVestingWalletOwner">ENotVestingWalletOwner</a>);
+    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a> {
+        <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
+        balance,
+        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: _,
+        start_time: _,
+        claimed_amount: _,
+        duration: _,
+        total_amount: _,
+        curve_factor: _
+    } = wallet;
+    // Delete the wallet ID
+    object::delete(<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+    // Destroy the empty balance
+    balance::destroy_zero(balance);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_vesting_balance"></a>
+
+## Function `vesting_balance`
+
+Get the remaining balance in a vesting wallet
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_balance">vesting_balance</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_balance">vesting_balance</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+    balance::value(&wallet.balance)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_vesting_owner"></a>
+
+## Function `vesting_owner`
+
+Get the owner of a vesting wallet
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_owner">vesting_owner</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_owner">vesting_owner</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): <b>address</b> {
+    wallet.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_vesting_start_time"></a>
+
+## Function `vesting_start_time`
+
+Get the start time of a vesting schedule
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_start_time">vesting_start_time</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_start_time">vesting_start_time</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+    wallet.start_time
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_vesting_duration"></a>
+
+## Function `vesting_duration`
+
+Get the duration of a vesting schedule
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_duration">vesting_duration</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_duration">vesting_duration</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+    wallet.duration
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_vesting_total_amount"></a>
+
+## Function `vesting_total_amount`
+
+Get the total amount originally vested
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_total_amount">vesting_total_amount</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_total_amount">vesting_total_amount</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+    wallet.total_amount
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_vesting_claimed_amount"></a>
+
+## Function `vesting_claimed_amount`
+
+Get the amount already claimed from a vesting wallet
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_claimed_amount">vesting_claimed_amount</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_claimed_amount">vesting_claimed_amount</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+    wallet.claimed_amount
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_vesting_curve_factor"></a>
+
+## Function `vesting_curve_factor`
+
+Get the curve factor of a vesting wallet
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_curve_factor">vesting_curve_factor</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_curve_factor">vesting_curve_factor</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+    wallet.curve_factor
 }
 </code></pre>
 

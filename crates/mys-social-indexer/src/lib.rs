@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod api;
@@ -15,7 +15,8 @@ use once_cell::sync::OnceCell;
 static MYSOCIAL_PACKAGE_ADDRESS: OnceCell<String> = OnceCell::new();
 
 /// Default MySocial package address if not set via environment
-pub const DEFAULT_MYSOCIAL_PACKAGE_ADDRESS: &str = "0x8b3e7cd6412d3514bd0b2bd8571ecfef7827e12ca581e22f49e23107d7baeb92";
+pub const DEFAULT_MYSOCIAL_PACKAGE_ADDRESS: &str =
+    "0x000000000000000000000000000000000000000000000000000000000000d880";
 
 /// Module names within the MySocial package
 pub const PROFILE_MODULE_NAME: &str = "profile";
@@ -24,6 +25,8 @@ pub const SOCIAL_GRAPH_MODULE_NAME: &str = "social_graph";
 pub const BLOCK_LIST_MODULE_NAME: &str = "block_list";
 pub const POST_MODULE_NAME: &str = "post";
 pub const GOVERNANCE_MODULE_NAME: &str = "governance";
+pub const SUBSCRIPTION_MODULE_NAME: &str = "subscription";
+pub const SOCIAL_PROOF_TOKENS_MODULE_NAME: &str = "social_proof_tokens";
 
 /// Common struct names
 pub const PROFILE_STRUCT_NAME: &str = "Profile";
@@ -47,6 +50,11 @@ pub const NOMINEE_STATUS_PENDING: u8 = 0;
 pub const NOMINEE_STATUS_ELECTED: u8 = 1;
 pub const NOMINEE_STATUS_REJECTED: u8 = 2;
 
+/// Anonymous vote status constants
+pub const ANONYMOUS_VOTE_STATUS_PENDING: u8 = 0;
+pub const ANONYMOUS_VOTE_STATUS_DECRYPTED: u8 = 1;
+pub const ANONYMOUS_VOTE_STATUS_FAILED: u8 = 2;
+
 /// Set the MySocial package address
 pub fn set_mysocial_package_address(address: String) {
     MYSOCIAL_PACKAGE_ADDRESS.set(address).unwrap_or_else(|_| {
@@ -57,28 +65,8 @@ pub fn set_mysocial_package_address(address: String) {
 /// Get the MySocial package address
 pub fn get_mysocial_package_address() -> &'static str {
     // Use hardcoded address as fallback if not set via environment variable
-    MYSOCIAL_PACKAGE_ADDRESS.get().map(|s| s.as_str()).unwrap_or(DEFAULT_MYSOCIAL_PACKAGE_ADDRESS)
-}
-
-/// Get all package addresses to monitor for events
-/// Currently there's only one package, but this could be expanded later if needed
-pub fn get_monitored_package_addresses() -> Vec<&'static str> {
-    vec![get_mysocial_package_address()]
-}
-
-/// Backward compatibility functions - these now just return the main package address
-
-/// Get the profile package address (same as the main package)
-pub fn get_profile_package_address() -> &'static str {
-    get_mysocial_package_address()
-}
-
-/// Get the platform package address (same as the main package)
-pub fn get_platform_package_address() -> &'static str {
-    get_mysocial_package_address()
-}
-
-/// Get the governance package address (same as the main package)
-pub fn get_governance_package_address() -> &'static str {
-    get_mysocial_package_address()
+    MYSOCIAL_PACKAGE_ADDRESS
+        .get()
+        .map(|s| s.as_str())
+        .unwrap_or(DEFAULT_MYSOCIAL_PACKAGE_ADDRESS)
 }

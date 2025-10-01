@@ -1,17 +1,16 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use chrono::{DateTime, Utc};
 
 use crate::models::social_proof_token::{
-    NewSocialProofTokenPool, NewSocialProofTokenTransaction,
-    NewSocialProofTokenHolding, NewSocialProofPriceHistory,
-    NewSocialProofAuctionPool, NewSocialProofAuctionContribution,
-    TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL,
-    TOKEN_TYPE_PROFILE, TOKEN_TYPE_POST, AUCTION_STATUS_ACTIVE
+    NewSocialProofPriceHistory, NewSocialProofTokenHolding, NewSocialProofTokenPool,
+    NewSocialProofTokenTransaction, NewSptExchangeConfig, NewSptReservation, NewSptReservationPool,
+    RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET, TOKEN_TYPE_POST,
+    TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL,
 };
 
 /// Event emitted when a token pool is created
@@ -29,13 +28,17 @@ pub struct TokenPoolCreatedEvent {
 
 impl TokenPoolCreatedEvent {
     /// Convert the event to a database model
-    pub fn into_model(&self, timestamp: u64, transaction_id: String) -> Result<NewSocialProofTokenPool> {
+    pub fn into_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofTokenPool> {
         let token_type = match self.token_type {
             1 => TOKEN_TYPE_PROFILE,
             2 => TOKEN_TYPE_POST,
             _ => return Err(anyhow!("Invalid token type: {}", self.token_type)),
         };
-        
+
         Ok(NewSocialProofTokenPool {
             pool_id: self.id.clone(),
             token_type,
@@ -51,13 +54,17 @@ impl TokenPoolCreatedEvent {
             transaction_id,
         })
     }
-    
+
     /// Create initial price history for the pool
-    pub fn create_price_history(&self, _timestamp: u64, transaction_id: String) -> Result<NewSocialProofPriceHistory> {
+    pub fn create_price_history(
+        &self,
+        _timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofPriceHistory> {
         Ok(NewSocialProofPriceHistory {
             pool_id: self.id.clone(),
             price: self.base_price as i64, // Initial price is base price
-            circulating_supply: 0,        // Initial supply is 0
+            circulating_supply: 0,         // Initial supply is 0
             time: chrono::Utc::now(),
             transaction_id,
         })
@@ -80,7 +87,11 @@ pub struct TokenBoughtEvent {
 
 impl TokenBoughtEvent {
     /// Convert the event to a transaction model
-    pub fn into_transaction_model(&self, timestamp: u64, transaction_id: String) -> Result<NewSocialProofTokenTransaction> {
+    pub fn into_transaction_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofTokenTransaction> {
         Ok(NewSocialProofTokenTransaction {
             pool_id: self.id.clone(),
             transaction_type: TRANSACTION_TYPE_BUY.to_string(),
@@ -97,9 +108,13 @@ impl TokenBoughtEvent {
             transaction_id,
         })
     }
-    
+
     /// Convert the event to a holding model
-    pub fn into_holding_model(&self, timestamp: u64, transaction_id: String) -> Result<NewSocialProofTokenHolding> {
+    pub fn into_holding_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofTokenHolding> {
         Ok(NewSocialProofTokenHolding {
             pool_id: self.id.clone(),
             holder_address: self.buyer.clone(),
@@ -109,9 +124,14 @@ impl TokenBoughtEvent {
             transaction_id,
         })
     }
-    
+
     /// Create price history for the transaction
-    pub fn create_price_history(&self, circulating_supply: i64, _timestamp: u64, transaction_id: String) -> Result<NewSocialProofPriceHistory> {
+    pub fn create_price_history(
+        &self,
+        circulating_supply: i64,
+        _timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofPriceHistory> {
         Ok(NewSocialProofPriceHistory {
             pool_id: self.id.clone(),
             price: self.new_price as i64,
@@ -119,6 +139,91 @@ impl TokenBoughtEvent {
             time: chrono::Utc::now(),
             transaction_id,
         })
+    }
+
+    /// Create SPT revenue record for swap fees
+    pub fn create_spt_revenue(
+        &self,
+        creator_address: String,
+        platform_address: String,
+        treasury_address: String,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<crate::models::NewSptRevenue> {
+        Ok(crate::models::NewSptRevenue::from_buy_event(
+            self.id.clone(),
+            self.buyer.clone(),
+            creator_address,
+            platform_address,
+            treasury_address,
+            self.creator_fee as i64,
+            self.platform_fee as i64,
+            self.treasury_fee as i64,
+            self.amount as i64,
+            self.mys_amount as i64,
+            self.new_price as i64,
+            timestamp as i64,
+            transaction_id,
+        ))
+    }
+
+    /// Create unified revenue records for creator, platform, and treasury fees
+    pub fn create_unified_revenue_records(
+        &self,
+        creator_address: String,
+        platform_address: String,
+        treasury_address: String,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<Vec<crate::models::NewUnifiedRevenue>> {
+        let mut records = Vec::new();
+
+        // Creator fee revenue
+        if self.creator_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.creator_fee as i64,
+                self.id.clone(),
+                self.buyer.clone(),
+                creator_address.clone(),
+                timestamp as i64,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Platform fee revenue
+        if self.platform_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.platform_fee as i64,
+                self.id.clone(),
+                self.buyer.clone(),
+                platform_address,
+                timestamp as i64,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Treasury fee revenue
+        if self.treasury_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_TREASURY_FEE.to_string(),
+                creator_address.clone(),
+                None,
+                self.treasury_fee as i64,
+                self.id.clone(),
+                self.buyer.clone(),
+                treasury_address,
+                timestamp as i64,
+                transaction_id,
+            ));
+        }
+
+        Ok(records)
     }
 }
 
@@ -138,7 +243,11 @@ pub struct TokenSoldEvent {
 
 impl TokenSoldEvent {
     /// Convert the event to a transaction model
-    pub fn into_transaction_model(&self, timestamp: u64, transaction_id: String) -> Result<NewSocialProofTokenTransaction> {
+    pub fn into_transaction_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofTokenTransaction> {
         Ok(NewSocialProofTokenTransaction {
             pool_id: self.id.clone(),
             transaction_type: TRANSACTION_TYPE_SELL.to_string(),
@@ -155,9 +264,14 @@ impl TokenSoldEvent {
             transaction_id,
         })
     }
-    
+
     /// Create price history for the transaction
-    pub fn create_price_history(&self, circulating_supply: i64, _timestamp: u64, transaction_id: String) -> Result<NewSocialProofPriceHistory> {
+    pub fn create_price_history(
+        &self,
+        circulating_supply: i64,
+        _timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofPriceHistory> {
         Ok(NewSocialProofPriceHistory {
             pool_id: self.id.clone(),
             price: self.new_price as i64,
@@ -165,6 +279,91 @@ impl TokenSoldEvent {
             time: chrono::Utc::now(),
             transaction_id,
         })
+    }
+
+    /// Create SPT revenue record for swap fees
+    pub fn create_spt_revenue(
+        &self,
+        creator_address: String,
+        platform_address: String,
+        treasury_address: String,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<crate::models::NewSptRevenue> {
+        Ok(crate::models::NewSptRevenue::from_sell_event(
+            self.id.clone(),
+            self.seller.clone(),
+            creator_address,
+            platform_address,
+            treasury_address,
+            self.creator_fee as i64,
+            self.platform_fee as i64,
+            self.treasury_fee as i64,
+            self.amount as i64,
+            self.mys_amount as i64,
+            self.new_price as i64,
+            timestamp as i64,
+            transaction_id,
+        ))
+    }
+
+    /// Create unified revenue records for creator, platform, and treasury fees
+    pub fn create_unified_revenue_records(
+        &self,
+        creator_address: String,
+        platform_address: String,
+        treasury_address: String,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<Vec<crate::models::NewUnifiedRevenue>> {
+        let mut records = Vec::new();
+
+        // Creator fee revenue
+        if self.creator_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.creator_fee as i64,
+                self.id.clone(),
+                self.seller.clone(),
+                creator_address.clone(),
+                timestamp as i64,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Platform fee revenue
+        if self.platform_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.platform_fee as i64,
+                self.id.clone(),
+                self.seller.clone(),
+                platform_address,
+                timestamp as i64,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Treasury fee revenue
+        if self.treasury_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_TREASURY_FEE.to_string(),
+                creator_address.clone(),
+                None,
+                self.treasury_fee as i64,
+                self.id.clone(),
+                self.seller.clone(),
+                treasury_address,
+                timestamp as i64,
+                transaction_id,
+            ));
+        }
+
+        Ok(records)
     }
 }
 
@@ -178,7 +377,11 @@ pub struct TokensAddedEvent {
 
 impl TokensAddedEvent {
     /// Convert the event to a holding model
-    pub fn into_holding_model(&self, timestamp: u64, transaction_id: String) -> Result<NewSocialProofTokenHolding> {
+    pub fn into_holding_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofTokenHolding> {
         Ok(NewSocialProofTokenHolding {
             pool_id: self.pool_id.clone(),
             holder_address: self.owner.clone(),
@@ -190,75 +393,147 @@ impl TokensAddedEvent {
     }
 }
 
-/// Event emitted when an auction is created
+/// Event emitted when MYS is reserved towards a post/profile
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuctionCreatedEvent {
-    pub auction_id: String,
+pub struct ReservationCreatedEvent {
     pub associated_id: String,
     pub token_type: u8,
-    pub owner: String,
-    pub start_time: u64,
-    pub duration: u64,
+    pub reserver: String,
+    pub amount: u64,
+    pub total_reserved: u64,
+    pub threshold_met: bool,
+    pub reserved_at: u64,
 }
 
-impl AuctionCreatedEvent {
-    /// Convert the event to an auction pool model
-    pub fn into_model(&self, _timestamp: u64, transaction_id: String) -> Result<NewSocialProofAuctionPool> {
+impl ReservationCreatedEvent {
+    /// Convert the event to a reservation model
+    pub fn into_reservation_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSptReservation> {
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
+
+        Ok(NewSptReservation {
+            pool_id,
+            reserver_address: self.reserver.clone(),
+            amount: self.amount as i64,
+            reserved_at: self.reserved_at as i64,
+            time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
+                .unwrap_or_else(|| chrono::Utc::now()),
+            transaction_id,
+        })
+    }
+
+    /// Convert the event to a reservation pool model (for updating total)
+    pub fn into_reservation_pool_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+        required_threshold: i64,
+    ) -> Result<NewSptReservationPool> {
         let token_type = match self.token_type {
             1 => TOKEN_TYPE_PROFILE,
             2 => TOKEN_TYPE_POST,
             _ => return Err(anyhow!("Invalid token type: {}", self.token_type)),
         };
-        
-        Ok(NewSocialProofAuctionPool {
-            auction_id: self.auction_id.clone(),
+
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
+        let status = if self.threshold_met {
+            RESERVATION_POOL_STATUS_THRESHOLD_MET.to_string()
+        } else {
+            RESERVATION_POOL_STATUS_ACTIVE.to_string()
+        };
+
+        Ok(NewSptReservationPool {
+            pool_id,
+            associated_id: self.associated_id.clone(),
+            token_type,
+            owner: "".to_string(), // Will be filled from the actual event data
+            total_reserved: self.total_reserved as i64,
+            required_threshold,
+            status,
+            created_at: self.reserved_at as i64,
+            time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
+                .unwrap_or_else(|| chrono::Utc::now()),
+            transaction_id,
+        })
+    }
+}
+
+/// Event emitted when MYS reservation is withdrawn
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReservationWithdrawnEvent {
+    pub associated_id: String,
+    pub token_type: u8,
+    pub reserver: String,
+    pub amount: u64,
+    pub total_reserved: u64,
+    pub withdrawn_at: u64,
+}
+
+impl ReservationWithdrawnEvent {
+    /// Convert the event to a reservation model (for withdrawals, amount is negative)
+    pub fn into_reservation_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSptReservation> {
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
+
+        // For withdrawals, we store the remaining amount, not the withdrawn amount
+        Ok(NewSptReservation {
+            pool_id,
+            reserver_address: self.reserver.clone(),
+            amount: 0, // This represents the final amount after withdrawal
+            reserved_at: self.withdrawn_at as i64,
+            time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
+                .unwrap_or_else(|| chrono::Utc::now()),
+            transaction_id,
+        })
+    }
+}
+
+/// Event emitted when reservation threshold is met for the first time
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThresholdMetEvent {
+    pub associated_id: String,
+    pub token_type: u8,
+    pub owner: String,
+    pub total_reserved: u64,
+    pub required_threshold: u64,
+    pub timestamp: u64,
+}
+
+impl ThresholdMetEvent {
+    /// Convert the event to update reservation pool status
+    pub fn into_reservation_pool_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSptReservationPool> {
+        let token_type = match self.token_type {
+            1 => TOKEN_TYPE_PROFILE,
+            2 => TOKEN_TYPE_POST,
+            _ => return Err(anyhow!("Invalid token type: {}", self.token_type)),
+        };
+
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
+
+        Ok(NewSptReservationPool {
+            pool_id,
             associated_id: self.associated_id.clone(),
             token_type,
             owner: self.owner.clone(),
-            status: AUCTION_STATUS_ACTIVE,
-            start_time: self.start_time as i64,
-            duration: self.duration as i64,
-            total_contribution: 0,
-            total_tokens: 0,
-            finalized_at: None,
-            time: chrono::Utc::now(),
+            total_reserved: self.total_reserved as i64,
+            required_threshold: self.required_threshold as i64,
+            status: RESERVATION_POOL_STATUS_THRESHOLD_MET.to_string(),
+            created_at: self.timestamp as i64,
+            time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
+                .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,
         })
     }
-}
-
-/// Event emitted when a contribution is made to an auction
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuctionContributionEvent {
-    pub auction_id: String,
-    pub contributor: String,
-    pub amount: u64,
-    pub total_contribution: u64,
-}
-
-impl AuctionContributionEvent {
-    /// Convert the event to an auction contribution model
-    pub fn into_model(&self, timestamp: u64, transaction_id: String) -> Result<NewSocialProofAuctionContribution> {
-        Ok(NewSocialProofAuctionContribution {
-            auction_id: self.auction_id.clone(),
-            contributor_address: self.contributor.clone(),
-            amount: self.amount as i64,
-            contributed_at: timestamp as i64,
-            time: chrono::Utc::now(),
-            transaction_id,
-        })
-    }
-}
-
-/// Event emitted when an auction is finalized
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuctionFinalizedEvent {
-    pub auction_id: String,
-    pub associated_id: String,
-    pub total_contribution: u64,
-    pub total_tokens: u64,
-    pub token_price: u64,
-    pub pool_id: String,
 }
 
 /// Event emitted when exchange config is updated
@@ -274,12 +549,105 @@ pub struct ConfigUpdatedEvent {
     pub quadratic_coefficient: u64,
     pub ecosystem_treasury: String,
     pub max_hold_percent_bps: u64,
-    pub post_viral_threshold: u64,
-    pub profile_viral_threshold: u64,
-    pub min_post_auction_duration: u64,
-    pub max_post_auction_duration: u64,
-    pub min_profile_auction_duration: u64,
-    pub max_profile_auction_duration: u64,
+    pub post_threshold: u64,
+    pub profile_threshold: u64,
+    pub max_individual_reservation_bps: u64,
+}
+
+impl TryFrom<Value> for ConfigUpdatedEvent {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        let obj = value
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object"))?;
+
+        Ok(Self {
+            updated_by: obj
+                .get("updated_by")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid updated_by"))?
+                .to_string(),
+            timestamp: obj
+                .get("timestamp")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid timestamp"))?,
+            total_fee_bps: obj
+                .get("total_fee_bps")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid total_fee_bps"))?,
+            creator_fee_bps: obj
+                .get("creator_fee_bps")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid creator_fee_bps"))?,
+            platform_fee_bps: obj
+                .get("platform_fee_bps")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid platform_fee_bps"))?,
+            treasury_fee_bps: obj
+                .get("treasury_fee_bps")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid treasury_fee_bps"))?,
+            base_price: obj
+                .get("base_price")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid base_price"))?,
+            quadratic_coefficient: obj
+                .get("quadratic_coefficient")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid quadratic_coefficient"))?,
+            ecosystem_treasury: obj
+                .get("ecosystem_treasury")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid ecosystem_treasury"))?
+                .to_string(),
+            max_hold_percent_bps: obj
+                .get("max_hold_percent_bps")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid max_hold_percent_bps"))?,
+            post_threshold: obj
+                .get("post_threshold")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid post_threshold"))?,
+            profile_threshold: obj
+                .get("profile_threshold")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid profile_threshold"))?,
+            max_individual_reservation_bps: obj
+                .get("max_individual_reservation_bps")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid max_individual_reservation_bps"))?,
+        })
+    }
+}
+
+impl ConfigUpdatedEvent {
+    /// Convert the event to an exchange config model
+    pub fn into_exchange_config_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSptExchangeConfig> {
+        Ok(NewSptExchangeConfig {
+            updated_by: self.updated_by.clone(),
+            post_threshold: self.post_threshold as i64,
+            profile_threshold: self.profile_threshold as i64,
+            max_individual_reservation_bps: self.max_individual_reservation_bps as i64,
+            total_fee_bps: self.total_fee_bps as i64,
+            creator_fee_bps: self.creator_fee_bps as i64,
+            platform_fee_bps: self.platform_fee_bps as i64,
+            treasury_fee_bps: self.treasury_fee_bps as i64,
+            base_price: self.base_price as i64,
+            quadratic_coefficient: self.quadratic_coefficient as i64,
+            ecosystem_treasury: self.ecosystem_treasury.clone(),
+            max_hold_percent_bps: self.max_hold_percent_bps as i64,
+            trading_halted: false, // Will be set from actual event data
+            updated_at: self.timestamp as i64,
+            time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
+                .unwrap_or_else(|| chrono::Utc::now()),
+            transaction_id,
+        })
+    }
 }
 
 // Init pool event structure
@@ -299,37 +667,47 @@ impl TryFrom<Value> for SocialProofInitPoolEvent {
     type Error = anyhow::Error;
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
-        let obj = value.as_object().ok_or_else(|| anyhow!("Expected object"))?;
-        
+        let obj = value
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object"))?;
+
         Ok(Self {
-            pool_id: obj.get("pool_id")
+            pool_id: obj
+                .get("pool_id")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid pool_id"))?
                 .to_string(),
-            owner: obj.get("owner")
+            owner: obj
+                .get("owner")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid owner"))?
                 .to_string(),
-            name: obj.get("name")
+            name: obj
+                .get("name")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid name"))?
                 .to_string(),
-            symbol: obj.get("symbol")
+            symbol: obj
+                .get("symbol")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid symbol"))?
                 .to_string(),
-            token_type: obj.get("token_type")
+            token_type: obj
+                .get("token_type")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid token_type"))?
                 as i16,
-            associated_id: obj.get("associated_id")
+            associated_id: obj
+                .get("associated_id")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid associated_id"))?
                 .to_string(),
-            base_price: obj.get("base_price")
+            base_price: obj
+                .get("base_price")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid base_price"))?,
-            quadratic_coefficient: obj.get("quadratic_coefficient")
+            quadratic_coefficient: obj
+                .get("quadratic_coefficient")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid quadratic_coefficient"))?,
         })
@@ -338,9 +716,8 @@ impl TryFrom<Value> for SocialProofInitPoolEvent {
 
 impl SocialProofInitPoolEvent {
     pub fn into_model(&self, time: i64, transaction_id: String) -> Result<NewSocialProofTokenPool> {
-        let datetime = DateTime::<Utc>::from_timestamp(time, 0)
-            .unwrap_or_else(|| Utc::now());
-        
+        let datetime = DateTime::<Utc>::from_timestamp(time, 0).unwrap_or_else(|| Utc::now());
+
         Ok(NewSocialProofTokenPool {
             pool_id: self.pool_id.clone(),
             owner: self.owner.clone(),
@@ -376,36 +753,47 @@ impl TryFrom<Value> for SocialProofBuyEvent {
     type Error = anyhow::Error;
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
-        let obj = value.as_object().ok_or_else(|| anyhow!("Expected object"))?;
-        
+        let obj = value
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object"))?;
+
         Ok(Self {
-            pool_id: obj.get("pool_id")
+            pool_id: obj
+                .get("pool_id")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid pool_id"))?
                 .to_string(),
-            buyer: obj.get("buyer")
+            buyer: obj
+                .get("buyer")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid buyer"))?
                 .to_string(),
-            amount: obj.get("amount")
+            amount: obj
+                .get("amount")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid amount"))?,
-            mys_amount: obj.get("mys_amount")
+            mys_amount: obj
+                .get("mys_amount")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid mys_amount"))?,
-            fee_amount: obj.get("fee_amount")
+            fee_amount: obj
+                .get("fee_amount")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid fee_amount"))?,
-            creator_fee: obj.get("creator_fee")
+            creator_fee: obj
+                .get("creator_fee")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid creator_fee"))?,
-            platform_fee: obj.get("platform_fee")
+            platform_fee: obj
+                .get("platform_fee")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid platform_fee"))?,
-            treasury_fee: obj.get("treasury_fee")
+            treasury_fee: obj
+                .get("treasury_fee")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid treasury_fee"))?,
-            price: obj.get("price")
+            price: obj
+                .get("price")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid price"))?,
         })
@@ -413,10 +801,13 @@ impl TryFrom<Value> for SocialProofBuyEvent {
 }
 
 impl SocialProofBuyEvent {
-    pub fn into_transaction_model(&self, time: i64, transaction_id: String) -> Result<NewSocialProofTokenTransaction> {
-        let datetime = DateTime::<Utc>::from_timestamp(time, 0)
-            .unwrap_or_else(|| Utc::now());
-            
+    pub fn into_transaction_model(
+        &self,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofTokenTransaction> {
+        let datetime = DateTime::<Utc>::from_timestamp(time, 0).unwrap_or_else(|| Utc::now());
+
         Ok(NewSocialProofTokenTransaction {
             pool_id: self.pool_id.clone(),
             transaction_type: TRANSACTION_TYPE_BUY.to_string(),
@@ -434,10 +825,13 @@ impl SocialProofBuyEvent {
         })
     }
 
-    pub fn into_holding_model(&self, time: i64, transaction_id: String) -> Result<NewSocialProofTokenHolding> {
-        let datetime = DateTime::<Utc>::from_timestamp(time, 0)
-            .unwrap_or_else(|| Utc::now());
-            
+    pub fn into_holding_model(
+        &self,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofTokenHolding> {
+        let datetime = DateTime::<Utc>::from_timestamp(time, 0).unwrap_or_else(|| Utc::now());
+
         Ok(NewSocialProofTokenHolding {
             pool_id: self.pool_id.clone(),
             holder_address: self.buyer.clone(),
@@ -448,10 +842,14 @@ impl SocialProofBuyEvent {
         })
     }
 
-    pub fn into_price_history_model(&self, circulating_supply: i64, time: i64, transaction_id: String) -> Result<NewSocialProofPriceHistory> {
-        let datetime = DateTime::<Utc>::from_timestamp(time, 0)
-            .unwrap_or_else(|| Utc::now());
-            
+    pub fn into_price_history_model(
+        &self,
+        circulating_supply: i64,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofPriceHistory> {
+        let datetime = DateTime::<Utc>::from_timestamp(time, 0).unwrap_or_else(|| Utc::now());
+
         Ok(NewSocialProofPriceHistory {
             pool_id: self.pool_id.clone(),
             price: self.price,
@@ -459,6 +857,91 @@ impl SocialProofBuyEvent {
             time: datetime,
             transaction_id,
         })
+    }
+
+    /// Create SPT revenue record for swap fees
+    pub fn create_spt_revenue(
+        &self,
+        creator_address: String,
+        platform_address: String,
+        treasury_address: String,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<crate::models::NewSptRevenue> {
+        Ok(crate::models::NewSptRevenue::from_buy_event(
+            self.pool_id.clone(),
+            self.buyer.clone(),
+            creator_address,
+            platform_address,
+            treasury_address,
+            self.creator_fee,
+            self.platform_fee,
+            self.treasury_fee,
+            self.amount,
+            self.mys_amount,
+            self.price,
+            time,
+            transaction_id,
+        ))
+    }
+
+    /// Create unified revenue records for creator, platform, and treasury fees
+    pub fn create_unified_revenue_records(
+        &self,
+        creator_address: String,
+        platform_address: String,
+        treasury_address: String,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<Vec<crate::models::NewUnifiedRevenue>> {
+        let mut records = Vec::new();
+
+        // Creator fee revenue
+        if self.creator_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.creator_fee,
+                self.pool_id.clone(),
+                self.buyer.clone(),
+                creator_address.clone(),
+                time,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Platform fee revenue
+        if self.platform_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.platform_fee,
+                self.pool_id.clone(),
+                self.buyer.clone(),
+                platform_address,
+                time,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Treasury fee revenue
+        if self.treasury_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_TREASURY_FEE.to_string(),
+                creator_address.clone(),
+                None,
+                self.treasury_fee,
+                self.pool_id.clone(),
+                self.buyer.clone(),
+                treasury_address,
+                time,
+                transaction_id,
+            ));
+        }
+
+        Ok(records)
     }
 }
 
@@ -480,36 +963,47 @@ impl TryFrom<Value> for SocialProofSellEvent {
     type Error = anyhow::Error;
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
-        let obj = value.as_object().ok_or_else(|| anyhow!("Expected object"))?;
-        
+        let obj = value
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object"))?;
+
         Ok(Self {
-            pool_id: obj.get("pool_id")
+            pool_id: obj
+                .get("pool_id")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid pool_id"))?
                 .to_string(),
-            seller: obj.get("seller")
+            seller: obj
+                .get("seller")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid seller"))?
                 .to_string(),
-            amount: obj.get("amount")
+            amount: obj
+                .get("amount")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid amount"))?,
-            mys_amount: obj.get("mys_amount")
+            mys_amount: obj
+                .get("mys_amount")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid mys_amount"))?,
-            fee_amount: obj.get("fee_amount")
+            fee_amount: obj
+                .get("fee_amount")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid fee_amount"))?,
-            creator_fee: obj.get("creator_fee")
+            creator_fee: obj
+                .get("creator_fee")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid creator_fee"))?,
-            platform_fee: obj.get("platform_fee")
+            platform_fee: obj
+                .get("platform_fee")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid platform_fee"))?,
-            treasury_fee: obj.get("treasury_fee")
+            treasury_fee: obj
+                .get("treasury_fee")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid treasury_fee"))?,
-            price: obj.get("price")
+            price: obj
+                .get("price")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid price"))?,
         })
@@ -517,10 +1011,13 @@ impl TryFrom<Value> for SocialProofSellEvent {
 }
 
 impl SocialProofSellEvent {
-    pub fn into_transaction_model(&self, time: i64, transaction_id: String) -> Result<NewSocialProofTokenTransaction> {
-        let datetime = DateTime::<Utc>::from_timestamp(time, 0)
-            .unwrap_or_else(|| Utc::now());
-            
+    pub fn into_transaction_model(
+        &self,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofTokenTransaction> {
+        let datetime = DateTime::<Utc>::from_timestamp(time, 0).unwrap_or_else(|| Utc::now());
+
         Ok(NewSocialProofTokenTransaction {
             pool_id: self.pool_id.clone(),
             transaction_type: TRANSACTION_TYPE_SELL.to_string(),
@@ -538,10 +1035,13 @@ impl SocialProofSellEvent {
         })
     }
 
-    pub fn into_holding_model(&self, time: i64, transaction_id: String) -> Result<NewSocialProofTokenHolding> {
-        let datetime = DateTime::<Utc>::from_timestamp(time, 0)
-            .unwrap_or_else(|| Utc::now());
-            
+    pub fn into_holding_model(
+        &self,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofTokenHolding> {
+        let datetime = DateTime::<Utc>::from_timestamp(time, 0).unwrap_or_else(|| Utc::now());
+
         Ok(NewSocialProofTokenHolding {
             pool_id: self.pool_id.clone(),
             holder_address: self.seller.clone(),
@@ -552,10 +1052,14 @@ impl SocialProofSellEvent {
         })
     }
 
-    pub fn into_price_history_model(&self, circulating_supply: i64, time: i64, transaction_id: String) -> Result<NewSocialProofPriceHistory> {
-        let datetime = DateTime::<Utc>::from_timestamp(time, 0)
-            .unwrap_or_else(|| Utc::now());
-            
+    pub fn into_price_history_model(
+        &self,
+        circulating_supply: i64,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofPriceHistory> {
+        let datetime = DateTime::<Utc>::from_timestamp(time, 0).unwrap_or_else(|| Utc::now());
+
         Ok(NewSocialProofPriceHistory {
             pool_id: self.pool_id.clone(),
             price: self.price,
@@ -564,153 +1068,312 @@ impl SocialProofSellEvent {
             transaction_id,
         })
     }
+
+    /// Create SPT revenue record for swap fees
+    pub fn create_spt_revenue(
+        &self,
+        creator_address: String,
+        platform_address: String,
+        treasury_address: String,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<crate::models::NewSptRevenue> {
+        Ok(crate::models::NewSptRevenue::from_sell_event(
+            self.pool_id.clone(),
+            self.seller.clone(),
+            creator_address,
+            platform_address,
+            treasury_address,
+            self.creator_fee,
+            self.platform_fee,
+            self.treasury_fee,
+            self.amount,
+            self.mys_amount,
+            self.price,
+            time,
+            transaction_id,
+        ))
+    }
+
+    /// Create unified revenue records for creator, platform, and treasury fees
+    pub fn create_unified_revenue_records(
+        &self,
+        creator_address: String,
+        platform_address: String,
+        treasury_address: String,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<Vec<crate::models::NewUnifiedRevenue>> {
+        let mut records = Vec::new();
+
+        // Creator fee revenue
+        if self.creator_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_CREATOR_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.creator_fee,
+                self.pool_id.clone(),
+                self.seller.clone(),
+                creator_address.clone(),
+                time,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Platform fee revenue
+        if self.platform_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_PLATFORM_FEE.to_string(),
+                creator_address.clone(),
+                Some(platform_address.clone()),
+                self.platform_fee,
+                self.pool_id.clone(),
+                self.seller.clone(),
+                platform_address,
+                time,
+                transaction_id.clone(),
+            ));
+        }
+
+        // Treasury fee revenue
+        if self.treasury_fee > 0 {
+            records.push(crate::models::NewUnifiedRevenue::from_spt(
+                crate::models::revenue::REVENUE_TYPE_SPT_TREASURY_FEE.to_string(),
+                creator_address.clone(),
+                None,
+                self.treasury_fee,
+                self.pool_id.clone(),
+                self.seller.clone(),
+                treasury_address,
+                time,
+                transaction_id,
+            ));
+        }
+
+        Ok(records)
+    }
 }
 
-// Start auction event structure
+// Reservation created event parsing from Move contract
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SocialProofStartAuctionEvent {
-    pub auction_id: String,
+pub struct SocialProofReservationCreatedEvent {
     pub associated_id: String,
     pub token_type: i16,
-    pub owner: String,
-    pub start_time: i64,
-    pub duration: i64,
-    pub total_tokens: i64,
+    pub reserver: String,
+    pub amount: i64,
+    pub total_reserved: i64,
+    pub threshold_met: bool,
+    pub reserved_at: i64,
 }
 
-impl TryFrom<Value> for SocialProofStartAuctionEvent {
+impl TryFrom<Value> for SocialProofReservationCreatedEvent {
     type Error = anyhow::Error;
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
-        let obj = value.as_object().ok_or_else(|| anyhow!("Expected object"))?;
-        
+        let obj = value
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object"))?;
+
         Ok(Self {
-            auction_id: obj.get("auction_id")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| anyhow!("Missing or invalid auction_id"))?
-                .to_string(),
-            associated_id: obj.get("associated_id")
+            associated_id: obj
+                .get("associated_id")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid associated_id"))?
                 .to_string(),
-            token_type: obj.get("token_type")
+            token_type: obj
+                .get("token_type")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| anyhow!("Missing or invalid token_type"))?
                 as i16,
-            owner: obj.get("owner")
+            reserver: obj
+                .get("reserver")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid reserver"))?
+                .to_string(),
+            amount: obj
+                .get("amount")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| anyhow!("Missing or invalid amount"))?,
+            total_reserved: obj
+                .get("total_reserved")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| anyhow!("Missing or invalid total_reserved"))?,
+            threshold_met: obj
+                .get("threshold_met")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false),
+            reserved_at: obj
+                .get("reserved_at")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| anyhow!("Missing or invalid reserved_at"))?,
+        })
+    }
+}
+
+impl SocialProofReservationCreatedEvent {
+    pub fn into_reservation_model(
+        &self,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<NewSptReservation> {
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
+
+        Ok(NewSptReservation {
+            pool_id,
+            reserver_address: self.reserver.clone(),
+            amount: self.amount,
+            reserved_at: self.reserved_at,
+            time: chrono::DateTime::<chrono::Utc>::from_timestamp(time, 0)
+                .unwrap_or_else(|| chrono::Utc::now()),
+            transaction_id,
+        })
+    }
+}
+
+// Reservation withdrawn event parsing from Move contract
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SocialProofReservationWithdrawnEvent {
+    pub associated_id: String,
+    pub token_type: i16,
+    pub reserver: String,
+    pub amount: i64,
+    pub total_reserved: i64,
+    pub withdrawn_at: i64,
+}
+
+impl TryFrom<Value> for SocialProofReservationWithdrawnEvent {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        let obj = value
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object"))?;
+
+        Ok(Self {
+            associated_id: obj
+                .get("associated_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid associated_id"))?
+                .to_string(),
+            token_type: obj
+                .get("token_type")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| anyhow!("Missing or invalid token_type"))?
+                as i16,
+            reserver: obj
+                .get("reserver")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid reserver"))?
+                .to_string(),
+            amount: obj
+                .get("amount")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| anyhow!("Missing or invalid amount"))?,
+            total_reserved: obj
+                .get("total_reserved")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| anyhow!("Missing or invalid total_reserved"))?,
+            withdrawn_at: obj
+                .get("withdrawn_at")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| anyhow!("Missing or invalid withdrawn_at"))?,
+        })
+    }
+}
+
+impl SocialProofReservationWithdrawnEvent {
+    pub fn into_reservation_model(
+        &self,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<NewSptReservation> {
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
+
+        // For withdrawals, we record the remaining amount (0 means full withdrawal)
+        Ok(NewSptReservation {
+            pool_id,
+            reserver_address: self.reserver.clone(),
+            amount: 0, // Represents final amount after withdrawal
+            reserved_at: self.withdrawn_at,
+            time: chrono::DateTime::<chrono::Utc>::from_timestamp(time, 0)
+                .unwrap_or_else(|| chrono::Utc::now()),
+            transaction_id,
+        })
+    }
+}
+
+// Threshold met event parsing from Move contract
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SocialProofThresholdMetEvent {
+    pub associated_id: String,
+    pub token_type: i16,
+    pub owner: String,
+    pub total_reserved: i64,
+    pub required_threshold: i64,
+    pub timestamp: i64,
+}
+
+impl TryFrom<Value> for SocialProofThresholdMetEvent {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        let obj = value
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object"))?;
+
+        Ok(Self {
+            associated_id: obj
+                .get("associated_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid associated_id"))?
+                .to_string(),
+            token_type: obj
+                .get("token_type")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| anyhow!("Missing or invalid token_type"))?
+                as i16,
+            owner: obj
+                .get("owner")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid owner"))?
                 .to_string(),
-            start_time: obj.get("start_time")
+            total_reserved: obj
+                .get("total_reserved")
                 .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid start_time"))?,
-            duration: obj.get("duration")
+                .ok_or_else(|| anyhow!("Missing or invalid total_reserved"))?,
+            required_threshold: obj
+                .get("required_threshold")
                 .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid duration"))?,
-            total_tokens: obj.get("total_tokens")
+                .ok_or_else(|| anyhow!("Missing or invalid required_threshold"))?,
+            timestamp: obj
+                .get("timestamp")
                 .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid total_tokens"))?,
+                .ok_or_else(|| anyhow!("Missing or invalid timestamp"))?,
         })
     }
 }
 
-impl SocialProofStartAuctionEvent {
-    pub fn into_model(&self, time: i64, transaction_id: String) -> Result<NewSocialProofAuctionPool> {
-        let datetime = DateTime::<Utc>::from_timestamp(time, 0)
-            .unwrap_or_else(|| Utc::now());
-            
-        Ok(NewSocialProofAuctionPool {
-            auction_id: self.auction_id.clone(),
+impl SocialProofThresholdMetEvent {
+    pub fn into_reservation_pool_model(
+        &self,
+        time: i64,
+        transaction_id: String,
+    ) -> Result<NewSptReservationPool> {
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
+
+        Ok(NewSptReservationPool {
+            pool_id,
             associated_id: self.associated_id.clone(),
             token_type: self.token_type,
             owner: self.owner.clone(),
-            status: AUCTION_STATUS_ACTIVE,
-            start_time: self.start_time,
-            duration: self.duration,
-            total_contribution: 0, // Starts with 0 contributions
-            total_tokens: self.total_tokens,
-            finalized_at: None,
-            time: datetime,
+            total_reserved: self.total_reserved,
+            required_threshold: self.required_threshold,
+            status: RESERVATION_POOL_STATUS_THRESHOLD_MET.to_string(),
+            created_at: self.timestamp,
+            time: chrono::DateTime::<chrono::Utc>::from_timestamp(time, 0)
+                .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,
         })
     }
 }
-
-// Contribute to auction event structure
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SocialProofContributeAuctionEvent {
-    pub auction_id: String,
-    pub contributor_address: String,
-    pub amount: i64,
-    pub contributed_at: i64,
-}
-
-impl TryFrom<Value> for SocialProofContributeAuctionEvent {
-    type Error = anyhow::Error;
-
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        let obj = value.as_object().ok_or_else(|| anyhow!("Expected object"))?;
-        
-        Ok(Self {
-            auction_id: obj.get("auction_id")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| anyhow!("Missing or invalid auction_id"))?
-                .to_string(),
-            contributor_address: obj.get("contributor_address")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| anyhow!("Missing or invalid contributor_address"))?
-                .to_string(),
-            amount: obj.get("amount")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid amount"))?,
-            contributed_at: obj.get("contributed_at")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid contributed_at"))?,
-        })
-    }
-}
-
-impl SocialProofContributeAuctionEvent {
-    pub fn into_model(&self, time: i64, transaction_id: String) -> Result<NewSocialProofAuctionContribution> {
-        let datetime = DateTime::<Utc>::from_timestamp(time, 0)
-            .unwrap_or_else(|| Utc::now());
-            
-        Ok(NewSocialProofAuctionContribution {
-            auction_id: self.auction_id.clone(),
-            contributor_address: self.contributor_address.clone(),
-            amount: self.amount,
-            contributed_at: self.contributed_at,
-            time: datetime,
-            transaction_id,
-        })
-    }
-}
-
-// Finalize auction event structure
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SocialProofFinalizeAuctionEvent {
-    pub auction_id: String,
-    pub tokens_minted: i64,
-    pub finalized_at: i64,
-}
-
-impl TryFrom<Value> for SocialProofFinalizeAuctionEvent {
-    type Error = anyhow::Error;
-
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        let obj = value.as_object().ok_or_else(|| anyhow!("Expected object"))?;
-        
-        Ok(Self {
-            auction_id: obj.get("auction_id")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| anyhow!("Missing or invalid auction_id"))?
-                .to_string(),
-            tokens_minted: obj.get("tokens_minted")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid tokens_minted"))?,
-            finalized_at: obj.get("finalized_at")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid finalized_at"))?,
-        })
-    }
-} 

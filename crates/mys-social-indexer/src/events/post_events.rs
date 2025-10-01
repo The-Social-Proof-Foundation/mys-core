@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
@@ -6,52 +6,40 @@ use serde_json::json;
 
 // Import specific event types to avoid ambiguity
 use crate::events::post_event_types::{
-    PostCreatedEvent,
-    CommentCreatedEvent,
-    ReactionEvent,
-    RepostEvent,
-    TipEvent,
-    ModerationEvent as PostModerationEvent,
-    ReportEvent,
-    DeletionEvent as PostDeletionEvent,
+    CommentCreatedEvent, DeletionEvent as PostDeletionEvent,
+    ModerationEvent as PostModerationEvent, PostCreatedEvent, ReactionEvent, ReportEvent,
+    RepostEvent, TipEvent,
 };
 
 // Import model types
 use crate::models::post::{
-    NewPost,
-    NewComment,
-    NewReaction,
-    NewReactionCount,
-    NewRepost,
-    NewTip,
-    NewModerationEvent,
-    NewReport,
-    NewDeletionEvent,
+    NewComment, NewDeletionEvent, NewModerationEvent, NewPost, NewReaction, NewReactionCount,
+    NewReport, NewRepost, NewTip,
 };
-
-// Import MyIP model for revenue tracking
-use crate::models::my_ip::NewMyIPRevenue;
 
 // Model conversion impl for PostCreatedEvent
 impl PostCreatedEvent {
     pub fn into_model(&self) -> Result<NewPost> {
         // Create a unique ID for the post
         let id = format!("{}:{}", self.post_id, self.created_at);
-        
+
         // Convert media_urls and mentions to JSON if present
-        let media_urls_json = self.media_urls.as_ref().map(|urls| {
-            serde_json::to_value(urls).unwrap_or(json!(null))
-        });
-        
-        let mentions_json = self.mentions.as_ref().map(|mentions| {
-            serde_json::to_value(mentions).unwrap_or(json!(null))
-        });
-        
+        let media_urls_json = self
+            .media_urls
+            .as_ref()
+            .map(|urls| serde_json::to_value(urls).unwrap_or(json!(null)));
+
+        let mentions_json = self
+            .mentions
+            .as_ref()
+            .map(|mentions| serde_json::to_value(mentions).unwrap_or(json!(null)));
+
         // Parse metadata JSON if present
-        let metadata_json = self.metadata_json.as_ref().map(|json_str| {
-            serde_json::from_str(json_str).unwrap_or(json!(null))
-        });
-        
+        let metadata_json = self
+            .metadata_json
+            .as_ref()
+            .map(|json_str| serde_json::from_str(json_str).unwrap_or(json!(null)));
+
         // Create the model
         Ok(NewPost {
             id,
@@ -75,7 +63,7 @@ impl PostCreatedEvent {
             removed_by: None,
             transaction_id: "".to_string(), // Will be set by handler
             my_ip_id: self.my_ip_id.clone(),
-            revenue_recipient: None, // Will be set if needed based on MyIP
+            revenue_recipient: None, // Revenue tracking handled via unified revenue system
             promotion_id: self.promotion_id.clone(),
         })
     }
@@ -86,21 +74,24 @@ impl CommentCreatedEvent {
     pub fn into_model(&self) -> Result<NewComment> {
         // Create a unique ID for the comment
         let id = format!("{}:{}", self.comment_id, self.created_at);
-        
+
         // Convert media_urls and mentions to JSON if present
-        let media_urls_json = self.media_urls.as_ref().map(|urls| {
-            serde_json::to_value(urls).unwrap_or(json!(null))
-        });
-        
-        let mentions_json = self.mentions.as_ref().map(|mentions| {
-            serde_json::to_value(mentions).unwrap_or(json!(null))
-        });
-        
+        let media_urls_json = self
+            .media_urls
+            .as_ref()
+            .map(|urls| serde_json::to_value(urls).unwrap_or(json!(null)));
+
+        let mentions_json = self
+            .mentions
+            .as_ref()
+            .map(|mentions| serde_json::to_value(mentions).unwrap_or(json!(null)));
+
         // Parse metadata JSON if present
-        let metadata_json = self.metadata_json.as_ref().map(|json_str| {
-            serde_json::from_str(json_str).unwrap_or(json!(null))
-        });
-        
+        let metadata_json = self
+            .metadata_json
+            .as_ref()
+            .map(|json_str| serde_json::from_str(json_str).unwrap_or(json!(null)));
+
         // Create the model
         Ok(NewComment {
             id,
@@ -139,7 +130,7 @@ impl ReactionEvent {
             transaction_id: "".to_string(), // Will be set by handler
         })
     }
-    
+
     pub fn into_reaction_count(&self) -> Result<NewReactionCount> {
         Ok(NewReactionCount {
             object_id: self.object_id.clone(),
@@ -154,7 +145,7 @@ impl RepostEvent {
     pub fn into_model(&self) -> Result<NewRepost> {
         // Create a unique ID for the repost
         let id = format!("{}:{}", self.repost_id, self.created_at);
-        
+
         Ok(NewRepost {
             id,
             repost_id: self.repost_id.clone(),
@@ -181,26 +172,6 @@ impl TipEvent {
             created_at: self.tip_time as i64,
             transaction_id: "".to_string(), // Will be set by handler
         })
-    }
-    
-    // New method for creating MyIP revenue records when tips involve revenue redirection
-    pub fn into_my_ip_revenue(&self, transaction_id: String) -> Result<Option<NewMyIPRevenue>> {
-        if let Some(license_id) = &self.license_id {
-            Ok(Some(NewMyIPRevenue {
-                license_id: license_id.clone(),
-                post_id: Some(self.object_id.clone()),
-                from_address: self.from.clone(),
-                // Use the actual recipient (which may be different from original due to redirection)
-                to_address: self.to.clone(),
-                amount: self.amount as i64,
-                revenue_type: "TIP".to_string(),
-                revenue_time: self.tip_time as i64,
-                transaction_id,
-            }))
-        } else {
-            // No license involved, so no MyIP revenue record needed
-            Ok(None)
-        }
     }
 }
 
@@ -247,4 +218,4 @@ impl PostDeletionEvent {
             transaction_id: "".to_string(), // Will be set by handler
         })
     }
-} 
+}

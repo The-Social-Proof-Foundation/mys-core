@@ -7,6 +7,7 @@ Manages social media platforms and their timelines
 
 
 -  [Struct `PlatformStatus`](#social_contracts_platform_PlatformStatus)
+-  [Struct `PlatformAdminCap`](#social_contracts_platform_PlatformAdminCap)
 -  [Struct `Platform`](#social_contracts_platform_Platform)
 -  [Struct `PlatformRegistry`](#social_contracts_platform_PlatformRegistry)
 -  [Struct `PlatformCreatedEvent`](#social_contracts_platform_PlatformCreatedEvent)
@@ -20,7 +21,7 @@ Manages social media platforms and their timelines
 -  [Struct `UserLeftPlatformEvent`](#social_contracts_platform_UserLeftPlatformEvent)
 -  [Struct `TokenAirdropEvent`](#social_contracts_platform_TokenAirdropEvent)
 -  [Constants](#@Constants_0)
--  [Function `init`](#social_contracts_platform_init)
+-  [Function `bootstrap_init`](#social_contracts_platform_bootstrap_init)
 -  [Function `create_platform`](#social_contracts_platform_create_platform)
 -  [Function `update_platform`](#social_contracts_platform_update_platform)
 -  [Function `platform_version`](#social_contracts_platform_platform_version)
@@ -70,18 +71,24 @@ Manages social media platforms and their timelines
 -  [Function `revoke_badge`](#social_contracts_platform_revoke_badge)
 -  [Function `add_moderator_register`](#social_contracts_platform_add_moderator_register)
 -  [Function `remove_moderator_unregister`](#social_contracts_platform_remove_moderator_unregister)
+-  [Function `create_platform_admin_cap`](#social_contracts_platform_create_platform_admin_cap)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
+<b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
+<b>use</b> <a href="../mys/bls12381.md#mys_bls12381">mys::bls12381</a>;
+<b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
 <b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
 <b>use</b> <a href="../mys/dynamic_field.md#mys_dynamic_field">mys::dynamic_field</a>;
 <b>use</b> <a href="../mys/dynamic_object_field.md#mys_dynamic_object_field">mys::dynamic_object_field</a>;
 <b>use</b> <a href="../mys/event.md#mys_event">mys::event</a>;
+<b>use</b> <a href="../mys/group_ops.md#mys_group_ops">mys::group_ops</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
+<b>use</b> <a href="../mys/hmac.md#mys_hmac">mys::hmac</a>;
 <b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/package.md#mys_package">mys::package</a>;
@@ -91,12 +98,20 @@ Manages social media platforms and their timelines
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
+<b>use</b> <a href="../seal/bf_hmac_encryption.md#seal_bf_hmac_encryption">seal::bf_hmac_encryption</a>;
+<b>use</b> <a href="../seal/gf256.md#seal_gf256">seal::gf256</a>;
+<b>use</b> <a href="../seal/hmac256ctr.md#seal_hmac256ctr">seal::hmac256ctr</a>;
+<b>use</b> <a href="../seal/kdf.md#seal_kdf">seal::kdf</a>;
+<b>use</b> <a href="../seal/key_server.md#seal_key_server">seal::key_server</a>;
+<b>use</b> <a href="../seal/polynomial.md#seal_polynomial">seal::polynomial</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
+<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/hash.md#std_hash">std::hash</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
@@ -124,6 +139,33 @@ Platform status enum
 <dl>
 <dt>
 <code><a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>: u8</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_PlatformAdminCap"></a>
+
+## Struct `PlatformAdminCap`
+
+Admin capability for Platform system management
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: <a href="../mys/object.md#mys_object_UID">mys::object::UID</a></code>
 </dt>
 <dd>
 </dd>
@@ -239,12 +281,6 @@ Platform object that contains information about a social media platform
  Platform-specific MYS tokens treasury
 </dd>
 <dt>
-<code>approved: bool</code>
-</dt>
-<dd>
- Whether the platform is approved by the contract owner
-</dd>
-<dt>
 <code><a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>: bool</code>
 </dt>
 <dd>
@@ -341,6 +377,12 @@ Platform registry that keeps track of all platforms
 </dt>
 <dd>
  Table mapping developer addresses to their platforms
+</dd>
+<dt>
+<code>platform_approvals: <a href="../mys/table.md#mys_table_Table">mys::table::Table</a>&lt;<b>address</b>, bool&gt;</code>
+</dt>
+<dd>
+ Table mapping platform IDs to their approval status (admin-controlled)
 </dd>
 <dt>
 <code>version: u64</code>
@@ -865,7 +907,7 @@ Event emitted when tokens are airdropped from the platform treasury
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EAlreadyJoined">EAlreadyJoined</a>: u64 = 6;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EAlreadyJoined">EAlreadyJoined</a>: u64 = 5;
 </code></pre>
 
 
@@ -874,7 +916,7 @@ Event emitted when tokens are airdropped from the platform treasury
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EEmptyRecipientsList">EEmptyRecipientsList</a>: u64 = 10;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EEmptyRecipientsList">EEmptyRecipientsList</a>: u64 = 9;
 </code></pre>
 
 
@@ -883,7 +925,7 @@ Event emitted when tokens are airdropped from the platform treasury
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EInsufficientTreasuryFunds">EInsufficientTreasuryFunds</a>: u64 = 9;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EInsufficientTreasuryFunds">EInsufficientTreasuryFunds</a>: u64 = 8;
 </code></pre>
 
 
@@ -906,20 +948,11 @@ Event emitted when tokens are airdropped from the platform treasury
 
 
 
-<a name="social_contracts_platform_ENotContractOwner"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_ENotContractOwner">ENotContractOwner</a>: u64 = 5;
-</code></pre>
-
-
-
 <a name="social_contracts_platform_ENotJoined"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_ENotJoined">ENotJoined</a>: u64 = 7;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_ENotJoined">ENotJoined</a>: u64 = 6;
 </code></pre>
 
 
@@ -947,7 +980,7 @@ Error codes
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>: u64 = 8;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>: u64 = 7;
 </code></pre>
 
 
@@ -1035,15 +1068,14 @@ Platform status constants
 
 
 
-<a name="social_contracts_platform_init"></a>
+<a name="social_contracts_platform_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Create and share the global platform registry
-This should be called once during system initialization
+Bootstrap initialization function - creates the platform registry
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1052,11 +1084,12 @@ This should be called once during system initialization
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_init">init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     <b>let</b> registry = <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a> {
         <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: object::new(ctx),
         platforms_by_name: table::new(ctx),
         platforms_by_developer: table::new(ctx),
+        platform_approvals: table::new(ctx),
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     transfer::share_object(registry);
@@ -1149,7 +1182,6 @@ Create a new platform and transfer to developer
         <a href="../social_contracts/platform.md#social_contracts_platform_shutdown_date">shutdown_date</a>: option::none(),
         <a href="../social_contracts/platform.md#social_contracts_platform_created_at">created_at</a>: now,
         treasury: balance::zero(),
-        approved: <b>false</b>, // New platforms are not approved by default
         <a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>,
         delegate_count: actual_delegate_count,
         delegate_term_epochs: actual_delegate_term_epochs,
@@ -1178,6 +1210,8 @@ Create a new platform and transfer to developer
     };
     <b>let</b> developer_platforms = table::borrow_mut(&<b>mut</b> registry.platforms_by_developer, <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>);
     vector::push_back(developer_platforms, platform_id);
+    // Add to <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> approvals (starts <b>as</b> not approved)
+    table::add(&<b>mut</b> registry.platform_approvals, platform_id, <b>false</b>);
     // Emit <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> created event
     event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_PlatformCreatedEvent">PlatformCreatedEvent</a> {
         platform_id,
@@ -1193,6 +1227,64 @@ Create a new platform and transfer to developer
         <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>,
         <a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>,
     });
+    // If <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> wants DAO <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>, create <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> registry immediately
+    <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>) {
+        // Use default values <b>if</b> options are None
+        <b>let</b> delegate_count = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_count)) {
+            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_count)
+        } <b>else</b> {
+            7 // Default value
+        };
+        <b>let</b> delegate_term_epochs = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_term_epochs)) {
+            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_term_epochs)
+        } <b>else</b> {
+            30 // Default value
+        };
+        <b>let</b> proposal_submission_cost = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.proposal_submission_cost)) {
+            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.proposal_submission_cost)
+        } <b>else</b> {
+            50_000_000 // Default value
+        };
+        <b>let</b> min_on_chain_age_days = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.min_on_chain_age_days)) {
+            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.min_on_chain_age_days)
+        } <b>else</b> {
+            7 // Default value
+        };
+        <b>let</b> max_votes_per_user = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.max_votes_per_user)) {
+            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.max_votes_per_user)
+        } <b>else</b> {
+            5 // Default value
+        };
+        <b>let</b> quadratic_base_cost = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quadratic_base_cost)) {
+            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quadratic_base_cost)
+        } <b>else</b> {
+            5_000_000 // Default value
+        };
+        <b>let</b> voting_period_epochs = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.voting_period_epochs)) {
+            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.voting_period_epochs)
+        } <b>else</b> {
+            3 // Default value
+        };
+        <b>let</b> quorum_votes = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quorum_votes)) {
+            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quorum_votes)
+        } <b>else</b> {
+            15 // Default value
+        };
+        // Create <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> registry <b>for</b> this <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
+        <b>let</b> registry_id = <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">governance::create_platform_governance</a>(
+            delegate_count,
+            delegate_term_epochs,
+            proposal_submission_cost,
+            min_on_chain_age_days,
+            max_votes_per_user,
+            quadratic_base_cost,
+            voting_period_epochs,
+            quorum_votes,
+            ctx
+        );
+        // Store registry ID in the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
+        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a> = option::some(registry_id);
+    };
     // Transfer <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> to <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>
     transfer::transfer(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>);
 }
@@ -1597,10 +1689,10 @@ Unblock a profile from the platform
 
 ## Function `toggle_platform_approval`
 
-Toggle platform approval status (requires Publisher)
+Toggle platform approval status (requires PlatformAdminCap only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_toggle_platform_approval">toggle_platform_approval</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, publisher: &<a href="../mys/package.md#mys_package_Publisher">mys::package::Publisher</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_toggle_platform_approval">toggle_platform_approval</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, platform_id: <b>address</b>, _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1610,76 +1702,25 @@ Toggle platform approval status (requires Publisher)
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_toggle_platform_approval">toggle_platform_approval</a>(
-    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
-    publisher: &Publisher,
+    registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
+    platform_id: <b>address</b>,
+    _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a>,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Verify caller <b>has</b> a valid publisher <b>for</b> this <b>module</b>
-    <b>assert</b>!(package::from_module&lt;<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>&gt;(publisher), <a href="../social_contracts/platform.md#social_contracts_platform_ENotContractOwner">ENotContractOwner</a>);
-    // Toggle approval <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>
-    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.approved = !<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.approved;
-    // If <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is now approved and wants DAO <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>, create <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> registry
-    <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.approved && <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a> && option::is_none(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a>)) {
-        // Use default values <b>if</b> options are None
-        <b>let</b> delegate_count = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_count)) {
-            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_count)
-        } <b>else</b> {
-            7 // Default value
-        };
-        <b>let</b> delegate_term_epochs = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_term_epochs)) {
-            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_term_epochs)
-        } <b>else</b> {
-            30 // Default value
-        };
-        <b>let</b> proposal_submission_cost = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.proposal_submission_cost)) {
-            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.proposal_submission_cost)
-        } <b>else</b> {
-            50_000_000 // Default value
-        };
-        <b>let</b> min_on_chain_age_days = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.min_on_chain_age_days)) {
-            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.min_on_chain_age_days)
-        } <b>else</b> {
-            7 // Default value
-        };
-        <b>let</b> max_votes_per_user = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.max_votes_per_user)) {
-            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.max_votes_per_user)
-        } <b>else</b> {
-            5 // Default value
-        };
-        <b>let</b> quadratic_base_cost = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quadratic_base_cost)) {
-            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quadratic_base_cost)
-        } <b>else</b> {
-            5_000_000 // Default value
-        };
-        <b>let</b> voting_period_epochs = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.voting_period_epochs)) {
-            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.voting_period_epochs)
-        } <b>else</b> {
-            3 // Default value
-        };
-        <b>let</b> quorum_votes = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quorum_votes)) {
-            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quorum_votes)
-        } <b>else</b> {
-            15 // Default value
-        };
-        // Create <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> registry <b>for</b> this <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
-        <b>let</b> registry_id = <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">governance::create_platform_governance</a>(
-            delegate_count,
-            delegate_term_epochs,
-            proposal_submission_cost,
-            min_on_chain_age_days,
-            max_votes_per_user,
-            quadratic_base_cost,
-            voting_period_epochs,
-            quorum_votes,
-            ctx
-        );
-        // Store registry ID in the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
-        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a> = option::some(registry_id);
-    };
+    // Check version compatibility
+    <b>assert</b>!(registry.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    // Admin capability verification is handled by type system
+    // Verify the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> exists in the registry
+    <b>assert</b>!(table::contains(&registry.platform_approvals, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    // Get current approval <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a> and toggle it
+    <b>let</b> current_approval = *table::borrow(&registry.platform_approvals, platform_id);
+    <b>let</b> new_approval = !current_approval;
+    // Update the approval <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a> in the registry
+    *table::borrow_mut(&<b>mut</b> registry.platform_approvals, platform_id) = new_approval;
     // Emit approval <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a> changed event
     event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_PlatformApprovalChangedEvent">PlatformApprovalChangedEvent</a> {
-        platform_id: object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>),
-        approved: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.approved,
+        platform_id,
+        approved: new_approval,
         changed_by: tx_context::sender(ctx),
     });
 }
@@ -1759,7 +1800,7 @@ Checks for blocks before allowing the join and verifies platform is approved
 Uses the caller's wallet address to find their profile for security
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_join_platform">join_platform</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_join_platform">join_platform</a>(profile_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1769,7 +1810,8 @@ Uses the caller's wallet address to find their profile for security
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_join_platform">join_platform</a>(
-    registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">profile::UsernameRegistry</a>,
+    profile_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">profile::UsernameRegistry</a>,
+    platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -1777,15 +1819,16 @@ Uses the caller's wallet address to find their profile for security
     <b>let</b> platform_id = object::id(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
     <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
     // Look up the caller's <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID from registry
-    <b>let</b> <b>mut</b> caller_profile_id_opt = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(registry, caller);
+    <b>let</b> <b>mut</b> caller_profile_id_opt = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(profile_registry, caller);
     <b>assert</b>!(option::is_some(&caller_profile_id_opt), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
     // Extract <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID and convert to ID type
     <b>let</b> profile_id_addr = option::extract(&<b>mut</b> caller_profile_id_opt);
     <b>let</b> profile_id = object::id_from_address(profile_id_addr);
     // Check <b>if</b> the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>has</b> blocked this <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <b>assert</b>!(!<a href="../social_contracts/platform.md#social_contracts_platform_is_profile_blocked">is_profile_blocked</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, profile_id_addr), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    // Check <b>if</b> the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved by the contract owner
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.approved, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    // Check <b>if</b> the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved by the contract owner (<b>use</b> registry)
+    <b>let</b> platform_id_addr = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(platform_registry, platform_id_addr), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
     // Create joined profiles set <b>if</b> it doesn't exist
     <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_JOINED_PROFILES_FIELD">JOINED_PROFILES_FIELD</a>)) {
         <b>let</b> joined_profiles = vec_set::empty&lt;ID&gt;();
@@ -1867,10 +1910,10 @@ Leave a platform - removes the connection between profile and platform
 
 ## Function `is_approved`
 
-Get platform approval status
+Get platform approval status from registry
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>): bool
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, platform_id: <b>address</b>): bool
 </code></pre>
 
 
@@ -1879,8 +1922,11 @@ Get platform approval status
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>): bool {
-    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.approved
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>, platform_id: <b>address</b>): bool {
+    <b>if</b> (!table::contains(&registry.platform_approvals, platform_id)) {
+        <b>return</b> <b>false</b>
+    };
+    *table::borrow(&registry.platform_approvals, platform_id)
 }
 </code></pre>
 
@@ -2845,6 +2891,34 @@ When removing a moderator from a platform
             removed_by: caller,
         });
     };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_create_platform_admin_cap"></a>
+
+## Function `create_platform_admin_cap`
+
+Create a PlatformAdminCap for bootstrap (package visibility only)
+This function is only callable by other modules in the same package
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_create_platform_admin_cap">create_platform_admin_cap</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_create_platform_admin_cap">create_platform_admin_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a> {
+    <a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a> {
+        <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: object::new(ctx)
+    }
 }
 </code></pre>
 

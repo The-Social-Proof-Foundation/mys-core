@@ -5,7 +5,7 @@ run-client: false
 approved-governance-actions: []
 
 mys:
-  mys-rpc-url: "https://fullnode.testnet.mysocial.network:8082"
+  mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
   mys-bridge-chain-id: 1
 
 eth:
@@ -15,4 +15,4 @@ eth:
   eth-contracts-start-block-fallback: 0
 
 metrics:
-  push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics" 
+  push-url: "https://mys-bridge-testnet.up.railway.app:8080/publish/metrics" 

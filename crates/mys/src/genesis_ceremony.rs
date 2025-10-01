@@ -33,18 +33,6 @@ pub struct Ceremony {
     #[clap(long)]
     protocol_version: Option<u64>,
 
-    #[clap(long)]
-    token_symbol: Option<String>,
-
-    #[clap(long)]
-    token_name: Option<String>,
-
-    #[clap(long)]
-    token_description: Option<String>,
-
-    #[clap(long)]
-    token_supply: Option<u64>,
-
     #[clap(subcommand)]
     command: CeremonyCommand,
 }
@@ -114,26 +102,10 @@ pub fn run(cmd: Ceremony) -> Result<()> {
         .protocol_version
         .map(ProtocolVersion::new)
         .unwrap_or(ProtocolVersion::MAX);
-        
-    let token_symbol = cmd.token_symbol.as_ref().map(|s| s.clone()).unwrap_or_else(|| "MySo".to_string());
-    let token_name = cmd.token_name.as_ref().map(|s| s.clone()).unwrap_or_else(|| "MySocial".to_string());
-    let token_description = cmd.token_description.as_ref().map(|s| s.clone()).unwrap_or_else(|| 
-        "The native token of the MySocial blockchain.".to_string());
 
     match cmd.command {
         CeremonyCommand::Init => {
-            let mut builder = Builder::new().with_protocol_version(protocol_version);
-            
-            // Set custom token parameters if available
-            if cmd.token_symbol.is_some() || cmd.token_name.is_some() || 
-               cmd.token_description.is_some() || cmd.token_supply.is_some() {
-                builder = builder.with_token_parameters(
-                    token_symbol, 
-                    token_name, 
-                    token_description
-                );
-            }
-            
+            let builder = Builder::new().with_protocol_version(protocol_version);
             builder.save(dir)?;
         }
 
@@ -356,10 +328,6 @@ mod test {
         let command = Ceremony {
             path: Some(dir.path().into()),
             protocol_version: None,
-            token_symbol: Some("MySo".to_string()),
-            token_name: Some("MySocial".to_string()),
-            token_description: Some("The native token of the MySocial blockchain".to_string()),
-            token_supply: Some(1_000_000_000),
             command: CeremonyCommand::Init,
         };
         command.run()?;
@@ -371,10 +339,6 @@ mod test {
             let command = Ceremony {
                 path: Some(dir.path().into()),
                 protocol_version: None,
-                token_symbol: None,
-                token_name: None,
-                token_description: None,
-                token_supply: None,
                 command: CeremonyCommand::AddValidator {
                     name: validator.name().to_owned(),
                     validator_key_file: key_file.into(),
@@ -395,10 +359,6 @@ mod test {
             Ceremony {
                 path: Some(dir.path().into()),
                 protocol_version: None,
-                token_symbol: None,
-                token_name: None,
-                token_description: None,
-                token_supply: None,
                 command: CeremonyCommand::ValidateState,
             }
             .run()?;
@@ -408,10 +368,6 @@ mod test {
         let command = Ceremony {
             path: Some(dir.path().into()),
             protocol_version: None,
-            token_symbol: None,
-            token_name: None,
-            token_description: None,
-            token_supply: None,
             command: CeremonyCommand::BuildUnsignedCheckpoint,
         };
         command.run()?;
@@ -421,10 +377,6 @@ mod test {
             let command = Ceremony {
                 path: Some(dir.path().into()),
                 protocol_version: None,
-                token_symbol: None,
-                token_name: None,
-                token_description: None,
-                token_supply: None,
                 command: CeremonyCommand::VerifyAndSign {
                     key_file: key.into(),
                 },
@@ -434,10 +386,6 @@ mod test {
             Ceremony {
                 path: Some(dir.path().into()),
                 protocol_version: None,
-                token_symbol: None,
-                token_name: None,
-                token_description: None,
-                token_supply: None,
                 command: CeremonyCommand::ValidateState,
             }
             .run()?;
@@ -447,10 +395,6 @@ mod test {
         let command = Ceremony {
             path: Some(dir.path().into()),
             protocol_version: None,
-            token_symbol: None,
-            token_name: None,
-            token_description: None,
-            token_supply: None,
             command: CeremonyCommand::Finalize,
         };
         command.run()?;

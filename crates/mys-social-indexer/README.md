@@ -11,7 +11,8 @@ A indexer for the MySocial blockchain that focuses on tracking social interactio
 - **Post Promotion**: Tracks pay-per-view promoted posts with budget management and view tracking
 - **MyIP Integration**: Tracks intellectual property licenses and revenue
 - **Governance Integration**: Tracks proposals, voting, and delegates
-- **Social Proof Token**: Tracks token pools, transactions, holdings, and auctions
+- **Social Proof Token**: Tracks token pools, transactions, holdings, and staking pools
+- **Token Vesting**: Tracks MYS token vesting schedules with configurable release curves
 - **Database Storage**: Stores all data in TimescaleDB (PostgreSQL)
 - **REST API**: Provides endpoints for accessing indexed data
 - **Configurable**: Customizable via environment variables
@@ -26,9 +27,41 @@ The indexer consists of the following components:
 3. **Database**: Stores indexed data in TimescaleDB (PostgreSQL)
 4. **API Server**: Exposes indexed data via REST API endpoints
 
+## Social Proof Token Staking System
+
+The indexer now supports a modern staking-based social proof token system, replacing the previous auction model. Users can reservaton MYS tokens towards posts and profiles to enable social proof token creation when thresholds are met.
+
+### How It Works
+1. **Reservaton Creation**: Users reservaton MYS tokens towards posts (1,000 MYS threshold) or profiles (10,000 MYS threshold)
+2. **Threshold Monitoring**: The indexer tracks total reserved amounts and monitors threshold achievement
+3. **Token Creation**: When thresholds are met, post/profile owners can create social proof tokens
+4. **Real-time Tracking**: All staking activity is tracked in real-time with comprehensive analytics
+
+### Key Features
+- **Reservaton Pool Management**: Track total reserved amounts per post/profile with real-time status updates
+- **Individual Reservaton Tracking**: Monitor user reservatons with history of deposits and withdrawals
+- **Threshold Achievement**: Automatic detection when posts/profiles meet staking requirements
+- **Analytics**: Comprehensive staking metrics including trends, velocity, and top pools
+
+### Database Tables (TimescaleDB Hypertables)
+- `spt_reservaton_pools`: Reservaton pool configurations and current totals (1-month chunks)
+- `spt_reservatons`: Individual reservaton records with full history (1-week chunks)
+- `spt_exchange_config`: Exchange configuration changes and threshold updates (1-month chunks)
+
+### Staking Thresholds
+- **Posts**: 1,000 MYS tokens required to enable social proof token creation
+- **Profiles**: 10,000 MYS tokens required to enable social proof token creation
+- **Individual Limits**: Maximum 20% of threshold per individual reservator
+
+### API Capabilities
+- **Real-time Status**: Live staking pool status and threshold progress
+- **Reservaton Analytics**: Comprehensive metrics on staking trends and patterns
+- **User Tracking**: Complete reservaton history per user across all pools
+- **Threshold Monitoring**: Track pools approaching or exceeding thresholds
+
 ## Post Promotion Feature
 
-The indexer now supports tracking promoted posts, a pay-per-view system where post creators can allocate MYS tokens to promote their content. This feature is fully optimized for TimescaleDB to handle high-volume time-series data efficiently.
+The indexer now supports tracking promoted posts, a pay-per-view system where post creators can allocate MYS tokens to promote their creativity. This feature is fully optimized for TimescaleDB to handle high-volume time-series data efficiently.
 
 ### How It Works
 1. **Promotion Creation**: When a post is promoted, a `PromotedPostCreatedEvent` is emitted containing the promotion budget and payment per view
@@ -58,6 +91,45 @@ The indexer now supports tracking promoted posts, a pay-per-view system where po
 - **Time-Series Analytics**: Leverage TimescaleDB's time_bucket for efficient aggregation
 - **Continuous Aggregates**: Query pre-computed data for instant results
 - **Performance Views**: Access materialized views for top promotions and trends
+
+## Token Vesting System
+
+The indexer supports comprehensive tracking of MYS token vesting schedules with configurable release curves. This system enables organizations and individuals to implement sophisticated token distribution strategies with automated tracking and real-time analytics.
+
+### How It Works
+1. **Vesting Creation**: When tokens are vested via `vest_myso()`, a `TokensVestedEvent` is emitted containing wallet details, schedule parameters, and curve configuration
+2. **Automated Tracking**: The indexer monitors all vesting wallets and calculates real-time claimable amounts based on elapsed time and curve factors
+3. **Claim Processing**: When users claim tokens via `claim_vested_tokens()`, `TokensClaimedEvent` updates wallet balances and tracks distribution history
+4. **Curve Support**: Supports linear, exponential, and logarithmic vesting curves for flexible token release schedules
+
+### Vesting Curve Types
+- **Linear Vesting** (curve_factor = 1000): Equal token amounts released over time
+- **Exponential Curves** (curve_factor > 1000): Few tokens at start, accelerating toward end
+- **Logarithmic Curves** (curve_factor < 1000): More tokens at start, decelerating over time
+- **Custom Factors**: Any curve_factor between 100-10000 for precise release control
+
+### Key Features
+- **Real-time Calculations**: Live claimable amount computation using curve mathematics
+- **Status Tracking**: Automatic detection of vesting phases (not_started, in_progress, completed)
+- **Progress Monitoring**: Track vesting progress percentage and time remaining
+- **Analytics Dashboard**: Comprehensive platform-wide vesting statistics and trends
+- **User Portfolio**: Individual vesting wallet management and history
+
+### Database Tables
+- `vesting_wallets`: Core vesting wallet configurations and current balances (Regular table)
+- `vesting_events`: Complete event history for all vesting actions (TimescaleDB hypertable)
+
+### Vesting Analytics
+- **Portfolio Tracking**: Monitor total vested, claimed, and remaining amounts across all wallets
+- **Curve Analysis**: Statistics on most popular vesting curves and durations
+- **User Insights**: Individual wallet performance and claiming patterns
+- **Platform Metrics**: Aggregate vesting activity and distribution trends
+
+### API Capabilities
+- **Real-time Status**: Live wallet status with current claimable amounts
+- **Event History**: Complete audit trail of all vesting and claiming activities
+- **User Management**: Per-user wallet listing and portfolio overview
+- **Analytics**: Platform-wide vesting statistics and leaderboards
 
 ## Getting Started
 
@@ -107,12 +179,12 @@ SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
 
 # Indexer configuration
-CHECKPOINT_URL=https://checkpoints.testnet.mysocial.network
+CHECKPOINT_URL=https://mysocial-testnet-checkpoints.storage.googleapis.com
 START_CHECKPOINT=0
 INDEXER_CONCURRENCY=5
 
 # Package configuration
-PROFILE_PACKAGE_ADDRESS=0xe5759970ebb63cb02e34af3304a61600b07ed3cbd10376b3a0be98952b54aa76
+PROFILE_PACKAGE_ADDRESS=0x000000000000000000000000000000000000000000000000000000000000d880
 
 # Logging
 RUST_LOG=info,mys_social_indexer=debug
@@ -123,13 +195,56 @@ RUST_LOG=info,mys_social_indexer=debug
 ### Health Check
 - **GET /health** - Check the indexer's health
 
+### Statistics
+- **GET /stats/system** - Get overall system statistics (tokens, posts, comments, reactions, relationships)
+
 ### Search API
-- **GET /search** - Global search across profiles, posts, tokens, platforms, licenses, and governance proposals
+- **GET /search** - Global search across profiles, posts, spt tokens, spt staking pools, governance circles, platforms, myip, and governance proposals
+
+#### Search Parameters
+- `query` (required) - Search term to match against various fields
+- `page` (optional) - Page number for pagination (default: 1)
+- `limit` (optional) - Results per page, max 100 (default: 20)
+- `filter_types` (optional) - Comma-separated list of entity types to include
+
+#### Searchable Entity Types
+- `profile` - Search profiles by username, address, and bio
+- `post` - Search posts by creativity, post ID, owner, and profile ID
+- `spt-token` - Search social proof token pools by name, symbol, pool ID, owner, and associated ID
+- `spt-reservaton-pool` - Search staking pools by pool ID, associated ID, owner, and status
+- `governance-registry` - Search governance circles/registries (ecosystem, reputation, community notes) with delegate counts and voting parameters
+- `platform` - Search platforms by name, platform ID, developer address, and description
+- `proposal` - Search governance proposals by title, description, ID, and submitter
+
+#### Search Features
+- **Smart Ranking**: Exact matches appear first, followed by partial matches
+- **Rich Metadata**: Each result includes entity-specific metadata (e.g., staking progress, token prices, governance delegate counts)
+- **Real-time Status**: Staking pools show current progress toward thresholds
+- **Comprehensive Coverage**: Searches across all major system entities
+
+#### Example Queries
+```bash
+# Search everything
+GET /search?query=alice
+
+# Search only staking pools
+GET /search?query=threshold_met&filter_types=spt-reservaton-pool
+
+# Search tokens and staking pools
+GET /search?query=0x123&filter_types=spt-token,spt-reservaton-pool
+
+# Search governance circles
+GET /search?query=ecosystem&filter_types=governance-registry
+
+# Search with pagination
+GET /search?query=social&page=2&limit=50
+```
 
 ### Profile API
 - **GET /profiles** - List profiles
 - **GET /profiles/address/:address** - Get profile by blockchain address
 - **GET /profiles/username/:username** - Get profile by username
+- **GET /profiles/username/:username/availability** - Check if a username is available for registration
 - **GET /profiles/:id/posts** - Get posts by a profile
 - **GET /profiles/:id/events** - Get profile events
 - **GET /profiles/:id/platforms** - Get platform memberships
@@ -137,12 +252,17 @@ RUST_LOG=info,mys_social_indexer=debug
 
 ### Social Graph API
 - **GET /profiles/:id/following** - List profiles followed by a profile
+  - Query: `viewer_id` (optional), `limit`, `offset`, `page`
+  - New Query: `sort` (latest | earliest | alphabetical; default latest), `search` (matches username, display name, or wallet address)
 - **GET /profiles/:id/followers** - List followers of a profile
+  - Query: `viewer_id` (optional), `limit`, `offset`, `page`
+  - New Query: `sort` (latest | earliest | alphabetical; default latest), `search` (matches username, display name, or wallet address)
 - **GET /profiles/:id/stats** - Get follow statistics
 - **GET /social-graph/check/:follower/:following** - Check if a profile follows another
 
 ### Blocking API
 - **GET /profiles/:id/blocked** - List profiles blocked by a profile
+  - New Query: `sort` (latest | earliest | alphabetical; default latest), `search` (matches username, display name, or wallet address)
 - **GET /profiles/:id/blocked-platforms** - List platforms blocked by a profile
 - **GET /blocklist/check/profile/:blocker/:blocked** - Check if a profile is blocked
 - **GET /blocklist/check/platform/:profile/:platform** - Check if a platform is blocked
@@ -175,22 +295,68 @@ RUST_LOG=info,mys_social_indexer=debug
 - **GET /promotions/analytics/top-performing** - Get top performing promotions from materialized views
 - **GET /promotions/analytics/spending-trends** - Get platform-wide spending trends from continuous aggregates
 
-### MyIP API (Intellectual Property)
-- **GET /licenses** - List intellectual property licenses
-- **GET /licenses/popular** - Get popular licenses
-- **GET /licenses/:id** - Get license by ID
-- **GET /licenses/:id/events** - Get events for a license
-- **GET /licenses/:id/grants** - Get grants for a license
-- **GET /licenses/:id/revenue** - Get revenue for a license
-- **GET /licenses/:id/posts** - Get posts using a license
-- **GET /licenses/:id/stats** - Get statistics for a license
-- **GET /licenses/:id/revenue-timeline** - Get revenue timeline for a license
-- **GET /creators/:id/licenses** - Get licenses created by an address
+### Token Vesting API
+- **GET /vesting/wallets** - List all vesting wallets with optional filtering by owner
+- **GET /vesting/wallets/:wallet_id** - Get specific vesting wallet details with real-time status
+- **GET /vesting/wallets/:wallet_id/events** - Get complete event history for a vesting wallet
+- **GET /vesting/wallets/:wallet_id/claimable** - Get real-time claimable amount with progress details
+- **GET /vesting/users/:address/wallets** - Get all vesting wallets for a specific user address
+- **GET /vesting/events** - List all vesting events with optional owner filtering
+- **GET /vesting/analytics** - Get platform-wide vesting statistics and metrics
+- **GET /vesting/leaderboard** - Get vesting leaderboard (top users by vested amounts)
+
+### Proof of Creativity (PoC) API
+- **GET /poc/badges** - List all proof of creativity badges
+- **GET /poc/badges/:id** - Get specific proof of creativity badge details
+- **GET /poc/revenue-redirections** - List all revenue redirections
+- **GET /poc/analysis-results** - List AI analysis results for creativity
+- **GET /poc/disputes** - List all creativity disputes
+- **GET /poc/disputes/:id** - Get specific dispute details
+- **GET /poc/disputes/:id/votes** - Get votes for a specific dispute
+- **GET /poc/analytics** - Get proof of creativity analytics
+- **GET /poc/configuration** - Get current PoC system configuration
+- **GET /posts/:id/poc-badges** - Get PoC badges for a specific post
+- **GET /posts/:id/revenue-redirections** - Get revenue redirections for a specific post
+
+### Subscription API
+- **GET /subscriptions** - List all subscriptions
+- **GET /subscription-services** - List all subscription services
+- **GET /subscription-revenue** - Get subscription revenue data
+- **GET /subscriptions/:id/status** - Get subscription status
+- **GET /subscription-access/:subscriber/:content_id** - Check subscription access
+- **GET /subscription-analytics** - Get subscription analytics
+- **GET /service-performance** - Get service performance metrics
+- **GET /subscribers/:address/summary** - Get subscriber summary for an address
+
+### Revenue Analytics API
+- **GET /revenue/dashboard** - Get comprehensive revenue dashboard
+- **GET /revenue/leaderboard** - Get revenue leaderboard
+- **GET /revenue/chart-data** - Get revenue chart data for visualization
+- **GET /revenue/unified** - Get unified revenue across all sources
+- **GET /revenue/creators/:address/stats** - Get creator revenue statistics
+- **GET /revenue/platforms/:address/stats** - Get platform revenue statistics
+- **GET /revenue/spt/pools/:pool_id** - Get SPT pool revenue
+
+### MyIP Marketplace API
+- **GET /marketplace** - List marketplace data
+- **GET /marketplace/popular** - Get popular marketplace items
+- **GET /marketplace/:id** - Get marketplace item by ID
+- **GET /marketplace/:id/purchases** - Get purchases for a marketplace item
+- **GET /marketplace/:id/subscriptions** - Get subscriptions for a marketplace item
+- **GET /marketplace/:id/revenue** - Get revenue for a marketplace item
+- **GET /marketplace/:id/access-logs** - Get access logs for a marketplace item
+- **GET /marketplace/:id/stats** - Get statistics for a marketplace item
+- **GET /marketplace/:id/revenue-timeline** - Get revenue timeline for a marketplace item
+- **GET /marketplace/:id/access-analytics** - Get access analytics for a marketplace item
+- **GET /creators/:id/marketplace-data** - Get marketplace data created by a specific address
 
 ### Governance API
 - **GET /governance/proposals** - List governance proposals
 - **GET /governance/proposals/:id** - Get proposal details
 - **GET /governance/proposals/:id/votes** - Get community votes on a proposal
+- **GET /governance/proposals/:id/anonymous-stats** - Get anonymous voting statistics for a proposal
+- **GET /governance/proposals/:id/anonymous-votes** - Get anonymous votes for a proposal
+- **GET /governance/proposals/:id/decryption-failures** - Get vote decryption failures for a proposal
 - **GET /governance/delegates** - List delegates
 - **GET /governance/delegates/:address** - Get delegate details
 - **GET /governance/delegates/:address/proposals** - Get proposals reviewed by a delegate
@@ -199,24 +365,41 @@ RUST_LOG=info,mys_social_indexer=debug
 - **GET /governance/registries** - List governance registries
 - **GET /governance/registries/:registry_type** - Get registry by type
 - **GET /governance/events** - List recent governance events
+- **GET /governance/anonymous-voting-trends** - Get anonymous voting trends analytics
 
 ### Social Proof Token API
+
+#### Token Pool Management
 - **GET /social-proof-token/pools** - List token pools
 - **GET /social-proof-token/pools/:id** - Get token pool by ID
 - **GET /social-proof-token/pools/by-associated-id/:id** - Get token pool by associated profile or post ID
 - **GET /social-proof-token/pools/:id/transactions** - Get transactions for a token pool
 - **GET /social-proof-token/pools/:id/holdings** - Get holdings for a token pool
 - **GET /social-proof-token/pools/:id/price-history** - Get price history for a token pool
-- **GET /social-proof-token/auctions** - List active token auctions
-- **GET /social-proof-token/auctions/:id** - Get auction details by ID
-- **GET /social-proof-token/auctions/:id/contributions** - Get contributions for an auction
+- **GET /social-proof-token/pools/:id/liquidity-profile** - Show transaction volume, frequency and depth to assess token liquidity
+
+#### Staking System
+- **GET /social-proof-token/reservaton-pools** - List active reservaton pools supporting posts/profiles
+- **GET /social-proof-token/reservaton-pools/:id** - Get reservaton pool details by pool ID
+- **GET /social-proof-token/reservaton-pools/:id/reservatons** - Get individual reservatons for a pool
+
+#### Analytics & Insights
 - **GET /social-proof-token/popular** - Get popular token pools
 - **GET /social-proof-token/users/:address/holdings** - Get token holdings for a user
 - **GET /social-proof-token/analytics/top-performers** - Get tokens with highest price/volume growth in specified period
 - **GET /social-proof-token/portfolios/:address/performance** - Track user's token portfolio value over time with ROI metrics
 - **GET /social-proof-token/creators/:address/revenue-streams** - Break down creator revenue from token fees across content
 - **GET /social-proof-token/market-sentiment** - Aggregate buy/sell patterns to create market momentum indicators
-- **GET /social-proof-token/pools/:id/liquidity-profile** - Show transaction volume, frequency and depth to assess token liquidity
+
+### Social Proof of Truth (SPoT) API
+- **GET /spot/:post_id/record** - Get SPoT state for a post (status, outcome, escrow totals)
+- **GET /spot/:post_id/bets** - List SPoT bets for a post
+- **GET /spot/:post_id/payouts** - List SPoT payouts made to winning participants
+- **GET /spot/:post_id/refunds** - List SPoT refunds issued on unresolved or draw outcomes
+
+#### Query Parameters
+- `page` (optional) - Page number for pagination (default: 1)
+- `limit` (optional) - Results per page, max 100 (default: 20)
 
 ## License
 

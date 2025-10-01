@@ -2431,87 +2431,6 @@ verify_groth16_proof
 verify_groth16_proof_internal
 	fun
 	0x2::groth16
-MYS
-	public struct
-	0x2::mys
-new
-	fun
-	0x2::mys
-transfer
-	public entry fun
-	0x2::mys
-TransferRequest
-	public struct
-	0x2::transfer_policy
-TransferPolicy
-	public struct
-	0x2::transfer_policy
-TransferPolicyCap
-	public struct
-	0x2::transfer_policy
-TransferPolicyCreated
-	public struct
-	0x2::transfer_policy
-TransferPolicyDestroyed
-	public struct
-	0x2::transfer_policy
-RuleKey
-	public struct
-	0x2::transfer_policy
-new_request
-	public fun
-	0x2::transfer_policy
-new
-	public fun
-	0x2::transfer_policy
-default
-	entry fun
-	0x2::transfer_policy
-withdraw
-	public fun
-	0x2::transfer_policy
-destroy_and_withdraw
-	public fun
-	0x2::transfer_policy
-confirm_request
-	public fun
-	0x2::transfer_policy
-add_rule
-	public fun
-	0x2::transfer_policy
-get_rule
-	public fun
-	0x2::transfer_policy
-add_to_balance
-	public fun
-	0x2::transfer_policy
-add_receipt
-	public fun
-	0x2::transfer_policy
-has_rule
-	public fun
-	0x2::transfer_policy
-remove_rule
-	public fun
-	0x2::transfer_policy
-uid
-	public fun
-	0x2::transfer_policy
-uid_mut_as_owner
-	public fun
-	0x2::transfer_policy
-rules
-	public fun
-	0x2::transfer_policy
-item
-	public fun
-	0x2::transfer_policy
-paid
-	public fun
-	0x2::transfer_policy
-from
-	public fun
-	0x2::transfer_policy
 LinkedTable
 	public struct
 	0x2::linked_table
@@ -2590,6 +2509,15 @@ sqrt_u128
 divide_and_round_up
 	public fun
 	0x2::math
+MYS
+	public struct
+	0x2::mys
+new
+	fun
+	0x2::mys
+transfer
+	public entry fun
+	0x2::mys
 PCREntry
 	public struct
 	0x2::nitro_attestation
@@ -4735,9 +4663,6 @@ UpgradeEvent
 ObjectMigratedEvent
 	public struct
 	0xd880::upgrade
-init
-	fun
-	0xd880::upgrade
 authorize_upgrade
 	public fun
 	0xd880::upgrade
@@ -4758,6 +4683,9 @@ assert_version
 	0xd880::upgrade
 emit_migration_event
 	public fun
+	0xd880::upgrade
+create_upgrade_admin_cap
+	public(package) fun
 	0xd880::upgrade
 BlockList
 	public struct
@@ -4780,8 +4708,8 @@ create_block_list
 create_block_list_for_sender
 	public entry fun
 	0xd880::block_list
-init
-	fun
+bootstrap_init
+	public(package) fun
 	0xd880::block_list
 get_blocked_wallets_key
 	fun
@@ -4825,6 +4753,75 @@ migrate_block_list
 migrate_block_list_registry
 	public entry fun
 	0xd880::block_list
+ProfileSubscriptionService
+	public struct
+	0xd880::subscription
+ProfileSubscription
+	public struct
+	0xd880::subscription
+ProfileSubscriptionCreatedEvent
+	public struct
+	0xd880::subscription
+ProfileSubscriptionRenewedEvent
+	public struct
+	0xd880::subscription
+ProfileSubscriptionCancelledEvent
+	public struct
+	0xd880::subscription
+ProfileSubscriptionUpdatedEvent
+	public struct
+	0xd880::subscription
+create_profile_service
+	public fun
+	0xd880::subscription
+create_profile_service_entry
+	public entry fun
+	0xd880::subscription
+subscribe_to_profile
+	public entry fun
+	0xd880::subscription
+renew_subscription
+	public entry fun
+	0xd880::subscription
+auto_renew_subscription
+	public entry fun
+	0xd880::subscription
+can_auto_renew
+	public fun
+	0xd880::subscription
+fund_renewal_balance
+	public entry fun
+	0xd880::subscription
+is_subscription_valid
+	public fun
+	0xd880::subscription
+seal_approve
+	public entry fun
+	0xd880::subscription
+update_service_fee
+	public entry fun
+	0xd880::subscription
+deactivate_service
+	public entry fun
+	0xd880::subscription
+cancel_subscription
+	public entry fun
+	0xd880::subscription
+service_monthly_fee
+	public fun
+	0xd880::subscription
+service_subscriber_count
+	public fun
+	0xd880::subscription
+subscription_expires_at
+	public fun
+	0xd880::subscription
+subscription_auto_renew
+	public fun
+	0xd880::subscription
+subscription_renewal_balance
+	public fun
+	0xd880::subscription
 EcosystemTreasury
 	public struct
 	0xd880::profile
@@ -4835,6 +4832,9 @@ Profile
 	public struct
 	0xd880::profile
 ProfileBadge
+	public struct
+	0xd880::profile
+VestingWallet
 	public struct
 	0xd880::profile
 BadgeAssignedEvent
@@ -4864,8 +4864,14 @@ ProfileOffer
 ProfileSaleFeeEvent
 	public struct
 	0xd880::profile
-init
-	fun
+TokensVestedEvent
+	public struct
+	0xd880::profile
+TokensClaimedEvent
+	public struct
+	0xd880::profile
+bootstrap_init
+	public(package) fun
 	0xd880::profile
 is_reserved_name
 	public fun
@@ -4966,6 +4972,30 @@ increment_following_count
 decrement_following_count
 	public fun
 	0xd880::profile
+create_subscription_service
+	public entry fun
+	0xd880::profile
+has_valid_subscription
+	public fun
+	0xd880::profile
+attach_my_ip
+	public entry fun
+	0xd880::profile
+has_my_ip_attached
+	public fun
+	0xd880::profile
+detach_my_ip
+	public entry fun
+	0xd880::profile
+get_attached_my_ips
+	public fun
+	0xd880::profile
+batch_attach_my_ips
+	public entry fun
+	0xd880::profile
+batch_detach_my_ips
+	public entry fun
+	0xd880::profile
 create_offer
 	public entry fun
 	0xd880::profile
@@ -5020,12 +5050,48 @@ get_platform_badges
 badge_count
 	public fun
 	0xd880::profile
-is_email_verified
-	public fun
-	0xd880::profile
-toggle_email_verification
+vest_myso
 	public entry fun
 	0xd880::profile
+claim_vested_tokens
+	public entry fun
+	0xd880::profile
+claimable
+	public fun
+	0xd880::profile
+calculate_claimable
+	fun
+	0xd880::profile
+sqrt_approximation
+	fun
+	0xd880::profile
+delete_vesting_wallet
+	public entry fun
+	0xd880::profile
+vesting_balance
+	public fun
+	0xd880::profile
+vesting_owner
+	public fun
+	0xd880::profile
+vesting_start_time
+	public fun
+	0xd880::profile
+vesting_duration
+	public fun
+	0xd880::profile
+vesting_total_amount
+	public fun
+	0xd880::profile
+vesting_claimed_amount
+	public fun
+	0xd880::profile
+vesting_curve_factor
+	public fun
+	0xd880::profile
+GovernanceAdminCap
+	public struct
+	0xd880::governance
 GovernanceDAO
 	public struct
 	0xd880::governance
@@ -5059,6 +5125,9 @@ DelegateVoteEvent
 CommunityVoteEvent
 	public struct
 	0xd880::governance
+AnonymousVoteEvent
+	public struct
+	0xd880::governance
 ProposalApprovedForVotingEvent
 	public struct
 	0xd880::governance
@@ -5077,11 +5146,14 @@ ProposalImplementedEvent
 RewardsDistributedEvent
 	public struct
 	0xd880::governance
+VoteDecryptionFailedEvent
+	public struct
+	0xd880::governance
 ProposalRescindedEvent
 	public struct
 	0xd880::governance
-init
-	fun
+bootstrap_init
+	public(package) fun
 	0xd880::governance
 initialize_registry_tables
 	fun
@@ -5104,10 +5176,7 @@ submit_proposal
 submit_ecosystem_proposal
 	public entry fun
 	0xd880::governance
-submit_reputation_dispute
-	public entry fun
-	0xd880::governance
-submit_community_note
+submit_proof_of_creativity_proposal
 	public entry fun
 	0xd880::governance
 submit_proposal_internal
@@ -5128,8 +5197,14 @@ reject_proposal_by_id
 community_vote_on_proposal
 	public entry fun
 	0xd880::governance
+community_vote_anonymous
+	public fun
+	0xd880::governance
 finalize_proposal
 	public entry fun
+	0xd880::governance
+finalize_proposal_anonymous
+	public fun
 	0xd880::governance
 distribute_rewards
 	fun
@@ -5182,244 +5257,13 @@ set_version
 migrate_registry
 	public entry fun
 	0xd880::governance
-MyIP
-	public struct
-	0xd880::my_ip
-MyIPRegistry
-	public struct
-	0xd880::my_ip
-LicenseAdminCap
-	public struct
-	0xd880::my_ip
-LicenseCreatedEvent
-	public struct
-	0xd880::my_ip
-LicenseUpdatedEvent
-	public struct
-	0xd880::my_ip
-LicenseTransferredEvent
-	public struct
-	0xd880::my_ip
-LicenseStateChangedEvent
-	public struct
-	0xd880::my_ip
-LicenseLinkedEvent
-	public struct
-	0xd880::my_ip
-LicenseRegisteredEvent
-	public struct
-	0xd880::my_ip
-init
-	fun
-	0xd880::my_ip
-create
-	public fun
-	0xd880::my_ip
-create_license
-	public entry fun
-	0xd880::my_ip
-update_license_permissions
-	public entry fun
-	0xd880::my_ip
-update_revenue_recipient
-	public entry fun
-	0xd880::my_ip
-set_license_state
-	public entry fun
-	0xd880::my_ip
-register_license_internal
-	fun
-	0xd880::my_ip
-register_license
-	public entry fun
-	0xd880::my_ip
-update_license_in_registry
-	public entry fun
-	0xd880::my_ip
-transfer_license
-	public entry fun
-	0xd880::my_ip
-transfer_admin_cap
-	public entry fun
-	0xd880::my_ip
-set_poc_id
-	public entry fun
-	0xd880::my_ip
-is_registered
-	public fun
-	0xd880::my_ip
-registry_has_permission
-	public fun
-	0xd880::my_ip
-registry_is_commenting_allowed
-	public fun
-	0xd880::my_ip
-registry_is_reactions_allowed
-	public fun
-	0xd880::my_ip
-registry_is_reposting_allowed
-	public fun
-	0xd880::my_ip
-registry_is_quoting_allowed
-	public fun
-	0xd880::my_ip
-registry_is_tipping_allowed
-	public fun
-	0xd880::my_ip
-registry_is_commercial_use_allowed
-	public fun
-	0xd880::my_ip
-registry_is_derivatives_allowed
-	public fun
-	0xd880::my_ip
-registry_is_public_license
-	public fun
-	0xd880::my_ip
-registry_is_revenue_redirected
-	public fun
-	0xd880::my_ip
-registry_get_revenue_recipient
-	public fun
-	0xd880::my_ip
-registry_get_creator
-	public fun
-	0xd880::my_ip
-is_commenting_allowed
-	public fun
-	0xd880::my_ip
-is_reactions_allowed
-	public fun
-	0xd880::my_ip
-is_reposting_allowed
-	public fun
-	0xd880::my_ip
-is_quoting_allowed
-	public fun
-	0xd880::my_ip
-is_tipping_allowed
-	public fun
-	0xd880::my_ip
-is_commercial_use_allowed
-	public fun
-	0xd880::my_ip
-is_derivatives_allowed
-	public fun
-	0xd880::my_ip
-is_public_license
-	public fun
-	0xd880::my_ip
-is_authority_required
-	public fun
-	0xd880::my_ip
-is_share_alike_required
-	public fun
-	0xd880::my_ip
-is_attribution_required
-	public fun
-	0xd880::my_ip
-is_revenue_redirected
-	public fun
-	0xd880::my_ip
-has_permission
-	public fun
-	0xd880::my_ip
-is_expired
-	public fun
-	0xd880::my_ip
-validate_license_for_operation
-	public fun
-	0xd880::my_ip
-creator
-	public fun
-	0xd880::my_ip
-name
-	public fun
-	0xd880::my_ip
-description
-	public fun
-	0xd880::my_ip
-creation_time
-	public fun
-	0xd880::my_ip
-license_type
-	public fun
-	0xd880::my_ip
-permission_flags
-	public fun
-	0xd880::my_ip
-license_state
-	public fun
-	0xd880::my_ip
-proof_of_creativity_id
-	public fun
-	0xd880::my_ip
-custom_license_uri
-	public fun
-	0xd880::my_ip
-revenue_recipient
-	public fun
-	0xd880::my_ip
-is_transferable
-	public fun
-	0xd880::my_ip
-expires_at
-	public fun
-	0xd880::my_ip
-id
-	public fun
-	0xd880::my_ip
-id_address
-	public fun
-	0xd880::my_ip
-cc0_license_flags
-	public fun
-	0xd880::my_ip
-cc_by_license_flags
-	public fun
-	0xd880::my_ip
-cc_by_sa_license_flags
-	public fun
-	0xd880::my_ip
-cc_by_nc_license_flags
-	public fun
-	0xd880::my_ip
-cc_by_nc_sa_license_flags
-	public fun
-	0xd880::my_ip
-cc_by_nd_license_flags
-	public fun
-	0xd880::my_ip
-personal_use_license_flags
-	public fun
-	0xd880::my_ip
-token_bound_license_flags
-	public fun
-	0xd880::my_ip
-private_license_flags
-	public fun
-	0xd880::my_ip
-add_revenue_redirection
-	public fun
-	0xd880::my_ip
-version
-	public fun
-	0xd880::my_ip
-borrow_version_mut
-	public fun
-	0xd880::my_ip
-registry_version
-	public fun
-	0xd880::my_ip
-borrow_registry_version_mut
-	public fun
-	0xd880::my_ip
-migrate_my_ip
-	public entry fun
-	0xd880::my_ip
-migrate_registry
-	public entry fun
-	0xd880::my_ip
+create_governance_admin_cap
+	public(package) fun
+	0xd880::governance
 PlatformStatus
+	public struct
+	0xd880::platform
+PlatformAdminCap
 	public struct
 	0xd880::platform
 Platform
@@ -5458,8 +5302,8 @@ UserLeftPlatformEvent
 TokenAirdropEvent
 	public struct
 	0xd880::platform
-init
-	fun
+bootstrap_init
+	public(package) fun
 	0xd880::platform
 create_platform
 	public entry fun
@@ -5608,6 +5452,9 @@ add_moderator_register
 remove_moderator_unregister
 	public fun
 	0xd880::platform
+create_platform_admin_cap
+	public(package) fun
+	0xd880::platform
 Post
 	public struct
 	0xd880::post
@@ -5624,6 +5471,12 @@ PredictionBet
 	public struct
 	0xd880::post
 PredictionData
+	public struct
+	0xd880::post
+PromotionView
+	public struct
+	0xd880::post
+PromotionData
 	public struct
 	0xd880::post
 PostAdminCap
@@ -5692,8 +5545,29 @@ PredictionPayoutEvent
 PredictionBetWithdrawnEvent
 	public struct
 	0xd880::post
-init
-	fun
+PromotedPostCreatedEvent
+	public struct
+	0xd880::post
+PromotedPostViewConfirmedEvent
+	public struct
+	0xd880::post
+PromotionStatusToggledEvent
+	public struct
+	0xd880::post
+PromotionFundsWithdrawnEvent
+	public struct
+	0xd880::post
+ModerationRecord
+	public struct
+	0xd880::post
+is_auto_pool_disabled
+	public fun
+	0xd880::post
+set_auto_pool_disabled
+	public entry fun
+	0xd880::post
+bootstrap_init
+	public(package) fun
 	0xd880::post
 set_predictions_enabled
 	public entry fun
@@ -5725,9 +5599,6 @@ create_post
 create_comment
 	public entry fun
 	0xd880::post
-repost
-	public entry fun
-	0xd880::post
 create_repost
 	public entry fun
 	0xd880::post
@@ -5742,6 +5613,15 @@ react_to_post
 	0xd880::post
 tip_post
 	public entry fun
+	0xd880::post
+apply_poc_redirection_and_transfer
+	fun
+	0xd880::post
+update_poc_result
+	public(package) fun
+	0xd880::post
+clear_poc_data
+	public(package) fun
 	0xd880::post
 tip_repost
 	public entry fun
@@ -5797,16 +5677,19 @@ get_comment_post_id
 get_id_address
 	public fun
 	0xd880::post
-get_owner
-	public fun
-	0xd880::post
 get_reaction_count
 	public fun
 	0xd880::post
-get_comment_count
+get_tips_received
 	public fun
 	0xd880::post
-get_tips_received
+get_poc_badge_id
+	public fun
+	0xd880::post
+get_revenue_redirect_to
+	public fun
+	0xd880::post
+get_revenue_redirect_percentage
 	public fun
 	0xd880::post
 get_total_bet_amount
@@ -5851,24 +5734,225 @@ migrate_comment
 migrate_repost
 	public entry fun
 	0xd880::post
-my_ip_id
-	public fun
-	0xd880::post
-has_my_ip
-	public fun
-	0xd880::post
-attach_my_ip
-	public entry fun
-	0xd880::post
-remove_my_ip
-	public entry fun
-	0xd880::post
-increment_comment_count
-	public entry fun
-	0xd880::post
 update_post_parameters
 	public entry fun
 	0xd880::post
+create_promoted_post
+	public fun
+	0xd880::post
+confirm_promoted_post_view
+	public entry fun
+	0xd880::post
+toggle_promotion_status
+	public entry fun
+	0xd880::post
+withdraw_promotion_funds
+	public entry fun
+	0xd880::post
+get_promotion_stats
+	public fun
+	0xd880::post
+has_user_viewed_promoted_post
+	public fun
+	0xd880::post
+get_promotion_id
+	public fun
+	0xd880::post
+set_moderation_status
+	public entry fun
+	0xd880::post
+is_content_approved
+	public fun
+	0xd880::post
+create_post_admin_cap
+	public(package) fun
+	0xd880::post
+SocialProofTokensAdminCap
+	public struct
+	0xd880::social_proof_tokens
+SocialProofTokensConfig
+	public struct
+	0xd880::social_proof_tokens
+TokenRegistry
+	public struct
+	0xd880::social_proof_tokens
+ReservationPool
+	public struct
+	0xd880::social_proof_tokens
+ReservationInfo
+	public struct
+	0xd880::social_proof_tokens
+TokenInfo
+	public struct
+	0xd880::social_proof_tokens
+TokenPool
+	public struct
+	0xd880::social_proof_tokens
+SocialToken
+	public struct
+	0xd880::social_proof_tokens
+ReservationPoolObject
+	public struct
+	0xd880::social_proof_tokens
+TokenPoolCreatedEvent
+	public struct
+	0xd880::social_proof_tokens
+PostPoolAutoInitializedEvent
+	public struct
+	0xd880::social_proof_tokens
+TokenBoughtEvent
+	public struct
+	0xd880::social_proof_tokens
+TokenSoldEvent
+	public struct
+	0xd880::social_proof_tokens
+ReservationCreatedEvent
+	public struct
+	0xd880::social_proof_tokens
+ReservationWithdrawnEvent
+	public struct
+	0xd880::social_proof_tokens
+ThresholdMetEvent
+	public struct
+	0xd880::social_proof_tokens
+ConfigUpdatedEvent
+	public struct
+	0xd880::social_proof_tokens
+TokensAddedEvent
+	public struct
+	0xd880::social_proof_tokens
+EmergencyKillSwitchEvent
+	public struct
+	0xd880::social_proof_tokens
+bootstrap_init
+	public(package) fun
+	0xd880::social_proof_tokens
+update_social_proof_tokens_config
+	public entry fun
+	0xd880::social_proof_tokens
+toggle_emergency_kill_switch
+	public entry fun
+	0xd880::social_proof_tokens
+is_trading_halted
+	public fun
+	0xd880::social_proof_tokens
+reserve_towards_post
+	public entry fun
+	0xd880::social_proof_tokens
+reserve_towards_profile
+	public entry fun
+	0xd880::social_proof_tokens
+withdraw_reservation
+	public entry fun
+	0xd880::social_proof_tokens
+create_reservation_pool
+	public entry fun
+	0xd880::social_proof_tokens
+can_create_auction
+	public fun
+	0xd880::social_proof_tokens
+create_social_proof_token
+	public entry fun
+	0xd880::social_proof_tokens
+update_token_poc_data
+	public entry fun
+	0xd880::social_proof_tokens
+calculate_poc_split
+	fun
+	0xd880::social_proof_tokens
+apply_token_poc_redirection
+	fun
+	0xd880::social_proof_tokens
+distribute_creator_fee
+	fun
+	0xd880::social_proof_tokens
+distribute_creator_fee_from_pool
+	fun
+	0xd880::social_proof_tokens
+buy_tokens
+	public entry fun
+	0xd880::social_proof_tokens
+buy_more_tokens
+	public entry fun
+	0xd880::social_proof_tokens
+sell_tokens
+	public entry fun
+	0xd880::social_proof_tokens
+calculate_token_price
+	public fun
+	0xd880::social_proof_tokens
+calculate_buy_price
+	public fun
+	0xd880::social_proof_tokens
+calculate_sell_price
+	public fun
+	0xd880::social_proof_tokens
+get_token_info
+	public fun
+	0xd880::social_proof_tokens
+token_exists
+	public fun
+	0xd880::social_proof_tokens
+get_token_owner
+	public fun
+	0xd880::social_proof_tokens
+get_pool_price
+	public fun
+	0xd880::social_proof_tokens
+get_user_balance
+	public fun
+	0xd880::social_proof_tokens
+get_poc_redirect_to
+	public fun
+	0xd880::social_proof_tokens
+get_poc_redirect_percentage
+	public fun
+	0xd880::social_proof_tokens
+has_poc_redirection
+	public fun
+	0xd880::social_proof_tokens
+get_pool_associated_id
+	public fun
+	0xd880::social_proof_tokens
+set_poc_redirection
+	public fun
+	0xd880::social_proof_tokens
+clear_poc_redirection
+	public fun
+	0xd880::social_proof_tokens
+registry_version
+	public fun
+	0xd880::social_proof_tokens
+borrow_registry_version_mut
+	public fun
+	0xd880::social_proof_tokens
+pool_version
+	public fun
+	0xd880::social_proof_tokens
+borrow_pool_version_mut
+	public fun
+	0xd880::social_proof_tokens
+reservation_pool_version
+	public fun
+	0xd880::social_proof_tokens
+borrow_reservation_pool_version_mut
+	public fun
+	0xd880::social_proof_tokens
+migrate_token_registry
+	public entry fun
+	0xd880::social_proof_tokens
+migrate_token_pool
+	public entry fun
+	0xd880::social_proof_tokens
+migrate_reservation_pool
+	public entry fun
+	0xd880::social_proof_tokens
+create_social_proof_tokens_admin_cap
+	public(package) fun
+	0xd880::social_proof_tokens
+ensure_post_token_pool
+	public(package) fun
+	0xd880::social_proof_tokens
 SocialGraph
 	public struct
 	0xd880::social_graph
@@ -5878,8 +5962,8 @@ FollowEvent
 UnfollowEvent
 	public struct
 	0xd880::social_graph
-init
-	fun
+bootstrap_init
+	public(package) fun
 	0xd880::social_graph
 follow
 	public entry fun
@@ -5911,138 +5995,348 @@ get_following
 get_followers
 	public fun
 	0xd880::social_graph
-ExchangeAdminCap
+PoCAdminCap
 	public struct
-	0xd880::social_proof_token
-ExchangeConfig
+	0xd880::proof_of_creativity
+PoCConfig
 	public struct
-	0xd880::social_proof_token
-TokenRegistry
+	0xd880::proof_of_creativity
+Vote
 	public struct
-	0xd880::social_proof_token
-TokenInfo
+	0xd880::proof_of_creativity
+PoCDispute
 	public struct
-	0xd880::social_proof_token
-TokenPool
+	0xd880::proof_of_creativity
+PoCRegistry
 	public struct
-	0xd880::social_proof_token
-SocialToken
+	0xd880::proof_of_creativity
+AnalysisSubmittedEvent
 	public struct
-	0xd880::social_proof_token
-AuctionInfo
+	0xd880::proof_of_creativity
+PoCBadgeIssuedEvent
 	public struct
-	0xd880::social_proof_token
-AuctionPool
+	0xd880::proof_of_creativity
+RevenueRedirectionActivatedEvent
 	public struct
-	0xd880::social_proof_token
-TokenPoolCreatedEvent
+	0xd880::proof_of_creativity
+PoCDisputeSubmittedEvent
 	public struct
-	0xd880::social_proof_token
-TokenBoughtEvent
+	0xd880::proof_of_creativity
+DisputeVoteCastEvent
 	public struct
-	0xd880::social_proof_token
-TokenSoldEvent
+	0xd880::proof_of_creativity
+PoCDisputeResolvedEvent
 	public struct
-	0xd880::social_proof_token
-AuctionCreatedEvent
+	0xd880::proof_of_creativity
+VotingRewardClaimedEvent
 	public struct
-	0xd880::social_proof_token
-AuctionContributionEvent
+	0xd880::proof_of_creativity
+PoCConfigUpdatedEvent
 	public struct
-	0xd880::social_proof_token
-AuctionFinalizedEvent
+	0xd880::proof_of_creativity
+TokenPoolSyncNeededEvent
 	public struct
-	0xd880::social_proof_token
-ConfigUpdatedEvent
-	public struct
-	0xd880::social_proof_token
-TokensAddedEvent
-	public struct
-	0xd880::social_proof_token
-init
+	0xd880::proof_of_creativity
+bootstrap_init
+	public(package) fun
+	0xd880::proof_of_creativity
+update_poc_config
+	public entry fun
+	0xd880::proof_of_creativity
+analyze_and_update_post
+	public entry fun
+	0xd880::proof_of_creativity
+update_token_pool_if_exists
 	fun
-	0xd880::social_proof_token
-update_exchange_config
+	0xd880::proof_of_creativity
+submit_poc_dispute
 	public entry fun
-	0xd880::social_proof_token
-check_post_viral_threshold
-	public fun
-	0xd880::social_proof_token
-check_profile_viral_threshold
-	public fun
-	0xd880::social_proof_token
-start_post_auction
+	0xd880::proof_of_creativity
+vote_on_dispute
 	public entry fun
-	0xd880::social_proof_token
-start_profile_auction
+	0xd880::proof_of_creativity
+resolve_dispute_voting
 	public entry fun
-	0xd880::social_proof_token
-contribute_to_auction
+	0xd880::proof_of_creativity
+claim_voting_reward
 	public entry fun
-	0xd880::social_proof_token
-is_auction_ended
+	0xd880::proof_of_creativity
+get_threshold_for_media_type
+	fun
+	0xd880::proof_of_creativity
+is_authorized_oracle
 	public fun
-	0xd880::social_proof_token
-finalize_auction
-	public entry fun
-	0xd880::social_proof_token
-buy_tokens
-	public entry fun
-	0xd880::social_proof_token
-buy_more_tokens
-	public entry fun
-	0xd880::social_proof_token
-sell_tokens
-	public entry fun
-	0xd880::social_proof_token
-calculate_token_price
+	0xd880::proof_of_creativity
+get_registry_stats
 	public fun
-	0xd880::social_proof_token
-calculate_buy_price
+	0xd880::proof_of_creativity
+has_poc_data
 	public fun
-	0xd880::social_proof_token
-calculate_sell_price
+	0xd880::proof_of_creativity
+get_dispute_voting_status
 	public fun
-	0xd880::social_proof_token
-get_token_info
+	0xd880::proof_of_creativity
+get_dispute_stakes
 	public fun
-	0xd880::social_proof_token
-get_token_owner
+	0xd880::proof_of_creativity
+has_user_voted
 	public fun
-	0xd880::social_proof_token
-get_pool_price
+	0xd880::proof_of_creativity
+config_version
 	public fun
-	0xd880::social_proof_token
-get_user_balance
+	0xd880::proof_of_creativity
+dispute_version
 	public fun
-	0xd880::social_proof_token
+	0xd880::proof_of_creativity
 registry_version
 	public fun
-	0xd880::social_proof_token
+	0xd880::proof_of_creativity
+migrate_poc_config
+	public entry fun
+	0xd880::proof_of_creativity
+migrate_poc_dispute
+	public entry fun
+	0xd880::proof_of_creativity
+migrate_poc_registry
+	public entry fun
+	0xd880::proof_of_creativity
+create_poc_admin_cap
+	public(package) fun
+	0xd880::proof_of_creativity
+MyIP
+	public struct
+	0xd880::my_ip
+MyIPRegistry
+	public struct
+	0xd880::my_ip
+MyIPCreatedEvent
+	public struct
+	0xd880::my_ip
+PurchaseEvent
+	public struct
+	0xd880::my_ip
+AccessGrantedEvent
+	public struct
+	0xd880::my_ip
+bootstrap_init
+	public(package) fun
+	0xd880::my_ip
+create
+	public fun
+	0xd880::my_ip
+create_and_share
+	public entry fun
+	0xd880::my_ip
+purchase_one_time
+	public entry fun
+	0xd880::my_ip
+purchase_subscription
+	public entry fun
+	0xd880::my_ip
+update_pricing
+	public entry fun
+	0xd880::my_ip
+update_content
+	public entry fun
+	0xd880::my_ip
+has_access
+	public fun
+	0xd880::my_ip
+decrypt_data
+	public fun
+	0xd880::my_ip
+grant_access
+	public entry fun
+	0xd880::my_ip
+owner
+	public fun
+	0xd880::my_ip
+media_type
+	public fun
+	0xd880::my_ip
+tags
+	public fun
+	0xd880::my_ip
+platform_id
+	public fun
+	0xd880::my_ip
+one_time_price
+	public fun
+	0xd880::my_ip
+subscription_price
+	public fun
+	0xd880::my_ip
+subscription_duration_days
+	public fun
+	0xd880::my_ip
+created_at
+	public fun
+	0xd880::my_ip
+last_updated
+	public fun
+	0xd880::my_ip
+timestamp_start
+	public fun
+	0xd880::my_ip
+timestamp_end
+	public fun
+	0xd880::my_ip
+geographic_region
+	public fun
+	0xd880::my_ip
+data_quality
+	public fun
+	0xd880::my_ip
+sample_size
+	public fun
+	0xd880::my_ip
+collection_method
+	public fun
+	0xd880::my_ip
+is_updating
+	public fun
+	0xd880::my_ip
+update_frequency
+	public fun
+	0xd880::my_ip
+purchaser_count
+	public fun
+	0xd880::my_ip
+subscriber_count
+	public fun
+	0xd880::my_ip
+is_one_time_for_sale
+	public fun
+	0xd880::my_ip
+is_subscription_available
+	public fun
+	0xd880::my_ip
+has_active_subscription
+	public fun
+	0xd880::my_ip
+get_subscription_expiry
+	public fun
+	0xd880::my_ip
+get_revenue_potential
+	public fun
+	0xd880::my_ip
+has_any_sales
+	public fun
+	0xd880::my_ip
+registry_get_owner
+	public fun
+	0xd880::my_ip
+is_registered
+	public fun
+	0xd880::my_ip
+register_in_registry
+	public entry fun
+	0xd880::my_ip
+unregister_from_registry
+	public entry fun
+	0xd880::my_ip
+version
+	public fun
+	0xd880::my_ip
+borrow_version_mut
+	public fun
+	0xd880::my_ip
+registry_version
+	public fun
+	0xd880::my_ip
 borrow_registry_version_mut
 	public fun
-	0xd880::social_proof_token
-pool_version
-	public fun
-	0xd880::social_proof_token
-borrow_pool_version_mut
-	public fun
-	0xd880::social_proof_token
-auction_version
-	public fun
-	0xd880::social_proof_token
-borrow_auction_version_mut
-	public fun
-	0xd880::social_proof_token
-migrate_token_registry
+	0xd880::my_ip
+migrate_my_ip
 	public entry fun
-	0xd880::social_proof_token
-migrate_token_pool
+	0xd880::my_ip
+migrate_registry
 	public entry fun
-	0xd880::social_proof_token
-migrate_auction_pool
+	0xd880::my_ip
+BootstrapKey
+	public struct
+	0xd880::bootstrap
+init
+	fun
+	0xd880::bootstrap
+claim_all_admin_capabilities
 	public entry fun
-	0xd880::social_proof_token
+	0xd880::bootstrap
+is_used
+	public fun
+	0xd880::bootstrap
+version
+	public fun
+	0xd880::bootstrap
+SpotAdminCap
+	public struct
+	0xd880::social_proof_of_truth
+SpotConfig
+	public struct
+	0xd880::social_proof_of_truth
+SpotBet
+	public struct
+	0xd880::social_proof_of_truth
+SpotRecord
+	public struct
+	0xd880::social_proof_of_truth
+SpotBetPlacedEvent
+	public struct
+	0xd880::social_proof_of_truth
+SpotResolvedEvent
+	public struct
+	0xd880::social_proof_of_truth
+SpotDaoRequiredEvent
+	public struct
+	0xd880::social_proof_of_truth
+SpotPayoutEvent
+	public struct
+	0xd880::social_proof_of_truth
+SpotRefundEvent
+	public struct
+	0xd880::social_proof_of_truth
+get_status
+	public fun
+	0xd880::social_proof_of_truth
+get_total_yes_escrow
+	public fun
+	0xd880::social_proof_of_truth
+get_total_no_escrow
+	public fun
+	0xd880::social_proof_of_truth
+get_bets_len
+	public fun
+	0xd880::social_proof_of_truth
+bootstrap_init
+	public(package) fun
+	0xd880::social_proof_of_truth
+update_spot_config
+	public entry fun
+	0xd880::social_proof_of_truth
+split_amount
+	fun
+	0xd880::social_proof_of_truth
+create_spot_record_for_post
+	public entry fun
+	0xd880::social_proof_of_truth
+place_spot_bet_with_pool
+	public entry fun
+	0xd880::social_proof_of_truth
+place_spot_bet_auto_init
+	public entry fun
+	0xd880::social_proof_of_truth
+oracle_resolve
+	public entry fun
+	0xd880::social_proof_of_truth
+finalize_via_dao
+	public entry fun
+	0xd880::social_proof_of_truth
+refund_unresolved
+	public entry fun
+	0xd880::social_proof_of_truth
+finalize_resolution_and_payout
+	fun
+	0xd880::social_proof_of_truth
 log
 	fun
 	0x5ea1::gf256

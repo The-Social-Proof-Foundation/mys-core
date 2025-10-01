@@ -1,102 +1,117 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-pub mod profile_events;
-pub mod profile_event_types;
-pub mod social_graph_events;
-pub mod platform_events;
 pub mod blocking_events;
-pub mod post_events;
-pub mod post_event_types;
 pub mod event_utils;
-pub mod platform_event_types;
-pub mod social_graph_event_types;
 pub mod governance_event_types;
 pub mod governance_events;
 pub mod my_ip_event_types;
 pub mod my_ip_events;
+pub mod platform_event_types;
+pub mod platform_events;
+pub mod poc_event_types;
+pub mod poc_events;
+pub mod post_event_types;
+pub mod post_events;
+pub mod profile_event_types;
+pub mod profile_events;
+pub mod social_graph_event_types;
+pub mod social_graph_events;
+pub mod social_proof_of_truth_events;
 pub mod social_proof_token_event_types;
 pub mod social_proof_token_events;
+pub mod subscription_event_types;
+pub mod subscription_events;
 
 // Re-export all profile events
 pub use profile_events::{
-    ProfileCreatedEvent,
-    ProfileUpdatedEvent,
-    UsernameUpdatedEvent,
-    UsernameRegisteredEvent,
-    ProfileFollowEvent,
-    ProfileJoinedPlatformEvent,
+    ProfileCreatedEvent, ProfileFollowEvent, ProfileJoinedPlatformEvent, ProfileUpdatedEvent,
+    UsernameRegisteredEvent, UsernameUpdatedEvent,
 };
 
 // Re-export profile event types
 pub use profile_event_types::{
-    ProfileEventType,
-    BlockAddedEvent,
-    BlockRemovedEvent,
-    PlatformJoinedEvent,
-    PlatformLeftEvent,
+    BlockAddedEvent, BlockRemovedEvent, PlatformJoinedEvent, PlatformLeftEvent, ProfileEventType,
 };
 
 // Re-export platform events
 pub use crate::models::platform::{
-    PlatformCreatedEvent,
-    PlatformUpdatedEvent,
-    PlatformApprovalChangedEvent,
     ModeratorAddedEvent,
     ModeratorRemovedEvent,
     // These are also defined in blocking models, so use those instead
     // PlatformBlockedProfileEvent,
     // PlatformUnblockedProfileEvent,
+    PlatformApprovalChangedEvent,
+    PlatformCreatedEvent,
+    PlatformUpdatedEvent,
 };
 
 // Re-export social graph events
-pub use social_graph_events::{
-    FollowEvent,
-    UnfollowEvent,
-};
+pub use social_graph_events::{FollowEvent, UnfollowEvent};
 
 // Re-export blocking events
 pub use crate::models::blocking::{
     // Block events
     UserBlockEvent,
     UserUnblockEvent,
-    // Platform events
-    PlatformBlockedProfileEvent,
-    PlatformUnblockedProfileEvent,
 };
+
+// Re-export platform events (from models::platform)
+pub use crate::models::platform::{PlatformBlockedProfileEvent, PlatformUnblockedProfileEvent};
 
 // BlockListCreatedEvent
 pub use crate::events::blocking_events::BlockListCreatedEvent;
 
 // Re-export post events
 pub use post_event_types::{
-    PostCreatedEvent,
-    CommentCreatedEvent,
-    ReactionEvent,
-    RemoveReactionEvent,
-    RepostEvent,
-    TipEvent,
-    ModerationEvent,
-    ContentUpdateEvent,
-    ReportEvent,
-    DeletionEvent,
-    PostEventType,
+    CommentCreatedEvent, ContentUpdateEvent, DeletionEvent, ModerationEvent, PostCreatedEvent,
+    PostEventType, ReactionEvent, RemoveReactionEvent, ReportEvent, RepostEvent, TipEvent,
 };
 
 // Re-export social proof token events
 pub use social_proof_token_events::{
-    TokenPoolCreatedEvent,
-    TokenBoughtEvent,
-    TokenSoldEvent,
-    TokensAddedEvent,
-    AuctionCreatedEvent,
-    AuctionContributionEvent,
-    AuctionFinalizedEvent,
-    ConfigUpdatedEvent,
+    ConfigUpdatedEvent, ReservationCreatedEvent, ReservationWithdrawnEvent, ThresholdMetEvent,
+    TokenBoughtEvent, TokenPoolCreatedEvent, TokenSoldEvent, TokensAddedEvent,
+};
+
+// Re-export SPoT events
+pub use social_proof_of_truth_events::{
+    SpotBetPlacedEvent, SpotDaoRequiredEvent, SpotPayoutEvent, SpotRefundEvent, SpotResolvedEvent,
 };
 
 // Re-export social proof token event types
 pub use social_proof_token_event_types::SocialProofTokenEventType;
+
+// Re-export PoC events
+pub use poc_events::{
+    validate_analysis_submitted_event, validate_badge_issued_event, validate_config_updated_event,
+    validate_dispute_submitted_event, validate_redirection_activated_event,
+    validate_vote_cast_event, validation,
+};
+
+// Re-export PoC event types
+pub use poc_event_types::{
+    AnalysisSubmittedEvent, DisputeVoteCastEvent, PocBadgeIssuedEvent, PocConfigUpdatedEvent,
+    PocDisputeResolvedEvent, PocDisputeSubmittedEvent, PocEventType,
+    RevenueRedirectionActivatedEvent, TokenPoolSyncNeededEvent, VotingRewardClaimedEvent,
+    DISPUTE_STATUS_RESOLVED_OVERTURNED, DISPUTE_STATUS_RESOLVED_UPHELD, DISPUTE_STATUS_VOTING,
+    MEDIA_TYPE_AUDIO, MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO, VOTE_OVERTURN, VOTE_UPHOLD,
+};
+
+// Re-export subscription events
+pub use subscription_events::{
+    extract_profile_owner_from_service, parse_subscription_event, sanitize_event_data,
+    validate_business_rules, validate_subscription_event_detailed, SubscriptionEventError,
+    MAX_MONTHLY_FEE, MAX_REFUND_AMOUNT, MIN_MONTHLY_FEE,
+};
+
+// Re-export subscription event types
+pub use subscription_event_types::{
+    extract_service_id, extract_subscriber, extract_subscription_id, generate_subscription_id,
+    validate_subscription_event, ProfileSubscriptionCancelledEvent,
+    ProfileSubscriptionCreatedEvent, ProfileSubscriptionRenewedEvent,
+    ProfileSubscriptionUpdatedEvent, SubscriptionEventType,
+};
 
 // Define placeholder event types for other modules
 // These should be moved to their own module files when implemented
@@ -219,17 +234,19 @@ impl FeesDistributedEvent {
 */
 
 use anyhow::{anyhow, Result};
-use serde::de::DeserializeOwned;
-use serde_json::{Value as JsonValue};
-use mys_types::event::Event;
 use mys_json_rpc_types::MysEvent;
+use mys_types::event::Event;
+use serde::de::DeserializeOwned;
+use serde_json::Value as JsonValue;
 
 // Event type prefixes for each module - all use the same MySocial package address
 use crate::DEFAULT_MYSOCIAL_PACKAGE_ADDRESS;
 
 // Helper macro to create module prefixes using the main package address
 macro_rules! module_prefix {
-    () => { DEFAULT_MYSOCIAL_PACKAGE_ADDRESS };
+    () => {
+        DEFAULT_MYSOCIAL_PACKAGE_ADDRESS
+    };
 }
 
 // All modules are in the same package - using a macro means we only need to update one place
@@ -243,6 +260,8 @@ pub const MODULE_PREFIX_SOCIAL_GRAPH: &str = module_prefix!();
 pub const MODULE_PREFIX_POST: &str = module_prefix!();
 pub const MODULE_PREFIX_GOVERNANCE: &str = module_prefix!();
 pub const MODULE_PREFIX_SOCIAL_PROOF_TOKEN: &str = module_prefix!();
+pub const MODULE_PREFIX_POC: &str = module_prefix!();
+pub const MODULE_PREFIX_SUBSCRIPTION: &str = module_prefix!();
 
 pub use event_utils::*;
 
@@ -250,10 +269,10 @@ pub use event_utils::*;
 pub fn parse_event<T: DeserializeOwned>(event: &Event) -> Result<T> {
     // First parse the event into a JSON value
     let json_value = serde_json::to_value(event)?;
-    
+
     // Then extract the fields using the event_utils method
     let fields = event_utils::extract_event_fields(&json_value)?;
-    
+
     // Then deserialize them into the event type
     match serde_json::from_value::<T>(fields) {
         Ok(result) => Ok(result),
@@ -265,27 +284,27 @@ pub fn parse_event<T: DeserializeOwned>(event: &Event) -> Result<T> {
 pub fn parse_json_fields(event: &Event) -> Result<JsonValue> {
     // First parse the event into a JSON value
     let json_value = serde_json::to_value(event)?;
-    
+
     // Then extract the fields using the event_utils method
     event_utils::extract_event_fields(&json_value)
 }
 
 pub use blocking_events::*;
-pub use profile_event_types::*;
-pub use social_graph_event_types::*;
-pub use platform_event_types::*;
 pub use governance_event_types::*;
 pub use governance_events::*;
 pub use my_ip_event_types::*;
+pub use platform_event_types::*;
+pub use profile_event_types::*;
+pub use social_graph_event_types::*;
 
 /// Parse an event that is already in JSON format
 pub fn parse_json_event<T: DeserializeOwned>(event: &MysEvent) -> Result<T> {
     // First convert MysEvent to a JSON value
     let json_event = serde_json::to_value(event)?;
-    
+
     // Then use the event_utils extract_event_fields on the JSON value
     let fields = event_utils::extract_event_fields(&json_event)?;
-    
+
     // Then deserialize them into the event type
     match serde_json::from_value::<T>(fields) {
         Ok(result) => Ok(result),

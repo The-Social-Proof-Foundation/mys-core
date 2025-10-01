@@ -14,7 +14,6 @@ use std::collections::HashSet;
 use std::fmt;
 use std::path::Path;
 use std::sync::{Arc, Weak};
-use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use tap::tap::TapFallible;
 use tokio::sync::oneshot;
 use ttl_cache::TtlCache;
@@ -31,7 +30,9 @@ use mys_types::quorum_driver_types::ExecuteTransactionRequestType;
 use mys_types::{
     base_types::{ObjectID, MysAddress, TransactionDigest},
     gas_coin::GasCoin,
-    transaction::{Transaction, TransactionData},
+    transaction::{Transaction, TransactionData, TransactionDataAPI},
+    programmable_transaction_builder::ProgrammableTransactionBuilder,
+    gas_coin::MIST_PER_MYS,
 };
 use tokio::sync::{
     mpsc::{self, Receiver, Sender},
@@ -61,6 +62,7 @@ pub struct SimpleFaucet {
     task_id_cache: Mutex<TtlCache<Uuid, BatchSendStatus>>,
     ttl_expiration: u64,
     coin_amount: u64,
+    config: FaucetConfig,
     /// Shuts down the batch transfer task. Used only in testing.
     #[allow(unused)]
     batch_transfer_shutdown: parking_lot::Mutex<Option<oneshot::Sender<()>>>,
@@ -96,6 +98,200 @@ const RECV_TIMEOUT: Duration = Duration::from_secs(5);
 const BATCH_TIMEOUT: Duration = Duration::from_secs(10);
 
 impl SimpleFaucet {
+    /// Check if we need to split coins on-demand (when pool is running low)
+    async fn should_split_coins(&self, config: &FaucetConfig) -> bool {
+        if !config.auto_split_coins {
+            return false;
+        }
+
+        let available_coins = self.metrics.total_available_coins.get() as usize;
+        let needs_split = available_coins < config.min_coin_threshold;
+        
+        if needs_split {
+            info!(
+                "Pool running low: {} coins available, threshold is {}. Triggering on-demand split.",
+                available_coins, config.min_coin_threshold
+            );
+        }
+        
+        needs_split
+    }
+
+    /// Find a large coin suitable for splitting from the wallet
+    async fn find_splittable_coin(&self, config: &FaucetConfig) -> Result<Option<ObjectID>, FaucetError> {
+        let split_amount = if config.split_amount > 0 {
+            config.split_amount
+        } else {
+            // Auto-calculate: enough for multiple faucet requests + buffer
+            config.amount * 100 // 100 faucet requests worth
+        };
+
+        // Get fresh coin list from wallet to find large coins
+        let all_coins = self.wallet
+            .gas_objects(self.active_address)
+            .await
+            .map_err(|e| FaucetError::Wallet(e.to_string()))?;
+            
+        // Look for a coin large enough to split
+        for (_, coin_data) in all_coins {
+            if let Ok(gas_coin) = GasCoin::try_from(&coin_data) {
+                let coin_value = gas_coin.value();
+                
+                // Check if this coin is large enough to split and not currently in use
+                if coin_value > split_amount * 2 {
+                    let coin_id = *gas_coin.id();
+                    info!(
+                        "Found splittable coin {} with {} mist ({} MYS), will split {} mist",
+                        coin_id,
+                        coin_value,
+                        coin_value / MIST_PER_MYS,
+                        split_amount
+                    );
+                    return Ok(Some(coin_id));
+                }
+            }
+        }
+        
+        warn!("No suitable large coins found for splitting");
+        Ok(None)
+    }
+
+    /// Split a coin on-demand to replenish the pool
+    async fn split_coin_on_demand(
+        &self,
+        coin_id: ObjectID,
+        config: &FaucetConfig,
+        uuid: Uuid,
+    ) -> Result<(), FaucetError> {
+        let split_amount = if config.split_amount > 0 {
+            config.split_amount
+        } else {
+            config.amount * 100 // 100 faucet requests worth
+        };
+
+        info!(?uuid, ?coin_id, "Performing on-demand coin split of {} mist", split_amount);
+
+        // Build and execute split transaction
+        let gas_cost = 10_000_000; // Estimate gas cost
+        match Self::build_split_coin_transaction(
+            &self.wallet,
+            coin_id,
+            self.active_address,
+            &[split_amount],
+            gas_cost,
+        ).await {
+            Ok(tx_data) => {
+                match Self::execute_split_transaction(&self.wallet, tx_data).await {
+                    Ok(_) => {
+                        info!(?uuid, ?coin_id, "Successfully split coin on-demand");
+                        
+                        // Refresh and add new coins to pool
+                        self.refresh_coin_pool(config).await?;
+                        Ok(())
+                    },
+                    Err(e) => {
+                        warn!(?uuid, ?coin_id, "Failed to execute on-demand split: {:?}", e);
+                        Err(FaucetError::internal(e))
+                    }
+                }
+            },
+            Err(e) => {
+                warn!(?uuid, ?coin_id, "Failed to build on-demand split transaction: {:?}", e);
+                Err(FaucetError::internal(e))
+            }
+        }
+    }
+
+    /// Refresh the coin pool by finding new coins and adding them
+    async fn refresh_coin_pool(&self, config: &FaucetConfig) -> Result<(), FaucetError> {
+        let fresh_coins = self.wallet
+            .gas_objects(self.active_address)
+            .await
+            .map_err(|e| FaucetError::Wallet(e.to_string()))?;
+
+        let producer = self.producer.lock().await;
+        let mut added_count = 0;
+
+        for (_, coin_data) in fresh_coins {
+            if let Ok(gas_coin) = GasCoin::try_from(&coin_data) {
+                let coin_id = *gas_coin.id();
+                let coin_value = gas_coin.value();
+                
+                // Only add coins that meet minimum requirements for faucet usage
+                if coin_value >= (config.amount * config.num_coins as u64) {
+                    if producer.try_send(coin_id).is_ok() {
+                        info!(?coin_id, "Added fresh coin to pool with {} mist", coin_value);
+                        self.metrics.total_available_coins.inc();
+                        added_count += 1;
+                    }
+                }
+            }
+        }
+
+        info!("Refreshed coin pool: added {} new coins", added_count);
+        Ok(())
+    }
+
+    /// Build a transaction to split a coin into smaller amounts
+    async fn build_split_coin_transaction(
+        wallet: &WalletContext,
+        coin_id: ObjectID,
+        signer: MysAddress,
+        split_amounts: &[u64],
+        gas_budget: u64,
+    ) -> Result<TransactionData, anyhow::Error> {
+        let client = wallet.get_client().await?;
+        let gas_price = client.read_api().get_reference_gas_price().await?;
+        let coin_ref = wallet.get_object_ref(coin_id).await?;
+        
+        let mut builder = ProgrammableTransactionBuilder::new();
+        
+        // Split the coin into multiple smaller coins
+        let mut amounts_args = Vec::new();
+        for &amount in split_amounts {
+            amounts_args.push(builder.pure(amount)?);
+        }
+            
+        builder.command(mys_types::transaction::Command::SplitCoins(
+            mys_types::transaction::Argument::GasCoin, 
+            amounts_args
+        ));
+        
+        let pt = builder.finish();
+        
+        Ok(TransactionData::new_programmable(
+            signer,
+            vec![coin_ref],
+            pt,
+            gas_budget,
+            gas_price,
+        ))
+    }
+
+    /// Execute a split transaction
+    async fn execute_split_transaction(
+        wallet: &WalletContext,
+        tx_data: TransactionData,
+    ) -> Result<(), anyhow::Error> {
+        let signature = wallet
+            .config
+            .keystore
+            .sign_secure(&tx_data.sender(), &tx_data, Intent::mys_transaction())?;
+        let tx = Transaction::from_data(tx_data, vec![signature]);
+        
+        let client = wallet.get_client().await?;
+        let _response = client
+            .quorum_driver_api()
+            .execute_transaction_block(
+                tx,
+                MysTransactionBlockResponseOptions::new().with_effects(),
+                Some(mys_types::quorum_driver_types::ExecuteTransactionRequestType::WaitForLocalExecution),
+            )
+            .await?;
+            
+        Ok(())
+    }
+
     pub async fn new(
         mut wallet: WalletContext,
         prometheus_registry: &Registry,
@@ -107,7 +303,7 @@ impl SimpleFaucet {
             .map_err(|err| FaucetError::Wallet(err.to_string()))?;
         info!("SimpleFaucet::new with active address: {active_address}");
 
-        let coins = wallet
+        let initial_coins = wallet
             .gas_objects(active_address)
             .await
             .map_err(|e| FaucetError::Wallet(e.to_string()))?
@@ -116,6 +312,11 @@ impl SimpleFaucet {
             .map(|q| GasCoin::try_from(&q.1).unwrap())
             .filter(|coin| coin.0.balance.value() >= (config.amount * config.num_coins as u64))
             .collect::<Vec<GasCoin>>();
+        
+        info!("Found {} initial coins meeting minimum requirements", initial_coins.len());
+        
+        // Use coins as-is for on-demand splitting approach
+        let coins = initial_coins;
         let metrics = FaucetMetrics::new(prometheus_registry);
         // set initial balance when faucet starts
         let balance = coins.iter().map(|coin| coin.0.balance.value()).sum::<u64>();
@@ -191,6 +392,7 @@ impl SimpleFaucet {
             task_id_cache: TtlCache::new(config.max_request_per_second as usize * 60 * 10).into(),
             ttl_expiration: config.ttl_expiration,
             coin_amount: config.amount,
+            config,
             batch_transfer_shutdown: parking_lot::Mutex::new(Some(batch_transfer_shutdown)),
         };
 
@@ -287,12 +489,13 @@ impl SimpleFaucet {
     }
 
     /// Pulls a coin from the queue and makes sure it is fit for use (belongs to the faucet, has
-    /// sufficient balance).
+    /// sufficient balance). If no coins are available, attempts cross-pool fallback and on-demand splitting.
     async fn prepare_gas_coin(
         &self,
         total_amount: u64,
         uuid: Uuid,
         for_batch: bool,
+        config: &FaucetConfig,
     ) -> GasCoinResponse {
         let coin_id = if for_batch {
             self.pop_gas_coin_for_batch(uuid).await
@@ -300,9 +503,61 @@ impl SimpleFaucet {
             self.pop_gas_coin(uuid).await
         };
 
-        let Some(coin_id) = coin_id else {
-            warn!("Failed getting gas coin, try later!");
-            return GasCoinResponse::NoGasCoinAvailable;
+        let coin_id = if let Some(id) = coin_id {
+            id
+        } else {
+            info!(?uuid, "No coins available in primary pool, trying fallback strategies");
+            
+            // Strategy 1: Try the other pool if we have coins there
+            let fallback_coin = if for_batch {
+                info!(?uuid, "Trying regular pool as fallback for batch request");
+                self.pop_gas_coin(uuid).await
+            } else {
+                info!(?uuid, "Trying batch pool as fallback for regular request");
+                self.pop_gas_coin_for_batch(uuid).await
+            };
+            
+            if let Some(id) = fallback_coin {
+                info!(?uuid, "Successfully got coin from fallback pool");
+                id
+            } else {
+                // Strategy 2: Try on-demand splitting if enabled and needed
+                if self.should_split_coins(config).await {
+                    if let Ok(Some(splittable_coin)) = self.find_splittable_coin(config).await {
+                        info!(?uuid, "No coins in either pool, attempting on-demand split");
+                        if self.split_coin_on_demand(splittable_coin, config, uuid).await.is_ok() {
+                            // Try again after splitting - prefer original pool first, then fallback
+                            if let Some(new_coin_id) = if for_batch {
+                                self.pop_gas_coin_for_batch(uuid).await
+                            } else {
+                                self.pop_gas_coin(uuid).await
+                            } {
+                                info!(?uuid, "Successfully obtained coin from primary pool after split");
+                                new_coin_id
+                            } else if let Some(fallback_coin_id) = if for_batch {
+                                self.pop_gas_coin(uuid).await
+                            } else {
+                                self.pop_gas_coin_for_batch(uuid).await
+                            } {
+                                info!(?uuid, "Successfully obtained coin from fallback pool after split");
+                                fallback_coin_id
+                            } else {
+                                warn!(?uuid, "Still no coins available after splitting");
+                                return GasCoinResponse::NoGasCoinAvailable;
+                            }
+                        } else {
+                            warn!(?uuid, "On-demand splitting failed");
+                            return GasCoinResponse::NoGasCoinAvailable;
+                        }
+                    } else {
+                        warn!(?uuid, "No splittable coins found for on-demand split");
+                        return GasCoinResponse::NoGasCoinAvailable;
+                    }
+                } else {
+                    warn!(?uuid, "No coins available in either pool and splitting not enabled/needed");
+                    return GasCoinResponse::NoGasCoinAvailable;
+                }
+            }
         };
 
         match self.get_gas_coin_and_check_faucet_owner(coin_id).await {
@@ -518,7 +773,7 @@ impl SimpleFaucet {
         let gas_cost = self.get_gas_cost().await?;
 
         let gas_coin_response = self
-            .prepare_gas_coin(total_amount + gas_cost, uuid, false)
+            .prepare_gas_coin(total_amount + gas_cost, uuid, false, &self.config)
             .await;
         match gas_coin_response {
             GasCoinResponse::ValidGasCoin(coin_id) => {
@@ -1041,7 +1296,7 @@ pub async fn batch_transfer_gases(
     // This loop is utilized to grab a coin that is large enough for the request
     loop {
         let gas_coin_response = faucet
-            .prepare_gas_coin(total_mys_needed + gas_cost, uuid, true)
+            .prepare_gas_coin(total_mys_needed + gas_cost, uuid, true, &faucet.config)
             .await;
 
         match gas_coin_response {
@@ -1534,7 +1789,7 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let GasCoinResponse::ValidGasCoin(coin_id) =
-            faucet.prepare_gas_coin(100, uuid, false).await
+            faucet.prepare_gas_coin(100, uuid, false, &faucet.config).await
         else {
             panic!("prepare_gas_coin did not give a valid coin.")
         };
@@ -1837,7 +2092,7 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let GasCoinResponse::ValidGasCoin(coin_id) =
-            faucet.prepare_gas_coin(100, uuid, false).await
+            faucet.prepare_gas_coin(100, uuid, false, &faucet.config).await
         else {
             panic!("prepare_gas_coin did not give a valid coin.")
         };

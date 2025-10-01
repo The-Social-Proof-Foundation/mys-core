@@ -1,4 +1,4 @@
-// Copyright (c) MySocial Team
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, Result};
@@ -12,7 +12,7 @@ where
     T: serde::de::DeserializeOwned,
 {
     debug!("Extracting field {} from event", field_name);
-    
+
     if let Some(field) = event.get(field_name) {
         serde_json::from_value(field.clone())
             .map_err(|e| anyhow!("Failed to deserialize field {}: {}", field_name, e))
@@ -27,12 +27,12 @@ where
     T: serde::de::DeserializeOwned,
 {
     debug!("Extracting optional field {} from event", field_name);
-    
+
     if let Some(field) = event.get(field_name) {
         if field.is_null() {
             return Ok(None);
         }
-        
+
         serde_json::from_value(field.clone())
             .map_err(|e| anyhow!("Failed to deserialize field {}: {}", field_name, e))
             .map(Some)
@@ -53,7 +53,7 @@ where
             }
         }
     }
-    
+
     Err(anyhow!("Fields {:?} not found in event", field_names))
 }
 
@@ -63,17 +63,26 @@ where
     T: serde::de::DeserializeOwned,
 {
     let mut current = event;
-    
+
     for (i, &field) in field_path.iter().enumerate() {
         if let Some(next) = current.get(field) {
             current = next;
         } else {
-            return Err(anyhow!("Nested field {} not found at path {:?}", field, &field_path[0..=i]));
+            return Err(anyhow!(
+                "Nested field {} not found at path {:?}",
+                field,
+                &field_path[0..=i]
+            ));
         }
     }
-    
-    serde_json::from_value(current.clone())
-        .map_err(|e| anyhow!("Failed to deserialize nested field at path {:?}: {}", field_path, e))
+
+    serde_json::from_value(current.clone()).map_err(|e| {
+        anyhow!(
+            "Failed to deserialize nested field at path {:?}: {}",
+            field_path,
+            e
+        )
+    })
 }
 
 /// Parse a JSON value into the specified event type
@@ -92,18 +101,18 @@ pub fn extract_event_fields(data: &Value) -> Result<Value> {
     if let Some(fields) = data.get("fields") {
         return Ok(fields.clone());
     }
-    
+
     // If fields are not found, try to get the data directly
     if let Some(data_fields) = data.get("data") {
         // If data has fields, return those
         if let Some(inner_fields) = data_fields.get("fields") {
             return Ok(inner_fields.clone());
         }
-        
+
         // Otherwise, return the data itself
         return Ok(data_fields.clone());
     }
-    
+
     // If neither approach works, return the entire value as a fallback
     Ok(data.clone())
 }
@@ -115,4 +124,4 @@ where
 {
     let fields = extract_event_fields(value)?;
     parse_json_event::<T>(&fields)
-} 
+}

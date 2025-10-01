@@ -1,0 +1,18 @@
+server-listen-port: 8081
+metrics-port: 9091
+bridge-authority-key-path: /tmp/bridge_key
+run-client: false
+approved-governance-actions: []
+
+mys:
+  mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
+  mys-bridge-chain-id: 1
+
+eth:
+  eth-rpc-url: "https://sepolia.base.org"
+  eth-bridge-proxy-address: "0x196D0E3f7b50F29531d1bd006AB3D4c2CB731DC6"
+  eth-bridge-chain-id: 12
+  eth-contracts-start-block-fallback: 0
+
+metrics:
+  push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics"

@@ -5,7 +5,7 @@
 -- 1. ADD PROMOTION_ID FIELD TO EXISTING POSTS TABLE
 -- ============================================================================
 -- Add promotion_id field to posts table to link to promotion data
-ALTER TABLE posts ADD COLUMN IF NOT EXISTS promotion_id VARCHAR;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS promotion_id TEXT;
 
 -- Create index for promotion_id lookups
 CREATE INDEX IF NOT EXISTS idx_posts_promotion_id ON posts(promotion_id, time);
@@ -16,17 +16,17 @@ CREATE INDEX IF NOT EXISTS idx_posts_promotion_id ON posts(promotion_id, time);
 -- Promoted posts table - stores promotion metadata
 CREATE TABLE IF NOT EXISTS promoted_posts (
     id SERIAL NOT NULL,
-    promotion_id VARCHAR NOT NULL,
-    post_id VARCHAR NOT NULL,
-    owner VARCHAR NOT NULL,
-    profile_id VARCHAR NOT NULL,
+    promotion_id TEXT NOT NULL,
+    post_id TEXT NOT NULL,
+    owner TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
     payment_per_view BIGINT NOT NULL,
     total_budget BIGINT NOT NULL,
     remaining_budget BIGINT NOT NULL DEFAULT 0,
     active BOOLEAN NOT NULL DEFAULT FALSE,
     created_at BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set the time column based on created_at for all rows
@@ -83,15 +83,15 @@ END $$;
 -- Promotion views table - tracks individual views and payments
 CREATE TABLE IF NOT EXISTS promotion_views (
     id SERIAL NOT NULL,
-    post_id VARCHAR NOT NULL,
-    promotion_id VARCHAR NOT NULL,
-    viewer VARCHAR NOT NULL,
+    post_id TEXT NOT NULL,
+    promotion_id TEXT NOT NULL,
+    viewer TEXT NOT NULL,
     payment_amount BIGINT NOT NULL,
     view_duration BIGINT NOT NULL,
-    platform_id VARCHAR NOT NULL,
+    platform_id TEXT NOT NULL,
     timestamp BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set the time column based on timestamp for all rows
@@ -148,15 +148,15 @@ END $$;
 -- Promotion status events table - tracks status changes, deactivations, withdrawals
 CREATE TABLE IF NOT EXISTS promotion_status_events (
     id SERIAL NOT NULL,
-    post_id VARCHAR NOT NULL,
-    promotion_id VARCHAR NOT NULL,
-    event_type VARCHAR NOT NULL, -- 'status_toggled', 'deactivated', 'funds_withdrawn'
-    triggered_by VARCHAR NOT NULL,
+    post_id TEXT NOT NULL,
+    promotion_id TEXT NOT NULL,
+    event_type TEXT NOT NULL, -- 'status_toggled', 'deactivated', 'funds_withdrawn'
+    triggered_by TEXT NOT NULL,
     new_status BOOLEAN, -- for status_toggled events
     amount BIGINT, -- for funds_withdrawn events
     timestamp BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set the time column based on timestamp for all rows
@@ -209,14 +209,14 @@ END $$;
 -- Promotion budget tracking table - tracks budget changes over time
 CREATE TABLE IF NOT EXISTS promotion_budget_events (
     id SERIAL NOT NULL,
-    promotion_id VARCHAR NOT NULL,
-    post_id VARCHAR NOT NULL,
-    event_type VARCHAR NOT NULL, -- 'initial_deposit', 'view_payment', 'withdrawal', 'refund'
+    promotion_id TEXT NOT NULL,
+    post_id TEXT NOT NULL,
+    event_type TEXT NOT NULL, -- 'initial_deposit', 'view_payment', 'withdrawal', 'refund'
     amount BIGINT NOT NULL,
     remaining_budget BIGINT NOT NULL,
     timestamp BIGINT NOT NULL,
     time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    transaction_id VARCHAR NOT NULL
+    transaction_id TEXT NOT NULL
 );
 
 -- Set the time column based on timestamp for all rows

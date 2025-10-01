@@ -14,7 +14,7 @@ Manages user blocking between wallet addresses
 -  [Constants](#@Constants_0)
 -  [Function `create_block_list`](#social_contracts_block_list_create_block_list)
 -  [Function `create_block_list_for_sender`](#social_contracts_block_list_create_block_list_for_sender)
--  [Function `init`](#social_contracts_block_list_init)
+-  [Function `bootstrap_init`](#social_contracts_block_list_bootstrap_init)
 -  [Function `get_blocked_wallets_key`](#social_contracts_block_list_get_blocked_wallets_key)
 -  [Function `block_wallet`](#social_contracts_block_list_block_wallet)
 -  [Function `unblock_wallet`](#social_contracts_block_list_unblock_wallet)
@@ -301,7 +301,7 @@ Create a new block list
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_create_block_list">create_block_list</a>(owner: <b>address</b>, ctx: &<b>mut</b> tx_context::TxContext): <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">BlockList</a> {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_create_block_list">create_block_list</a>(owner: <b>address</b>, ctx: &<b>mut</b> TxContext): <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">BlockList</a> {
     <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">BlockList</a> {
         id: object::new(ctx),
         owner,
@@ -331,7 +331,7 @@ This is an explicit operation to create a block list, even if not blocking anyon
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_create_block_list_for_sender">create_block_list_for_sender</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>, ctx: &<b>mut</b> tx_context::TxContext) {
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_create_block_list_for_sender">create_block_list_for_sender</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>, ctx: &<b>mut</b> TxContext) {
     <b>let</b> sender = tx_context::sender(ctx);
     // Check <b>if</b> a block list already exists <b>for</b> the sender
     <b>if</b> (table::contains(&registry.wallet_block_lists, sender)) {
@@ -358,14 +358,14 @@ This is an explicit operation to create a block list, even if not blocking anyon
 
 </details>
 
-<a name="social_contracts_block_list_init"></a>
+<a name="social_contracts_block_list_bootstrap_init"></a>
 
-## Function `init`
+## Function `bootstrap_init`
 
-Module initializer to create the block list registry
+Bootstrap initialization function - creates the block list registry
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -374,7 +374,7 @@ Module initializer to create the block list registry
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_init">init</a>(ctx: &<b>mut</b> tx_context::TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
     <b>let</b> registry = <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a> {
         id: object::new(ctx),
         wallet_block_lists: table::new(ctx),
@@ -437,7 +437,7 @@ Uses the caller's wallet address as the blocker
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet">block_wallet</a>(
     registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>,
     blocked_wallet_address: <b>address</b>,
-    ctx: &<b>mut</b> tx_context::TxContext
+    ctx: &<b>mut</b> TxContext
 ) {
     // Get the sender <b>address</b> (wallet <b>address</b> of the blocker)
     <b>let</b> sender = tx_context::sender(ctx);
@@ -512,7 +512,7 @@ Uses the caller's wallet address as the blocker
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_unblock_wallet">unblock_wallet</a>(
     registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>,
     blocked_wallet_address: <b>address</b>,
-    ctx: &<b>mut</b> tx_context::TxContext
+    ctx: &<b>mut</b> TxContext
 ) {
     // Get the sender <b>address</b> (wallet <b>address</b> of the blocker)
     <b>let</b> sender = tx_context::sender(ctx);
@@ -830,7 +830,7 @@ Migration function for BlockList
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_migrate_block_list">migrate_block_list</a>(
     <a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">BlockList</a>,
     _: &UpgradeAdminCap,
-    ctx: &<b>mut</b> tx_context::TxContext
+    ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
     // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new <a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> &gt; current <a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a>)
@@ -873,7 +873,7 @@ Migration function for BlockListRegistry
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_migrate_block_list_registry">migrate_block_list_registry</a>(
     registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>,
     _: &UpgradeAdminCap,
-    ctx: &<b>mut</b> tx_context::TxContext
+    ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
     // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new <a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> &gt; current <a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a>)

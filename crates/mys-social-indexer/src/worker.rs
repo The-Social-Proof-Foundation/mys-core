@@ -21,9 +21,15 @@ use crate::events::{
     FeeModelCreatedEvent, FeesDistributedEvent, ProfileFollowEvent, ProfileJoinedPlatformEvent,
     FollowEvent, UnfollowEvent,
     PlatformBlockedProfileEvent, PlatformUnblockedProfileEvent, UserJoinedPlatformEvent, UserLeftPlatformEvent,
+    SpotBetPlacedEvent as SpotBetPlacedEvt,
+    SpotResolvedEvent as SpotResolvedEvt,
+    SpotDaoRequiredEvent as SpotDaoRequiredEvt,
+    SpotPayoutEvent as SpotPayoutEvt,
+    SpotRefundEvent as SpotRefundEvt,
 };
-use crate::models::profile::{NewProfile, NewFollow, NewProfilePlatformLink, UpdateProfile};
+use crate::models::profile::{NewProfile, NewProfilePlatformLink, UpdateProfile};
 use crate::models::username::{NewUsername, UpdateUsername, NewUsernameHistory};
+use crate::models::platform::NewPlatformBlockedProfile;
 // These model imports will be added when we implement these features
 //use crate::models::platform::NewPlatform;
 //use crate::models::content::{NewContent, NewContentInteraction};
@@ -33,6 +39,10 @@ use crate::models::username::{NewUsername, UpdateUsername, NewUsernameHistory};
 use crate::models::statistics::{NewDailyStatistics, NewPlatformDailyStatistics};
 use crate::models::indexer::NewIndexerProgress;
 use crate::schema;
+use crate::models::{
+    NewSpotRecord, UpdateSpotRecord, NewSpotBet, NewSpotPayout, NewSpotRefund, NewSpotResolution,
+};
+use diesel::dsl::now;
 
 /// Social indexer worker that processes blockchain events
 pub struct SocialIndexerWorker {
@@ -202,8 +212,12 @@ impl SocialIndexerWorker {
             profile_photo: if event.profile_photo.is_some() { event.profile_photo.clone() } else { profile.profile_photo.clone() },
             website: event.website.clone(),  // Use new website field from event
             cover_photo: if event.cover_photo.is_some() { event.cover_photo.clone() } else { profile.cover_photo.clone() },
-            sensitive_data_updated_at: Some(now), // Use current time
-            // Include all sensitive fields from the event
+            // Keep existing counts unchanged during profile updates
+            followers_count: None,
+            following_count: None,
+            blocked_count: None,
+            post_count: None,
+            min_offer_amount: event.min_offer_amount.map(|v| v as i64),
             birthdate: event.birthdate.clone(),
             current_location: event.current_location.clone(),
             raised_location: event.raised_location.clone(),
@@ -421,32 +435,86 @@ impl SocialIndexerWorker {
     async fn process_profile_follow(&self, event: &ProfileFollowEvent) -> Result<()> {
         let mut conn = self.get_connection().await?;
         
-        // Create new follow relationship
-        let follow = NewFollow {
-            follower_id: event.follower_id.clone(),
-            following_id: event.following_id.clone(),
-            followed_at: Utc::now(), // Use current time if event doesn't provide it
+        // Check if relationship already exists to avoid duplicates
+        let exists = diesel::select(diesel::dsl::exists(
+            schema::social_graph_relationships::table
+                .filter(schema::social_graph_relationships::follower_address.eq(&event.follower_id))
+                .filter(schema::social_graph_relationships::following_address.eq(&event.following_id))
+        ))
+        .get_result::<bool>(&mut conn)
+        .await?;
+        
+        if exists {
+            info!("Profile follow relationship already exists: {} -> {}", event.follower_id, event.following_id);
+            return Ok(());
+        }
+        
+        // Create new follow relationship using existing social_graph_relationships table
+        let relationship = crate::models::social_graph::NewSocialGraphRelationship {
+            follower_address: event.follower_id.clone(),
+            following_address: event.following_id.clone(),
+            created_at: if let Some(timestamp) = event.followed_at {
+                chrono::DateTime::from_timestamp(timestamp as i64, 0)
+                    .unwrap_or(chrono::Utc::now())
+                    .naive_utc()
+            } else {
+                chrono::Utc::now().naive_utc()
+            },
         };
         
         // Insert the follow relationship
-        diesel::insert_into(schema::follows::table)
-            .values(&follow)
-            .on_conflict((schema::follows::follower_id, schema::follows::following_id))
-            .do_update()
-            .set(&follow)
+        diesel::insert_into(schema::social_graph_relationships::table)
+            .values(&relationship)
             .execute(&mut conn)
             .await?;
             
-        // Update follower and following counts
-        diesel::update(schema::profiles::table.find(&event.follower_id))
+        // Log the event
+        let event_log = crate::models::social_graph::NewSocialGraphEvent {
+            event_type: "profile_follow".to_string(),
+            follower_address: event.follower_id.clone(),
+            following_address: event.following_id.clone(),
+            created_at: relationship.created_at,
+            event_id: None, // ProfileFollowEvent doesn't have blockchain event ID
+            raw_event_data: Some(serde_json::to_value(event)?),
+        };
+        
+        diesel::insert_into(schema::social_graph_events::table)
+            .values(&event_log)
+            .execute(&mut conn)
+            .await?;
+            
+        // Update follower and following counts with safe sequential logic
+        // Update the follower's following_count (+1)
+        let follower_updated = diesel::update(schema::profiles::table)
+            .filter(schema::profiles::profile_id.eq(&event.follower_id))
             .set(schema::profiles::following_count.eq(schema::profiles::following_count + 1))
             .execute(&mut conn)
             .await?;
             
-        diesel::update(schema::profiles::table.find(&event.following_id))
+        // If no rows were updated by profile_id, try owner_address
+        if follower_updated == 0 {
+            diesel::update(schema::profiles::table)
+                .filter(schema::profiles::owner_address.eq(&event.follower_id))
+                .set(schema::profiles::following_count.eq(schema::profiles::following_count + 1))
+                .execute(&mut conn)
+                .await?;
+        }
+            
+        // Update the followed profile's followers_count (+1)
+        let following_updated = diesel::update(schema::profiles::table)
+            .filter(schema::profiles::profile_id.eq(&event.following_id))
             .set(schema::profiles::followers_count.eq(schema::profiles::followers_count + 1))
             .execute(&mut conn)
             .await?;
+            
+        // If no rows were updated by profile_id, try owner_address
+        if following_updated == 0 {
+            diesel::update(schema::profiles::table)
+                .filter(schema::profiles::owner_address.eq(&event.following_id))
+                .set(schema::profiles::followers_count.eq(schema::profiles::followers_count + 1))
+                .execute(&mut conn)
+                .await?;
+        }
             
         info!("Processed profile follow: {} -> {}", event.follower_id, event.following_id);
         Ok(())
@@ -1095,201 +1163,15 @@ impl Worker for SocialIndexerWorker {
                     
                     // Social Graph events from social_graph module
                     t if t.starts_with(MODULE_PREFIX_SOCIAL_GRAPH) && t.ends_with("FollowEvent") => {
-                        info!("Processing social graph FollowEvent");
-                        if let Ok(event) = parse_event::<FollowEvent>(event) {
-                            // Create a database connection
-                            let mut conn = match self.get_connection().await {
-                                Ok(conn) => conn,
-                                Err(e) => {
-                                    error!("Failed to get database connection: {}", e);
-                                    continue;
-                                }
-                            };
-                            
-                            // Get profile IDs from addresses
-                            let follower_profile = match schema::profiles::table
-                                .filter(schema::profiles::owner_address.eq(&event.follower))
-                                .select((schema::profiles::id, schema::profiles::owner_address))
-                                .first::<(i32, String)>(&mut conn)
-                                .await {
-                                Ok(profile) => profile,
-                                Err(e) => {
-                                    error!("Failed to find follower profile for address {}: {}", event.follower, e);
-                                    continue;
-                                }
-                            };
-                                
-                            let following_profile = match schema::profiles::table
-                                .filter(schema::profiles::owner_address.eq(&event.following))
-                                .select((schema::profiles::id, schema::profiles::owner_address))
-                                .first::<(i32, String)>(&mut conn)
-                                .await {
-                                Ok(profile) => profile,
-                                Err(e) => {
-                                    error!("Failed to find following profile for address {}: {}", event.following, e);
-                                    continue;
-                                }
-                            };
-                            
-                            // Create relationship
-                            let relationship = match event.into_relationship(follower_profile.0, following_profile.0) {
-                                Ok(rel) => rel,
-                                Err(e) => {
-                                    error!("Failed to create relationship: {}", e);
-                                    continue;
-                                }
-                            };
-                            
-                            // Check if relationship already exists
-                            let existing = match schema::social_graph_relationships::table
-                                .filter(schema::social_graph_relationships::follower_id.eq(follower_profile.0))
-                                .filter(schema::social_graph_relationships::following_id.eq(following_profile.0))
-                                .count()
-                                .get_result::<i64>(&mut conn)
-                                .await {
-                                Ok(count) => count > 0,
-                                Err(e) => {
-                                    error!("Failed to check existing relationship: {}", e);
-                                    continue;
-                                }
-                            };
-                                
-                            if existing {
-                                info!("Follow relationship already exists between {} and {}", 
-                                    event.follower, event.following);
-                                continue;
-                            }
-                                
-                            // Start a transaction for atomicity
-                            let result = conn.build_transaction()
-                                .run(|mut conn| Box::pin(async move {
-                                    // Insert relationship
-                                    diesel::insert_into(schema::social_graph_relationships::table)
-                                        .values(&relationship)
-                                        .execute(&mut conn)
-                                        .await?;
-                                        
-                                    // Update follower's following count (increment)
-                                    diesel::sql_query(format!(
-                                        "UPDATE profiles SET following_count = following_count + 1 WHERE id = {}", 
-                                        follower_profile.0
-                                    ))
-                                    .execute(&mut conn)
-                                    .await?;
-                                    
-                                    // Update followed's followers count (increment)
-                                    diesel::sql_query(format!(
-                                        "UPDATE profiles SET followers_count = followers_count + 1 WHERE id = {}", 
-                                        following_profile.0
-                                    ))
-                                    .execute(&mut conn)
-                                    .await?;
-                                    
-                                    Result::<_, diesel::result::Error>::Ok(())
-                                }))
-                                .await;
-                                
-                            if let Err(e) = result {
-                                error!("Failed to process follow event transaction: {}", e);
-                            } else {
-                                info!("Processed follow event: {} is now following {}", 
-                                    event.follower, event.following);
-                            }
-                        }
+                        info!("🚨 WORKER: FollowEvent detected - should be handled by SocialGraphEventHandler");
+                        info!("🚨 WORKER: Event type: {}", type_str);
+                        info!("🚨 WORKER: Raw event data: {}", serde_json::to_string_pretty(event).unwrap_or_default());
                     },
                     
                     t if t.starts_with(MODULE_PREFIX_SOCIAL_GRAPH) && t.ends_with("UnfollowEvent") => {
-                        info!("Processing social graph UnfollowEvent");
-                        if let Ok(event) = parse_event::<UnfollowEvent>(event) {
-                            // Create a database connection
-                            let mut conn = match self.get_connection().await {
-                                Ok(conn) => conn,
-                                Err(e) => {
-                                    error!("Failed to get database connection: {}", e);
-                                    continue;
-                                }
-                            };
-                            
-                            // Get profile IDs from addresses
-                            let follower_profile = match schema::profiles::table
-                                .filter(schema::profiles::owner_address.eq(&event.follower))
-                                .select((schema::profiles::id, schema::profiles::owner_address))
-                                .first::<(i32, String)>(&mut conn)
-                                .await {
-                                Ok(profile) => profile,
-                                Err(e) => {
-                                    error!("Failed to find follower profile for address {}: {}", event.follower, e);
-                                    continue;
-                                }
-                            };
-                                
-                            let unfollowed_profile = match schema::profiles::table
-                                .filter(schema::profiles::owner_address.eq(&event.unfollowed))
-                                .select((schema::profiles::id, schema::profiles::owner_address))
-                                .first::<(i32, String)>(&mut conn)
-                                .await {
-                                Ok(profile) => profile,
-                                Err(e) => {
-                                    error!("Failed to find unfollowed profile for address {}: {}", event.unfollowed, e);
-                                    continue;
-                                }
-                            };
-                            
-                            // Check if relationship exists
-                            let relationship = match schema::social_graph_relationships::table
-                                .filter(schema::social_graph_relationships::follower_id.eq(follower_profile.0))
-                                .filter(schema::social_graph_relationships::following_id.eq(unfollowed_profile.0))
-                                .select(schema::social_graph_relationships::id)
-                                .first::<i32>(&mut conn)
-                                .await {
-                                Ok(id) => id,
-                                Err(diesel::result::Error::NotFound) => {
-                                    info!("Follow relationship does not exist between {} and {}", 
-                                        event.follower, event.unfollowed);
-                                    continue;
-                                },
-                                Err(e) => {
-                                    error!("Failed to check existing relationship: {}", e);
-                                    continue;
-                                }
-                            };
-                                
-                            // Start a transaction for atomicity
-                            let result = conn.build_transaction()
-                                .run(|mut conn| Box::pin(async move {
-                                    // Delete the relationship
-                                    diesel::delete(schema::social_graph_relationships::table
-                                        .filter(schema::social_graph_relationships::id.eq(relationship)))
-                                        .execute(&mut conn)
-                                        .await?;
-                                        
-                                    // Update follower's following count (decrement)
-                                    diesel::sql_query(format!(
-                                        "UPDATE profiles SET following_count = GREATEST(0, following_count - 1) WHERE id = {}", 
-                                        follower_profile.0
-                                    ))
-                                    .execute(&mut conn)
-                                    .await?;
-                                    
-                                    // Update unfollowed's followers count (decrement)
-                                    diesel::sql_query(format!(
-                                        "UPDATE profiles SET followers_count = GREATEST(0, followers_count - 1) WHERE id = {}", 
-                                        unfollowed_profile.0
-                                    ))
-                                    .execute(&mut conn)
-                                    .await?;
-                                    
-                                    Result::<_, diesel::result::Error>::Ok(())
-                                }))
-                                .await;
-                                
-                            if let Err(e) = result {
-                                error!("Failed to process unfollow event transaction: {}", e);
-                            } else {
-                                info!("Processed unfollow event: {} unfollowed {}", 
-                                    event.follower, event.unfollowed);
-                            }
-                        }
+                        info!("🚨 WORKER: UnfollowEvent detected - should be handled by SocialGraphEventHandler");
+                        info!("🚨 WORKER: Event type: {}", type_str);
+                        info!("🚨 WORKER: Raw event data: {}", serde_json::to_string_pretty(event).unwrap_or_default());
                     },
                     
                     // Platform events
@@ -1375,30 +1257,7 @@ impl Worker for SocialIndexerWorker {
                         }
                     },
                     
-                    // Block list events
-                    t if t.starts_with(MODULE_PREFIX_BLOCK_LIST) && t.ends_with("BlockListCreatedEvent") => {
-                        info!("Found a BlockListCreatedEvent: {}", serde_json::to_string_pretty(event).unwrap_or_default());
-                        match parse_event::<BlockListCreatedEvent>(event) {
-                            Ok(evt) => {
-                                let mut conn = match self.get_connection().await {
-                                    Ok(conn) => conn,
-                                    Err(e) => {
-                                        error!("Failed to get database connection: {}", e);
-                                        continue;
-                                    }
-                                };
-                                
-                                if let Err(e) = crate::events::blocking_events::process_block_list_created_event(&mut conn, event).await {
-                                    error!("Failed to process BlockListCreatedEvent: {}", e);
-                                }
-                            },
-                            Err(e) => {
-                                error!("Failed to parse BlockListCreatedEvent: {}", e);
-                                // Log the raw event for debugging
-                                error!("Raw event data: {}", serde_json::to_string_pretty(event).unwrap_or_default());
-                            }
-                        }
-                    },
+                    // Block list events are now handled by block_list_handler.rs
                     // Note: UserBlockEvent is handled directly in blockchain/events.rs
                     // Handle only things not covered in blockchain/events.rs
                     t if t.starts_with(MODULE_PREFIX_BLOCK_LIST) && t.ends_with("EntityBlockedEvent") => {
@@ -1447,3 +1306,322 @@ impl Worker for SocialIndexerWorker {
         Ok(())
     }
 }
+                    // SPoT events (social_proof_of_truth)
+                    t if t.ends_with("SpotBetPlacedEvent") => {
+                        // Parse and persist bet; ensure record exists
+                        match parse_event::<SpotBetPlacedEvt>(event) {
+                            Ok(parsed) => {
+                                let event_id = if let Some(tx_digest) = &event.tx_digest {
+                                    let event_id_struct = EventID { tx_digest: tx_digest.clone(), event_seq: event.event_num };
+                                    Some(event_id_struct.to_string())
+                                } else { None };
+
+                                let tx = event.tx_digest.clone().unwrap_or_default();
+                                let ts_secs: i64 = (checkpoint.checkpoint_summary.timestamp_ms as i64) / 1000;
+
+                                let bet: NewSpotBet = parsed.into_bet_model(ts_secs as u64, tx.clone())?;
+
+                                let mut conn = self.get_connection().await?;
+
+                                // Upsert record if missing
+                                let now_ts = chrono::Utc::now().naive_utc();
+                                let new_record = NewSpotRecord {
+                                    post_id: parsed.post_id.clone(),
+                                    status: 1, // OPEN
+                                    outcome: None,
+                                    amm_split_bps_used: 3000, // default; updated if emitted later
+                                    total_yes_escrow: 0,
+                                    total_no_escrow: 0,
+                                    created_epoch: ts_secs as i64,
+                                    last_resolution_epoch: None,
+                                    version: 1,
+                                    created_at: now_ts,
+                                    updated_at: now_ts,
+                                    transaction_id: tx.clone(),
+                                };
+
+                                // Insert record if not exists
+                                diesel::sql_query("INSERT INTO spot_records (post_id, status, outcome, amm_split_bps_used, total_yes_escrow, total_no_escrow, created_epoch, last_resolution_epoch, version, created_at, updated_at, transaction_id) \
+                                                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), $10) \
+                                                   ON CONFLICT (post_id) DO NOTHING")
+                                    .bind::<diesel::sql_types::Text, _>(&new_record.post_id)
+                                    .bind::<diesel::sql_types::SmallInt, _>(&new_record.status)
+                                    .bind::<diesel::sql_types::Nullable<diesel::sql_types::SmallInt>, _>(&new_record.outcome)
+                                    .bind::<diesel::sql_types::Integer, _>(&new_record.amm_split_bps_used)
+                                    .bind::<diesel::sql_types::BigInt, _>(&new_record.total_yes_escrow)
+                                    .bind::<diesel::sql_types::BigInt, _>(&new_record.total_no_escrow)
+                                    .bind::<diesel::sql_types::BigInt, _>(&new_record.created_epoch)
+                                    .bind::<diesel::sql_types::Nullable<diesel::sql_types::BigInt>, _>(&new_record.last_resolution_epoch)
+                                    .bind::<diesel::sql_types::BigInt, _>(&new_record.version)
+                                    .bind::<diesel::sql_types::Text, _>(&new_record.transaction_id)
+                                    .execute(&mut conn)
+                                    .await?;
+
+                                // Insert bet row
+                                diesel::insert_into(schema::spot_bets::table)
+                                    .values(&bet)
+                                    .execute(&mut conn)
+                                    .await?;
+
+                                // Update escrow aggregates
+                                if parsed.escrow_amount > 0 {
+                                    if parsed.is_yes {
+                                        diesel::sql_query("UPDATE spot_records SET total_yes_escrow = total_yes_escrow + $1, updated_at = NOW() WHERE post_id = $2")
+                                            .bind::<diesel::sql_types::BigInt, _>(parsed.escrow_amount as i64)
+                                            .bind::<diesel::sql_types::Text, _>(&parsed.post_id)
+                                            .execute(&mut conn).await?;
+                                    } else {
+                                        diesel::sql_query("UPDATE spot_records SET total_no_escrow = total_no_escrow + $1, updated_at = NOW() WHERE post_id = $2")
+                                            .bind::<diesel::sql_types::BigInt, _>(parsed.escrow_amount as i64)
+                                            .bind::<diesel::sql_types::Text, _>(&parsed.post_id)
+                                            .execute(&mut conn).await?;
+                                    }
+                                }
+
+                                // Log event
+                                if let Some(eid) = event_id {
+                                    let json = serde_json::to_value(&parsed)?;
+                                    diesel::insert_into(schema::spot_events::table)
+                                        .values(&crate::models::NewSpotEventLog {
+                                            event_type: "SpotBetPlacedEvent".to_string(),
+                                            post_id: parsed.post_id.clone(),
+                                            event_data: json,
+                                            event_id: eid,
+                                            created_at: chrono::Utc::now(),
+                                        })
+                                        .execute(&mut conn)
+                                        .await?;
+                                }
+
+                                // Unified SPoT event row
+                                let unified = crate::models::NewSocialProofOfTruthEvent {
+                                    event_type: "SpotBetPlacedEvent".to_string(),
+                                    post_id: parsed.post_id.clone(),
+                                    user_address: Some(parsed.user.clone()),
+                                    is_yes: Some(parsed.is_yes),
+                                    escrow_amount: Some(parsed.escrow_amount as i64),
+                                    amm_amount: Some(parsed.amm_amount as i64),
+                                    amount: None,
+                                    outcome: None,
+                                    total_escrow: None,
+                                    fee_taken: None,
+                                    confidence_bps: None,
+                                    timestamp_epoch: ts_secs,
+                                    time: chrono::Utc::now(),
+                                    event_id: event_id.clone(),
+                                    transaction_id: event.tx_digest.clone(),
+                                    raw_event: Some(serde_json::to_value(&parsed)?),
+                                };
+                                diesel::insert_into(schema::social_proof_of_truth::table)
+                                    .values(&unified)
+                                    .execute(&mut conn)
+                                    .await?;
+                            }
+                            Err(e) => error!("Failed to parse SpotBetPlacedEvent: {}", e),
+                        }
+                    },
+
+                    t if t.ends_with("SpotResolvedEvent") => {
+                        match parse_event::<SpotResolvedEvt>(event) {
+                            Ok(parsed) => {
+                                let event_id = if let Some(tx_digest) = &event.tx_digest {
+                                    let event_id_struct = EventID { tx_digest: tx_digest.clone(), event_seq: event.event_num };
+                                    Some(event_id_struct.to_string())
+                                } else { None };
+
+                                let tx = event.tx_digest.clone().unwrap_or_default();
+                                let ts_secs: i64 = (checkpoint.checkpoint_summary.timestamp_ms as i64) / 1000;
+
+                                let resolution: NewSpotResolution = parsed.into_resolution_model(ts_secs as u64, tx.clone())?;
+                                let mut conn = self.get_connection().await?;
+
+                                // Update record status/outcome
+                                diesel::sql_query("UPDATE spot_records SET status = $1, outcome = $2, last_resolution_epoch = $3, updated_at = NOW() WHERE post_id = $4")
+                                    .bind::<diesel::sql_types::SmallInt, _>(3) // STATUS_RESOLVED
+                                    .bind::<diesel::sql_types::Nullable<diesel::sql_types::SmallInt>, _>(Some(resolution.outcome))
+                                    .bind::<diesel::sql_types::BigInt, _>(resolution.resolved_epoch)
+                                    .bind::<diesel::sql_types::Text, _>(&parsed.post_id)
+                                    .execute(&mut conn).await?;
+
+                                // Insert summary
+                                diesel::insert_into(schema::spot_resolutions::table)
+                                    .values(&resolution)
+                                    .execute(&mut conn)
+                                    .await?;
+
+                                // Log event
+                                if let Some(eid) = event_id {
+                                    let json = serde_json::to_value(&parsed)?;
+                                    diesel::insert_into(schema::spot_events::table)
+                                        .values(&crate::models::NewSpotEventLog {
+                                            event_type: "SpotResolvedEvent".to_string(),
+                                            post_id: parsed.post_id.clone(),
+                                            event_data: json,
+                                            event_id: eid,
+                                            created_at: chrono::Utc::now(),
+                                        })
+                                        .execute(&mut conn)
+                                        .await?;
+                                }
+
+                                // Unified SPoT event row
+                                let unified = crate::models::NewSocialProofOfTruthEvent {
+                                    event_type: "SpotResolvedEvent".to_string(),
+                                    post_id: parsed.post_id.clone(),
+                                    user_address: None,
+                                    is_yes: None,
+                                    escrow_amount: None,
+                                    amm_amount: None,
+                                    amount: None,
+                                    outcome: Some(parsed.outcome as i16),
+                                    total_escrow: Some(parsed.total_escrow as i64),
+                                    fee_taken: Some(parsed.fee_taken as i64),
+                                    confidence_bps: None,
+                                    timestamp_epoch: ts_secs,
+                                    time: chrono::Utc::now(),
+                                    event_id: event_id.clone(),
+                                    transaction_id: event.tx_digest.clone(),
+                                    raw_event: Some(serde_json::to_value(&parsed)?),
+                                };
+                                diesel::insert_into(schema::social_proof_of_truth::table)
+                                    .values(&unified)
+                                    .execute(&mut conn)
+                                    .await?;
+                            }
+                            Err(e) => error!("Failed to parse SpotResolvedEvent: {}", e),
+                        }
+                    },
+
+                    t if t.ends_with("SpotDaoRequiredEvent") => {
+                        match parse_event::<SpotDaoRequiredEvt>(event) {
+                            Ok(parsed) => {
+                                let event_id = if let Some(tx_digest) = &event.tx_digest {
+                                    let event_id_struct = EventID { tx_digest: tx_digest.clone(), event_seq: event.event_num };
+                                    Some(event_id_struct.to_string())
+                                } else { None };
+                                let mut conn = self.get_connection().await?;
+                                // Set status DAO_REQUIRED = 2
+                                diesel::sql_query("UPDATE spot_records SET status = 2, updated_at = NOW() WHERE post_id = $1")
+                                    .bind::<diesel::sql_types::Text, _>(&parsed.post_id)
+                                    .execute(&mut conn).await?;
+                                if let Some(eid) = event_id {
+                                    let json = serde_json::to_value(&parsed)?;
+                                    diesel::insert_into(schema::spot_events::table)
+                                        .values(&crate::models::NewSpotEventLog {
+                                            event_type: "SpotDaoRequiredEvent".to_string(),
+                                            post_id: parsed.post_id.clone(),
+                                            event_data: json,
+                                            event_id: eid,
+                                            created_at: chrono::Utc::now(),
+                                        })
+                                        .execute(&mut conn)
+                                        .await?;
+                                }
+
+                                // Unified SPoT event row
+                                let unified = crate::models::NewSocialProofOfTruthEvent {
+                                    event_type: "SpotDaoRequiredEvent".to_string(),
+                                    post_id: parsed.post_id.clone(),
+                                    user_address: None,
+                                    is_yes: None,
+                                    escrow_amount: None,
+                                    amm_amount: None,
+                                    amount: None,
+                                    outcome: None,
+                                    total_escrow: None,
+                                    fee_taken: None,
+                                    confidence_bps: Some(parsed.confidence_bps as i64),
+                                    timestamp_epoch: (checkpoint.checkpoint_summary.timestamp_ms as i64) / 1000,
+                                    time: chrono::Utc::now(),
+                                    event_id: None,
+                                    transaction_id: event.tx_digest.clone(),
+                                    raw_event: Some(serde_json::to_value(&parsed)?),
+                                };
+                                diesel::insert_into(schema::social_proof_of_truth::table)
+                                    .values(&unified)
+                                    .execute(&mut conn)
+                                    .await?;
+                            }
+                            Err(e) => error!("Failed to parse SpotDaoRequiredEvent: {}", e),
+                        }
+                    },
+
+                    t if t.ends_with("SpotPayoutEvent") => {
+                        match parse_event::<SpotPayoutEvt>(event) {
+                            Ok(parsed) => {
+                                let tx = event.tx_digest.clone().unwrap_or_default();
+                                let ts_secs: i64 = (checkpoint.checkpoint_summary.timestamp_ms as i64) / 1000;
+                                let payout: NewSpotPayout = parsed.into_model(ts_secs as u64, tx.clone())?;
+                                let mut conn = self.get_connection().await?;
+                                diesel::insert_into(schema::spot_payouts::table)
+                                    .values(&payout)
+                                    .execute(&mut conn)
+                                    .await?;
+
+                                // Unified SPoT event row
+                                let unified = crate::models::NewSocialProofOfTruthEvent {
+                                    event_type: "SpotPayoutEvent".to_string(),
+                                    post_id: parsed.post_id.clone(),
+                                    user_address: Some(parsed.user.clone()),
+                                    is_yes: None,
+                                    escrow_amount: None,
+                                    amm_amount: None,
+                                    amount: Some(parsed.amount as i64),
+                                    outcome: None,
+                                    total_escrow: None,
+                                    fee_taken: None,
+                                    confidence_bps: None,
+                                    timestamp_epoch: ts_secs,
+                                    time: chrono::Utc::now(),
+                                    event_id: None,
+                                    transaction_id: event.tx_digest.clone(),
+                                    raw_event: Some(serde_json::to_value(&parsed)?),
+                                };
+                                diesel::insert_into(schema::social_proof_of_truth::table)
+                                    .values(&unified)
+                                    .execute(&mut conn)
+                                    .await?;
+                            }
+                            Err(e) => error!("Failed to parse SpotPayoutEvent: {}", e),
+                        }
+                    },
+
+                    t if t.ends_with("SpotRefundEvent") => {
+                        match parse_event::<SpotRefundEvt>(event) {
+                            Ok(parsed) => {
+                                let tx = event.tx_digest.clone().unwrap_or_default();
+                                let ts_secs: i64 = (checkpoint.checkpoint_summary.timestamp_ms as i64) / 1000;
+                                let refund: NewSpotRefund = parsed.into_model(ts_secs as u64, tx.clone())?;
+                                let mut conn = self.get_connection().await?;
+                                diesel::insert_into(schema::spot_refunds::table)
+                                    .values(&refund)
+                                    .execute(&mut conn)
+                                    .await?;
+
+                                // Unified SPoT event row
+                                let unified = crate::models::NewSocialProofOfTruthEvent {
+                                    event_type: "SpotRefundEvent".to_string(),
+                                    post_id: parsed.post_id.clone(),
+                                    user_address: Some(parsed.user.clone()),
+                                    is_yes: None,
+                                    escrow_amount: None,
+                                    amm_amount: None,
+                                    amount: Some(parsed.amount as i64),
+                                    outcome: None,
+                                    total_escrow: None,
+                                    fee_taken: None,
+                                    confidence_bps: None,
+                                    timestamp_epoch: ts_secs,
+                                    time: chrono::Utc::now(),
+                                    event_id: None,
+                                    transaction_id: event.tx_digest.clone(),
+                                    raw_event: Some(serde_json::to_value(&parsed)?),
+                                };
+                                diesel::insert_into(schema::social_proof_of_truth::table)
+                                    .values(&unified)
+                                    .execute(&mut conn)
+                                    .await?;
+                            }
+                            Err(e) => error!("Failed to parse SpotRefundEvent: {}", e),
+                        }
+                    },
