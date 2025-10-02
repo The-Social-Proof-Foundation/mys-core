@@ -1663,5 +1663,50 @@
         "id": "0x000000000000000000000000000000000000000000000000000000000000000b"
       }
     ]
+  },
+  "75": {
+    "git_revision": "afa2631ca4a2-dirty",
+    "packages": [
+      {
+        "name": "MoveStdlib",
+        "path": "crates/mys-framework/packages/move-stdlib",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000001"
+      },
+      {
+        "name": "Mys",
+        "path": "crates/mys-framework/packages/mys-framework",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000002"
+      },
+      {
+        "name": "MysSystem",
+        "path": "crates/mys-framework/packages/mys-system",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000003"
+      },
+      {
+        "name": "USDC",
+        "path": "crates/mys-framework/packages/usdc",
+        "id": "0x00000000000000000000000000000000000000000000000000000000000075d6"
+      },
+      {
+        "name": "Seal",
+        "path": "crates/mys-framework/packages/seal",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000005ea1"
+      },
+      {
+        "name": "MySocialContracts",
+        "path": "crates/mys-framework/packages/mys-social",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000d880"
+      },
+      {
+        "name": "DeepBook",
+        "path": "crates/mys-framework/packages/deepbook",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000dee9"
+      },
+      {
+        "name": "Bridge",
+        "path": "crates/mys-framework/packages/bridge",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000000b"
+      }
+    ]
   }
 }
