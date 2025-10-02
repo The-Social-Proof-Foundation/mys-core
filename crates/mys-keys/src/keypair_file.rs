@@ -58,7 +58,7 @@ pub fn read_network_keypair_from_file<P: AsRef<std::path::Path>>(
 /// Read a MysKeyPair from a file. The content could be any of the following:
 /// - Base64 encoded `flag || privkey` for ECDSA key
 /// - Base64 encoded `privkey` for Raw key
-/// - Bech32 encoded private key prefixed with `mysprivkey`
+/// - Bech32 encoded private key prefixed with `mysoprivkey`
 /// - Hex encoded `privkey` for Raw key
 ///
 /// If `require_secp256k1` is true, it will return an error if the key is not Secp256k1.
@@ -82,7 +82,7 @@ pub fn read_key(path: &PathBuf, require_secp256k1: bool) -> Result<MysKeyPair, a
         return Ok(MysKeyPair::Secp256k1(key));
     }
 
-    // Try Bech32 encoded 33-byte `flag || private key` starting with `mysprivkey`A prefix.
+    // Try Bech32 encoded 33-byte `flag || private key` starting with `mysoprivkey`A prefix.
     // This is the format of a private key exported from Mys Wallet or mys.keystore.
     if let Ok(key) = MysKeyPair::decode(contents) {
         if require_secp256k1 && !matches!(key, MysKeyPair::Secp256k1(_)) {

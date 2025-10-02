@@ -74,7 +74,7 @@ pub enum KeyToolCommand {
         new_alias: Option<String>,
     },
     /// Convert private key in Hex or Base64 to new format (Bech32
-    /// encoded 33 byte flag || private key starting with "mysprivkey").
+    /// encoded 33 byte flag || private key starting with "mysoprivkey").
     /// Hex private key format import and export are both deprecated in
     /// Mys Wallet and Mys CLI Keystore. Use `mys keytool import` if you
     /// wish to import a key to Mys Keystore.
@@ -116,7 +116,7 @@ pub enum KeyToolCommand {
     },
 
     /// Add a new key to Mys CLI Keystore using either the input mnemonic phrase or a Bech32 encoded 33-byte
-    /// `flag || privkey` starting with "mysprivkey", the key scheme flag {ed25519 | secp256k1 | secp256r1}
+    /// `flag || privkey` starting with "mysoprivkey", the key scheme flag {ed25519 | secp256k1 | secp256r1}
     /// and an optional derivation path, default to m/44'/6976'/0'/0'/0' for ed25519 or m/54'/6976'/0'/0/0
     /// for secp256k1 or m/74'/6976'/0'/0/0 for secp256r1. Supports mnemonic phrase of word length 12, 15,
     /// 18, 21, 24. Set an alias for the key with the --alias flag. If no alias is provided, the tool will
@@ -130,7 +130,7 @@ pub enum KeyToolCommand {
         derivation_path: Option<DerivationPath>,
     },
     /// Output the private key of the given key identity in Mys CLI Keystore as Bech32
-    /// encoded string starting with `mysprivkey`.
+    /// encoded string starting with `mysoprivkey`.
     Export {
         #[clap(long)]
         key_identity: KeyIdentity,
@@ -625,7 +625,7 @@ impl KeyToolCommand {
                         "Mys Keystore and Mys Wallet no longer support importing 
                     private key as Hex, if you are sure your private key is encoded in Hex, use 
                     `mys keytool convert $HEX` to convert first then import the Bech32 encoded 
-                    private key starting with `mysprivkey`."
+                    private key starting with `mysoprivkey`."
                     ));
                 }
 
