@@ -47,6 +47,8 @@ tempfile.workspace = true
 futures-core.workspace = true
 futures.workspace = true
 rand.workspace = true
+mys-macros.workspace = true
+test-cluster.workspace = true
 
 [[example]]
 name = "coin_read_api"

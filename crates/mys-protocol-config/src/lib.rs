@@ -19,7 +19,7 @@ use tracing::{info, warn};
 
 /// The minimum and maximum protocol versions supported by this build.
 const MIN_PROTOCOL_VERSION: u64 = 1;
-const MAX_PROTOCOL_VERSION: u64 = 74;
+const MAX_PROTOCOL_VERSION: u64 = 75;
 
 // Record history of protocol version allocations here:
 //
@@ -218,6 +218,10 @@ const MAX_PROTOCOL_VERSION: u64 = 74;
 //             Enable all gas costs for load_nitro_attestation.
 //             Enable zstd compression for consensus tonic network in mainnet.
 //             Enable the new commit rule for devnet.
+// Version 75: Reduce compute and storage gas costs by 50% to lower transaction fees.
+//             Affected parameters: base_tx_cost_fixed, package_publish_cost_fixed, 
+//             obj_access_cost_read/mutate/delete/verify_per_byte, obj_data_cost_refundable,
+//             obj_metadata_cost_non_refundable, storage_gas_price.
 
 #[derive(Copy, Clone, Debug, Hash, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProtocolVersion(u64);
@@ -3246,6 +3250,22 @@ impl ProtocolConfig {
                     if chain != Chain::Mainnet && chain != Chain::Testnet {
                         cfg.feature_flags.consensus_linearize_subdag_v2 = true;
                     }
+                }
+                75 => {
+                    // Reduce compute and storage gas costs by 50%
+                    
+                    // Compute costs - 50% reduction
+                    cfg.base_tx_cost_fixed = Some(cfg.base_tx_cost_fixed() / 2);
+                    cfg.package_publish_cost_fixed = Some(cfg.package_publish_cost_fixed() / 2);
+                    cfg.obj_access_cost_read_per_byte = Some(cfg.obj_access_cost_read_per_byte() / 2);
+                    cfg.obj_access_cost_mutate_per_byte = Some(cfg.obj_access_cost_mutate_per_byte() / 2);
+                    cfg.obj_access_cost_delete_per_byte = Some(cfg.obj_access_cost_delete_per_byte() / 2);
+                    cfg.obj_access_cost_verify_per_byte = Some(cfg.obj_access_cost_verify_per_byte() / 2);
+                    
+                    // Storage costs - 50% reduction
+                    cfg.obj_data_cost_refundable = Some(cfg.obj_data_cost_refundable() / 2);
+                    cfg.obj_metadata_cost_non_refundable = Some(cfg.obj_metadata_cost_non_refundable() / 2);
+                    cfg.storage_gas_price = Some(cfg.storage_gas_price() / 2);
                 }
                 // Use this template when making changes:
                 //

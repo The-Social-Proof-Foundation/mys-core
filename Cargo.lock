@@ -5845,7 +5845,7 @@ dependencies = [
  "nested",
  "once_cell",
  "pathdiff",
- "petgraph 0.8.2",
+ "petgraph 0.8.3",
  "rayon",
  "semver",
  "serde",
@@ -11490,6 +11490,7 @@ dependencies = [
  "mys-json-rpc-api",
  "mys-json-rpc-types",
  "mys-keys",
+ "mys-macros",
  "mys-transaction-builder 0.0.0",
  "mys-types",
  "rand 0.8.5",
@@ -11499,6 +11500,7 @@ dependencies = [
  "serde_with 3.14.1",
  "shared-crypto",
  "tempfile",
+ "test-cluster",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
@@ -13632,9 +13634,9 @@ dependencies = [
 
 [[package]]
 name = "petgraph"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54acf3a685220b533e437e264e4d932cfbdc4cc7ec0cd232ed73c08d03b8a7ca"
+checksum = "8701b58ea97060d5e5b155d383a69952a60943f0e6dfe30b04c287beb0b27455"
 dependencies = [
  "fixedbitset 0.5.7",
  "hashbrown 0.15.5",
@@ -13938,11 +13940,12 @@ dependencies = [
 
 [[package]]
 name = "pq-sys"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfd6cf44cca8f9624bc19df234fc4112873432f5fda1caff174527846d026fa9"
+checksum = "412a4cb9e93795c0594dab7c1c4ec1c8b42b514e1baf6e9f63d14aa376e5bd04"
 dependencies = [
  "libc",
+ "pkg-config",
  "vcpkg",
 ]
 
@@ -15521,7 +15524,7 @@ dependencies = [
  "once_cell",
  "ring 0.17.14",
  "rustls-pki-types",
- "rustls-webpki 0.103.6",
+ "rustls-webpki 0.103.7",
  "subtle",
  "zeroize",
 ]
@@ -15605,7 +15608,7 @@ dependencies = [
  "rustls 0.23.32",
  "rustls-native-certs 0.8.1",
  "rustls-platform-verifier-android",
- "rustls-webpki 0.103.6",
+ "rustls-webpki 0.103.7",
  "security-framework 3.5.1",
  "security-framework-sys",
  "webpki-root-certs 0.26.11",
@@ -15641,9 +15644,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.6"
+version = "0.103.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8572f3c2cb9934231157b45499fc41e1f58c589fdfb81a844ba873265e80f8eb"
+checksum = "e10b3f4191e8a80e6b43eebabfac91e5dcecebb27a71f04e820c47ec41d314bf"
 dependencies = [
  "aws-lc-rs",
  "ring 0.17.14",
