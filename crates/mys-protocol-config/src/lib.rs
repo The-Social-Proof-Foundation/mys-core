@@ -3253,19 +3253,37 @@ impl ProtocolConfig {
                 }
                 75 => {
                     // Reduce compute and storage gas costs by 50%
-                    
+
                     // Compute costs - 50% reduction
-                    cfg.base_tx_cost_fixed = Some(cfg.base_tx_cost_fixed() / 2);
-                    cfg.package_publish_cost_fixed = Some(cfg.package_publish_cost_fixed() / 2);
-                    cfg.obj_access_cost_read_per_byte = Some(cfg.obj_access_cost_read_per_byte() / 2);
-                    cfg.obj_access_cost_mutate_per_byte = Some(cfg.obj_access_cost_mutate_per_byte() / 2);
-                    cfg.obj_access_cost_delete_per_byte = Some(cfg.obj_access_cost_delete_per_byte() / 2);
-                    cfg.obj_access_cost_verify_per_byte = Some(cfg.obj_access_cost_verify_per_byte() / 2);
-                    
+                    if let Some(cost) = cfg.base_tx_cost_fixed {
+                        cfg.base_tx_cost_fixed = Some(cost / 2);
+                    }
+                    if let Some(cost) = cfg.package_publish_cost_fixed {
+                        cfg.package_publish_cost_fixed = Some(cost / 2);
+                    }
+                    if let Some(cost) = cfg.obj_access_cost_read_per_byte {
+                        cfg.obj_access_cost_read_per_byte = Some(cost / 2);
+                    }
+                    if let Some(cost) = cfg.obj_access_cost_mutate_per_byte {
+                        cfg.obj_access_cost_mutate_per_byte = Some(cost / 2);
+                    }
+                    if let Some(cost) = cfg.obj_access_cost_delete_per_byte {
+                        cfg.obj_access_cost_delete_per_byte = Some(cost / 2);
+                    }
+                    if let Some(cost) = cfg.obj_access_cost_verify_per_byte {
+                        cfg.obj_access_cost_verify_per_byte = Some(cost / 2);
+                    }
+
                     // Storage costs - 50% reduction
-                    cfg.obj_data_cost_refundable = Some(cfg.obj_data_cost_refundable() / 2);
-                    cfg.obj_metadata_cost_non_refundable = Some(cfg.obj_metadata_cost_non_refundable() / 2);
-                    cfg.storage_gas_price = Some(cfg.storage_gas_price() / 2);
+                    if let Some(cost) = cfg.obj_data_cost_refundable {
+                        cfg.obj_data_cost_refundable = Some(cost / 2);
+                    }
+                    if let Some(cost) = cfg.obj_metadata_cost_non_refundable {
+                        cfg.obj_metadata_cost_non_refundable = Some(cost / 2);
+                    }
+                    if let Some(price) = cfg.storage_gas_price {
+                        cfg.storage_gas_price = Some(price / 2);
+                    }
                 }
                 // Use this template when making changes:
                 //

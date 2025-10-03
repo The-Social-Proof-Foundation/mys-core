@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1759476600 # 1759473276000
+  chain_start_timestamp_ms: 1759528800 # 1759523528000
 
   # Protocol version
   protocol_version: 75  # Latest version
@@ -37,21 +37,21 @@ parameters:
 # Accounts to add tokens to
 accounts:
   # Faucet
-  - address: "0x5eb3116b7765f6e214491c3ea561f4d12bf0581fe2c4eaa7556ed4512e779728"
+  - address: "0xc69a3676fa4a91777361cb8b7f0477f30125999e475fd409d4e8e062d0541416"
     gas_amounts:
       - 1000000000000000 # 1,000,000 MySo
   # Social Proof Foundation
-  - address: "0x86dd94a3fb8877fb82bade872e1e1d954768c1f73c419b5180b9c1fd69ab7576"
+  - address: "0x0c6deec0f07d08cd5219909c6c2247c6f24ec566b2ee348d4b5d3ed9da08f1cc"
     gas_amounts:
       - 746200000000000000 # 746,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators)
   # Core Team
-  - address: "0xa83cacc914b1cc44b16b7baaa5a76c66bcf132e82e5bda86499f46b10e5d4839"
+  - address: "0x1b772d683f383aa997e86b621846d2bf06c2e06155a923a67f5f088307a9ec43"
     gas_amounts:
       - 249000000000000000 # 249,000,000 MySo (25% = 12.5% core + 12.5% marketing - 1 mill faucet)
 
 validator_config_info:
-  # Validator 0 (dynamic ports)
-  - name: "MySo Validator 0"
+  # Validator 1 (dynamic ports)
+  - name: "MySo Validator 1"
     network_address: "/ip4/69.10.63.78/tcp/59010/http"
     p2p_address: "/ip4/69.10.63.78/udp/59020"
     narwhal_primary_address: "/ip4/69.10.63.78/udp/59030"
@@ -60,8 +60,8 @@ validator_config_info:
     gas_price: 1
     commission_rate: 250
     stake: 1000000000000000  # 1 million MySo in MIST units
-  # Validator 1 (dynamic ports)
-  - name: "MySo Validator 1"
+  # Validator 2 (dynamic ports)
+  - name: "MySo Validator 2"
     network_address: "/ip4/69.10.63.78/tcp/59110/http"
     p2p_address: "/ip4/69.10.63.78/udp/59120"
     narwhal_primary_address: "/ip4/69.10.63.78/udp/59130"
@@ -70,8 +70,8 @@ validator_config_info:
     gas_price: 1
     commission_rate: 250
     stake: 1000000000000000  # 1 million MySo in MIST units
-  # Validator 2 (dynamic ports)
-  - name: "MySo Validator 2"
+  # Validator 3 (dynamic ports)
+  - name: "MySo Validator 3"
     network_address: "/ip4/69.10.63.78/tcp/59210/http"
     p2p_address: "/ip4/69.10.63.78/udp/59220"
     narwhal_primary_address: "/ip4/69.10.63.78/udp/59230"

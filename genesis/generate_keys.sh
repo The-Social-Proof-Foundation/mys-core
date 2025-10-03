@@ -122,7 +122,7 @@ FAUCET_ADDRESS=$(echo "$FAUCET_OUTPUT" | grep "mysAddress" | sed 's/│//g' | aw
 FAUCET_PUBLIC_KEY=$(echo "$FAUCET_OUTPUT" | grep "publicBase64Key" | sed 's/│//g' | awk '{print $2}' | xargs)
 FAUCET_KEY_SCHEME=$(echo "$FAUCET_OUTPUT" | grep "keyScheme" | sed 's/│//g' | awk '{print $2}' | xargs)
 FAUCET_FLAG=$(echo "$FAUCET_OUTPUT" | grep "flag" | sed 's/│//g' | awk '{print $2}' | xargs)
-FAUCET_MNEMONIC=$(echo "$FAUCET_OUTPUT" | grep "mnemonic" | sed 's/│//g' | cut -d'│' -f3 | xargs)
+FAUCET_MNEMONIC=$(echo "$FAUCET_OUTPUT" | grep "mnemonic" | sed 's/.*mnemonic[[:space:]]*//g' | xargs)
 FAUCET_PEER_ID=$(echo "$FAUCET_OUTPUT" | grep "peerId" | sed 's/│//g' | awk '{print $2}' | xargs)
 
 # Rename the generated .key file to faucet.key
@@ -175,7 +175,7 @@ SOCIAL_PROOF_FOUNDATION_ADDRESS=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep 
 SPF_PUBLIC_KEY=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep "publicBase64Key" | sed 's/│//g' | awk '{print $2}' | xargs)
 SPF_KEY_SCHEME=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep "keyScheme" | sed 's/│//g' | awk '{print $2}' | xargs)
 SPF_FLAG=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep "flag" | sed 's/│//g' | awk '{print $2}' | xargs)
-SPF_MNEMONIC=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep "mnemonic" | sed 's/│//g' | cut -d'│' -f3 | xargs)
+SPF_MNEMONIC=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep "mnemonic" | sed 's/.*mnemonic[[:space:]]*//g' | xargs)
 SPF_PEER_ID=$(echo "$SOCIAL_PROOF_FOUNDATION_OUTPUT" | grep "peerId" | sed 's/│//g' | awk '{print $2}' | xargs)
 
 # Rename the generated .key file to social-proof-foundation.key
@@ -228,7 +228,7 @@ CORE_TEAM_ADDRESS=$(echo "$CORE_TEAM_OUTPUT" | grep "mysAddress" | sed 's/│//g
 CORE_PUBLIC_KEY=$(echo "$CORE_TEAM_OUTPUT" | grep "publicBase64Key" | sed 's/│//g' | awk '{print $2}' | xargs)
 CORE_KEY_SCHEME=$(echo "$CORE_TEAM_OUTPUT" | grep "keyScheme" | sed 's/│//g' | awk '{print $2}' | xargs)
 CORE_FLAG=$(echo "$CORE_TEAM_OUTPUT" | grep "flag" | sed 's/│//g' | awk '{print $2}' | xargs)
-CORE_MNEMONIC=$(echo "$CORE_TEAM_OUTPUT" | grep "mnemonic" | sed 's/│//g' | cut -d'│' -f3 | xargs)
+CORE_MNEMONIC=$(echo "$CORE_TEAM_OUTPUT" | grep "mnemonic" | sed 's/.*mnemonic[[:space:]]*//g' | xargs)
 CORE_PEER_ID=$(echo "$CORE_TEAM_OUTPUT" | grep "peerId" | sed 's/│//g' | awk '{print $2}' | xargs)
 
 # Rename the generated .key file to core-team.key
@@ -279,7 +279,7 @@ cat > "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1759476600 # $(( $(date +%s) * 1000 ))
+  chain_start_timestamp_ms: 1759528800 # $(( $(date +%s) * 1000 ))
 
   # Protocol version
   protocol_version: 75  # Latest version
@@ -333,8 +333,8 @@ for i in {0..2}; do
   IFS=',' read -r NETWORK_PORT P2P_PORT NARWHAL_PRIMARY_PORT NARWHAL_WORKER_PORT CONSENSUS_PORT <<< "${VALIDATOR_PORTS[$i]}"
   
   cat >> "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
-  # Validator $i (dynamic ports)
-  - name: "MySo Validator $i"
+  # Validator $(($i + 1)) (dynamic ports)
+  - name: "MySo Validator $(($i + 1))"
     network_address: "/ip4/$BASE_IP/tcp/$NETWORK_PORT/http"
     p2p_address: "/ip4/$BASE_IP/udp/$P2P_PORT"
     narwhal_primary_address: "/ip4/$BASE_IP/udp/$NARWHAL_PRIMARY_PORT"
@@ -361,7 +361,7 @@ EOL
 for i in {0..2}; do
   IFS=',' read -r NETWORK_PORT P2P_PORT NARWHAL_PRIMARY_PORT NARWHAL_WORKER_PORT CONSENSUS_PORT <<< "${VALIDATOR_PORTS[$i]}"
   cat >> "${GENESIS_DIR}/port_config.txt" << EOL
-Validator $i:
+Validator $(($i + 1)):
   - Network Address: $BASE_IP:$NETWORK_PORT
   - P2P Address: $BASE_IP:$P2P_PORT  
   - Narwhal Primary: $BASE_IP:$NARWHAL_PRIMARY_PORT
@@ -386,7 +386,7 @@ echo
 echo "Port assignments:"
 for i in {0..2}; do
   IFS=',' read -r NETWORK_PORT P2P_PORT NARWHAL_PRIMARY_PORT NARWHAL_WORKER_PORT CONSENSUS_PORT <<< "${VALIDATOR_PORTS[$i]}"
-  echo "  Validator $i: Network=$NETWORK_PORT, P2P=$P2P_PORT, Primary=$NARWHAL_PRIMARY_PORT, Worker=$NARWHAL_WORKER_PORT, Consensus=$CONSENSUS_PORT"
+  echo "  Validator $(($i + 1)): Network=$NETWORK_PORT, P2P=$P2P_PORT, Primary=$NARWHAL_PRIMARY_PORT, Worker=$NARWHAL_WORKER_PORT, Consensus=$CONSENSUS_PORT"
 done
 echo
 echo "Base IP: $BASE_IP (set BASE_IP environment variable to override)"
