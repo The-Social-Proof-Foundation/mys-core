@@ -279,10 +279,10 @@ cat > "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1759384800 # $(( $(date +%s) * 1000 ))
+  chain_start_timestamp_ms: 1759476600 # $(( $(date +%s) * 1000 ))
 
   # Protocol version
-  protocol_version: 74  # Latest version
+  protocol_version: 75  # Latest version
 
   # Whether to allow insertion of extra objects in genesis
   allow_insertion_of_extra_objects: true
@@ -295,7 +295,7 @@ parameters:
   # Stake subsidy parameters
   #
   # When to start paying stake subsidies (0 = from beginning)
-  stake_subsidy_start_epoch: 15
+  stake_subsidy_start_epoch: 10
 
   # Initial stake subsidy distribution amount per epoch (in MIST)
   # Default: 538,626 MySo = 538,626,000,000,000 MIST
@@ -318,7 +318,7 @@ accounts:
   # Social Proof Foundation
   - address: "$SOCIAL_PROOF_FOUNDATION_ADDRESS"
     gas_amounts:
-      - 747000000000000000 # 747,000,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators)
+      - 746200000000000000 # 746,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators)
   # Core Team
   - address: "$CORE_TEAM_ADDRESS"
     gas_amounts:
