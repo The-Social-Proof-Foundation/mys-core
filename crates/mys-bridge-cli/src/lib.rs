@@ -43,7 +43,7 @@ use mys_types::transaction::{ObjectArg, Transaction, TransactionData};
 use mys_types::{TypeTag, BRIDGE_PACKAGE_ID};
 use tracing::info;
 
-pub const SEPOLIA_BRIDGE_PROXY_ADDR: &str = "0xAE68F87938439afEEDd6552B0E83D2CbC2473623";
+pub const SEPOLIA_BRIDGE_PROXY_ADDR: &str = "0x3b80bb0443D731ee5176ec89568fDFe8eB0aAFdd";
 
 #[derive(Parser)]
 #[clap(rename_all = "kebab-case")]
