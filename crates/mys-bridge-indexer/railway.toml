@@ -4,8 +4,8 @@ dockerfilePath = "crates/mys-bridge-indexer/Dockerfile"
 
 [deploy]
 startCommand = "bridge-indexer"
-healthcheckPath = "/"
-healthcheckTimeout = 60
+# healthcheckPath = "/"
+# healthcheckTimeout = 60
 
 [variables]
 # Database Configuration
