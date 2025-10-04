@@ -5,7 +5,7 @@ remote_store_url: https://storage.googleapis.com/mysocial-testnet-checkpoints
 # URL for MySocial RPC  
 mys_rpc_url: http://fullnode.testnet.mysocial.network:8082
 # URL for Ethereum RPC
-eth_rpc_url: https://base-sepolia.g.alchemy.com/v2/CTLwBwcLSgKAIYyujNUnfn6ThiSLHVNS
+eth_rpc_url: https://winter-necessary-dew.base-sepolia.quiknode.pro/a4890b8e844ff4bc85f0d973b95cd8e18cdb261d/
 # URL for Ethereum WebSocket RPC
 eth_ws_url: wss://base-sepolia.g.alchemy.com/v2/CTLwBwcLSgKAIYyujNUnfn6ThiSLHVNS
 # Database connection URL
@@ -17,7 +17,7 @@ concurrency: 1
 # MySocial bridge genesis checkpoint for testnet
 mys_bridge_genesis_checkpoint: 0
 # Ethereum bridge genesis block
-eth_bridge_genesis_block: 0
+eth_bridge_genesis_block: 31901989
 # Ethereum to MySocial bridge contract address
 eth_mys_bridge_contract_address: 0x3b80bb0443D731ee5176ec89568fDFe8eB0aAFdd
 # Client metric port
