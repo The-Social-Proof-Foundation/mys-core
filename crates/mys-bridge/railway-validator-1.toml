@@ -4,7 +4,7 @@ dockerfilePath = "crates/mys-bridge/Dockerfile"
 
 [deploy]
 startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key && cargo run --release --bin mys-bridge -- --config-path /app/bridge-config-validator-1.yaml'"
-healthcheckPath = "/metircs"
+healthcheckPath = "/metrics"
 healthcheckTimeout = 300
 
 [variables]
