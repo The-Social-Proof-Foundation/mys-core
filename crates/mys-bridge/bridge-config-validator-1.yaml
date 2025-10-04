@@ -10,12 +10,12 @@ approved-governance-actions:
       token_ids: [0]
       token_type_names:
         - Struct:
-          address: "0x0000000000000000000000000000000000000000000000000000000000000002"
-          module: "mys"
-          name: "MYS"
-          type_params: []
+            address: "0x0000000000000000000000000000000000000000000000000000000000000002"
+            module: "mys"
+            name: "MYS"
+            type_params: []
       token_prices: [4450]
-db-path: /app/bridge_db 
+db-path: /app/bridge_db
 
 mys:
   mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
