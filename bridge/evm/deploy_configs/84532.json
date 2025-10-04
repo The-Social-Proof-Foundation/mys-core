@@ -10,7 +10,7 @@
     "0xc14984b8058d84ab35ad5624a5c32ccd926c4b2d"
   ],
   "minCommitteeStakeRequired": 5001,
-  "sourceChainId": 84532,
+  "sourceChainId": 12,
   "supportedChainIds": [1],
   "supportedChainLimitsInDollars": [1000000000000],
   "supportedTokens": [

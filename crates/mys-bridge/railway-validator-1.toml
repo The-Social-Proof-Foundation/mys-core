@@ -8,7 +8,7 @@ healthcheckPath = "/health"
 healthcheckTimeout = 60
 
 [variables]
-BRIDGE_AUTHORITY_KEY = ""
+BRIDGE_AUTHORITY_KEY = "SrvJjlwfDj/5ayrVywrF2MPgD2phDTlNOY1Qu7Cuioc="
 
 # Optional: Logging configuration
 RUST_LOG = "info,mys_bridge=debug"
