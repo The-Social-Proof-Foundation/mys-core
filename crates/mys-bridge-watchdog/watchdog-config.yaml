@@ -23,7 +23,7 @@ eth:
   rpc_url: "https://sepolia.base.org"
   bridge_proxy_address: "0x196D0E3f7b50F29531d1bd006AB3D4c2CB731DC6"
   vault_address: "0xBCD346797E5DEc586B0c4Fa19b82a4E2cAd5DD67"
-  bridge_chain_id: 12
+  bridge_chain_id: 11
 
 # Monitoring intervals (in seconds)
 monitoring:
