@@ -3,6 +3,7 @@ metrics-port: 9090
 bridge-authority-key-path: /tmp/bridge_key
 run-client: true
 approved-governance-actions: []
+db-path: /app/bridge_db 
 
 mys:
   mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
