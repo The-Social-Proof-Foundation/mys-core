@@ -2,7 +2,14 @@ server-listen-port: 8082
 metrics-port: 9092
 bridge-authority-key-path: /tmp/bridge_key
 run-client: false
-approved-governance-actions: []
+approved-governance-actions:
+  - AddTokensOnMys:
+      nonce: 0
+      chain_id: 2
+      native: true
+      token_ids: [0]
+      token_type_names: ["0x2::mys::MYS"]
+      token_prices: [4450]
 
 mys:
   mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
