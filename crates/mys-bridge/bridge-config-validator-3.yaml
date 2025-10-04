@@ -3,7 +3,7 @@ metrics-port: 9092
 bridge-authority-key-path: /tmp/bridge_key
 run-client: false
 approved-governance-actions:
-  - AddTokensOnMys:
+  - AddTokensOnMysAction:
       nonce: 0
       chain_id: 2
       native: true
