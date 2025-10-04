@@ -92,7 +92,7 @@ pub enum BridgeChainId {
 
     EthMainnet = 10,
     EthSepolia = 11,
-    EthCustom = 12,
+    EthCustom = 52,
 }
 
 impl BridgeChainId {
