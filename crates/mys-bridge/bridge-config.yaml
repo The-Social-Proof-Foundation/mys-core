@@ -6,7 +6,7 @@ approved-governance-actions: []
 
 mys:
   mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
-  mys-bridge-chain-id: 1
+  mys-bridge-chain-id: 2
 
 eth:
   eth-rpc-url: "https://sepolia.base.org"
