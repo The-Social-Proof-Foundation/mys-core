@@ -20,7 +20,7 @@ mys:
 
 # Ethereum network configuration
 eth:
-  rpc_url: "https://sepolia.base.org"
+  rpc_url: "https://base-sepolia.g.alchemy.com/v2/dP5ANdv4tQc7ldy_stPvRTQWtO0J3KS5"
   bridge_proxy_address: "0x3b80bb0443D731ee5176ec89568fDFe8eB0aAFdd"
   vault_address: "0xD52A3F301406cAE19A36B7808a816691216E1356"
   bridge_chain_id: 12
