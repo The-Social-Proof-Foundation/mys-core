@@ -8,7 +8,12 @@ approved-governance-actions:
       chain_id: MysCustom
       native: true
       token_ids: [0]
-      token_type_names: ["0x2::mys::MYS"]
+      token_type_names:
+        - Struct:
+          address: "0x0000000000000000000000000000000000000000000000000000000000000002"
+          module: "mys"
+          name: "MYS"
+          type_params: []
       token_prices: [4450]
 
 mys:
