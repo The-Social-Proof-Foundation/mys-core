@@ -113,5 +113,5 @@ BEGIN
     RAISE NOTICE 'High-frequency tables (order_fills, order_updates): 7 days (604800000 ms) compression';
     RAISE NOTICE 'Medium-frequency tables (pool_prices, balances): 30 days (2592000000 ms) compression';  
     RAISE NOTICE 'Low-frequency tables (governance, flashloans): 7 days (604800000 ms) compression';
-    RAISE NOTICE 'Compression will reduce storage by ~80-90% for older chunks';
+    RAISE NOTICE 'Compression will reduce storage by 80-90 percent for older chunks';
 END $$; 
