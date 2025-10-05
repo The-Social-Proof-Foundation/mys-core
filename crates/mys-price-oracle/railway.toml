@@ -8,8 +8,8 @@ healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
-[[build.watchPatterns]]
-include = ["crates/mys-price-oracle/**"]
+# Watch patterns for auto-rebuild
+# watchPatterns = ["crates/mys-price-oracle/**"]
 
 [environments.production.variables]
 # Oracle Configuration
