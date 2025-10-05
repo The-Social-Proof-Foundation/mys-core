@@ -109,9 +109,9 @@ SELECT add_compression_policy('trade_params_update', 604800000::BIGINT);
 -- Create a view to monitor compression status
 CREATE OR REPLACE VIEW compression_status AS
 SELECT 
-    cs.hypertable_schema,
-    cs.hypertable_name,
-    cs.compression_enabled,
+    h.hypertable_schema,
+    h.hypertable_name,
+    h.compression_enabled,
     h.total_chunks,
     h.number_compressed_chunks,
     pg_size_pretty(h.before_compression_total_bytes) AS uncompressed_size,
@@ -121,10 +121,8 @@ SELECT
             ROUND((1 - h.after_compression_total_bytes::numeric / h.before_compression_total_bytes::numeric) * 100, 2)
         ELSE 0 
     END AS compression_ratio_percent
-FROM timescaledb_information.compression_settings cs
-LEFT JOIN timescaledb_information.hypertables h 
-    ON cs.hypertable_schema = h.hypertable_schema 
-    AND cs.hypertable_name = h.hypertable_name;
+FROM timescaledb_information.hypertables h
+WHERE h.compression_enabled = true;
 
 -- Log compression policy creation
 DO $$
