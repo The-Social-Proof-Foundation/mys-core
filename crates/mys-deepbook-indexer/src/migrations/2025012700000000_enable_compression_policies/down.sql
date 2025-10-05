@@ -1,9 +1,6 @@
 -- Remove compression policies for TimescaleDB hypertables
 -- This rollback will disable compression but preserve existing compressed chunks
 
--- Remove compression monitoring view
-DROP VIEW IF EXISTS compression_status;
-
 -- Step 1: Remove compression policies for all hypertables
 -- Note: This stops future compression but doesn't decompress existing chunks
 SELECT remove_compression_policy('order_fills', if_exists => true);
