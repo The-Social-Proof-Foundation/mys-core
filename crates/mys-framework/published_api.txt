@@ -3640,6 +3640,9 @@ NewTokenEvent
 TokenRegistrationEvent
 	public struct
 	0xb::treasury
+NativeMysBootstrappedEvent
+	public struct
+	0xb::treasury
 token_id
 	public fun
 	0xb::treasury
@@ -3655,13 +3658,22 @@ register_foreign_token
 add_new_token
 	public(package) fun
 	0xb::treasury
+deposit_native_mys
+	public(package) fun
+	0xb::treasury
 create
 	public(package) fun
 	0xb::treasury
 burn
 	public(package) fun
 	0xb::treasury
+burn_mys
+	public(package) fun
+	0xb::treasury
 mint
+	public(package) fun
+	0xb::treasury
+mint_mys
 	public(package) fun
 	0xb::treasury
 update_asset_notional_price
@@ -4000,10 +4012,22 @@ update_node_url
 register_foreign_token
 	public fun
 	0xb::bridge
+bootstrap_native_mys
+	public entry fun
+	0xb::bridge
+send_mys_token
+	public fun
+	0xb::bridge
 send_token
 	public fun
 	0xb::bridge
 approve_token_transfer
+	public fun
+	0xb::bridge
+claim_mys_token
+	public fun
+	0xb::bridge
+claim_and_transfer_mys_token
 	public fun
 	0xb::bridge
 claim_token
@@ -4025,6 +4049,9 @@ load_inner
 	fun
 	0xb::bridge
 load_inner_mut
+	fun
+	0xb::bridge
+claim_mys_token_internal
 	fun
 	0xb::bridge
 claim_token_internal

@@ -10,15 +10,19 @@ title: Module `bridge::treasury`
 -  [Struct `UpdateTokenPriceEvent`](#bridge_treasury_UpdateTokenPriceEvent)
 -  [Struct `NewTokenEvent`](#bridge_treasury_NewTokenEvent)
 -  [Struct `TokenRegistrationEvent`](#bridge_treasury_TokenRegistrationEvent)
+-  [Struct `NativeMysBootstrappedEvent`](#bridge_treasury_NativeMysBootstrappedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `token_id`](#bridge_treasury_token_id)
 -  [Function `decimal_multiplier`](#bridge_treasury_decimal_multiplier)
 -  [Function `notional_value`](#bridge_treasury_notional_value)
 -  [Function `register_foreign_token`](#bridge_treasury_register_foreign_token)
 -  [Function `add_new_token`](#bridge_treasury_add_new_token)
+-  [Function `deposit_native_mys`](#bridge_treasury_deposit_native_mys)
 -  [Function `create`](#bridge_treasury_create)
 -  [Function `burn`](#bridge_treasury_burn)
+-  [Function `burn_mys`](#bridge_treasury_burn_mys)
 -  [Function `mint`](#bridge_treasury_mint)
+-  [Function `mint_mys`](#bridge_treasury_mint_mys)
 -  [Function `update_asset_notional_price`](#bridge_treasury_update_asset_notional_price)
 -  [Function `get_token_metadata`](#bridge_treasury_get_token_metadata)
 
@@ -33,6 +37,7 @@ title: Module `bridge::treasury`
 <b>use</b> <a href="../mys/dynamic_object_field.md#mys_dynamic_object_field">mys::dynamic_object_field</a>;
 <b>use</b> <a href="../mys/event.md#mys_event">mys::event</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
+<b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/object_bag.md#mys_object_bag">mys::object_bag</a>;
 <b>use</b> <a href="../mys/package.md#mys_package">mys::package</a>;
@@ -88,6 +93,16 @@ title: Module `bridge::treasury`
 </dd>
 <dt>
 <code>waiting_room: <a href="../mys/bag.md#mys_bag_Bag">mys::bag::Bag</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>native_mys_locked: <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>native_mys_bootstrapped: bool</code>
 </dt>
 <dd>
 </dd>
@@ -286,9 +301,44 @@ title: Module `bridge::treasury`
 
 </details>
 
+<a name="bridge_treasury_NativeMysBootstrappedEvent"></a>
+
+## Struct `NativeMysBootstrappedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../bridge/treasury.md#bridge_treasury_NativeMysBootstrappedEvent">NativeMysBootstrappedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>amount_locked: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
+
+
+<a name="bridge_treasury_EInvalidNativeMysAmount"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_EInvalidNativeMysAmount">EInvalidNativeMysAmount</a>: u64 = 5;
+</code></pre>
+
 
 
 <a name="bridge_treasury_EInvalidNotionalValue"></a>
@@ -309,6 +359,24 @@ title: Module `bridge::treasury`
 
 
 
+<a name="bridge_treasury_ENativeMysAlreadyBootstrapped"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_ENativeMysAlreadyBootstrapped">ENativeMysAlreadyBootstrapped</a>: u64 = 6;
+</code></pre>
+
+
+
+<a name="bridge_treasury_ENativeMysNotBootstrapped"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_ENativeMysNotBootstrapped">ENativeMysNotBootstrapped</a>: u64 = 7;
+</code></pre>
+
+
+
 <a name="bridge_treasury_ETokenSupplyNonZero"></a>
 
 
@@ -323,6 +391,15 @@ title: Module `bridge::treasury`
 
 
 <pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_EUnsupportedTokenType">EUnsupportedTokenType</a>: u64 = 1;
+</code></pre>
+
+
+
+<a name="bridge_treasury_NATIVE_MYS_BOOTSTRAP_AMOUNT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_NATIVE_MYS_BOOTSTRAP_AMOUNT">NATIVE_MYS_BOOTSTRAP_AMOUNT</a>: u64 = 50000000000000000;
 </code></pre>
 
 
@@ -503,8 +580,71 @@ title: Module `bridge::treasury`
             <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>
         })
     } <b>else</b> {
-        // Not implemented <b>for</b> V1
+        // Native token implementation (MYS only)
+        <b>assert</b>!(<a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a> &gt; 0, <a href="../bridge/treasury.md#bridge_treasury_EInvalidNotionalValue">EInvalidNotionalValue</a>);
+        // For <b>native</b> tokens, token_name is the string representation of the type
+        // Parse it to get the TypeName
+        <b>let</b> type_name = type_name::get&lt;MYS&gt;();
+        <b>let</b> <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a> = 1_000_000_000; // MYS <b>has</b> 9 decimals
+        self.supported_tokens.insert(
+            type_name,
+            <a href="../bridge/treasury.md#bridge_treasury_BridgeTokenMetadata">BridgeTokenMetadata</a> {
+                id: <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>,
+                <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a>,
+                <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>,
+                native_token: <b>true</b>
+            },
+        );
+        self.id_token_type_map.insert(<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>, type_name);
+        emit(<a href="../bridge/treasury.md#bridge_treasury_NewTokenEvent">NewTokenEvent</a> {
+            <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>,
+            type_name,
+            native_token: <b>true</b>,
+            <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a>,
+            <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>
+        })
     }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_deposit_native_mys"></a>
+
+## Function `deposit_native_mys`
+
+Bootstrap native MYS by depositing exactly 50 million MYS tokens
+This function can only be called once to lock the initial native MYS supply
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_deposit_native_mys">deposit_native_mys</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, mys_coin: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_deposit_native_mys">deposit_native_mys</a>(
+    self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>,
+    mys_coin: Coin&lt;MYS&gt;,
+) {
+    // Ensure bootstrap hasn't been called before
+    <b>assert</b>!(!self.native_mys_bootstrapped, <a href="../bridge/treasury.md#bridge_treasury_ENativeMysAlreadyBootstrapped">ENativeMysAlreadyBootstrapped</a>);
+    // Ensure exactly 50 million MYS is being deposited
+    <b>let</b> amount = mys_coin.value();
+    <b>assert</b>!(amount == <a href="../bridge/treasury.md#bridge_treasury_NATIVE_MYS_BOOTSTRAP_AMOUNT">NATIVE_MYS_BOOTSTRAP_AMOUNT</a>, <a href="../bridge/treasury.md#bridge_treasury_EInvalidNativeMysAmount">EInvalidNativeMysAmount</a>);
+    // Convert coin to balance and store it
+    <b>let</b> mys_balance = mys_coin.into_balance();
+    self.native_mys_locked.join(mys_balance);
+    // Mark <b>as</b> bootstrapped
+    self.native_mys_bootstrapped = <b>true</b>;
+    emit(<a href="../bridge/treasury.md#bridge_treasury_NativeMysBootstrappedEvent">NativeMysBootstrappedEvent</a> {
+        amount_locked: amount,
+    });
 }
 </code></pre>
 
@@ -533,6 +673,8 @@ title: Module `bridge::treasury`
         supported_tokens: vec_map::empty(),
         id_token_type_map: vec_map::empty(),
         waiting_room: bag::new(ctx),
+        native_mys_locked: balance::zero&lt;MYS&gt;(),
+        native_mys_bootstrapped: <b>false</b>,
     }
 }
 </code></pre>
@@ -557,8 +699,37 @@ title: Module `bridge::treasury`
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_burn">burn</a>&lt;T&gt;(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>, token: Coin&lt;T&gt;) {
-    <b>let</b> <a href="../bridge/treasury.md#bridge_treasury">treasury</a> = &<b>mut</b> self.treasuries[type_name::get&lt;T&gt;()];
+    // For now, only foreign tokens supported in generic <a href="../bridge/treasury.md#bridge_treasury_burn">burn</a>
+    // Native MYS uses <a href="../bridge/treasury.md#bridge_treasury_burn_mys">burn_mys</a>() instead
+    <b>let</b> type_name = type_name::get&lt;T&gt;();
+    <b>let</b> <a href="../bridge/treasury.md#bridge_treasury">treasury</a> = &<b>mut</b> self.treasuries[type_name];
     coin::burn(<a href="../bridge/treasury.md#bridge_treasury">treasury</a>, token);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_burn_mys"></a>
+
+## Function `burn_mys`
+
+Specialized burn for native MYS - locks instead of burns
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_burn_mys">burn_mys</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, token: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_burn_mys">burn_mys</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>, token: Coin&lt;MYS&gt;) {
+    <b>let</b> mys_balance = token.into_balance();
+    self.native_mys_locked.join(mys_balance);
 }
 </code></pre>
 
@@ -586,8 +757,43 @@ title: Module `bridge::treasury`
     amount: u64,
     ctx: &<b>mut</b> TxContext,
 ): Coin&lt;T&gt; {
-    <b>let</b> <a href="../bridge/treasury.md#bridge_treasury">treasury</a> = &<b>mut</b> self.treasuries[type_name::get&lt;T&gt;()];
+    // For now, only foreign tokens supported in generic <a href="../bridge/treasury.md#bridge_treasury_mint">mint</a>
+    // Native MYS uses <a href="../bridge/treasury.md#bridge_treasury_mint_mys">mint_mys</a>() instead
+    <b>let</b> type_name = type_name::get&lt;T&gt;();
+    <b>let</b> <a href="../bridge/treasury.md#bridge_treasury">treasury</a> = &<b>mut</b> self.treasuries[type_name];
     coin::mint(<a href="../bridge/treasury.md#bridge_treasury">treasury</a>, amount, ctx)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_mint_mys"></a>
+
+## Function `mint_mys`
+
+Specialized mint for native MYS - unlocks instead of mints
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_mint_mys">mint_mys</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_mint_mys">mint_mys</a>(
+    self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>,
+    amount: u64,
+    ctx: &<b>mut</b> TxContext,
+): Coin&lt;MYS&gt; {
+    <b>assert</b>!(self.native_mys_bootstrapped, <a href="../bridge/treasury.md#bridge_treasury_ENativeMysNotBootstrapped">ENativeMysNotBootstrapped</a>);
+    <b>assert</b>!(self.native_mys_locked.value() &gt;= amount, <a href="../bridge/treasury.md#bridge_treasury_EUnsupportedTokenType">EUnsupportedTokenType</a>);
+    <b>let</b> unlocked_balance = self.native_mys_locked.split(amount);
+    coin::from_balance(unlocked_balance, ctx)
 }
 </code></pre>
 
