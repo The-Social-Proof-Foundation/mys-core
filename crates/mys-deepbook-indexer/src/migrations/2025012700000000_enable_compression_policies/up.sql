@@ -109,29 +109,22 @@ SELECT add_compression_policy('trade_params_update', 604800000::BIGINT);
 -- Create a view to monitor compression status
 CREATE OR REPLACE VIEW compression_status AS
 SELECT 
-    hypertable_name,
-    compression_enabled,
-    compress_after,
-    total_chunks,
-    number_compressed_chunks,
-    compressed_heap_size,
-    uncompressed_heap_size,
+    cs.hypertable_schema,
+    cs.hypertable_name,
+    cs.compression_enabled,
+    h.total_chunks,
+    h.number_compressed_chunks,
+    pg_size_pretty(h.before_compression_total_bytes) AS uncompressed_size,
+    pg_size_pretty(h.after_compression_total_bytes) AS compressed_size,
     CASE 
-        WHEN uncompressed_heap_size > 0 THEN 
-            ROUND((1 - compressed_heap_size::numeric / uncompressed_heap_size::numeric) * 100, 2)
+        WHEN h.before_compression_total_bytes > 0 THEN 
+            ROUND((1 - h.after_compression_total_bytes::numeric / h.before_compression_total_bytes::numeric) * 100, 2)
         ELSE 0 
     END AS compression_ratio_percent
 FROM timescaledb_information.compression_settings cs
-JOIN timescaledb_information.hypertables h ON cs.hypertable_name = h.hypertable_name
-LEFT JOIN timescaledb_information.chunks c ON h.hypertable_name = c.hypertable_name
-GROUP BY 
-    cs.hypertable_name, 
-    compression_enabled, 
-    compress_after,
-    compressed_heap_size,
-    uncompressed_heap_size,
-    total_chunks,
-    number_compressed_chunks;
+LEFT JOIN timescaledb_information.hypertables h 
+    ON cs.hypertable_schema = h.hypertable_schema 
+    AND cs.hypertable_name = h.hypertable_name;
 
 -- Log compression policy creation
 DO $$
