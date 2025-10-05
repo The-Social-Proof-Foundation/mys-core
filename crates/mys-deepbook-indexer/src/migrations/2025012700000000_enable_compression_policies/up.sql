@@ -72,39 +72,39 @@ ALTER TABLE trade_params_update SET (
 );
 
 -- Step 2: Add compression policies
--- High-frequency trading data: Compress after 7 days
+-- High-frequency trading data: Compress after 7 days (604800000 ms)
 -- These tables have frequent writes but older data is accessed less often
 -- 7 days keeps recent trading data uncompressed for fast queries
 
 -- Order fills (trades) - most frequently accessed recent data
-SELECT add_compression_policy('order_fills', INTERVAL '7 days');
+SELECT add_compression_policy('order_fills', 604800000::BIGINT);
 
 -- Order updates - active orders change frequently 
-SELECT add_compression_policy('order_updates', INTERVAL '7 days');
+SELECT add_compression_policy('order_updates', 604800000::BIGINT);
 
--- Medium-frequency data: Compress after 30 days
+-- Medium-frequency data: Compress after 30 days (2592000000 ms)
 -- These tables have moderate write frequency
 
 -- Pool prices - price updates are important but less frequent than trades
-SELECT add_compression_policy('pool_prices', INTERVAL '30 days');
+SELECT add_compression_policy('pool_prices', 2592000000::BIGINT);
 
 -- Balance changes - important for recent analysis but older data can be compressed
-SELECT add_compression_policy('balances', INTERVAL '30 days');
+SELECT add_compression_policy('balances', 2592000000::BIGINT);
 
--- Lower-frequency data: Compress after 7 days
+-- Lower-frequency data: Compress after 7 days (604800000 ms)
 -- These tables have infrequent writes so can be compressed sooner
 
 -- Flash loan events - relatively rare events
-SELECT add_compression_policy('flashloans', INTERVAL '7 days');
+SELECT add_compression_policy('flashloans', 604800000::BIGINT);
 
 -- Governance-related tables - infrequent updates
-SELECT add_compression_policy('stakes', INTERVAL '7 days');
-SELECT add_compression_policy('proposals', INTERVAL '7 days');
-SELECT add_compression_policy('votes', INTERVAL '7 days');
-SELECT add_compression_policy('rebates', INTERVAL '7 days');
+SELECT add_compression_policy('stakes', 604800000::BIGINT);
+SELECT add_compression_policy('proposals', 604800000::BIGINT);
+SELECT add_compression_policy('votes', 604800000::BIGINT);
+SELECT add_compression_policy('rebates', 604800000::BIGINT);
 
 -- Trade parameters - very infrequent updates
-SELECT add_compression_policy('trade_params_update', INTERVAL '7 days');
+SELECT add_compression_policy('trade_params_update', 604800000::BIGINT);
 
 -- Create a view to monitor compression status
 CREATE OR REPLACE VIEW compression_status AS
