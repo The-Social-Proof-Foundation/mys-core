@@ -27,4 +27,4 @@ eth:
   eth-contracts-start-block-fallback: 31901989
 
 metrics:
-  push-url: "https://mys-bridge-validator-1.railway.internal/publish/metrics"
+  push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics"
