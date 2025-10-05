@@ -72,39 +72,39 @@ ALTER TABLE trade_params_update SET (
 );
 
 -- Step 2: Add compression policies
--- High-frequency trading data: Compress after 1 day
+-- High-frequency trading data: Compress after 7 days
 -- These tables have frequent writes but older data is accessed less often
--- 1 day keeps recent trading data uncompressed for fast queries
+-- 7 days keeps recent trading data uncompressed for fast queries
 
 -- Order fills (trades) - most frequently accessed recent data
-SELECT add_compression_policy('order_fills', INTERVAL '1 days');
+SELECT add_compression_policy('order_fills', INTERVAL '7 days');
 
 -- Order updates - active orders change frequently 
-SELECT add_compression_policy('order_updates', INTERVAL '1 days');
+SELECT add_compression_policy('order_updates', INTERVAL '7 days');
 
--- Medium-frequency data: Compress after 2 days
+-- Medium-frequency data: Compress after 30 days
 -- These tables have moderate write frequency
 
 -- Pool prices - price updates are important but less frequent than trades
-SELECT add_compression_policy('pool_prices', INTERVAL '2 days');
+SELECT add_compression_policy('pool_prices', INTERVAL '30 days');
 
 -- Balance changes - important for recent analysis but older data can be compressed
-SELECT add_compression_policy('balances', INTERVAL '2 days');
+SELECT add_compression_policy('balances', INTERVAL '30 days');
 
--- Lower-frequency data: Compress after 1 day
+-- Lower-frequency data: Compress after 7 days
 -- These tables have infrequent writes so can be compressed sooner
 
 -- Flash loan events - relatively rare events
-SELECT add_compression_policy('flashloans', INTERVAL '1 days');
+SELECT add_compression_policy('flashloans', INTERVAL '7 days');
 
 -- Governance-related tables - infrequent updates
-SELECT add_compression_policy('stakes', INTERVAL '1 days');
-SELECT add_compression_policy('proposals', INTERVAL '1 days');
-SELECT add_compression_policy('votes', INTERVAL '1 days');
-SELECT add_compression_policy('rebates', INTERVAL '1 days');
+SELECT add_compression_policy('stakes', INTERVAL '7 days');
+SELECT add_compression_policy('proposals', INTERVAL '7 days');
+SELECT add_compression_policy('votes', INTERVAL '7 days');
+SELECT add_compression_policy('rebates', INTERVAL '7 days');
 
 -- Trade parameters - very infrequent updates
-SELECT add_compression_policy('trade_params_update', INTERVAL '1 days');
+SELECT add_compression_policy('trade_params_update', INTERVAL '7 days');
 
 -- Create a view to monitor compression status
 CREATE OR REPLACE VIEW compression_status AS
@@ -137,8 +137,8 @@ GROUP BY
 DO $$
 BEGIN
     RAISE NOTICE 'TimescaleDB compression policies enabled successfully';
-    RAISE NOTICE 'High-frequency tables (order_fills, order_updates): 1 day compression';
-    RAISE NOTICE 'Medium-frequency tables (pool_prices, balances): 2 days compression';  
-    RAISE NOTICE 'Low-frequency tables (governance, flashloans): 1 day compression';
+    RAISE NOTICE 'High-frequency tables (order_fills, order_updates): 7 days compression';
+    RAISE NOTICE 'Medium-frequency tables (pool_prices, balances): 30 days compression';  
+    RAISE NOTICE 'Low-frequency tables (governance, flashloans): 7 days compression';
     RAISE NOTICE 'Use SELECT * FROM compression_status; to monitor compression effectiveness';
 END $$; 
