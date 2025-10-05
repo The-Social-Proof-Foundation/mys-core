@@ -47,7 +47,7 @@ impl IndexerConfig {
                 .expect("DATABASE_URL must be set"),
             checkpoints_path: env::var("CHECKPOINTS_PATH").ok(),
             mys_rpc_url: env::var("MYS_RPC_URL")
-                .unwrap_or_else(|_| "http://fullnode.testnet.mysocial.network:9000".to_string()),
+                .unwrap_or_else(|_| "https://fullnode.testnet.mysocial.network:9000".to_string()),
             deepbook_package_id: env::var("DEEPBOOK_PACKAGE_ID")
                 .expect("DEEPBOOK_PACKAGE_ID must be set"),
             deepbook_genesis_checkpoint: env::var("DEEPBOOK_GENESIS_CHECKPOINT")
