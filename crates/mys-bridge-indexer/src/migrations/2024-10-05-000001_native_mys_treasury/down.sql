@@ -1,6 +1,7 @@
 -- Rollback native MYS treasury tracking
 
 DROP TRIGGER IF EXISTS update_bridge_treasury_balances_updated_at ON bridge_treasury_balances;
+DROP FUNCTION IF EXISTS update_updated_at_column();
 DROP INDEX IF EXISTS idx_bridge_treasury_events_tx_digest;
 DROP INDEX IF EXISTS idx_bridge_treasury_events_timestamp_ms;
 DROP INDEX IF EXISTS idx_bridge_treasury_events_block_height;

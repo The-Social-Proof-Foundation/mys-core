@@ -38,6 +38,15 @@ CREATE INDEX idx_bridge_treasury_events_block_height ON bridge_treasury_events(b
 CREATE INDEX idx_bridge_treasury_events_timestamp_ms ON bridge_treasury_events(timestamp_ms);
 CREATE INDEX idx_bridge_treasury_events_tx_digest ON bridge_treasury_events(tx_digest);
 
+-- Create function to automatically update updated_at timestamps
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
 -- Trigger to update updated_at timestamp
 CREATE TRIGGER update_bridge_treasury_balances_updated_at 
     BEFORE UPDATE ON bridge_treasury_balances
