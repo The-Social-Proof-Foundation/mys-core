@@ -6,7 +6,7 @@ approved-governance-actions:
   - AddTokensOnMysAction:
       nonce: 0
       chain_id: MysCustom
-      native: false
+      native: true
       token_ids: [0]
       token_type_names:
         - Struct:
@@ -14,7 +14,7 @@ approved-governance-actions:
             module: "mys"
             name: "MYS"
             type_params: []
-      token_prices: [4450]
+      token_prices: [45000]
 
 mys:
   mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
@@ -27,4 +27,4 @@ eth:
   eth-contracts-start-block-fallback: 31901989
 
 metrics:
-  push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics"
+  push-url: "https://mys-bridge-testnet.up.railway.app:8080/publish/metrics"

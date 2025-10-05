@@ -73,6 +73,36 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    bridge_treasury_balances (id) {
+        id -> Int4,
+        token_type -> Varchar,
+        token_id -> Int4,
+        total_locked -> Int8,
+        total_unlocked -> Int8,
+        net_balance -> Int8,
+        last_updated_block -> Int8,
+        last_updated_timestamp -> Int8,
+        created_at -> Nullable<Timestamptz>,
+        updated_at -> Nullable<Timestamptz>,
+    }
+}
+
+diesel::table! {
+    bridge_treasury_events (id) {
+        id -> Int4,
+        token_type -> Varchar,
+        token_id -> Int4,
+        event_type -> Varchar,
+        amount -> Int8,
+        tx_digest -> Varchar,
+        block_height -> Int8,
+        timestamp_ms -> Int8,
+        sender_address -> Nullable<Bytea>,
+        created_at -> Nullable<Timestamptz>,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     progress_store,
     mys_error_transactions,
@@ -80,4 +110,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     mys_progress_store,
     token_transfer,
     token_transfer_data,
+    bridge_treasury_balances,
+    bridge_treasury_events,
 );

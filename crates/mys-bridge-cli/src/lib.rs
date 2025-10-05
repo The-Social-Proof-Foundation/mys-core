@@ -47,6 +47,8 @@ pub const SEPOLIA_BRIDGE_PROXY_ADDR: &str = "0x3b80bb0443D731ee5176ec89568fDFe8e
 
 #[derive(Parser)]
 #[clap(rename_all = "kebab-case")]
+#[clap(name = "myso-bridge")]
+#[clap(about = "MySo Bridge CLI - Manage bridge operations and governance")]
 pub struct Args {
     #[clap(subcommand)]
     pub command: BridgeCommand,
@@ -109,13 +111,13 @@ pub enum BridgeCommand {
     /// View current list of registered validators
     #[clap(name = "view-bridge-registration")]
     ViewBridgeRegistration {
-        #[clap(long = "mys-rpc-url")]
+        #[clap(long = "myso-rpc-url")]
         mys_rpc_url: String,
     },
-    /// View current status of Mys bridge
-    #[clap(name = "view-mys-bridge")]
+    /// View current status of MySo bridge
+    #[clap(name = "view-myso-bridge")]
     ViewMysBridge {
-        #[clap(long = "mys-rpc-url")]
+        #[clap(long = "myso-rpc-url")]
         mys_rpc_url: String,
         #[clap(long, default_value = "false")]
         hex: bool,
@@ -170,7 +172,7 @@ pub enum GovernanceClientCommands {
         #[clap(name = "new-usd-price", long)]
         new_usd_price: u64,
     },
-    #[clap(name = "add-tokens-on-mys")]
+    #[clap(name = "add-tokens-on-myso")]
     AddTokensOnMys {
         #[clap(name = "nonce", long)]
         nonce: u64,
@@ -191,7 +193,7 @@ pub enum GovernanceClientCommands {
         token_addresses: Vec<EthAddress>,
         #[clap(name = "token-prices", use_value_delimiter = true, long)]
         token_prices: Vec<u64>,
-        #[clap(name = "token-mys-decimals", use_value_delimiter = true, long)]
+        #[clap(name = "token-myso-decimals", use_value_delimiter = true, long)]
         token_mys_decimals: Vec<u8>,
     },
     #[clap(name = "upgrade-evm-contract")]
@@ -263,10 +265,15 @@ pub fn make_action(chain_id: BridgeChainId, cmd: &GovernanceClientCommands) -> B
         } => {
             assert_eq!(token_ids.len(), token_type_names.len());
             assert_eq!(token_ids.len(), token_prices.len());
+            
+            // Detect if this is native MYS token (0x2::mys::MYS)
+            let is_native_mys = token_type_names.len() == 1 
+                && token_type_names[0].to_string() == "0x0000000000000000000000000000000000000000000000000000000000000002::mys::MYS";
+            
             BridgeAction::AddTokensOnMysAction(AddTokensOnMysAction {
                 nonce: *nonce,
                 chain_id,
-                native: false, // only foreign tokens are supported now
+                native: is_native_mys, // true for native MYS, false for foreign tokens
                 token_ids: token_ids.clone(),
                 token_type_names: token_type_names.clone(),
                 token_prices: token_prices.clone(),
@@ -526,7 +533,7 @@ pub enum BridgeClientCommands {
         #[clap(long)]
         mys_recipient_address: MysAddress,
     },
-    #[clap(name = "deposit-on-mys")]
+    #[clap(name = "deposit-on-myso")]
     DepositOnMys {
         #[clap(long)]
         coin_object_id: ObjectID,

@@ -6,7 +6,7 @@ approved-governance-actions:
   - AddTokensOnMysAction:
       nonce: 0
       chain_id: MysCustom
-      native: false
+      native: true
       token_ids: [0]
       token_type_names:
         - Struct:
@@ -14,7 +14,7 @@ approved-governance-actions:
             module: "mys"
             name: "MYS"
             type_params: []
-      token_prices: [4450]
+      token_prices: [45000]
 db-path: /app/bridge_db
 
 mys:

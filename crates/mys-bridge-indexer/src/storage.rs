@@ -15,7 +15,7 @@ use diesel_async::RunQueryDsl;
 use crate::models::ProgressStore;
 use crate::postgres_manager::PgPool;
 use crate::schema::progress_store::{columns, dsl};
-use crate::schema::{mys_error_transactions, token_transfer, token_transfer_data};
+use crate::schema::{mys_error_transactions, token_transfer, token_transfer_data, bridge_treasury_events};
 use crate::{schema, ProcessedTxnData};
 use mys_indexer_builder::indexer_builder::{IndexerProgressStore, Persistent};
 use mys_indexer_builder::{
@@ -154,6 +154,59 @@ impl Persistent<ProcessedTxnData> for PgBridgePersistent {
                                     .on_conflict_do_nothing()
                                     .execute(conn)
                                     .await?;
+                            }
+                            ProcessedTxnData::TreasuryEvent(te) => {
+                                // Insert treasury event
+                                diesel::insert_into(bridge_treasury_events::table)
+                                    .values(&te.to_db_event())
+                                    .execute(conn)
+                                    .await?;
+                                
+                                // Update treasury balance
+                                let token_type_val = te.token_type.clone();
+                                let amount_val = te.amount as i64;
+                                
+                                // Check if balance record exists
+                                use crate::schema::bridge_treasury_balances;
+                                let existing: Option<crate::models::BridgeTreasuryBalance> = diesel::QueryDsl::filter(
+                                    bridge_treasury_balances::table,
+                                    bridge_treasury_balances::token_type.eq(&token_type_val)
+                                )
+                                    .first(conn)
+                                    .await
+                                    .optional()?;
+                                
+                                if let Some(mut balance) = existing {
+                                    // Update existing balance
+                                    match &te.event_type {
+                                        crate::TreasuryEventType::Lock => {
+                                            balance.total_locked += amount_val;
+                                            balance.net_balance += amount_val;
+                                        }
+                                        crate::TreasuryEventType::Unlock => {
+                                            balance.total_unlocked += amount_val;
+                                            balance.net_balance -= amount_val;
+                                        }
+                                    }
+                                    balance.last_updated_block = te.block_height as i64;
+                                    balance.last_updated_timestamp = te.timestamp_ms as i64;
+                                    
+                                    diesel::update(
+                                        diesel::QueryDsl::filter(
+                                            bridge_treasury_balances::table,
+                                            bridge_treasury_balances::token_type.eq(&token_type_val)
+                                        )
+                                    )
+                                        .set((
+                                            bridge_treasury_balances::total_locked.eq(balance.total_locked),
+                                            bridge_treasury_balances::total_unlocked.eq(balance.total_unlocked),
+                                            bridge_treasury_balances::net_balance.eq(balance.net_balance),
+                                            bridge_treasury_balances::last_updated_block.eq(balance.last_updated_block),
+                                            bridge_treasury_balances::last_updated_timestamp.eq(balance.last_updated_timestamp),
+                                        ))
+                                        .execute(conn)
+                                        .await?;
+                                }
                             }
                         }
                     }

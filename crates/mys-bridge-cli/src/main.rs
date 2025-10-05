@@ -90,7 +90,7 @@ async fn main() -> anyhow::Result<()> {
             let (mys_key, mys_address, gas_object_ref) = config
                 .get_mys_account_info()
                 .await
-                .expect("Failed to get mys account info");
+                .expect("Failed to get MySo account info");
             let bridge_summary = mys_bridge_client
                 .get_bridge_summary()
                 .await
@@ -141,7 +141,7 @@ async fn main() -> anyhow::Result<()> {
                     &id_token_map,
                     rgp,
                 )
-                .expect("Failed to build mys transaction");
+                .expect("Failed to build MySo transaction");
                 let mys_sig = Signature::new_secure(
                     &IntentMessage::new(Intent::mys_transaction(), tx.clone()),
                     &mys_key,

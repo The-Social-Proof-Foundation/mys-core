@@ -50,6 +50,10 @@ pub async fn write(pool: &PgPool, token_txns: Vec<ProcessedTxnData>) -> Result<(
                 }
                 ProcessedTxnData::Error(e) => errors.push(e.to_db()),
                 ProcessedTxnData::GovernanceAction(a) => gov_actions.push(a.to_db()),
+                ProcessedTxnData::TreasuryEvent(_) => {
+                    // Treasury events are handled in the main write() function in storage.rs
+                    // No action needed here
+                }
             }
             (transfers, data, errors, gov_actions)
         },

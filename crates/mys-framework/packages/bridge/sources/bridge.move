@@ -197,6 +197,74 @@ module bridge::bridge {
             .register_foreign_token<T>(tc, uc, metadata)
     }
 
+    /// Bootstrap the bridge with native MYS tokens for bidirectional bridging
+    /// This function locks exactly 50 million MYS tokens in the bridge treasury
+    /// Can only be called once to prevent duplicate bootstrapping
+    public entry fun bootstrap_native_mys(
+        bridge: &mut Bridge,
+        mys_coin: Coin<mys::mys::MYS>,
+    ) {
+        load_inner_mut(bridge)
+            .treasury
+            .deposit_native_mys(mys_coin)
+    }
+
+    // Create bridge request to send native MYS token to other chain
+    public fun send_mys_token(
+        bridge: &mut Bridge,
+        target_chain: u8,
+        target_address: vector<u8>,
+        token: Coin<mys::mys::MYS>,
+        ctx: &mut TxContext
+    ) {
+        let inner = load_inner_mut(bridge);
+        assert!(!inner.paused, EBridgeUnavailable);
+        assert!(chain_ids::is_valid_route(inner.chain_id, target_chain), EInvalidBridgeRoute);
+        assert!(target_address.length() == EVM_ADDRESS_LENGTH, EInvalidEvmAddress);
+
+        let bridge_seq_num = inner.get_current_seq_num_and_increment(message_types::token());
+        let token_id = 0; // MYS is token ID 0
+        let token_amount = token.balance().value();
+        assert!(token_amount > 0, ETokenValueIsZero);
+
+        // create bridge message
+        let message = message::create_token_bridge_message(
+            inner.chain_id,
+            bridge_seq_num,
+            address::to_bytes(ctx.sender()),
+            target_chain,
+            target_address,
+            token_id,
+            token_amount,
+        );
+
+        // Lock native MYS instead of burning
+        inner.treasury.burn_mys(token);
+
+        // Store pending bridge request
+        inner.token_transfer_records.push_back(
+            message.key(),
+            BridgeRecord {
+                message,
+                verified_signatures: option::none(),
+                claimed: false,
+            },
+        );
+
+        // emit event
+        emit(
+            TokenDepositedEvent {
+                seq_num: bridge_seq_num,
+                source_chain: inner.chain_id,
+                sender_address: address::to_bytes(ctx.sender()),
+                target_chain,
+                target_address,
+                token_type: token_id,
+                amount: token_amount,
+            },
+        );
+    }
+
     // Create bridge request to send token to other chain, the request will be in
     // pending state until approved
     public fun send_token<T>(
@@ -312,6 +380,42 @@ module bridge::bridge {
         };
 
         emit(TokenTransferApproved { message_key });
+    }
+
+    // Claim native MYS token - specialized version that unlocks from treasury
+    public fun claim_mys_token(
+        bridge: &mut Bridge,
+        clock: &Clock,
+        source_chain: u8,
+        bridge_seq_num: u64,
+        ctx: &mut TxContext,
+    ): Coin<mys::mys::MYS> {
+        let (maybe_token, owner) = bridge.claim_mys_token_internal(
+            clock,
+            source_chain,
+            bridge_seq_num,
+            ctx,
+        );
+        // Only token owner can claim the token
+        assert!(ctx.sender() == owner, EUnauthorisedClaim);
+        assert!(maybe_token.is_some(), ETokenAlreadyClaimedOrHitLimit);
+        maybe_token.destroy_some()
+    }
+
+    // Claim and transfer native MYS
+    public fun claim_and_transfer_mys_token(
+        bridge: &mut Bridge,
+        clock: &Clock,
+        source_chain: u8,
+        bridge_seq_num: u64,
+        ctx: &mut TxContext,
+    ) {
+        let (token, owner) = bridge.claim_mys_token_internal(clock, source_chain, bridge_seq_num, ctx);
+        if (token.is_some()) {
+            transfer::public_transfer(token.destroy_some(), owner)
+        } else {
+            token.destroy_none();
+        };
     }
 
     // This function can only be called by the token recipient
@@ -469,6 +573,65 @@ module bridge::bridge {
         let inner: &mut BridgeInner = bridge.inner.load_value_mut();
         assert!(inner.bridge_version == version, EWrongInnerVersion);
         inner
+    }
+
+    // Specialized claim for native MYS token - unlocks from treasury
+    fun claim_mys_token_internal(
+        bridge: &mut Bridge,
+        clock: &Clock,
+        source_chain: u8,
+        bridge_seq_num: u64,
+        ctx: &mut TxContext,
+    ): (Option<Coin<mys::mys::MYS>>, address) {
+        let inner = load_inner_mut(bridge);
+        assert!(!inner.paused, EBridgeUnavailable);
+
+        let key = message::create_key(source_chain, message_types::token(), bridge_seq_num);
+        assert!(inner.token_transfer_records.contains(key), EMessageNotFoundInRecords);
+
+        // retrieve approved bridge message
+        let record = &mut inner.token_transfer_records[key];
+        assert!(
+            &record.message.message_type() == message_types::token(),
+            EUnexpectedMessageType,
+        );
+        assert!(record.verified_signatures.is_some(), EUnauthorisedClaim);
+
+        let token_payload = record.message.extract_token_bridge_payload();
+        let owner = address::from_bytes(token_payload.token_target_address());
+
+        if (record.claimed) {
+            emit(TokenTransferAlreadyClaimed { message_key: key });
+            return (option::none(), owner)
+        };
+
+        let target_chain = token_payload.token_target_chain();
+        assert!(target_chain == inner.chain_id, EUnexpectedChainID);
+
+        let route = chain_ids::get_route(source_chain, target_chain);
+        assert!(token_payload.token_type() == 0, EUnexpectedTokenType); // Must be MYS (token_id 0)
+
+        let amount = token_payload.token_amount();
+        if (!inner
+            .limiter
+            .check_and_record_sending_transfer<mys::mys::MYS>(
+            &inner.treasury,
+            clock,
+            route,
+            amount,
+        )
+        ) {
+            emit(TokenTransferLimitExceed { message_key: key });
+            return (option::none(), owner)
+        };
+
+        // Unlock from treasury (instead of mint)
+        let token = inner.treasury.mint_mys(amount, ctx);
+
+        record.claimed = true;
+        emit(TokenTransferClaimed { message_key: key });
+
+        (option::some(token), owner)
     }
 
     // Claim token from approved bridge message
