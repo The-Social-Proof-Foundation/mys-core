@@ -77,10 +77,10 @@ ALTER TABLE trade_params_update SET (
 -- 1 day keeps recent trading data uncompressed for fast queries
 
 -- Order fills (trades) - most frequently accessed recent data
-SELECT add_compression_policy('order_fills', INTERVAL '1 day');
+SELECT add_compression_policy('order_fills', INTERVAL '1 days');
 
 -- Order updates - active orders change frequently 
-SELECT add_compression_policy('order_updates', INTERVAL '1 day');
+SELECT add_compression_policy('order_updates', INTERVAL '1 days');
 
 -- Medium-frequency data: Compress after 2 days
 -- These tables have moderate write frequency
@@ -95,16 +95,16 @@ SELECT add_compression_policy('balances', INTERVAL '2 days');
 -- These tables have infrequent writes so can be compressed sooner
 
 -- Flash loan events - relatively rare events
-SELECT add_compression_policy('flashloans', INTERVAL '1 day');
+SELECT add_compression_policy('flashloans', INTERVAL '1 days');
 
 -- Governance-related tables - infrequent updates
-SELECT add_compression_policy('stakes', INTERVAL '1 day');
-SELECT add_compression_policy('proposals', INTERVAL '1 day');
-SELECT add_compression_policy('votes', INTERVAL '1 day');
-SELECT add_compression_policy('rebates', INTERVAL '1 day');
+SELECT add_compression_policy('stakes', INTERVAL '1 days');
+SELECT add_compression_policy('proposals', INTERVAL '1 days');
+SELECT add_compression_policy('votes', INTERVAL '1 days');
+SELECT add_compression_policy('rebates', INTERVAL '1 days');
 
 -- Trade parameters - very infrequent updates
-SELECT add_compression_policy('trade_params_update', INTERVAL '1 day');
+SELECT add_compression_policy('trade_params_update', INTERVAL '1 days');
 
 -- Create a view to monitor compression status
 CREATE OR REPLACE VIEW compression_status AS
