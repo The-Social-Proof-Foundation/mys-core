@@ -1,6 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "crates/mys-price-oracle/Dockerfile"
 
 [deploy]
 healthcheckPath = "/health"
