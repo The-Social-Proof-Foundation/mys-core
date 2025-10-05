@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1759528800 # 1759523528000
+  chain_start_timestamp_ms: 1759674600 # 1759671685000
 
   # Protocol version
   protocol_version: 75  # Latest version
@@ -20,7 +20,7 @@ parameters:
   # Stake subsidy parameters
   #
   # When to start paying stake subsidies (0 = from beginning)
-  stake_subsidy_start_epoch: 10
+  stake_subsidy_start_epoch: 6
 
   # Initial stake subsidy distribution amount per epoch (in MIST)
   # Default: 538,626 MySo = 538,626,000,000,000 MIST
@@ -31,29 +31,27 @@ parameters:
   stake_subsidy_period_length: 3
 
   # Rate at which subsidy decreases at end of each period (in basis points)
-  # 150 basis points = 1.5%
-  stake_subsidy_decrease_rate: 150
+  # 200 basis points = 2.0%
+  stake_subsidy_decrease_rate: 200
 
 # Accounts to add tokens to
 accounts:
   # Faucet
-  - address: "0xc69a3676fa4a91777361cb8b7f0477f30125999e475fd409d4e8e062d0541416"
+  - address: "0xdceabe53f1bfea490497ad9b4942f2c2b095fc0f4378056b969417d889d6df08"
     gas_amounts:
       - 1000000000000000 # 1,000,000 MySo
   # Social Proof Foundation
-  - address: "0x0c6deec0f07d08cd5219909c6c2247c6f24ec566b2ee348d4b5d3ed9da08f1cc"
+  - address: "0x22e4e2b727f80d5a0a1763bc25e662ee1a0fe24a64e5bc89985b94b9d6c8f56a"
     gas_amounts:
       - 746200000000000000 # 746,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators)
   # Core Team
-  - address: "0x1b772d683f383aa997e86b621846d2bf06c2e06155a923a67f5f088307a9ec43"
+  - address: "0x05a213d5cbdac80acc8e586b19bd67ca204f67bde4ae2e1893d8b10610864171"
     gas_amounts:
       - 249000000000000000 # 249,000,000 MySo (25% = 12.5% core + 12.5% marketing - 1 mill faucet)
 
 validator_config_info:
   # Validator 1 (dynamic ports)
   - name: "MySo Validator 1"
-    description: ""
-    imageUrl: ""
     network_address: "/ip4/69.10.63.78/tcp/59010/http"
     p2p_address: "/ip4/69.10.63.78/udp/59020"
     narwhal_primary_address: "/ip4/69.10.63.78/udp/59030"
@@ -64,8 +62,6 @@ validator_config_info:
     stake: 1000000000000000  # 1 million MySo in MIST units
   # Validator 2 (dynamic ports)
   - name: "MySo Validator 2"
-    description: ""
-    imageUrl: ""
     network_address: "/ip4/69.10.63.78/tcp/59110/http"
     p2p_address: "/ip4/69.10.63.78/udp/59120"
     narwhal_primary_address: "/ip4/69.10.63.78/udp/59130"
@@ -76,8 +72,6 @@ validator_config_info:
     stake: 1000000000000000  # 1 million MySo in MIST units
   # Validator 3 (dynamic ports)
   - name: "MySo Validator 3"
-    description: ""
-    imageUrl: ""
     network_address: "/ip4/69.10.63.78/tcp/59210/http"
     p2p_address: "/ip4/69.10.63.78/udp/59220"
     narwhal_primary_address: "/ip4/69.10.63.78/udp/59230"
