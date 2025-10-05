@@ -243,12 +243,16 @@ impl PriceFetcher for RestApiPriceFetcher {
                 .get(0)
                 .ok_or_else(|| OracleError::NoPriceData)?;
 
-            let price_str = first
-                .as_str()
-                .ok_or_else(|| OracleError::DataFormat("Price is not a string".to_string()))?;
-
-            let price = Decimal::from_str_exact(price_str)
-                .map_err(|e| OracleError::DataFormat(format!("Invalid price format: {}", e)))?;
+            // Try to get price as number first, then as string
+            let price = if let Some(num) = first.as_f64() {
+                Decimal::from_f64(num)
+                    .ok_or_else(|| OracleError::DataFormat("Invalid price number".to_string()))?
+            } else if let Some(price_str) = first.as_str() {
+                Decimal::from_str_exact(price_str)
+                    .map_err(|e| OracleError::DataFormat(format!("Invalid price format: {}", e)))?
+            } else {
+                return Err(OracleError::DataFormat("Price is neither number nor string".to_string()));
+            };
 
             info!(
                 correlation_id = %correlation_id,
