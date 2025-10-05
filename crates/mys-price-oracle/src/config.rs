@@ -117,6 +117,35 @@ impl Default for PersistenceConfig {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
+pub struct BridgeIntegrationConfig {
+    pub enabled: bool,
+    pub validator_endpoints: Vec<String>,
+    pub mys_rpc_url: String,
+    pub bridge_client_key_path: String,
+    pub bridge_chain_id: u8,
+    pub bridge_token_id: u8,
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub update_interval: Duration,
+    pub min_price_change_percent: Decimal,
+}
+
+impl Default for BridgeIntegrationConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            validator_endpoints: vec![],
+            mys_rpc_url: String::new(),
+            bridge_client_key_path: String::new(),
+            bridge_chain_id: 2, // MysCustom
+            bridge_token_id: 0, // MYS
+            update_interval: Duration::from_secs(300), // 5 minutes
+            min_price_change_percent: Decimal::ONE, // 1%
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct PriceOracleConfig {
     pub server_url: String,
     pub chain_id: u64,
@@ -129,6 +158,8 @@ pub struct PriceOracleConfig {
     pub validation: ValidationConfig,
     pub monitoring: MonitoringConfig,
     pub persistence: PersistenceConfig,
+    #[serde(default)]
+    pub bridge_integration: BridgeIntegrationConfig,
 }
 
 // Environment variable structure for Railway deployment
@@ -272,6 +303,7 @@ impl PriceOracleConfig {
                 database_path: env_vars.mys_oracle_persistence_database_path
                     .unwrap_or_else(|| "./oracle_state.db".to_string()),
             },
+            bridge_integration: BridgeIntegrationConfig::default(),
         };
 
         config.validate()?;

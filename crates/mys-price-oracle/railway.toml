@@ -8,8 +8,6 @@ healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
-# Watch patterns for auto-rebuild
-# watchPatterns = ["crates/mys-price-oracle/**"]
 
 [environments.production.variables]
 # Oracle Configuration
@@ -18,11 +16,10 @@ MYS_ORACLE_TOKEN_ID = "1"
 MYS_ORACLE_UPDATE_INTERVAL = "30s"
 MYS_ORACLE_PRICE_CHANGE_THRESHOLD = "0.02"
 
-# Data Source - Uniswap V3 Base
-MYS_ORACLE_SOURCE_TYPE = "graphql"
-MYS_ORACLE_SOURCE_URL = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3-base"
-MYS_ORACLE_SOURCE_TOKEN_ADDRESS = "0xfdd6013bf2757018d8c087244f03e5a521b2d3b7"
-MYS_ORACLE_SOURCE_POOL_FEE_TIER = "3000"
+# Data Source - DripDrop API
+MYS_ORACLE_SOURCE_TYPE = "rest_api"
+MYS_ORACLE_SOURCE_URL = "https://api.testnet.dripdrop.social/price/mysocial"
+MYS_ORACLE_SOURCE_JSON_PATH = "$.priceUsd"
 
 # Price Validation
 MYS_ORACLE_VALIDATION_MIN_PRICE_USD = "0.000001"
