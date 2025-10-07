@@ -22,7 +22,7 @@ mys:
 
 eth:
   eth-rpc-url: "https://base-sepolia.g.alchemy.com/v2/dP5ANdv4tQc7ldy_stPvRTQWtO0J3KS5"
-  eth-bridge-proxy-address: "0x3b80bb0443D731ee5176ec89568fDFe8eB0aAFdd"
+  eth-bridge-proxy-address: "0x8E89366ab71F2cc442c97CBBcA241A7D07d37963"
   eth-bridge-chain-id: 12
   eth-contracts-start-block-fallback: 31901989
 

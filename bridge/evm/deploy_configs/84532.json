@@ -11,8 +11,8 @@
   ],
   "minCommitteeStakeRequired": 5001,
   "sourceChainId": 12,
-  "supportedChainIds": [1],
-  "supportedChainLimitsInDollars": [1000000000000],
+  "supportedChainIds": [1, 2, 3],
+  "supportedChainLimitsInDollars": [1000000000000, 1000000000000, 1000000000000],
   "supportedTokens": [
     "0x0000000000000000000000000000000000000000",
     "0x0000000000000000000000000000000000000001",

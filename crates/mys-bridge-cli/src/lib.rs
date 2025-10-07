@@ -666,6 +666,7 @@ async fn deposit_on_mys(
     let is_native_mys = if let TypeTag::Struct(s) = &coin_type {
         s.address.to_hex_literal() == "0x2" 
             && s.module.as_str() == "mys" 
+            && s.name.as_str() == "MYS"
     } else {
         false
     };
