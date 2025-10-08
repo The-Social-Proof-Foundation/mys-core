@@ -14,9 +14,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::db::DbPool;
 
-// Query parameters for marketplace data listing
+// Query parameters for MyData listing
 #[derive(Debug, Deserialize)]
-pub struct MarketplaceQuery {
+pub struct MyDataQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub creator: Option<String>,
@@ -31,10 +31,10 @@ pub struct MarketplaceQuery {
     pub sort_by: Option<String>, // "created_at", "price", "revenue", "popularity"
 }
 
-// Combined stats for marketplace data
+// Combined stats for MyData
 #[derive(Debug, Serialize)]
-pub struct MarketplaceStatsResponse {
-    pub ip_id: String,
+pub struct MyDataStatsResponse {
+    pub mydata_id: String,
     pub owner: String,
     pub media_type: String,
     pub total_revenue: i64,
@@ -71,11 +71,11 @@ pub struct AccessAnalytics {
     pub total_accesses: i64,
 }
 
-// Basic marketplace data returned for list operations
+// Basic MyData returned for list operations
 #[derive(Debug, Serialize, QueryableByName)]
-pub struct MarketplaceDataBasic {
+pub struct MyDataBasic {
     #[diesel(sql_type = Text)]
-    pub ip_id: String,
+    pub mydata_id: String,
 
     #[diesel(sql_type = Text)]
     pub owner: String,
@@ -126,10 +126,10 @@ pub struct MarketplaceDataBasic {
     pub update_frequency: Option<String>,
 }
 
-/// Get marketplace data by IP ID
-pub async fn get_marketplace_data_by_id(
+/// Get MyData by ID
+pub async fn get_mydata_by_id(
     State(pool): State<DbPool>,
-    Path(ip_id): Path<String>,
+    Path(mydata_id): Path<String>,
 ) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
@@ -143,22 +143,22 @@ pub async fn get_marketplace_data_by_id(
     };
 
     let query = "
-        SELECT ip_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end, 
+        SELECT mydata_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end, 
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
                geographic_region, data_quality, sample_size, is_updating, update_frequency
-        FROM my_ip_data 
-        WHERE ip_id = $1
+        FROM mydata_data 
+        WHERE mydata_id = $1
     ";
 
     let result = diesel::sql_query(query)
-        .bind::<Text, _>(&ip_id)
-        .get_result::<MarketplaceDataBasic>(&mut conn)
+        .bind::<Text, _>(&mydata_id)
+        .get_result::<MyDataBasic>(&mut conn)
         .await;
 
     match result {
         Ok(data) => Json(data).into_response(),
         Err(diesel::result::Error::NotFound) => {
-            (StatusCode::NOT_FOUND, "Marketplace data not found").into_response()
+            (StatusCode::NOT_FOUND, "MyData not found").into_response()
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -168,10 +168,10 @@ pub async fn get_marketplace_data_by_id(
     }
 }
 
-/// List marketplace data with filtering and pagination
-pub async fn list_marketplace_data(
+/// List MyData with filtering and pagination
+pub async fn list_mydata(
     State(pool): State<DbPool>,
-    Query(params): Query<MarketplaceQuery>,
+    Query(params): Query<MyDataQuery>,
 ) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
@@ -189,10 +189,10 @@ pub async fn list_marketplace_data(
 
     // Build dynamic SQL query based on filters
     let mut query = "
-        SELECT ip_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
+        SELECT mydata_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
                geographic_region, data_quality, sample_size, is_updating, update_frequency
-        FROM my_ip_data WHERE 1=1".to_string();
+        FROM mydata_data WHERE 1=1".to_string();
 
     // Apply filters
     if let Some(creator) = &params.creator {
@@ -253,7 +253,7 @@ pub async fn list_marketplace_data(
     query.push_str(&format!(" LIMIT {} OFFSET {}", limit, offset));
 
     let result = diesel::sql_query(&query)
-        .load::<MarketplaceDataBasic>(&mut conn)
+        .load::<MyDataBasic>(&mut conn)
         .await;
 
     match result {
@@ -266,11 +266,11 @@ pub async fn list_marketplace_data(
     }
 }
 
-/// Get purchases for a specific IP
-pub async fn get_ip_purchases(
+/// Get purchases for a specific MyData
+pub async fn get_mydata_purchases(
     State(pool): State<DbPool>,
-    Path(ip_id): Path<String>,
-    Query(params): Query<MarketplaceQuery>,
+    Path(mydata_id): Path<String>,
+    Query(params): Query<MyDataQuery>,
 ) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
@@ -287,9 +287,9 @@ pub async fn get_ip_purchases(
     let offset = params.offset.unwrap_or(0);
 
     let query = "
-        SELECT id, ip_id, buyer, price, purchase_type, purchase_time, time, transaction_id
-        FROM my_ip_purchases 
-        WHERE ip_id = $1 
+        SELECT id, mydata_id, buyer, price, purchase_type, purchase_time, time, transaction_id
+        FROM mydata_purchases 
+        WHERE mydata_id = $1 
         ORDER BY purchase_time DESC 
         LIMIT $2 OFFSET $3
     ";
@@ -299,7 +299,7 @@ pub async fn get_ip_purchases(
         #[diesel(sql_type = Integer)]
         id: i32,
         #[diesel(sql_type = Text)]
-        ip_id: String,
+        mydata_id: String,
         #[diesel(sql_type = Text)]
         buyer: String,
         #[diesel(sql_type = BigInt)]
@@ -315,7 +315,7 @@ pub async fn get_ip_purchases(
     }
 
     let result = diesel::sql_query(query)
-        .bind::<Text, _>(&ip_id)
+        .bind::<Text, _>(&mydata_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<PurchaseInfo>(&mut conn)
@@ -331,11 +331,11 @@ pub async fn get_ip_purchases(
     }
 }
 
-/// Get subscriptions for a specific IP
-pub async fn get_ip_subscriptions(
+/// Get subscriptions for a specific MyData
+pub async fn get_mydata_subscriptions(
     State(pool): State<DbPool>,
-    Path(ip_id): Path<String>,
-    Query(params): Query<MarketplaceQuery>,
+    Path(mydata_id): Path<String>,
+    Query(params): Query<MyDataQuery>,
 ) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
@@ -352,9 +352,9 @@ pub async fn get_ip_subscriptions(
     let offset = params.offset.unwrap_or(0);
 
     let query = "
-        SELECT id, ip_id, subscriber, subscription_start, subscription_end, price, time, transaction_id
-        FROM my_ip_subscriptions 
-        WHERE ip_id = $1 
+        SELECT id, mydata_id, subscriber, subscription_start, subscription_end, price, time, transaction_id
+        FROM mydata_subscriptions 
+        WHERE mydata_id = $1 
         ORDER BY subscription_start DESC 
         LIMIT $2 OFFSET $3
     ";
@@ -364,7 +364,7 @@ pub async fn get_ip_subscriptions(
         #[diesel(sql_type = Integer)]
         id: i32,
         #[diesel(sql_type = Text)]
-        ip_id: String,
+        mydata_id: String,
         #[diesel(sql_type = Text)]
         subscriber: String,
         #[diesel(sql_type = BigInt)]
@@ -380,7 +380,7 @@ pub async fn get_ip_subscriptions(
     }
 
     let result = diesel::sql_query(query)
-        .bind::<Text, _>(&ip_id)
+        .bind::<Text, _>(&mydata_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<SubscriptionInfo>(&mut conn)
@@ -396,11 +396,11 @@ pub async fn get_ip_subscriptions(
     }
 }
 
-/// Get revenue analytics for a specific IP
-pub async fn get_ip_revenue(
+/// Get revenue analytics for a specific MyData
+pub async fn get_mydata_revenue(
     State(pool): State<DbPool>,
-    Path(ip_id): Path<String>,
-    Query(params): Query<MarketplaceQuery>,
+    Path(mydata_id): Path<String>,
+    Query(params): Query<MyDataQuery>,
 ) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
@@ -417,9 +417,9 @@ pub async fn get_ip_revenue(
     let offset = params.offset.unwrap_or(0);
 
     let query = "
-        SELECT id, ip_id, from_address, to_address, amount, revenue_type, revenue_time, time, transaction_id
-        FROM my_ip_revenue 
-        WHERE ip_id = $1 
+        SELECT id, mydata_id, from_address, to_address, amount, revenue_type, revenue_time, time, transaction_id
+        FROM mydata_revenue 
+        WHERE mydata_id = $1 
         ORDER BY revenue_time DESC 
         LIMIT $2 OFFSET $3
     ";
@@ -429,7 +429,7 @@ pub async fn get_ip_revenue(
         #[diesel(sql_type = Integer)]
         id: i32,
         #[diesel(sql_type = Text)]
-        ip_id: String,
+        mydata_id: String,
         #[diesel(sql_type = Text)]
         from_address: String,
         #[diesel(sql_type = Text)]
@@ -447,7 +447,7 @@ pub async fn get_ip_revenue(
     }
 
     let result = diesel::sql_query(query)
-        .bind::<Text, _>(&ip_id)
+        .bind::<Text, _>(&mydata_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<RevenueInfo>(&mut conn)
@@ -463,11 +463,11 @@ pub async fn get_ip_revenue(
     }
 }
 
-/// Get access logs for a specific IP  
-pub async fn get_ip_access_logs(
+/// Get access logs for a specific MyData
+pub async fn get_mydata_access_logs(
     State(pool): State<DbPool>,
-    Path(ip_id): Path<String>,
-    Query(params): Query<MarketplaceQuery>,
+    Path(mydata_id): Path<String>,
+    Query(params): Query<MyDataQuery>,
 ) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
@@ -484,9 +484,9 @@ pub async fn get_ip_access_logs(
     let offset = params.offset.unwrap_or(0);
 
     let query = "
-        SELECT id, ip_id, user_address, access_type, access_time, time, transaction_id
-        FROM my_ip_access_logs 
-        WHERE ip_id = $1 
+        SELECT id, mydata_id, user_address, access_type, access_time, time, transaction_id
+        FROM mydata_access_logs 
+        WHERE mydata_id = $1 
         ORDER BY access_time DESC 
         LIMIT $2 OFFSET $3
     ";
@@ -496,7 +496,7 @@ pub async fn get_ip_access_logs(
         #[diesel(sql_type = Integer)]
         id: i32,
         #[diesel(sql_type = Text)]
-        ip_id: String,
+        mydata_id: String,
         #[diesel(sql_type = Text)]
         user_address: String,
         #[diesel(sql_type = Text)]
@@ -510,7 +510,7 @@ pub async fn get_ip_access_logs(
     }
 
     let result = diesel::sql_query(query)
-        .bind::<Text, _>(&ip_id)
+        .bind::<Text, _>(&mydata_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<AccessLogInfo>(&mut conn)
@@ -526,11 +526,11 @@ pub async fn get_ip_access_logs(
     }
 }
 
-/// Get marketplace data created by a specific creator
-pub async fn get_creator_data(
+/// Get MyData created by a specific creator
+pub async fn get_creator_mydata(
     State(pool): State<DbPool>,
     Path(creator): Path<String>,
-    Query(params): Query<MarketplaceQuery>,
+    Query(params): Query<MyDataQuery>,
 ) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
@@ -547,10 +547,10 @@ pub async fn get_creator_data(
     let offset = params.offset.unwrap_or(0);
 
     let query = "
-        SELECT ip_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
+        SELECT mydata_id, owner, media_type, tags, platform_id, timestamp_start, timestamp_end,
                created_at, last_updated, one_time_price, subscription_price, subscription_duration_days,
                geographic_region, data_quality, sample_size, is_updating, update_frequency
-        FROM my_ip_data 
+        FROM mydata_data 
         WHERE owner = $1 
         ORDER BY created_at DESC 
         LIMIT $2 OFFSET $3
@@ -560,7 +560,7 @@ pub async fn get_creator_data(
         .bind::<Text, _>(&creator)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
-        .load::<MarketplaceDataBasic>(&mut conn)
+        .load::<MyDataBasic>(&mut conn)
         .await;
 
     match result {
@@ -573,10 +573,10 @@ pub async fn get_creator_data(
     }
 }
 
-/// Get comprehensive stats for a specific marketplace data
-pub async fn get_marketplace_stats(
+/// Get comprehensive stats for a specific MyData
+pub async fn get_mydata_stats(
     State(pool): State<DbPool>,
-    Path(ip_id): Path<String>,
+    Path(mydata_id): Path<String>,
 ) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
@@ -589,17 +589,17 @@ pub async fn get_marketplace_stats(
         }
     };
 
-    // First get the marketplace data basic info
+    // First get the MyData basic info
     let data_query = "
-        SELECT ip_id, owner, media_type, one_time_price, subscription_price, created_at, last_updated
-        FROM my_ip_data 
-        WHERE ip_id = $1
+        SELECT mydata_id, owner, media_type, one_time_price, subscription_price, created_at, last_updated
+        FROM mydata_data 
+        WHERE mydata_id = $1
     ";
 
     #[derive(QueryableByName)]
     struct DataInfo {
         #[diesel(sql_type = Text)]
-        ip_id: String,
+        mydata_id: String,
         #[diesel(sql_type = Text)]
         owner: String,
         #[diesel(sql_type = Text)]
@@ -615,13 +615,13 @@ pub async fn get_marketplace_stats(
     }
 
     let data_info = match diesel::sql_query(data_query)
-        .bind::<Text, _>(&ip_id)
+        .bind::<Text, _>(&mydata_id)
         .get_result::<DataInfo>(&mut conn)
         .await
     {
         Ok(data) => data,
         Err(diesel::result::Error::NotFound) => {
-            return (StatusCode::NOT_FOUND, "Marketplace data not found").into_response();
+            return (StatusCode::NOT_FOUND, "MyData not found").into_response();
         }
         Err(e) => {
             return (
@@ -636,13 +636,13 @@ pub async fn get_marketplace_stats(
     let stats_query = "
         SELECT 
             COALESCE(SUM(r.amount), 0) as total_revenue,
-            (SELECT COUNT(*) FROM my_ip_purchases p WHERE p.ip_id = $1) as purchase_count,
-            (SELECT COUNT(*) FROM my_ip_subscriptions s WHERE s.ip_id = $1) as subscription_count,
-            (SELECT COUNT(*) FROM my_ip_access_logs a WHERE a.ip_id = $1) as access_count
+            (SELECT COUNT(*) FROM mydata_purchases p WHERE p.mydata_id = $1) as purchase_count,
+            (SELECT COUNT(*) FROM mydata_subscriptions s WHERE s.mydata_id = $1) as subscription_count,
+            (SELECT COUNT(*) FROM mydata_access_logs a WHERE a.mydata_id = $1) as access_count
         FROM 
-            my_ip_revenue r
+            mydata_revenue r
         WHERE 
-            r.ip_id = $1
+            r.mydata_id = $1
     ";
 
     #[derive(QueryableByName)]
@@ -658,7 +658,7 @@ pub async fn get_marketplace_stats(
     }
 
     let stats_info = match diesel::sql_query(stats_query)
-        .bind::<Text, _>(&ip_id)
+        .bind::<Text, _>(&mydata_id)
         .get_result::<StatsInfo>(&mut conn)
         .await
     {
@@ -673,8 +673,8 @@ pub async fn get_marketplace_stats(
     };
 
     // Combine all the stats
-    let stats_response = MarketplaceStatsResponse {
-        ip_id: data_info.ip_id,
+    let stats_response = MyDataStatsResponse {
+        mydata_id: data_info.mydata_id,
         owner: data_info.owner,
         media_type: data_info.media_type,
         total_revenue: stats_info.total_revenue,
@@ -691,9 +691,9 @@ pub async fn get_marketplace_stats(
 }
 
 /// Get revenue timeline data using TimescaleDB time_bucket function
-pub async fn get_revenue_timeline(
+pub async fn get_mydata_revenue_timeline(
     State(pool): State<DbPool>,
-    Path(ip_id): Path<String>,
+    Path(mydata_id): Path<String>,
 ) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
@@ -713,9 +713,9 @@ pub async fn get_revenue_timeline(
             SUM(amount) as daily_revenue,
             COUNT(*) as daily_transactions
         FROM 
-            my_ip_revenue
+            mydata_revenue
         WHERE 
-            ip_id = $1
+            mydata_id = $1
         GROUP BY 
             day
         ORDER BY 
@@ -724,7 +724,7 @@ pub async fn get_revenue_timeline(
     ";
 
     let result = diesel::sql_query(query)
-        .bind::<Text, _>(&ip_id)
+        .bind::<Text, _>(&mydata_id)
         .load::<DailyRevenue>(&mut conn)
         .await;
 
@@ -739,9 +739,9 @@ pub async fn get_revenue_timeline(
 }
 
 /// Get access analytics using TimescaleDB time_bucket function
-pub async fn get_access_analytics(
+pub async fn get_mydata_access_analytics(
     State(pool): State<DbPool>,
-    Path(ip_id): Path<String>,
+    Path(mydata_id): Path<String>,
 ) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
@@ -762,9 +762,9 @@ pub async fn get_access_analytics(
             COUNT(DISTINCT user_address) as unique_users,
             COUNT(*) as total_accesses
         FROM 
-            my_ip_access_logs
+            mydata_access_logs
         WHERE 
-            ip_id = $1
+            mydata_id = $1
         GROUP BY 
             day, access_type
         ORDER BY 
@@ -773,7 +773,7 @@ pub async fn get_access_analytics(
     ";
 
     let result = diesel::sql_query(query)
-        .bind::<Text, _>(&ip_id)
+        .bind::<Text, _>(&mydata_id)
         .load::<AccessAnalytics>(&mut conn)
         .await;
 
@@ -787,10 +787,10 @@ pub async fn get_access_analytics(
     }
 }
 
-/// Get popular marketplace data (most purchases/revenue/access)
-pub async fn get_popular_marketplace_data(
+/// Get popular MyData (most purchases/revenue/access)
+pub async fn get_popular_mydata(
     State(pool): State<DbPool>,
-    Query(params): Query<MarketplaceQuery>,
+    Query(params): Query<MyDataQuery>,
 ) -> Response {
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
@@ -809,16 +809,16 @@ pub async fn get_popular_marketplace_data(
     // Join with revenue and purchase stats to sort by popularity
     let query = "
         SELECT DISTINCT
-            d.ip_id, d.owner, d.media_type, d.tags, d.platform_id, d.timestamp_start, d.timestamp_end,
+            d.mydata_id, d.owner, d.media_type, d.tags, d.platform_id, d.timestamp_start, d.timestamp_end,
             d.created_at, d.last_updated, d.one_time_price, d.subscription_price, d.subscription_duration_days,
             d.geographic_region, d.data_quality, d.sample_size, d.is_updating, d.update_frequency
-        FROM my_ip_data d
-        LEFT JOIN my_ip_purchases p ON d.ip_id = p.ip_id
-        LEFT JOIN my_ip_revenue r ON d.ip_id = r.ip_id
-        LEFT JOIN my_ip_access_logs a ON d.ip_id = a.ip_id
+        FROM mydata_data d
+        LEFT JOIN mydata_purchases p ON d.mydata_id = p.mydata_id
+        LEFT JOIN mydata_revenue r ON d.mydata_id = r.mydata_id
+        LEFT JOIN mydata_access_logs a ON d.mydata_id = a.mydata_id
         WHERE 
             (d.one_time_price IS NOT NULL OR d.subscription_price IS NOT NULL)
-        GROUP BY d.ip_id, d.owner, d.media_type, d.tags, d.platform_id, d.timestamp_start, d.timestamp_end,
+        GROUP BY d.mydata_id, d.owner, d.media_type, d.tags, d.platform_id, d.timestamp_start, d.timestamp_end,
                  d.created_at, d.last_updated, d.one_time_price, d.subscription_price, d.subscription_duration_days,
                  d.geographic_region, d.data_quality, d.sample_size, d.is_updating, d.update_frequency
         ORDER BY 
@@ -830,7 +830,7 @@ pub async fn get_popular_marketplace_data(
     let result = diesel::sql_query(query)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
-        .load::<MarketplaceDataBasic>(&mut conn)
+        .load::<MyDataBasic>(&mut conn)
         .await;
 
     match result {

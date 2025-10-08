@@ -271,7 +271,7 @@ table! {
         removed_by -> Nullable<Varchar>,
         transaction_id -> Varchar,
         time -> Timestamptz,
-        my_ip_id -> Nullable<Varchar>,
+        mydata_id -> Nullable<Varchar>,
         revenue_recipient -> Nullable<Varchar>,
         // PoC fields
         poc_badge_id -> Nullable<Varchar>,
@@ -429,13 +429,13 @@ table! {
 }
 
 // ===========================================================================
-// MY IP DATA MARKETPLACE TABLES
+// MYDATA MARKETPLACE TABLES
 // ===========================================================================
 
 // Main data marketplace entries (Regular table - reference data)
 table! {
-    my_ip_data (ip_id) {
-        ip_id -> Varchar,
+    mydata_data (mydata_id) {
+        mydata_id -> Varchar,
         owner -> Varchar,
         media_type -> Varchar,
         tags -> Jsonb,
@@ -461,9 +461,9 @@ table! {
 
 // Purchase records (TimescaleDB hypertable)
 table! {
-    my_ip_purchases (id, time) {
+    mydata_purchases (id, time) {
         id -> Int4,
-        ip_id -> Varchar,
+        mydata_id -> Varchar,
         buyer -> Varchar,
         price -> Int8,
         purchase_type -> Varchar,
@@ -475,9 +475,9 @@ table! {
 
 // Subscription records (TimescaleDB hypertable)
 table! {
-    my_ip_subscriptions (id, time) {
+    mydata_subscriptions (id, time) {
         id -> Int4,
-        ip_id -> Varchar,
+        mydata_id -> Varchar,
         subscriber -> Varchar,
         subscription_start -> Int8,
         subscription_end -> Int8,
@@ -489,9 +489,9 @@ table! {
 
 // Revenue tracking (TimescaleDB hypertable - updated structure)
 table! {
-    my_ip_revenue (id, time) {
+    mydata_revenue (id, time) {
         id -> Int4,
-        ip_id -> Varchar,
+        mydata_id -> Varchar,
         from_address -> Varchar,
         to_address -> Varchar,
         amount -> Int8,
@@ -504,9 +504,9 @@ table! {
 
 // Access logs for analytics (TimescaleDB hypertable)
 table! {
-    my_ip_access_logs (id, time) {
+    mydata_access_logs (id, time) {
         id -> Int4,
-        ip_id -> Varchar,
+        mydata_id -> Varchar,
         user_address -> Varchar,
         access_type -> Varchar,
         access_time -> Int8,
@@ -1315,12 +1315,12 @@ allow_tables_to_appear_in_same_query!(
     posts_transfers,
     posts_moderation_events,
     posts_deletion_events,
-    // MyIP Data Marketplace tables
-    my_ip_data,
-    my_ip_purchases,
-    my_ip_subscriptions,
-    my_ip_revenue,
-    my_ip_access_logs,
+    // MyData Marketplace tables
+    mydata_data,
+    mydata_purchases,
+    mydata_subscriptions,
+    mydata_revenue,
+    mydata_access_logs,
     // Social Proof Token tables
     social_proof_token_pools,
     spt_holdings,

@@ -1203,7 +1203,7 @@ async fn handle_post_created(
             posts::media_urls.eq(&new_post.media_urls),
             posts::mentions.eq(&new_post.mentions),
             posts::metadata_json.eq(&new_post.metadata_json),
-            posts::my_ip_id.eq(&new_post.my_ip_id),
+            posts::mydata_id.eq(&new_post.mydata_id),
             posts::created_at.eq(&new_post.created_at),
             posts::transaction_id.eq(transaction_id),
         ))

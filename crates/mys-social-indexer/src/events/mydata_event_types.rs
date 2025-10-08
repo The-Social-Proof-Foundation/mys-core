@@ -11,7 +11,7 @@ use serde_json::Value;
 /// Event emitted when new data is added to the marketplace
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataCreatedEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub owner: String,
     pub media_type: String,
     pub tags: Vec<String>,
@@ -33,7 +33,7 @@ pub struct DataCreatedEvent {
 /// Event emitted when data metadata is updated
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataUpdatedEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub updater: String,
     pub old_tags: Vec<String>,
     pub new_tags: Vec<String>,
@@ -49,7 +49,7 @@ pub struct DataUpdatedEvent {
 /// Event emitted when data ownership is transferred
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataTransferredEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub from_owner: String,
     pub to_owner: String,
     pub transfer_time: u64,
@@ -59,7 +59,7 @@ pub struct DataTransferredEvent {
 /// Event emitted when data is purchased (one-time)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataPurchasedEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub buyer: String,
     pub price: u64,
     pub purchase_time: u64,
@@ -69,7 +69,7 @@ pub struct DataPurchasedEvent {
 /// Event emitted when a subscription is created
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubscriptionCreatedEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub subscriber: String,
     pub subscription_start: u64,
     pub subscription_end: u64,
@@ -80,7 +80,7 @@ pub struct SubscriptionCreatedEvent {
 /// Event emitted when a subscription is renewed
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubscriptionRenewedEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub subscriber: String,
     pub old_subscription_end: u64,
     pub new_subscription_end: u64,
@@ -91,7 +91,7 @@ pub struct SubscriptionRenewedEvent {
 /// Event emitted when a subscription is cancelled
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubscriptionCancelledEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub subscriber: String,
     pub cancellation_time: u64,
     pub effective_end_time: u64, // When access actually ends
@@ -101,7 +101,7 @@ pub struct SubscriptionCancelledEvent {
 /// Event emitted when data access is granted (free or special access)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataAccessGrantedEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub grantor: String,
     pub grantee: String,
     pub access_type: String, // "preview", "grant", etc.
@@ -112,7 +112,7 @@ pub struct DataAccessGrantedEvent {
 /// Event emitted when revenue is distributed
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RevenueDistributedEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub from_address: String,
     pub to_address: String,
     pub amount: u64,
@@ -124,7 +124,7 @@ pub struct RevenueDistributedEvent {
 /// Event emitted when data is accessed
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataAccessedEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub user_address: String,
     pub access_type: String, // "one_time", "subscription", "grant", "preview"
     pub access_time: u64,
@@ -134,7 +134,7 @@ pub struct DataAccessedEvent {
 /// Event emitted when data pricing is changed
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataPricingChangedEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub owner: String,
     pub old_one_time_price: Option<u64>,
     pub new_one_time_price: Option<u64>,
@@ -148,7 +148,7 @@ pub struct DataPricingChangedEvent {
 /// Event emitted when data is removed from marketplace
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataRemovedEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub owner: String,
     pub removal_time: u64,
     pub removal_reason: Option<String>,
@@ -162,7 +162,7 @@ pub struct DataRemovedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnalyticsEvent {
     pub event_type: String,
-    pub ip_id: String,
+    pub mydata_id: String,
     pub user_address: Option<String>,
     pub metadata: Value,
     pub timestamp: u64,
@@ -171,7 +171,7 @@ pub struct AnalyticsEvent {
 /// Event emitted when data becomes trending
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataTrendingEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
     pub media_type: String,
     pub trending_score: f64,
     pub unique_purchasers_24h: u64,
@@ -245,7 +245,7 @@ impl DataCreatedEvent {
     pub fn to_analytics_event(&self) -> AnalyticsEvent {
         AnalyticsEvent {
             event_type: EVENT_DATA_CREATED.to_string(),
-            ip_id: self.ip_id.clone(),
+            mydata_id: self.mydata_id.clone(),
             user_address: Some(self.owner.clone()),
             metadata: serde_json::to_value(self).unwrap_or(Value::Null),
             timestamp: self.created_at,
@@ -257,7 +257,7 @@ impl DataPurchasedEvent {
     pub fn to_analytics_event(&self) -> AnalyticsEvent {
         AnalyticsEvent {
             event_type: EVENT_DATA_PURCHASED.to_string(),
-            ip_id: self.ip_id.clone(),
+            mydata_id: self.mydata_id.clone(),
             user_address: Some(self.buyer.clone()),
             metadata: serde_json::to_value(self).unwrap_or(Value::Null),
             timestamp: self.purchase_time,
@@ -269,7 +269,7 @@ impl SubscriptionCreatedEvent {
     pub fn to_analytics_event(&self) -> AnalyticsEvent {
         AnalyticsEvent {
             event_type: EVENT_SUBSCRIPTION_CREATED.to_string(),
-            ip_id: self.ip_id.clone(),
+            mydata_id: self.mydata_id.clone(),
             user_address: Some(self.subscriber.clone()),
             metadata: serde_json::to_value(self).unwrap_or(Value::Null),
             timestamp: self.subscription_start,

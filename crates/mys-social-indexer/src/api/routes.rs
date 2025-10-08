@@ -18,10 +18,10 @@ use crate::api::handlers::governance::{
     list_registries,
 };
 use crate::api::handlers::health::health_check;
-use crate::api::handlers::my_ip::{
-    get_access_analytics, get_creator_data, get_ip_access_logs, get_ip_purchases, get_ip_revenue,
-    get_ip_subscriptions, get_marketplace_data_by_id, get_marketplace_stats,
-    get_popular_marketplace_data, get_revenue_timeline, list_marketplace_data,
+use crate::api::handlers::mydata::{
+    get_creator_mydata, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_by_id,
+    get_mydata_purchases, get_mydata_revenue, get_mydata_revenue_timeline, get_mydata_stats,
+    get_mydata_subscriptions, get_popular_mydata, list_mydata,
 };
 use crate::api::handlers::platforms::{
     get_approved_platforms, get_platform_approval_status, get_platform_blocked_profiles,
@@ -226,24 +226,24 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/spot/:post_id/bets", get(list_spot_bets))
         .route("/spot/:post_id/payouts", get(list_spot_payouts))
         .route("/spot/:post_id/refunds", get(list_spot_refunds))
-        // MyIP Marketplace endpoints (using TimescaleDB)
-        .route("/marketplace", get(list_marketplace_data))
-        .route("/marketplace/popular", get(get_popular_marketplace_data))
-        .route("/marketplace/:id", get(get_marketplace_data_by_id))
-        .route("/marketplace/:id/purchases", get(get_ip_purchases))
-        .route("/marketplace/:id/subscriptions", get(get_ip_subscriptions))
-        .route("/marketplace/:id/revenue", get(get_ip_revenue))
-        .route("/marketplace/:id/access-logs", get(get_ip_access_logs))
-        .route("/marketplace/:id/stats", get(get_marketplace_stats))
+        // MyData Marketplace endpoints (using TimescaleDB)
+        .route("/mydata", get(list_mydata))
+        .route("/mydata/popular", get(get_popular_mydata))
+        .route("/mydata/:id", get(get_mydata_by_id))
+        .route("/mydata/:id/purchases", get(get_mydata_purchases))
+        .route("/mydata/:id/subscriptions", get(get_mydata_subscriptions))
+        .route("/mydata/:id/revenue", get(get_mydata_revenue))
+        .route("/mydata/:id/access-logs", get(get_mydata_access_logs))
+        .route("/mydata/:id/stats", get(get_mydata_stats))
         .route(
-            "/marketplace/:id/revenue-timeline",
-            get(get_revenue_timeline),
+            "/mydata/:id/revenue-timeline",
+            get(get_mydata_revenue_timeline),
         )
         .route(
-            "/marketplace/:id/access-analytics",
-            get(get_access_analytics),
+            "/mydata/:id/access-analytics",
+            get(get_mydata_access_analytics),
         )
-        .route("/creators/:id/marketplace-data", get(get_creator_data))
+        .route("/creators/:id/mydata", get(get_creator_mydata))
         // Governance endpoints
         .route("/governance/proposals", get(list_proposals))
         .route("/governance/proposals/:id", get(get_proposal_by_id))

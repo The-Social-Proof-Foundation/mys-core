@@ -5,8 +5,8 @@ pub mod blocking_events;
 pub mod event_utils;
 pub mod governance_event_types;
 pub mod governance_events;
-pub mod my_ip_event_types;
-pub mod my_ip_events;
+pub mod mydata_event_types;
+pub mod mydata_events;
 pub mod platform_event_types;
 pub mod platform_events;
 pub mod poc_event_types;
@@ -146,13 +146,13 @@ pub struct EntityBlockedEvent {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct IPRegisteredEvent {
-    pub ip_id: String,
+    pub mydata_id: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct LicenseGrantedEvent {
     pub license_id: String,
-    pub ip_id: String,
+    pub mydata_id: String,
     pub payment_amount: u64,
 }
 
@@ -292,7 +292,7 @@ pub fn parse_json_fields(event: &Event) -> Result<JsonValue> {
 pub use blocking_events::*;
 pub use governance_event_types::*;
 pub use governance_events::*;
-pub use my_ip_event_types::*;
+pub use mydata_event_types::*;
 pub use platform_event_types::*;
 pub use profile_event_types::*;
 pub use social_graph_event_types::*;

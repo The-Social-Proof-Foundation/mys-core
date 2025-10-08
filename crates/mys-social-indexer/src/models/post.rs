@@ -53,7 +53,7 @@ pub struct Post {
     #[diesel(sql_type = Varchar)]
     pub transaction_id: String,
     pub time: DateTime<Utc>,
-    pub my_ip_id: Option<String>,
+    pub mydata_id: Option<String>,
     pub revenue_recipient: Option<String>,
     pub promotion_id: Option<String>,
 }
@@ -82,7 +82,7 @@ pub struct NewPost {
     pub removed_from_platform: bool,
     pub removed_by: Option<String>,
     pub transaction_id: String,
-    pub my_ip_id: Option<String>,
+    pub mydata_id: Option<String>,
     pub revenue_recipient: Option<String>,
     pub promotion_id: Option<String>,
 }

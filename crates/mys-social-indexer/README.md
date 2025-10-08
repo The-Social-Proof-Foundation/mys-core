@@ -9,7 +9,7 @@ A indexer for the MySocial blockchain that focuses on tracking social interactio
 - **Platform Indexing**: Tracks platform creation and user membership
 - **Post Indexing**: Tracks posts, comments, reactions, tips, and reposts
 - **Post Promotion**: Tracks pay-per-view promoted posts with budget management and view tracking
-- **MyIP Integration**: Tracks intellectual property licenses and revenue
+- **MyData Integration**: Tracks encrypted data monetization and revenue
 - **Governance Integration**: Tracks proposals, voting, and delegates
 - **Social Proof Token**: Tracks token pools, transactions, holdings, and staking pools
 - **Token Vesting**: Tracks MYS token vesting schedules with configurable release curves
@@ -199,7 +199,7 @@ RUST_LOG=info,mys_social_indexer=debug
 - **GET /stats/system** - Get overall system statistics (tokens, posts, comments, reactions, relationships)
 
 ### Search API
-- **GET /search** - Global search across profiles, posts, spt tokens, spt staking pools, governance circles, platforms, myip, and governance proposals
+- **GET /search** - Global search across profiles, posts, spt tokens, spt staking pools, governance circles, platforms, mydata, and governance proposals
 
 #### Search Parameters
 - `query` (required) - Search term to match against various fields
@@ -214,6 +214,7 @@ RUST_LOG=info,mys_social_indexer=debug
 - `spt-reservaton-pool` - Search staking pools by pool ID, associated ID, owner, and status
 - `governance-registry` - Search governance circles/registries (ecosystem, reputation, community notes) with delegate counts and voting parameters
 - `platform` - Search platforms by name, platform ID, developer address, and description
+- `mydata` - Search MyData entries by ID, owner, media type, and tags
 - `proposal` - Search governance proposals by title, description, ID, and submitter
 
 #### Search Features
@@ -337,18 +338,18 @@ GET /search?query=social&page=2&limit=50
 - **GET /revenue/platforms/:address/stats** - Get platform revenue statistics
 - **GET /revenue/spt/pools/:pool_id** - Get SPT pool revenue
 
-### MyIP Marketplace API
-- **GET /marketplace** - List marketplace data
-- **GET /marketplace/popular** - Get popular marketplace items
-- **GET /marketplace/:id** - Get marketplace item by ID
-- **GET /marketplace/:id/purchases** - Get purchases for a marketplace item
-- **GET /marketplace/:id/subscriptions** - Get subscriptions for a marketplace item
-- **GET /marketplace/:id/revenue** - Get revenue for a marketplace item
-- **GET /marketplace/:id/access-logs** - Get access logs for a marketplace item
-- **GET /marketplace/:id/stats** - Get statistics for a marketplace item
-- **GET /marketplace/:id/revenue-timeline** - Get revenue timeline for a marketplace item
-- **GET /marketplace/:id/access-analytics** - Get access analytics for a marketplace item
-- **GET /creators/:id/marketplace-data** - Get marketplace data created by a specific address
+### MyData Marketplace API
+- **GET /mydata** - List MyData entries
+- **GET /mydata/popular** - Get popular MyData entries
+- **GET /mydata/:id** - Get MyData entry by ID
+- **GET /mydata/:id/purchases** - Get purchases for a MyData entry
+- **GET /mydata/:id/subscriptions** - Get subscriptions for a MyData entry
+- **GET /mydata/:id/revenue** - Get revenue for a MyData entry
+- **GET /mydata/:id/access-logs** - Get access logs for a MyData entry
+- **GET /mydata/:id/stats** - Get statistics for a MyData entry
+- **GET /mydata/:id/revenue-timeline** - Get revenue timeline for a MyData entry
+- **GET /mydata/:id/access-analytics** - Get access analytics for a MyData entry
+- **GET /creators/:id/mydata** - Get MyData entries created by a specific address
 
 ### Governance API
 - **GET /governance/proposals** - List governance proposals

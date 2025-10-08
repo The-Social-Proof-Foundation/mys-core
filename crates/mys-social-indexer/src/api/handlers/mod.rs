@@ -4,7 +4,7 @@
 pub mod blocking;
 pub mod governance;
 pub mod health;
-pub mod my_ip;
+pub mod mydata;
 pub mod platforms;
 pub mod poc;
 pub mod posts;

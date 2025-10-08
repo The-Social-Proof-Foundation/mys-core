@@ -21,7 +21,7 @@ use super::platform_handler;
 use super::social_graph_handler;
 use super::governance_handler;
 use super::post_handler;
-use super::my_ip_handler;
+use super::mydata_handler;
 
 /// Handle a blockchain event
 pub async fn handle_event(db: &Arc<Database>, event: &MysEvent, tx_digest: &str) -> Result<()> {
@@ -39,7 +39,7 @@ pub async fn handle_event(db: &Arc<Database>, event: &MysEvent, tx_digest: &str)
     } else if event_type.contains(MODULE_PREFIX_BLOCK_LIST) {
         // Block list events are handled by blockchain/events.rs
     } else if event_type.contains(MODULE_PREFIX_MY_IP) {
-        my_ip_handler::handle_event(db, event, tx_digest).await?;
+        mydata_handler::handle_event(db, event, tx_digest).await?;
     } else if event_type.contains(MODULE_PREFIX_CONTENT) {
         post_handler::handle_event(db, event, tx_digest).await?;
     }

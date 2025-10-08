@@ -9,7 +9,7 @@ use serde_json::Value;
 
 // Import tables from schema
 use crate::schema::{
-    my_ip_access_logs, my_ip_data, my_ip_purchases, my_ip_revenue, my_ip_subscriptions,
+    mydata_access_logs, mydata_data, mydata_purchases, mydata_revenue, mydata_subscriptions,
 };
 
 // ============================================================================
@@ -17,10 +17,10 @@ use crate::schema::{
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, PartialEq)]
-#[diesel(table_name = my_ip_data)]
-#[diesel(primary_key(ip_id))]
-pub struct MyIPData {
-    pub ip_id: String,
+#[diesel(table_name = mydata_data)]
+#[diesel(primary_key(mydata_id))]
+pub struct MyDataData {
+    pub mydata_id: String,
     pub owner: String,
     pub media_type: String,
     pub tags: Value,
@@ -44,9 +44,9 @@ pub struct MyIPData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = my_ip_data)]
-pub struct NewMyIPData {
-    pub ip_id: String,
+#[diesel(table_name = mydata_data)]
+pub struct NewMyDataData {
+    pub mydata_id: String,
     pub owner: String,
     pub media_type: String,
     pub tags: Value,
@@ -69,10 +69,10 @@ pub struct NewMyIPData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
-#[diesel(table_name = my_ip_purchases)]
-pub struct MyIPPurchase {
+#[diesel(table_name = mydata_purchases)]
+pub struct MyDataPurchase {
     pub id: i32,
-    pub ip_id: String,
+    pub mydata_id: String,
     pub buyer: String,
     pub price: i64,
     pub purchase_type: String,
@@ -82,9 +82,9 @@ pub struct MyIPPurchase {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = my_ip_purchases)]
-pub struct NewMyIPPurchase {
-    pub ip_id: String,
+#[diesel(table_name = mydata_purchases)]
+pub struct NewMyDataPurchase {
+    pub mydata_id: String,
     pub buyer: String,
     pub price: i64,
     pub purchase_type: String,
@@ -93,10 +93,10 @@ pub struct NewMyIPPurchase {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
-#[diesel(table_name = my_ip_subscriptions)]
-pub struct MyIPSubscription {
+#[diesel(table_name = mydata_subscriptions)]
+pub struct MyDataSubscription {
     pub id: i32,
-    pub ip_id: String,
+    pub mydata_id: String,
     pub subscriber: String,
     pub subscription_start: i64,
     pub subscription_end: i64,
@@ -106,9 +106,9 @@ pub struct MyIPSubscription {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = my_ip_subscriptions)]
-pub struct NewMyIPSubscription {
-    pub ip_id: String,
+#[diesel(table_name = mydata_subscriptions)]
+pub struct NewMyDataSubscription {
+    pub mydata_id: String,
     pub subscriber: String,
     pub subscription_start: i64,
     pub subscription_end: i64,
@@ -117,10 +117,10 @@ pub struct NewMyIPSubscription {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
-#[diesel(table_name = my_ip_revenue)]
-pub struct MyIPRevenue {
+#[diesel(table_name = mydata_revenue)]
+pub struct MyDataRevenue {
     pub id: i32,
-    pub ip_id: String,
+    pub mydata_id: String,
     pub from_address: String,
     pub to_address: String,
     pub amount: i64,
@@ -131,9 +131,9 @@ pub struct MyIPRevenue {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = my_ip_revenue)]
-pub struct NewMyIPRevenue {
-    pub ip_id: String,
+#[diesel(table_name = mydata_revenue)]
+pub struct NewMyDataRevenue {
+    pub mydata_id: String,
     pub from_address: String,
     pub to_address: String,
     pub amount: i64,
@@ -143,10 +143,10 @@ pub struct NewMyIPRevenue {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
-#[diesel(table_name = my_ip_access_logs)]
-pub struct MyIPAccessLog {
+#[diesel(table_name = mydata_access_logs)]
+pub struct MyDataAccessLog {
     pub id: i32,
-    pub ip_id: String,
+    pub mydata_id: String,
     pub user_address: String,
     pub access_type: String,
     pub access_time: i64,
@@ -155,9 +155,9 @@ pub struct MyIPAccessLog {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = my_ip_access_logs)]
-pub struct NewMyIPAccessLog {
-    pub ip_id: String,
+#[diesel(table_name = mydata_access_logs)]
+pub struct NewMyDataAccessLog {
+    pub mydata_id: String,
     pub user_address: String,
     pub access_type: String,
     pub access_time: i64,
@@ -199,7 +199,7 @@ pub const UPDATE_FREQUENCY_YEARLY: &str = "yearly";
 // MARKETPLACE BUSINESS LOGIC
 // ============================================================================
 
-impl MyIPData {
+impl MyDataData {
     // Check if data is currently valid/available
     pub fn is_current(&self, current_time: i64) -> bool {
         if let Some(end_time) = self.timestamp_end {
@@ -233,7 +233,7 @@ impl MyIPData {
     }
 }
 
-impl MyIPSubscription {
+impl MyDataSubscription {
     // Check if subscription is currently active
     pub fn is_active(&self, current_time: i64) -> bool {
         current_time >= self.subscription_start && current_time <= self.subscription_end
@@ -254,9 +254,9 @@ impl MyIPSubscription {
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MyIPDataWithStats {
+pub struct MyDataDataWithStats {
     #[serde(flatten)]
-    pub data: MyIPData,
+    pub data: MyDataData,
     pub total_purchasers: i64,
     pub total_subscribers: i64,
     pub total_revenue: i64,
@@ -302,7 +302,7 @@ pub struct DailyRevenueStats {
     #[diesel(sql_type = Date)]
     pub day: chrono::NaiveDate,
     #[diesel(sql_type = Text)]
-    pub ip_id: String,
+    pub mydata_id: String,
     #[diesel(sql_type = Text)]
     pub creator: String,
     #[diesel(sql_type = Text)]
@@ -318,7 +318,7 @@ pub struct AccessAnalytics {
     #[diesel(sql_type = Date)]
     pub day: chrono::NaiveDate,
     #[diesel(sql_type = Text)]
-    pub ip_id: String,
+    pub mydata_id: String,
     #[diesel(sql_type = Text)]
     pub access_type: String,
     #[diesel(sql_type = BigInt)]
@@ -332,7 +332,7 @@ pub struct PopularDataStats {
     #[diesel(sql_type = Timestamp)]
     pub hour: chrono::NaiveDateTime,
     #[diesel(sql_type = Text)]
-    pub ip_id: String,
+    pub mydata_id: String,
     #[diesel(sql_type = BigInt)]
     pub unique_purchasers: i64,
     #[diesel(sql_type = BigInt)]
@@ -347,7 +347,7 @@ pub struct PopularDataStats {
 // HELPER FUNCTIONS FOR COMMON QUERIES
 // ============================================================================
 
-impl MyIPData {
+impl MyDataData {
     pub fn get_tags_array(&self) -> Vec<String> {
         if let Value::Array(tags) = &self.tags {
             tags.iter()

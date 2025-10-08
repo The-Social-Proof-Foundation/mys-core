@@ -4,7 +4,7 @@
 pub mod blocking;
 pub mod governance;
 pub mod indexer;
-pub mod my_ip;
+pub mod mydata;
 pub mod platform;
 pub mod poc;
 pub mod post;
@@ -23,7 +23,7 @@ pub use profile::*;
 pub use social_graph::*;
 // Explicitly import what we need from platform and avoid ambiguous re-exports
 pub use blocking::*;
-pub use my_ip::*;
+pub use mydata::*;
 pub use platform::{
     ModeratorAddedEvent, ModeratorRemovedEvent, NewPlatform, NewPlatformMembership,
     NewPlatformModerator, Platform, PlatformApprovalChangedEvent, PlatformCreatedEvent,

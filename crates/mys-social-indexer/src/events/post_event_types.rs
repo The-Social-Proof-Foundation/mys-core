@@ -39,8 +39,8 @@ pub struct PostCreatedEvent {
     pub post_type: String,
     pub parent_post_id: Option<String>,
     pub created_at: u64,
-    /// Reference to MyIP license if attached
-    pub my_ip_id: Option<String>,
+    /// Reference to MyData if attached
+    pub mydata_id: Option<String>,
     /// Reference to promotion data if this is a promoted post
     pub promotion_id: Option<String>,
 }

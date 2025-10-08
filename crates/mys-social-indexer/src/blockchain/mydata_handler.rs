@@ -12,23 +12,23 @@ use tracing::{debug, error, info};
 
 use crate::db::{Database, DbConnection};
 use crate::events::{
-    my_ip_event_types::{
+    mydata_event_types::{
         DataAccessGrantedEvent, DataAccessedEvent, DataCreatedEvent, DataPurchasedEvent,
         RevenueDistributedEvent, SubscriptionCreatedEvent,
     },
-    my_ip_events::EventBatch,
+    mydata_events::EventBatch,
     parse_event,
 };
 
 use crate::schema::{
-    my_ip_access_logs, my_ip_data, my_ip_purchases, my_ip_revenue, my_ip_subscriptions,
+    mydata_access_logs, mydata_data, mydata_purchases, mydata_revenue, mydata_subscriptions,
 };
 use mys_types::event::Event as MysEvent;
 
 use super::listener::BlockchainEvent;
 
-/// Handler for MyIP Data Marketplace events from the blockchain
-pub struct MyIpEventHandler {
+/// Handler for MyData Marketplace events from the blockchain
+pub struct MyDataEventHandler {
     /// Database connection
     db: Arc<Database>,
     /// Event receiver channel
@@ -37,8 +37,8 @@ pub struct MyIpEventHandler {
     worker_id: String,
 }
 
-impl MyIpEventHandler {
-    /// Create a new MyIpEventHandler with the given database connection
+impl MyDataEventHandler {
+    /// Create a new MyDataEventHandler with the given database connection
     pub fn new(db: Arc<Database>, rx: mpsc::Receiver<BlockchainEvent>, worker_id: String) -> Self {
         Self { db, rx, worker_id }
     }
@@ -54,33 +54,33 @@ impl MyIpEventHandler {
     /// Start the event processing loop
     pub async fn start(&mut self) -> Result<()> {
         info!(
-            "Starting MyIP marketplace event handler: {}",
+            "Starting MyData marketplace event handler: {}",
             self.worker_id
         );
 
         while let Some(blockchain_event) = self.rx.recv().await {
-            // Filter for MyIP marketplace events
+            // Filter for MyData marketplace events
             let event_type = &blockchain_event.event_type;
 
-            if self.is_myip_event(event_type) {
-                info!("Processing MyIP marketplace event: {}", event_type);
+            if self.is_mydata_event(event_type) {
+                info!("Processing MyData marketplace event: {}", event_type);
 
                 if let Err(e) = self.handle_blockchain_event(&blockchain_event).await {
                     error!(
-                        "Failed to process MyIP marketplace event {}: {}",
+                        "Failed to process MyData marketplace event {}: {}",
                         blockchain_event.event_id, e
                     );
                 }
             }
         }
 
-        info!("MyIP marketplace event handler stopped");
+        info!("MyData marketplace event handler stopped");
         Ok(())
     }
 
-    /// Check if an event type is a MyIP marketplace event
-    fn is_myip_event(&self, event_type: &str) -> bool {
-        event_type.contains("::my_ip::")
+    /// Check if an event type is a MyData marketplace event
+    fn is_mydata_event(&self, event_type: &str) -> bool {
+        event_type.contains("::mydata::")
             || event_type.contains("::marketplace::")
             || event_type.ends_with("::DataCreatedEvent")
             || event_type.ends_with("::DataPurchasedEvent")
@@ -90,12 +90,12 @@ impl MyIpEventHandler {
             || event_type.ends_with("::DataAccessedEvent")
     }
 
-    /// Handle a blockchain event for MyIP marketplace events
+    /// Handle a blockchain event for MyData marketplace events
     async fn handle_blockchain_event(&self, blockchain_event: &BlockchainEvent) -> Result<()> {
         let event_type = &blockchain_event.event_type;
 
         info!(
-            "Processing MyIP marketplace blockchain event: {}",
+            "Processing MyData marketplace blockchain event: {}",
             event_type
         );
 
@@ -144,7 +144,7 @@ impl MyIpEventHandler {
                 .await?;
             }
             _ => {
-                debug!("Unhandled MyIP marketplace event type: {}", event_type);
+                debug!("Unhandled MyData marketplace event type: {}", event_type);
             }
         }
 
@@ -160,10 +160,10 @@ impl MyIpEventHandler {
         info!("Processing DataCreatedEvent from JSON");
 
         // Extract fields from the JSON data
-        let ip_id = data
-            .get("ip_id")
+        let mydata_id = data
+            .get("mydata_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow!("Missing ip_id field"))?;
+            .ok_or_else(|| anyhow!("Missing mydata_id field"))?;
 
         let owner = data
             .get("owner")
@@ -176,16 +176,16 @@ impl MyIpEventHandler {
             .ok_or_else(|| anyhow!("Missing media_type field"))?;
 
         info!(
-            "Parsed DataCreatedEvent: ip_id={}, owner={}, media_type={}",
-            ip_id, owner, media_type
+            "Parsed DataCreatedEvent: mydata_id={}, owner={}, media_type={}",
+            mydata_id, owner, media_type
         );
 
         // Get a database connection
         let mut conn = self.get_connection().await?;
 
         // Create a new data entry manually from the JSON data
-        let new_data = crate::models::my_ip::NewMyIPData {
-            ip_id: ip_id.to_string(),
+        let new_data = crate::models::mydata::NewMyDataData {
+            mydata_id: mydata_id.to_string(),
             owner: owner.to_string(),
             media_type: media_type.to_string(),
             tags: data.get("tags").cloned().unwrap_or(serde_json::json!([])),
@@ -232,26 +232,26 @@ impl MyIpEventHandler {
         };
 
         // Insert the new data entry into the database
-        diesel::insert_into(my_ip_data::table)
+        diesel::insert_into(mydata_data::table)
             .values(&new_data)
-            .on_conflict(my_ip_data::ip_id)
+            .on_conflict(mydata_data::mydata_id)
             .do_update()
             .set((
-                my_ip_data::owner.eq(&new_data.owner),
-                my_ip_data::media_type.eq(&new_data.media_type),
-                my_ip_data::tags.eq(&new_data.tags),
-                my_ip_data::one_time_price.eq(&new_data.one_time_price),
-                my_ip_data::subscription_price.eq(&new_data.subscription_price),
-                my_ip_data::data_quality.eq(&new_data.data_quality),
-                my_ip_data::last_updated.eq(Utc::now().timestamp()),
-                my_ip_data::transaction_id.eq(transaction_id),
+                mydata_data::owner.eq(&new_data.owner),
+                mydata_data::media_type.eq(&new_data.media_type),
+                mydata_data::tags.eq(&new_data.tags),
+                mydata_data::one_time_price.eq(&new_data.one_time_price),
+                mydata_data::subscription_price.eq(&new_data.subscription_price),
+                mydata_data::data_quality.eq(&new_data.data_quality),
+                mydata_data::last_updated.eq(Utc::now().timestamp()),
+                mydata_data::transaction_id.eq(transaction_id),
             ))
             .execute(&mut conn)
             .await?;
 
         info!(
-            "Processed DataCreatedEvent successfully for ip_id: {}",
-            ip_id
+            "Processed DataCreatedEvent successfully for mydata_id: {}",
+            mydata_id
         );
         Ok(())
     }
@@ -265,10 +265,10 @@ impl MyIpEventHandler {
         info!("Processing DataPurchasedEvent from JSON");
 
         // Extract fields from JSON data according to event structure
-        let ip_id = data
-            .get("ip_id")
+        let mydata_id = data
+            .get("mydata_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow!("Missing ip_id field"))?;
+            .ok_or_else(|| anyhow!("Missing mydata_id field"))?;
 
         let buyer = data
             .get("buyer")
@@ -288,37 +288,37 @@ impl MyIpEventHandler {
         let mut conn = self.get_connection().await?;
 
         // Record the purchase
-        let purchase = crate::models::NewMyIPPurchase {
-            ip_id: ip_id.to_string(),
+        let purchase = crate::models::NewMyDataPurchase {
+            mydata_id: mydata_id.to_string(),
             buyer: buyer.to_string(),
             price: price as i64,
-            purchase_type: crate::models::my_ip::PURCHASE_TYPE_ONE_TIME.to_string(),
+            purchase_type: crate::models::mydata::PURCHASE_TYPE_ONE_TIME.to_string(),
             purchase_time: purchase_time as i64,
             transaction_id: transaction_id.to_string(),
         };
 
-        diesel::insert_into(my_ip_purchases::table)
+        diesel::insert_into(mydata_purchases::table)
             .values(&purchase)
             .execute(&mut conn)
             .await?;
 
         // Record access log
-        let access_log = crate::models::NewMyIPAccessLog {
-            ip_id: ip_id.to_string(),
+        let access_log = crate::models::NewMyDataAccessLog {
+            mydata_id: mydata_id.to_string(),
             user_address: buyer.to_string(),
-            access_type: crate::models::my_ip::ACCESS_TYPE_ONE_TIME.to_string(),
+            access_type: crate::models::mydata::ACCESS_TYPE_ONE_TIME.to_string(),
             access_time: purchase_time as i64,
             transaction_id: transaction_id.to_string(),
         };
 
-        diesel::insert_into(my_ip_access_logs::table)
+        diesel::insert_into(mydata_access_logs::table)
             .values(&access_log)
             .execute(&mut conn)
             .await?;
 
         info!(
-            "Processed DataPurchasedEvent from JSON for ip_id: {}",
-            ip_id
+            "Processed DataPurchasedEvent from JSON for mydata_id: {}",
+            mydata_id
         );
         Ok(())
     }
@@ -331,10 +331,10 @@ impl MyIpEventHandler {
         info!("Processing SubscriptionCreatedEvent from JSON");
 
         // Extract fields from JSON data according to event structure
-        let ip_id = data
-            .get("ip_id")
+        let mydata_id = data
+            .get("mydata_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow!("Missing ip_id field"))?;
+            .ok_or_else(|| anyhow!("Missing mydata_id field"))?;
 
         let subscriber = data
             .get("subscriber")
@@ -359,8 +359,8 @@ impl MyIpEventHandler {
         let mut conn = self.get_connection().await?;
 
         // Record the subscription
-        let subscription = crate::models::NewMyIPSubscription {
-            ip_id: ip_id.to_string(),
+        let subscription = crate::models::NewMyDataSubscription {
+            mydata_id: mydata_id.to_string(),
             subscriber: subscriber.to_string(),
             subscription_start: subscription_start as i64,
             subscription_end: subscription_end as i64,
@@ -368,43 +368,43 @@ impl MyIpEventHandler {
             transaction_id: transaction_id.to_string(),
         };
 
-        diesel::insert_into(my_ip_subscriptions::table)
+        diesel::insert_into(mydata_subscriptions::table)
             .values(&subscription)
             .execute(&mut conn)
             .await?;
 
         // Record as a purchase too for analytics
-        let purchase = crate::models::NewMyIPPurchase {
-            ip_id: ip_id.to_string(),
+        let purchase = crate::models::NewMyDataPurchase {
+            mydata_id: mydata_id.to_string(),
             buyer: subscriber.to_string(),
             price: price as i64,
-            purchase_type: crate::models::my_ip::PURCHASE_TYPE_SUBSCRIPTION.to_string(),
+            purchase_type: crate::models::mydata::PURCHASE_TYPE_SUBSCRIPTION.to_string(),
             purchase_time: subscription_start as i64,
             transaction_id: transaction_id.to_string(),
         };
 
-        diesel::insert_into(my_ip_purchases::table)
+        diesel::insert_into(mydata_purchases::table)
             .values(&purchase)
             .execute(&mut conn)
             .await?;
 
         // Record access log
-        let access_log = crate::models::NewMyIPAccessLog {
-            ip_id: ip_id.to_string(),
+        let access_log = crate::models::NewMyDataAccessLog {
+            mydata_id: mydata_id.to_string(),
             user_address: subscriber.to_string(),
-            access_type: crate::models::my_ip::ACCESS_TYPE_SUBSCRIPTION.to_string(),
+            access_type: crate::models::mydata::ACCESS_TYPE_SUBSCRIPTION.to_string(),
             access_time: subscription_start as i64,
             transaction_id: transaction_id.to_string(),
         };
 
-        diesel::insert_into(my_ip_access_logs::table)
+        diesel::insert_into(mydata_access_logs::table)
             .values(&access_log)
             .execute(&mut conn)
             .await?;
 
         info!(
-            "Processed SubscriptionCreatedEvent from JSON for ip_id: {}",
-            ip_id
+            "Processed SubscriptionCreatedEvent from JSON for mydata_id: {}",
+            mydata_id
         );
         Ok(())
     }
@@ -417,10 +417,10 @@ impl MyIpEventHandler {
         info!("Processing DataAccessGrantedEvent from JSON");
 
         // Extract fields from JSON data according to event structure
-        let ip_id = data
-            .get("ip_id")
+        let mydata_id = data
+            .get("mydata_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow!("Missing ip_id field"))?;
+            .ok_or_else(|| anyhow!("Missing mydata_id field"))?;
 
         let grantee = data
             .get("grantee")
@@ -435,22 +435,22 @@ impl MyIpEventHandler {
         let mut conn = self.get_connection().await?;
 
         // Record access log
-        let access_log = crate::models::NewMyIPAccessLog {
-            ip_id: ip_id.to_string(),
+        let access_log = crate::models::NewMyDataAccessLog {
+            mydata_id: mydata_id.to_string(),
             user_address: grantee.to_string(),
-            access_type: crate::models::my_ip::ACCESS_TYPE_GRANT.to_string(),
+            access_type: crate::models::mydata::ACCESS_TYPE_GRANT.to_string(),
             access_time: grant_time as i64,
             transaction_id: transaction_id.to_string(),
         };
 
-        diesel::insert_into(my_ip_access_logs::table)
+        diesel::insert_into(mydata_access_logs::table)
             .values(&access_log)
             .execute(&mut conn)
             .await?;
 
         info!(
-            "Processed DataAccessGrantedEvent from JSON for ip_id: {}",
-            ip_id
+            "Processed DataAccessGrantedEvent from JSON for mydata_id: {}",
+            mydata_id
         );
         Ok(())
     }
@@ -463,10 +463,10 @@ impl MyIpEventHandler {
         info!("Processing RevenueDistributedEvent from JSON");
 
         // Extract fields from JSON data according to event structure
-        let ip_id = data
-            .get("ip_id")
+        let mydata_id = data
+            .get("mydata_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow!("Missing ip_id field"))?;
+            .ok_or_else(|| anyhow!("Missing mydata_id field"))?;
 
         let from_address = data
             .get("from_address")
@@ -496,8 +496,8 @@ impl MyIpEventHandler {
         let mut conn = self.get_connection().await?;
 
         // Record revenue distribution
-        let revenue = crate::models::NewMyIPRevenue {
-            ip_id: ip_id.to_string(),
+        let revenue = crate::models::NewMyDataRevenue {
+            mydata_id: mydata_id.to_string(),
             from_address: from_address.to_string(),
             to_address: to_address.to_string(),
             amount: amount as i64,
@@ -506,7 +506,7 @@ impl MyIpEventHandler {
             transaction_id: transaction_id.to_string(),
         };
 
-        diesel::insert_into(my_ip_revenue::table)
+        diesel::insert_into(mydata_revenue::table)
             .values(&revenue)
             .execute(&mut conn)
             .await?;
@@ -516,7 +516,7 @@ impl MyIpEventHandler {
             revenue_type.to_string(),
             to_address.to_string(), // creator is recipient
             amount as i64,
-            ip_id.to_string(),
+            mydata_id.to_string(),
             from_address.to_string(), // payer
             to_address.to_string(),   // recipient
             distribution_time as i64,
@@ -529,8 +529,8 @@ impl MyIpEventHandler {
             .await?;
 
         info!(
-            "Processed RevenueDistributedEvent from JSON for ip_id: {}",
-            ip_id
+            "Processed RevenueDistributedEvent from JSON for mydata_id: {}",
+            mydata_id
         );
         Ok(())
     }
@@ -543,10 +543,10 @@ impl MyIpEventHandler {
         info!("Processing DataAccessedEvent from JSON");
 
         // Extract fields from JSON data according to event structure
-        let ip_id = data
-            .get("ip_id")
+        let mydata_id = data
+            .get("mydata_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow!("Missing ip_id field"))?;
+            .ok_or_else(|| anyhow!("Missing mydata_id field"))?;
 
         let user_address = data
             .get("user_address")
@@ -566,28 +566,28 @@ impl MyIpEventHandler {
         let mut conn = self.get_connection().await?;
 
         // Record access log
-        let access_log = crate::models::NewMyIPAccessLog {
-            ip_id: ip_id.to_string(),
+        let access_log = crate::models::NewMyDataAccessLog {
+            mydata_id: mydata_id.to_string(),
             user_address: user_address.to_string(),
             access_type: access_type.to_string(),
             access_time: access_time as i64,
             transaction_id: transaction_id.to_string(),
         };
 
-        diesel::insert_into(my_ip_access_logs::table)
+        diesel::insert_into(mydata_access_logs::table)
             .values(&access_log)
             .execute(&mut conn)
             .await?;
 
-        info!("Processed DataAccessedEvent from JSON for ip_id: {}", ip_id);
+        info!("Processed DataAccessedEvent from JSON for mydata_id: {}", mydata_id);
         Ok(())
     }
 
-    /// Handle a MyIP marketplace event from the blockchain
+    /// Handle a MyData marketplace event from the blockchain
     pub async fn handle_event(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
         let event_type = &event.type_.to_string(); // Convert StructTag to String
 
-        info!("Processing MyIP marketplace event: {}", event_type);
+        info!("Processing MyData marketplace event: {}", event_type);
 
         // Process each marketplace event type
         match () {
@@ -613,7 +613,7 @@ impl MyIpEventHandler {
                 self.handle_data_accessed(event, transaction_id).await?;
             }
             _ => {
-                debug!("Unhandled MyIP marketplace event type: {}", event_type);
+                debug!("Unhandled MyData marketplace event type: {}", event_type);
             }
         }
 
@@ -629,8 +629,8 @@ impl MyIpEventHandler {
             .map_err(|e| anyhow!("Failed to parse DataCreatedEvent: {}", e))?;
 
         info!(
-            "Parsed DataCreatedEvent: ip_id={}, owner={}, media_type={}",
-            parsed_event.ip_id, parsed_event.owner, parsed_event.media_type
+            "Parsed DataCreatedEvent: mydata_id={}, owner={}, media_type={}",
+            parsed_event.mydata_id, parsed_event.owner, parsed_event.media_type
         );
 
         // Get a database connection
@@ -640,26 +640,26 @@ impl MyIpEventHandler {
         let new_data = parsed_event.into_model(transaction_id.to_string())?;
 
         // Insert the new data entry into the database
-        diesel::insert_into(my_ip_data::table)
+        diesel::insert_into(mydata_data::table)
             .values(&new_data)
-            .on_conflict(my_ip_data::ip_id)
+            .on_conflict(mydata_data::mydata_id)
             .do_update()
             .set((
-                my_ip_data::owner.eq(&new_data.owner),
-                my_ip_data::media_type.eq(&new_data.media_type),
-                my_ip_data::tags.eq(&new_data.tags),
-                my_ip_data::one_time_price.eq(&new_data.one_time_price),
-                my_ip_data::subscription_price.eq(&new_data.subscription_price),
-                my_ip_data::data_quality.eq(&new_data.data_quality),
-                my_ip_data::last_updated.eq(Utc::now().timestamp()),
-                my_ip_data::transaction_id.eq(transaction_id),
+                mydata_data::owner.eq(&new_data.owner),
+                mydata_data::media_type.eq(&new_data.media_type),
+                mydata_data::tags.eq(&new_data.tags),
+                mydata_data::one_time_price.eq(&new_data.one_time_price),
+                mydata_data::subscription_price.eq(&new_data.subscription_price),
+                mydata_data::data_quality.eq(&new_data.data_quality),
+                mydata_data::last_updated.eq(Utc::now().timestamp()),
+                mydata_data::transaction_id.eq(transaction_id),
             ))
             .execute(&mut conn)
             .await?;
 
         info!(
-            "Processed DataCreatedEvent successfully for ip_id: {}",
-            parsed_event.ip_id
+            "Processed DataCreatedEvent successfully for mydata_id: {}",
+            parsed_event.mydata_id
         );
         Ok(())
     }
@@ -672,29 +672,29 @@ impl MyIpEventHandler {
             .map_err(|e| anyhow!("Failed to parse DataPurchasedEvent: {}", e))?;
 
         info!(
-            "Parsed DataPurchasedEvent: ip_id={}, buyer={}, price={}",
-            parsed_event.ip_id, parsed_event.buyer, parsed_event.price
+            "Parsed DataPurchasedEvent: mydata_id={}, buyer={}, price={}",
+            parsed_event.mydata_id, parsed_event.buyer, parsed_event.price
         );
 
         let mut conn = self.db.get_connection().await?;
 
         // Record the purchase
         let purchase = parsed_event.into_purchase(transaction_id.to_string())?;
-        diesel::insert_into(my_ip_purchases::table)
+        diesel::insert_into(mydata_purchases::table)
             .values(&purchase)
             .execute(&mut conn)
             .await?;
 
         // Record access log
         let access_log = parsed_event.into_access_log(transaction_id.to_string())?;
-        diesel::insert_into(my_ip_access_logs::table)
+        diesel::insert_into(mydata_access_logs::table)
             .values(&access_log)
             .execute(&mut conn)
             .await?;
 
         info!(
-            "Processed DataPurchasedEvent successfully for ip_id: {}",
-            parsed_event.ip_id
+            "Processed DataPurchasedEvent successfully for mydata_id: {}",
+            parsed_event.mydata_id
         );
         Ok(())
     }
@@ -711,36 +711,36 @@ impl MyIpEventHandler {
             .map_err(|e| anyhow!("Failed to parse SubscriptionCreatedEvent: {}", e))?;
 
         info!(
-            "Parsed SubscriptionCreatedEvent: ip_id={}, subscriber={}, price={}",
-            parsed_event.ip_id, parsed_event.subscriber, parsed_event.price
+            "Parsed SubscriptionCreatedEvent: mydata_id={}, subscriber={}, price={}",
+            parsed_event.mydata_id, parsed_event.subscriber, parsed_event.price
         );
 
         let mut conn = self.db.get_connection().await?;
 
         // Record the subscription
         let subscription = parsed_event.into_subscription(transaction_id.to_string())?;
-        diesel::insert_into(my_ip_subscriptions::table)
+        diesel::insert_into(mydata_subscriptions::table)
             .values(&subscription)
             .execute(&mut conn)
             .await?;
 
         // Record as a purchase too for analytics
         let purchase = parsed_event.into_purchase(transaction_id.to_string())?;
-        diesel::insert_into(my_ip_purchases::table)
+        diesel::insert_into(mydata_purchases::table)
             .values(&purchase)
             .execute(&mut conn)
             .await?;
 
         // Record access log
         let access_log = parsed_event.into_access_log(transaction_id.to_string())?;
-        diesel::insert_into(my_ip_access_logs::table)
+        diesel::insert_into(mydata_access_logs::table)
             .values(&access_log)
             .execute(&mut conn)
             .await?;
 
         info!(
-            "Processed SubscriptionCreatedEvent successfully for ip_id: {}",
-            parsed_event.ip_id
+            "Processed SubscriptionCreatedEvent successfully for mydata_id: {}",
+            parsed_event.mydata_id
         );
         Ok(())
     }
@@ -757,22 +757,22 @@ impl MyIpEventHandler {
             .map_err(|e| anyhow!("Failed to parse DataAccessGrantedEvent: {}", e))?;
 
         info!(
-            "Parsed DataAccessGrantedEvent: ip_id={}, grantor={}, grantee={}",
-            parsed_event.ip_id, parsed_event.grantor, parsed_event.grantee
+            "Parsed DataAccessGrantedEvent: mydata_id={}, grantor={}, grantee={}",
+            parsed_event.mydata_id, parsed_event.grantor, parsed_event.grantee
         );
 
         let mut conn = self.db.get_connection().await?;
 
         // Record access log
         let access_log = parsed_event.into_access_log(transaction_id.to_string())?;
-        diesel::insert_into(my_ip_access_logs::table)
+        diesel::insert_into(mydata_access_logs::table)
             .values(&access_log)
             .execute(&mut conn)
             .await?;
 
         info!(
-            "Processed DataAccessGrantedEvent successfully for ip_id: {}",
-            parsed_event.ip_id
+            "Processed DataAccessGrantedEvent successfully for mydata_id: {}",
+            parsed_event.mydata_id
         );
         Ok(())
     }
@@ -785,15 +785,15 @@ impl MyIpEventHandler {
             .map_err(|e| anyhow!("Failed to parse DataAccessedEvent: {}", e))?;
 
         info!(
-            "Parsed DataAccessedEvent: ip_id={}, user={}",
-            parsed_event.ip_id, parsed_event.user_address
+            "Parsed DataAccessedEvent: mydata_id={}, user={}",
+            parsed_event.mydata_id, parsed_event.user_address
         );
 
         let mut conn = self.db.get_connection().await?;
 
         // Record access log
         let access_log = parsed_event.into_access_log(transaction_id.to_string())?;
-        diesel::insert_into(my_ip_access_logs::table)
+        diesel::insert_into(mydata_access_logs::table)
             .values(&access_log)
             .execute(&mut conn)
             .await?;
@@ -813,8 +813,8 @@ impl MyIpEventHandler {
             .map_err(|e| anyhow!("Failed to parse RevenueDistributedEvent: {}", e))?;
 
         info!(
-            "Parsed RevenueDistributedEvent: ip_id={}, from={}, to={}, amount={}",
-            parsed_event.ip_id,
+            "Parsed RevenueDistributedEvent: mydata_id={}, from={}, to={}, amount={}",
+            parsed_event.mydata_id,
             parsed_event.from_address,
             parsed_event.to_address,
             parsed_event.amount
@@ -824,28 +824,28 @@ impl MyIpEventHandler {
 
         // Record revenue distribution
         let revenue = parsed_event.into_revenue(transaction_id.to_string())?;
-        diesel::insert_into(my_ip_revenue::table)
+        diesel::insert_into(mydata_revenue::table)
             .values(&revenue)
             .execute(&mut conn)
             .await?;
 
         info!(
-            "Processed RevenueDistributedEvent successfully for ip_id: {}",
-            parsed_event.ip_id
+            "Processed RevenueDistributedEvent successfully for mydata_id: {}",
+            parsed_event.mydata_id
         );
         Ok(())
     }
 
     /// Update marketplace data statistics
-    pub async fn update_data_statistics(&self, ip_id: &str) -> Result<()> {
-        info!("Updating statistics for data: {}", ip_id);
+    pub async fn update_data_statistics(&self, mydata_id: &str) -> Result<()> {
+        info!("Updating statistics for data: {}", mydata_id);
 
         let mut conn = self.db.get_connection().await?;
 
         // Get total revenue for the data
-        let total_revenue: Option<BigDecimal> = my_ip_revenue::table
-            .filter(my_ip_revenue::ip_id.eq(ip_id))
-            .select(diesel::dsl::sum(my_ip_revenue::amount))
+        let total_revenue: Option<BigDecimal> = mydata_revenue::table
+            .filter(mydata_revenue::mydata_id.eq(mydata_id))
+            .select(diesel::dsl::sum(mydata_revenue::amount))
             .first::<Option<BigDecimal>>(&mut conn)
             .await?;
 
@@ -854,27 +854,27 @@ impl MyIpEventHandler {
             .unwrap_or(0);
 
         // Get purchase and subscription stats
-        let purchase_count: i64 = my_ip_purchases::table
-            .filter(my_ip_purchases::ip_id.eq(ip_id))
+        let purchase_count: i64 = mydata_purchases::table
+            .filter(mydata_purchases::mydata_id.eq(mydata_id))
             .count()
             .get_result(&mut conn)
             .await?;
 
-        let subscription_count: i64 = my_ip_subscriptions::table
-            .filter(my_ip_subscriptions::ip_id.eq(ip_id))
+        let subscription_count: i64 = mydata_subscriptions::table
+            .filter(mydata_subscriptions::mydata_id.eq(mydata_id))
             .count()
             .get_result(&mut conn)
             .await?;
 
-        let access_count: i64 = my_ip_access_logs::table
-            .filter(my_ip_access_logs::ip_id.eq(ip_id))
+        let access_count: i64 = mydata_access_logs::table
+            .filter(mydata_access_logs::mydata_id.eq(mydata_id))
             .count()
             .get_result(&mut conn)
             .await?;
 
         info!(
             "Data {} stats: purchases={}, subscriptions={}, accesses={}, total_revenue={}",
-            ip_id, purchase_count, subscription_count, access_count, total_revenue
+            mydata_id, purchase_count, subscription_count, access_count, total_revenue
         );
 
         Ok(())
@@ -929,37 +929,37 @@ impl MyIpEventHandler {
             let mut conn = self.db.get_connection().await?;
 
             if !event_batch.data_entries.is_empty() {
-                diesel::insert_into(my_ip_data::table)
+                diesel::insert_into(mydata_data::table)
                     .values(&event_batch.data_entries)
-                    .on_conflict(my_ip_data::ip_id)
+                    .on_conflict(mydata_data::mydata_id)
                     .do_nothing()
                     .execute(&mut conn)
                     .await?;
             }
 
             if !event_batch.purchases.is_empty() {
-                diesel::insert_into(my_ip_purchases::table)
+                diesel::insert_into(mydata_purchases::table)
                     .values(&event_batch.purchases)
                     .execute(&mut conn)
                     .await?;
             }
 
             if !event_batch.subscriptions.is_empty() {
-                diesel::insert_into(my_ip_subscriptions::table)
+                diesel::insert_into(mydata_subscriptions::table)
                     .values(&event_batch.subscriptions)
                     .execute(&mut conn)
                     .await?;
             }
 
             if !event_batch.revenue_records.is_empty() {
-                diesel::insert_into(my_ip_revenue::table)
+                diesel::insert_into(mydata_revenue::table)
                     .values(&event_batch.revenue_records)
                     .execute(&mut conn)
                     .await?;
             }
 
             if !event_batch.access_logs.is_empty() {
-                diesel::insert_into(my_ip_access_logs::table)
+                diesel::insert_into(mydata_access_logs::table)
                     .values(&event_batch.access_logs)
                     .execute(&mut conn)
                     .await?;

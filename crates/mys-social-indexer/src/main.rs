@@ -10,7 +10,7 @@ use mys_social_indexer::{
     api,
     blockchain::{
         handler_trait::spawn_handler_task, BlockListEventHandler, BlockchainEventListener,
-        EventPattern, EventRouter, GovernanceEventHandler, MyIpEventHandler, PlatformEventHandler,
+        EventPattern, EventRouter, GovernanceEventHandler, MyDataEventHandler, PlatformEventHandler,
         PostEventHandler, ProfileEventListener, SocialGraphEventHandler, SocialProofTokenHandler,
         SubscriptionEventHandler,
     },
@@ -194,8 +194,8 @@ async fn main() -> Result<()> {
         "governance-worker".to_string(),
     );
 
-    let my_ip_handler =
-        MyIpEventHandler::new(db_pool.clone(), my_ip_rx, "my-ip-worker".to_string());
+    let mydata_handler =
+        MyDataEventHandler::new(db_pool.clone(), my_ip_rx, "mydata-worker".to_string());
 
     let subscription_handler = SubscriptionEventHandler::new(
         db_pool.clone(),
@@ -251,10 +251,10 @@ async fn main() -> Result<()> {
         }
     });
 
-    let my_ip_task = tokio::spawn(async move {
-        let mut handler = my_ip_handler;
+    let mydata_task = tokio::spawn(async move {
+        let mut handler = mydata_handler;
         if let Err(e) = handler.start().await {
-            error!("MyIP handler error: {}", e);
+            error!("MyData handler error: {}", e);
         }
     });
 
@@ -369,7 +369,7 @@ async fn main() -> Result<()> {
     block_list_task.abort();
     post_task.abort();
     governance_task.abort();
-    my_ip_task.abort();
+    mydata_task.abort();
     subscription_task.abort();
     spt_task.abort();
     blockchain_task.abort();
