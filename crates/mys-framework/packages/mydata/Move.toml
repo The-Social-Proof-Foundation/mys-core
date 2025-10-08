@@ -1,5 +1,5 @@
 [package]
-name = "seal"
+name = "mydata"
 version = "0.0.1"
 published-at = "0x5ea1"
 edition = "2024"
@@ -9,5 +9,5 @@ MoveStdlib = { local = "../move-stdlib" }
 MySocial = { local = "../mys-framework" }
 
 [addresses]
-seal = "0x5ea1"
+mydata = "0x5ea1"
 

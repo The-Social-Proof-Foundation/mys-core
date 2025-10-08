@@ -1,10 +1,12 @@
-// Copyright (c), Mysten Labs, Inc.
 // Copyright (c), The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 /// Implementation of the Galois field GF(2^8) with irreducible polynomial x^8 + x^4 + x^3 + x + 1.
 /// This is the field used in AES.
-module seal::gf256;
+module mydata::gf256;
+
+const ELogOfZero: u64 = 1;
+const EDivideByZero: u64 = 2;
 
 /// Table of Eᵢ = gⁱ where g = 0x03 generates the multiplicative group of the field.
 const EXP: vector<u8> = vector[
@@ -48,7 +50,7 @@ const LOG: vector<u8> = vector[
 
 #[allow(implicit_const_copy)]
 fun log(x: u8): u16 {
-    assert!(x != 0);
+    assert!(x != 0, ELogOfZero);
     *LOG.borrow((x - 1) as u64) as u16
 }
 
@@ -73,6 +75,7 @@ public(package) fun mul(x: u8, y: u8): u8 {
 }
 
 public(package) fun div(x: u8, y: u8): u8 {
+    assert!(y != 0, EDivideByZero);
     mul(x, exp(255 - log(y)))
 }
 

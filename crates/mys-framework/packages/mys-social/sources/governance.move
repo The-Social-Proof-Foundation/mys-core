@@ -22,7 +22,7 @@ module social_contracts::governance {
     };
     use mys::mys::MYS;
 
-    use seal::bf_hmac_encryption::{EncryptedObject, VerifiedDerivedKey, PublicKey, decrypt};
+    use mydata::bf_hmac_encryption::{EncryptedObject, VerifiedDerivedKey, PublicKey, decrypt};
     
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::profile;

@@ -45,7 +45,7 @@ fn build_system_packages() {
     let mys_framework_path = packages_path.join("mys-framework");
     let move_stdlib_path = packages_path.join("move-stdlib");
     let mys_social_path = packages_path.join("mys-social");
-    let seal_path = packages_path.join("seal");
+    let mydata_path = packages_path.join("mydata");
 
     build_packages(
         &bridge_path,
@@ -55,7 +55,7 @@ fn build_system_packages() {
         &mys_framework_path,
         &move_stdlib_path,
         &mys_social_path,
-        &seal_path,
+        &mydata_path,
         out_dir,
     );
     check_diff(Path::new(CRATE_ROOT), out_dir)
@@ -93,7 +93,7 @@ fn build_packages(
     mys_framework_path: &Path,
     stdlib_path: &Path,
     mys_social_path: &Path,
-    seal_path: &Path,
+    mydata_path: &Path,
     out_dir: &Path,
 ) {
     let config = MoveBuildConfig {
@@ -113,7 +113,7 @@ fn build_packages(
         mys_framework_path,
         stdlib_path,
         mys_social_path,
-        seal_path,
+        mydata_path,
         out_dir,
         "bridge",
         "deepbook",
@@ -122,7 +122,7 @@ fn build_packages(
         "mys-framework",
         "move-stdlib",
         "mys-social",
-        "seal",
+        "mydata",
         config,
     );
 }
@@ -135,7 +135,7 @@ fn build_packages_with_move_config(
     mys_framework_path: &Path,
     stdlib_path: &Path,
     mys_social_path: &Path,
-    seal_path: &Path,
+    mydata_path: &Path,
     out_dir: &Path,
     bridge_dir: &str,
     deepbook_dir: &str,
@@ -144,7 +144,7 @@ fn build_packages_with_move_config(
     framework_dir: &str,
     stdlib_dir: &str,
     mys_social_dir: &str,
-    seal_dir: &str,
+    mydata_dir: &str,
     config: MoveBuildConfig,
 ) {
     let stdlib_pkg = BuildConfig {
@@ -203,13 +203,13 @@ fn build_packages_with_move_config(
     }
     .build(mys_social_path)
     .unwrap();
-    let seal_pkg = BuildConfig {
+    let mydata_pkg = BuildConfig {
         config,
         run_bytecode_verifier: true,
         print_diags_to_stderr: false,
         chain_id: None, // Framework pkg addr is agnostic to chain, resolves from Move.toml
     }
-    .build(seal_path)
+    .build(mydata_path)
     .unwrap();
 
     let move_stdlib = stdlib_pkg.get_stdlib_modules();
@@ -219,7 +219,7 @@ fn build_packages_with_move_config(
     let usdc = usdc_pkg.get_usdc_modules();
     let bridge = bridge_pkg.get_bridge_modules();
     let mys_social = mys_social_pkg.get_mys_social_modules();
-    let seal = seal_pkg.get_seal_modules();
+    let mydata = mydata_pkg.get_modules();
     let compiled_packages_dir = out_dir.join(COMPILED_PACKAGES_DIR);
 
     let mys_system_members =
@@ -237,8 +237,8 @@ fn build_packages_with_move_config(
         serialize_modules_to_file(move_stdlib, &compiled_packages_dir.join(stdlib_dir)).unwrap();
     let mys_social_members =
         serialize_modules_to_file(mys_social, &compiled_packages_dir.join(mys_social_dir)).unwrap();
-    let seal_members =
-        serialize_modules_to_file(seal, &compiled_packages_dir.join(seal_dir)).unwrap();
+    let mydata_members =
+        serialize_modules_to_file(mydata, &compiled_packages_dir.join(mydata_dir)).unwrap();
 
     // write out generated docs
     let docs_dir = out_dir.join(DOCS_DIR);
@@ -272,7 +272,7 @@ fn build_packages_with_move_config(
         &mut files_to_write,
     );
     relocate_docs(
-        &seal_pkg.package.compiled_docs.unwrap(),
+        &mydata_pkg.package.compiled_docs.unwrap(),
         &mut files_to_write,
     );
     for (fname, doc) in files_to_write {
@@ -289,7 +289,7 @@ fn build_packages_with_move_config(
         bridge_members.join("\n"),
         stdlib_members.join("\n"),
         mys_social_members.join("\n"),
-        seal_members.join("\n"),
+        mydata_members.join("\n"),
     ]
     .join("\n");
 

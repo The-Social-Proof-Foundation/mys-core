@@ -67,7 +67,12 @@ Implements proposal submission, voting, and execution processes
 -  [Function `create_governance_admin_cap`](#social_contracts_governance_create_governance_admin_cap)
 
 
-<pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<pre><code><b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
+<b>use</b> <a href="../mydata/gf256.md#mydata_gf256">mydata::gf256</a>;
+<b>use</b> <a href="../mydata/hmac256ctr.md#mydata_hmac256ctr">mydata::hmac256ctr</a>;
+<b>use</b> <a href="../mydata/kdf.md#mydata_kdf">mydata::kdf</a>;
+<b>use</b> <a href="../mydata/polynomial.md#mydata_polynomial">mydata::polynomial</a>;
+<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
@@ -91,12 +96,6 @@ Implements proposal submission, voting, and execution processes
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
-<b>use</b> <a href="../seal/bf_hmac_encryption.md#seal_bf_hmac_encryption">seal::bf_hmac_encryption</a>;
-<b>use</b> <a href="../seal/gf256.md#seal_gf256">seal::gf256</a>;
-<b>use</b> <a href="../seal/hmac256ctr.md#seal_hmac256ctr">seal::hmac256ctr</a>;
-<b>use</b> <a href="../seal/kdf.md#seal_kdf">seal::kdf</a>;
-<b>use</b> <a href="../seal/key_server.md#seal_key_server">seal::key_server</a>;
-<b>use</b> <a href="../seal/polynomial.md#seal_polynomial">seal::polynomial</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
@@ -2715,7 +2714,7 @@ Users can cast multiple votes by paying a quadratically increasing cost
 Submit an anonymous encrypted vote on a proposal
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous">community_vote_anonymous</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, encrypted_vote: <a href="../seal/bf_hmac_encryption.md#seal_bf_hmac_encryption_EncryptedObject">seal::bf_hmac_encryption::EncryptedObject</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous">community_vote_anonymous</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, encrypted_vote: <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_EncryptedObject">mydata::bf_hmac_encryption::EncryptedObject</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2904,7 +2903,7 @@ Finalize a proposal after the voting period ends
 Finalize a proposal with anonymous votes by decrypting them first
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal_anonymous">finalize_proposal_anonymous</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, keys: &vector&lt;<a href="../seal/bf_hmac_encryption.md#seal_bf_hmac_encryption_VerifiedDerivedKey">seal::bf_hmac_encryption::VerifiedDerivedKey</a>&gt;, public_keys: &vector&lt;<a href="../seal/bf_hmac_encryption.md#seal_bf_hmac_encryption_PublicKey">seal::bf_hmac_encryption::PublicKey</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_finalize_proposal_anonymous">finalize_proposal_anonymous</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, keys: &vector&lt;<a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_VerifiedDerivedKey">mydata::bf_hmac_encryption::VerifiedDerivedKey</a>&gt;, public_keys: &vector&lt;<a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_PublicKey">mydata::bf_hmac_encryption::PublicKey</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 

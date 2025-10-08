@@ -46,7 +46,12 @@ PoC badge issuance, revenue redirection, and community dispute voting
 -  [Function `create_poc_admin_cap`](#social_contracts_proof_of_creativity_create_poc_admin_cap)
 
 
-<pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<pre><code><b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
+<b>use</b> <a href="../mydata/gf256.md#mydata_gf256">mydata::gf256</a>;
+<b>use</b> <a href="../mydata/hmac256ctr.md#mydata_hmac256ctr">mydata::hmac256ctr</a>;
+<b>use</b> <a href="../mydata/kdf.md#mydata_kdf">mydata::kdf</a>;
+<b>use</b> <a href="../mydata/polynomial.md#mydata_polynomial">mydata::polynomial</a>;
+<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
@@ -71,12 +76,6 @@ PoC badge issuance, revenue redirection, and community dispute voting
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
-<b>use</b> <a href="../seal/bf_hmac_encryption.md#seal_bf_hmac_encryption">seal::bf_hmac_encryption</a>;
-<b>use</b> <a href="../seal/gf256.md#seal_gf256">seal::gf256</a>;
-<b>use</b> <a href="../seal/hmac256ctr.md#seal_hmac256ctr">seal::hmac256ctr</a>;
-<b>use</b> <a href="../seal/kdf.md#seal_kdf">seal::kdf</a>;
-<b>use</b> <a href="../seal/key_server.md#seal_key_server">seal::key_server</a>;
-<b>use</b> <a href="../seal/polynomial.md#seal_polynomial">seal::polynomial</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;

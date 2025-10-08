@@ -7,8 +7,9 @@ edition = "2024"
 [dependencies]
 MoveStdlib = { local = "../move-stdlib" }
 MySocial = { local = "../mys-framework" }
-seal = { local = "../seal" }
+mydata = { local = "../mydata" }
 
 [addresses]
 mys = "0x2"
+mydata = "0x5ea1"
 social_contracts = "0xd880"

@@ -69,7 +69,7 @@ module social_contracts::bootstrap {
         social_contracts::social_graph::bootstrap_init(ctx);
         social_contracts::profile::bootstrap_init(ctx);
         social_contracts::block_list::bootstrap_init(ctx);
-        social_contracts::my_ip::bootstrap_init(ctx);
+        social_contracts::mydata::bootstrap_init(ctx);
         social_contracts::governance::bootstrap_init(ctx);
         social_contracts::post::bootstrap_init(ctx);
         social_contracts::social_proof_tokens::bootstrap_init(ctx);

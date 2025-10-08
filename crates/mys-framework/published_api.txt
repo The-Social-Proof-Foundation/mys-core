@@ -6130,156 +6130,156 @@ migrate_poc_registry
 create_poc_admin_cap
 	public(package) fun
 	0xd880::proof_of_creativity
-MyIP
+MyData
 	public struct
-	0xd880::my_ip
-MyIPRegistry
+	0xd880::mydata
+MyDataRegistry
 	public struct
-	0xd880::my_ip
-MyIPCreatedEvent
+	0xd880::mydata
+MyDataCreatedEvent
 	public struct
-	0xd880::my_ip
+	0xd880::mydata
 PurchaseEvent
 	public struct
-	0xd880::my_ip
+	0xd880::mydata
 AccessGrantedEvent
 	public struct
-	0xd880::my_ip
+	0xd880::mydata
 bootstrap_init
 	public(package) fun
-	0xd880::my_ip
+	0xd880::mydata
 create
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 create_and_share
 	public entry fun
-	0xd880::my_ip
+	0xd880::mydata
 purchase_one_time
 	public entry fun
-	0xd880::my_ip
+	0xd880::mydata
 purchase_subscription
 	public entry fun
-	0xd880::my_ip
+	0xd880::mydata
 update_pricing
 	public entry fun
-	0xd880::my_ip
+	0xd880::mydata
 update_content
 	public entry fun
-	0xd880::my_ip
+	0xd880::mydata
 has_access
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 decrypt_data
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 grant_access
 	public entry fun
-	0xd880::my_ip
+	0xd880::mydata
 owner
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 media_type
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 tags
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 platform_id
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 one_time_price
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 subscription_price
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 subscription_duration_days
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 created_at
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 last_updated
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 timestamp_start
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 timestamp_end
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 geographic_region
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 data_quality
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 sample_size
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 collection_method
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 is_updating
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 update_frequency
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 purchaser_count
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 subscriber_count
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 is_one_time_for_sale
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 is_subscription_available
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 has_active_subscription
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 get_subscription_expiry
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 get_revenue_potential
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 has_any_sales
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 registry_get_owner
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 is_registered
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 register_in_registry
 	public entry fun
-	0xd880::my_ip
+	0xd880::mydata
 unregister_from_registry
 	public entry fun
-	0xd880::my_ip
+	0xd880::mydata
 version
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 borrow_version_mut
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 registry_version
 	public fun
-	0xd880::my_ip
+	0xd880::mydata
 borrow_registry_version_mut
 	public fun
-	0xd880::my_ip
-migrate_my_ip
+	0xd880::mydata
+migrate_mydata
 	public entry fun
-	0xd880::my_ip
+	0xd880::mydata
 migrate_registry
 	public entry fun
-	0xd880::my_ip
+	0xd880::mydata
 BootstrapKey
 	public struct
 	0xd880::bootstrap
@@ -6385,16 +6385,19 @@ div
 Polynomial
 	public struct
 	0x5ea1::polynomial
+evaluate
+	public fun
+	0x5ea1::polynomial
 get_constant_term
 	public(package) fun
 	0x5ea1::polynomial
-add
-	fun
-	0x5ea1::polynomial
-degree
+interpolate
 	public(package) fun
 	0x5ea1::polynomial
-reduce
+interpolate_all
+	public(package) fun
+	0x5ea1::polynomial
+add
 	fun
 	0x5ea1::polynomial
 mul
@@ -6409,51 +6412,6 @@ scale
 monic_linear
 	fun
 	0x5ea1::polynomial
-interpolate
-	public(package) fun
-	0x5ea1::polynomial
-evaluate
-	public fun
-	0x5ea1::polynomial
-KeyServer
-	public struct
-	0x5ea1::key_server
-KeyServerV1
-	public struct
-	0x5ea1::key_server
-Cap
-	public struct
-	0x5ea1::key_server
-create_v1
-	public fun
-	0x5ea1::key_server
-create_and_transfer_v1
-	entry fun
-	0x5ea1::key_server
-v1
-	public fun
-	0x5ea1::key_server
-name
-	public fun
-	0x5ea1::key_server
-url
-	public fun
-	0x5ea1::key_server
-key_type
-	public fun
-	0x5ea1::key_server
-pk
-	public fun
-	0x5ea1::key_server
-id
-	public fun
-	0x5ea1::key_server
-pk_as_bf_bls12381
-	public fun
-	0x5ea1::key_server
-update
-	public fun
-	0x5ea1::key_server
 kdf
 	public(package) fun
 	0x5ea1::kdf
@@ -6478,13 +6436,28 @@ PublicKey
 KeyPurpose
 	public enum
 	0x5ea1::bf_hmac_encryption
-get_public_key
+new_public_key
 	public fun
 	0x5ea1::bf_hmac_encryption
 decrypt
 	public fun
 	0x5ea1::bf_hmac_encryption
+decrypt_randomness
+	fun
+	0x5ea1::bf_hmac_encryption
+safe_scalar_from_bytes
+	fun
+	0x5ea1::bf_hmac_encryption
+verify_nonce
+	fun
+	0x5ea1::bf_hmac_encryption
 verify_share
+	fun
+	0x5ea1::bf_hmac_encryption
+decrypt_shares_with_derived_keys
+	fun
+	0x5ea1::bf_hmac_encryption
+decrypt_all_shares_with_randomness
 	fun
 	0x5ea1::bf_hmac_encryption
 create_full_id
@@ -6496,13 +6469,13 @@ derive_key
 xor
 	fun
 	0x5ea1::bf_hmac_encryption
-decrypt_shares_with_randomness
-	fun
-	0x5ea1::bf_hmac_encryption
 verify_derived_keys
 	public fun
 	0x5ea1::bf_hmac_encryption
 verify_derived_key
+	fun
+	0x5ea1::bf_hmac_encryption
+assert_all_unique
 	fun
 	0x5ea1::bf_hmac_encryption
 parse_encrypted_object
@@ -6544,3 +6517,39 @@ aad
 mac
 	public fun
 	0x5ea1::bf_hmac_encryption
+KeyServer
+	public struct
+	0x5ea1::key_server
+KeyServerV1
+	public struct
+	0x5ea1::key_server
+create_and_transfer_v1
+	entry fun
+	0x5ea1::key_server
+v1
+	public fun
+	0x5ea1::key_server
+name
+	public fun
+	0x5ea1::key_server
+url
+	public fun
+	0x5ea1::key_server
+key_type
+	public fun
+	0x5ea1::key_server
+pk
+	public fun
+	0x5ea1::key_server
+id
+	public fun
+	0x5ea1::key_server
+pk_as_bf_bls12381
+	public fun
+	0x5ea1::key_server
+update
+	public fun
+	0x5ea1::key_server
+create_v1
+	fun
+	0x5ea1::key_server
