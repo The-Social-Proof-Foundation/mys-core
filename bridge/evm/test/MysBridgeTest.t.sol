@@ -500,7 +500,7 @@ contract MysBridgeTest is BridgeBaseTest, IMysBridge {
         // approve
         bytes4 selector = bytes4(keccak256("approve(address,uint256)"));
         bytes memory data = abi.encodeWithSelector(selector, address(bridge), usdtAmount);
-        (bool success, bytes memory returnData) = USDT.call(data);
+        (bool success,) = USDT.call(data);
         require(success, "Call failed");
 
         assertEq(IERC20(USDT).balanceOf(address(vault)), 0);
@@ -677,7 +677,7 @@ contract MysBridgeTest is BridgeBaseTest, IMysBridge {
             "BridgeConfig.sol",
             abi.encodeCall(
                 BridgeConfig.initialize,
-                (address(committee), 11, _supportedTokens, tokenPrices, tokenIds, mysDecimals, _supportedDestinationChains)
+                (address(committee), 11, _supportedTokens, tokenPrices, tokenIds, mysDecimals, _supportedDestinationChains, address(0))
             ),
             opts
         );
@@ -793,7 +793,8 @@ contract MysBridgeTest is BridgeBaseTest, IMysBridge {
                     tokenPrices,
                     tokenIds,
                     mysDecimals,
-                    _supportedDestinationChains
+                    _supportedDestinationChains,
+                    address(0)
                 )
             ),
             opts
@@ -871,7 +872,7 @@ contract MysBridgeTest is BridgeBaseTest, IMysBridge {
             "BridgeConfig.sol",
             abi.encodeCall(
                 BridgeConfig.initialize,
-                (address(committee), chainID, supportedTokens, tokenPrices, tokenIds, mysDecimals, supportedChains)
+                (address(committee), chainID, supportedTokens, tokenPrices, tokenIds, mysDecimals, supportedChains, address(0))
             ),
             opts
         );
@@ -1024,7 +1025,8 @@ contract MysBridgeTest is BridgeBaseTest, IMysBridge {
                     tokenPrices,
                     tokenIds,
                     mysDecimals,
-                    _supportedDestinationChains
+                    _supportedDestinationChains,
+                    address(0)
                 )
             ),
             opts

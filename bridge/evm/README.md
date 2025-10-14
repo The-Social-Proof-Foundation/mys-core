@@ -59,3 +59,31 @@ All deployments are saved in the `broadcast` directory.
 
 - [Writing OpenZeppelin Upgrades with Foundry](https://github.com/OpenZeppelin/openzeppelin-foundry-upgrades?tab=readme-ov-file)
 - [OpenZeppelin Upgrade Requirements](https://docs.openzeppelin.com/upgrades-plugins/1.x/api-core#define-reference-contracts)
+
+## 🌉 MySocialToken Bridge Integration
+
+This section describes the integration with the existing MySocialToken on Base.
+
+### Bridge Adapter Pattern
+
+To integrate with the official MySocialToken (0xFdD6013Bf2757018D8c087244f03e5a521B2d3B7) while preserving owner control:
+
+1. Deploy the adapter:
+```bash
+export PRIVATE_KEY="your_deployer_key"
+export TOKEN_ADDRESS="0xFdD6013Bf2757018D8c087244f03e5a521B2d3B7"
+export TOKEN_OWNER_ADDRESS="address_of_token_owner"
+forge script script/DeployMySocialTokenAdapter.s.sol --rpc-url $BASE_RPC_URL --broadcast
+```
+
+2. Authorize the bridge (by token owner):
+```bash
+# Call setAuthorizedBridge(bridge_address, true) from token owner's wallet
+```
+
+3. Configure the bridge:
+```bash
+# Call setupMySocialTokenAdapter(adapter_address, bridge_address) from bridge admin wallet
+```
+
+For detailed setup instructions, see `MYSOCIALTOKEN_BRIDGE_SETUP.md`.

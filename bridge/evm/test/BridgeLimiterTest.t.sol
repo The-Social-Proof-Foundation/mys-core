@@ -163,7 +163,7 @@ contract BridgeLimiterTest is BridgeBaseTest {
             "BridgeConfig.sol",
             abi.encodeCall(
                 BridgeConfig.initialize,
-                (address(committee), chainID, _supportedTokens, tokenPrices, tokenIds, mysDecimals, supportedChains)
+                (address(committee), chainID, _supportedTokens, tokenPrices, tokenIds, mysDecimals, supportedChains, address(0))
             ),
             opts
         );
@@ -265,7 +265,7 @@ contract BridgeLimiterTest is BridgeBaseTest {
             "BridgeConfig.sol",
             abi.encodeCall(
                 BridgeConfig.initialize,
-                (address(committee), chainID, supportedTokens, tokenPrices, tokenIds, mysDecimals, _supportedChains)
+                (address(committee), chainID, supportedTokens, tokenPrices, tokenIds, mysDecimals, _supportedChains, address(0))
             ),
             opts
         );
@@ -288,7 +288,7 @@ contract BridgeLimiterTest is BridgeBaseTest {
             opts
         );
         limiter = BridgeLimiter(_limiter);
-        address _mysBridge = Upgrades.deployUUPSProxy(
+        Upgrades.deployUUPSProxy(
             "MysBridge.sol",
             abi.encodeCall(
                 MysBridge.initialize, (address(committee), address(vault), address(limiter))
@@ -351,7 +351,7 @@ contract BridgeLimiterTest is BridgeBaseTest {
             "BridgeConfig.sol",
             abi.encodeCall(
                 BridgeConfig.initialize,
-                (address(committee), chainID, supportedTokens, tokenPrices, tokenIds, mysDecimals, _supportedChains)
+                (address(committee), chainID, supportedTokens, tokenPrices, tokenIds, mysDecimals, _supportedChains, address(0))
             ),
             opts
         );
@@ -375,7 +375,7 @@ contract BridgeLimiterTest is BridgeBaseTest {
             opts
         );
         limiter = BridgeLimiter(_limiter);
-        address _mysBridge = Upgrades.deployUUPSProxy(
+        Upgrades.deployUUPSProxy(
             "MysBridge.sol",
             abi.encodeCall(
                 MysBridge.initialize, (address(committee), address(vault), address(limiter))

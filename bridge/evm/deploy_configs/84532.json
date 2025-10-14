@@ -1,4 +1,5 @@
 {
+  "_comment": "Token ID 0 = MYS (native MySocial token). supportedTokens[0] MUST be set to the MySocialTokenBridgeAdapter address after deployment. See MYSOCIALTOKEN_BRIDGE_SETUP.md",
   "committeeMemberStake": [
     3333,
     3333,
@@ -14,7 +15,7 @@
   "supportedChainIds": [1, 2, 3],
   "supportedChainLimitsInDollars": [1000000000000, 1000000000000, 1000000000000],
   "supportedTokens": [
-    "0x0000000000000000000000000000000000000000",
+    "0x33D7983E8C06F0149739FB7C9B0C0d33F2F636d0",
     "0x0000000000000000000000000000000000000001",
     "0x4200000000000000000000000000000000000006",
     "0x0000000000000000000000000000000000000003",
@@ -23,5 +24,6 @@
   "tokenIds": [0, 1, 2, 3, 4],
   "tokenPrices": [100000000, 7000000000000, 400000000000, 100000000, 100000000],
   "mysDecimals": [9, 8, 8, 6, 6],
-  "weth": "0x4200000000000000000000000000000000000006"
+  "weth": "0x4200000000000000000000000000000000000006",
+  "mySocialTokenAdapter": "0x3571CB83262065BBd28E3fFDF7C08d1831AF98A9"
 } 

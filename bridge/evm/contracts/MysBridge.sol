@@ -10,6 +10,8 @@ import "./interfaces/IMysBridge.sol";
 import "./interfaces/IBridgeVault.sol";
 import "./interfaces/IBridgeLimiter.sol";
 import "./interfaces/IBridgeConfig.sol";
+import "./interfaces/IMySocialTokenBridgeAdapter.sol";
+import "./utils/BridgeUtils.sol";
 
 /// @title MysBridge
 /// @notice This contract implements a token bridge that enables users to deposit and withdraw
@@ -126,8 +128,9 @@ contract MysBridge is IMysBridge, CommitteeUpgradeable, PausableUpgradeable {
 
     /// @notice Enables the caller to deposit supported tokens to be bridged to a given
     /// destination chain.
-    /// @dev The provided tokenID and destinationChainID must be supported. The caller must
-    /// have approved this contract to transfer the given token.
+    /// @dev The provided tokenID and destinationChainID must be supported. 
+    /// For MYS token (ID 0), burns tokens via adapter. For other tokens, transfers to vault.
+    /// The caller must have approved this contract (or adapter for MYS) to transfer the given token.
     /// @param tokenID The ID of the token to be bridged.
     /// @param amount The amount of tokens to be bridged.
     /// @param recipientAddress The address on the MySocial chain where the tokens will be sent.
@@ -148,26 +151,37 @@ contract MysBridge is IMysBridge, CommitteeUpgradeable, PausableUpgradeable {
         require(config.isTokenSupported(tokenID), "MysBridge: Unsupported token");
 
         address tokenAddress = config.tokenAddressOf(tokenID);
+        uint256 amountTransfered;
 
-        // check that the bridge contract has allowance to transfer the tokens
-        require(
-            IERC20(tokenAddress).allowance(msg.sender, address(this)) >= amount,
-            "MysBridge: Insufficient allowance"
-        );
+        // Special handling for MYS token (ID 0) - burn via adapter
+        if (tokenID == BridgeUtils.MYS) {
+            // For MYS token, burn the tokens via the adapter
+            IMySocialTokenBridgeAdapter adapter = IMySocialTokenBridgeAdapter(tokenAddress);
+            adapter.burnFrom(msg.sender, amount);
+            amountTransfered = amount; // burnFrom will revert if amount is invalid
+        } 
+        // Standard vault transfer for other ERC20 tokens
+        else {
+            // check that the bridge contract has allowance to transfer the tokens
+            require(
+                IERC20(tokenAddress).allowance(msg.sender, address(this)) >= amount,
+                "MysBridge: Insufficient allowance"
+            );
 
-        // calculate old vault balance
-        uint256 oldBalance = IERC20(tokenAddress).balanceOf(address(vault));
+            // calculate old vault balance
+            uint256 oldBalance = IERC20(tokenAddress).balanceOf(address(vault));
 
-        // Transfer the tokens from the contract to the vault
-        SafeERC20.safeTransferFrom(IERC20(tokenAddress), msg.sender, address(vault), amount);
+            // Transfer the tokens from the sender to the vault
+            SafeERC20.safeTransferFrom(IERC20(tokenAddress), msg.sender, address(vault), amount);
 
-        // calculate new vault balance
-        uint256 newBalance = IERC20(tokenAddress).balanceOf(address(vault));
+            // calculate new vault balance
+            uint256 newBalance = IERC20(tokenAddress).balanceOf(address(vault));
 
-        // calculate the amount transferred
-        uint256 amountTransfered = newBalance - oldBalance;
+            // calculate the amount transferred (handles fee-on-transfer tokens)
+            amountTransfered = newBalance - oldBalance;
+        }
 
-        // Adjust the amount
+        // Adjust the amount to Mys decimals
         uint64 mysAdjustedAmount = BridgeUtils.convertERC20ToMysDecimal(
             IERC20Metadata(tokenAddress).decimals(),
             config.tokenMysDecimalOf(tokenID),
@@ -237,6 +251,7 @@ contract MysBridge is IMysBridge, CommitteeUpgradeable, PausableUpgradeable {
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /// @dev Transfers tokens from the vault to a target address.
+    /// For MYS token (ID 0), mints tokens via the adapter instead of transferring from vault.
     /// @param sendingChainID The ID of the chain from which the tokens are being transferred.
     /// @param tokenID The ID of the token being transferred.
     /// @param recipientAddress The address to which the tokens are being transferred.
@@ -252,11 +267,16 @@ contract MysBridge is IMysBridge, CommitteeUpgradeable, PausableUpgradeable {
         // Check that the token address is supported
         require(tokenAddress != address(0), "MysBridge: Unsupported token");
 
-        // transfer eth if token type is eth
-        if (tokenID == BridgeUtils.ETH) {
+        // Special handling for MYS token (ID 0) - mint via adapter
+        if (tokenID == BridgeUtils.MYS) {
+            IMySocialTokenBridgeAdapter(tokenAddress).mint(recipientAddress, amount);
+        }
+        // transfer eth if token type is eth (ID 2)
+        else if (tokenID == BridgeUtils.ETH) {
             vault.transferETH(payable(recipientAddress), amount);
-        } else {
-            // transfer tokens from vault to target address
+        } 
+        // transfer other ERC20 tokens from vault
+        else {
             vault.transferERC20(tokenAddress, recipientAddress, amount);
         }
 
