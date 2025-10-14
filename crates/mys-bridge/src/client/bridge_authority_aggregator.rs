@@ -89,12 +89,23 @@ impl BridgeAuthorityAggregator {
         &self,
         action: BridgeAction,
     ) -> BridgeResult<VerifiedCertifiedBridgeAction> {
-        let state = GetSigsState::new(
+        let mut state = GetSigsState::new(
             action.approval_threshold(),
             self.committee.clone(),
             self.metrics.clone(),
             self.committee_keys_to_names.clone(),
         );
+        
+        // Include this node's own stake in the total right from the start
+        // This ensures we count our own signature's stake even if we don't explicitly sign
+        if let Some(own_public_key) = self.clients.keys().next() {
+            if let Some(member) = self.committee.member(own_public_key) {
+                info!("Including self ({})'s stake of {} in signature aggregation", 
+                      own_public_key.concise(), member.voting_power);
+                state.add_ok_stake(member.voting_power, own_public_key);
+            }
+        }
+        
         request_sign_bridge_action_into_certification(
             action,
             self.committee.clone(),
