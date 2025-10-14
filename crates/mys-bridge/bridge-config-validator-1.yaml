@@ -14,7 +14,7 @@ approved-governance-actions:
             module: "mys"
             name: "MYS"
             type_params: []
-      token_prices: [45000]
+      token_prices: [47000]
 db-path: /app/bridge_db
 
 mys:
@@ -23,9 +23,9 @@ mys:
 
 eth:
   eth-rpc-url: "https://base-sepolia.g.alchemy.com/v2/dP5ANdv4tQc7ldy_stPvRTQWtO0J3KS5"
-  eth-bridge-proxy-address: "0x8E89366ab71F2cc442c97CBBcA241A7D07d37963"
+  eth-bridge-proxy-address: "0xb6868bE0717482c435cf8F2C20c425Cbae09a9cE"
   eth-bridge-chain-id: 12
-  eth-contracts-start-block-fallback: 31901989
+  eth-contracts-start-block-fallback: 32324000
 
 metrics:
   push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics"
