@@ -20,9 +20,6 @@ COPY crates/mys-bridge/bridge-config-validator-1.yaml /app/bridge-config-validat
 COPY crates/mys-bridge/bridge-config-validator-2.yaml /app/bridge-config-validator-2.yaml
 COPY crates/mys-bridge/bridge-config-validator-3.yaml /app/bridge-config-validator-3.yaml
 
-# Build Move framework packages first (required by mys-framework crate)
-RUN UPDATE=1 cargo test -p mys-framework --test build-system-packages --release
-
 # Build the project
 RUN cargo build --release --bin mys-bridge
 

@@ -145,8 +145,8 @@ impl BuiltInFramework {
             ),
             (
                 SEAL_PACKAGE_ID,
-                "Seal",
-                "seal",
+                "mydata",
+                "mydata",
                 [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
             ),
             (

@@ -23,6 +23,8 @@ tests/
 **/*_test.rs
 **/*_tests.rs
 
+!crates/mys-framework/packages_compiled/
+
 # Development tools
 .env
 .env.local
