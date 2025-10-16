@@ -83,6 +83,7 @@ impl FollowEvent {
             reddit_username: None,
             github_username: None,
             block_list_address: None,
+            social_proof_token_address: None,
         }
     }
 
@@ -116,6 +117,7 @@ impl FollowEvent {
             reddit_username: None,
             github_username: None,
             block_list_address: None,
+            social_proof_token_address: None,
         }
     }
 }
@@ -151,6 +153,7 @@ impl UnfollowEvent {
             reddit_username: None,
             github_username: None,
             block_list_address: None,
+            social_proof_token_address: None,
         }
     }
 
@@ -184,6 +187,7 @@ impl UnfollowEvent {
             reddit_username: None,
             github_username: None,
             block_list_address: None,
+            social_proof_token_address: None,
         }
     }
 }

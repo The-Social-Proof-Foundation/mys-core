@@ -191,8 +191,8 @@ impl ProfileCreatedEvent {
             facebook_username: None,
             reddit_username: None,
             github_username: None,
-            // BlockList object address - will be set when the BlockListCreatedEvent is received
             block_list_address: None,
+            social_proof_token_address: None,
         })
     }
 }

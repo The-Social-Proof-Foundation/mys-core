@@ -539,6 +539,64 @@ impl SocialProofTokenHandler {
         Ok(())
     }
 
+    /// Process token pool created events and update profile with social proof token address
+    async fn process_token_pool_created_event(&mut self, event: &BlockchainEvent) -> Result<()> {
+        info!("Processing SPT token pool created event: {}", event.event_id);
+
+        // Extract and parse the event
+        let fields = Self::extract_event_fields(&event.data)?;
+        let token_pool_event = serde_json::from_value::<crate::events::social_proof_token_events::TokenPoolCreatedEvent>(fields)
+            .map_err(|e| anyhow!("Failed to parse TokenPoolCreatedEvent: {}", e))?;
+
+        let mut conn = self.base.get_connection().await?;
+        let timestamp = (event.timestamp_ms / 1000) as i64;
+        let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
+
+        // Convert to database model
+        let mut token_pool = token_pool_event.into_model(timestamp as u64, event.tx_digest.clone())?;
+        token_pool.time = datetime;
+
+        // Insert into database
+        diesel::insert_into(schema::social_proof_token_pools::table)
+            .values(&token_pool)
+            .execute(&mut conn)
+            .await?;
+
+        // Update profile with social proof token address if this is a profile token
+        if token_pool_event.token_type == 1 { // 1 = Profile token type
+            // Update the profile's social_proof_token_address and updated_at timestamp
+            diesel::update(schema::profiles::table)
+                .filter(schema::profiles::owner_address.eq(&token_pool_event.owner))
+                .set((
+                    schema::profiles::social_proof_token_address.eq(&token_pool_event.id),
+                    schema::profiles::updated_at.eq(chrono::Utc::now().naive_utc()),
+                ))
+                .execute(&mut conn)
+                .await?;
+
+            info!(
+                "Updated profile {} with social proof token address: {}",
+                token_pool_event.owner, token_pool_event.id
+            );
+        }
+
+        // Create initial price history for the pool
+        let price_history = token_pool_event.create_price_history(timestamp as u64, event.tx_digest.clone())?;
+        diesel::insert_into(schema::spt_price_history::table)
+            .values(&price_history)
+            .execute(&mut conn)
+            .await?;
+
+        // Update progress tracking
+        self.update_progress().await?;
+
+        info!(
+            "Successfully processed token pool created event for pool: {}, owner: {}, token_type: {}, associated_id: {}",
+            token_pool_event.id, token_pool_event.owner, token_pool_event.token_type, token_pool_event.associated_id
+        );
+        Ok(())
+    }
+
     /// Update progress tracking with meaningful metrics
     async fn update_progress(&self) -> Result<()> {
         let mut conn = self.base.get_connection().await?;
@@ -618,6 +676,9 @@ impl BlockchainEventHandler for SocialProofTokenHandler {
             }
             t if t.contains("::social_proof_tokens::") && t.ends_with("::ConfigUpdatedEvent") => {
                 self.process_config_updated_event(&event).await
+            }
+            t if t.contains("::social_proof_tokens::") && t.ends_with("::TokenPoolCreatedEvent") => {
+                self.process_token_pool_created_event(&event).await
             }
             _ => {
                 debug!("Ignoring unhandled SPT event type: {}", event_type);

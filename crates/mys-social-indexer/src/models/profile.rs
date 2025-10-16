@@ -48,6 +48,8 @@ pub struct Profile {
     pub github_username: Option<String>,
     // BlockList object address
     pub block_list_address: Option<String>,
+    // Social proof token address
+    pub social_proof_token_address: Option<String>,
 }
 
 #[derive(Debug, Insertable, Serialize, Deserialize)]
@@ -96,6 +98,8 @@ pub struct NewProfile {
     pub github_username: Option<String>,
     // BlockList object address
     pub block_list_address: Option<String>,
+    // Social proof token address
+    pub social_proof_token_address: Option<String>,
 }
 
 #[derive(Debug, AsChangeset, Serialize, Deserialize)]
@@ -133,4 +137,6 @@ pub struct UpdateProfile {
     pub github_username: Option<String>,
     // BlockList object address
     pub block_list_address: Option<String>,
+    // Social proof token address
+    pub social_proof_token_address: Option<String>,
 }

@@ -48,6 +48,8 @@ table! {
         github_username -> Nullable<Text>,
         // Block list address
         block_list_address -> Nullable<Varchar>,
+        // Social proof token address
+        social_proof_token_address -> Nullable<Varchar>,
     }
 }
 

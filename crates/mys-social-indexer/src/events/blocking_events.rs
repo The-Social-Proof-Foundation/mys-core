@@ -904,6 +904,7 @@ pub async fn process_block_list_created_event(
                 reddit_username: None,
                 github_username: None,
                 block_list_address: Some(block_list_event.block_list_id.clone()),
+                social_proof_token_address: None,
             };
 
             diesel::update(profiles::table)
