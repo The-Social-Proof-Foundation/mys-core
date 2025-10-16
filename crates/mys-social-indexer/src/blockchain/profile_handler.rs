@@ -699,35 +699,9 @@ impl ProfileEventListener {
                     error!("Failed to update progress: {}", e);
                 }
             }
-            // Handle platform blocking events
-            else if event.event_type.ends_with("::PlatformBlockedProfileEvent") {
-                info!("Processing platform block event: {}", event.event_type);
-                if let Err(e) = self.process_platform_block_event(&event.data).await {
-                    error!("Failed to process platform block event: {}", e);
-                }
-
-                // Update progress after processing the event
-                if let Err(e) = self.update_progress().await {
-                    error!("Failed to update progress: {}", e);
-                }
-            }
-            // Handle platform unblocking events
-            else if event
-                .event_type
-                .ends_with("::PlatformUnblockedProfileEvent")
-            {
-                info!("Processing platform unblock event: {}", event.event_type);
-                if let Err(e) = self.process_platform_unblock_event(&event.data).await {
-                    error!("Failed to process platform unblock event: {}", e);
-                }
-
-                // Update progress after processing the event
-                if let Err(e) = self.update_progress().await {
-                    error!("Failed to update progress: {}", e);
-                }
-            }
-            // UserBlockEvent and UserUnblockEvent are now handled by block_list_handler.rs to avoid duplication
-            // BlockListCreatedEvent is now handled by block_list_handler to avoid duplication
+            // Platform blocking events are handled by platform_handler.rs to avoid duplication
+            // UserBlockEvent and UserUnblockEvent are handled by block_list_handler.rs to avoid duplication
+            // BlockListCreatedEvent is handled by block_list_handler.rs to avoid duplication
         }
 
         warn!("Profile event listener channel closed");

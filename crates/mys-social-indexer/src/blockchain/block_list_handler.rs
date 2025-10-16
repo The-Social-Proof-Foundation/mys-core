@@ -38,11 +38,13 @@ impl BlockListEventHandler {
     async fn process_event(&self, event: BlockchainEvent) -> Result<()> {
         debug!("BlockList handler examining event: {}", event.event_type);
 
-        // Only process events from the block_list module
+        // Only process events from block_list module (user-to-user blocking)
+        // Platform blocking events are handled by platform_handler.rs
         if !event.event_type.contains("::block_list::") {
-            // Not from block_list module, skip it
             return Ok(());
         }
+
+        info!("Processing user blocking event: {}", event.event_type);
 
         // Handle BlockListCreatedEvent here instead of profile_handler to avoid duplication
         if event.event_type.contains("BlockListCreatedEvent") {
@@ -92,30 +94,6 @@ impl BlockListEventHandler {
             info!("Processing profile unblock event");
             if let Err(e) = process_profile_unblock_event(&mut conn, &event.data).await {
                 error!("Failed to process profile unblock event: {}", e);
-                return Err(e);
-            }
-        } else if event_type_lower.contains("platformblockedprofileevent")
-            || event_type_lower.contains("platformblockevent")
-        {
-            info!("Processing platform block event");
-            if let Err(e) =
-                crate::events::blocking_events::process_platform_block_event(&mut conn, &event.data)
-                    .await
-            {
-                error!("Failed to process platform block event: {}", e);
-                return Err(e);
-            }
-        } else if event_type_lower.contains("platformunblockedprofileevent")
-            || event_type_lower.contains("platformunblockevent")
-        {
-            info!("Processing platform unblock event");
-            if let Err(e) = crate::events::blocking_events::process_platform_unblock_event(
-                &mut conn,
-                &event.data,
-            )
-            .await
-            {
-                error!("Failed to process platform unblock event: {}", e);
                 return Err(e);
             }
         } else {
