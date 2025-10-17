@@ -4,7 +4,6 @@
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-use std::sync::Arc;
 use mys_core::authority_aggregator::AuthorityAggregator;
 use mys_core::quorum_driver::AuthorityAggregatorUpdatable;
 use mys_core::{
@@ -12,6 +11,7 @@ use mys_core::{
 };
 use mys_network::default_mysten_network_config;
 use mys_types::mys_system_state::MysSystemStateTrait;
+use std::sync::Arc;
 use tracing::{error, info, trace};
 
 /// A ReconfigObserver that polls validators periodically

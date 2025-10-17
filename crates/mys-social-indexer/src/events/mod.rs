@@ -254,12 +254,13 @@ pub const MODULE_PREFIX_PROFILE: &str = module_prefix!();
 pub const MODULE_PREFIX_PLATFORM: &str = module_prefix!();
 pub const MODULE_PREFIX_CONTENT: &str = module_prefix!();
 pub const MODULE_PREFIX_BLOCK_LIST: &str = module_prefix!();
-pub const MODULE_PREFIX_MY_IP: &str = module_prefix!();
+pub const MODULE_PREFIX_MYDATA: &str = module_prefix!();
 pub const MODULE_PREFIX_FEE_DISTRIBUTION: &str = module_prefix!();
 pub const MODULE_PREFIX_SOCIAL_GRAPH: &str = module_prefix!();
 pub const MODULE_PREFIX_POST: &str = module_prefix!();
 pub const MODULE_PREFIX_GOVERNANCE: &str = module_prefix!();
 pub const MODULE_PREFIX_SOCIAL_PROOF_TOKEN: &str = module_prefix!();
+pub const MODULE_PREFIX_SOCIAL_PROOF_OF_TRUTH: &str = module_prefix!();
 pub const MODULE_PREFIX_POC: &str = module_prefix!();
 pub const MODULE_PREFIX_SUBSCRIPTION: &str = module_prefix!();
 

@@ -8,7 +8,7 @@
     rust_2021_compatibility
 )]
 
-use base_types::{SequenceNumber, MysAddress};
+use base_types::{MysAddress, SequenceNumber};
 use move_binary_format::file_format::{AbilitySet, SignatureToken};
 use move_binary_format::CompiledModule;
 use move_bytecode_utils::resolve_struct;
@@ -69,6 +69,9 @@ pub mod mock_checkpoint_builder;
 pub mod move_package;
 pub mod multisig;
 pub mod multisig_legacy;
+pub mod mys_sdk_types_conversions;
+pub mod mys_serde;
+pub mod mys_system_state;
 pub mod nitro_attestation;
 pub mod object;
 pub mod passkey_authenticator;
@@ -78,9 +81,6 @@ pub mod randomness_state;
 pub mod signature;
 pub mod signature_verification;
 pub mod storage;
-pub mod mys_sdk_types_conversions;
-pub mod mys_serde;
-pub mod mys_system_state;
 pub mod supported_protocol_versions;
 pub mod test_checkpoint_data_builder;
 pub mod traffic_control;

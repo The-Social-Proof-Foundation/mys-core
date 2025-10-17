@@ -6,6 +6,11 @@ use anemo::types::PeerInfo;
 use anemo::{types::PeerEvent, Network, Peer, PeerId, Request, Response};
 use fastcrypto::ed25519::{Ed25519PublicKey, Ed25519Signature};
 use futures::StreamExt;
+use mys_config::p2p::{AccessType, DiscoveryConfig, P2pConfig, SeedPeer};
+use mys_types::crypto::{NetworkKeyPair, Signer, ToFromBytes, VerifyingKey};
+use mys_types::digests::Digest;
+use mys_types::message_envelope::{Envelope, Message, VerifiedEnvelope};
+use mys_types::multiaddr::Multiaddr;
 use mysten_common::debug_fatal;
 use serde::{Deserialize, Serialize};
 use shared_crypto::intent::IntentScope;
@@ -14,11 +19,6 @@ use std::{
     sync::{Arc, RwLock},
     time::Duration,
 };
-use mys_config::p2p::{AccessType, DiscoveryConfig, P2pConfig, SeedPeer};
-use mys_types::crypto::{NetworkKeyPair, Signer, ToFromBytes, VerifyingKey};
-use mys_types::digests::Digest;
-use mys_types::message_envelope::{Envelope, Message, VerifiedEnvelope};
-use mys_types::multiaddr::Multiaddr;
 use tap::{Pipe, TapFallible};
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::watch;

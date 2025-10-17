@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use mys_json_rpc_types::ObjectChange;
-use mys_types::base_types::{ObjectID, ObjectRef, SequenceNumber, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID, ObjectRef, SequenceNumber};
 use mys_types::effects::ObjectRemoveKind;
 use mys_types::effects::{TransactionEffects, TransactionEffectsAPI};
 use mys_types::object::Owner;

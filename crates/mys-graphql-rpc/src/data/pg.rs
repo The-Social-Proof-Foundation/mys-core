@@ -12,9 +12,9 @@ use diesel::{
 };
 use diesel_async::{methods::LoadQuery, scoped_futures::ScopedBoxFuture};
 use diesel_async::{scoped_futures::ScopedFutureExt, RunQueryDsl};
+use mys_indexer::indexer_reader::IndexerReader;
 use std::fmt;
 use std::time::Instant;
-use mys_indexer::indexer_reader::IndexerReader;
 
 use tracing::error;
 

@@ -12,8 +12,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::blockchain::listener::BlockchainEvent;
 use crate::db::{Database, DbConnection};
-use crate::events::blocking_events;
-use crate::events::profile_event_types::ProfileEventType;
+use crate::events::profile_event_types::{extract_profile_id, ProfileEventType};
 use crate::events::profile_events::{
     ProfileCreatedEvent, ProfileUpdatedEvent, TokensClaimedEvent, TokensVestedEvent,
 };
@@ -537,16 +536,49 @@ impl ProfileEventListener {
         Ok(())
     }
 
-    /// Process platform block event
-    async fn process_platform_block_event(&self, event_data: &serde_json::Value) -> Result<()> {
+    async fn persist_profile_event(
+        &self,
+        event_type: &str,
+        profile_id: String,
+        event_data: serde_json::Value,
+        blockchain_event: &BlockchainEvent,
+    ) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        blocking_events::process_platform_block_event(&mut conn, event_data).await
+        let timestamp = Some(blockchain_event.timestamp_ms / 1000);
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            event_type.to_string(),
+            profile_id,
+            event_data,
+            Some(blockchain_event.event_id.clone()),
+            timestamp,
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
+
+        Ok(())
     }
 
-    /// Process platform unblock event
-    async fn process_platform_unblock_event(&self, event_data: &serde_json::Value) -> Result<()> {
-        let mut conn = self.get_connection().await?;
-        blocking_events::process_platform_unblock_event(&mut conn, event_data).await
+    async fn handle_generic_profile_event(
+        &self,
+        event_type: ProfileEventType,
+        blockchain_event: &BlockchainEvent,
+    ) -> Result<()> {
+        let fields = crate::events::event_utils::extract_event_fields(&blockchain_event.data)?;
+        let profile_id = extract_profile_id(&fields)
+            .or_else(|| {
+                blockchain_event
+                    .data
+                    .get("profile_id")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+            })
+            .ok_or_else(|| anyhow::anyhow!("Missing profile_id for {}", event_type.to_str()))?;
+
+        self.persist_profile_event(event_type.to_str(), profile_id, fields, blockchain_event)
+            .await
     }
 
     /// Start the profile event listener
@@ -691,6 +723,33 @@ impl ProfileEventListener {
                         Err(e) => {
                             error!("Failed to deserialize tokens claimed event: {}", e);
                         }
+                    }
+                }
+                // Handle profile transferred event
+                else if event.event_type.ends_with("::ProfileTransferredEvent") {
+                    if let Err(e) = self
+                        .handle_generic_profile_event(ProfileEventType::ProfileTransferred, &event)
+                        .await
+                    {
+                        error!("Failed to process profile transferred event: {}", e);
+                    }
+                }
+                // Handle service authorized event
+                else if event.event_type.ends_with("::ServiceAuthorizedEvent") {
+                    if let Err(e) = self
+                        .handle_generic_profile_event(ProfileEventType::ServiceAuthorized, &event)
+                        .await
+                    {
+                        error!("Failed to process service authorized event: {}", e);
+                    }
+                }
+                // Handle service revoked event
+                else if event.event_type.ends_with("::ServiceRevokedEvent") {
+                    if let Err(e) = self
+                        .handle_generic_profile_event(ProfileEventType::ServiceRevoked, &event)
+                        .await
+                    {
+                        error!("Failed to process service revoked event: {}", e);
                     }
                 }
 

@@ -1,5 +1,5 @@
-use thiserror::Error;
 use rust_decimal::Decimal;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum OracleError {
@@ -8,8 +8,6 @@ pub enum OracleError {
 
     #[error("GraphQL error: {0}")]
     GraphQL(String),
-
-
 
     #[error("State persistence error: {0}")]
     Persistence(#[from] sled::Error),
@@ -40,8 +38,6 @@ pub enum OracleError {
     #[error("No price data available")]
     NoPriceData,
 
-
-
     #[error("Data format error: {0}")]
     DataFormat(String),
-} 
+}

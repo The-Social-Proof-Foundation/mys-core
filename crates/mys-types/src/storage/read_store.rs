@@ -4,7 +4,7 @@
 
 use super::error::Result;
 use super::ObjectStore;
-use crate::base_types::{EpochId, MoveObjectType, ObjectID, SequenceNumber, MysAddress};
+use crate::base_types::{EpochId, MoveObjectType, MysAddress, ObjectID, SequenceNumber};
 use crate::committee::Committee;
 use crate::digests::{
     ChainIdentifier, CheckpointContentsDigest, CheckpointDigest, TransactionDigest,

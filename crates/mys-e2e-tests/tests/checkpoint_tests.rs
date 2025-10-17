@@ -2,15 +2,15 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use mys_macros::register_fail_point;
+use mys_macros::register_fail_point_if;
+use mys_macros::sim_test;
+use mys_test_transaction_builder::make_transfer_mys_transaction;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
-use mys_macros::register_fail_point;
-use mys_macros::register_fail_point_if;
-use mys_macros::sim_test;
-use mys_test_transaction_builder::make_transfer_mys_transaction;
 use test_cluster::TestClusterBuilder;
 
 #[sim_test]

@@ -6,18 +6,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use fastcrypto::traits::KeyPair;
-use mysten_metrics::spawn_monitored_task;
-use mysten_network::server::MYS_TLS_SERVER_NAME;
-use prometheus::{
-    register_histogram_with_registry, register_int_counter_vec_with_registry,
-    register_int_counter_with_registry, Histogram, IntCounter, IntCounterVec, Registry,
-};
-use std::{
-    io,
-    net::{IpAddr, SocketAddr},
-    sync::Arc,
-    time::SystemTime,
-};
 use mys_network::{
     api::{Validator, ValidatorServer},
     tonic,
@@ -44,6 +32,18 @@ use mys_types::{
         CheckpointRequest, CheckpointRequestV2, CheckpointResponse, CheckpointResponseV2,
     },
 };
+use mysten_metrics::spawn_monitored_task;
+use mysten_network::server::MYS_TLS_SERVER_NAME;
+use prometheus::{
+    register_histogram_with_registry, register_int_counter_vec_with_registry,
+    register_int_counter_with_registry, Histogram, IntCounter, IntCounterVec, Registry,
+};
+use std::{
+    io,
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+    time::SystemTime,
+};
 use tap::TapFallible;
 use tonic::metadata::{Ascii, MetadataValue};
 use tracing::{error, error_span, info, Instrument};
@@ -63,8 +63,8 @@ use crate::{
     consensus_adapter::ConnectionMonitorStatusForTests,
     traffic_controller::metrics::TrafficControllerMetrics,
 };
-use nonempty::{nonempty, NonEmpty};
 use mys_config::local_ip_utils::new_local_tcp_address_for_testing;
+use nonempty::{nonempty, NonEmpty};
 use tonic::transport::server::TcpConnectInfo;
 
 #[cfg(test)]

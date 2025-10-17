@@ -18,10 +18,10 @@ use diesel::{
     OptionalExtension, QueryableByName,
 };
 use diesel_async::scoped_futures::ScopedFutureExt;
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use mys_indexer::types::OwnerType;
 use mys_types::TypeTag;
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 /// The total balance for a particular coin type.
 #[derive(Clone, Debug, SimpleObject)]

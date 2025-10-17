@@ -6,8 +6,8 @@ use std::fmt;
 
 use async_graphql::*;
 use move_binary_format::file_format::{Ability, AbilitySet, Visibility};
-use serde::{Deserialize, Serialize};
 use mys_package_resolver::{OpenSignature, OpenSignatureBody, Reference};
+use serde::{Deserialize, Serialize};
 
 pub(crate) struct OpenMoveType {
     signature: OpenMoveTypeSignature,

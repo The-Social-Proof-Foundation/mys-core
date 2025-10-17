@@ -9,9 +9,9 @@ use move_vm_runtime::{native_charge_gas_early_exit, native_functions::NativeCont
 use move_vm_types::{
     loaded_data::runtime_types::Type, natives::function::NativeResult, values::Value,
 };
+use mys_types::error::VMMemoryLimitExceededSubStatusCode;
 use smallvec::smallvec;
 use std::collections::VecDeque;
-use mys_types::error::VMMemoryLimitExceededSubStatusCode;
 
 #[derive(Clone, Debug)]
 pub struct EventEmitCostParams {

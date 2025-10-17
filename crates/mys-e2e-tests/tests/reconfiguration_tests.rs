@@ -3,10 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use futures::future::join_all;
-use rand::rngs::OsRng;
-use std::collections::{BTreeSet, HashSet};
-use std::sync::Arc;
-use std::time::Duration;
 use mys_core::consensus_adapter::position_submit_certificate;
 use mys_json_rpc_types::MysTransactionBlockEffectsAPI;
 use mys_macros::sim_test;
@@ -25,6 +21,10 @@ use mys_types::mys_system_state::{
     MysSystemStateTrait,
 };
 use mys_types::transaction::{TransactionDataAPI, TransactionExpiration, VerifiedTransaction};
+use rand::rngs::OsRng;
+use std::collections::{BTreeSet, HashSet};
+use std::sync::Arc;
+use std::time::Duration;
 use test_cluster::{TestCluster, TestClusterBuilder};
 use tokio::time::sleep;
 
@@ -364,8 +364,8 @@ async fn test_expired_locks() {
 #[cfg(msim)]
 #[sim_test]
 async fn test_create_advance_epoch_tx_race() {
-    use std::sync::Arc;
     use mys_macros::{register_fail_point, register_fail_point_async};
+    use std::sync::Arc;
     use tokio::sync::broadcast;
     use tracing::info;
 
@@ -722,10 +722,10 @@ async fn do_test_reconfig_with_committee_change_stress() {
 #[cfg(msim)]
 #[sim_test]
 async fn test_epoch_flag_upgrade() {
-    use std::sync::Mutex;
     use mys_core::authority::epoch_start_configuration::EpochFlag;
     use mys_core::authority::epoch_start_configuration::EpochStartConfigTrait;
     use mys_macros::register_fail_point_arg;
+    use std::sync::Mutex;
 
     let initial_flags_nodes = Arc::new(Mutex::new(HashSet::new()));
     register_fail_point_arg("initial_epoch_flags", move || {

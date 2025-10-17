@@ -13,7 +13,6 @@ use crate::workloads::GasCoinConfig;
 use crate::workloads::{Gas, WorkloadBuilderInfo, WorkloadParams};
 use crate::{ExecutionEffects, ValidatorProxy};
 use async_trait::async_trait;
-use std::sync::Arc;
 use mys_test_transaction_builder::TestTransactionBuilder;
 use mys_types::crypto::get_key_pair;
 use mys_types::object::Owner;
@@ -22,6 +21,7 @@ use mys_types::{
     base_types::{ObjectID, SequenceNumber},
     transaction::Transaction,
 };
+use std::sync::Arc;
 use tracing::{error, info};
 
 /// The max amount of gas units needed for a payload.

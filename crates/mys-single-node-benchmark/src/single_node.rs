@@ -4,8 +4,6 @@
 
 use crate::command::Component;
 use crate::mock_storage::InMemoryObjectStore;
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::sync::Arc;
 use mys_core::authority::authority_per_epoch_store::AuthorityPerEpochStore;
 use mys_core::authority::authority_store_tables::LiveObject;
 use mys_core::authority::test_authority_builder::TestAuthorityBuilder;
@@ -18,7 +16,7 @@ use mys_core::consensus_adapter::{
 use mys_core::mock_consensus::{ConsensusMode, MockConsensusClient};
 use mys_core::state_accumulator::StateAccumulator;
 use mys_test_transaction_builder::{PublishData, TestTransactionBuilder};
-use mys_types::base_types::{AuthorityName, ObjectRef, MysAddress, TransactionDigest};
+use mys_types::base_types::{AuthorityName, MysAddress, ObjectRef, TransactionDigest};
 use mys_types::committee::Committee;
 use mys_types::crypto::{AccountKeyPair, AuthoritySignature, Signer};
 use mys_types::effects::{TransactionEffects, TransactionEffectsAPI};
@@ -31,6 +29,8 @@ use mys_types::transaction::{
     CertifiedTransaction, Transaction, TransactionDataAPI, VerifiedCertificate,
     VerifiedTransaction, DEFAULT_VALIDATOR_GAS_PRICE,
 };
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::Arc;
 use tokio::sync::broadcast;
 
 #[derive(Clone)]

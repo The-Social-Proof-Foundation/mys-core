@@ -10,15 +10,11 @@ use crate::metrics::BridgeIndexerMetrics;
 use crate::models::GovernanceAction as DBGovernanceAction;
 use crate::models::TokenTransferData as DBTokenTransferData;
 use crate::models::{MysErrorTransactions, TokenTransfer as DBTokenTransfer};
+use crate::mys_bridge_indexer::MysBridgeDataMapper;
 use crate::postgres_manager::PgPool;
 use crate::storage::PgBridgePersistent;
-use crate::mys_bridge_indexer::MysBridgeDataMapper;
 use ethers::providers::{Http, Provider};
 use ethers::types::Address as EthAddress;
-use std::fmt::{Display, Formatter};
-use std::str::FromStr;
-use std::sync::Arc;
-use strum_macros::Display;
 use mys_bridge::eth_client::EthClient;
 use mys_bridge::metered_eth_provider::MeteredEthHttpProvier;
 use mys_bridge::metrics::BridgeMetrics;
@@ -26,21 +22,25 @@ use mys_bridge::utils::get_eth_contract_addresses;
 use mys_data_ingestion_core::DataIngestionMetrics;
 use mys_indexer_builder::indexer_builder::{BackfillStrategy, Datasource, Indexer, IndexerBuilder};
 use mys_indexer_builder::metrics::IndexerMetricProvider;
+use mys_indexer_builder::mys_datasource::MysCheckpointDatasource;
 use mys_indexer_builder::progress::{
     OutOfOrderSaveAfterDurationPolicy, ProgressSavingPolicy, SaveAfterDurationPolicy,
 };
-use mys_indexer_builder::mys_datasource::MysCheckpointDatasource;
 use mys_sdk::MysClientBuilder;
 use mys_types::base_types::{MysAddress, TransactionDigest};
+use std::fmt::{Display, Formatter};
+use std::str::FromStr;
+use std::sync::Arc;
+use strum_macros::Display;
 
 pub mod config;
 pub mod metrics;
 pub mod models;
+pub mod mys_transaction_handler;
+pub mod mys_transaction_queries;
 pub mod postgres_manager;
 pub mod schema;
 pub mod storage;
-pub mod mys_transaction_handler;
-pub mod mys_transaction_queries;
 pub mod types;
 
 pub mod eth_bridge_indexer;
@@ -187,9 +187,12 @@ impl TreasuryEvent {
                 TreasuryEventType::Unlock => "unlock".to_string(),
             },
             amount: self.amount as i64,
-            tx_digest: format!("{:x}", mys_types::digests::TransactionDigest::new(
-                self.tx_digest.clone().try_into().unwrap_or([0u8; 32])
-            )),
+            tx_digest: format!(
+                "{:x}",
+                mys_types::digests::TransactionDigest::new(
+                    self.tx_digest.clone().try_into().unwrap_or([0u8; 32])
+                )
+            ),
             block_height: self.block_height as i64,
             timestamp_ms: self.timestamp_ms as i64,
             sender_address: Some(self.sender.clone()),

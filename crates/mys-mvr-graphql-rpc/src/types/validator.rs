@@ -8,18 +8,18 @@ use crate::data::{DataLoader, Db};
 use crate::types::cursor::{JsonCursor, Page};
 use async_graphql::connection::{Connection, CursorType, Edge};
 use async_graphql::dataloader::Loader;
-use std::collections::{BTreeMap, HashMap};
 use mys_indexer::apis::GovernanceReadApi;
 use mys_types::committee::EpochId;
 use mys_types::mys_system_state::PoolTokenExchangeRate;
+use std::collections::{BTreeMap, HashMap};
 
 use mys_types::base_types::MysAddress as NativeMysAddress;
 
 use super::big_int::BigInt;
 use super::move_object::MoveObject;
+use super::mys_address::MysAddress;
 use super::object::Object;
 use super::owner::Owner;
-use super::mys_address::MysAddress;
 use super::uint53::UInt53;
 use super::validator_credentials::ValidatorCredentials;
 use super::{address::Address, base64::Base64};

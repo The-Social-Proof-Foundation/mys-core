@@ -2,13 +2,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use move_core_types::language_storage::TypeTag;
+use mys_types::mys_serde::MysTypeTag;
+use mys_types::object::Owner;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DisplayFromStr;
 use std::fmt::{Display, Formatter, Result};
-use mys_types::object::Owner;
-use mys_types::mys_serde::MysTypeTag;
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]

@@ -4,13 +4,13 @@
 
 use std::collections::BTreeMap;
 
+use mys_protocol_config::{ProtocolConfig, ProtocolConfigValue, ProtocolVersion};
+use mys_types::mys_serde::Readable;
+use mys_types::mys_serde::{AsProtocolVersion, BigInt};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DisplayFromStr;
-use mys_protocol_config::{ProtocolConfig, ProtocolConfigValue, ProtocolVersion};
-use mys_types::mys_serde::Readable;
-use mys_types::mys_serde::{AsProtocolVersion, BigInt};
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema, PartialEq)]

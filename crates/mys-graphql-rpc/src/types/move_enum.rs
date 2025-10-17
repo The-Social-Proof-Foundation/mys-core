@@ -10,8 +10,8 @@ use crate::error::Error;
 use super::{
     move_module::MoveModule,
     move_struct::{MoveField, MoveStructTypeParameter},
-    open_move_type::{abilities, MoveAbility},
     mys_address::MysAddress,
+    open_move_type::{abilities, MoveAbility},
 };
 
 pub(crate) struct MoveEnum {

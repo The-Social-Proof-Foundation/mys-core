@@ -22,11 +22,11 @@ use move_vm_types::{
     pop_arg,
     values::{self, Value, VectorRef},
 };
+use mys_types::crypto::KeypairTraits;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use smallvec::smallvec;
 use std::collections::VecDeque;
-use mys_types::crypto::KeypairTraits;
 
 pub const FAIL_TO_RECOVER_PUBKEY: u64 = 0;
 pub const INVALID_SIGNATURE: u64 = 1;

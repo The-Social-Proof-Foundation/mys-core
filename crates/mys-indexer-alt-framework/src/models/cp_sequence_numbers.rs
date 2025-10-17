@@ -6,9 +6,9 @@ use crate::schema::cp_sequence_numbers;
 use anyhow::{bail, Result};
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-use std::ops::Range;
 use mys_field_count::FieldCount;
 use mys_pg_db::Connection;
+use std::ops::Range;
 
 #[derive(Insertable, Selectable, Queryable, Debug, Clone, FieldCount)]
 #[diesel(table_name = cp_sequence_numbers)]

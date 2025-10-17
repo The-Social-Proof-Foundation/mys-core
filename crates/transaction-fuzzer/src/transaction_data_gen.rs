@@ -7,8 +7,8 @@ use proptest::arbitrary::*;
 use proptest::prelude::*;
 
 use crate::type_arg_fuzzer::{gen_type_tag, pt_for_tags};
+use mys_types::base_types::{MysAddress, ObjectID, ObjectRef, SequenceNumber};
 use proptest::collection::vec;
-use mys_types::base_types::{ObjectID, ObjectRef, SequenceNumber, MysAddress};
 
 use mys_types::digests::ObjectDigest;
 use mys_types::transaction::{

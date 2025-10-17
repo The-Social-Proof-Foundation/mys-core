@@ -4,14 +4,6 @@
 
 #[cfg(msim)]
 mod test {
-    use rand::{distributions::uniform::SampleRange, thread_rng, Rng};
-    use std::collections::HashSet;
-    use std::num::NonZeroUsize;
-    use std::path::PathBuf;
-    use std::str::FromStr;
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::{Arc, Mutex};
-    use std::time::{Duration, Instant};
     use mys_benchmark::bank::BenchmarkBank;
     use mys_benchmark::system_state_observer::SystemStateObserver;
     use mys_benchmark::workloads::adversarial::AdversarialPayloadCfg;
@@ -52,6 +44,14 @@ mod test {
     use mys_types::transaction::{
         DEFAULT_VALIDATOR_GAS_PRICE, TEST_ONLY_GAS_UNIT_FOR_HEAVY_COMPUTATION_STORAGE,
     };
+    use rand::{distributions::uniform::SampleRange, thread_rng, Rng};
+    use std::collections::HashSet;
+    use std::num::NonZeroUsize;
+    use std::path::PathBuf;
+    use std::str::FromStr;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+    use std::time::{Duration, Instant};
     use test_cluster::{TestCluster, TestClusterBuilder};
     use tracing::{error, info, trace};
     use typed_store::traits::Map;

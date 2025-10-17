@@ -14,14 +14,14 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use consensus_config::{AuthorityIndex, NetworkKeyPair, NetworkPublicKey};
 use futures::{stream, Stream, StreamExt as _};
+use mys_http::ServerHandle;
+use mys_tls::AllowPublicKeys;
 use mysten_network::{
     callback::{CallbackLayer, MakeCallbackHandler, ResponseHandler},
     multiaddr::Protocol,
     Multiaddr,
 };
 use parking_lot::RwLock;
-use mys_http::ServerHandle;
-use mys_tls::AllowPublicKeys;
 use tokio_stream::{iter, Iter};
 use tonic::{codec::CompressionEncoding, Request, Response, Streaming};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnFailure, TraceLayer};

@@ -4,6 +4,7 @@
 
 use anyhow::{anyhow, bail, Result};
 use move_core_types::ident_str;
+use mys_genesis_builder::validator_info::GenesisValidatorInfo;
 use std::{
     collections::{BTreeMap, HashSet},
     fmt::{self, Debug, Display, Formatter, Write},
@@ -11,19 +12,18 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
-use mys_genesis_builder::validator_info::GenesisValidatorInfo;
 use url::{ParseError, Url};
 
 use mys_types::{
-    base_types::{ObjectID, ObjectRef, MysAddress},
+    base_types::{MysAddress, ObjectID, ObjectRef},
     crypto::{AuthorityPublicKey, NetworkPublicKey, Signable, DEFAULT_EPOCH_ID},
     dynamic_field::Field,
     multiaddr::Multiaddr,
-    object::Owner,
     mys_system_state::{
         mys_system_state_inner_v1::{UnverifiedValidatorOperationCapV1, ValidatorV1},
         mys_system_state_summary::{MysSystemStateSummary, MysValidatorSummary},
     },
+    object::Owner,
     MYS_SYSTEM_PACKAGE_ID,
 };
 use tap::tap::TapOptional;
@@ -36,8 +36,6 @@ use fastcrypto::{
     encoding::{Base64, Encoding},
     traits::KeyPair,
 };
-use serde::Serialize;
-use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
 use mys_bridge::metrics::BridgeMetrics;
 use mys_bridge::mys_client::MysClient as MysBridgeClient;
 use mys_bridge::mys_transaction_builder::{
@@ -59,8 +57,10 @@ use mys_sdk::MysClient;
 use mys_types::crypto::{
     generate_proof_of_possession, get_authority_key_pair, AuthorityPublicKeyBytes,
 };
-use mys_types::crypto::{AuthorityKeyPair, NetworkKeyPair, SignatureScheme, MysKeyPair};
+use mys_types::crypto::{AuthorityKeyPair, MysKeyPair, NetworkKeyPair, SignatureScheme};
 use mys_types::transaction::{CallArg, ObjectArg, Transaction, TransactionData};
+use serde::Serialize;
+use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
 
 #[path = "unit_tests/validator_tests.rs"]
 #[cfg(test)]

@@ -10,10 +10,6 @@ use crate::{
     execution_cache::ObjectCacheRead,
 };
 use itertools::izip;
-use mysten_common::fatal;
-use once_cell::unsync::OnceCell;
-use std::collections::HashMap;
-use std::sync::Arc;
 use mys_types::{
     base_types::{EpochId, FullObjectID, ObjectRef, SequenceNumber, TransactionDigest},
     error::{MysError, MysResult, UserInputError},
@@ -23,6 +19,10 @@ use mys_types::{
         ReceivingObjectReadResult, ReceivingObjectReadResultKind, ReceivingObjects, TransactionKey,
     },
 };
+use mysten_common::fatal;
+use once_cell::unsync::OnceCell;
+use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::instrument;
 
 pub(crate) struct TransactionInputLoader {

@@ -8,8 +8,8 @@ use crate::{
     base_types::{dbg_addr, ObjectID},
     committee::EpochId,
     crypto::{
-        AccountKeyPair, AuthorityKeyPair, AuthoritySignature, Signature, SignatureScheme,
-        MysAuthoritySignature, MysSignature,
+        AccountKeyPair, AuthorityKeyPair, AuthoritySignature, MysAuthoritySignature, MysSignature,
+        Signature, SignatureScheme,
     },
     object::Object,
     transaction::{Transaction, TransactionData, TEST_ONLY_GAS_UNIT_FOR_TRANSFER},

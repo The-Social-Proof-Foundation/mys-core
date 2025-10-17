@@ -8,8 +8,8 @@ use prometheus::{
     register_int_gauge_vec_with_registry, HistogramVec, IntCounterVec, IntGaugeVec, Registry,
 };
 
-use std::time::Duration;
 use mys_network::tonic::Code;
+use std::time::Duration;
 
 use mysten_metrics::RegistryService;
 

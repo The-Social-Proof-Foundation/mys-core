@@ -6,7 +6,6 @@ use crate::{
     error::Error,
     types::{address::Address, mys_address::MysAddress, validator::Validator},
 };
-use std::{collections::BTreeMap, time::Duration};
 use mys_indexer::db::ConnectionPoolConfig;
 use mys_indexer::{apis::GovernanceReadApi, indexer_reader::IndexerReader};
 use mys_json_rpc_types::Stake as RpcStakedMys;
@@ -14,6 +13,7 @@ use mys_types::{
     governance::StakedMys as NativeStakedMys,
     mys_system_state::mys_system_state_summary::MysSystemStateSummary as NativeMysSystemStateSummary,
 };
+use std::{collections::BTreeMap, time::Duration};
 
 pub(crate) struct PgManager {
     pub inner: IndexerReader,

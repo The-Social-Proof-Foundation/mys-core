@@ -4,14 +4,14 @@
 
 use anyhow::bail;
 use fastcrypto::traits::ToFromBytes;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use mys_types::base_types::MysAddress;
 use mys_types::crypto::{
     verify_proof_of_possession, AuthorityPublicKey, AuthorityPublicKeyBytes, AuthoritySignature,
     NetworkPublicKey,
 };
 use mys_types::multiaddr::Multiaddr;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 const MAX_VALIDATOR_METADATA_LENGTH: usize = 256;
 

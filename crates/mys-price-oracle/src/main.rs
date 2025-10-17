@@ -31,7 +31,10 @@ struct Args {
     #[clap(long, help = "Path to configuration file")]
     pub config_path: Option<PathBuf>,
 
-    #[clap(long, help = "Use environment variables for configuration (Railway mode)")]
+    #[clap(
+        long,
+        help = "Use environment variables for configuration (Railway mode)"
+    )]
     pub env: bool,
 
     #[clap(long, help = "Dry run mode - don't send updates to bridge")]
@@ -63,11 +66,8 @@ impl PriceOracle {
         let state_manager = Arc::new(StateManager::new(&config.persistence.database_path)?);
 
         // Initialize price fetcher
-        let price_fetcher = create_price_fetcher(
-            &config.source,
-            config.validation.clone(),
-            metrics.clone(),
-        );
+        let price_fetcher =
+            create_price_fetcher(&config.source, config.validation.clone(), metrics.clone());
 
         // Initialize bridge client
         let bridge_client = BridgeClient::new(
@@ -117,8 +117,11 @@ impl PriceOracle {
         // Main oracle loop
         loop {
             let iteration_id = Uuid::new_v4();
-            
-            match self.process_price_update(iteration_id, &mut last_price).await {
+
+            match self
+                .process_price_update(iteration_id, &mut last_price)
+                .await
+            {
                 Ok(updated) => {
                     if updated {
                         info!(iteration_id = %iteration_id, "Price update completed successfully");
@@ -211,7 +214,7 @@ impl PriceOracle {
             } else {
                 // Get next nonce and send update
                 let nonce = self.state_manager.get_next_nonce()?;
-                
+
                 match self
                     .bridge_client
                     .update_price(
@@ -263,7 +266,7 @@ impl PriceOracle {
         }
 
         let change = (new_price - old_price).abs() / old_price;
-        
+
         // Validate the change isn't unreasonable
         if change > self.config.validation.max_price_deviation_percent / Decimal::from(100) {
             return Err(OracleError::PriceDeviationTooLarge {
@@ -308,14 +311,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         match config.validate() {
             Ok(_) => {
                 info!("Configuration validation passed");
-                
+
                 // Print some key configuration values for verification
                 info!("Server URL: {}", config.server_url);
                 info!("Chain ID: {}", config.chain_id);
                 info!("Token ID: {}", config.token_id);
                 info!("Update interval: {:?}", config.update_interval);
                 info!("Price change threshold: {}", config.price_change_threshold);
-                
+
                 match &config.source {
                     config::DataSource::GraphQL(source) => {
                         info!("Using GraphQL source: {}", source.url);
@@ -326,7 +329,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         info!("JSON path: {}", source.json_path);
                     }
                 }
-                
+
                 return Ok(());
             }
             Err(e) => {

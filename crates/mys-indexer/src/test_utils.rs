@@ -6,13 +6,13 @@ use mysten_metrics::init_metrics;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
+use mys_json_rpc_types::MysTransactionBlockResponse;
+use mys_pg_db::temp::{get_available_port, TempDb};
 use simulacrum::Simulacrum;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use mys_json_rpc_types::MysTransactionBlockResponse;
-use mys_pg_db::temp::{get_available_port, TempDb};
 
 use crate::config::{IngestionConfig, RetentionConfig, SnapshotLagConfig, UploadOptions};
 use crate::database::Connection;

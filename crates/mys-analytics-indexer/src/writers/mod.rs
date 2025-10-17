@@ -4,8 +4,8 @@
 
 use crate::{FileFormat, ParquetSchema};
 use anyhow::Result;
-use serde::Serialize;
 use mys_types::base_types::EpochId;
+use serde::Serialize;
 
 pub mod csv_writer;
 pub mod parquet_writer;

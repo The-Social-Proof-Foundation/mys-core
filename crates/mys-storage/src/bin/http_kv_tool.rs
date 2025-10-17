@@ -3,21 +3,25 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::*;
-use std::str::FromStr;
-use std::sync::Arc;
 use mys_storage::http_key_value_store::*;
 use mys_storage::key_value_store::TransactionKeyValueStore;
 use mys_storage::key_value_store_metrics::KeyValueStoreMetrics;
 use mys_types::base_types::ObjectID;
 use mys_types::digests::{CheckpointDigest, TransactionDigest};
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use std::str::FromStr;
+use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(rename_all = "kebab-case")]
 enum Command {
     Fetch {
         // default value of 'https://transactions.mysocial.network/'
-        #[arg(short, long, default_value = "https://transactions.mysocial.network/mainnet")]
+        #[arg(
+            short,
+            long,
+            default_value = "https://transactions.mysocial.network/mainnet"
+        )]
         base_url: String,
 
         #[arg(short, long)]

@@ -2,8 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::object::ObjectRef;
 use super::mys_address::MysAddress;
+use super::object::ObjectRef;
 use super::uint53::UInt53;
 use async_graphql::*;
 

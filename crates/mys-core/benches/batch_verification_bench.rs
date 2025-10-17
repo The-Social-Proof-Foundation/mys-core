@@ -9,12 +9,12 @@ use rand::prelude::*;
 use rand::seq::SliceRandom;
 
 use futures::future::join_all;
-use prometheus::Registry;
-use std::sync::Arc;
 use mys_core::test_utils::{make_cert_with_large_committee, make_dummy_tx};
 use mys_types::committee::Committee;
 use mys_types::crypto::{get_key_pair, AccountKeyPair, AuthorityKeyPair};
 use mys_types::transaction::CertifiedTransaction;
+use prometheus::Registry;
+use std::sync::Arc;
 
 use fastcrypto_zkp::bn254::zk_login_api::ZkLoginEnv;
 use mys_core::signature_verifier::*;

@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use mys_config::Config;
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -79,8 +79,8 @@ impl Default for ValidationConfig {
     fn default() -> Self {
         Self {
             min_price_usd: Decimal::from_parts(1, 0, 0, false, 6), // $0.000001
-            max_price_usd: Decimal::from(1_000_000), // $1M
-            max_price_deviation_percent: Decimal::from(50), // 50%
+            max_price_usd: Decimal::from(1_000_000),               // $1M
+            max_price_deviation_percent: Decimal::from(50),        // 50%
         }
     }
 }
@@ -136,10 +136,10 @@ impl Default for BridgeIntegrationConfig {
             validator_endpoints: vec![],
             mys_rpc_url: String::new(),
             bridge_client_key_path: String::new(),
-            bridge_chain_id: 2, // MysCustom
-            bridge_token_id: 0, // MYS
+            bridge_chain_id: 2,                        // MysCustom
+            bridge_token_id: 0,                        // MYS
             update_interval: Duration::from_secs(300), // 5 minutes
-            min_price_change_percent: Decimal::ONE, // 1%
+            min_price_change_percent: Decimal::ONE,    // 1%
         }
     }
 }
@@ -219,23 +219,33 @@ where
 {
     let s: Option<String> = Deserialize::deserialize(deserializer)?;
     match s {
-        Some(s) => parse_duration(&s).map(Some).map_err(serde::de::Error::custom),
+        Some(s) => parse_duration(&s)
+            .map(Some)
+            .map_err(serde::de::Error::custom),
         None => Ok(None),
     }
 }
 
 fn parse_duration(s: &str) -> Result<Duration, String> {
     if s.ends_with("ms") {
-        let num: u64 = s[..s.len()-2].parse().map_err(|_| format!("Invalid duration: {}", s))?;
+        let num: u64 = s[..s.len() - 2]
+            .parse()
+            .map_err(|_| format!("Invalid duration: {}", s))?;
         Ok(Duration::from_millis(num))
     } else if s.ends_with('s') {
-        let num: u64 = s[..s.len()-1].parse().map_err(|_| format!("Invalid duration: {}", s))?;
+        let num: u64 = s[..s.len() - 1]
+            .parse()
+            .map_err(|_| format!("Invalid duration: {}", s))?;
         Ok(Duration::from_secs(num))
     } else if s.ends_with('m') {
-        let num: u64 = s[..s.len()-1].parse().map_err(|_| format!("Invalid duration: {}", s))?;
+        let num: u64 = s[..s.len() - 1]
+            .parse()
+            .map_err(|_| format!("Invalid duration: {}", s))?;
         Ok(Duration::from_secs(num * 60))
     } else if s.ends_with('h') {
-        let num: u64 = s[..s.len()-1].parse().map_err(|_| format!("Invalid duration: {}", s))?;
+        let num: u64 = s[..s.len() - 1]
+            .parse()
+            .map_err(|_| format!("Invalid duration: {}", s))?;
         Ok(Duration::from_secs(num * 3600))
     } else {
         Err(format!("Invalid duration format: {}", s))
@@ -250,22 +260,27 @@ impl PriceOracleConfig {
 
         // Build data source based on type
         let source = match env_vars.mys_oracle_source_type.as_str() {
-            "graphql" => {
-                DataSource::GraphQL(GraphQLSource {
-                    url: env_vars.mys_oracle_source_url,
-                    token_address: env_vars.mys_oracle_source_token_address
-                        .ok_or_else(|| ConfigError::InvalidTokenAddress("GraphQL source requires token_address".to_string()))?,
-                    pool_fee_tier: env_vars.mys_oracle_source_pool_fee_tier,
-                })
+            "graphql" => DataSource::GraphQL(GraphQLSource {
+                url: env_vars.mys_oracle_source_url,
+                token_address: env_vars.mys_oracle_source_token_address.ok_or_else(|| {
+                    ConfigError::InvalidTokenAddress(
+                        "GraphQL source requires token_address".to_string(),
+                    )
+                })?,
+                pool_fee_tier: env_vars.mys_oracle_source_pool_fee_tier,
+            }),
+            "rest_api" => DataSource::RestApi(RestApiSource {
+                url: env_vars.mys_oracle_source_url,
+                json_path: env_vars.mys_oracle_source_json_path.ok_or_else(|| {
+                    ConfigError::InvalidUrl("REST API source requires json_path".to_string())
+                })?,
+            }),
+            _ => {
+                return Err(ConfigError::InvalidUrl(format!(
+                    "Invalid source type: {}",
+                    env_vars.mys_oracle_source_type
+                )))
             }
-            "rest_api" => {
-                DataSource::RestApi(RestApiSource {
-                    url: env_vars.mys_oracle_source_url,
-                    json_path: env_vars.mys_oracle_source_json_path
-                        .ok_or_else(|| ConfigError::InvalidUrl("REST API source requires json_path".to_string()))?,
-                })
-            }
-            _ => return Err(ConfigError::InvalidUrl(format!("Invalid source type: {}", env_vars.mys_oracle_source_type))),
         };
 
         let config = Self {
@@ -281,26 +296,35 @@ impl PriceOracleConfig {
             },
             retry: RetryConfig {
                 max_attempts: env_vars.mys_oracle_retry_max_attempts.unwrap_or(3),
-                initial_delay: env_vars.mys_oracle_retry_initial_delay.unwrap_or(Duration::from_millis(100)),
-                max_delay: env_vars.mys_oracle_retry_max_delay.unwrap_or(Duration::from_secs(30)),
+                initial_delay: env_vars
+                    .mys_oracle_retry_initial_delay
+                    .unwrap_or(Duration::from_millis(100)),
+                max_delay: env_vars
+                    .mys_oracle_retry_max_delay
+                    .unwrap_or(Duration::from_secs(30)),
                 multiplier: env_vars.mys_oracle_retry_multiplier.unwrap_or(2.0),
             },
             validation: ValidationConfig {
-                min_price_usd: env_vars.mys_oracle_validation_min_price_usd
+                min_price_usd: env_vars
+                    .mys_oracle_validation_min_price_usd
                     .unwrap_or_else(|| Decimal::from_parts(1, 0, 0, false, 6)),
-                max_price_usd: env_vars.mys_oracle_validation_max_price_usd
+                max_price_usd: env_vars
+                    .mys_oracle_validation_max_price_usd
                     .unwrap_or_else(|| Decimal::from(1_000_000)),
-                max_price_deviation_percent: env_vars.mys_oracle_validation_max_price_deviation_percent
+                max_price_deviation_percent: env_vars
+                    .mys_oracle_validation_max_price_deviation_percent
                     .unwrap_or_else(|| Decimal::from(50)),
             },
             monitoring: MonitoringConfig {
                 metrics_port: env_vars.mys_oracle_monitoring_metrics_port.unwrap_or(9090),
-                health_check_port: env_vars.mys_oracle_monitoring_health_check_port
+                health_check_port: env_vars
+                    .mys_oracle_monitoring_health_check_port
                     .or_else(|| std::env::var("PORT").ok().and_then(|p| p.parse().ok()))
                     .unwrap_or(8080),
             },
             persistence: PersistenceConfig {
-                database_path: env_vars.mys_oracle_persistence_database_path
+                database_path: env_vars
+                    .mys_oracle_persistence_database_path
                     .unwrap_or_else(|| "./oracle_state.db".to_string()),
             },
             bridge_integration: BridgeIntegrationConfig::default(),
@@ -313,45 +337,59 @@ impl PriceOracleConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
         // Validate server URL
         if !self.server_url.starts_with("http://") && !self.server_url.starts_with("https://") {
-            return Err(ConfigError::InvalidUrl(format!("Invalid server URL: {}", self.server_url)));
+            return Err(ConfigError::InvalidUrl(format!(
+                "Invalid server URL: {}",
+                self.server_url
+            )));
         }
 
         // Validate source URL
         match &self.source {
             DataSource::GraphQL(source) => {
                 if !source.url.starts_with("http://") && !source.url.starts_with("https://") {
-                    return Err(ConfigError::InvalidUrl(format!("Invalid GraphQL URL: {}", source.url)));
+                    return Err(ConfigError::InvalidUrl(format!(
+                        "Invalid GraphQL URL: {}",
+                        source.url
+                    )));
                 }
                 // Validate token address format (basic Ethereum address validation)
                 if !source.token_address.starts_with("0x") || source.token_address.len() != 42 {
-                    return Err(ConfigError::InvalidTokenAddress(source.token_address.clone()));
+                    return Err(ConfigError::InvalidTokenAddress(
+                        source.token_address.clone(),
+                    ));
                 }
             }
             DataSource::RestApi(source) => {
                 if !source.url.starts_with("http://") && !source.url.starts_with("https://") {
-                    return Err(ConfigError::InvalidUrl(format!("Invalid REST API URL: {}", source.url)));
+                    return Err(ConfigError::InvalidUrl(format!(
+                        "Invalid REST API URL: {}",
+                        source.url
+                    )));
                 }
             }
         }
 
         // Validate price threshold
-        if self.price_change_threshold <= Decimal::ZERO || self.price_change_threshold > Decimal::ONE {
-            return Err(ConfigError::InvalidPriceThreshold(
-                format!("Price threshold must be between 0 and 1, got: {}", self.price_change_threshold)
-            ));
+        if self.price_change_threshold <= Decimal::ZERO
+            || self.price_change_threshold > Decimal::ONE
+        {
+            return Err(ConfigError::InvalidPriceThreshold(format!(
+                "Price threshold must be between 0 and 1, got: {}",
+                self.price_change_threshold
+            )));
         }
 
         // Validate update interval
         if self.update_interval < Duration::from_secs(1) {
             return Err(ConfigError::InvalidDuration(
-                "Update interval must be at least 1 second".to_string()
+                "Update interval must be at least 1 second".to_string(),
             ));
         }
 
         // Validate validation config
         if self.validation.min_price_usd >= self.validation.max_price_usd {
             return Err(ConfigError::InvalidPriceThreshold(
-                "min_price_usd must be less than max_price_usd".to_string()
+                "min_price_usd must be less than max_price_usd".to_string(),
             ));
         }
 

@@ -4,11 +4,11 @@
 
 use super::ClientError;
 use async_graphql::{Response, ServerError, Value};
+use mys_graphql_rpc_headers::VERSION_HEADER;
 use reqwest::header::{HeaderMap, HeaderName};
 use reqwest::Response as ReqwestResponse;
 use serde_json::json;
 use std::{collections::BTreeMap, net::SocketAddr};
-use mys_graphql_rpc_headers::VERSION_HEADER;
 
 #[derive(Debug)]
 pub struct GraphqlResponse {

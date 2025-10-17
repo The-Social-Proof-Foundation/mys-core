@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::base_types::{
-    random_object_ref, EpochId, ObjectID, ObjectRef, SequenceNumber, MysAddress, TransactionDigest,
+    random_object_ref, EpochId, MysAddress, ObjectID, ObjectRef, SequenceNumber, TransactionDigest,
 };
 use crate::digests::{ObjectDigest, TransactionEventsDigest};
 use crate::effects::{InputSharedObject, TransactionEffectsAPI, UnchangedSharedKind};

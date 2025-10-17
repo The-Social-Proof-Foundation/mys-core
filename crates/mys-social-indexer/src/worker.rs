@@ -13,7 +13,7 @@ use crate::db::{Database, DbConnection};
 use crate::events::{
     parse_event,
     MODULE_PREFIX_PROFILE, MODULE_PREFIX_PLATFORM, MODULE_PREFIX_CONTENT,
-    MODULE_PREFIX_BLOCK_LIST, MODULE_PREFIX_MY_IP, MODULE_PREFIX_FEE_DISTRIBUTION,
+    MODULE_PREFIX_BLOCK_LIST, MODULE_PREFIX_MYDATA, MODULE_PREFIX_FEE_DISTRIBUTION,
     MODULE_PREFIX_SOCIAL_GRAPH,
     ProfileCreatedEvent, ProfileUpdatedEvent, UsernameUpdatedEvent, UsernameRegisteredEvent, 
     PlatformCreatedEvent, ContentCreatedEvent, ContentInteractionEvent,
@@ -1269,14 +1269,14 @@ impl Worker for SocialIndexerWorker {
                     },
                     
                     // IP events
-                    t if t.starts_with(MODULE_PREFIX_MY_IP) && t.ends_with("IPRegisteredEvent") => {
+                    t if t.starts_with(MODULE_PREFIX_MYDATA) && t.ends_with("IPRegisteredEvent") => {
                         if let Ok(event) = parse_event::<IPRegisteredEvent>(event) {
                             if let Err(e) = self.process_ip_registered(&event).await {
                                 error!("Failed to process IPRegisteredEvent: {}", e);
                             }
                         }
                     },
-                    t if t.starts_with(MODULE_PREFIX_MY_IP) && t.ends_with("LicenseGrantedEvent") => {
+                    t if t.starts_with(MODULE_PREFIX_MYDATA) && t.ends_with("LicenseGrantedEvent") => {
                         if let Ok(event) = parse_event::<LicenseGrantedEvent>(event) {
                             if let Err(e) = self.process_license_granted(&event).await {
                                 error!("Failed to process LicenseGrantedEvent: {}", e);

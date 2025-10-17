@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #[cfg(not(msim))]
-use std::path::Path;
-#[cfg(not(msim))]
 use mys_types::transaction::{CallArg, ObjectArg};
+#[cfg(not(msim))]
+use std::path::Path;
 
 #[cfg(not(msim))]
 const TEST_DIR: &str = "tests";

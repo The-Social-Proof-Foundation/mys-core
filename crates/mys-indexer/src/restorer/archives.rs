@@ -4,8 +4,8 @@
 
 use std::num::NonZeroUsize;
 
-use prometheus::Registry;
 use mys_types::digests::CheckpointDigest;
+use prometheus::Registry;
 use tracing::info;
 
 use mys_archival::reader::{ArchiveReader, ArchiveReaderMetrics};

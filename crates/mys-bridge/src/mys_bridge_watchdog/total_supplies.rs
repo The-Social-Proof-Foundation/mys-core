@@ -6,9 +6,9 @@
 
 use crate::mys_bridge_watchdog::Observable;
 use async_trait::async_trait;
+use mys_sdk::MysClient;
 use prometheus::IntGaugeVec;
 use std::{collections::BTreeMap, sync::Arc};
-use mys_sdk::MysClient;
 
 use tokio::time::Duration;
 use tracing::{error, info};

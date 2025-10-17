@@ -7,11 +7,6 @@ use crate::{DataIngestionMetrics, FileProgressStore, IndexerExecutor, WorkerPool
 use crate::{ReaderOptions, Worker};
 use anyhow::Result;
 use async_trait::async_trait;
-use prometheus::Registry;
-use rand::prelude::StdRng;
-use rand::SeedableRng;
-use std::path::PathBuf;
-use std::time::Duration;
 use mys_protocol_config::ProtocolConfig;
 use mys_storage::blob::{Blob, BlobEncoding};
 use mys_types::crypto::KeypairTraits;
@@ -22,6 +17,11 @@ use mys_types::messages_checkpoint::{
     SignedCheckpointSummary,
 };
 use mys_types::utils::make_committee_key;
+use prometheus::Registry;
+use rand::prelude::StdRng;
+use rand::SeedableRng;
+use std::path::PathBuf;
+use std::time::Duration;
 use tempfile::NamedTempFile;
 use tokio::sync::oneshot;
 

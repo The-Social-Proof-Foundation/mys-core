@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use mys_types::{
-    base_types::{FullObjectID, ObjectID, ObjectRef, SequenceNumber, MysAddress},
+    base_types::{FullObjectID, MysAddress, ObjectID, ObjectRef, SequenceNumber},
     crypto::{get_key_pair, AccountKeyPair},
     effects::TransactionEffects,
     execution_status::{CommandArgumentError, ExecutionFailureStatus},

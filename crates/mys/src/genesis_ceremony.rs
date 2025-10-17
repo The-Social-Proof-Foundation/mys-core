@@ -6,7 +6,6 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::Parser;
 use fastcrypto::encoding::{Encoding, Hex};
-use std::path::PathBuf;
 use mys_config::{genesis::UnsignedGenesis, MYS_GENESIS_FILENAME};
 use mys_genesis_builder::Builder;
 use mys_types::multiaddr::Multiaddr;
@@ -14,10 +13,11 @@ use mys_types::{
     base_types::MysAddress,
     committee::ProtocolVersion,
     crypto::{
-        generate_proof_of_possession, AuthorityKeyPair, KeypairTraits, NetworkKeyPair, MysKeyPair,
+        generate_proof_of_possession, AuthorityKeyPair, KeypairTraits, MysKeyPair, NetworkKeyPair,
     },
     message_envelope::Message,
 };
+use std::path::PathBuf;
 
 use mys_keys::keypair_file::{
     read_authority_keypair_from_file, read_keypair_from_file, read_network_keypair_from_file,

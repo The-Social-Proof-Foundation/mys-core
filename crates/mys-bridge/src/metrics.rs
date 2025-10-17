@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::config::MetricsConfig;
+use mys_types::crypto::NetworkKeyPair;
 use mysten_common::metrics::{push_metrics, MetricsPushClient};
 use mysten_metrics::RegistryService;
 use prometheus::{
@@ -12,7 +13,6 @@ use prometheus::{
     IntGaugeVec, Registry,
 };
 use std::time::Duration;
-use mys_types::crypto::NetworkKeyPair;
 
 const FINE_GRAINED_LATENCY_SEC_BUCKETS: &[f64] = &[
     0.001, 0.005, 0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9,

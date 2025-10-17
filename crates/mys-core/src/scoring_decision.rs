@@ -87,8 +87,8 @@ mod tests {
 
     use arc_swap::ArcSwap;
     use consensus_config::{local_committee_and_keys, Committee as ConsensusCommittee};
-    use prometheus::Registry;
     use mys_types::{committee::Committee, crypto::AuthorityPublicKeyBytes};
+    use prometheus::Registry;
 
     use crate::{authority::AuthorityMetrics, scoring_decision::update_low_scoring_authorities};
 

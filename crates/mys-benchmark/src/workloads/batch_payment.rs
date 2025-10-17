@@ -11,18 +11,18 @@ use crate::workloads::workload::{WorkloadBuilder, ESTIMATED_COMPUTATION_COST};
 use crate::workloads::{Gas, GasCoinConfig, WorkloadBuilderInfo, WorkloadParams};
 use crate::{ExecutionEffects, ValidatorProxy};
 use async_trait::async_trait;
-use std::collections::HashMap;
-use std::sync::Arc;
 use mys_core::test_utils::make_pay_mys_transaction;
 use mys_types::base_types::{ObjectID, SequenceNumber};
 use mys_types::digests::ObjectDigest;
 use mys_types::gas_coin::MIST_PER_MYS;
 use mys_types::object::Owner;
 use mys_types::{
-    base_types::{ObjectRef, MysAddress},
+    base_types::{MysAddress, ObjectRef},
     crypto::get_key_pair,
     transaction::Transaction,
 };
+use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::{debug, error};
 
 /// Value of each address's "primary coin" in mist. The first transaction gives

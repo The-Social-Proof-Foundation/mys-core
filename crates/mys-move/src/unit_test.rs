@@ -10,8 +10,6 @@ use move_cli::base::{
 use move_package::BuildConfig;
 use move_unit_test::{extensions::set_extension_hook, UnitTestingConfig};
 use move_vm_runtime::native_extensions::NativeContextExtensions;
-use once_cell::sync::Lazy;
-use std::{cell::RefCell, collections::BTreeMap, path::Path, sync::Arc};
 use mys_move_build::decorate_warnings;
 use mys_move_natives::test_scenario::InMemoryTestStore;
 use mys_move_natives::{object_runtime::ObjectRuntime, NativesCostTable};
@@ -20,6 +18,8 @@ use mys_types::{
     gas_model::tables::initial_cost_schedule_for_unit_tests, in_memory_storage::InMemoryStorage,
     metrics::LimitsMetrics,
 };
+use once_cell::sync::Lazy;
+use std::{cell::RefCell, collections::BTreeMap, path::Path, sync::Arc};
 
 // Move unit tests will halt after executing this many steps. This is a protection to avoid divergence
 const MAX_UNIT_TEST_INSTRUCTIONS: u64 = 1_000_000;

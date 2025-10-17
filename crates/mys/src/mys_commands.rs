@@ -14,13 +14,6 @@ use colored::Colorize;
 use fastcrypto::traits::KeyPair;
 use move_analyzer::analyzer;
 use move_package::BuildConfig;
-use rand::rngs::OsRng;
-use std::io::{stderr, stdout, Write};
-use std::net::{AddrParseError, IpAddr, Ipv4Addr, SocketAddr};
-use std::num::NonZeroUsize;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::{fs, io};
 use mys_bridge::config::BridgeCommitteeConfig;
 use mys_bridge::metrics::BridgeMetrics;
 use mys_bridge::mys_client::MysBridgeClient;
@@ -38,6 +31,13 @@ use mys_faucet::{create_wallet_context, start_faucet, AppState, FaucetConfig, Si
 use mys_indexer::test_utils::{
     start_indexer_jsonrpc_for_testing, start_indexer_writer_for_testing,
 };
+use rand::rngs::OsRng;
+use std::io::{stderr, stdout, Write};
+use std::net::{AddrParseError, IpAddr, Ipv4Addr, SocketAddr};
+use std::num::NonZeroUsize;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::{fs, io};
 
 use mys_graphql_rpc::{
     config::{ConnectionConfig, ServiceConfig},
@@ -56,7 +56,7 @@ use mys_swarm_config::network_config::NetworkConfig;
 use mys_swarm_config::network_config_builder::ConfigBuilder;
 use mys_swarm_config::node_config_builder::FullnodeConfigBuilder;
 use mys_types::base_types::MysAddress;
-use mys_types::crypto::{SignatureScheme, MysKeyPair, ToFromBytes};
+use mys_types::crypto::{MysKeyPair, SignatureScheme, ToFromBytes};
 use tempfile::tempdir;
 use tracing;
 use tracing::info;

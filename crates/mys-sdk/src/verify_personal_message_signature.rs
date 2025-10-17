@@ -7,13 +7,13 @@ use std::sync::Arc;
 use crate::{error::Error, MysClient};
 use fastcrypto::encoding::{Base64, Encoding};
 use fastcrypto::traits::ToFromBytes;
-use shared_crypto::intent::{Intent, IntentMessage, PersonalMessage};
 use mys_json_rpc_types::ZkLoginIntentScope;
 use mys_types::{
     base_types::MysAddress,
     signature::{AuthenticatorTrait, GenericSignature, VerifyParams},
     signature_verification::VerifiedDigestCache,
 };
+use shared_crypto::intent::{Intent, IntentMessage, PersonalMessage};
 
 /// Verify a signature against a personal message bytes and the mys address.
 /// MysClient is required to pass in if zkLogin signature is supplied.

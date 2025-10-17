@@ -6,7 +6,7 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
 
 use mys_json_rpc_types::{
-    CheckpointedObjectID, EpochInfo, EpochPage, QueryObjectsPage, MysObjectResponseQuery,
+    CheckpointedObjectID, EpochInfo, EpochPage, MysObjectResponseQuery, QueryObjectsPage,
 };
 use mys_open_rpc_macros::open_rpc;
 use mys_types::mys_serde::BigInt;

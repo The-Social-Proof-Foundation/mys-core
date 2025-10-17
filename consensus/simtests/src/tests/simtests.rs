@@ -8,10 +8,6 @@ mod test {
         Authority, AuthorityIndex, AuthorityKeyPair, Committee, Epoch, NetworkKeyPair,
         ProtocolKeyPair, Stake,
     };
-    use mysten_network::Multiaddr;
-    use prometheus::Registry;
-    use rand::{rngs::StdRng, SeedableRng as _};
-    use std::{sync::Arc, time::Duration};
     use mys_config::local_ip_utils;
     use mys_macros::sim_test;
     use mys_protocol_config::ProtocolConfig;
@@ -19,6 +15,10 @@ mod test {
         configs::{bimodal_latency_ms, env_config, uniform_latency_ms},
         SimConfig,
     };
+    use mysten_network::Multiaddr;
+    use prometheus::Registry;
+    use rand::{rngs::StdRng, SeedableRng as _};
+    use std::{sync::Arc, time::Duration};
     use tempfile::TempDir;
     use tokio::time::sleep;
     use typed_store::DBMetrics;

@@ -2,17 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::test_utils::make_transfer_object_transaction;
 use crate::test_utils::make_transfer_mys_transaction;
+use crate::test_utils::make_transfer_object_transaction;
 use move_core_types::{account_address::AccountAddress, ident_str};
-use rand::rngs::StdRng;
-use rand::SeedableRng;
-use shared_crypto::intent::{Intent, IntentScope};
-use std::collections::BTreeMap;
-use std::collections::HashSet;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 use mys_authority_aggregation::quorum_map_then_reduce_with_timeout;
 use mys_macros::sim_test;
 use mys_move_build::BuildConfig;
@@ -23,6 +15,14 @@ use mys_types::crypto::{KeypairTraits, Signature};
 use mys_types::object::Object;
 use mys_types::transaction::*;
 use mys_types::utils::create_fake_transaction;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
+use shared_crypto::intent::{Intent, IntentScope};
+use std::collections::BTreeMap;
+use std::collections::HashSet;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use super::*;
 use crate::authority_client::AuthorityAPI;

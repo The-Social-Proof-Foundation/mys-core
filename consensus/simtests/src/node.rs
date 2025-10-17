@@ -12,9 +12,9 @@ use tracing::{info, trace};
 
 use anyhow::Result;
 use consensus_config::{AuthorityIndex, Committee, NetworkKeyPair, Parameters, ProtocolKeyPair};
+use mys_protocol_config::{ConsensusNetwork, ProtocolConfig};
 use parking_lot::Mutex;
 use prometheus::Registry;
-use mys_protocol_config::{ConsensusNetwork, ProtocolConfig};
 use tempfile::TempDir;
 
 use consensus_core::network::tonic_network::to_socket_addr;

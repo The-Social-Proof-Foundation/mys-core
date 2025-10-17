@@ -6,8 +6,6 @@ use std::net::{IpAddr, SocketAddr};
 
 use anyhow::Result;
 use fastcrypto::traits::KeyPair;
-use rand::{rngs::StdRng, SeedableRng};
-use serde::{Deserialize, Serialize};
 use mys_config::genesis::{GenesisCeremonyParameters, TokenAllocation};
 use mys_config::node::{DEFAULT_COMMISSION_RATE, DEFAULT_VALIDATOR_GAS_PRICE};
 use mys_config::{local_ip_utils, Config};
@@ -15,9 +13,11 @@ use mys_genesis_builder::validator_info::{GenesisValidatorInfo, ValidatorInfo};
 use mys_types::base_types::MysAddress;
 use mys_types::crypto::{
     generate_proof_of_possession, get_key_pair_from_rng, AccountKeyPair, AuthorityKeyPair,
-    AuthorityPublicKeyBytes, NetworkKeyPair, NetworkPublicKey, PublicKey, MysKeyPair,
+    AuthorityPublicKeyBytes, MysKeyPair, NetworkKeyPair, NetworkPublicKey, PublicKey,
 };
 use mys_types::multiaddr::Multiaddr;
+use rand::{rngs::StdRng, SeedableRng};
+use serde::{Deserialize, Serialize};
 use tracing::info;
 
 // All information needed to build a NodeConfig for a state sync fullnode.

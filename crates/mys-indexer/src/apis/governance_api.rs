@@ -12,11 +12,11 @@ use cached::{proc_macro::cached, SizedCache};
 use mys_json_rpc::{governance_api::ValidatorExchangeRates, MysRpcModule};
 use mys_json_rpc_api::GovernanceReadApiServer;
 use mys_json_rpc_types::{
-    DelegatedStake, EpochInfo, StakeStatus, MysCommittee, MysObjectDataFilter, ValidatorApys,
+    DelegatedStake, EpochInfo, MysCommittee, MysObjectDataFilter, StakeStatus, ValidatorApys,
 };
 use mys_open_rpc::Module;
 use mys_types::{
-    base_types::{MoveObjectType, ObjectID, MysAddress},
+    base_types::{MoveObjectType, MysAddress, ObjectID},
     committee::EpochId,
     governance::StakedMys,
     mys_serde::BigInt,

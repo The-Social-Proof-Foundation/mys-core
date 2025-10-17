@@ -8,7 +8,6 @@ use diesel::dsl::count_star;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
-use simulacrum::Simulacrum;
 use mys_indexer::errors::IndexerError;
 use mys_indexer::handlers::TransactionObjectChangesToCommit;
 use mys_indexer::models::{
@@ -33,6 +32,7 @@ use mys_types::base_types::MysAddress;
 use mys_types::effects::TransactionEffectsAPI;
 use mys_types::gas_coin::GasCoin;
 use mys_types::MYS_FRAMEWORK_PACKAGE_ID;
+use simulacrum::Simulacrum;
 use tempfile::tempdir;
 
 #[tokio::test]

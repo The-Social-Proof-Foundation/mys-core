@@ -17,10 +17,8 @@ pub async fn get_connection_pool(database_url: String) -> PgPool {
     let mut config = ManagerConfig::default();
     config.custom_setup = Box::new(establish_connection);
 
-    let manager = AsyncDieselConnectionManager::<AsyncPgConnection>::new_with_config(
-        database_url,
-        config,
-    );
+    let manager =
+        AsyncDieselConnectionManager::<AsyncPgConnection>::new_with_config(database_url, config);
 
     Pool::builder()
         .connection_timeout(Duration::from_secs(30))

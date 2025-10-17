@@ -4,19 +4,19 @@
 use tempfile::TempDir;
 
 use fastcrypto::ed25519::Ed25519KeyPair;
-use shared_crypto::intent::{Intent, IntentMessage, PersonalMessage};
 use mys_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use mys_macros::sim_test;
 use mys_sdk::verify_personal_message_signature::verify_personal_message_signature;
 use mys_types::base_types::MysAddress;
 use mys_types::crypto::{Ed25519MysSignature, MysKeyPair};
-use mys_types::crypto::{SignatureScheme, MysSignatureInner};
+use mys_types::crypto::{MysSignatureInner, SignatureScheme};
 use mys_types::multisig::{MultiSig, MultiSigPublicKey};
 use mys_types::{
     crypto::{get_key_pair, Signature},
     signature::GenericSignature,
     utils::sign_zklogin_personal_msg,
 };
+use shared_crypto::intent::{Intent, IntentMessage, PersonalMessage};
 
 #[test]
 fn mnemonic_test() {

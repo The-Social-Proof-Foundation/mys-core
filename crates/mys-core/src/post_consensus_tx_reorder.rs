@@ -5,12 +5,12 @@
 use crate::consensus_handler::{
     SequencedConsensusTransactionKind, VerifiedSequencedConsensusTransaction,
 };
-use mysten_metrics::monitored_scope;
 use mys_protocol_config::ConsensusTransactionOrdering;
 use mys_types::{
     messages_consensus::{ConsensusTransaction, ConsensusTransactionKind},
     transaction::TransactionDataAPI as _,
 };
+use mysten_metrics::monitored_scope;
 
 pub struct PostConsensusTxReorder {}
 

@@ -6,7 +6,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use move_core_types::{identifier::Identifier, language_storage::TypeTag};
 use mys_types::{
-    base_types::{ObjectID, ObjectRef, MysAddress},
+    base_types::{MysAddress, ObjectID, ObjectRef},
     crypto::AccountKeyPair,
     object::Owner,
     transaction::{CallArg, Transaction, TransactionData, TransactionDataAPI},

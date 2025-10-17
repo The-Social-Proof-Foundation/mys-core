@@ -7,9 +7,6 @@
 use crate::error::{BridgeError, BridgeResult};
 use crate::test_utils::DUMMY_MUTALBE_BRIDGE_OBJECT_ARG;
 use async_trait::async_trait;
-use std::collections::{HashMap, VecDeque};
-use std::sync::atomic::AtomicU64;
-use std::sync::{Arc, Mutex};
 use mys_json_rpc_types::MysTransactionBlockResponse;
 use mys_json_rpc_types::{EventFilter, EventPage, MysEvent};
 use mys_types::base_types::ObjectID;
@@ -24,6 +21,9 @@ use mys_types::object::Owner;
 use mys_types::transaction::ObjectArg;
 use mys_types::transaction::Transaction;
 use mys_types::Identifier;
+use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::AtomicU64;
+use std::sync::{Arc, Mutex};
 
 use crate::mys_client::MysClientInner;
 use crate::types::{BridgeAction, BridgeActionStatus, IsBridgePaused};

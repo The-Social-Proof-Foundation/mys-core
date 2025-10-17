@@ -8,7 +8,7 @@ use super::to_signing_message;
 use crate::crypto::DefaultHash;
 use crate::passkey_authenticator::{PasskeyAuthenticator, RawPasskeyAuthenticator};
 use crate::{
-    base_types::{dbg_addr, ObjectID, MysAddress},
+    base_types::{dbg_addr, MysAddress, ObjectID},
     crypto::{PublicKey, Signature, SignatureScheme},
     error::MysError,
     object::Object,

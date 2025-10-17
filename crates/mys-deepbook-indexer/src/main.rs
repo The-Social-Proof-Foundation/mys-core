@@ -4,29 +4,29 @@
 
 use anyhow::Result;
 use clap::*;
+use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
+use diesel_async::AsyncPgConnection;
+use diesel_migrations::MigrationHarness;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
+use mys_config::Config;
+use mys_data_ingestion_core::DataIngestionMetrics;
+use mys_deepbook_indexer::config::IndexerConfig;
+use mys_deepbook_indexer::metrics::DeepBookIndexerMetrics;
+use mys_deepbook_indexer::mys_deepbook_indexer::MysDeepBookDataMapper;
+use mys_deepbook_indexer::mys_deepbook_indexer::PgDeepbookPersistent;
+use mys_deepbook_indexer::postgres_manager::get_connection_pool;
+use mys_deepbook_indexer::server::run_server;
+use mys_indexer_builder::indexer_builder::IndexerBuilder;
+use mys_indexer_builder::mys_datasource::MysCheckpointDatasource;
+use mys_indexer_builder::progress::{OutOfOrderSaveAfterDurationPolicy, ProgressSavingPolicy};
+use mys_sdk::MysClientBuilder;
+use mys_types::base_types::ObjectID;
 use mysten_metrics::start_prometheus_server;
 use std::net::IpAddr;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::Arc;
-use mys_config::Config;
-use mys_data_ingestion_core::DataIngestionMetrics;
-use mys_deepbook_indexer::config::IndexerConfig;
-use mys_deepbook_indexer::metrics::DeepBookIndexerMetrics;
-use mys_deepbook_indexer::postgres_manager::get_connection_pool;
-use mys_deepbook_indexer::server::run_server;
-use mys_deepbook_indexer::mys_deepbook_indexer::PgDeepbookPersistent;
-use mys_deepbook_indexer::mys_deepbook_indexer::MysDeepBookDataMapper;
-use mys_indexer_builder::indexer_builder::IndexerBuilder;
-use mys_indexer_builder::progress::{OutOfOrderSaveAfterDurationPolicy, ProgressSavingPolicy};
-use mys_indexer_builder::mys_datasource::MysCheckpointDatasource;
-use mys_sdk::MysClientBuilder;
-use mys_types::base_types::ObjectID;
 use tracing::info;
-use diesel_migrations::MigrationHarness;
-use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
-use diesel_async::AsyncPgConnection;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/migrations");
 
@@ -70,22 +70,31 @@ async fn main() -> Result<()> {
     let ingestion_metrics = DataIngestionMetrics::new(&registry);
 
     let db_url = config.db_url.clone();
-    
+
     // Run database migrations using TLS-enabled connection
     info!("Running database migrations...");
     run_migrations_with_tls(&db_url).await?;
     info!("Database migrations completed successfully");
-    
+
     // Log compression configuration
     info!("TimescaleDB compression settings:");
     info!("  Enabled: {}", config.compression.enabled);
     if config.compression.enabled {
-        info!("  High-frequency tables compression: {} hours", config.compression.high_frequency_compress_after_hours);
-        info!("  Medium-frequency tables compression: {} hours", config.compression.medium_frequency_compress_after_hours);
-        info!("  Low-frequency tables compression: {} hours", config.compression.low_frequency_compress_after_hours);
+        info!(
+            "  High-frequency tables compression: {} hours",
+            config.compression.high_frequency_compress_after_hours
+        );
+        info!(
+            "  Medium-frequency tables compression: {} hours",
+            config.compression.medium_frequency_compress_after_hours
+        );
+        info!(
+            "  Low-frequency tables compression: {} hours",
+            config.compression.low_frequency_compress_after_hours
+        );
         info!("  Monitor compression with: SELECT * FROM compression_status;");
     }
-    
+
     let datastore = PgDeepbookPersistent::new(
         get_connection_pool(db_url.clone()).await,
         ProgressSavingPolicy::OutOfOrderSaveAfterDuration(OutOfOrderSaveAfterDurationPolicy::new(
@@ -148,31 +157,31 @@ async fn main() -> Result<()> {
 /// Log TimescaleDB compression statistics
 async fn log_compression_stats(database_url: &str) -> Result<()> {
     use tokio_postgres_rustls::MakeRustlsConnect;
-    
+
     // Set up TLS connection
-    let certs = rustls_native_certs::load_native_certs()
-        .expect("Failed to load native root certificates");
-    
+    let certs =
+        rustls_native_certs::load_native_certs().expect("Failed to load native root certificates");
+
     let mut root_store = rustls::RootCertStore::empty();
     for cert in certs {
         if let Err(e) = root_store.add(cert) {
             tracing::warn!("Failed to add certificate to root store: {}", e);
         }
     }
-    
+
     let rustls_config = rustls::ClientConfig::builder()
         .with_root_certificates(root_store)
         .with_no_client_auth();
     let tls = MakeRustlsConnect::new(rustls_config);
-    
+
     let (client, conn) = tokio_postgres::connect(database_url, tls).await?;
-    
+
     tokio::spawn(async move {
         if let Err(e) = conn.await {
             tracing::warn!("Database connection error during compression monitoring: {e}");
         }
     });
-    
+
     // Query compression status
     let rows = client
         .query(
@@ -199,14 +208,14 @@ async fn log_compression_stats(database_url: &str) -> Result<()> {
             &[],
         )
         .await?;
-    
+
     info!("=== TimescaleDB Compression Status ===");
     for row in rows {
         let table_name: String = row.get(0);
         let total_chunks: Option<i64> = row.get(1);
         let compressed_chunks: Option<i64> = row.get(2);
         let compression_ratio: Option<f64> = row.get(3);
-        
+
         info!(
             "Table: {} | Chunks: {}/{} compressed | Savings: {}%",
             table_name,
@@ -216,23 +225,23 @@ async fn log_compression_stats(database_url: &str) -> Result<()> {
         );
     }
     info!("========================================");
-    
+
     Ok(())
 }
 
 async fn run_migrations_with_tls(database_url: &str) -> Result<()> {
     // Set up rustls for TLS connections using native certificates
     info!("Loading native root certificates for database TLS connection...");
-    let certs = rustls_native_certs::load_native_certs()
-        .expect("Failed to load native root certificates");
-    
+    let certs =
+        rustls_native_certs::load_native_certs().expect("Failed to load native root certificates");
+
     let mut root_store = rustls::RootCertStore::empty();
     for cert in certs {
         if let Err(e) = root_store.add(cert) {
             tracing::warn!("Failed to add certificate to root store: {}", e);
         }
     }
-    
+
     let rustls_config = rustls::ClientConfig::builder()
         .with_root_certificates(root_store)
         .with_no_client_auth();
@@ -240,26 +249,27 @@ async fn run_migrations_with_tls(database_url: &str) -> Result<()> {
     let (client, conn) = tokio_postgres::connect(database_url, tls)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to connect to database: {}", e))?;
-    
+
     tokio::spawn(async move {
         if let Err(e) = conn.await {
             eprintln!("Database connection error: {e}");
         }
     });
-    
-    let connection = AsyncPgConnection::try_from(client).await
+
+    let connection = AsyncPgConnection::try_from(client)
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to create async connection: {}", e))?;
-    
+
     let _finished_migrations = tokio::task::spawn_blocking(move || {
-        let mut wrapper: AsyncConnectionWrapper<AsyncPgConnection> = 
+        let mut wrapper: AsyncConnectionWrapper<AsyncPgConnection> =
             diesel_async::async_connection_wrapper::AsyncConnectionWrapper::from(connection);
-        wrapper.run_pending_migrations(MIGRATIONS).map_err(|e| format!("{:?}", e))?;
+        wrapper
+            .run_pending_migrations(MIGRATIONS)
+            .map_err(|e| format!("{:?}", e))?;
         Ok::<(), String>(())
     })
     .await?
     .map_err(|e| anyhow::anyhow!("Failed to run migrations: {}", e))?;
-    
+
     Ok(())
 }
-
-

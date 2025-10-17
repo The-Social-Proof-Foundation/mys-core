@@ -14,14 +14,14 @@ use crate::action_executor::{
 use crate::error::BridgeError;
 use crate::events::MysBridgeEvent;
 use crate::metrics::BridgeMetrics;
-use crate::storage::BridgeOrchestratorTables;
 use crate::mys_client::{MysClient, MysClientInner};
+use crate::storage::BridgeOrchestratorTables;
 use crate::types::EthLog;
 use ethers::types::Address as EthAddress;
-use mysten_metrics::spawn_logged_monitored_task;
-use std::sync::Arc;
 use mys_json_rpc_types::MysEvent;
 use mys_types::Identifier;
+use mysten_metrics::spawn_logged_monitored_task;
+use std::sync::Arc;
 use tokio::task::JoinHandle;
 use tracing::{error, info};
 

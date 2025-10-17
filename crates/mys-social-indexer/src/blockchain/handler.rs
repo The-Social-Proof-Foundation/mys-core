@@ -13,7 +13,7 @@ use crate::events::MODULE_PREFIX_PLATFORM;
 use crate::events::MODULE_PREFIX_SOCIAL_GRAPH;
 use crate::events::MODULE_PREFIX_GOVERNANCE;
 use crate::events::MODULE_PREFIX_BLOCK_LIST;
-use crate::events::MODULE_PREFIX_MY_IP;
+use crate::events::MODULE_PREFIX_MYDATA;
 use crate::events::MODULE_PREFIX_CONTENT;
 
 use super::profile_handler;
@@ -38,7 +38,7 @@ pub async fn handle_event(db: &Arc<Database>, event: &MysEvent, tx_digest: &str)
         governance_handler::handle_event(db, event, tx_digest).await?;
     } else if event_type.contains(MODULE_PREFIX_BLOCK_LIST) {
         // Block list events are handled by blockchain/events.rs
-    } else if event_type.contains(MODULE_PREFIX_MY_IP) {
+    } else if event_type.contains(MODULE_PREFIX_MYDATA) {
         mydata_handler::handle_event(db, event, tx_digest).await?;
     } else if event_type.contains(MODULE_PREFIX_CONTENT) {
         post_handler::handle_event(db, event, tx_digest).await?;

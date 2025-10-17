@@ -20,11 +20,11 @@ use crate::traffic_controller::nodefw_client::{BlockAddress, BlockAddresses, Nod
 use crate::traffic_controller::policies::{
     Policy, PolicyResponse, TrafficControlPolicy, TrafficTally,
 };
+use mys_types::traffic_control::{PolicyConfig, PolicyType, RemoteFirewallConfig, Weight};
 use mysten_metrics::spawn_monitored_task;
 use rand::Rng;
 use std::fmt::Debug;
 use std::time::{Duration, Instant, SystemTime};
-use mys_types::traffic_control::{PolicyConfig, PolicyType, RemoteFirewallConfig, Weight};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TrySendError;
 use tracing::{debug, error, info, trace, warn};

@@ -2,9 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::path::PathBuf;
 use mys_replay::execute_replay_command;
 use mys_replay::ReplayToolCommand;
+use std::path::PathBuf;
 
 #[tokio::test]
 async fn replay_sandboxes() {

@@ -50,13 +50,6 @@
 
 use anemo::{types::PeerEvent, PeerId, Request, Response, Result};
 use futures::{stream::FuturesOrdered, FutureExt, StreamExt};
-use rand::Rng;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::{Arc, RwLock},
-    time::Duration,
-};
 use mys_config::p2p::StateSyncConfig;
 use mys_types::{
     committee::Committee,
@@ -66,6 +59,13 @@ use mys_types::{
         FullCheckpointContents, VerifiedCheckpoint, VerifiedCheckpointContents,
     },
     storage::WriteStore,
+};
+use rand::Rng;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::{Arc, RwLock},
+    time::Duration,
 };
 use tap::{Pipe, TapFallible, TapOptional};
 use tokio::sync::oneshot;
@@ -89,10 +89,10 @@ pub use generated::{
     state_sync_client::StateSyncClient,
     state_sync_server::{StateSync, StateSyncServer},
 };
-pub use server::GetCheckpointAvailabilityResponse;
-pub use server::GetCheckpointSummaryRequest;
 use mys_archival::reader::ArchiveReaderBalancer;
 use mys_storage::verify_checkpoint;
+pub use server::GetCheckpointAvailabilityResponse;
+pub use server::GetCheckpointSummaryRequest;
 
 use self::{metrics::Metrics, server::CheckpointContentsDownloadLimitLayer};
 

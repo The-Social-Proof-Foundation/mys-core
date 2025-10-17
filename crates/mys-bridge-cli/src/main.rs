@@ -6,14 +6,6 @@ use clap::*;
 use ethers::providers::Middleware;
 use ethers::types::Address as EthAddress;
 use fastcrypto::encoding::{Encoding, Hex};
-use shared_crypto::intent::Intent;
-use shared_crypto::intent::IntentMessage;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::str::from_utf8;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::Duration;
 use mys_bridge::client::bridge_authority_aggregator::BridgeAuthorityAggregator;
 use mys_bridge::crypto::{BridgeAuthorityPublicKey, BridgeAuthorityPublicKeyBytes};
 use mys_bridge::eth_transaction_builder::build_eth_transaction;
@@ -41,6 +33,14 @@ use mys_types::crypto::AuthorityPublicKeyBytes;
 use mys_types::crypto::Signature;
 use mys_types::crypto::ToFromBytes;
 use mys_types::transaction::Transaction;
+use shared_crypto::intent::Intent;
+use shared_crypto::intent::IntentMessage;
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::str::from_utf8;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

@@ -6,7 +6,7 @@ use async_graphql::*;
 use mys_json_rpc_types::BalanceChange as StoredBalanceChange;
 use mys_types::object::Owner as NativeOwner;
 
-use super::{big_int::BigInt, move_type::MoveType, owner::Owner, mys_address::MysAddress};
+use super::{big_int::BigInt, move_type::MoveType, mys_address::MysAddress, owner::Owner};
 use crate::error::Error;
 
 pub(crate) struct BalanceChange {

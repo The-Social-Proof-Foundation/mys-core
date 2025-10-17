@@ -100,3 +100,20 @@ pub fn extract_platform_id(event_data: &Value) -> Option<String> {
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::PlatformEventType;
+
+    #[test]
+    fn detects_block_and_unblock_events() {
+        assert_eq!(
+            PlatformEventType::from_str("0x1::platform::PlatformBlockedProfileEvent"),
+            Some(PlatformEventType::ProfileBlocked)
+        );
+        assert_eq!(
+            PlatformEventType::from_str("0x1::platform::PlatformUnblockedProfileEvent"),
+            Some(PlatformEventType::ProfileUnblocked)
+        );
+    }
+}

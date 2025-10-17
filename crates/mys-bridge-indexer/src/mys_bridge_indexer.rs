@@ -20,7 +20,7 @@ use mys_types::{BRIDGE_ADDRESS, MYS_BRIDGE_OBJECT_ID};
 
 use crate::metrics::BridgeIndexerMetrics;
 use crate::{
-    BridgeDataSource, GovernanceAction, GovernanceActionType, ProcessedTxnData, MysTxnError,
+    BridgeDataSource, GovernanceAction, GovernanceActionType, MysTxnError, ProcessedTxnData,
     TokenTransfer, TokenTransferData, TokenTransferStatus,
 };
 
@@ -47,10 +47,12 @@ impl DataMapper<CheckpointTxnData, ProcessedTxnData> for MysBridgeDataMapper {
         match &data.events {
             Some(events) => {
                 let mut all_data = vec![];
-                
+
                 // Process main bridge events
                 for ev in &events.data {
-                    if let Some(processed) = process_mys_event(ev, &data, checkpoint_num, timestamp_ms)? {
+                    if let Some(processed) =
+                        process_mys_event(ev, &data, checkpoint_num, timestamp_ms)?
+                    {
                         // Check if this is a native MYS transfer event (token_id 0)
                         // and create corresponding treasury events
                         if let ProcessedTxnData::TokenTransfer(ref transfer) = processed {

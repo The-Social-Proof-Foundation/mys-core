@@ -14,9 +14,6 @@ use crate::types::mys_address::MysAddress;
 use crate::types::type_filter::ExactTypeFilter;
 use async_graphql::*;
 use im::hashmap::HashMap as ImHashMap;
-use shared_crypto::intent::{
-    AppId, Intent, IntentMessage, IntentScope, IntentVersion, PersonalMessage,
-};
 use mys_types::authenticator_state::{ActiveJwk, AuthenticatorStateInner};
 use mys_types::crypto::ToFromBytes;
 use mys_types::dynamic_field::{DynamicFieldType, Field};
@@ -25,6 +22,9 @@ use mys_types::signature::VerifyParams;
 use mys_types::signature_verification::VerifiedDigestCache;
 use mys_types::transaction::TransactionData;
 use mys_types::{TypeTag, MYS_AUTHENTICATOR_STATE_ADDRESS};
+use shared_crypto::intent::{
+    AppId, Intent, IntentMessage, IntentScope, IntentVersion, PersonalMessage,
+};
 use tracing::warn;
 
 /// An enum that specifies the intent scope to be used to parse the bytes for signature

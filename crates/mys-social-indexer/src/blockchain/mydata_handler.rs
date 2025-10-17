@@ -579,7 +579,10 @@ impl MyDataEventHandler {
             .execute(&mut conn)
             .await?;
 
-        info!("Processed DataAccessedEvent from JSON for mydata_id: {}", mydata_id);
+        info!(
+            "Processed DataAccessedEvent from JSON for mydata_id: {}",
+            mydata_id
+        );
         Ok(())
     }
 

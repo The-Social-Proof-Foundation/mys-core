@@ -7,6 +7,11 @@ use crate::executor::MAX_CHECKPOINTS_IN_PROGRESS;
 use anyhow::Result;
 use backoff::backoff::Backoff;
 use futures::StreamExt;
+use mys_rpc_api::Client;
+use mys_storage::blob::Blob;
+use mys_storage::blob::BlobEncoding;
+use mys_types::full_checkpoint_content::CheckpointData;
+use mys_types::messages_checkpoint::CheckpointSequenceNumber;
 use mysten_metrics::spawn_monitored_task;
 #[cfg(not(target_os = "macos"))]
 use notify::{RecommendedWatcher, RecursiveMode};
@@ -17,11 +22,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::{collections::BTreeMap, sync::Arc};
-use mys_rpc_api::Client;
-use mys_storage::blob::Blob;
-use mys_storage::blob::BlobEncoding;
-use mys_types::full_checkpoint_content::CheckpointData;
-use mys_types::messages_checkpoint::CheckpointSequenceNumber;
 use tap::pipe::Pipe;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
@@ -82,16 +82,16 @@ impl CheckpointReader {
     async fn save_checkpoint_locally(&self, checkpoint_data: &CheckpointData) -> Result<()> {
         let file_name = format!("{}.chk", checkpoint_data.checkpoint_summary.sequence_number);
         let file_path = self.path.join(file_name);
-        
+
         // Create directory if it doesn't exist
         if let Some(parent) = file_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        
+
         // Serialize and save checkpoint data
         let blob = Blob::encode(checkpoint_data, BlobEncoding::Bcs)?;
         std::fs::write(file_path, blob.to_bytes())?;
-        
+
         Ok(())
     }
 
@@ -280,13 +280,15 @@ impl CheckpointReader {
         {
             checkpoints = self.remote_fetch();
             read_source = "remote";
-            
+
             // NEW: Save RPC-fetched checkpoints locally for future processing
             if !checkpoints.is_empty() {
                 for checkpoint in &checkpoints {
                     if let Err(e) = self.save_checkpoint_locally(checkpoint).await {
-                        debug!("Failed to save checkpoint {} locally: {:?}", 
-                               checkpoint.checkpoint_summary.sequence_number, e);
+                        debug!(
+                            "Failed to save checkpoint {} locally: {:?}",
+                            checkpoint.checkpoint_summary.sequence_number, e
+                        );
                         // Continue processing even if save fails
                     }
                 }

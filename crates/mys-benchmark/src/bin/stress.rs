@@ -5,19 +5,19 @@
 use anyhow::{anyhow, Context, Result};
 use clap::*;
 
+use mys_protocol_config::Chain;
 use prometheus::Registry;
 use rand::seq::SliceRandom;
 use rand::Rng;
-use mys_protocol_config::Chain;
 use tokio::time::sleep;
 
-use std::sync::Arc;
-use std::time::Duration;
 use mys_benchmark::drivers::bench_driver::BenchDriver;
 use mys_benchmark::drivers::driver::Driver;
 use mys_benchmark::drivers::BenchmarkCmp;
 use mys_benchmark::drivers::BenchmarkStats;
 use mys_protocol_config::{ProtocolConfig, ProtocolVersion};
+use std::sync::Arc;
+use std::time::Duration;
 
 use mys_benchmark::benchmark_setup::Env;
 use mys_benchmark::options::Opts;

@@ -12,10 +12,10 @@ use diesel::{
     OptionalExtension, QueryDsl,
 };
 use diesel_async::scoped_futures::ScopedFutureExt;
+use mys_indexer::schema::checkpoints;
 use std::mem;
 use std::sync::Arc;
 use std::time::Duration;
-use mys_indexer::schema::checkpoints;
 use tokio::sync::{watch, RwLock};
 use tokio::time::Interval;
 use tokio_util::sync::CancellationToken;

@@ -4,8 +4,8 @@
 
 pub mod indexer_builder;
 pub mod metrics;
-pub mod progress;
 pub mod mys_datasource;
+pub mod progress;
 pub const LIVE_TASK_TARGET_CHECKPOINT: i64 = i64::MAX;
 
 #[derive(Clone, Debug)]

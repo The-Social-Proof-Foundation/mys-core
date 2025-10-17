@@ -3,8 +3,8 @@
 
 use diesel::prelude::*;
 
-use crate::schema::profiles;
 use crate::schema::profile_events;
+use crate::schema::profiles;
 
 #[derive(Queryable, Insertable, Debug, Identifiable, Clone, QueryableByName)]
 #[diesel(table_name = profiles, primary_key(profile_id))]

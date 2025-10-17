@@ -7,8 +7,8 @@ use fastcrypto::encoding::{Base64, Encoding};
 use move_core_types::annotated_value::MoveValue;
 use mys_types::SYSTEM_PACKAGE_ADDRESSES;
 
-use std::path::Path;
 use mys_data_ingestion_core::Worker;
+use std::path::Path;
 use tokio::sync::Mutex;
 
 use crate::handlers::AnalyticsHandler;

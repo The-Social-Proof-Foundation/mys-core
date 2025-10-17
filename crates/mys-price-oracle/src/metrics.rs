@@ -1,6 +1,4 @@
-use prometheus::{
-    Gauge, Histogram, HistogramOpts, IntCounter, IntGauge, Opts, Registry,
-};
+use prometheus::{Gauge, Histogram, HistogramOpts, IntCounter, IntGauge, Opts, Registry};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -118,4 +116,4 @@ impl OracleMetrics {
     pub fn record_validation_error(&self) {
         self.validation_errors_total.inc();
     }
-} 
+}

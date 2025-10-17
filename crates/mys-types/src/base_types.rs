@@ -10,7 +10,7 @@ use crate::coin::COIN_MODULE_NAME;
 use crate::coin::COIN_STRUCT_NAME;
 pub use crate::committee::EpochId;
 use crate::crypto::{
-    AuthorityPublicKeyBytes, DefaultHash, PublicKey, SignatureScheme, MysPublicKey, MysSignature,
+    AuthorityPublicKeyBytes, DefaultHash, MysPublicKey, MysSignature, PublicKey, SignatureScheme,
 };
 pub use crate::digests::{ObjectDigest, TransactionDigest, TransactionEffectsDigest};
 use crate::dynamic_field::DynamicFieldInfo;
@@ -29,11 +29,11 @@ use crate::governance::STAKING_POOL_MODULE_NAME;
 use crate::id::RESOLVED_MYS_ID;
 use crate::messages_checkpoint::CheckpointTimestamp;
 use crate::multisig::MultiSigPublicKey;
+use crate::mys_serde::Readable;
+use crate::mys_serde::{to_mys_struct_tag_string, HexAccountAddress};
 use crate::object::{Object, Owner};
 use crate::parse_mys_struct_tag;
 use crate::signature::GenericSignature;
-use crate::mys_serde::Readable;
-use crate::mys_serde::{to_mys_struct_tag_string, HexAccountAddress};
 use crate::transaction::Transaction;
 use crate::transaction::VerifiedTransaction;
 use crate::zk_login_authenticator::ZkLoginAuthenticator;

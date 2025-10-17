@@ -8,11 +8,6 @@ use fastcrypto::hash::HashFunction;
 use fastcrypto::traits::KeyPair;
 use move_binary_format::CompiledModule;
 use move_core_types::ident_str;
-use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
-use std::collections::{BTreeMap, HashSet};
-use std::fs;
-use std::path::Path;
-use std::sync::Arc;
 use mys_config::genesis::{
     Genesis, GenesisCeremonyParameters, GenesisChainParameters, TokenDistributionSchedule,
     UnsignedGenesis,
@@ -44,13 +39,18 @@ use mys_types::messages_checkpoint::{
     CheckpointVersionSpecificData, CheckpointVersionSpecificDataV1,
 };
 use mys_types::metrics::LimitsMetrics;
+use mys_types::mys_system_state::{get_mys_system_state, MysSystemState, MysSystemStateTrait};
 use mys_types::object::{Object, Owner};
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
-use mys_types::mys_system_state::{get_mys_system_state, MysSystemState, MysSystemStateTrait};
 use mys_types::transaction::{
-    CallArg, CheckedInputObjects, Command, InputObjectKind, ObjectReadResult, Transaction
+    CallArg, CheckedInputObjects, Command, InputObjectKind, ObjectReadResult, Transaction,
 };
 use mys_types::{BRIDGE_ADDRESS, MYS_BRIDGE_OBJECT_ID, MYS_FRAMEWORK_ADDRESS, MYS_SYSTEM_ADDRESS};
+use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
+use std::collections::{BTreeMap, HashSet};
+use std::fs;
+use std::path::Path;
+use std::sync::Arc;
 use tracing::trace;
 use validator_info::{GenesisValidatorInfo, GenesisValidatorMetadata, ValidatorInfo};
 
@@ -107,7 +107,6 @@ impl Builder {
         self.parameters.protocol_version = v;
         self
     }
-
 
     pub fn add_object(mut self, object: Object) -> Self {
         self.objects.insert(object.id(), object);
@@ -1167,22 +1166,23 @@ pub fn generate_genesis_system_object(
         let token_symbol = b"MySo";
         let token_name = b"MySocial";
         let token_description = b"The native token of the MySocial blockchain.";
-        
+
         // Pass the token parameters to mys::new
-        let token_symbol_arg = builder.input(CallArg::Pure(bcs::to_bytes(&token_symbol.to_vec()).unwrap()))?;
-        let token_name_arg = builder.input(CallArg::Pure(bcs::to_bytes(&token_name.to_vec()).unwrap()))?;
-        let token_description_arg = builder.input(CallArg::Pure(bcs::to_bytes(&token_description.to_vec()).unwrap()))?;
-        
+        let token_symbol_arg = builder.input(CallArg::Pure(
+            bcs::to_bytes(&token_symbol.to_vec()).unwrap(),
+        ))?;
+        let token_name_arg =
+            builder.input(CallArg::Pure(bcs::to_bytes(&token_name.to_vec()).unwrap()))?;
+        let token_description_arg = builder.input(CallArg::Pure(
+            bcs::to_bytes(&token_description.to_vec()).unwrap(),
+        ))?;
+
         let mys_supply = builder.programmable_move_call(
             MYS_FRAMEWORK_ADDRESS.into(),
             ident_str!("mys").to_owned(),
             ident_str!("new").to_owned(),
             vec![],
-            vec![
-                token_symbol_arg,
-                token_name_arg,
-                token_description_arg,
-            ],
+            vec![token_symbol_arg, token_name_arg, token_description_arg],
         );
 
         // Step 5: Run genesis.

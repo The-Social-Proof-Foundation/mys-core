@@ -7,9 +7,6 @@ use crate::authority_aggregator::{AuthorityAggregator, AuthorityAggregatorBuilde
 use crate::test_authority_clients::LocalAuthorityClient;
 use fastcrypto::traits::KeyPair;
 use futures::future::join_all;
-use std::collections::BTreeMap;
-use std::sync::Arc;
-use std::time::Duration;
 use mys_config::genesis::Genesis;
 use mys_config::local_ip_utils;
 use mys_config::node::AuthorityOverloadConfig;
@@ -17,13 +14,16 @@ use mys_framework::BuiltInFramework;
 use mys_genesis_builder::validator_info::ValidatorInfo;
 use mys_move_build::test_utils::compile_basics_package;
 use mys_protocol_config::ProtocolConfig;
-use mys_types::base_types::{ObjectID, MysAddress, TransactionDigest};
+use mys_types::base_types::{MysAddress, ObjectID, TransactionDigest};
 use mys_types::crypto::AuthorityKeyPair;
 use mys_types::crypto::{
     generate_proof_of_possession, get_key_pair, AccountKeyPair, AuthorityPublicKeyBytes,
-    NetworkKeyPair, MysKeyPair,
+    MysKeyPair, NetworkKeyPair,
 };
 use mys_types::object::Object;
+use std::collections::BTreeMap;
+use std::sync::Arc;
+use std::time::Duration;
 
 async fn init_genesis(
     committee_size: usize,

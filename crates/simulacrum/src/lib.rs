@@ -17,7 +17,6 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use fastcrypto::traits::Signer;
-use rand::rngs::OsRng;
 use mys_config::verifier_signing_config::VerifierSigningConfig;
 use mys_config::{genesis, transaction_deny_config::TransactionDenyConfig};
 use mys_protocol_config::ProtocolVersion;
@@ -29,9 +28,9 @@ use mys_types::base_types::{AuthorityName, ObjectID, VersionNumber};
 use mys_types::crypto::AuthoritySignature;
 use mys_types::digests::ConsensusCommitDigest;
 use mys_types::messages_consensus::ConsensusDeterminedVersionAssignments;
+use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemState;
 use mys_types::object::Object;
 use mys_types::storage::{ObjectStore, ReadStore, RpcStateReader};
-use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemState;
 use mys_types::transaction::EndOfEpochTransactionKind;
 use mys_types::{
     base_types::MysAddress,
@@ -44,6 +43,7 @@ use mys_types::{
     signature::VerifyParams,
     transaction::{Transaction, VerifiedTransaction},
 };
+use rand::rngs::OsRng;
 
 use self::epoch_state::EpochState;
 pub use self::store::in_mem_store::InMemoryStore;
@@ -614,11 +614,11 @@ impl Simulacrum {
 mod tests {
     use std::time::Duration;
 
-    use rand::{rngs::StdRng, SeedableRng};
     use mys_types::{
         base_types::MysAddress, effects::TransactionEffectsAPI, gas_coin::GasCoin,
         transaction::TransactionDataAPI,
     };
+    use rand::{rngs::StdRng, SeedableRng};
 
     use super::*;
 

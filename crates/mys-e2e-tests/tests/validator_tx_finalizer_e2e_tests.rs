@@ -2,10 +2,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::time::Duration;
 use mys_macros::sim_test;
 use mys_test_transaction_builder::publish_basics_package_and_make_counter;
 use mys_types::base_types::dbg_addr;
+use std::time::Duration;
 use test_cluster::TestClusterBuilder;
 
 #[sim_test]

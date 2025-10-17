@@ -32,12 +32,12 @@ use crate::metrics::DeepBookIndexerMetrics;
 use crate::postgres_manager::PgPool;
 use crate::schema::progress_store::{columns, dsl};
 use crate::schema::{
-    balances, flashloans, order_fills, order_updates, pool_prices, proposals, rebates, stakes,
-    mys_error_transactions, trade_params_update, votes,
+    balances, flashloans, mys_error_transactions, order_fills, order_updates, pool_prices,
+    proposals, rebates, stakes, trade_params_update, votes,
 };
 use crate::types::{
-    Balances, Flashloan, OrderFill, OrderUpdate, OrderUpdateStatus, PoolPrice, ProcessedTxnData,
-    Proposals, Rebates, Stakes, MysTxnError, TradeParamsUpdate, Votes,
+    Balances, Flashloan, MysTxnError, OrderFill, OrderUpdate, OrderUpdateStatus, PoolPrice,
+    ProcessedTxnData, Proposals, Rebates, Stakes, TradeParamsUpdate, Votes,
 };
 use crate::{models, schema};
 

@@ -8,7 +8,7 @@ use tracing::info;
 
 use mys_json_rpc_types::MysTransactionBlockResponse;
 use mys_types::{
-    base_types::{ObjectID, MysAddress},
+    base_types::{MysAddress, ObjectID},
     crypto::{get_key_pair, AccountKeyPair},
     object::Owner,
 };

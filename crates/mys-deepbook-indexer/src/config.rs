@@ -41,10 +41,10 @@ impl IndexerConfig {
     /// Create config from environment variables
     pub fn from_env() -> anyhow::Result<Self> {
         Ok(Self {
-            remote_store_url: env::var("REMOTE_STORE_URL")
-                .unwrap_or_else(|_| "https://storage.googleapis.com/mysocial-testnet-checkpoints".to_string()),
-            db_url: env::var("DATABASE_URL")
-                .expect("DATABASE_URL must be set"),
+            remote_store_url: env::var("REMOTE_STORE_URL").unwrap_or_else(|_| {
+                "https://storage.googleapis.com/mysocial-testnet-checkpoints".to_string()
+            }),
+            db_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
             checkpoints_path: env::var("CHECKPOINTS_PATH").ok(),
             mys_rpc_url: env::var("MYS_RPC_URL")
                 .unwrap_or_else(|_| "https://fullnode.testnet.mysocial.network:9000".to_string()),
@@ -79,11 +79,11 @@ impl CompressionConfig {
             high_frequency_compress_after_hours: env::var("COMPRESSION_HIGH_FREQ_HOURS")
                 .unwrap_or_else(|_| "24".to_string())
                 .parse()?,
-            medium_frequency_compress_after_hours: env::var("COMPRESSION_MEDIUM_FREQ_HOURS") 
+            medium_frequency_compress_after_hours: env::var("COMPRESSION_MEDIUM_FREQ_HOURS")
                 .unwrap_or_else(|_| "48".to_string())
                 .parse()?,
             low_frequency_compress_after_hours: env::var("COMPRESSION_LOW_FREQ_HOURS")
-                .unwrap_or_else(|_| "24".to_string())  
+                .unwrap_or_else(|_| "24".to_string())
                 .parse()?,
         })
     }

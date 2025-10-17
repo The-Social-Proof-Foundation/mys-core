@@ -5,8 +5,8 @@
 use crate::abi::EthToMysTokenBridgeV1;
 use crate::eth_mock_provider::EthMockProvider;
 use crate::events::MysBridgeEvent;
-use crate::server::mock_handler::run_mock_server;
 use crate::mys_transaction_builder::build_mys_transaction;
+use crate::server::mock_handler::run_mock_server;
 use crate::types::{
     BridgeCommittee, BridgeCommitteeValiditySignInfo, CertifiedBridgeAction,
     VerifiedCertifiedBridgeAction,
@@ -16,8 +16,8 @@ use crate::{
     events::EmittedMysToEthTokenBridgeV1,
     server::mock_handler::BridgeRequestMockHandler,
     types::{
-        BridgeAction, BridgeAuthority, EthToMysBridgeAction, SignedBridgeAction,
-        MysToEthBridgeAction,
+        BridgeAction, BridgeAuthority, EthToMysBridgeAction, MysToEthBridgeAction,
+        SignedBridgeAction,
     },
 };
 use ethers::abi::{long_signature, ParamType};
@@ -30,10 +30,6 @@ use fastcrypto::encoding::{Encoding, Hex};
 use fastcrypto::traits::KeyPair;
 use hex_literal::hex;
 use move_core_types::language_storage::TypeTag;
-use std::collections::{BTreeMap, HashMap};
-use std::net::IpAddr;
-use std::net::Ipv4Addr;
-use std::net::SocketAddr;
 use mys_config::local_ip_utils;
 use mys_json_rpc_types::MysTransactionBlockEffectsAPI;
 use mys_sdk::wallet_context::WalletContext;
@@ -47,6 +43,10 @@ use mys_types::object::Owner;
 use mys_types::transaction::{CallArg, ObjectArg};
 use mys_types::{base_types::MysAddress, crypto::get_key_pair, digests::TransactionDigest};
 use mys_types::{BRIDGE_PACKAGE_ID, MYS_BRIDGE_OBJECT_ID};
+use std::collections::{BTreeMap, HashMap};
+use std::net::IpAddr;
+use std::net::Ipv4Addr;
+use std::net::SocketAddr;
 use tokio::task::JoinHandle;
 
 pub const DUMMY_MUTALBE_BRIDGE_OBJECT_ARG: ObjectArg = ObjectArg::SharedObject {

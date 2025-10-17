@@ -17,7 +17,7 @@ use strum_macros::EnumIter;
 
 use mys_types::error::MysError;
 
-use crate::types::{BlockHash, OperationType, PublicKey, MysEnv};
+use crate::types::{BlockHash, MysEnv, OperationType, PublicKey};
 use strum::EnumProperty;
 use strum_macros::Display;
 use strum_macros::EnumDiscriminants;

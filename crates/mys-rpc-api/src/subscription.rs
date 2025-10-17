@@ -5,8 +5,8 @@
 use crate::metrics::SubscriptionMetrics;
 use crate::proto::node::v2::GetFullCheckpointOptions;
 use crate::proto::node::v2::GetFullCheckpointResponse;
-use std::sync::Arc;
 use mys_types::full_checkpoint_content::CheckpointData;
+use std::sync::Arc;
 use tap::Pipe;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;

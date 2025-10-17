@@ -8,19 +8,19 @@ use crate::dynamic_field::{
     get_dynamic_field_from_store, get_dynamic_field_object_from_store, Field,
 };
 use crate::error::MysError;
-use crate::object::{MoveObject, Object};
-use crate::storage::ObjectStore;
 use crate::mys_system_state::epoch_start_mys_system_state::EpochStartSystemState;
 use crate::mys_system_state::mys_system_state_inner_v2::MysSystemStateInnerV2;
+use crate::object::{MoveObject, Object};
+use crate::storage::ObjectStore;
 use crate::versioned::Versioned;
 use crate::{id::UID, MoveTypeTagTrait, MYS_SYSTEM_ADDRESS, MYS_SYSTEM_STATE_OBJECT_ID};
 use anyhow::Result;
 use enum_dispatch::enum_dispatch;
 use move_core_types::{ident_str, identifier::IdentStr, language_storage::StructTag};
+use mys_protocol_config::{ProtocolConfig, ProtocolVersion};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use mys_protocol_config::{ProtocolConfig, ProtocolVersion};
 
 use self::mys_system_state_inner_v1::{MysSystemStateInnerV1, ValidatorV1};
 use self::mys_system_state_summary::{MysSystemStateSummary, MysValidatorSummary};

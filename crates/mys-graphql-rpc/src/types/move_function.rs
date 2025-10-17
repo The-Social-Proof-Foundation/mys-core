@@ -9,8 +9,8 @@ use crate::error::Error;
 
 use super::{
     move_module::MoveModule,
-    open_move_type::{abilities, MoveAbility, MoveVisibility, OpenMoveType},
     mys_address::MysAddress,
+    open_move_type::{abilities, MoveAbility, MoveVisibility, OpenMoveType},
 };
 
 pub(crate) struct MoveFunction {

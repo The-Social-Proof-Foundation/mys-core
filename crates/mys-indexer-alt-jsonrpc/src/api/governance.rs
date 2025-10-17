@@ -15,7 +15,6 @@ use mys_open_rpc_macros::open_rpc;
 use mys_types::{
     base_types::ObjectID,
     dynamic_field::{derive_dynamic_field_id, Field},
-    object::Object,
     mys_serde::BigInt,
     mys_system_state::{
         mys_system_state_inner_v1::MysSystemStateInnerV1,
@@ -23,6 +22,7 @@ use mys_types::{
         mys_system_state_summary::MysSystemStateSummary, MysSystemStateTrait,
         MysSystemStateWrapper,
     },
+    object::Object,
     TypeTag, MYS_SYSTEM_STATE_OBJECT_ID,
 };
 

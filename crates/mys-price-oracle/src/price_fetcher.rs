@@ -44,7 +44,7 @@ impl GraphQLPriceFetcher {
 
     async fn fetch_uniswap_v3_price(&self) -> Result<Decimal, OracleError> {
         let correlation_id = Uuid::new_v4();
-        
+
         // For Base network, use the appropriate subgraph
         let query = json!({
             "query": r#"
@@ -90,10 +90,7 @@ impl GraphQLPriceFetcher {
 
         // Check for GraphQL errors
         if let Some(errors) = data.get("errors") {
-            return Err(OracleError::GraphQL(format!(
-                "GraphQL errors: {}",
-                errors
-            )));
+            return Err(OracleError::GraphQL(format!("GraphQL errors: {}", errors)));
         }
 
         // Extract price data
@@ -155,7 +152,8 @@ impl PriceFetcher for GraphQLPriceFetcher {
         match &result {
             Ok(price) => {
                 // Validate price
-                if *price < self.validation.min_price_usd || *price > self.validation.max_price_usd {
+                if *price < self.validation.min_price_usd || *price > self.validation.max_price_usd
+                {
                     let error = OracleError::PriceOutOfBounds {
                         price: *price,
                         min: self.validation.min_price_usd,
@@ -165,7 +163,8 @@ impl PriceFetcher for GraphQLPriceFetcher {
                     return Err(error);
                 }
 
-                self.metrics.update_current_price(price.to_f64().unwrap_or(0.0));
+                self.metrics
+                    .update_current_price(price.to_f64().unwrap_or(0.0));
                 self.metrics.update_last_update_timestamp(
                     std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
@@ -230,18 +229,16 @@ impl PriceFetcher for RestApiPriceFetcher {
             let response = self.client.get(&self.config.url).send().await?;
 
             if !response.status().is_success() {
-                return Err(OracleError::Network(
-                    reqwest::Error::from(response.error_for_status().unwrap_err())
-                ));
+                return Err(OracleError::Network(reqwest::Error::from(
+                    response.error_for_status().unwrap_err(),
+                )));
             }
 
             let json: Value = response.json().await?;
             let data = jsonpath_lib::select(&json, &self.config.json_path)
                 .map_err(|e| OracleError::DataFormat(format!("JSONPath error: {}", e)))?;
 
-            let first = data
-                .get(0)
-                .ok_or_else(|| OracleError::NoPriceData)?;
+            let first = data.get(0).ok_or_else(|| OracleError::NoPriceData)?;
 
             // Try to get price as number first, then as string
             let price = if let Some(num) = first.as_f64() {
@@ -251,7 +248,9 @@ impl PriceFetcher for RestApiPriceFetcher {
                 Decimal::from_str_exact(price_str)
                     .map_err(|e| OracleError::DataFormat(format!("Invalid price format: {}", e)))?
             } else {
-                return Err(OracleError::DataFormat("Price is neither number nor string".to_string()));
+                return Err(OracleError::DataFormat(
+                    "Price is neither number nor string".to_string(),
+                ));
             };
 
             info!(
@@ -267,7 +266,8 @@ impl PriceFetcher for RestApiPriceFetcher {
         match &result {
             Ok(price) => {
                 // Validate price
-                if *price < self.validation.min_price_usd || *price > self.validation.max_price_usd {
+                if *price < self.validation.min_price_usd || *price > self.validation.max_price_usd
+                {
                     let error = OracleError::PriceOutOfBounds {
                         price: *price,
                         min: self.validation.min_price_usd,
@@ -277,7 +277,8 @@ impl PriceFetcher for RestApiPriceFetcher {
                     return Err(error);
                 }
 
-                self.metrics.update_current_price(price.to_f64().unwrap_or(0.0));
+                self.metrics
+                    .update_current_price(price.to_f64().unwrap_or(0.0));
                 self.metrics.update_last_update_timestamp(
                     std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
@@ -311,4 +312,4 @@ pub fn create_price_fetcher(
             metrics,
         )),
     }
-} 
+}

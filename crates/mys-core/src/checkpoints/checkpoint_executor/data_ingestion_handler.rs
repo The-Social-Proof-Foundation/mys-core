@@ -4,9 +4,6 @@
 
 use crate::checkpoints::CheckpointStore;
 use crate::execution_cache::{ObjectCacheRead, TransactionCacheRead};
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::Arc;
 use mys_storage::blob::{Blob, BlobEncoding};
 use mys_types::digests::TransactionDigest;
 use mys_types::effects::TransactionEffectsAPI;
@@ -14,6 +11,9 @@ use mys_types::error::{MysError, MysResult, UserInputError};
 use mys_types::full_checkpoint_content::{CheckpointData, CheckpointTransaction};
 use mys_types::messages_checkpoint::VerifiedCheckpoint;
 use mys_types::storage::ObjectKey;
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 pub(crate) fn load_checkpoint_data(
     checkpoint: VerifiedCheckpoint,

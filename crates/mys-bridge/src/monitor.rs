@@ -14,13 +14,13 @@ use crate::crypto::BridgeAuthorityPublicKeyBytes;
 use crate::events::{BlocklistValidatorEvent, CommitteeMemberUrlUpdateEvent};
 use crate::events::{EmergencyOpEvent, MysBridgeEvent};
 use crate::metrics::BridgeMetrics;
-use crate::retry_with_max_elapsed_time;
 use crate::mys_client::{MysClient, MysClientInner};
+use crate::retry_with_max_elapsed_time;
 use crate::types::{BridgeCommittee, IsBridgePaused};
 use arc_swap::ArcSwap;
+use mys_types::TypeTag;
 use std::collections::HashMap;
 use std::sync::Arc;
-use mys_types::TypeTag;
 use tokio::time::Duration;
 use tracing::{error, info, warn};
 
@@ -478,11 +478,11 @@ mod tests {
     };
     use crate::types::{BridgeAuthority, BRIDGE_PAUSED, BRIDGE_UNPAUSED};
     use fastcrypto::traits::KeyPair;
-    use prometheus::Registry;
     use mys_types::base_types::MysAddress;
     use mys_types::bridge::BridgeCommitteeSummary;
     use mys_types::bridge::MoveTypeCommitteeMember;
     use mys_types::crypto::get_key_pair;
+    use prometheus::Registry;
 
     use crate::{mys_mock_client::MysMockClient, types::BridgeCommittee};
     use mys_types::crypto::ToFromBytes;

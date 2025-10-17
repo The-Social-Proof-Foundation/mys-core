@@ -9,12 +9,12 @@ use crate::discovery::TrustedPeerChangeEvent;
 use anemo::codegen::InboundRequestLayer;
 use anemo_tower::rate_limit;
 use fastcrypto::traits::KeyPair;
+use mys_config::p2p::P2pConfig;
+use mys_types::crypto::NetworkKeyPair;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
-use mys_config::p2p::P2pConfig;
-use mys_types::crypto::NetworkKeyPair;
 use tap::Pipe;
 use tokio::{
     sync::{oneshot, watch},

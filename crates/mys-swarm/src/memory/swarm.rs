@@ -5,6 +5,7 @@
 use super::Node;
 use anyhow::Result;
 use futures::future::try_join_all;
+use mys_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};
 use rand::rngs::OsRng;
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -14,7 +15,6 @@ use std::{
     ops,
     path::{Path, PathBuf},
 };
-use mys_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};
 
 use mys_config::node::{AuthorityOverloadConfig, DBCheckpointConfig, RunWithRange};
 use mys_config::{ExecutionCacheConfig, NodeConfig};

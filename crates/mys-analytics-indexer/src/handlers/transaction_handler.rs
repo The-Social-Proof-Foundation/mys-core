@@ -196,10 +196,10 @@ impl TransactionHandler {
 mod tests {
     use crate::handlers::transaction_handler::TransactionHandler;
     use fastcrypto::encoding::{Base64, Encoding};
-    use simulacrum::Simulacrum;
     use mys_data_ingestion_core::Worker;
     use mys_types::base_types::MysAddress;
     use mys_types::storage::ReadStore;
+    use simulacrum::Simulacrum;
 
     #[tokio::test]
     pub async fn test_transaction_handler() -> anyhow::Result<()> {

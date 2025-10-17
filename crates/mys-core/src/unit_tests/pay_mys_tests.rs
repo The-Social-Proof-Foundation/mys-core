@@ -6,9 +6,7 @@ use crate::authority::authority_tests::{init_state_with_committee, send_and_conf
 use crate::authority::test_authority_builder::TestAuthorityBuilder;
 use crate::authority::AuthorityState;
 use futures::future::join_all;
-use std::collections::HashMap;
-use std::sync::Arc;
-use mys_types::base_types::{ObjectID, ObjectRef, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID, ObjectRef};
 use mys_types::crypto::AccountKeyPair;
 use mys_types::effects::{SignedTransactionEffects, TransactionEffectsAPI};
 use mys_types::error::UserInputError;
@@ -19,6 +17,8 @@ use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::transaction::TransactionData;
 use mys_types::utils::to_sender_signed_transaction;
 use mys_types::{base_types::dbg_addr, crypto::get_key_pair, error::MysError};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 #[tokio::test]
 async fn test_pay_mys_failure_empty_recipients() {

@@ -2,9 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
-use serde_with::Bytes;
 use mys_types::base_types::MoveObjectType;
 use mys_types::base_types::{ObjectDigest, SequenceNumber, TransactionDigest};
 use mys_types::coin::Coin;
@@ -13,6 +10,9 @@ use mys_types::error::MysError;
 use mys_types::move_package::MovePackage;
 use mys_types::object::{Data, MoveObject, Object, ObjectInner, Owner};
 use mys_types::storage::ObjectKey;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
+use serde_with::Bytes;
 
 pub type ObjectContentDigest = ObjectDigest;
 

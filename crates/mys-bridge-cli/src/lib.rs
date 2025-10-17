@@ -11,13 +11,6 @@ use fastcrypto::encoding::Encoding;
 use fastcrypto::encoding::Hex;
 use fastcrypto::hash::{HashFunction, Keccak256};
 use move_core_types::ident_str;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
-use shared_crypto::intent::Intent;
-use shared_crypto::intent::IntentMessage;
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::sync::Arc;
 use mys_bridge::abi::EthBridgeCommittee;
 use mys_bridge::abi::{eth_mys_bridge, EthMysBridge};
 use mys_bridge::crypto::BridgeAuthorityPublicKeyBytes;
@@ -37,10 +30,17 @@ use mys_sdk::MysClientBuilder;
 use mys_types::base_types::MysAddress;
 use mys_types::base_types::{ObjectID, ObjectRef};
 use mys_types::bridge::{BridgeChainId, BRIDGE_MODULE_NAME};
-use mys_types::crypto::{Signature, MysKeyPair};
+use mys_types::crypto::{MysKeyPair, Signature};
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::transaction::{ObjectArg, Transaction, TransactionData};
 use mys_types::{TypeTag, BRIDGE_PACKAGE_ID};
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
+use shared_crypto::intent::Intent;
+use shared_crypto::intent::IntentMessage;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::sync::Arc;
 use tracing::info;
 
 pub const SEPOLIA_BRIDGE_PROXY_ADDR: &str = "0x3b80bb0443D731ee5176ec89568fDFe8eB0aAFdd";
@@ -265,19 +265,19 @@ pub fn make_action(chain_id: BridgeChainId, cmd: &GovernanceClientCommands) -> B
         } => {
             assert_eq!(token_ids.len(), token_type_names.len());
             assert_eq!(token_ids.len(), token_prices.len());
-            
+
             // Detect if this is native MYS token (0x2::mys::MYS)
             let is_native_mys = token_type_names.len() == 1 && {
                 if let TypeTag::Struct(s) = &token_type_names[0] {
                     // Check if it's 0x2::mys::MYS (address can be 0x2 or 0x0000...0002)
-                    s.address.to_hex_literal() == "0x2" 
-                        && s.module.as_str() == "mys" 
+                    s.address.to_hex_literal() == "0x2"
+                        && s.module.as_str() == "mys"
                         && s.name.as_str() == "MYS"
                 } else {
                     false
                 }
             };
-            
+
             BridgeAction::AddTokensOnMysAction(AddTokensOnMysAction {
                 nonce: *nonce,
                 chain_id,
@@ -664,8 +664,8 @@ async fn deposit_on_mys(
 
     // Check if this is native MYS token
     let is_native_mys = if let TypeTag::Struct(s) = &coin_type {
-        s.address.to_hex_literal() == "0x2" 
-            && s.module.as_str() == "mys" 
+        s.address.to_hex_literal() == "0x2"
+            && s.module.as_str() == "mys"
             && s.name.as_str() == "MYS"
     } else {
         false
@@ -677,7 +677,7 @@ async fn deposit_on_mys(
             BRIDGE_PACKAGE_ID,
             BRIDGE_MODULE_NAME.to_owned(),
             ident_str!("send_mys_token").to_owned(),
-            vec![],  // No type parameters for native MYS
+            vec![], // No type parameters for native MYS
             vec![arg_bridge, arg_target_chain, arg_target_address, arg_token],
         );
     } else {

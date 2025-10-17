@@ -13,8 +13,8 @@ use tap::Pipe;
 
 use crate::{
     base_types::{
-        dbg_addr, random_object_ref, ExecutionDigests, ObjectID, ObjectRef, SequenceNumber,
-        MysAddress,
+        dbg_addr, random_object_ref, ExecutionDigests, MysAddress, ObjectID, ObjectRef,
+        SequenceNumber,
     },
     coin::Coin,
     committee::Committee,

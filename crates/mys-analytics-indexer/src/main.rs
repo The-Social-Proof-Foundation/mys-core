@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
 
     let config = AnalyticsIndexerConfig::parse();
     info!("Parsed config: {:#?}", config);
-    
+
     // Start standard Prometheus server on port 9184
     let registry = start_basic_prometheus_server();
     mysten_metrics::init_metrics(&registry);

@@ -10,7 +10,7 @@ use std::{
 use move_core_types::language_storage::StructTag;
 use mys_json_rpc::name_service::{Domain, NameRecord, SubDomainRegistration};
 use mys_types::{
-    base_types::{ObjectID, MysAddress},
+    base_types::{MysAddress, ObjectID},
     dynamic_field::Field,
     full_checkpoint_content::{CheckpointData, CheckpointTransaction},
     object::Object,

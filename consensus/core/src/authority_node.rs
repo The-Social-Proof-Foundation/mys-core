@@ -6,9 +6,9 @@ use std::{sync::Arc, time::Instant};
 
 use consensus_config::{AuthorityIndex, Committee, NetworkKeyPair, Parameters, ProtocolKeyPair};
 use itertools::Itertools;
+use mys_protocol_config::{ConsensusNetwork, ProtocolConfig};
 use parking_lot::RwLock;
 use prometheus::Registry;
-use mys_protocol_config::{ConsensusNetwork, ProtocolConfig};
 use tracing::{info, warn};
 
 use crate::{
@@ -433,10 +433,10 @@ mod tests {
     use std::{collections::BTreeSet, sync::Arc, time::Duration};
 
     use consensus_config::{local_committee_and_keys, Parameters};
+    use mys_protocol_config::ProtocolConfig;
     use mysten_metrics::monitored_mpsc::UnboundedReceiver;
     use prometheus::Registry;
     use rstest::rstest;
-    use mys_protocol_config::ProtocolConfig;
     use tempfile::TempDir;
     use tokio::time::{sleep, timeout};
     use typed_store::DBMetrics;

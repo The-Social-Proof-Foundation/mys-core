@@ -29,7 +29,7 @@ use crate::layout_resolver::LayoutResolver;
 use crate::move_package::MovePackage;
 use crate::{
     base_types::{
-        ObjectDigest, ObjectID, ObjectRef, SequenceNumber, MysAddress, TransactionDigest,
+        MysAddress, ObjectDigest, ObjectID, ObjectRef, SequenceNumber, TransactionDigest,
     },
     gas_coin::GasCoin,
 };
@@ -1307,7 +1307,7 @@ impl Display for PastObjectRead {
 mod tests {
     use crate::object::{Object, Owner, OBJECT_START_VERSION};
     use crate::{
-        base_types::{ObjectID, MysAddress, TransactionDigest},
+        base_types::{MysAddress, ObjectID, TransactionDigest},
         gas_coin::GasCoin,
     };
 

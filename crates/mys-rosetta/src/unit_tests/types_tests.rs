@@ -4,10 +4,10 @@
 use crate::types::{
     AccountBalanceRequest, Amount, ConstructionMetadata, Currency, CurrencyMetadata,
 };
+use mys_types::base_types::{MysAddress, ObjectRef};
 use quick_js::Context;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use mys_types::base_types::{ObjectRef, MysAddress};
 
 #[tokio::test]
 async fn test_currency_defaults() {

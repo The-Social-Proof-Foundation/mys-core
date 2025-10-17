@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::indexer_test_utils::{InMemoryPersistent, NoopDataMapper, TestDatasource};
+use mys_indexer_builder::indexer_builder::{BackfillStrategy, IndexerBuilder};
+use mys_indexer_builder::{Task, LIVE_TASK_TARGET_CHECKPOINT};
 use prometheus::{
     register_int_counter_vec_with_registry, register_int_gauge_vec_with_registry, IntCounterVec,
     IntGaugeVec, Registry,
 };
-use mys_indexer_builder::indexer_builder::{BackfillStrategy, IndexerBuilder};
-use mys_indexer_builder::{Task, LIVE_TASK_TARGET_CHECKPOINT};
 
 mod indexer_test_utils;
 

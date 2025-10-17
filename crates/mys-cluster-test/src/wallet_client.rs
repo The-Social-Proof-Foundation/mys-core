@@ -5,13 +5,13 @@
 use crate::cluster::new_wallet_context_from_cluster;
 
 use super::Cluster;
-use shared_crypto::intent::Intent;
 use mys_keys::keystore::AccountKeystore;
 use mys_sdk::wallet_context::WalletContext;
 use mys_sdk::{MysClient, MysClientBuilder};
 use mys_types::base_types::MysAddress;
 use mys_types::crypto::{KeypairTraits, Signature};
 use mys_types::transaction::TransactionData;
+use shared_crypto::intent::Intent;
 use tracing::{info, info_span, Instrument};
 
 pub struct WalletClient {

@@ -11,13 +11,6 @@ use fastcrypto::traits::{KeyPair, ToFromBytes};
 use fastcrypto_tbls::{dkg_v1, dkg_v1::Output, nodes, nodes::PartyId};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
-use parking_lot::Mutex;
-use rand::rngs::{OsRng, StdRng};
-use rand::SeedableRng;
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
-use std::sync::{Arc, Weak};
-use std::time::Instant;
 use mys_macros::fail_point_if;
 use mys_network::randomness;
 use mys_types::base_types::AuthorityName;
@@ -28,6 +21,13 @@ use mys_types::messages_consensus::{
     ConsensusTransaction, Round, TimestampMs, VersionedDkgConfirmation, VersionedDkgMessage,
 };
 use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemStateTrait;
+use parking_lot::Mutex;
+use rand::rngs::{OsRng, StdRng};
+use rand::SeedableRng;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap};
+use std::sync::{Arc, Weak};
+use std::time::Instant;
 use tokio::sync::OnceCell;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
@@ -814,10 +814,10 @@ mod tests {
         mock_consensus::with_block_status,
     };
     use consensus_core::{BlockRef, BlockStatus};
-    use std::num::NonZeroUsize;
     use mys_protocol_config::ProtocolConfig;
     use mys_protocol_config::{Chain, ProtocolVersion};
     use mys_types::messages_consensus::ConsensusTransactionKind;
+    use std::num::NonZeroUsize;
     use tokio::sync::mpsc;
 
     #[tokio::test]

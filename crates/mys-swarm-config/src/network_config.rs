@@ -2,12 +2,12 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use mys_config::{genesis, Config, NodeConfig};
 use mys_types::committee::CommitteeWithNetworkMetadata;
 use mys_types::crypto::AccountKeyPair;
 use mys_types::multiaddr::Multiaddr;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 /// This is a config that is used for testing or local use as it contains the config and keys for
 /// all validators

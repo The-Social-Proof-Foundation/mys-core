@@ -13,14 +13,14 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use ingestion::{client::IngestionClient, ClientArgs, IngestionConfig, IngestionService};
 use metrics::IndexerMetrics;
 use models::watermarks::{CommitterWatermark, PrunerWatermark};
+use mys_indexer_alt_metrics::db::DbConnectionStatsCollector;
+use mys_pg_db::{temp::TempDb, Db, DbArgs};
 use pipeline::{
     concurrent::{self, ConcurrentConfig},
     sequential::{self, SequentialConfig},
     Processor,
 };
 use prometheus::Registry;
-use mys_indexer_alt_metrics::db::DbConnectionStatsCollector;
-use mys_pg_db::{temp::TempDb, Db, DbArgs};
 use task::graceful_shutdown;
 use tempfile::tempdir;
 use tokio::task::JoinHandle;

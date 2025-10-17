@@ -415,10 +415,10 @@ mod tests {
     use crate::object_store::util::{
         copy_recursively, delete_recursively, write_snapshot_manifest, MANIFEST_FILENAME,
     };
+    use mys_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
     use object_store::path::Path;
     use std::fs;
     use std::num::NonZeroUsize;
-    use mys_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
     use tempfile::TempDir;
 
     #[tokio::test]

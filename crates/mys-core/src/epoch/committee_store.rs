@@ -2,13 +2,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use mys_types::base_types::ObjectID;
+use mys_types::committee::{Committee, EpochId};
+use mys_types::error::{MysError, MysResult};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use mys_types::base_types::ObjectID;
-use mys_types::committee::{Committee, EpochId};
-use mys_types::error::{MysError, MysResult};
 use typed_store::rocks::{default_db_options, DBMap, DBOptions, MetricConf};
 use typed_store::rocksdb::Options;
 use typed_store::traits::{TableSummary, TypedStoreDebug};

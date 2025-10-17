@@ -4,9 +4,9 @@
 
 use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
 use mys_pg_db::{self as db, Db};
 use mys_types::full_checkpoint_content::CheckpointData;
+use serde::{Deserialize, Serialize};
 use tokio::{sync::mpsc, task::JoinHandle};
 use tokio_util::sync::CancellationToken;
 

@@ -9,11 +9,11 @@ use super::{
     coin::Coin,
     cursor::Page,
     move_object::MoveObject,
+    mys_address::MysAddress,
+    mysns_registration::{DomainFormat, MysnsRegistration},
     object::{self, ObjectFilter},
     owner::OwnerImpl,
     stake::StakedMys,
-    mys_address::MysAddress,
-    mysns_registration::{DomainFormat, MysnsRegistration},
     transaction_block::{self, TransactionBlock, TransactionBlockFilter},
     type_filter::ExactTypeFilter,
 };

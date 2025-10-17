@@ -2,13 +2,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use mys_types::storage::RpcStateReader;
+use mys_types::transaction_executor::TransactionExecutor;
 use mysten_network::callback::CallbackLayer;
 use proto::node::v2alpha::subscription_service_server::SubscriptionServiceServer;
 use reader::StateReader;
 use std::sync::Arc;
 use subscription::SubscriptionServiceHandle;
-use mys_types::storage::RpcStateReader;
-use mys_types::transaction_executor::TransactionExecutor;
 use tap::Pipe;
 
 pub mod client;

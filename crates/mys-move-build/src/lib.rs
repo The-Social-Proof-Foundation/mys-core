@@ -41,7 +41,6 @@ use move_package::{
     source_package::parsed_manifest::OnChainInfo, source_package::parsed_manifest::SourceManifest,
 };
 use move_symbol_pool::Symbol;
-use serde_reflection::Registry;
 use mys_package_management::{resolve_published_id, PublishedAtError};
 use mys_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use mys_types::{
@@ -50,9 +49,10 @@ use mys_types::{
     is_system_package,
     move_package::{FnInfo, FnInfoKey, FnInfoMap, MovePackage},
     BRIDGE_ADDRESS, DEEPBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYS_FRAMEWORK_ADDRESS,
-    MYS_SYSTEM_ADDRESS, MYS_SOCIAL_ADDRESS, SEAL_ADDRESS, USDC_ADDRESS,
+    MYS_SOCIAL_ADDRESS, MYS_SYSTEM_ADDRESS, SEAL_ADDRESS, USDC_ADDRESS,
 };
 use mys_verifier::verifier as mys_bytecode_verifier;
+use serde_reflection::Registry;
 
 #[cfg(test)]
 #[path = "unit_tests/build_tests.rs"]
@@ -228,7 +228,9 @@ pub fn decorate_warnings(warning_diags: Diagnostics, files: Option<&MappedFiles>
         report_warnings(f, warning_diags);
     }
     if any_linter_warnings {
-        eprintln!("Please report feedback on the linter warnings at https://forums.mysocial.network\n");
+        eprintln!(
+            "Please report feedback on the linter warnings at https://forums.mysocial.network\n"
+        );
     }
     if filtered_diags_num > 0 {
         eprintln!("Total number of linter warnings suppressed: {filtered_diags_num} (unique lints: {unique})");

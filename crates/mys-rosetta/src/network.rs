@@ -16,7 +16,7 @@ use crate::types::{
     Allow, Case, NetworkIdentifier, NetworkListResponse, NetworkOptionsResponse, NetworkRequest,
     NetworkStatusResponse, OperationStatus, OperationType, Peer, SyncStatus, Version,
 };
-use crate::{OnlineServerContext, MysEnv};
+use crate::{MysEnv, OnlineServerContext};
 
 /// This module implements the [Rosetta Network API](https://www.rosetta-api.org/docs/NetworkApi.html)
 

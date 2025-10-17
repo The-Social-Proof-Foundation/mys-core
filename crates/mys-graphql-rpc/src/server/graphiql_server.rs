@@ -19,14 +19,14 @@ async fn graphiql(
     } else {
         "/graphql".to_string()
     };
-    
+
     // Use a custom HTML with specific versions of React that are compatible
     let title = if let axum::Extension(Some(title)) = ide_title {
         title
     } else {
         "Mys GraphQL IDE".to_string()
     };
-    
+
     // Custom GraphiQL HTML with React 17 (which doesn't use useInsertionEffect)
     let html = format!(
         r#"
@@ -67,10 +67,9 @@ async fn graphiql(
         </body>
         </html>
         "#,
-        title,
-        endpoint
+        title, endpoint
     );
-    
+
     axum::response::Html(html)
 }
 

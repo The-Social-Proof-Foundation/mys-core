@@ -12,8 +12,8 @@ use crate::multiaddr::Multiaddr;
 use anemo::types::{PeerAffinity, PeerInfo};
 use anemo::PeerId;
 use consensus_config::{Authority, Committee as ConsensusCommittee};
-use serde::{Deserialize, Serialize};
 use mys_protocol_config::ProtocolVersion;
+use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
 #[enum_dispatch]
@@ -299,9 +299,9 @@ mod test {
         EpochStartSystemStateTrait, EpochStartSystemStateV1, EpochStartValidatorInfoV1,
     };
     use fastcrypto::traits::KeyPair;
+    use mys_protocol_config::ProtocolVersion;
     use mysten_network::Multiaddr;
     use rand::thread_rng;
-    use mys_protocol_config::ProtocolVersion;
 
     #[test]
     fn test_mys_and_mysticeti_committee_are_same() {

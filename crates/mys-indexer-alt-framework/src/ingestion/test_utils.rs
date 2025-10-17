@@ -2,8 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use rand::prelude::StdRng;
-use rand::SeedableRng;
 use mys_storage::blob::{Blob, BlobEncoding};
 use mys_types::crypto::KeypairTraits;
 use mys_types::full_checkpoint_content::CheckpointData;
@@ -13,6 +11,8 @@ use mys_types::messages_checkpoint::{
 };
 use mys_types::supported_protocol_versions::ProtocolConfig;
 use mys_types::utils::make_committee_key;
+use rand::prelude::StdRng;
+use rand::SeedableRng;
 
 const RNG_SEED: [u8; 32] = [
     21, 23, 199, 200, 234, 250, 252, 178, 94, 15, 202, 178, 62, 186, 88, 137, 233, 192, 130, 157,

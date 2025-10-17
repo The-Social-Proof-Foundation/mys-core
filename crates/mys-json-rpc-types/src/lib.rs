@@ -7,8 +7,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub use balance_changes::*;
-pub use object_changes::*;
-use serde_with::serde_as;
 pub use mys_checkpoint::*;
 pub use mys_coin::*;
 pub use mys_event::*;
@@ -19,6 +17,8 @@ pub use mys_object::*;
 pub use mys_protocol::*;
 pub use mys_transaction::*;
 use mys_types::base_types::ObjectID;
+pub use object_changes::*;
+use serde_with::serde_as;
 
 #[cfg(test)]
 #[path = "unit_tests/rpc_types_tests.rs"]
@@ -26,7 +26,6 @@ mod rpc_types_tests;
 
 mod balance_changes;
 mod displays;
-mod object_changes;
 mod mys_checkpoint;
 mod mys_coin;
 mod mys_event;
@@ -36,6 +35,7 @@ mod mys_move;
 mod mys_object;
 mod mys_protocol;
 mod mys_transaction;
+mod object_changes;
 
 pub type DynamicFieldPage = Page<DynamicFieldInfo, ObjectID>;
 /// `next_cursor` points to the last item in the page;

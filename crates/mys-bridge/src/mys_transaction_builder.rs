@@ -4,19 +4,19 @@
 
 use fastcrypto::traits::ToFromBytes;
 use move_core_types::ident_str;
-use std::{collections::HashMap, str::FromStr};
 use mys_types::bridge::{
     BRIDGE_CREATE_ADD_TOKEN_ON_MYS_MESSAGE_FUNCTION_NAME,
     BRIDGE_EXECUTE_SYSTEM_MESSAGE_FUNCTION_NAME, BRIDGE_MESSAGE_MODULE_NAME, BRIDGE_MODULE_NAME,
 };
 use mys_types::transaction::CallArg;
 use mys_types::{
-    base_types::{ObjectRef, MysAddress},
+    base_types::{MysAddress, ObjectRef},
     programmable_transaction_builder::ProgrammableTransactionBuilder,
     transaction::{ObjectArg, TransactionData},
     TypeTag,
 };
 use mys_types::{Identifier, BRIDGE_PACKAGE_ID};
+use std::{collections::HashMap, str::FromStr};
 
 use crate::{
     error::{BridgeError, BridgeResult},
@@ -633,11 +633,11 @@ mod tests {
         },
     };
     use ethers::types::Address as EthAddress;
-    use std::collections::HashMap;
-    use std::sync::Arc;
     use mys_types::bridge::{BridgeChainId, TOKEN_ID_BTC, TOKEN_ID_USDC};
     use mys_types::crypto::get_key_pair;
     use mys_types::crypto::ToFromBytes;
+    use std::collections::HashMap;
+    use std::sync::Arc;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
     async fn test_build_mys_transaction_for_token_transfer() {

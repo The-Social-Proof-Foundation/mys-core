@@ -4,7 +4,7 @@
 
 use move_core_types::annotated_value::MoveTypeLayout;
 use mys_json_rpc_types::MysCallArg;
-use mys_types::base_types::{ObjectDigest, ObjectID, SequenceNumber, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectDigest, ObjectID, SequenceNumber};
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::transaction::{CallArg, TransactionData, TEST_ONLY_GAS_UNIT_FOR_TRANSFER};
 

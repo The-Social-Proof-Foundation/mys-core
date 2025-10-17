@@ -18,11 +18,11 @@ use serde_json::Value;
 use serde_with::serde_as;
 use serde_with::Bytes;
 
-use crate::base_types::{ObjectID, MysAddress, TransactionDigest};
+use crate::base_types::{MysAddress, ObjectID, TransactionDigest};
 use crate::error::{MysError, MysResult};
-use crate::object::bounded_visitor::BoundedVisitor;
 use crate::mys_serde::BigInt;
 use crate::mys_serde::Readable;
+use crate::object::bounded_visitor::BoundedVisitor;
 use crate::MYS_SYSTEM_ADDRESS;
 
 /// A universal Mys event type encapsulating different types of events

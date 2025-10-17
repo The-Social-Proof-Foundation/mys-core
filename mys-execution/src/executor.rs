@@ -3,12 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use move_trace_format::format::MoveTraceBuilder;
-use std::{collections::HashSet, sync::Arc};
 use mys_protocol_config::ProtocolConfig;
 use mys_types::execution::ExecutionTiming;
 use mys_types::storage::BackingStore;
 use mys_types::{
-    base_types::{ObjectRef, MysAddress},
+    base_types::{MysAddress, ObjectRef},
     committee::EpochId,
     digests::TransactionDigest,
     effects::TransactionEffects,
@@ -20,6 +19,7 @@ use mys_types::{
     metrics::LimitsMetrics,
     transaction::{CheckedInputObjects, ProgrammableTransaction, TransactionKind},
 };
+use std::{collections::HashSet, sync::Arc};
 
 /// Abstracts over access to the VM across versions of the execution layer.
 pub trait Executor {

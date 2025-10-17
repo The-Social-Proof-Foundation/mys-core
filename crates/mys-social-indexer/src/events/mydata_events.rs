@@ -210,7 +210,10 @@ pub fn create_operation_failed_event(
 // ============================================================================
 
 impl SubscriptionRenewedEvent {
-    pub fn into_subscription_update(&self, transaction_id: String) -> Result<NewMyDataSubscription> {
+    pub fn into_subscription_update(
+        &self,
+        transaction_id: String,
+    ) -> Result<NewMyDataSubscription> {
         Ok(NewMyDataSubscription {
             mydata_id: self.mydata_id.clone(),
             subscriber: self.subscriber.clone(),

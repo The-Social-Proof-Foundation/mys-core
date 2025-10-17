@@ -8,21 +8,21 @@
 use crate::retry_with_max_elapsed_time;
 use crate::types::IsBridgePaused;
 use arc_swap::ArcSwap;
-use mysten_metrics::spawn_logged_monitored_task;
-use shared_crypto::intent::{Intent, IntentMessage};
 use mys_json_rpc_types::{
     MysExecutionStatus, MysTransactionBlockEffectsAPI, MysTransactionBlockResponse,
 };
 use mys_types::transaction::ObjectArg;
 use mys_types::TypeTag;
 use mys_types::{
-    base_types::{ObjectID, ObjectRef, MysAddress},
-    crypto::{Signature, MysKeyPair},
+    base_types::{MysAddress, ObjectID, ObjectRef},
+    crypto::{MysKeyPair, Signature},
     digests::TransactionDigest,
     gas_coin::GasCoin,
     object::Owner,
     transaction::Transaction,
 };
+use mysten_metrics::spawn_logged_monitored_task;
+use shared_crypto::intent::{Intent, IntentMessage};
 
 use crate::events::{
     TokenTransferAlreadyApproved, TokenTransferAlreadyClaimed, TokenTransferApproved,
@@ -32,9 +32,9 @@ use crate::metrics::BridgeMetrics;
 use crate::{
     client::bridge_authority_aggregator::BridgeAuthorityAggregator,
     error::BridgeError,
-    storage::BridgeOrchestratorTables,
     mys_client::{MysClient, MysClientInner},
     mys_transaction_builder::build_mys_transaction,
+    storage::BridgeOrchestratorTables,
     types::{BridgeAction, BridgeActionStatus, VerifiedCertifiedBridgeAction},
 };
 use std::collections::HashMap;
@@ -681,9 +681,6 @@ mod tests {
     use crate::test_utils::DUMMY_MUTALBE_BRIDGE_OBJECT_ARG;
     use crate::types::BRIDGE_PAUSED;
     use fastcrypto::traits::KeyPair;
-    use prometheus::Registry;
-    use std::collections::{BTreeMap, HashMap};
-    use std::str::FromStr;
     use mys_json_rpc_types::MysTransactionBlockEffects;
     use mys_json_rpc_types::MysTransactionBlockEvents;
     use mys_json_rpc_types::{MysEvent, MysTransactionBlockResponse};
@@ -691,14 +688,17 @@ mod tests {
     use mys_types::gas_coin::GasCoin;
     use mys_types::TypeTag;
     use mys_types::{base_types::random_object_ref, transaction::TransactionData};
+    use prometheus::Registry;
+    use std::collections::{BTreeMap, HashMap};
+    use std::str::FromStr;
 
     use crate::{
         crypto::{
             BridgeAuthorityKeyPair, BridgeAuthorityPublicKeyBytes,
             BridgeAuthorityRecoverableSignature,
         },
-        server::mock_handler::BridgeRequestMockHandler,
         mys_mock_client::MysMockClient,
+        server::mock_handler::BridgeRequestMockHandler,
         test_utils::{
             get_test_authorities_and_run_mock_bridge_server, get_test_eth_to_mys_bridge_action,
             get_test_mys_to_eth_bridge_action, sign_action_with_key,

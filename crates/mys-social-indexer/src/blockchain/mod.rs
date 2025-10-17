@@ -9,9 +9,11 @@ pub mod handler_trait;
 pub mod listener;
 pub mod mydata_handler;
 pub mod platform_handler;
+pub mod poc_handler;
 pub mod post_handler;
 pub mod profile_handler;
 pub mod social_graph_handler;
+pub mod social_proof_of_truth_handler;
 pub mod social_proof_token_handler;
 pub mod subscription_handler;
 
@@ -22,8 +24,10 @@ pub use handler_trait::{BaseHandler, BlockchainEventHandler, HandlerHealth, Hand
 pub use listener::{BlockchainEvent, BlockchainEventListener};
 pub use mydata_handler::MyDataEventHandler;
 pub use platform_handler::PlatformEventHandler;
+pub use poc_handler::PocEventHandler;
 pub use post_handler::PostEventHandler;
 pub use profile_handler::ProfileEventListener;
 pub use social_graph_handler::SocialGraphEventHandler;
+pub use social_proof_of_truth_handler::SocialProofOfTruthEventHandler;
 pub use social_proof_token_handler::SocialProofTokenHandler;
 pub use subscription_handler::SubscriptionEventHandler;

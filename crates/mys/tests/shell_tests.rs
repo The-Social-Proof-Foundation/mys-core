@@ -4,10 +4,10 @@
 
 use fs_extra::dir::CopyOptions;
 use insta_cmd::get_cargo_bin;
+use mys_config::MYS_CLIENT_CONFIG;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use mys_config::MYS_CLIENT_CONFIG;
 use test_cluster::TestClusterBuilder;
 
 // [test_shell_snapshot] is run on every file matching [TEST_PATTERN] in [TEST_DIR].

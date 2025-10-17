@@ -8,9 +8,6 @@
 use core::panic;
 use fastcrypto::encoding::Base64;
 use jsonrpsee::{core::client::ClientT, rpc_params};
-use std::fs::File;
-use std::num::NonZeroUsize;
-use std::time::Duration;
 use mys_core::authority_client::make_network_authority_clients_with_network_config;
 use mys_core::authority_client::AuthorityAPI;
 use mys_core::traffic_controller::{
@@ -31,6 +28,9 @@ use mys_types::{
         FreqThresholdConfig, PolicyConfig, PolicyType, RemoteFirewallConfig, Weight,
     },
 };
+use std::fs::File;
+use std::num::NonZeroUsize;
+use std::time::Duration;
 use test_cluster::{TestCluster, TestClusterBuilder};
 
 #[tokio::test]

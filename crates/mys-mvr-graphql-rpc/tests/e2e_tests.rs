@@ -3,12 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use fastcrypto::encoding::{Base64, Encoding};
-use rand::rngs::StdRng;
-use rand::SeedableRng;
-use serde_json::json;
-use simulacrum::Simulacrum;
-use std::sync::Arc;
-use std::time::Duration;
 use mys_mvr_graphql_rpc::client::simple_client::GraphqlQueryVariable;
 use mys_mvr_graphql_rpc::client::ClientError;
 use mys_mvr_graphql_rpc::config::Limits;
@@ -23,6 +17,12 @@ use mys_types::transaction::TransactionDataAPI;
 use mys_types::DEEPBOOK_ADDRESS;
 use mys_types::MYS_FRAMEWORK_ADDRESS;
 use mys_types::MYS_FRAMEWORK_PACKAGE_ID;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
+use serde_json::json;
+use simulacrum::Simulacrum;
+use std::sync::Arc;
+use std::time::Duration;
 use tempfile::tempdir;
 
 #[tokio::test]
@@ -277,14 +277,14 @@ async fn test_graphql_client_variables() {
 
 #[tokio::test]
 async fn test_zklogin_sig_verify() {
-    use shared_crypto::intent::Intent;
-    use shared_crypto::intent::IntentMessage;
     use mys_test_transaction_builder::TestTransactionBuilder;
     use mys_types::base_types::MysAddress;
     use mys_types::crypto::Signature;
     use mys_types::signature::GenericSignature;
     use mys_types::utils::load_test_vectors;
     use mys_types::zk_login_authenticator::ZkLoginAuthenticator;
+    use shared_crypto::intent::Intent;
+    use shared_crypto::intent::IntentMessage;
 
     telemetry_subscribers::init_for_testing();
 

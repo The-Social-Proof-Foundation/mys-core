@@ -4,16 +4,16 @@
 
 use clap::Parser;
 use fastcrypto::traits::KeyPair;
-use mysten_metrics::start_prometheus_server;
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::PathBuf,
-};
 use mys_bridge::config::BridgeNodeConfig;
 use mys_bridge::metrics::start_metrics_push_task;
 use mys_bridge::node::run_bridge_node;
 use mys_bridge::server::BridgeNodePublicMetadata;
 use mys_config::Config;
+use mysten_metrics::start_prometheus_server;
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::PathBuf,
+};
 use tracing::info;
 
 // Define the `GIT_REVISION` and `VERSION` consts

@@ -20,15 +20,6 @@ use futures::future::{join_all, select, Either};
 use futures::FutureExt;
 use itertools::{izip, Itertools};
 use move_bytecode_utils::module_cache::SyncModuleCache;
-use mysten_common::sync::notify_once::NotifyOnce;
-use mysten_common::sync::notify_read::NotifyRead;
-use mysten_common::{debug_fatal, fatal};
-use mysten_metrics::monitored_scope;
-use nonempty::NonEmpty;
-use parking_lot::RwLock;
-use parking_lot::{Mutex, RwLockReadGuard, RwLockWriteGuard};
-use prometheus::IntCounter;
-use serde::{Deserialize, Serialize};
 use mys_config::node::ExpensiveSafetyCheckConfig;
 use mys_execution::{self, Executor};
 use mys_macros::fail_point;
@@ -63,17 +54,26 @@ use mys_types::messages_consensus::{
     ConsensusTransactionKey, ConsensusTransactionKind, ExecutionTimeObservation, Round,
     TimestampMs, VersionedDkgConfirmation,
 };
-use mys_types::signature::GenericSignature;
-use mys_types::storage::{BackingPackageStore, InputKey, ObjectStore};
 use mys_types::mys_system_state::epoch_start_mys_system_state::{
     EpochStartSystemState, EpochStartSystemStateTrait,
 };
+use mys_types::signature::GenericSignature;
+use mys_types::storage::{BackingPackageStore, InputKey, ObjectStore};
 use mys_types::transaction::{
     AuthenticatorStateUpdate, CallArg, CertifiedTransaction, InputObjectKind, ObjectArg,
     ProgrammableTransaction, SenderSignedData, Transaction, TransactionData, TransactionDataAPI,
     TransactionKey, TransactionKind, VerifiedCertificate, VerifiedSignedTransaction,
     VerifiedTransaction,
 };
+use mysten_common::sync::notify_once::NotifyOnce;
+use mysten_common::sync::notify_read::NotifyRead;
+use mysten_common::{debug_fatal, fatal};
+use mysten_metrics::monitored_scope;
+use nonempty::NonEmpty;
+use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLockReadGuard, RwLockWriteGuard};
+use prometheus::IntCounter;
+use serde::{Deserialize, Serialize};
 use tap::TapOptional;
 use tokio::sync::{mpsc, OnceCell};
 use tokio::time::Instant;

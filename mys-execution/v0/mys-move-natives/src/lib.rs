@@ -43,9 +43,9 @@ use move_vm_types::{
     natives::function::NativeResult,
     values::{Struct, Value},
 };
-use std::sync::Arc;
 use mys_protocol_config::ProtocolConfig;
 use mys_types::{MOVE_STDLIB_ADDRESS, MYS_FRAMEWORK_ADDRESS, MYS_SYSTEM_ADDRESS};
+use std::sync::Arc;
 
 mod address;
 mod crypto;

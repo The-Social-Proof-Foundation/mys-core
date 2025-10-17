@@ -21,15 +21,6 @@ use move_core_types::{
     language_storage::{ModuleId, StructTag},
     resolver::{ModuleResolver, ResourceResolver},
 };
-use prometheus::Registry;
-use serde::{Deserialize, Serialize};
-use similar::{ChangeTag, TextDiff};
-use std::{
-    collections::{BTreeMap, HashSet},
-    path::PathBuf,
-    sync::Arc,
-    sync::Mutex,
-};
 use mys_config::node::ExpensiveSafetyCheckConfig;
 use mys_core::authority::NodeStateDump;
 use mys_execution::Executor;
@@ -61,6 +52,15 @@ use mys_types::{
         SenderSignedData, Transaction, TransactionDataAPI, TransactionKind, VerifiedTransaction,
     },
     DEEPBOOK_PACKAGE_ID,
+};
+use prometheus::Registry;
+use serde::{Deserialize, Serialize};
+use similar::{ChangeTag, TextDiff};
+use std::{
+    collections::{BTreeMap, HashSet},
+    path::PathBuf,
+    sync::Arc,
+    sync::Mutex,
 };
 use tracing::{error, info, trace, warn};
 

@@ -14,8 +14,8 @@ use diesel::{
     row::NamedRow,
     ExpressionMethods, QueryDsl,
 };
-use serde::{Deserialize, Serialize};
 use mys_indexer::{models::transactions::StoredTransaction, schema::transactions};
+use serde::{Deserialize, Serialize};
 
 use super::Query;
 

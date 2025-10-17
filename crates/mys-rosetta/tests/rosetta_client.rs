@@ -21,8 +21,9 @@ use mys_rosetta::types::{
     AccountBalanceRequest, AccountBalanceResponse, AccountIdentifier, ConstructionCombineRequest,
     ConstructionCombineResponse, ConstructionMetadataRequest, ConstructionMetadataResponse,
     ConstructionPayloadsRequest, ConstructionPayloadsResponse, ConstructionPreprocessRequest,
-    ConstructionPreprocessResponse, ConstructionSubmitRequest, Currencies, NetworkIdentifier,
-    Signature, SignatureType, SubAccount, SubAccountType, MysEnv, TransactionIdentifierResponse,
+    ConstructionPreprocessResponse, ConstructionSubmitRequest, Currencies, MysEnv,
+    NetworkIdentifier, Signature, SignatureType, SubAccount, SubAccountType,
+    TransactionIdentifierResponse,
 };
 use mys_rosetta::{RosettaOfflineServer, RosettaOnlineServer};
 use mys_sdk::MysClient;

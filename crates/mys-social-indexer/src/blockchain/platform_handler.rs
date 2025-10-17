@@ -1161,19 +1161,6 @@ impl PlatformEventHandler {
     async fn process_event(&self, event: BlockchainEvent) -> Result<()> {
         debug!("Platform handler examining event: {}", event.event_type);
 
-        // Skip BlockProfileEvents - let them be handled by the profile handler
-        if event.event_type.contains("BlockProfileEvent") {
-            info!(
-                "🚨 Platform handler skipping BlockProfileEvent: {}",
-                event.event_type
-            );
-            info!(
-                "🚨 Event data: {}",
-                serde_json::to_string_pretty(&event.data).unwrap_or_default()
-            );
-            return Ok(());
-        }
-
         // Log the raw event data for debugging
         info!("Platform handler received event: {}", event.event_type);
         info!(

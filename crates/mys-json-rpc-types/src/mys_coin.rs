@@ -14,9 +14,9 @@ use mys_types::base_types::{
 };
 use mys_types::coin::CoinMetadata;
 use mys_types::error::MysError;
-use mys_types::object::Object;
 use mys_types::mys_serde::BigInt;
 use mys_types::mys_serde::SequenceNumber as AsSequenceNumber;
+use mys_types::object::Object;
 
 pub type CoinPage = Page<Coin, String>;
 

@@ -11,10 +11,10 @@ use crate::mys_transaction_builder::build_mys_transaction;
 use crate::types::{BridgeAction, EmergencyAction};
 use crate::types::{BridgeActionStatus, EmergencyActionType};
 use ethers::types::Address as EthAddress;
-use std::sync::Arc;
 use mys_json_rpc_types::MysExecutionStatus;
 use mys_json_rpc_types::MysTransactionBlockEffectsAPI;
 use mys_types::bridge::{BridgeChainId, TOKEN_ID_ETH};
+use std::sync::Arc;
 use tracing::info;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 16)]

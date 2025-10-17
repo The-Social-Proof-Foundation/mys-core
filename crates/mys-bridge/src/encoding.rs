@@ -407,13 +407,13 @@ mod tests {
     use fastcrypto::hash::HashFunction;
     use fastcrypto::hash::Keccak256;
     use fastcrypto::traits::ToFromBytes;
-    use prometheus::Registry;
-    use std::str::FromStr;
     use mys_types::base_types::{MysAddress, TransactionDigest};
     use mys_types::bridge::BridgeChainId;
     use mys_types::bridge::TOKEN_ID_BTC;
     use mys_types::bridge::TOKEN_ID_USDC;
     use mys_types::TypeTag;
+    use prometheus::Registry;
+    use std::str::FromStr;
 
     use super::*;
 

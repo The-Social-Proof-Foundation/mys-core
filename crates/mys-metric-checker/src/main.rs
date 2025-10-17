@@ -5,15 +5,15 @@ use anyhow::anyhow;
 use backoff::{future::retry, ExponentialBackoff};
 use chrono::{DateTime, Utc};
 use clap::*;
+use mys_metric_checker::query::{instant_query, range_query};
+use mys_metric_checker::{
+    fails_threshold_condition, timestamp_string_to_unix_seconds, Config, NowProvider, QueryType,
+};
 use once_cell::sync::Lazy;
 use prometheus_http_query::Client;
 use std::fs::File;
 use std::io::Read;
 use std::time::Duration;
-use mys_metric_checker::query::{instant_query, range_query};
-use mys_metric_checker::{
-    fails_threshold_condition, timestamp_string_to_unix_seconds, Config, NowProvider, QueryType,
-};
 
 #[derive(Parser)]
 pub struct Opts {

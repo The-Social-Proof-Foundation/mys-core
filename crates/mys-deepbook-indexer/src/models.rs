@@ -5,12 +5,12 @@
 use diesel::data_types::PgTimestamp;
 use diesel::{Identifiable, Insertable, Queryable, QueryableByName, Selectable};
 
-use serde::Serialize;
 use mys_indexer_builder::{Task, LIVE_TASK_TARGET_CHECKPOINT};
+use serde::Serialize;
 
 use crate::schema::{
-    balances, balances_summary, flashloans, order_fills, order_updates, pool_prices, pools,
-    progress_store, proposals, rebates, stakes, mys_error_transactions, trade_params_update, votes,
+    balances, balances_summary, flashloans, mys_error_transactions, order_fills, order_updates,
+    pool_prices, pools, progress_store, proposals, rebates, stakes, trade_params_update, votes,
 };
 
 #[derive(Queryable, Selectable, Insertable, Identifiable, Debug)]

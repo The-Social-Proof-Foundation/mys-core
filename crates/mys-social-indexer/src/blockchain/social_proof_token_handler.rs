@@ -541,19 +541,25 @@ impl SocialProofTokenHandler {
 
     /// Process token pool created events and update profile with social proof token address
     async fn process_token_pool_created_event(&mut self, event: &BlockchainEvent) -> Result<()> {
-        info!("Processing SPT token pool created event: {}", event.event_id);
+        info!(
+            "Processing SPT token pool created event: {}",
+            event.event_id
+        );
 
         // Extract and parse the event
         let fields = Self::extract_event_fields(&event.data)?;
-        let token_pool_event = serde_json::from_value::<crate::events::social_proof_token_events::TokenPoolCreatedEvent>(fields)
-            .map_err(|e| anyhow!("Failed to parse TokenPoolCreatedEvent: {}", e))?;
+        let token_pool_event = serde_json::from_value::<
+            crate::events::social_proof_token_events::TokenPoolCreatedEvent,
+        >(fields)
+        .map_err(|e| anyhow!("Failed to parse TokenPoolCreatedEvent: {}", e))?;
 
         let mut conn = self.base.get_connection().await?;
         let timestamp = (event.timestamp_ms / 1000) as i64;
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
 
         // Convert to database model
-        let mut token_pool = token_pool_event.into_model(timestamp as u64, event.tx_digest.clone())?;
+        let mut token_pool =
+            token_pool_event.into_model(timestamp as u64, event.tx_digest.clone())?;
         token_pool.time = datetime;
 
         // Insert into database
@@ -563,7 +569,8 @@ impl SocialProofTokenHandler {
             .await?;
 
         // Update profile with social proof token address if this is a profile token
-        if token_pool_event.token_type == 1 { // 1 = Profile token type
+        if token_pool_event.token_type == 1 {
+            // 1 = Profile token type
             // Update the profile's social_proof_token_address and updated_at timestamp
             diesel::update(schema::profiles::table)
                 .filter(schema::profiles::owner_address.eq(&token_pool_event.owner))
@@ -581,7 +588,8 @@ impl SocialProofTokenHandler {
         }
 
         // Create initial price history for the pool
-        let price_history = token_pool_event.create_price_history(timestamp as u64, event.tx_digest.clone())?;
+        let price_history =
+            token_pool_event.create_price_history(timestamp as u64, event.tx_digest.clone())?;
         diesel::insert_into(schema::spt_price_history::table)
             .values(&price_history)
             .execute(&mut conn)
@@ -677,7 +685,9 @@ impl BlockchainEventHandler for SocialProofTokenHandler {
             t if t.contains("::social_proof_tokens::") && t.ends_with("::ConfigUpdatedEvent") => {
                 self.process_config_updated_event(&event).await
             }
-            t if t.contains("::social_proof_tokens::") && t.ends_with("::TokenPoolCreatedEvent") => {
+            t if t.contains("::social_proof_tokens::")
+                && t.ends_with("::TokenPoolCreatedEvent") =>
+            {
                 self.process_token_pool_created_event(&event).await
             }
             _ => {

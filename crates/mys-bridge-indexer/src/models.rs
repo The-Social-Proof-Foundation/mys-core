@@ -8,8 +8,8 @@ use diesel::{Identifiable, Insertable, Queryable, Selectable};
 use mys_indexer_builder::{Task, LIVE_TASK_TARGET_CHECKPOINT};
 
 use crate::schema::{
-    governance_actions, progress_store, mys_error_transactions, mys_progress_store, token_transfer,
-    token_transfer_data, bridge_treasury_balances, bridge_treasury_events,
+    bridge_treasury_balances, bridge_treasury_events, governance_actions, mys_error_transactions,
+    mys_progress_store, progress_store, token_transfer, token_transfer_data,
 };
 
 #[derive(Queryable, Selectable, Insertable, Identifiable, Debug)]

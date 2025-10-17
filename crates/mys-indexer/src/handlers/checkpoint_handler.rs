@@ -12,7 +12,6 @@ use tokio_util::sync::CancellationToken;
 use tracing::{info, warn};
 
 use move_core_types::language_storage::{StructTag, TypeTag};
-use mysten_metrics::{get_metrics, spawn_monitored_task};
 use mys_data_ingestion_core::Worker;
 use mys_rpc_api::{CheckpointData, CheckpointTransaction};
 use mys_types::dynamic_field::DynamicFieldType;
@@ -21,10 +20,11 @@ use mys_types::event::SystemEpochInfoEvent;
 use mys_types::messages_checkpoint::{
     CertifiedCheckpointSummary, CheckpointContents, CheckpointSequenceNumber,
 };
+use mys_types::mys_system_state::{get_mys_system_state, MysSystemStateTrait};
 use mys_types::object::Object;
 use mys_types::object::Owner;
-use mys_types::mys_system_state::{get_mys_system_state, MysSystemStateTrait};
 use mys_types::transaction::TransactionDataAPI;
+use mysten_metrics::{get_metrics, spawn_monitored_task};
 
 use crate::errors::IndexerError;
 use crate::handlers::committer::start_tx_checkpoint_commit_task;

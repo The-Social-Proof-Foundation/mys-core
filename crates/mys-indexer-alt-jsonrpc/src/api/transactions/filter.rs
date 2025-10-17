@@ -19,7 +19,7 @@ use mys_indexer_alt_schema::schema::{
 };
 use mys_json_rpc_types::{Page as PageResponse, TransactionFilter};
 use mys_types::{
-    base_types::{ObjectID, MysAddress},
+    base_types::{MysAddress, ObjectID},
     digests::TransactionDigest,
     messages_checkpoint::{CheckpointContents, CheckpointSummary},
 };

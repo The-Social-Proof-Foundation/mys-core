@@ -11,6 +11,7 @@ use bytes::Bytes;
 use consensus_config::AuthorityIndex;
 use futures::{stream::FuturesUnordered, StreamExt as _};
 use itertools::Itertools as _;
+use mys_macros::fail_point_async;
 use mysten_metrics::{
     monitored_future,
     monitored_mpsc::{channel, Receiver, Sender},
@@ -18,7 +19,6 @@ use mysten_metrics::{
 };
 use parking_lot::{Mutex, RwLock};
 use rand::{prelude::SliceRandom as _, rngs::ThreadRng};
-use mys_macros::fail_point_async;
 use tap::TapFallible;
 use tokio::{
     runtime::Handle,

@@ -7,13 +7,13 @@ use std::{
     time::Duration,
 };
 
+use mys_macros::fail_point_async;
+use mys_protocol_config::Chain;
 use mysten_metrics::{monitored_scope, spawn_monitored_task};
 use rand::{
     rngs::{OsRng, StdRng},
     Rng, SeedableRng,
 };
-use mys_macros::fail_point_async;
-use mys_protocol_config::Chain;
 use tokio::{
     sync::{mpsc::UnboundedReceiver, oneshot, Semaphore},
     time::sleep,

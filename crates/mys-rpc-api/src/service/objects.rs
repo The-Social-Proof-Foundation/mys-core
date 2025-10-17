@@ -15,8 +15,8 @@ use mys_sdk_types::TypeTag;
 use mys_sdk_types::Version;
 use mys_types::mys_sdk_types_conversions::type_tag_core_to_sdk;
 use mys_types::{
-    storage::{DynamicFieldIndexInfo, DynamicFieldKey},
     mys_sdk_types_conversions::SdkTypeConversionError,
+    storage::{DynamicFieldIndexInfo, DynamicFieldKey},
 };
 use tap::Pipe;
 

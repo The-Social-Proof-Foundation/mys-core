@@ -138,29 +138,31 @@ impl EventRouter {
             // Check if any pattern matches
             let matches = registration.patterns.iter().any(|pattern| {
                 let result = pattern.matches(&event.event_type);
-                
+
                 // Enhanced logging for profile events
                 if event.event_type.contains("::profile::") {
                     info!(
                         "🔍 PROFILE EVENT PATTERN CHECK: event='{}', pattern={:?}, matches={}",
                         event.event_type, pattern, result
                     );
-                    
+
                     if let EventPattern::Module { package, module } = pattern {
                         let short_package = if package.len() > 10 && package.starts_with("0x") {
-                            format!("0x{}", &package[package.len()-4..])
+                            format!("0x{}", &package[package.len() - 4..])
                         } else {
                             package.clone()
                         };
                         info!(
                             "🔍 MODULE PATTERN DETAILS: full_package='{}', short_package='{}', module='{}', event_starts_with_short={}, event_contains_module={}",
-                            package, short_package, module,
+                            package,
+                            short_package,
+                            module,
                             event.event_type.starts_with(&short_package),
                             event.event_type.contains(&format!("::{module}::"))
                         );
                     }
                 }
-                
+
                 if result {
                     debug!(
                         "Event {} matches pattern {:?} for handler {}",
@@ -321,11 +323,11 @@ impl EventPattern {
         }
     }
 
-    /// Create pattern for MyIP events
-    pub fn my_ip_events(package_address: &str) -> EventPattern {
+    /// Create pattern for MyData events
+    pub fn mydata_events(package_address: &str) -> EventPattern {
         EventPattern::Module {
             package: package_address.to_string(),
-            module: "my_ip".to_string(),
+            module: "mydata".to_string(),
         }
     }
 
@@ -335,6 +337,19 @@ impl EventPattern {
             package: package_address.to_string(),
             module: "subscription".to_string(),
         }
+    }
+
+    /// Create pattern for Social Proof of Truth (SPoT) events
+    pub fn social_proof_of_truth_events(package_address: &str) -> EventPattern {
+        EventPattern::Module {
+            package: package_address.to_string(),
+            module: "social_proof_of_truth".to_string(),
+        }
+    }
+
+    /// Create pattern for PoC events
+    pub fn poc_events(_package_address: &str) -> EventPattern {
+        EventPattern::Contains("::poc::".to_string())
     }
 }
 
@@ -364,6 +379,19 @@ mod tests {
         assert!(module.matches("0x123::profile::ProfileCreatedEvent"));
         assert!(!module.matches("0x456::profile::ProfileCreatedEvent")); // Wrong package
         assert!(!module.matches("0x123::platform::PlatformCreatedEvent")); // Wrong module
+
+        // Test MyData events
+        let mydata = EventPattern::mydata_events(package_addr);
+        assert!(mydata.matches("0x123::mydata::DataCreatedEvent"));
+        assert!(!mydata.matches("0x123::my_ip::IPRegisteredEvent"));
+
+        // Test SPoT events
+        let spot = EventPattern::social_proof_of_truth_events(package_addr);
+        assert!(spot.matches("0x123::social_proof_of_truth::SpotBetPlacedEvent"));
+
+        // Test PoC events (module match via substring)
+        let poc = EventPattern::poc_events(package_addr);
+        assert!(poc.matches("0x123::poc::PocBadgeIssuedEvent"));
     }
 
     #[tokio::test]

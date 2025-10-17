@@ -7,19 +7,19 @@ use crate::data::Db;
 use crate::types::cursor::{JsonCursor, Page};
 use async_graphql::connection::{Connection, CursorType, Edge};
 use async_graphql::dataloader::Loader;
-use std::collections::{BTreeMap, HashMap};
 use mys_indexer::apis::GovernanceReadApi;
 use mys_types::committee::EpochId;
 use mys_types::gas_coin::TOTAL_SUPPLY_MIST;
 use mys_types::mys_system_state::PoolTokenExchangeRate;
+use std::collections::{BTreeMap, HashMap};
 
 use mys_types::base_types::MysAddress as NativeMysAddress;
 
 use super::big_int::BigInt;
 use super::move_object::MoveObject;
+use super::mys_address::MysAddress;
 use super::object::Object;
 use super::owner::Owner;
-use super::mys_address::MysAddress;
 use super::uint53::UInt53;
 use super::validator_credentials::ValidatorCredentials;
 use super::{address::Address, base64::Base64};
@@ -376,13 +376,16 @@ impl Validator {
     /// To get the APY in percentage, divide by 100.
     async fn apy(&self, ctx: &Context<'_>) -> Result<Option<u64>, Error> {
         // Get the system state to access necessary values for APY calculation
-        let system_state = ctx.data_unchecked::<Db>().inner
+        let system_state = ctx
+            .data_unchecked::<Db>()
+            .inner
             .get_latest_mys_system_state()
             .await
             .map_err(|_| Error::Internal("Failed to fetch latest Mys system state".to_string()))?;
-            
+
         // Calculate APY using the same approach as in system_state_summary.rs
-        let circulating_supply = TOTAL_SUPPLY_MIST.saturating_sub(system_state.stake_subsidy_balance);
+        let circulating_supply =
+            TOTAL_SUPPLY_MIST.saturating_sub(system_state.stake_subsidy_balance);
         let epochs_per_year = (365_u64 * 24 * 60 * 60 * 1000) / system_state.epoch_duration_ms;
         let yearly_subsidy = system_state
             .stake_subsidy_current_distribution_amount
@@ -392,7 +395,7 @@ impl Validator {
         } else {
             0
         };
-        
+
         Ok(Some(apy_bps))
     }
 }

@@ -15,10 +15,10 @@ use axum_extra::headers::{ContentLength, ContentType};
 use axum_extra::typed_header::TypedHeader;
 use bytes::Buf;
 use hyper::header::CONTENT_ENCODING;
+use mys_tls::TlsConnectionInfo;
 use once_cell::sync::Lazy;
 use prometheus::{proto::MetricFamily, register_counter_vec, CounterVec};
 use std::sync::Arc;
-use mys_tls::TlsConnectionInfo;
 use tracing::error;
 
 static MIDDLEWARE_OPS: Lazy<CounterVec> = Lazy::new(|| {

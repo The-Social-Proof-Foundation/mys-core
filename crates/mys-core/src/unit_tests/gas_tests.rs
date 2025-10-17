@@ -10,7 +10,6 @@ use crate::authority::authority_tests::init_state_with_ids_and_object_basics;
 use crate::authority::test_authority_builder::TestAuthorityBuilder;
 use move_core_types::account_address::AccountAddress;
 use move_core_types::ident_str;
-use once_cell::sync::Lazy;
 use mys_protocol_config::ProtocolConfig;
 use mys_types::crypto::AccountKeyPair;
 use mys_types::effects::TransactionEvents;
@@ -20,6 +19,7 @@ use mys_types::object::GAS_VALUE_FOR_TESTING;
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::utils::to_sender_signed_transaction;
 use mys_types::{base_types::dbg_addr, crypto::get_key_pair};
+use once_cell::sync::Lazy;
 
 // The cost table is used only to get the max budget available which is not dependent on
 // the gas price

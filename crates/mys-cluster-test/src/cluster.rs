@@ -4,8 +4,6 @@
 
 use super::config::{ClusterTestOpt, Env};
 use async_trait::async_trait;
-use std::net::SocketAddr;
-use std::path::Path;
 use mys_config::local_ip_utils::get_available_port;
 use mys_config::Config;
 use mys_config::{PersistedConfig, MYS_KEYSTORE_FILENAME, MYS_NETWORK_CONFIG};
@@ -25,6 +23,8 @@ use mys_types::base_types::MysAddress;
 use mys_types::crypto::KeypairTraits;
 use mys_types::crypto::MysKeyPair;
 use mys_types::crypto::{get_key_pair, AccountKeyPair};
+use std::net::SocketAddr;
+use std::path::Path;
 use tempfile::tempdir;
 use test_cluster::{TestCluster, TestClusterBuilder};
 use tracing::info;

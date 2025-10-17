@@ -27,9 +27,9 @@ use async_graphql::{
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl};
 use diesel_async::scoped_futures::ScopedFutureExt;
 use fastcrypto::encoding::{Base58, Encoding};
-use serde::{Deserialize, Serialize};
 use mys_indexer::{models::checkpoints::StoredCheckpoint, schema::checkpoints};
 use mys_types::messages_checkpoint::CheckpointDigest;
+use serde::{Deserialize, Serialize};
 
 /// Filter either by the digest, or the sequence number, or neither, to get the latest checkpoint.
 #[derive(Default, InputObject)]

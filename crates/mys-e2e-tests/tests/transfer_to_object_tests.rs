@@ -2,9 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::HashSet;
-use std::net::SocketAddr;
-use std::path::PathBuf;
 use mys_core::authority_client::AuthorityAPI;
 use mys_macros::*;
 use mys_test_transaction_builder::publish_package;
@@ -14,6 +11,9 @@ use mys_types::effects::{TransactionEffects, TransactionEvents};
 use mys_types::error::{MysError, UserInputError};
 use mys_types::object::Owner;
 use mys_types::transaction::{CallArg, ObjectArg, Transaction};
+use std::collections::HashSet;
+use std::net::SocketAddr;
+use std::path::PathBuf;
 use test_cluster::{TestCluster, TestClusterBuilder};
 
 #[sim_test]

@@ -11,9 +11,6 @@ use crate::{
 };
 use anemo::{PeerId, Request};
 use anyhow::anyhow;
-use prometheus::Registry;
-use std::num::NonZeroUsize;
-use std::{collections::HashMap, time::Duration};
 use mys_archival::reader::ArchiveReaderBalancer;
 use mys_archival::writer::ArchiveWriter;
 use mys_config::node::ArchiveReaderConfig;
@@ -24,6 +21,9 @@ use mys_types::{
     messages_checkpoint::CheckpointDigest,
     storage::{ReadStore, SharedInMemoryStore, WriteStore},
 };
+use prometheus::Registry;
+use std::num::NonZeroUsize;
+use std::{collections::HashMap, time::Duration};
 use tempfile::tempdir;
 use tokio::time::{timeout, Instant};
 

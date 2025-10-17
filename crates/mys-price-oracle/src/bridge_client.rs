@@ -101,7 +101,10 @@ impl BridgeClient {
 
         let request_builder = if let Some(hmac_secret) = &self.auth.hmac_secret {
             // Use HMAC authentication
-            let message = format!("{}/{}/{}/{}/{}", chain_id, nonce, token_id, price_scaled, timestamp);
+            let message = format!(
+                "{}/{}/{}/{}/{}",
+                chain_id, nonce, token_id, price_scaled, timestamp
+            );
             let signature = self.compute_hmac_signature(&message, hmac_secret);
 
             let url = format!(
@@ -233,4 +236,4 @@ mod tests {
         assert!(!signature.is_empty());
         assert_eq!(signature.len(), 64); // SHA256 produces 32 bytes = 64 hex chars
     }
-} 
+}

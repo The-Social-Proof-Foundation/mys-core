@@ -18,9 +18,6 @@ use ethers::types::Address as EthAddress;
 use fastcrypto::encoding::Encoding;
 use fastcrypto::encoding::Hex;
 use move_core_types::language_storage::StructTag;
-use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use mys_json_rpc_types::MysEvent;
 use mys_types::base_types::MysAddress;
 use mys_types::bridge::BridgeChainId;
@@ -33,6 +30,9 @@ use mys_types::digests::TransactionDigest;
 use mys_types::parse_mys_type_tag;
 use mys_types::TypeTag;
 use mys_types::BRIDGE_PACKAGE_ID;
+use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 // `TokendDepositedEvent` emitted in bridge.move
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -446,8 +446,8 @@ pub mod tests {
     use ethers::types::Address as EthAddress;
     use mys_json_rpc_types::BcsEvent;
     use mys_json_rpc_types::MysEvent;
-    use mys_types::base_types::ObjectID;
     use mys_types::base_types::MysAddress;
+    use mys_types::base_types::ObjectID;
     use mys_types::bridge::BridgeChainId;
     use mys_types::bridge::TOKEN_ID_MYS;
     use mys_types::crypto::get_key_pair;

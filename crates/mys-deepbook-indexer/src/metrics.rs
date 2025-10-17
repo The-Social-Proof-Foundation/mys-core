@@ -2,11 +2,12 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use mys_indexer_builder::metrics::IndexerMetricProvider;
 use prometheus::{
     register_int_counter_vec_with_registry, register_int_counter_with_registry,
-    register_int_gauge_vec_with_registry, register_int_gauge_with_registry, IntCounter, IntCounterVec, IntGauge, IntGaugeVec, Registry,
+    register_int_gauge_vec_with_registry, register_int_gauge_with_registry, IntCounter,
+    IntCounterVec, IntGauge, IntGaugeVec, Registry,
 };
-use mys_indexer_builder::metrics::IndexerMetricProvider;
 
 #[derive(Clone, Debug)]
 pub struct DeepBookIndexerMetrics {
@@ -102,7 +103,12 @@ impl DeepBookIndexerMetrics {
             .inc_by(count);
     }
 
-    pub fn update_chunk_metrics(&self, hypertable: &str, total_chunks: i64, compressed_chunks: i64) {
+    pub fn update_chunk_metrics(
+        &self,
+        hypertable: &str,
+        total_chunks: i64,
+        compressed_chunks: i64,
+    ) {
         self.timescale_chunks_total
             .with_label_values(&[hypertable])
             .set(total_chunks);

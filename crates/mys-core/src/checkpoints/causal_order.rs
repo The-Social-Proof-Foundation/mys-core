@@ -2,11 +2,11 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
 use mys_types::base_types::TransactionDigest;
 use mys_types::effects::TransactionEffectsAPI;
 use mys_types::effects::{InputSharedObject, TransactionEffects};
 use mys_types::storage::ObjectKey;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use tracing::trace;
 
 pub struct CausalOrder {

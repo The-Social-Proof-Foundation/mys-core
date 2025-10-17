@@ -2,8 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use mys_types::base_types::{MysAddress, ObjectID};
 use serde::{Deserialize, Serialize};
-use mys_types::base_types::{ObjectID, MysAddress};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct MoveOrderFilledEvent {

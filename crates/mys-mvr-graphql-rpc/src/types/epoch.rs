@@ -27,10 +27,10 @@ use connection::{CursorType, Edge};
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
 use diesel_async::scoped_futures::ScopedFutureExt;
 use fastcrypto::encoding::{Base58, Encoding};
-use serde::{Deserialize, Serialize};
 use mys_indexer::models::epoch::QueryableEpochInfo;
 use mys_indexer::schema::epochs;
 use mys_types::messages_checkpoint::CheckpointCommitment as EpochCommitment;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
 pub(crate) struct Epoch {

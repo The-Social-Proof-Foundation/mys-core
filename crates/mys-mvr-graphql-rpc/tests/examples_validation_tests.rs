@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, Context, Result};
+use mys_mvr_graphql_rpc::config::Limits;
+use mys_mvr_graphql_rpc::test_infra::cluster::{prep_executor_cluster, ExecutorCluster};
 use std::cmp::max;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
-use mys_mvr_graphql_rpc::config::Limits;
-use mys_mvr_graphql_rpc::test_infra::cluster::{prep_executor_cluster, ExecutorCluster};
 
 struct Example {
     contents: String,

@@ -16,15 +16,15 @@ use super::display::{Display, DisplayEntry};
 use super::dynamic_field::{DynamicField, DynamicFieldName};
 use super::move_object::MoveObject;
 use super::move_package::MovePackage;
-use super::owner::OwnerImpl;
-use super::stake::StakedMys;
 use super::mys_address::addr;
 use super::mysns_registration::{DomainFormat, MysnsRegistration};
+use super::owner::OwnerImpl;
+use super::stake::StakedMys;
 use super::transaction_block;
 use super::transaction_block::TransactionBlockFilter;
 use super::type_filter::{ExactTypeFilter, TypeFilter};
 use super::uint53::UInt53;
-use super::{owner::Owner, mys_address::MysAddress, transaction_block::TransactionBlock};
+use super::{mys_address::MysAddress, owner::Owner, transaction_block::TransactionBlock};
 use crate::connection::ScanConnection;
 use crate::consistency::{build_objects_query, Checkpointed, View};
 use crate::data::package_resolver::PackageResolver;
@@ -41,7 +41,6 @@ use diesel::{BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelpe
 use diesel_async::scoped_futures::ScopedFutureExt;
 use move_core_types::annotated_value::{MoveStruct, MoveTypeLayout};
 use move_core_types::language_storage::StructTag;
-use serde::{Deserialize, Serialize};
 use mys_indexer::models::obj_indices::StoredObjectVersion;
 use mys_indexer::models::objects::{StoredFullHistoryObject, StoredHistoryObject};
 use mys_indexer::schema::{full_objects_history, objects_version};
@@ -52,6 +51,7 @@ use mys_types::object::{
     MoveObject as NativeMoveObject, Object as NativeObject, Owner as NativeOwner,
 };
 use mys_types::TypeTag;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug)]
 pub(crate) struct Object {

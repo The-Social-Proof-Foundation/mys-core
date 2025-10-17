@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use arc_swap::ArcSwap;
+use mys_protocol_config::Chain;
+use mys_types::digests::ChainIdentifier;
+use mys_types::messages_consensus::TimestampMs;
 use parking_lot::Mutex;
 use std::collections::{BTreeMap, VecDeque};
 use std::num::NonZeroU64;
 use std::sync::Arc;
-use mys_protocol_config::Chain;
-use mys_types::digests::ChainIdentifier;
-use mys_types::messages_consensus::TimestampMs;
 use tracing::{debug, warn};
 
 use crate::authority::AuthorityMetrics;

@@ -7,6 +7,10 @@ use fastcrypto::encoding::Base64;
 use fastcrypto::encoding::Encoding;
 use fastcrypto::traits::ToFromBytes;
 use futures::stream::{self, StreamExt};
+use mys_tls::Allower;
+use mys_types::base_types::MysAddress;
+use mys_types::bridge::BridgeSummary;
+use mys_types::mys_system_state::mys_system_state_summary::MysSystemStateSummary;
 use once_cell::sync::Lazy;
 use prometheus::{register_counter_vec, register_histogram_vec};
 use prometheus::{CounterVec, HistogramVec};
@@ -17,10 +21,6 @@ use std::{
     sync::{Arc, RwLock},
     time::Duration,
 };
-use mys_tls::Allower;
-use mys_types::base_types::MysAddress;
-use mys_types::bridge::BridgeSummary;
-use mys_types::mys_system_state::mys_system_state_summary::MysSystemStateSummary;
 use tracing::{debug, error, info, warn};
 use url::Url;
 
@@ -542,12 +542,12 @@ fn append_path_segment(mut url: Url, segment: &str) -> Option<Url> {
 mod tests {
     use super::*;
     use crate::admin::{generate_self_cert, CertKeyPair};
-    use serde::Serialize;
     use mys_types::base_types::MysAddress;
     use mys_types::bridge::{BridgeCommitteeSummary, BridgeSummary, MoveTypeCommitteeMember};
     use mys_types::mys_system_state::mys_system_state_summary::{
         MysSystemStateSummary, MysValidatorSummary,
     };
+    use serde::Serialize;
 
     /// creates a test that binds our proxy use case to the structure in mys_getLatestMysSystemState
     /// most of the fields are garbage, but we will send the results of the serde process to a private decode

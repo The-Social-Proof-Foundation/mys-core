@@ -28,7 +28,6 @@ use move_bytecode_verifier_meter::{Meter, Scope};
 use move_core_types::{
     account_address::AccountAddress, ident_str, identifier::IdentStr, vm_status::StatusCode,
 };
-use std::{collections::BTreeMap, error::Error, num::NonZeroU64};
 use mys_types::{
     clock::CLOCK_MODULE_NAME,
     error::{ExecutionError, VMMVerifierErrorSubStatusCode},
@@ -36,6 +35,7 @@ use mys_types::{
     mys_system_state::MYS_SYSTEM_MODULE_NAME,
     MYS_FRAMEWORK_ADDRESS, MYS_SYSTEM_ADDRESS,
 };
+use std::{collections::BTreeMap, error::Error, num::NonZeroU64};
 
 #[cfg(msim)]
 use mys_types::{

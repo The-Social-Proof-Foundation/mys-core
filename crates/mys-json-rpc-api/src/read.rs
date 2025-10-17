@@ -12,7 +12,7 @@ use mys_json_rpc_types::{
 };
 use mys_json_rpc_types::{ProtocolConfigResponse, ZkLoginIntentScope, ZkLoginVerifyResult};
 use mys_open_rpc_macros::open_rpc;
-use mys_types::base_types::{ObjectID, SequenceNumber, MysAddress, TransactionDigest};
+use mys_types::base_types::{MysAddress, ObjectID, SequenceNumber, TransactionDigest};
 use mys_types::mys_serde::BigInt;
 
 #[open_rpc(namespace = "mys", tag = "Read API")]

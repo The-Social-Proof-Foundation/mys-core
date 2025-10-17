@@ -4,13 +4,13 @@
 
 use anyhow::anyhow;
 use anyhow::Result;
-use std::sync::Mutex;
-use std::sync::MutexGuard;
 use mys_config::NodeConfig;
 use mys_node::MysNodeHandle;
 use mys_types::base_types::AuthorityName;
 use mys_types::base_types::ConciseableName;
 use mys_types::crypto::KeypairTraits;
+use std::sync::Mutex;
+use std::sync::MutexGuard;
 use tap::TapFallible;
 use tracing::{error, info};
 

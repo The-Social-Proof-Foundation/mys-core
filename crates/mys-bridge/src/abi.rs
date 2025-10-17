@@ -23,9 +23,9 @@ use ethers::{
     contract::{abigen, EthLogDecode},
     types::Address as EthAddress,
 };
-use serde::{Deserialize, Serialize};
 use mys_types::base_types::MysAddress;
 use mys_types::bridge::BridgeChainId;
+use serde::{Deserialize, Serialize};
 
 macro_rules! gen_eth_events {
     ($($contract:ident, $contract_event:ident, $abi_path:literal),* $(,)?) => {
@@ -310,8 +310,8 @@ mod tests {
     use ethers::types::TxHash;
     use fastcrypto::encoding::{Encoding, Hex};
     use hex_literal::hex;
-    use std::str::FromStr;
     use mys_types::{bridge::TOKEN_ID_ETH, crypto::ToFromBytes};
+    use std::str::FromStr;
 
     #[test]
     fn test_eth_message_conversion_emergency_action_regression() -> anyhow::Result<()> {

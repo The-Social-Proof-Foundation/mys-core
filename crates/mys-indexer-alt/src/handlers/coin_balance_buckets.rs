@@ -15,7 +15,7 @@ use mys_indexer_alt_schema::{
 };
 use mys_pg_db as db;
 use mys_types::{
-    base_types::{ObjectID, MysAddress},
+    base_types::{MysAddress, ObjectID},
     full_checkpoint_content::CheckpointData,
     object::{Object, Owner},
     TypeTag,
@@ -294,7 +294,7 @@ mod tests {
     use mys_indexer_alt_framework::Indexer;
     use mys_indexer_alt_schema::MIGRATIONS;
     use mys_protocol_config::ProtocolConfig;
-    use mys_types::base_types::{dbg_addr, MoveObjectType, ObjectID, SequenceNumber, MysAddress};
+    use mys_types::base_types::{dbg_addr, MoveObjectType, MysAddress, ObjectID, SequenceNumber};
     use mys_types::digests::TransactionDigest;
     use mys_types::gas_coin::GAS;
     use mys_types::object::{Authenticator, MoveObject, Object};

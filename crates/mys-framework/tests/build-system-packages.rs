@@ -6,12 +6,12 @@ use anyhow::Result;
 use move_binary_format::{file_format::Visibility, CompiledModule};
 use move_compiler::editions::Edition;
 use move_package::{BuildConfig as MoveBuildConfig, LintFlag};
+use mys_move_build::{BuildConfig, MysPackageHooks};
 use std::{
     collections::BTreeMap,
     env, fs,
     path::{Path, PathBuf},
 };
-use mys_move_build::{BuildConfig, MysPackageHooks};
 
 const CRATE_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 const COMPILED_PACKAGES_DIR: &str = "packages_compiled";

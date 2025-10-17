@@ -24,22 +24,14 @@ use crate::{
     events::init_all_struct_tags,
     metrics::BridgeMetrics,
     monitor::BridgeMonitor,
+    mys_syncer::MysSyncer,
     orchestrator::BridgeOrchestrator,
     server::{handler::BridgeRequestHandler, run_server, BridgeNodePublicMetadata},
     storage::BridgeOrchestratorTables,
-    mys_syncer::MysSyncer,
 };
 use arc_swap::ArcSwap;
 use ethers::providers::Provider;
 use ethers::types::Address as EthAddress;
-use mysten_metrics::spawn_logged_monitored_task;
-use std::collections::BTreeMap;
-use std::{
-    collections::HashMap,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::Arc,
-    time::Duration,
-};
 use mys_types::{
     bridge::{
         BRIDGE_COMMITTEE_MODULE_NAME, BRIDGE_LIMITER_MODULE_NAME, BRIDGE_MODULE_NAME,
@@ -47,6 +39,14 @@ use mys_types::{
     },
     event::EventID,
     Identifier,
+};
+use mysten_metrics::spawn_logged_monitored_task;
+use std::collections::BTreeMap;
+use std::{
+    collections::HashMap,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::Arc,
+    time::Duration,
 };
 use tokio::task::JoinHandle;
 use tracing::info;

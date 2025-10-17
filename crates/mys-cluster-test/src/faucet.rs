@@ -4,15 +4,15 @@
 use super::cluster::{new_wallet_context_from_cluster, Cluster};
 use async_trait::async_trait;
 use fastcrypto::encoding::{Encoding, Hex};
-use std::collections::HashMap;
-use std::env;
-use std::sync::Arc;
 use mys_faucet::{
     BatchFaucetResponse, BatchStatusFaucetResponse, Faucet, FaucetConfig, FaucetResponse,
     SimpleFaucet,
 };
 use mys_types::base_types::MysAddress;
 use mys_types::crypto::KeypairTraits;
+use std::collections::HashMap;
+use std::env;
+use std::sync::Arc;
 use tracing::{debug, info, info_span, Instrument};
 use uuid::Uuid;
 

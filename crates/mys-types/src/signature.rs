@@ -4,7 +4,7 @@
 
 use crate::committee::EpochId;
 use crate::crypto::{
-    CompressedSignature, PublicKey, SignatureScheme, MysSignature, ZkLoginAuthenticatorAsBytes,
+    CompressedSignature, MysSignature, PublicKey, SignatureScheme, ZkLoginAuthenticatorAsBytes,
 };
 use crate::digests::ZKLoginInputsDigest;
 use crate::error::MysError;

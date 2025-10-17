@@ -20,8 +20,8 @@ pub mod p2p;
 pub mod transaction_deny_config;
 pub mod verifier_signing_config;
 
-pub use node::{ConsensusConfig, ExecutionCacheConfig, NodeConfig};
 use mys_types::multiaddr::Multiaddr;
+pub use node::{ConsensusConfig, ExecutionCacheConfig, NodeConfig};
 
 const MYS_DIR: &str = ".mys";
 pub const MYS_CONFIG_DIR: &str = "mys_config";

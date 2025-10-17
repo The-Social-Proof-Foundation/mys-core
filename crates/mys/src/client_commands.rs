@@ -33,15 +33,14 @@ use move_binary_format::CompiledModule;
 use move_bytecode_verifier_meter::Scope;
 use move_core_types::{account_address::AccountAddress, language_storage::TypeTag};
 use move_package::BuildConfig as MoveBuildConfig;
-use prometheus::Registry;
-use serde::Serialize;
-use serde_json::{json, Value};
 use mys_config::verifier_signing_config::VerifierSigningConfig;
 use mys_move::manage_package::resolve_lock_file_path;
 use mys_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use mys_source_validation::{BytecodeSourceVerifier, ValidationMode};
+use prometheus::Registry;
+use serde::Serialize;
+use serde_json::{json, Value};
 
-use shared_crypto::intent::Intent;
 use mys_json::MysJsonValue;
 use mys_json_rpc_types::{
     Coin, DevInspectArgs, DevInspectResults, DryRunTransactionBlockResponse, DynamicFieldInfo,
@@ -65,7 +64,7 @@ use mys_sdk::{
     MYS_TESTNET_URL,
 };
 use mys_types::{
-    base_types::{ObjectID, SequenceNumber, MysAddress},
+    base_types::{MysAddress, ObjectID, SequenceNumber},
     crypto::{EmptySignInfo, SignatureScheme},
     digests::TransactionDigest,
     error::MysError,
@@ -74,14 +73,15 @@ use mys_types::{
     message_envelope::Envelope,
     metrics::BytecodeVerifierMetrics,
     move_package::UpgradeCap,
+    mys_serde,
     object::Owner,
     parse_mys_type_tag,
     signature::GenericSignature,
-    mys_serde,
     transaction::{
         SenderSignedData, Transaction, TransactionData, TransactionDataAPI, TransactionKind,
     },
 };
+use shared_crypto::intent::Intent;
 
 use json_to_table::json_to_table;
 use tabled::{
@@ -2073,7 +2073,11 @@ impl Display for MysClientCommandResult {
                 }
 
                 let mut builder = TableBuilder::default();
-                builder.set_header(vec!["gasCoinId", "mistBalance (MIST)", "mysoBalance (MySo)"]);
+                builder.set_header(vec![
+                    "gasCoinId",
+                    "mistBalance (MIST)",
+                    "mysoBalance (MySo)",
+                ]);
                 for coin in &gas_coins {
                     builder.push_record(vec![
                         coin.gas_coin_id.to_string(),

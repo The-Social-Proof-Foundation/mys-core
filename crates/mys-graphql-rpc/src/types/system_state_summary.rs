@@ -79,7 +79,8 @@ impl SystemStateSummary {
 
     /// Parameters related to the subsidy that supplements staking rewards
     async fn system_stake_subsidy(&self) -> Option<StakeSubsidy> {
-        let circulating_supply = TOTAL_SUPPLY_MIST.saturating_sub(self.native.stake_subsidy_balance);
+        let circulating_supply =
+            TOTAL_SUPPLY_MIST.saturating_sub(self.native.stake_subsidy_balance);
         let epochs_per_year = (365_u64 * 24 * 60 * 60 * 1000) / self.native.epoch_duration_ms;
         let yearly_subsidy = self
             .native

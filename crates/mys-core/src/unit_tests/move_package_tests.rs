@@ -4,7 +4,6 @@
 
 use move_binary_format::{file_format::CompiledModule, file_format_common::VERSION_MAX};
 
-use std::{collections::BTreeMap, path::PathBuf};
 use mys_move_build::{BuildConfig, CompiledPackage};
 use mys_protocol_config::{Chain, ProtocolConfig};
 use mys_types::{
@@ -15,6 +14,7 @@ use mys_types::{
     move_package::{MovePackage, TypeOrigin, UpgradeInfo},
     object::{Data, Object, OBJECT_START_VERSION},
 };
+use std::{collections::BTreeMap, path::PathBuf};
 
 macro_rules! type_origin_table {
     {} => { Vec::new() };

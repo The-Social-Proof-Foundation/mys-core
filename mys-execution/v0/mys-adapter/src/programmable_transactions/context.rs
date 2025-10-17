@@ -41,7 +41,7 @@ mod checked {
     use mys_types::storage::PackageObject;
     use mys_types::{
         balance::Balance,
-        base_types::{MoveObjectType, ObjectID, SequenceNumber, MysAddress, TxContext},
+        base_types::{MoveObjectType, MysAddress, ObjectID, SequenceNumber, TxContext},
         coin::Coin,
         error::{command_argument_error, ExecutionError, ExecutionErrorKind},
         event::Event,

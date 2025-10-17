@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use jsonrpsee::core::RpcResult;
-use simulacrum::Simulacrum;
-use std::sync::Arc;
 use mys_indexer::apis::read_api::ReadApi;
 use mys_indexer::indexer_reader::IndexerReader;
 use mys_indexer::test_utils::{set_up, wait_for_checkpoint};
 use mys_json_rpc_api::ReadApiServer;
+use simulacrum::Simulacrum;
+use std::sync::Arc;
 use tempfile::tempdir;
 
 #[tokio::test]

@@ -16,9 +16,9 @@ use anyhow::Result;
 use async_trait::async_trait;
 pub use executor::{setup_single_workflow, IndexerExecutor, MAX_CHECKPOINTS_IN_PROGRESS};
 pub use metrics::DataIngestionMetrics;
+use mys_types::full_checkpoint_content::CheckpointData;
 pub use progress_store::{FileProgressStore, ProgressStore, ShimProgressStore};
 pub use reader::ReaderOptions;
-use mys_types::full_checkpoint_content::CheckpointData;
 pub use util::create_remote_store_client;
 pub use worker_pool::WorkerPool;
 

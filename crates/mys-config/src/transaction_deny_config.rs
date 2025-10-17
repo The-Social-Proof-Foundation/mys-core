@@ -4,9 +4,9 @@
 
 use std::collections::HashSet;
 
+use mys_types::base_types::{MysAddress, ObjectID};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use mys_types::base_types::{ObjectID, MysAddress};
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]

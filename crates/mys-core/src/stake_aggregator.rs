@@ -2,18 +2,18 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use serde::Serialize;
-use shared_crypto::intent::Intent;
-use std::collections::hash_map::Entry;
-use std::collections::{BTreeMap, HashMap};
-use std::hash::Hash;
-use std::sync::Arc;
 use mys_types::base_types::AuthorityName;
 use mys_types::base_types::ConciseableName;
 use mys_types::committee::{Committee, CommitteeTrait, StakeUnit};
 use mys_types::crypto::{AuthorityQuorumSignInfo, AuthoritySignInfo, AuthoritySignInfoTrait};
 use mys_types::error::MysError;
 use mys_types::message_envelope::{Envelope, Message};
+use serde::Serialize;
+use shared_crypto::intent::Intent;
+use std::collections::hash_map::Entry;
+use std::collections::{BTreeMap, HashMap};
+use std::hash::Hash;
+use std::sync::Arc;
 use tracing::warn;
 
 /// StakeAggregator allows us to keep track of the total stake of a set of validators.

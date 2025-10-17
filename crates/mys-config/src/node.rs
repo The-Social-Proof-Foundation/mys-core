@@ -10,6 +10,16 @@ use crate::verifier_signing_config::VerifierSigningConfig;
 use crate::Config;
 use anyhow::Result;
 use consensus_config::Parameters as ConsensusParameters;
+use mys_keys::keypair_file::{read_authority_keypair_from_file, read_keypair_from_file};
+use mys_types::base_types::{MysAddress, ObjectID};
+use mys_types::committee::EpochId;
+use mys_types::crypto::AuthorityPublicKeyBytes;
+use mys_types::crypto::KeypairTraits;
+use mys_types::crypto::MysKeyPair;
+use mys_types::crypto::NetworkKeyPair;
+use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use mys_types::supported_protocol_versions::{Chain, SupportedProtocolVersions};
+use mys_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};
 use mysten_common::fatal;
 use once_cell::sync::OnceCell;
 use rand::rngs::OsRng;
@@ -21,16 +31,6 @@ use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
-use mys_keys::keypair_file::{read_authority_keypair_from_file, read_keypair_from_file};
-use mys_types::base_types::{ObjectID, MysAddress};
-use mys_types::committee::EpochId;
-use mys_types::crypto::AuthorityPublicKeyBytes;
-use mys_types::crypto::KeypairTraits;
-use mys_types::crypto::NetworkKeyPair;
-use mys_types::crypto::MysKeyPair;
-use mys_types::messages_checkpoint::CheckpointSequenceNumber;
-use mys_types::supported_protocol_versions::{Chain, SupportedProtocolVersions};
-use mys_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};
 
 use mys_types::crypto::{get_key_pair_from_rng, AccountKeyPair, AuthorityKeyPair};
 use mys_types::multiaddr::Multiaddr;
@@ -1332,9 +1332,9 @@ mod tests {
     use std::path::PathBuf;
 
     use fastcrypto::traits::KeyPair;
-    use rand::{rngs::StdRng, SeedableRng};
     use mys_keys::keypair_file::{write_authority_keypair_to_file, write_keypair_to_file};
-    use mys_types::crypto::{get_key_pair_from_rng, AuthorityKeyPair, NetworkKeyPair, MysKeyPair};
+    use mys_types::crypto::{get_key_pair_from_rng, AuthorityKeyPair, MysKeyPair, NetworkKeyPair};
+    use rand::{rngs::StdRng, SeedableRng};
 
     use super::Genesis;
     use crate::NodeConfig;

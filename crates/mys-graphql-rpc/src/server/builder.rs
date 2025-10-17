@@ -30,7 +30,7 @@ use crate::{
         timeout::Timeout,
     },
     server::version::set_version_middleware,
-    types::query::{Query, MysGraphQLSchema},
+    types::query::{MysGraphQLSchema, Query},
 };
 use async_graphql::extensions::ApolloTracing;
 #[cfg(feature = "tracing")]
@@ -51,6 +51,10 @@ use axum_extra::headers::ContentLength;
 use axum_extra::TypedHeader;
 use chrono::Utc;
 use http::{HeaderValue, Method, Request};
+use mys_graphql_rpc_headers::LIMITS_HEADER;
+use mys_indexer::db::check_db_migration_consistency;
+use mys_package_resolver::{PackageStoreWithLruCache, Resolver};
+use mys_sdk::MysClientBuilder;
 use mysten_metrics::spawn_monitored_task;
 use mysten_network::callback::{CallbackLayer, MakeCallbackHandler, ResponseHandler};
 use std::convert::Infallible;
@@ -58,10 +62,6 @@ use std::net::TcpStream;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{any::Any, net::SocketAddr, time::Instant};
-use mys_graphql_rpc_headers::LIMITS_HEADER;
-use mys_indexer::db::check_db_migration_consistency;
-use mys_package_resolver::{PackageStoreWithLruCache, Resolver};
-use mys_sdk::MysClientBuilder;
 use tokio::join;
 use tokio::sync::OnceCell;
 use tokio_util::sync::CancellationToken;
@@ -695,13 +695,13 @@ pub mod tests {
         extensions::{Extension, ExtensionContext, NextExecute},
         Request, Response, Variables,
     };
-    use serde_json::json;
-    use std::sync::Arc;
-    use std::time::Duration;
     use mys_pg_db::temp::get_available_port;
     use mys_sdk::MysClient;
     use mys_types::digests::get_mainnet_chain_identifier;
     use mys_types::transaction::TransactionData;
+    use serde_json::json;
+    use std::sync::Arc;
+    use std::time::Duration;
     use uuid::Uuid;
 
     /// Prepares a schema for tests dealing with extensions. Returns a `ServerBuilder` that can be

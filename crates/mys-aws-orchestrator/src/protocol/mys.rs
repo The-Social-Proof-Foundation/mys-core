@@ -8,9 +8,9 @@ use std::{
     str::FromStr,
 };
 
-use serde::{Deserialize, Serialize};
 use mys_swarm_config::genesis_config::GenesisConfig;
 use mys_types::{base_types::MysAddress, multiaddr::Multiaddr};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     benchmark::{BenchmarkParameters, BenchmarkType},

@@ -5,11 +5,11 @@
 use crate::mock_account::Account;
 use crate::tx_generator::TxGenerator;
 use move_core_types::identifier::Identifier;
-use std::collections::HashMap;
 use mys_test_transaction_builder::TestTransactionBuilder;
-use mys_types::base_types::{ObjectID, ObjectRef, SequenceNumber, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID, ObjectRef, SequenceNumber};
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::transaction::{CallArg, ObjectArg, Transaction, DEFAULT_VALIDATOR_GAS_PRICE};
+use std::collections::HashMap;
 
 pub struct MoveTxGenerator {
     move_package: ObjectID,

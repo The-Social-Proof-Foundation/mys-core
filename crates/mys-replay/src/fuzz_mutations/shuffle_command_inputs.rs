@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::fuzz::TransactionKindMutator;
-use rand::seq::SliceRandom;
 use mys_types::transaction::{Command, TransactionKind};
+use rand::seq::SliceRandom;
 use tracing::info;
 
 pub struct ShuffleCommandInputs {

@@ -2,10 +2,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use mys_types::Identifier;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use mys_types::Identifier;
 
 use mys_types::event::EventID;
 use typed_store::rocks::{DBMap, MetricConf};

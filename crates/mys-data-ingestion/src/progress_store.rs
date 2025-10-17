@@ -9,11 +9,11 @@ use aws_sdk_dynamodb::config::{Credentials, Region};
 use aws_sdk_dynamodb::error::SdkError;
 use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_dynamodb::Client;
-use std::str::FromStr;
-use std::time::Duration;
 use mys_data_ingestion_core::ProgressStore;
 use mys_kvstore::BigTableProgressStore;
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use std::str::FromStr;
+use std::time::Duration;
 
 pub struct DynamoDBProgressStore {
     client: Client,

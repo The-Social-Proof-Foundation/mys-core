@@ -26,9 +26,9 @@ use fastcrypto::{
     encoding::{Encoding, Hex},
     traits::ToFromBytes,
 };
+use mys_types::{bridge::BridgeChainId, TypeTag};
 use std::sync::Arc;
 use std::{net::SocketAddr, str::FromStr};
-use mys_types::{bridge::BridgeChainId, TypeTag};
 use tracing::{info, instrument};
 
 pub mod governance_verifier;

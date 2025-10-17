@@ -22,7 +22,7 @@ use mys_config::{
     local_ip_utils, ConsensusConfig, NodeConfig, AUTHORITIES_DB_NAME, CONSENSUS_DB_NAME,
     FULL_NODE_DB_PATH,
 };
-use mys_types::crypto::{AuthorityKeyPair, AuthorityPublicKeyBytes, NetworkKeyPair, MysKeyPair};
+use mys_types::crypto::{AuthorityKeyPair, AuthorityPublicKeyBytes, MysKeyPair, NetworkKeyPair};
 use mys_types::multiaddr::Multiaddr;
 use mys_types::supported_protocol_versions::SupportedProtocolVersions;
 use mys_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};

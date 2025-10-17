@@ -7,15 +7,13 @@ use std::{collections::BTreeMap, path::PathBuf, sync::Arc, time::Duration};
 use move_binary_format::CompiledModule;
 use move_bytecode_utils::module_cache::GetModule;
 use move_core_types::{language_storage::ModuleId, resolver::ModuleResolver};
-use simulacrum::Simulacrum;
-use std::num::NonZeroUsize;
 use mys_config::genesis;
 use mys_protocol_config::ProtocolVersion;
 use mys_swarm_config::genesis_config::AccountConfig;
 use mys_swarm_config::network_config_builder::ConfigBuilder;
 use mys_types::storage::{ReadStore, RpcStateReader};
 use mys_types::{
-    base_types::{ObjectID, SequenceNumber, MysAddress, VersionNumber},
+    base_types::{MysAddress, ObjectID, SequenceNumber, VersionNumber},
     committee::{Committee, EpochId},
     crypto::AccountKeyPair,
     digests::{ObjectDigest, TransactionDigest, TransactionEventsDigest},
@@ -32,6 +30,8 @@ use mys_types::{
     },
     transaction::VerifiedTransaction,
 };
+use simulacrum::Simulacrum;
+use std::num::NonZeroUsize;
 use tempfile::tempdir;
 use typed_store::traits::TableSummary;
 use typed_store::traits::TypedStoreDebug;

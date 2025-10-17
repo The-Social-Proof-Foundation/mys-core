@@ -4,11 +4,11 @@
 
 use std::{path::PathBuf, time::Instant};
 
-use prometheus::Registry;
 use mys_indexer_alt_framework::{ingestion::ClientArgs, Indexer, IndexerArgs};
 use mys_indexer_alt_schema::MIGRATIONS;
 use mys_pg_db::{reset_database, DbArgs};
 use mys_synthetic_ingestion::synthetic_ingestion::read_ingestion_data;
+use prometheus::Registry;
 use tokio_util::sync::CancellationToken;
 
 use crate::{config::IndexerConfig, start_indexer};

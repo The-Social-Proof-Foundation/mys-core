@@ -13,11 +13,11 @@ use tracing::{info, warn};
 
 use async_trait::async_trait;
 use futures::future::try_join_all;
-use mysten_metrics::spawn_monitored_task;
 use mys_data_ingestion_core::{
     DataIngestionMetrics, IndexerExecutor, ProgressStore, ReaderOptions, WorkerPool,
 };
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use mysten_metrics::spawn_monitored_task;
 
 use crate::build_json_rpc_server;
 use crate::config::{IngestionConfig, JsonRpcConfig, RetentionConfig, SnapshotLagConfig};

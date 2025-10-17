@@ -34,9 +34,9 @@ use mys_bridge::mys_client::MysBridgeClient;
 use mys_bridge::utils::get_eth_contract_addresses;
 use mys_bridge_indexer::config::IndexerConfig;
 use mys_bridge_indexer::metrics::BridgeIndexerMetrics;
-use mys_bridge_indexer::postgres_manager::{get_connection_pool, read_mys_progress_store};
 use mys_bridge_indexer::mys_transaction_handler::handle_mys_transactions_loop;
 use mys_bridge_indexer::mys_transaction_queries::start_mys_tx_polling_task;
+use mys_bridge_indexer::postgres_manager::{get_connection_pool, read_mys_progress_store};
 use mys_bridge_indexer::{
     create_eth_subscription_indexer, create_eth_sync_indexer, create_mys_indexer,
 };

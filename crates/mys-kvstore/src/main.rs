@@ -2,9 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use anyhow::Result;
-use prometheus::Registry;
 use mys_data_ingestion_core::{DataIngestionMetrics, IndexerExecutor, ReaderOptions, WorkerPool};
 use mys_kvstore::{BigTableClient, BigTableProgressStore, KvWorker};
+use prometheus::Registry;
 use telemetry_subscribers::TelemetryConfig;
 use tokio::sync::oneshot;
 

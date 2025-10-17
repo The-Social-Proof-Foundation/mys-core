@@ -11,9 +11,6 @@ use std::{
 use super::authority_per_epoch_store::AuthorityPerEpochStore;
 use crate::consensus_adapter::SubmitToConsensus;
 use itertools::Itertools;
-use mysten_common::debug_fatal;
-use mysten_metrics::monitored_scope;
-use simple_moving_average::{SingleSumSMA, SMA};
 use mys_protocol_config::PerObjectCongestionControlMode;
 use mys_types::{
     committee::Committee,
@@ -24,6 +21,9 @@ use mys_types::{
         Command, ProgrammableTransaction, TransactionData, TransactionDataAPI, TransactionKind,
     },
 };
+use mysten_common::debug_fatal;
+use mysten_metrics::monitored_scope;
+use simple_moving_average::{SingleSumSMA, SMA};
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
@@ -330,7 +330,7 @@ mod tests {
         ConnectionMonitorStatusForTests, ConsensusAdapter, ConsensusAdapterMetrics,
         MockConsensusClient,
     };
-    use mys_types::base_types::{ObjectID, MysAddress};
+    use mys_types::base_types::{MysAddress, ObjectID};
     use mys_types::transaction::{Argument, ProgrammableMoveCall};
 
     #[tokio::test]

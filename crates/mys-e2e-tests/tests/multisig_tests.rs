@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use fastcrypto::traits::EncodeDecodeBase64;
-use shared_crypto::intent::{Intent, IntentMessage};
-use std::net::SocketAddr;
 use mys_core::authority_client::AuthorityAPI;
 use mys_macros::sim_test;
 use mys_protocol_config::ProtocolConfig;
@@ -14,7 +12,7 @@ use mys_types::multisig_legacy::MultiSigLegacy;
 use mys_types::{
     base_types::MysAddress,
     crypto::{
-        get_key_pair, CompressedSignature, PublicKey, Signature, MysKeyPair,
+        get_key_pair, CompressedSignature, MysKeyPair, PublicKey, Signature,
         ZkLoginAuthenticatorAsBytes, ZkLoginPublicIdentifier,
     },
     error::{MysError, MysResult},
@@ -25,6 +23,8 @@ use mys_types::{
     utils::{keys, load_test_vectors, make_upgraded_multisig_tx},
     zk_login_authenticator::ZkLoginAuthenticator,
 };
+use shared_crypto::intent::{Intent, IntentMessage};
+use std::net::SocketAddr;
 use test_cluster::{TestCluster, TestClusterBuilder};
 
 async fn do_upgraded_multisig_test() -> MysResult {

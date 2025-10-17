@@ -10,7 +10,6 @@ use tokio::sync::broadcast;
 use tokio::time::sleep;
 use tracing::{error, info};
 
-use mysten_common::sync::async_once_cell::AsyncOnceCell;
 use mys_config::node::RunWithRange;
 use mys_config::{Config, NodeConfig};
 use mys_core::runtime::MysRuntimes;
@@ -20,6 +19,7 @@ use mys_types::committee::EpochId;
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
 use mys_types::multiaddr::Multiaddr;
 use mys_types::supported_protocol_versions::SupportedProtocolVersions;
+use mysten_common::sync::async_once_cell::AsyncOnceCell;
 
 // Define the `GIT_REVISION` and `VERSION` consts
 bin_version::bin_version!();

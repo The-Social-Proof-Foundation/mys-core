@@ -13,9 +13,9 @@ use diesel::query_dsl::methods::LimitDsl;
 use diesel::query_dsl::CompatibleType;
 use diesel::result::Error as DieselError;
 use diesel_async::RunQueryDsl;
-use prometheus::Registry;
 use mys_indexer_alt_metrics::db::DbConnectionStatsCollector;
 use mys_pg_db as db;
+use prometheus::Registry;
 use tracing::debug;
 
 use crate::metrics::RpcMetrics;

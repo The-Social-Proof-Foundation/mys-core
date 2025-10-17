@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
+use crate::errors::OracleError;
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 use tracing::info;
-use crate::errors::OracleError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OracleState {
@@ -86,4 +86,4 @@ impl StateManager {
         self.save_state(&state)?;
         Ok(next_nonce)
     }
-} 
+}

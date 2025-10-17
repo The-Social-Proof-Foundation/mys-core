@@ -10,17 +10,6 @@ use crate::checkpoints::{CheckpointStore, CheckpointWatermark};
 use crate::rpc_index::RpcIndexStore;
 use anyhow::anyhow;
 use bincode::Options;
-use mysten_metrics::{monitored_scope, spawn_monitored_task};
-use once_cell::sync::Lazy;
-use prometheus::{
-    register_int_counter_with_registry, register_int_gauge_with_registry, IntCounter, IntGauge,
-    Registry,
-};
-use std::cmp::{max, min};
-use std::collections::{BTreeSet, HashMap};
-use std::sync::{Mutex, Weak};
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::{sync::Arc, time::Duration};
 use mys_archival::reader::ArchiveReaderBalancer;
 use mys_config::node::AuthorityStorePruningConfig;
 use mys_storage::mutex_table::RwLockTable;
@@ -36,6 +25,17 @@ use mys_types::{
     base_types::{ObjectID, VersionNumber},
     storage::ObjectKey,
 };
+use mysten_metrics::{monitored_scope, spawn_monitored_task};
+use once_cell::sync::Lazy;
+use prometheus::{
+    register_int_counter_with_registry, register_int_gauge_with_registry, IntCounter, IntGauge,
+    Registry,
+};
+use std::cmp::{max, min};
+use std::collections::{BTreeSet, HashMap};
+use std::sync::{Mutex, Weak};
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::{sync::Arc, time::Duration};
 use tokio::sync::oneshot::{self, Sender};
 use tokio::time::Instant;
 use tracing::{debug, error, info, warn};
@@ -855,7 +855,6 @@ mod tests {
         get_store_object_pair, ObjectContentDigest, StoreData, StoreObject, StoreObjectPair,
         StoreObjectWrapper,
     };
-    use prometheus::Registry;
     use mys_storage::mutex_table::RwLockTable;
     use mys_types::base_types::ObjectDigest;
     use mys_types::effects::TransactionEffects;
@@ -865,6 +864,7 @@ mod tests {
         object::Object,
         storage::ObjectKey,
     };
+    use prometheus::Registry;
     use typed_store::rocks::util::reference_count_merge_operator;
     use typed_store::rocks::{DBMap, MetricConf, ReadWriteOptions};
     use typed_store::Map;
@@ -1178,8 +1178,6 @@ mod pprof_tests {
     use crate::authority::authority_store_pruner::AuthorityStorePruningMetrics;
     use crate::authority::authority_store_tables::AuthorityPerpetualTables;
     use crate::authority::authority_store_types::{get_store_object_pair, StoreObjectWrapper};
-    use pprof::Symbol;
-    use prometheus::Registry;
     use mys_types::base_types::ObjectDigest;
     use mys_types::base_types::VersionNumber;
     use mys_types::effects::TransactionEffects;
@@ -1189,6 +1187,8 @@ mod pprof_tests {
         object::Object,
         storage::ObjectKey,
     };
+    use pprof::Symbol;
+    use prometheus::Registry;
     use typed_store::rocks::DBMap;
     use typed_store::Map;
 

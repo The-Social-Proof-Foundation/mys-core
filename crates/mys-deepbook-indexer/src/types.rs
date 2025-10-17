@@ -9,13 +9,13 @@ use std::fmt::{Display, Formatter};
 
 use crate::models::Balances as DBBalances;
 use crate::models::Flashloan as DBFlashloan;
+use crate::models::MysErrorTransactions;
 use crate::models::OrderFill as DBOrderFill;
 use crate::models::OrderUpdate as DBOrderUpdate;
 use crate::models::PoolPrice as DBPoolPrice;
 use crate::models::Proposals as DBProposals;
 use crate::models::Rebates as DBRebates;
 use crate::models::Stakes as DBStakes;
-use crate::models::MysErrorTransactions;
 use crate::models::TradeParamsUpdate as DBTradeParamsUpdate;
 use crate::models::Votes as DBVotes;
 

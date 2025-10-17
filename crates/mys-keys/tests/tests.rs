@@ -11,7 +11,7 @@ use mys_keys::key_derive::generate_new_key;
 use tempfile::TempDir;
 
 use mys_keys::keystore::{AccountKeystore, FileBasedKeystore, InMemKeystore, Keystore};
-use mys_types::crypto::{DefaultHash, SignatureScheme, MysSignatureInner};
+use mys_types::crypto::{DefaultHash, MysSignatureInner, SignatureScheme};
 use mys_types::{
     base_types::{MysAddress, MYS_ADDRESS_LENGTH},
     crypto::Ed25519MysSignature,

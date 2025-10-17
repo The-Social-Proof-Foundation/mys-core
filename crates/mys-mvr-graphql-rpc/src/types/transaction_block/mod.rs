@@ -26,8 +26,6 @@ use cursor::TxLookup;
 use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
 use diesel_async::scoped_futures::ScopedFutureExt;
 use fastcrypto::encoding::{Base58, Encoding};
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
 use mys_indexer::{
     models::transactions::StoredTransaction,
     schema::{transactions, tx_digests},
@@ -42,6 +40,8 @@ use mys_types::{
         TransactionDataAPI, TransactionExpiration,
     },
 };
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap};
 
 mod cursor;
 mod filter;

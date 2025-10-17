@@ -8,8 +8,8 @@ use crate::backfill::backfill_instances::ingestion_backfills::raw_checkpoints::R
 use crate::backfill::backfill_instances::ingestion_backfills::tx_affected_objects::TxAffectedObjectsBackfill;
 use crate::backfill::backfill_task::BackfillTask;
 use crate::backfill::{BackfillTaskKind, IngestionBackfillKind};
-use std::sync::Arc;
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use std::sync::Arc;
 
 mod ingestion_backfills;
 mod sql_backfill;

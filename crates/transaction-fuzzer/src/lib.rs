@@ -10,16 +10,16 @@ pub mod transaction_data_gen;
 pub mod type_arg_fuzzer;
 
 use executor::Executor;
-use proptest::collection::vec;
-use proptest::test_runner::TestRunner;
-use std::fmt::Debug;
 use mys_protocol_config::ProtocolConfig;
-use mys_types::base_types::{ObjectID, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID};
 use mys_types::crypto::get_key_pair;
 use mys_types::crypto::AccountKeyPair;
 use mys_types::digests::TransactionDigest;
 use mys_types::object::{MoveObject, Object, Owner, OBJECT_START_VERSION};
 use mys_types::{gas_coin::TOTAL_SUPPLY_MIST, transaction::GasData};
+use proptest::collection::vec;
+use proptest::test_runner::TestRunner;
+use std::fmt::Debug;
 
 use proptest::prelude::*;
 use rand::{rngs::StdRng, Rng, SeedableRng};

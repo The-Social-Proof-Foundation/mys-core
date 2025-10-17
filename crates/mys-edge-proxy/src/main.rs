@@ -4,11 +4,11 @@
 
 use axum::{routing::any, Router};
 use clap::Parser;
-use mysten_metrics::start_prometheus_server;
-use reqwest::Client;
 use mys_edge_proxy::config::{load, ProxyConfig};
 use mys_edge_proxy::handlers::{proxy_handler, AppState};
 use mys_edge_proxy::metrics::AppMetrics;
+use mysten_metrics::start_prometheus_server;
+use reqwest::Client;
 use tracing::info;
 
 #[derive(Parser, Debug)]

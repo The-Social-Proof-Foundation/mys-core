@@ -9,11 +9,11 @@ use crate::workloads::{Gas, GasCoinConfig};
 use crate::ValidatorProxy;
 use anyhow::{Error, Result};
 use itertools::Itertools;
-use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
 use mys_core::test_utils::{make_pay_mys_transaction, make_transfer_mys_transaction};
 use mys_types::base_types::MysAddress;
 use mys_types::crypto::AccountKeyPair;
+use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
 use tracing::info;
 
 /// Bank is used for generating gas for running the benchmark.

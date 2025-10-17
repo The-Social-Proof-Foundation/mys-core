@@ -7,7 +7,7 @@ use jsonrpsee::{core::RpcResult, RpcModule};
 use mys_json_rpc::MysRpcModule;
 use mys_json_rpc_api::{validate_limit, ExtendedApiServer, QUERY_MAX_RESULT_LIMIT_CHECKPOINTS};
 use mys_json_rpc_types::{
-    CheckpointedObjectID, EpochInfo, EpochPage, Page, QueryObjectsPage, MysObjectResponseQuery,
+    CheckpointedObjectID, EpochInfo, EpochPage, MysObjectResponseQuery, Page, QueryObjectsPage,
 };
 use mys_open_rpc::Module;
 use mys_types::mys_serde::BigInt;

@@ -8,9 +8,6 @@ use crate::FileCompression;
 use fastcrypto::hash::MultisetHash;
 use futures::future::AbortHandle;
 use indicatif::MultiProgress;
-use std::collections::HashSet;
-use std::num::NonZeroUsize;
-use std::sync::Arc;
 use mys_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
 use mys_core::authority::authority_store_tables::AuthorityPerpetualTables;
 use mys_core::state_accumulator::StateAccumulator;
@@ -19,6 +16,9 @@ use mys_types::accumulator::Accumulator;
 use mys_types::base_types::ObjectID;
 use mys_types::messages_checkpoint::ECMHLiveObjectSetDigest;
 use mys_types::object::Object;
+use std::collections::HashSet;
+use std::num::NonZeroUsize;
+use std::sync::Arc;
 use tempfile::tempdir;
 
 fn temp_dir() -> std::path::PathBuf {

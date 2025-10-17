@@ -6,9 +6,9 @@ use prometheus::Registry;
 
 use anyhow::Result;
 use clap::*;
-use std::env;
 use mys_security_watchdog::scheduler::SchedulerService;
 use mys_security_watchdog::SecurityWatchdogConfig;
+use std::env;
 
 #[tokio::main]
 async fn main() -> Result<()> {

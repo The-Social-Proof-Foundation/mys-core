@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 
-use mysten_metrics::monitored_scope;
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use mysten_metrics::monitored_scope;
 use tokio::sync::watch;
 use tracing::{debug, info};
 

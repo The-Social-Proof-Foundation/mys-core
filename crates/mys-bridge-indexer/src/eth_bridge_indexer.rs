@@ -11,23 +11,23 @@ use async_trait::async_trait;
 use ethers::prelude::Transaction;
 use ethers::providers::{Http, Middleware, Provider, StreamExt, Ws};
 use ethers::types::{Address as EthAddress, Block, Filter, Log, H256};
-use prometheus::IntGauge;
 use mys_bridge::error::BridgeError;
 use mys_bridge::eth_client::EthClient;
 use mys_bridge::eth_syncer::EthSyncer;
 use mys_bridge::metered_eth_provider::MeteredEthHttpProvier;
 use mys_bridge::retry_with_max_elapsed_time;
 use mys_indexer_builder::Task;
+use prometheus::IntGauge;
 use tap::tap::TapFallible;
 use tokio::select;
 use tokio::task::JoinHandle;
 use tracing::{info, warn};
 
-use mysten_metrics::spawn_monitored_task;
 use mys_bridge::abi::{
     EthBridgeCommitteeEvents, EthBridgeConfigEvents, EthBridgeEvent, EthBridgeLimiterEvents,
     EthMysBridgeEvents,
 };
+use mysten_metrics::spawn_monitored_task;
 
 use crate::metrics::BridgeIndexerMetrics;
 use crate::{

@@ -14,8 +14,6 @@ use fastcrypto::{
     secp256r1::Secp256r1KeyPair,
     traits::{EncodeDecodeBase64, KeyPair},
 };
-use rand::{rngs::StdRng, SeedableRng};
-use shared_crypto::intent::{Intent, IntentMessage};
 use mys_sdk::{
     rpc_types::MysTransactionBlockResponseOptions,
     types::{
@@ -24,14 +22,16 @@ use mys_sdk::{
     },
     MysClientBuilder,
 };
-use mys_types::crypto::Signer;
 use mys_types::crypto::MysSignature;
+use mys_types::crypto::Signer;
 use mys_types::crypto::ToFromBytes;
 use mys_types::signature::GenericSignature;
 use mys_types::{
     base_types::MysAddress,
     crypto::{get_key_pair_from_rng, MysKeyPair},
 };
+use rand::{rngs::StdRng, SeedableRng};
+use shared_crypto::intent::{Intent, IntentMessage};
 
 /// This example walks through the Rust SDK use case described in
 /// https://github.com/MystenLabs/mys/blob/main/docs/content/guides/developer/mys-101/sign-and-send-txn.mdx

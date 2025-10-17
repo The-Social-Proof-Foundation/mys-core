@@ -15,7 +15,6 @@ use mys_core::jsonrpc_index::TotalBalance;
 use tap::TapFallible;
 use tracing::{debug, info, instrument};
 
-use mysten_metrics::spawn_monitored_task;
 use mys_core::authority::AuthorityState;
 use mys_json_rpc_api::{cap_page_limit, CoinReadApiOpenRpc, CoinReadApiServer, JsonRpcMetrics};
 use mys_json_rpc_types::Balance;
@@ -23,18 +22,19 @@ use mys_json_rpc_types::{CoinPage, MysCoinMetadata};
 use mys_open_rpc::Module;
 use mys_storage::key_value_store::TransactionKeyValueStore;
 use mys_types::balance::Supply;
-use mys_types::base_types::{ObjectID, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID};
 use mys_types::coin::{CoinMetadata, TreasuryCap};
 use mys_types::effects::TransactionEffectsAPI;
 use mys_types::gas_coin::{GAS, TOTAL_SUPPLY_MIST};
 use mys_types::object::Object;
 use mys_types::parse_mys_struct_tag;
+use mysten_metrics::spawn_monitored_task;
 
 #[cfg(test)]
 use mockall::automock;
 
 use crate::authority_state::StateRead;
-use crate::error::{Error, RpcInterimResult, MysRpcInputError};
+use crate::error::{Error, MysRpcInputError, RpcInterimResult};
 use crate::{with_tracing, MysRpcModule};
 
 pub fn parse_to_struct_tag(coin_type: &str) -> Result<StructTag, MysRpcInputError> {
@@ -464,7 +464,7 @@ mod tests {
     };
     use mys_storage::key_value_store_metrics::KeyValueStoreMetrics;
     use mys_types::balance::Supply;
-    use mys_types::base_types::{ObjectID, SequenceNumber, MysAddress};
+    use mys_types::base_types::{MysAddress, ObjectID, SequenceNumber};
     use mys_types::coin::TreasuryCap;
     use mys_types::digests::{ObjectDigest, TransactionDigest};
     use mys_types::effects::{TransactionEffects, TransactionEvents};

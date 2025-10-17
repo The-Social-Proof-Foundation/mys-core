@@ -12,13 +12,13 @@ use crate::{
 };
 use anyhow::Result;
 use futures::{future::join_all, StreamExt};
-use std::path::PathBuf;
-use std::{collections::BTreeMap, env, sync::Arc};
 use mys_config::genesis::Genesis;
 use mys_core::authority_client::AuthorityAPI;
 use mys_protocol_config::Chain;
 use mys_replay::{execute_replay_command, ReplayToolCommand};
 use mys_sdk::{rpc_types::MysTransactionBlockResponseOptions, MysClient, MysClientBuilder};
+use std::path::PathBuf;
+use std::{collections::BTreeMap, env, sync::Arc};
 use telemetry_subscribers::TracingHandle;
 
 use mys_types::{

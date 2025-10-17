@@ -4,10 +4,10 @@
 
 use crate::mock_account::Account;
 pub use move_tx_generator::MoveTxGenerator;
+use mys_types::transaction::Transaction;
 pub use package_publish_tx_generator::PackagePublishTxGenerator;
 pub use root_object_create_tx_generator::RootObjectCreateTxGenerator;
 pub use shared_object_create_tx_generator::SharedObjectCreateTxGenerator;
-use mys_types::transaction::Transaction;
 
 mod move_tx_generator;
 mod package_publish_tx_generator;

@@ -143,7 +143,8 @@ async fn readiness_check(State(state): State<MonitoringState>) -> impl IntoRespo
             "database_accessible": true,
             "current_nonce": oracle_state.nonce,
             "last_price": oracle_state.last_price
-        })).into_response(),
+        }))
+        .into_response(),
         Err(_) => {
             let response = Json(json!({
                 "status": "not_ready",
@@ -197,7 +198,8 @@ async fn status_check(State(state): State<MonitoringState>) -> impl IntoResponse
                     "rust_version": env!("CARGO_PKG_VERSION"),
                     "build_info": "production_build"
                 }
-            })).into_response()
+            }))
+            .into_response()
         }
         Err(e) => {
             let response = Json(json!({
@@ -218,14 +220,12 @@ async fn status_check(State(state): State<MonitoringState>) -> impl IntoResponse
 async fn metrics_handler(State(state): State<MonitoringState>) -> impl IntoResponse {
     let encoder = TextEncoder::new();
     let metric_families = state.metrics.registry.gather();
-    
+
     match encoder.encode_to_string(&metric_families) {
-        Ok(output) => {
-            Response::builder()
-                .header("content-type", "text/plain; version=0.0.4")
-                .body(output)
-                .unwrap()
-        }
+        Ok(output) => Response::builder()
+            .header("content-type", "text/plain; version=0.0.4")
+            .body(output)
+            .unwrap(),
         Err(e) => {
             error!("Error encoding metrics: {}", e);
             Response::builder()
@@ -234,4 +234,4 @@ async fn metrics_handler(State(state): State<MonitoringState>) -> impl IntoRespo
                 .unwrap()
         }
     }
-} 
+}

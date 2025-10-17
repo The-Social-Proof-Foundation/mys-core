@@ -10,8 +10,9 @@ use mys_social_indexer::{
     api,
     blockchain::{
         handler_trait::spawn_handler_task, BlockListEventHandler, BlockchainEventListener,
-        EventPattern, EventRouter, GovernanceEventHandler, MyDataEventHandler, PlatformEventHandler,
-        PostEventHandler, ProfileEventListener, SocialGraphEventHandler, SocialProofTokenHandler,
+        EventPattern, EventRouter, GovernanceEventHandler, MyDataEventHandler,
+        PlatformEventHandler, PocEventHandler, PostEventHandler, ProfileEventListener,
+        SocialGraphEventHandler, SocialProofOfTruthEventHandler, SocialProofTokenHandler,
         SubscriptionEventHandler,
     },
     config::Config,
@@ -148,9 +149,10 @@ async fn main() -> Result<()> {
     let governance_rx =
         event_router.register_handler("governance-handler".to_string(), governance_patterns, 1000);
 
-    // MyIP handler
-    let my_ip_patterns = vec![EventPattern::my_ip_events(package_address)];
-    let my_ip_rx = event_router.register_handler("my-ip-handler".to_string(), my_ip_patterns, 1000);
+    // MyData handler
+    let mydata_patterns = vec![EventPattern::mydata_events(package_address)];
+    let mydata_rx =
+        event_router.register_handler("mydata-handler".to_string(), mydata_patterns, 1000);
 
     // Subscription handler
     let subscription_patterns = vec![EventPattern::subscription_events(package_address)];
@@ -164,6 +166,14 @@ async fn main() -> Result<()> {
     let spt_patterns = EventPattern::social_proof_token_events(package_address);
     let spt_rx =
         event_router.register_handler("social-proof-token-handler".to_string(), spt_patterns, 1000);
+
+    // Social Proof of Truth (SPoT) handler
+    let spot_patterns = vec![EventPattern::social_proof_of_truth_events(package_address)];
+    let spot_rx = event_router.register_handler("spot-handler".to_string(), spot_patterns, 1000);
+
+    // Proof of Creativity handler
+    let poc_patterns = vec![EventPattern::poc_events(package_address)];
+    let poc_rx = event_router.register_handler("poc-handler".to_string(), poc_patterns, 1000);
 
     info!("✅ All event handlers registered successfully");
 
@@ -195,7 +205,7 @@ async fn main() -> Result<()> {
     );
 
     let mydata_handler =
-        MyDataEventHandler::new(db_pool.clone(), my_ip_rx, "mydata-worker".to_string());
+        MyDataEventHandler::new(db_pool.clone(), mydata_rx, "mydata-worker".to_string());
 
     let subscription_handler = SubscriptionEventHandler::new(
         db_pool.clone(),
@@ -205,6 +215,11 @@ async fn main() -> Result<()> {
 
     // Create new SPT handler with unified architecture
     let spt_handler = SocialProofTokenHandler::new(db_pool.clone());
+
+    let spot_handler =
+        SocialProofOfTruthEventHandler::new(db_pool.clone(), spot_rx, "spot-worker".to_string());
+
+    let poc_handler = PocEventHandler::new(db_pool.clone(), poc_rx, "poc-worker".to_string());
 
     // Spawn handler tasks
     info!("🔄 Starting event handler tasks...");
@@ -267,6 +282,20 @@ async fn main() -> Result<()> {
 
     // Spawn SPT handler with new architecture
     let spt_task = spawn_handler_task(spt_handler, spt_rx);
+
+    let spot_task = tokio::spawn(async move {
+        let mut handler = spot_handler;
+        if let Err(e) = handler.start().await {
+            error!("SPoT handler error: {}", e);
+        }
+    });
+
+    let poc_task = tokio::spawn(async move {
+        let mut handler = poc_handler;
+        if let Err(e) = handler.start().await {
+            error!("PoC handler error: {}", e);
+        }
+    });
 
     info!("✅ All handler tasks started");
 
@@ -372,6 +401,8 @@ async fn main() -> Result<()> {
     mydata_task.abort();
     subscription_task.abort();
     spt_task.abort();
+    spot_task.abort();
+    poc_task.abort();
     blockchain_task.abort();
 
     // Log final metrics

@@ -6,14 +6,9 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use core::panic;
 use fastcrypto::traits::ToFromBytes;
-use serde::de::DeserializeOwned;
-use std::collections::HashMap;
-use std::str::from_utf8;
-use std::sync::Arc;
-use std::time::Duration;
 use mys_json_rpc_api::BridgeReadApiClient;
 use mys_json_rpc_types::DevInspectResults;
-use mys_json_rpc_types::{EventFilter, Page, MysEvent};
+use mys_json_rpc_types::{EventFilter, MysEvent, Page};
 use mys_json_rpc_types::{
     EventPage, MysObjectDataOptions, MysTransactionBlockResponse,
     MysTransactionBlockResponseOptions,
@@ -39,11 +34,16 @@ use mys_types::TypeTag;
 use mys_types::BRIDGE_PACKAGE_ID;
 use mys_types::MYS_BRIDGE_OBJECT_ID;
 use mys_types::{
-    base_types::{ObjectID, MysAddress},
+    base_types::{MysAddress, ObjectID},
     digests::TransactionDigest,
     event::EventID,
     Identifier,
 };
+use serde::de::DeserializeOwned;
+use std::collections::HashMap;
+use std::str::from_utf8;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::OnceCell;
 use tracing::{error, warn};
 
@@ -657,11 +657,11 @@ mod tests {
     };
     use ethers::types::Address as EthAddress;
     use move_core_types::account_address::AccountAddress;
-    use serde::{Deserialize, Serialize};
-    use std::str::FromStr;
     use mys_json_rpc_types::BcsEvent;
     use mys_types::bridge::{BridgeChainId, TOKEN_ID_MYS, TOKEN_ID_USDC};
     use mys_types::crypto::get_key_pair;
+    use serde::{Deserialize, Serialize};
+    use std::str::FromStr;
 
     use super::*;
     use crate::events::{init_all_struct_tags, MysToEthTokenBridgeV1};

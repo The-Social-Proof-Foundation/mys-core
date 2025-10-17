@@ -12,8 +12,8 @@ use move_binary_format::normalized::Module as NormalizedModule;
 use mys_json_rpc::error::MysRpcInputError;
 use mys_json_rpc::MysRpcModule;
 use mys_json_rpc_api::MoveUtilsServer;
-use mys_json_rpc_types::ObjectValueKind;
 use mys_json_rpc_types::MysMoveNormalizedType;
+use mys_json_rpc_types::ObjectValueKind;
 use mys_json_rpc_types::{
     MoveFunctionArgType, MysMoveNormalizedFunction, MysMoveNormalizedModule,
     MysMoveNormalizedStruct,

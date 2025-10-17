@@ -31,10 +31,10 @@ use mys_types::{
     error::MysError,
 };
 
-use std::{collections::HashSet, path::PathBuf};
-use std::{env, str::FromStr};
 use mys_types::execution_status::{CommandArgumentError, ExecutionFailureStatus, ExecutionStatus};
 use mys_types::move_package::UpgradeCap;
+use std::{collections::HashSet, path::PathBuf};
+use std::{env, str::FromStr};
 
 #[tokio::test]
 #[cfg_attr(msim, ignore)]

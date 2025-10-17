@@ -36,8 +36,8 @@ fn test_macro_shows_feature_enabled() {
 #[cfg(feature = "tracing")]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_profiler() {
-    use std::fs;
     use mys_replay::ReplayToolCommand;
+    use std::fs;
     use tempfile::tempdir;
 
     let output_dir = tempdir().unwrap();

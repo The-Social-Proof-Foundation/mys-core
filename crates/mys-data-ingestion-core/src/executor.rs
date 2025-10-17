@@ -11,13 +11,13 @@ use crate::Worker;
 use crate::{DataIngestionMetrics, ReaderOptions};
 use anyhow::Result;
 use futures::Future;
+use mys_types::full_checkpoint_content::CheckpointData;
+use mys_types::messages_checkpoint::CheckpointSequenceNumber;
 use mysten_metrics::spawn_monitored_task;
 use prometheus::Registry;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
-use mys_types::full_checkpoint_content::CheckpointData;
-use mys_types::messages_checkpoint::CheckpointSequenceNumber;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 

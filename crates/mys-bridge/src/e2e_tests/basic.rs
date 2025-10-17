@@ -20,19 +20,19 @@ use crate::utils::publish_and_register_coins_return_add_coins_on_mys_action;
 use crate::BRIDGE_ENABLE_PROTOCOL_VERSION;
 use ethers::prelude::*;
 use ethers::types::Address as EthAddress;
-use std::collections::HashSet;
 use mys_json_rpc_api::BridgeReadApiClient;
 use mys_types::crypto::get_key_pair;
+use std::collections::HashSet;
 use test_cluster::TestClusterBuilder;
 
 use std::path::Path;
 
-use std::sync::Arc;
 use mys_json_rpc_types::{MysExecutionStatus, MysTransactionBlockEffectsAPI};
 use mys_types::bridge::{
     get_bridge, BridgeChainId, BridgeTokenMetadata, BridgeTrait, TOKEN_ID_ETH,
 };
 use mys_types::MYS_BRIDGE_OBJECT_ID;
+use std::sync::Arc;
 use tracing::info;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]

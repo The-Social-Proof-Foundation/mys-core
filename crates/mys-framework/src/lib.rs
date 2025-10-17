@@ -6,9 +6,6 @@ use move_binary_format::{
     binary_config::BinaryConfig, compatibility::Compatibility, CompiledModule,
 };
 use move_core_types::gas_algebra::InternalGas;
-use serde::{Deserialize, Serialize};
-use std::fmt::Formatter;
-use std::sync::LazyLock;
 use mys_types::base_types::ObjectRef;
 use mys_types::storage::ObjectStore;
 use mys_types::{
@@ -16,9 +13,12 @@ use mys_types::{
     digests::TransactionDigest,
     move_package::MovePackage,
     object::{Object, OBJECT_START_VERSION},
-    MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID, MYS_SYSTEM_PACKAGE_ID, MYS_SOCIAL_PACKAGE_ID,
-    SEAL_PACKAGE_ID, BRIDGE_PACKAGE_ID, DEEPBOOK_PACKAGE_ID, USDC_PACKAGE_ID,
+    BRIDGE_PACKAGE_ID, DEEPBOOK_PACKAGE_ID, MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID,
+    MYS_SOCIAL_PACKAGE_ID, MYS_SYSTEM_PACKAGE_ID, SEAL_PACKAGE_ID, USDC_PACKAGE_ID,
 };
+use serde::{Deserialize, Serialize};
+use std::fmt::Formatter;
+use std::sync::LazyLock;
 use tracing::error;
 
 /// Encapsulates a system package in the framework
@@ -153,7 +153,11 @@ impl BuiltInFramework {
                 MYS_SOCIAL_PACKAGE_ID,
                 "MySocialContracts",
                 "mys-social",
-                [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID, SEAL_PACKAGE_ID]
+                [
+                    MOVE_STDLIB_PACKAGE_ID,
+                    MYS_FRAMEWORK_PACKAGE_ID,
+                    SEAL_PACKAGE_ID
+                ]
             ),
             (
                 DEEPBOOK_PACKAGE_ID,

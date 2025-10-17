@@ -5,11 +5,11 @@
 use crate::db::ConnectionPoolConfig;
 use crate::{backfill::BackfillTaskKind, handlers::pruner::PrunableTable};
 use clap::{Args, Parser, Subcommand};
+use mys_json_rpc::name_service::NameServiceConfig;
+use mys_types::base_types::{MysAddress, ObjectID};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 use strum::IntoEnumIterator;
-use mys_json_rpc::name_service::NameServiceConfig;
-use mys_types::base_types::{ObjectID, MysAddress};
 use url::Url;
 
 /// The primary purpose of objects_history is to serve consistency query.

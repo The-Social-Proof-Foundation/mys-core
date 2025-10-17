@@ -5,7 +5,7 @@
 use std::{collections::HashSet, sync::Arc};
 
 use mys_types::{
-    base_types::{ObjectID, ObjectRef, SequenceNumber, MysAddress},
+    base_types::{MysAddress, ObjectID, ObjectRef, SequenceNumber},
     crypto::{get_key_pair, AccountKeyPair},
     digests::ObjectDigest,
     effects::{TransactionEffects, TransactionEffectsAPI},

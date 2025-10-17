@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::indexer_reader::IndexerReader;
-use std::time::Duration;
 use mys_types::SYSTEM_PACKAGE_ADDRESSES;
+use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 /// Background task responsible for evicting system packages from the package resolver's cache after

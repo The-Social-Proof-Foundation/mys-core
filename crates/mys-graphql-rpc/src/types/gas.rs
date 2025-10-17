@@ -10,7 +10,7 @@ use mys_types::{
     transaction::GasData,
 };
 
-use super::{address::Address, big_int::BigInt, object::Object, mys_address::MysAddress};
+use super::{address::Address, big_int::BigInt, mys_address::MysAddress, object::Object};
 use super::{
     cursor::Page,
     object::{self, ObjectFilter, ObjectKey},

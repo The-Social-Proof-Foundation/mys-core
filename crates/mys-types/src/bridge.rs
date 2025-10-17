@@ -7,10 +7,10 @@ use crate::base_types::SequenceNumber;
 use crate::collection_types::LinkedTableNode;
 use crate::dynamic_field::{get_dynamic_field_from_store, Field};
 use crate::error::MysResult;
-use crate::object::Owner;
-use crate::storage::ObjectStore;
 use crate::mys_serde::BigInt;
 use crate::mys_serde::Readable;
+use crate::object::Owner;
+use crate::storage::ObjectStore;
 use crate::versioned::Versioned;
 use crate::MYS_BRIDGE_OBJECT_ID;
 use crate::{

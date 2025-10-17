@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use insta::assert_snapshot;
+use mys_mvr_graphql_rpc::server::builder::export_schema;
 use std::fs;
 use std::path::PathBuf;
-use mys_mvr_graphql_rpc::server::builder::export_schema;
 
 #[test]
 fn test_schema_sdl_export() {

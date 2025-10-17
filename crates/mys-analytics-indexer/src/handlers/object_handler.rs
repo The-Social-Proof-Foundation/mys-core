@@ -4,9 +4,9 @@
 
 use anyhow::Result;
 use fastcrypto::encoding::{Base64, Encoding};
-use std::path::Path;
 use mys_data_ingestion_core::Worker;
 use mys_types::SYSTEM_PACKAGE_ADDRESSES;
+use std::path::Path;
 use tokio::sync::Mutex;
 
 use mys_json_rpc_types::MysMoveStruct;

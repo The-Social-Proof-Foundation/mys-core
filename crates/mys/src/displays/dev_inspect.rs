@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::displays::Pretty;
-use std::fmt::{Display, Formatter};
 use mys_json_rpc_types::{DevInspectResults, MysTransactionBlockEffectsAPI};
+use std::fmt::{Display, Formatter};
 
 impl<'a> Display for Pretty<'a, DevInspectResults> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

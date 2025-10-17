@@ -10,11 +10,11 @@ use std::{
 
 use clap::*;
 use move_vm_config::verifier::VerifierConfig;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use mys_protocol_config_macros::{
     ProtocolConfigAccessors, ProtocolConfigFeatureFlagsGetters, ProtocolConfigOverride,
 };
+use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use tracing::{info, warn};
 
 /// The minimum and maximum protocol versions supported by this build.
@@ -219,7 +219,7 @@ const MAX_PROTOCOL_VERSION: u64 = 75;
 //             Enable zstd compression for consensus tonic network in mainnet.
 //             Enable the new commit rule for devnet.
 // Version 75: Reduce compute and storage gas costs by 50% to lower transaction fees.
-//             Affected parameters: base_tx_cost_fixed, package_publish_cost_fixed, 
+//             Affected parameters: base_tx_cost_fixed, package_publish_cost_fixed,
 //             obj_access_cost_read/mutate/delete/verify_per_byte, obj_data_cost_refundable,
 //             obj_metadata_cost_non_refundable, storage_gas_price.
 

@@ -8,11 +8,11 @@ use std::{collections::BTreeSet, iter, sync::Arc, time::Duration, vec};
 use consensus_config::{local_committee_and_keys, Stake};
 use consensus_config::{AuthorityIndex, ProtocolKeyPair};
 use itertools::Itertools as _;
+use mys_macros::fail_point;
 #[cfg(test)]
 use mysten_metrics::monitored_mpsc::UnboundedReceiver;
 use mysten_metrics::monitored_scope;
 use parking_lot::RwLock;
-use mys_macros::fail_point;
 use tokio::{
     sync::{broadcast, watch},
     time::Instant,
@@ -1327,8 +1327,8 @@ mod test {
 
     use consensus_config::{AuthorityIndex, Parameters};
     use futures::{stream::FuturesUnordered, StreamExt};
-    use rstest::rstest;
     use mys_protocol_config::ProtocolConfig;
+    use rstest::rstest;
     use tokio::time::sleep;
 
     use super::*;

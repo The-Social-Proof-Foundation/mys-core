@@ -61,7 +61,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use mys_json_rpc::governance_api::ValidatorExchangeRates;
-    use mys_types::base_types::{ObjectID, MysAddress};
+    use mys_types::base_types::{MysAddress, ObjectID};
 
     use super::*;
 
