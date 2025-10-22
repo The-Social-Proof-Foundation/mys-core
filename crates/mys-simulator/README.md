@@ -408,7 +408,7 @@ query WalletBalance {
 }
 
 query MySocialPackage {
-  objects(filter: {type: "0xd880"}, last: 20) {
+  objects(filter: {type: "0x50c1"}, last: 20) {
     nodes {
       address
       objects {

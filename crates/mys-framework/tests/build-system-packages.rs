@@ -40,7 +40,7 @@ fn build_system_packages() {
 
     let bridge_path = packages_path.join("bridge");
     let deepbook_path = packages_path.join("deepbook");
-    let usdc_path = packages_path.join("usdc");
+    let myusd_path = packages_path.join("myusd");
     let mys_system_path = packages_path.join("mys-system");
     let mys_framework_path = packages_path.join("mys-framework");
     let move_stdlib_path = packages_path.join("move-stdlib");
@@ -50,7 +50,7 @@ fn build_system_packages() {
     build_packages(
         &bridge_path,
         &deepbook_path,
-        &usdc_path,
+        &myusd_path,
         &mys_system_path,
         &mys_framework_path,
         &move_stdlib_path,
@@ -88,7 +88,7 @@ fn check_diff(checked_in: &Path, built: &Path) {
 fn build_packages(
     bridge_path: &Path,
     deepbook_path: &Path,
-    usdc_path: &Path,
+    myusd_path: &Path,
     mys_system_path: &Path,
     mys_framework_path: &Path,
     stdlib_path: &Path,
@@ -108,7 +108,7 @@ fn build_packages(
     build_packages_with_move_config(
         bridge_path,
         deepbook_path,
-        usdc_path,
+        myusd_path,
         mys_system_path,
         mys_framework_path,
         stdlib_path,
@@ -117,7 +117,7 @@ fn build_packages(
         out_dir,
         "bridge",
         "deepbook",
-        "usdc",
+        "myusd",
         "mys-system",
         "mys-framework",
         "move-stdlib",
@@ -130,7 +130,7 @@ fn build_packages(
 fn build_packages_with_move_config(
     bridge_path: &Path,
     deepbook_path: &Path,
-    usdc_path: &Path,
+    myusd_path: &Path,
     mys_system_path: &Path,
     mys_framework_path: &Path,
     stdlib_path: &Path,
@@ -139,7 +139,7 @@ fn build_packages_with_move_config(
     out_dir: &Path,
     bridge_dir: &str,
     deepbook_dir: &str,
-    usdc_dir: &str,
+    myusd_dir: &str,
     system_dir: &str,
     framework_dir: &str,
     stdlib_dir: &str,
@@ -179,13 +179,13 @@ fn build_packages_with_move_config(
     }
     .build(deepbook_path)
     .unwrap();
-    let usdc_pkg = BuildConfig {
+    let myusd_pkg = BuildConfig {
         config: config.clone(),
         run_bytecode_verifier: true,
         print_diags_to_stderr: false,
         chain_id: None, // Framework pkg addr is agnostic to chain, resolves from Move.toml
     }
-    .build(usdc_path)
+    .build(myusd_path)
     .unwrap();
     let bridge_pkg = BuildConfig {
         config: config.clone(),
@@ -216,7 +216,7 @@ fn build_packages_with_move_config(
     let mys_system = system_pkg.get_mys_system_modules();
     let mys_framework = framework_pkg.get_mys_framework_modules();
     let deepbook = deepbook_pkg.get_deepbook_modules();
-    let usdc = usdc_pkg.get_usdc_modules();
+    let myusd = myusd_pkg.get_myusd_modules();
     let bridge = bridge_pkg.get_bridge_modules();
     let mys_social = mys_social_pkg.get_mys_social_modules();
     let mydata = mydata_pkg.get_modules();
@@ -229,8 +229,8 @@ fn build_packages_with_move_config(
             .unwrap();
     let deepbook_members =
         serialize_modules_to_file(deepbook, &compiled_packages_dir.join(deepbook_dir)).unwrap();
-    let usdc_members =
-        serialize_modules_to_file(usdc, &compiled_packages_dir.join(usdc_dir)).unwrap();
+    let myusd_members =
+        serialize_modules_to_file(myusd, &compiled_packages_dir.join(myusd_dir)).unwrap();
     let bridge_members =
         serialize_modules_to_file(bridge, &compiled_packages_dir.join(bridge_dir)).unwrap();
     let stdlib_members =
@@ -252,7 +252,7 @@ fn build_packages_with_move_config(
         &mut files_to_write,
     );
     relocate_docs(
-        &usdc_pkg.package.compiled_docs.unwrap(),
+        &myusd_pkg.package.compiled_docs.unwrap(),
         &mut files_to_write,
     );
     relocate_docs(
@@ -285,7 +285,7 @@ fn build_packages_with_move_config(
         mys_system_members.join("\n"),
         mys_framework_members.join("\n"),
         deepbook_members.join("\n"),
-        usdc_members.join("\n"),
+        myusd_members.join("\n"),
         bridge_members.join("\n"),
         stdlib_members.join("\n"),
         mys_social_members.join("\n"),

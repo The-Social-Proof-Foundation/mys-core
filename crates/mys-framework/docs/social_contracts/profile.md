@@ -59,12 +59,12 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `decrement_following_count`](#social_contracts_profile_decrement_following_count)
 -  [Function `create_subscription_service`](#social_contracts_profile_create_subscription_service)
 -  [Function `has_valid_subscription`](#social_contracts_profile_has_valid_subscription)
--  [Function `attach_my_ip`](#social_contracts_profile_attach_my_ip)
--  [Function `has_my_ip_attached`](#social_contracts_profile_has_my_ip_attached)
--  [Function `detach_my_ip`](#social_contracts_profile_detach_my_ip)
--  [Function `get_attached_my_ips`](#social_contracts_profile_get_attached_my_ips)
--  [Function `batch_attach_my_ips`](#social_contracts_profile_batch_attach_my_ips)
--  [Function `batch_detach_my_ips`](#social_contracts_profile_batch_detach_my_ips)
+-  [Function `attach_mydata`](#social_contracts_profile_attach_mydata)
+-  [Function `has_mydata_attached`](#social_contracts_profile_has_mydata_attached)
+-  [Function `detach_mydata`](#social_contracts_profile_detach_mydata)
+-  [Function `get_attached_mydata`](#social_contracts_profile_get_attached_mydata)
+-  [Function `batch_attach_mydata`](#social_contracts_profile_batch_attach_mydata)
+-  [Function `batch_detach_mydata`](#social_contracts_profile_batch_detach_mydata)
 -  [Function `create_offer`](#social_contracts_profile_create_offer)
 -  [Function `accept_offer`](#social_contracts_profile_accept_offer)
 -  [Function `reject_or_revoke_offer`](#social_contracts_profile_reject_or_revoke_offer)
@@ -96,6 +96,10 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `vesting_total_amount`](#social_contracts_profile_vesting_total_amount)
 -  [Function `vesting_claimed_amount`](#social_contracts_profile_vesting_claimed_amount)
 -  [Function `vesting_curve_factor`](#social_contracts_profile_vesting_curve_factor)
+-  [Function `set_paid_messaging_settings`](#social_contracts_profile_set_paid_messaging_settings)
+-  [Function `get_paid_messaging_settings`](#social_contracts_profile_get_paid_messaging_settings)
+-  [Function `requires_paid_message`](#social_contracts_profile_requires_paid_message)
+-  [Function `get_min_message_cost`](#social_contracts_profile_get_min_message_cost)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
@@ -343,10 +347,22 @@ Profile object that contains user information
  Collection of badges assigned to the profile
 </dd>
 <dt>
-<code>attached_my_ip_ids: vector&lt;<b>address</b>&gt;</code>
+<code>attached_mydata_ids: vector&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
- Vector tracking attached MyIP IDs for efficient iteration
+ Vector tracking attached MyData IDs for efficient iteration
+</dd>
+<dt>
+<code>min_message_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+ Paid messaging: minimum cost to send a message to this profile (optional)
+</dd>
+<dt>
+<code>paid_messaging_enabled: bool</code>
+</dt>
+<dd>
+ Paid messaging: toggle to enable/disable paid messaging
 </dd>
 </dl>
 
@@ -1280,11 +1296,11 @@ Error codes
 
 
 
-<a name="social_contracts_profile_MY_IP_DATA_FIELD"></a>
+<a name="social_contracts_profile_MYDATA_FIELD"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>: vector&lt;u8&gt; = vector[109, 121, 95, 105, 112, 95, 100, 97, 116, 97];
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>: vector&lt;u8&gt; = vector[109, 121, 100, 97, 116, 97];
 </code></pre>
 
 
@@ -1583,7 +1599,9 @@ This is the main entry point for new users, combining profile and username creat
         tips_received: 0,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: option::none(),
         badges: vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt;(),
-        attached_my_ip_ids: vector::empty&lt;<b>address</b>&gt;(),
+        attached_mydata_ids: vector::empty&lt;<b>address</b>&gt;(),
+        min_message_cost: option::none(),
+        paid_messaging_enabled: <b>false</b>,
     };
     // Get the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
@@ -2617,14 +2635,14 @@ Check if a viewer has a valid subscription (uses subscription module functions)
 
 </details>
 
-<a name="social_contracts_profile_attach_my_ip"></a>
+<a name="social_contracts_profile_attach_mydata"></a>
 
-## Function `attach_my_ip`
+## Function `attach_mydata`
 
-Attach MyIP to profile for data monetization
+Attach MyData to profile for data monetization
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_attach_my_ip">attach_my_ip</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_attach_mydata">attach_mydata</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, mydata_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2633,26 +2651,26 @@ Attach MyIP to profile for data monetization
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_attach_my_ip">attach_my_ip</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_attach_mydata">attach_mydata</a>(
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    my_ip_id: <b>address</b>,
+    mydata_id: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
     // Initialize table <b>if</b> it doesn't exist
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>)) {
         <b>let</b> tbl = table::new&lt;<b>address</b>, bool&gt;(ctx);
-        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>, tbl);
+        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>, tbl);
     };
     <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
         &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>,
     );
     // Only add <b>if</b> not already attached
-    <b>if</b> (!table::contains(tbl, my_ip_id)) {
-        table::add(tbl, my_ip_id, <b>true</b>);
+    <b>if</b> (!table::contains(tbl, mydata_id)) {
+        table::add(tbl, mydata_id, <b>true</b>);
         // Also add to the tracking vector <b>for</b> efficient iteration
-        vector::push_back(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, my_ip_id);
+        vector::push_back(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids, mydata_id);
     };
 }
 </code></pre>
@@ -2661,14 +2679,14 @@ Attach MyIP to profile for data monetization
 
 </details>
 
-<a name="social_contracts_profile_has_my_ip_attached"></a>
+<a name="social_contracts_profile_has_mydata_attached"></a>
 
-## Function `has_my_ip_attached`
+## Function `has_mydata_attached`
 
-Check if a MyIP is attached to this profile
+Check if a MyData is attached to this profile
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_my_ip_attached">has_my_ip_attached</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_id: <b>address</b>): bool
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_mydata_attached">has_mydata_attached</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, mydata_id: <b>address</b>): bool
 </code></pre>
 
 
@@ -2677,15 +2695,15 @@ Check if a MyIP is attached to this profile
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_my_ip_attached">has_my_ip_attached</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, my_ip_id: <b>address</b>): bool {
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_mydata_attached">has_mydata_attached</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, mydata_id: <b>address</b>): bool {
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>)) {
         <b>return</b> <b>false</b>
     };
     <b>let</b> tbl = dynamic_field::borrow&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
         &<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>,
     );
-    table::contains(tbl, my_ip_id)
+    table::contains(tbl, mydata_id)
 }
 </code></pre>
 
@@ -2693,14 +2711,14 @@ Check if a MyIP is attached to this profile
 
 </details>
 
-<a name="social_contracts_profile_detach_my_ip"></a>
+<a name="social_contracts_profile_detach_mydata"></a>
 
-## Function `detach_my_ip`
+## Function `detach_mydata`
 
-Remove a MyIP attachment from the profile
+Remove a MyData attachment from the profile
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_detach_my_ip">detach_my_ip</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_detach_mydata">detach_mydata</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, mydata_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2709,27 +2727,27 @@ Remove a MyIP attachment from the profile
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_detach_my_ip">detach_my_ip</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_detach_mydata">detach_mydata</a>(
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    my_ip_id: <b>address</b>,
+    mydata_id: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>)) {
         <b>return</b>
     };
     <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
         &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>,
     );
-    <b>if</b> (table::contains(tbl, my_ip_id)) {
-        table::remove(tbl, my_ip_id);
+    <b>if</b> (table::contains(tbl, mydata_id)) {
+        table::remove(tbl, mydata_id);
         // Also remove from the tracking vector
         <b>let</b> <b>mut</b> i = 0;
-        <b>let</b> len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids);
+        <b>let</b> len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids);
         <b>while</b> (i &lt; len) {
-            <b>if</b> (*vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, i) == my_ip_id) {
-                vector::remove(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, i);
+            <b>if</b> (*vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids, i) == mydata_id) {
+                vector::remove(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids, i);
                 <b>break</b>
             };
             i = i + 1;
@@ -2742,14 +2760,14 @@ Remove a MyIP attachment from the profile
 
 </details>
 
-<a name="social_contracts_profile_get_attached_my_ips"></a>
+<a name="social_contracts_profile_get_attached_mydata"></a>
 
-## Function `get_attached_my_ips`
+## Function `get_attached_mydata`
 
-Get all attached MyIP IDs for this profile
+Get all attached MyData IDs for this profile
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_attached_my_ips">get_attached_my_ips</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): vector&lt;<b>address</b>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_attached_mydata">get_attached_mydata</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): vector&lt;<b>address</b>&gt;
 </code></pre>
 
 
@@ -2758,9 +2776,9 @@ Get all attached MyIP IDs for this profile
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_attached_my_ips">get_attached_my_ips</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): vector&lt;<b>address</b>&gt; {
-    // Return a <b>copy</b> of the attached MyIP IDs vector <b>for</b> efficient iteration
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_attached_mydata">get_attached_mydata</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): vector&lt;<b>address</b>&gt; {
+    // Return a <b>copy</b> of the attached MyData IDs vector <b>for</b> efficient iteration
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids
 }
 </code></pre>
 
@@ -2768,14 +2786,14 @@ Get all attached MyIP IDs for this profile
 
 </details>
 
-<a name="social_contracts_profile_batch_attach_my_ips"></a>
+<a name="social_contracts_profile_batch_attach_mydata"></a>
 
-## Function `batch_attach_my_ips`
+## Function `batch_attach_mydata`
 
-Batch attach multiple MyIPs to profile for gas optimization
+Batch attach multiple MyData to profile for gas optimization
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_attach_my_ips">batch_attach_my_ips</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_ids: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_attach_mydata">batch_attach_mydata</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, mydata_ids: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2784,29 +2802,29 @@ Batch attach multiple MyIPs to profile for gas optimization
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_attach_my_ips">batch_attach_my_ips</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_attach_mydata">batch_attach_mydata</a>(
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    my_ip_ids: vector&lt;<b>address</b>&gt;,
+    mydata_ids: vector&lt;<b>address</b>&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
     // Initialize table <b>if</b> it doesn't exist
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>)) {
         <b>let</b> tbl = table::new&lt;<b>address</b>, bool&gt;(ctx);
-        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>, tbl);
+        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>, tbl);
     };
     <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
         &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>,
     );
     <b>let</b> <b>mut</b> i = 0;
-    <b>let</b> len = vector::length(&my_ip_ids);
+    <b>let</b> len = vector::length(&mydata_ids);
     <b>while</b> (i &lt; len) {
-        <b>let</b> my_ip_id = *vector::borrow(&my_ip_ids, i);
+        <b>let</b> mydata_id = *vector::borrow(&mydata_ids, i);
         // Only add <b>if</b> not already attached
-        <b>if</b> (!table::contains(tbl, my_ip_id)) {
-            table::add(tbl, my_ip_id, <b>true</b>);
-            vector::push_back(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, my_ip_id);
+        <b>if</b> (!table::contains(tbl, mydata_id)) {
+            table::add(tbl, mydata_id, <b>true</b>);
+            vector::push_back(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids, mydata_id);
         };
         i = i + 1;
     };
@@ -2817,14 +2835,14 @@ Batch attach multiple MyIPs to profile for gas optimization
 
 </details>
 
-<a name="social_contracts_profile_batch_detach_my_ips"></a>
+<a name="social_contracts_profile_batch_detach_mydata"></a>
 
-## Function `batch_detach_my_ips`
+## Function `batch_detach_mydata`
 
-Batch detach multiple MyIPs from profile for gas optimization
+Batch detach multiple MyData from profile for gas optimization
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_detach_my_ips">batch_detach_my_ips</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, my_ip_ids: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_detach_mydata">batch_detach_mydata</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, mydata_ids: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2833,31 +2851,31 @@ Batch detach multiple MyIPs from profile for gas optimization
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_detach_my_ips">batch_detach_my_ips</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_detach_mydata">batch_detach_mydata</a>(
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    my_ip_ids: vector&lt;<b>address</b>&gt;,
+    mydata_ids: vector&lt;<b>address</b>&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>)) {
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>)) {
         <b>return</b>
     };
     <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
         &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_MY_IP_DATA_FIELD">MY_IP_DATA_FIELD</a>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>,
     );
     <b>let</b> <b>mut</b> i = 0;
-    <b>let</b> len = vector::length(&my_ip_ids);
+    <b>let</b> len = vector::length(&mydata_ids);
     <b>while</b> (i &lt; len) {
-        <b>let</b> my_ip_id = *vector::borrow(&my_ip_ids, i);
-        <b>if</b> (table::contains(tbl, my_ip_id)) {
-            table::remove(tbl, my_ip_id);
+        <b>let</b> mydata_id = *vector::borrow(&mydata_ids, i);
+        <b>if</b> (table::contains(tbl, mydata_id)) {
+            table::remove(tbl, mydata_id);
             // Remove from tracking vector
             <b>let</b> <b>mut</b> j = 0;
-            <b>let</b> vec_len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids);
+            <b>let</b> vec_len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids);
             <b>while</b> (j &lt; vec_len) {
-                <b>if</b> (*vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, j) == my_ip_id) {
-                    vector::remove(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_my_ip_ids, j);
+                <b>if</b> (*vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids, j) == mydata_id) {
+                    vector::remove(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids, j);
                     <b>break</b>
                 };
                 j = j + 1;
@@ -4108,6 +4126,114 @@ Get the curve factor of a vesting wallet
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_curve_factor">vesting_curve_factor</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
     wallet.curve_factor
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_set_paid_messaging_settings"></a>
+
+## Function `set_paid_messaging_settings`
+
+Set paid messaging settings for a profile (owner only)
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_set_paid_messaging_settings">set_paid_messaging_settings</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, enabled: bool, min_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_set_paid_messaging_settings">set_paid_messaging_settings</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    enabled: bool,
+    min_cost: Option&lt;u64&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.paid_messaging_enabled = enabled;
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.min_message_cost = min_cost;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_get_paid_messaging_settings"></a>
+
+## Function `get_paid_messaging_settings`
+
+Get paid messaging settings for a profile
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_paid_messaging_settings">get_paid_messaging_settings</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): (bool, <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_paid_messaging_settings">get_paid_messaging_settings</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): (bool, Option&lt;u64&gt;) {
+    (<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.paid_messaging_enabled, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.min_message_cost)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_requires_paid_message"></a>
+
+## Function `requires_paid_message`
+
+Check if a profile requires paid messages
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_requires_paid_message">requires_paid_message</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_requires_paid_message">requires_paid_message</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): bool {
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.paid_messaging_enabled && option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.min_message_cost)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_get_min_message_cost"></a>
+
+## Function `get_min_message_cost`
+
+Get minimum message cost for a profile
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_min_message_cost">get_min_message_cost</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_min_message_cost">get_min_message_cost</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): Option&lt;u64&gt; {
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.min_message_cost
 }
 </code></pre>
 

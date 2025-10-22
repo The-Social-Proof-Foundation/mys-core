@@ -3,7 +3,7 @@ title: Module `social_contracts::subscription`
 ---
 
 Subscription module for the MySocial network
-Handles subscription services for profiles & MyIP
+Handles subscription services for profiles & MyData
 
 
 -  [Struct `ProfileSubscriptionService`](#social_contracts_subscription_ProfileSubscriptionService)
@@ -770,7 +770,7 @@ Check if a subscription is valid for access
 
 ## Function `seal_approve`
 
-Seal integration for encrypted content access
+MyData integration for encrypted content access
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_seal_approve">seal_approve</a>(_id: vector&lt;u8&gt;, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>)

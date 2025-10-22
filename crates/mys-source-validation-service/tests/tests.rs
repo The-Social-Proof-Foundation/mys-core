@@ -391,7 +391,7 @@ network = "mainnet"
 [[packages.values.branches]]
 branch = "framework/mainnet"
 paths = [
-  { path = "crates/mys-framework/packages/deepbook", watch = "0xdee9" },
+  { path = "crates/mys-framework/packages/deepbook", watch = "0x0b0c" },
   { path = "crates/mys-framework/packages/move-stdlib", watch = "0x1" },
   { path = "crates/mys-framework/packages/mys-framework", watch = "0x2" },
   { path = "crates/mys-framework/packages/mys-system", watch = "0x3" }

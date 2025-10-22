@@ -336,7 +336,7 @@ title: Module `bridge::treasury`
 
 
 
-<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_EInvalidNativeMysAmount">EInvalidNativeMysAmount</a>: u64 = 5;
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_EInvalidNativeMysAmount">EInvalidNativeMysAmount</a>: u64 = 4;
 </code></pre>
 
 
@@ -345,7 +345,7 @@ title: Module `bridge::treasury`
 
 
 
-<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_EInvalidNotionalValue">EInvalidNotionalValue</a>: u64 = 4;
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_EInvalidNotionalValue">EInvalidNotionalValue</a>: u64 = 3;
 </code></pre>
 
 
@@ -363,7 +363,7 @@ title: Module `bridge::treasury`
 
 
 
-<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_ENativeMysAlreadyBootstrapped">ENativeMysAlreadyBootstrapped</a>: u64 = 6;
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_ENativeMysAlreadyBootstrapped">ENativeMysAlreadyBootstrapped</a>: u64 = 5;
 </code></pre>
 
 
@@ -372,16 +372,7 @@ title: Module `bridge::treasury`
 
 
 
-<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_ENativeMysNotBootstrapped">ENativeMysNotBootstrapped</a>: u64 = 7;
-</code></pre>
-
-
-
-<a name="bridge_treasury_ETokenSupplyNonZero"></a>
-
-
-
-<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_ETokenSupplyNonZero">ETokenSupplyNonZero</a>: u64 = 3;
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_ENativeMysNotBootstrapped">ENativeMysNotBootstrapped</a>: u64 = 6;
 </code></pre>
 
 
@@ -500,8 +491,8 @@ title: Module `bridge::treasury`
     uc: UpgradeCap,
     metadata: &CoinMetadata&lt;T&gt;,
 ) {
-    // Make sure TreasuryCap <b>has</b> not been minted before.
-    <b>assert</b>!(coin::total_supply(&tc) == 0, <a href="../bridge/treasury.md#bridge_treasury_ETokenSupplyNonZero">ETokenSupplyNonZero</a>);
+    // NOTE: Zero supply check removed to support admin-created tokens
+    // Security is now enforced by CoinCreationAdminCap requirement
     <b>let</b> type_name = type_name::get&lt;T&gt;();
     <b>let</b> address_bytes = hex::decode(ascii::into_bytes(type_name::get_address(&type_name)));
     <b>let</b> coin_address = address::from_bytes(address_bytes);

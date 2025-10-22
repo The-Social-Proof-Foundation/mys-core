@@ -96,7 +96,7 @@ MySocial is a feature-rich decentralized social platform that combines tradition
 - **Access Control**: Integration with content gating systems
 
 ### 8. **Data Monetization** (`mydata.move`)
-- **Encrypted Content**: Sell access to encrypted data using Seal encryption
+- **Encrypted Content**: Sell access to encrypted data using MyData encryption
 - **Dual Pricing**: One-time purchases or subscription-based access
 - **Rich Metadata**: Comprehensive data categorization and discovery
 - **Access Management**: Granular control over who can access content

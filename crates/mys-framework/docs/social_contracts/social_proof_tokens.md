@@ -61,6 +61,7 @@ platform, and ecosystem treasury.
 -  [Function `get_pool_associated_id`](#social_contracts_social_proof_tokens_get_pool_associated_id)
 -  [Function `set_poc_redirection`](#social_contracts_social_proof_tokens_set_poc_redirection)
 -  [Function `clear_poc_redirection`](#social_contracts_social_proof_tokens_clear_poc_redirection)
+-  [Function `get_ecosystem_treasury`](#social_contracts_social_proof_tokens_get_ecosystem_treasury)
 -  [Function `registry_version`](#social_contracts_social_proof_tokens_registry_version)
 -  [Function `borrow_registry_version_mut`](#social_contracts_social_proof_tokens_borrow_registry_version_mut)
 -  [Function `pool_version`](#social_contracts_social_proof_tokens_pool_version)
@@ -3282,6 +3283,31 @@ Clear PoC redirection data from a token pool (called by PoC system)
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_clear_poc_redirection">clear_poc_redirection</a>(pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>) {
     pool.poc_redirect_to = option::none();
     pool.poc_redirect_percentage = option::none();
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_get_ecosystem_treasury"></a>
+
+## Function `get_ecosystem_treasury`
+
+Get the ecosystem treasury address from config
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_ecosystem_treasury">get_ecosystem_treasury</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_get_ecosystem_treasury">get_ecosystem_treasury</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>): <b>address</b> {
+    config.ecosystem_treasury
 }
 </code></pre>
 

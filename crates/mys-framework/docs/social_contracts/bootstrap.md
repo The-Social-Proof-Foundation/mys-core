@@ -43,9 +43,11 @@ One function to claim all admin capabilities AND auto-configure treasuries.
 <b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
+<b>use</b> <a href="../mys/vec_map.md#mys_vec_map">mys::vec_map</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
+<b>use</b> <a href="../social_contracts/message.md#social_contracts_message">social_contracts::message</a>;
 <b>use</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">social_contracts::mydata</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
 <b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
@@ -166,7 +168,7 @@ Security:
 - Auto-configures all treasuries to caller's address
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(key: &<b>mut</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">social_contracts::bootstrap::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(key: &<b>mut</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">social_contracts::bootstrap::BootstrapKey</a>, coin_bootstrap_key: &<b>mut</b> <a href="../mys/coin.md#mys_coin_CoinCreationBootstrapKey">mys::coin::CoinCreationBootstrapKey</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -177,6 +179,7 @@ Security:
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_claim_all_admin_capabilities">claim_all_admin_capabilities</a>(
     key: &<b>mut</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_BootstrapKey">BootstrapKey</a>,
+    coin_bootstrap_key: &<b>mut</b> coin::CoinCreationBootstrapKey,
     ctx: &<b>mut</b> TxContext
 ) {
     // === SECURITY CHECKS ===
@@ -195,6 +198,7 @@ Security:
     <a href="../social_contracts/post.md#social_contracts_post_bootstrap_init">social_contracts::post::bootstrap_init</a>(ctx);
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_bootstrap_init">social_contracts::social_proof_tokens::bootstrap_init</a>(ctx);
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_bootstrap_init">social_contracts::proof_of_creativity::bootstrap_init</a>(ctx);
+    <a href="../social_contracts/message.md#social_contracts_message_bootstrap_init">social_contracts::message::bootstrap_init</a>(ctx);
     // === CREATE ALL ADMIN CAPABILITIES ===
     // Create UpgradeAdminCap <b>for</b> package upgrades
     <b>let</b> upgrade_admin_cap = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_create_upgrade_admin_cap">upgrade::create_upgrade_admin_cap</a>(ctx);
@@ -214,6 +218,10 @@ Security:
     // Create GovernanceAdminCap <b>for</b> <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> administration
     <b>let</b> governance_admin_cap = <a href="../social_contracts/governance.md#social_contracts_governance_create_governance_admin_cap">governance::create_governance_admin_cap</a>(ctx);
     transfer::public_transfer(governance_admin_cap, admin);
+    // Create CoinCreationAdminCap <b>for</b> coin creation administration
+    // This also marks the coin <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> key <b>as</b> used (one-time-only enforcement at coin <b>module</b> level)
+    <b>let</b> coin_creation_admin_cap = coin::create_coin_creation_admin_cap(coin_bootstrap_key, ctx);
+    transfer::public_transfer(coin_creation_admin_cap, admin);
     // Mark the <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> key <b>as</b> used - this cannot be undone
     key.used = <b>true</b>;
 }

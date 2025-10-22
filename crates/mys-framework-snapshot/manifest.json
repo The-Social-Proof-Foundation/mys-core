@@ -1638,24 +1638,24 @@
         "id": "0x0000000000000000000000000000000000000000000000000000000000000003"
       },
       {
-        "name": "USDC",
-        "path": "crates/mys-framework/packages/usdc",
+        "name": "MyUSD",
+        "path": "crates/mys-framework/packages/myusd",
         "id": "0x00000000000000000000000000000000000000000000000000000000000075d6"
       },
       {
-        "name": "Seal",
-        "path": "crates/mys-framework/packages/seal",
-        "id": "0x0000000000000000000000000000000000000000000000000000000000005ea1"
+        "name": "MyData",
+        "path": "crates/mys-framework/packages/mydata",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000da7a"
       },
       {
         "name": "MySocialContracts",
         "path": "crates/mys-framework/packages/mys-social",
-        "id": "0x000000000000000000000000000000000000000000000000000000000000d880"
+        "id": "0x00000000000000000000000000000000000000000000000000000000000050c1"
       },
       {
         "name": "DeepBook",
         "path": "crates/mys-framework/packages/deepbook",
-        "id": "0x000000000000000000000000000000000000000000000000000000000000dee9"
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000b0c"
       },
       {
         "name": "Bridge",
@@ -1683,13 +1683,13 @@
         "id": "0x0000000000000000000000000000000000000000000000000000000000000003"
       },
       {
-        "name": "USDC",
-        "path": "crates/mys-framework/packages/usdc",
+        "name": "MyUSD",
+        "path": "crates/mys-framework/packages/myusd",
         "id": "0x00000000000000000000000000000000000000000000000000000000000075d6"
       },
       {
-        "name": "Seal",
-        "path": "crates/mys-framework/packages/seal",
+        "name": "MyData",
+        "path": "crates/mys-framework/packages/mydata",
         "id": "0x0000000000000000000000000000000000000000000000000000000000005ea1"
       },
       {

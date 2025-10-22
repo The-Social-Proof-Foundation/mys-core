@@ -324,10 +324,10 @@ Post object that contains content information
  Optional revenue redirection percentage (0-100)
 </dd>
 <dt>
-<code>my_ip_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+<code>mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
- Reference to the intellectual property license for the post
+ Reference to the MyData for the post
 </dd>
 <dt>
 <code>promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
@@ -2936,7 +2936,7 @@ Check if predictions are enabled
 Create a new prediction post
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_prediction_post">create_prediction_post</a>(config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, _admin_cap: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">social_contracts::post::PostAdminCap</a>, registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, options: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, betting_end_time: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, allow_comments: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reactions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reposts: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_quotes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_tips: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_prediction_post">create_prediction_post</a>(config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, _admin_cap: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">social_contracts::post::PostAdminCap</a>, registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, options: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, betting_end_time: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, allow_comments: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reactions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reposts: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_quotes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_tips: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2954,7 +2954,7 @@ Create a new prediction post
     block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     content: String,
     options: vector&lt;String&gt;,
-    <b>mut</b> media_urls: Option&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;,
+    <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
     betting_end_time: Option&lt;u64&gt;,
@@ -2994,16 +2994,17 @@ Create a new prediction post
     };
     // Convert and validate media URLs <b>if</b> provided
     <b>let</b> media_option = <b>if</b> (option::is_some(&media_urls)) {
-        <b>let</b> urls_bytes = option::extract(&<b>mut</b> media_urls);
+        <b>let</b> url_strings = option::extract(&<b>mut</b> media_urls);
         // Validate media URLs count
-        <b>assert</b>!(vector::length(&urls_bytes) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
-        // Convert media URL bytes to Url
+        <b>assert</b>!(vector::length(&url_strings) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
+        // Convert string URLs to Url objects
         <b>let</b> <b>mut</b> urls = vector::empty&lt;Url&gt;();
         <b>let</b> <b>mut</b> i = 0;
-        <b>let</b> len = vector::length(&urls_bytes);
+        <b>let</b> len = vector::length(&url_strings);
         <b>while</b> (i &lt; len) {
-            <b>let</b> url_bytes = *vector::borrow(&urls_bytes, i);
-            vector::push_back(&<b>mut</b> urls, url::new_unsafe_from_bytes(url_bytes));
+            <b>let</b> url_string = vector::borrow(&url_strings, i);
+            <b>let</b> url_bytes = string::as_bytes(url_string);
+            vector::push_back(&<b>mut</b> urls, url::new_unsafe_from_bytes(*url_bytes));
             i = i + 1;
         };
         option::some(urls)
@@ -3059,7 +3060,7 @@ Create a new prediction post
         option::none(), // poc_badge_id
         option::none(), // revenue_redirect_to
         option::none(), // revenue_redirect_percentage
-        option::none(), // my_ip_id
+        option::none(), // mydata_id
         option::none(), // promotion_id
         ctx
     );
@@ -3481,7 +3482,7 @@ Resolve a prediction (admin only) and distribute winnings
 Internal function to create a post and return its ID
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, allow_comments: bool, allow_reactions: bool, allow_reposts: bool, allow_quotes: bool, allow_tips: bool, poc_badge_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>&gt;, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, my_ip_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <b>address</b>
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, allow_comments: bool, allow_reactions: bool, allow_reposts: bool, allow_quotes: bool, allow_tips: bool, poc_badge_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>&gt;, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <b>address</b>
 </code></pre>
 
 
@@ -3507,7 +3508,7 @@ Internal function to create a post and return its ID
     poc_badge_id: Option&lt;ID&gt;,
     revenue_redirect_to: Option&lt;<b>address</b>&gt;,
     revenue_redirect_percentage: Option&lt;u64&gt;,
-    my_ip_id: Option&lt;<b>address</b>&gt;,
+    mydata_id: Option&lt;<b>address</b>&gt;,
     promotion_id: Option&lt;<b>address</b>&gt;,
     ctx: &<b>mut</b> TxContext
 ): <b>address</b> {
@@ -3537,7 +3538,7 @@ Internal function to create a post and return its ID
         poc_badge_id,
         revenue_redirect_to,
         revenue_redirect_percentage,
-        my_ip_id,
+        mydata_id,
         promotion_id,
         disable_auto_pool: <b>false</b>,
         <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
@@ -3562,7 +3563,7 @@ Internal function to create a post and return its ID
 Create a new post with interaction permissions
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post">create_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, allow_comments: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reactions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reposts: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_quotes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_tips: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post">create_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, allow_comments: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reactions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reposts: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_quotes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_tips: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3578,7 +3579,7 @@ Create a new post with interaction permissions
     block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     content: String,
-    <b>mut</b> media_urls: Option&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;,
+    <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
     allow_comments: Option&lt;bool&gt;,
@@ -3611,16 +3612,17 @@ Create a new post with interaction permissions
     };
     // Convert and validate media URLs <b>if</b> provided
     <b>let</b> media_option = <b>if</b> (option::is_some(&media_urls)) {
-        <b>let</b> urls_bytes = option::extract(&<b>mut</b> media_urls);
+        <b>let</b> url_strings = option::extract(&<b>mut</b> media_urls);
         // Validate media URLs count using config
-        <b>assert</b>!(vector::length(&urls_bytes) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
-        // Convert media URL bytes to Url
+        <b>assert</b>!(vector::length(&url_strings) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
+        // Convert string URLs to Url objects
         <b>let</b> <b>mut</b> urls = vector::empty&lt;Url&gt;();
         <b>let</b> <b>mut</b> i = 0;
-        <b>let</b> len = vector::length(&urls_bytes);
+        <b>let</b> len = vector::length(&url_strings);
         <b>while</b> (i &lt; len) {
-            <b>let</b> url_bytes = *vector::borrow(&urls_bytes, i);
-            vector::push_back(&<b>mut</b> urls, url::new_unsafe_from_bytes(url_bytes));
+            <b>let</b> url_string = vector::borrow(&url_strings, i);
+            <b>let</b> url_bytes = string::as_bytes(url_string);
+            vector::push_back(&<b>mut</b> urls, url::new_unsafe_from_bytes(*url_bytes));
             i = i + 1;
         };
         option::some(urls)
@@ -3676,7 +3678,7 @@ Create a new post with interaction permissions
         option::none(), // poc_badge_id
         option::none(), // revenue_redirect_to
         option::none(), // revenue_redirect_percentage
-        option::none(), // my_ip_id
+        option::none(), // mydata_id
         option::none(), // promotion_id
         ctx
     );
@@ -3705,7 +3707,7 @@ Create a comment on a post or a reply to another comment
 Returns the ID of the created comment
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_comment">create_comment</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, parent_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, parent_comment_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <b>address</b>
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_comment">create_comment</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, parent_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, parent_comment_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <b>address</b>
 </code></pre>
 
 
@@ -3722,7 +3724,7 @@ Returns the ID of the created comment
     parent_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     parent_comment_id: Option&lt;<b>address</b>&gt;,
     content: String,
-    <b>mut</b> media_urls: Option&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;,
+    <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
     ctx: &<b>mut</b> TxContext
@@ -3751,16 +3753,17 @@ Returns the ID of the created comment
     };
     // Convert and validate media URLs <b>if</b> provided
     <b>let</b> media_option = <b>if</b> (option::is_some(&media_urls)) {
-        <b>let</b> urls_bytes = option::extract(&<b>mut</b> media_urls);
+        <b>let</b> url_strings = option::extract(&<b>mut</b> media_urls);
         // Validate media URLs count using config
-        <b>assert</b>!(vector::length(&urls_bytes) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
-        // Convert media URL bytes to Url objects
+        <b>assert</b>!(vector::length(&url_strings) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
+        // Convert string URLs to Url objects
         <b>let</b> <b>mut</b> urls = vector::empty&lt;Url&gt;();
         <b>let</b> <b>mut</b> i = 0;
-        <b>let</b> len = vector::length(&urls_bytes);
+        <b>let</b> len = vector::length(&url_strings);
         <b>while</b> (i &lt; len) {
-            <b>let</b> url_bytes = *vector::borrow(&urls_bytes, i);
-            vector::push_back(&<b>mut</b> urls, url::new_unsafe_from_bytes(url_bytes));
+            <b>let</b> url_string = vector::borrow(&url_strings, i);
+            <b>let</b> url_bytes = string::as_bytes(url_string);
+            vector::push_back(&<b>mut</b> urls, url::new_unsafe_from_bytes(*url_bytes));
             i = i + 1;
         };
         option::some(urls)
@@ -3832,7 +3835,7 @@ If content is provided, it's treated as a quote repost
 If content is empty/none, it's treated as a standard repost
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_repost">create_repost</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, content: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, allow_comments: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reactions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reposts: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_quotes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_tips: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_repost">create_repost</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, content: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, allow_comments: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reactions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reposts: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_quotes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_tips: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3849,7 +3852,7 @@ If content is empty/none, it's treated as a standard repost
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     <b>mut</b> content: Option&lt;String&gt;,
-    <b>mut</b> media_urls: Option&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;,
+    <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
     allow_comments: Option&lt;bool&gt;,
@@ -3897,16 +3900,17 @@ If content is empty/none, it's treated as a standard repost
     };
     // Validate and process media URLs <b>if</b> provided
     <b>let</b> media_option = <b>if</b> (option::is_some(&media_urls)) {
-        <b>let</b> urls_bytes = option::extract(&<b>mut</b> media_urls);
+        <b>let</b> url_strings = option::extract(&<b>mut</b> media_urls);
         // Validate media URLs count
-        <b>assert</b>!(vector::length(&urls_bytes) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
-        // Convert media URL bytes to Url
+        <b>assert</b>!(vector::length(&url_strings) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
+        // Convert string URLs to Url objects
         <b>let</b> <b>mut</b> urls = vector::empty&lt;Url&gt;();
         <b>let</b> <b>mut</b> i = 0;
-        <b>let</b> len = vector::length(&urls_bytes);
+        <b>let</b> len = vector::length(&url_strings);
         <b>while</b> (i &lt; len) {
-            <b>let</b> url_bytes = *vector::borrow(&urls_bytes, i);
-            vector::push_back(&<b>mut</b> urls, url::new_unsafe_from_bytes(url_bytes));
+            <b>let</b> url_string = vector::borrow(&url_strings, i);
+            <b>let</b> url_bytes = string::as_bytes(url_string);
+            vector::push_back(&<b>mut</b> urls, url::new_unsafe_from_bytes(*url_bytes));
             i = i + 1;
         };
         option::some(urls)
@@ -3999,7 +4003,7 @@ If content is empty/none, it's treated as a standard repost
         option::none(), // poc_badge_id
         option::none(), // revenue_redirect_to
         option::none(), // revenue_redirect_percentage
-        option::none(), // No MyIP <b>for</b> reposts
+        option::none(), // No MyData <b>for</b> reposts
         option::none(), // promotion_id
         ctx
     );
@@ -4077,7 +4081,7 @@ Delete a post owned by the caller
         poc_badge_id: _,
         revenue_redirect_to: _,
         revenue_redirect_percentage: _,
-        my_ip_id: _,
+        mydata_id: _,
         promotion_id: _,
         disable_auto_pool: _,
         <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: _,
@@ -4842,7 +4846,7 @@ Moderate a comment (remove/restore from platform)
 Update an existing post
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_update_post">update_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_update_post">update_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4855,7 +4859,7 @@ Update an existing post
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     content: String,
-    <b>mut</b> media_urls: Option&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;,
+    <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
     ctx: &<b>mut</b> TxContext
@@ -4874,16 +4878,17 @@ Update an existing post
     };
     // Convert and validate media URLs <b>if</b> provided
     <b>if</b> (option::is_some(&media_urls)) {
-        <b>let</b> urls_bytes = option::extract(&<b>mut</b> media_urls);
+        <b>let</b> url_strings = option::extract(&<b>mut</b> media_urls);
         // Validate media URLs count
-        <b>assert</b>!(vector::length(&urls_bytes) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
-        // Convert media URL bytes to Url
+        <b>assert</b>!(vector::length(&url_strings) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
+        // Convert string URLs to Url objects
         <b>let</b> <b>mut</b> urls = vector::empty&lt;Url&gt;();
         <b>let</b> <b>mut</b> i = 0;
-        <b>let</b> len = vector::length(&urls_bytes);
+        <b>let</b> len = vector::length(&url_strings);
         <b>while</b> (i &lt; len) {
-            <b>let</b> url_bytes = *vector::borrow(&urls_bytes, i);
-            vector::push_back(&<b>mut</b> urls, url::new_unsafe_from_bytes(url_bytes));
+            <b>let</b> url_string = vector::borrow(&url_strings, i);
+            <b>let</b> url_bytes = string::as_bytes(url_string);
+            vector::push_back(&<b>mut</b> urls, url::new_unsafe_from_bytes(*url_bytes));
             i = i + 1;
         };
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.media = option::some(urls);
@@ -5940,7 +5945,7 @@ Update post parameters (admin only)
 Create a promoted post with MYS tokens for viewer payments
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_promoted_post">create_promoted_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, _block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, my_ip_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, payment_per_view: u64, promotion_budget: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_promoted_post">create_promoted_post</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, _block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, payment_per_view: u64, promotion_budget: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -5956,10 +5961,10 @@ Create a promoted post with MYS tokens for viewer payments
     _block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     content: String,
-    <b>mut</b> media_urls: Option&lt;vector&lt;vector&lt;u8&gt;&gt;&gt;,
+    <b>mut</b> media_urls: Option&lt;vector&lt;String&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
     metadata_json: Option&lt;String&gt;,
-    my_ip_id: Option&lt;<b>address</b>&gt;,
+    mydata_id: Option&lt;<b>address</b>&gt;,
     payment_per_view: u64,
     promotion_budget: Coin&lt;MYS&gt;,
     ctx: &<b>mut</b> TxContext
@@ -5982,12 +5987,13 @@ Create a promoted post with MYS tokens for viewer payments
     <b>assert</b>!(string::length(&content) &lt;= config.max_content_length, <a href="../social_contracts/post.md#social_contracts_post_EContentTooLarge">EContentTooLarge</a>);
     // Validate and convert media URLs <b>if</b> provided
     <b>let</b> media_option = <b>if</b> (option::is_some(&media_urls)) {
-        <b>let</b> urls_bytes = option::extract(&<b>mut</b> media_urls);
-        <b>assert</b>!(vector::length(&urls_bytes) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
+        <b>let</b> url_strings = option::extract(&<b>mut</b> media_urls);
+        <b>assert</b>!(vector::length(&url_strings) &lt;= config.max_media_urls, <a href="../social_contracts/post.md#social_contracts_post_ETooManyMediaUrls">ETooManyMediaUrls</a>);
         <b>let</b> <b>mut</b> urls = vector::empty&lt;Url&gt;();
         <b>let</b> <b>mut</b> i = 0;
-        <b>while</b> (i &lt; vector::length(&urls_bytes)) {
-            <b>let</b> url_bytes = vector::borrow(&urls_bytes, i);
+        <b>while</b> (i &lt; vector::length(&url_strings)) {
+            <b>let</b> url_string = vector::borrow(&url_strings, i);
+            <b>let</b> url_bytes = string::as_bytes(url_string);
             <b>let</b> url = url::new_unsafe_from_bytes(*url_bytes);
             vector::push_back(&<b>mut</b> urls, url);
             i = i + 1;
@@ -6036,7 +6042,7 @@ Create a promoted post with MYS tokens for viewer payments
         option::none(), // poc_badge_id
         option::none(), // revenue_redirect_to
         option::none(), // revenue_redirect_percentage
-        my_ip_id,
+        mydata_id,
         option::some(promotion_id),
         ctx
     );

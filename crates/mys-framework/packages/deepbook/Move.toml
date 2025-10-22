@@ -1,7 +1,7 @@
 [package]
 name = "DeepBook"
 version = "0.0.1"
-published-at = "0xdee9"
+published-at = "0x0b0c"
 edition = "2024.beta"
 
 [dependencies]
@@ -9,4 +9,4 @@ MoveStdlib = { local = "../move-stdlib" }
 MySocial = { local = "../mys-framework" }
 
 [addresses]
-deepbook = "0xdee9"
+deepbook = "0x0b0c"

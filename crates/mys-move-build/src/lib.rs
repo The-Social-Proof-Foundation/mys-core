@@ -49,7 +49,7 @@ use mys_types::{
     is_system_package,
     move_package::{FnInfo, FnInfoKey, FnInfoMap, MovePackage},
     BRIDGE_ADDRESS, DEEPBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYS_FRAMEWORK_ADDRESS,
-    MYS_SOCIAL_ADDRESS, MYS_SYSTEM_ADDRESS, SEAL_ADDRESS, USDC_ADDRESS,
+    MYS_SOCIAL_ADDRESS, MYS_SYSTEM_ADDRESS, MYDATA_ADDRESS, MYUSD_ADDRESS,
 };
 use mys_verifier::verifier as mys_bytecode_verifier;
 use serde_reflection::Registry;
@@ -458,9 +458,9 @@ impl CompiledPackage {
     }
 
     /// Get bytecode modules from the USDC package that are used by this package
-    pub fn get_usdc_modules(&self) -> impl Iterator<Item = &CompiledModule> {
+    pub fn get_myusd_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
-            .filter(|m| *m.self_id().address() == USDC_ADDRESS)
+            .filter(|m| *m.self_id().address() == MYUSD_ADDRESS)
     }
 
     /// Get bytecode modules from the Mys System that are used by this package
@@ -487,10 +487,10 @@ impl CompiledPackage {
             .filter(|m| *m.self_id().address() == MYS_SOCIAL_ADDRESS)
     }
 
-    /// Get bytecode modules from Seal that are used by this package
+    /// Get bytecode modules from MyData that are used by this package
     pub fn get_seal_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
-            .filter(|m| *m.self_id().address() == SEAL_ADDRESS)
+            .filter(|m| *m.self_id().address() == MYDATA_ADDRESS)
     }
 
     /// Generate layout schemas for all types declared by this package, as well as

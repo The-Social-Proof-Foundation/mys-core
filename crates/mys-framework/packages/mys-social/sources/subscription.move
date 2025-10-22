@@ -310,7 +310,7 @@ module social_contracts::subscription {
         subscription.expires_at > now
     }
 
-    /// Seal integration for encrypted content access
+    /// MyData integration for encrypted content access
     public entry fun seal_approve(
         _id: vector<u8>,
         subscription: &ProfileSubscription,

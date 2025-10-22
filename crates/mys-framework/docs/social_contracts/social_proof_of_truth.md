@@ -3,8 +3,9 @@ title: Module `social_contracts::social_proof_of_truth`
 ---
 
 Social Proof of Truth (SPoT)
-Prediction-like truth market on posts with split entry: AMM buy (beta) + escrow (1-beta),
-oracle/DAO resolution, and pro-rata payouts from escrow. Integrates with SPT post pools.
+Prediction market for post truthfulness. Users bet YES/NO on whether a post is true.
+All bets go directly to escrow. Oracle/DAO resolves the outcome, and winners receive
+pro-rata payouts from the total escrow pool.
 
 
 -  [Struct `SpotAdminCap`](#social_contracts_social_proof_of_truth_SpotAdminCap)
@@ -23,10 +24,8 @@ oracle/DAO resolution, and pro-rata payouts from escrow. Integrates with SPT pos
 -  [Function `get_bets_len`](#social_contracts_social_proof_of_truth_get_bets_len)
 -  [Function `bootstrap_init`](#social_contracts_social_proof_of_truth_bootstrap_init)
 -  [Function `update_spot_config`](#social_contracts_social_proof_of_truth_update_spot_config)
--  [Function `split_amount`](#social_contracts_social_proof_of_truth_split_amount)
 -  [Function `create_spot_record_for_post`](#social_contracts_social_proof_of_truth_create_spot_record_for_post)
--  [Function `place_spot_bet_with_pool`](#social_contracts_social_proof_of_truth_place_spot_bet_with_pool)
--  [Function `place_spot_bet_auto_init`](#social_contracts_social_proof_of_truth_place_spot_bet_auto_init)
+-  [Function `place_spot_bet`](#social_contracts_social_proof_of_truth_place_spot_bet)
 -  [Function `oracle_resolve`](#social_contracts_social_proof_of_truth_oracle_resolve)
 -  [Function `finalize_via_dao`](#social_contracts_social_proof_of_truth_finalize_via_dao)
 -  [Function `refund_unresolved`](#social_contracts_social_proof_of_truth_refund_unresolved)
@@ -53,7 +52,6 @@ oracle/DAO resolution, and pro-rata payouts from escrow. Integrates with SPT pos
 <b>use</b> <a href="../mys/group_ops.md#mys_group_ops">mys::group_ops</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
 <b>use</b> <a href="../mys/hmac.md#mys_hmac">mys::hmac</a>;
-<b>use</b> <a href="../mys/math.md#mys_math">mys::math</a>;
 <b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/package.md#mys_package">mys::package</a>;
@@ -68,7 +66,6 @@ oracle/DAO resolution, and pro-rata payouts from escrow. Integrates with SPT pos
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
 <b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
-<b>use</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens">social_contracts::social_proof_tokens</a>;
 <b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
@@ -78,8 +75,6 @@ oracle/DAO resolution, and pro-rata payouts from escrow. Integrates with SPT pos
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
-<b>use</b> <a href="../std/u128.md#std_u128">std::u128</a>;
-<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
@@ -136,11 +131,6 @@ Global configuration for SPoT
 </dd>
 <dt>
 <code>enable_flag: bool</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>amm_split_bps: u64</code>
 </dt>
 <dd>
 </dd>
@@ -232,12 +222,7 @@ A single bet
 <dd>
 </dd>
 <dt>
-<code>escrow_amount: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>amm_amount: u64</code>
+<code>amount: u64</code>
 </dt>
 <dd>
 </dd>
@@ -290,11 +275,6 @@ SPoT record per post
 </dd>
 <dt>
 <code>outcome: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u8&gt;</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>amm_split_bps_used: u64</code>
 </dt>
 <dd>
 </dd>
@@ -366,12 +346,7 @@ Events
 <dd>
 </dd>
 <dt>
-<code>escrow_amount: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>amm_amount: u64</code>
+<code>amount: u64</code>
 </dt>
 <dd>
 </dd>
@@ -529,18 +504,9 @@ Events
 ## Constants
 
 
-<a name="social_contracts_social_proof_of_truth_DEFAULT_AMM_SPLIT_BPS"></a>
-
-Config defaults
-
-
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_AMM_SPLIT_BPS">DEFAULT_AMM_SPLIT_BPS</a>: u64 = 3000;
-</code></pre>
-
-
-
 <a name="social_contracts_social_proof_of_truth_DEFAULT_CONFIDENCE_THRESHOLD_BPS"></a>
 
+Config defaults
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_CONFIDENCE_THRESHOLD_BPS">DEFAULT_CONFIDENCE_THRESHOLD_BPS</a>: u64 = 7000;
@@ -611,15 +577,6 @@ Config defaults
 
 
 
-<a name="social_contracts_social_proof_of_truth_EAutoInitOnlyWhenMissing"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EAutoInitOnlyWhenMissing">EAutoInitOnlyWhenMissing</a>: u64 = 9;
-</code></pre>
-
-
-
 <a name="social_contracts_social_proof_of_truth_EDisabled"></a>
 
 Errors
@@ -653,15 +610,6 @@ Errors
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotOracle">ENotOracle</a>: u64 = 7;
-</code></pre>
-
-
-
-<a name="social_contracts_social_proof_of_truth_EThrottle"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EThrottle">EThrottle</a>: u64 = 10;
 </code></pre>
 
 
@@ -875,7 +823,6 @@ Status
     transfer::share_object(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a> {
         id: object::new(ctx),
         enable_flag: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_ENABLE">DEFAULT_ENABLE</a>,
-        amm_split_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_AMM_SPLIT_BPS">DEFAULT_AMM_SPLIT_BPS</a>,
         confidence_threshold_bps: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_CONFIDENCE_THRESHOLD_BPS">DEFAULT_CONFIDENCE_THRESHOLD_BPS</a>,
         resolution_window_epochs: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_RESOLUTION_WINDOW_EPOCHS">DEFAULT_RESOLUTION_WINDOW_EPOCHS</a>,
         max_resolution_window_epochs: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS">DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS</a>,
@@ -903,7 +850,7 @@ Status
 Update SPoT configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, amm_split_bps: u64, confidence_threshold_bps: u64, resolution_window_epochs: u64, max_resolution_window_epochs: u64, payout_delay_epochs: u64, fee_bps: u64, fee_split_bps_platform: u64, platform_treasury: <b>address</b>, chain_treasury: <b>address</b>, oracle_address: <b>address</b>, max_single_bet: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, confidence_threshold_bps: u64, resolution_window_epochs: u64, max_resolution_window_epochs: u64, payout_delay_epochs: u64, fee_bps: u64, fee_split_bps_platform: u64, platform_treasury: <b>address</b>, chain_treasury: <b>address</b>, oracle_address: <b>address</b>, max_single_bet: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -916,7 +863,6 @@ Update SPoT configuration (admin only)
     _: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">SpotAdminCap</a>,
     config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
     enable_flag: bool,
-    amm_split_bps: u64,
     confidence_threshold_bps: u64,
     resolution_window_epochs: u64,
     max_resolution_window_epochs: u64,
@@ -930,11 +876,9 @@ Update SPoT configuration (admin only)
     _ctx: &<b>mut</b> TxContext
 ) {
     // Basic bounds
-    <b>assert</b>!(amm_split_bps &lt;= 10000, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>assert</b>!(confidence_threshold_bps &lt;= 10000, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     // windows may be zero in tests to resolve immediately
     config.enable_flag = enable_flag;
-    config.amm_split_bps = amm_split_bps;
     config.confidence_threshold_bps = confidence_threshold_bps;
     config.resolution_window_epochs = resolution_window_epochs;
     config.max_resolution_window_epochs = max_resolution_window_epochs;
@@ -945,32 +889,6 @@ Update SPoT configuration (admin only)
     config.chain_treasury = chain_treasury;
     config.oracle_address = oracle_address;
     config.max_single_bet = max_single_bet;
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_social_proof_of_truth_split_amount"></a>
-
-## Function `split_amount`
-
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_split_amount">split_amount</a>(amount: u64, bps: u64): (u64, u64)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_split_amount">split_amount</a>(amount: u64, bps: u64): (u64, u64) {
-    <b>let</b> amm = (amount * bps) / 10000;
-    <b>let</b> escrow = amount - amm;
-    (amm, escrow)
 }
 </code></pre>
 
@@ -1005,7 +923,6 @@ Update SPoT configuration (admin only)
         created_epoch: tx_context::epoch(ctx),
         status: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a>,
         outcome: option::none(),
-        amm_split_bps_used: config.amm_split_bps,
         escrow: balance::zero(),
         total_yes_escrow: 0,
         total_no_escrow: 0,
@@ -1021,14 +938,14 @@ Update SPoT configuration (admin only)
 
 </details>
 
-<a name="social_contracts_social_proof_of_truth_place_spot_bet_with_pool"></a>
+<a name="social_contracts_social_proof_of_truth_place_spot_bet"></a>
 
-## Function `place_spot_bet_with_pool`
+## Function `place_spot_bet`
 
-Place bet when pool already exists
+Place bet - all funds go to escrow
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_place_spot_bet_with_pool">place_spot_bet_with_pool</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, spt_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, spt_config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, payment: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, is_yes: bool, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_place_spot_bet">place_spot_bet</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, payment: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, is_yes: bool, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1037,15 +954,10 @@ Place bet when pool already exists
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_place_spot_bet_with_pool">place_spot_bet_with_pool</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_place_spot_bet">place_spot_bet</a>(
     spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
-    spt_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>,
-    spt_config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>,
     record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
-    pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>,
-    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
-    block_list_registry: &BlockListRegistry,
     <b>mut</b> payment: Coin&lt;MYS&gt;,
     is_yes: bool,
     amount: u64,
@@ -1054,116 +966,34 @@ Place bet when pool already exists
     <b>assert</b>!(spot_config.enable_flag, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>if</b> (spot_config.max_single_bet &gt; 0) { <b>assert</b>!(amount &lt;= spot_config.max_single_bet, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>); };
-    // Split <b>entry</b> between AMM and escrow
-    <b>let</b> (amm_amount, escrow_amount) = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_split_amount">split_amount</a>(amount, spot_config.amm_split_bps);
     <b>assert</b>!(coin::value(&payment) &gt;= amount, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
-    // AMM buy on SPT pool <b>for</b> AMM portion
-    <b>if</b> (amm_amount &gt; 0) {
-        <b>let</b> amm_coin = coin::split(&<b>mut</b> payment, amm_amount, ctx);
-        <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_buy_tokens">social_contracts::social_proof_tokens::buy_tokens</a>(
-            spt_registry,
-            pool,
-            spt_config,
-            block_list_registry,
-            <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
-            amm_coin,
-            1, // buy at least 1 token unit equivalent; curve handles pricing
-            ctx,
-        );
-    };
-    // Escrow the remainder
-    <b>if</b> (escrow_amount &gt; 0) {
-        <b>let</b> esc = coin::split(&<b>mut</b> payment, escrow_amount, ctx);
-        balance::join(&<b>mut</b> record.escrow, coin::into_balance(esc));
-        <b>if</b> (is_yes) { record.total_yes_escrow = record.total_yes_escrow + escrow_amount; }
-        <b>else</b> { record.total_no_escrow = record.total_no_escrow + escrow_amount; };
+    // All funds go to escrow
+    <b>let</b> bet_coin = coin::split(&<b>mut</b> payment, amount, ctx);
+    balance::join(&<b>mut</b> record.escrow, coin::into_balance(bet_coin));
+    <b>if</b> (is_yes) {
+        record.total_yes_escrow = record.total_yes_escrow + amount;
+    } <b>else</b> {
+        record.total_no_escrow = record.total_no_escrow + amount;
     };
     // Refund any excess
-    <b>if</b> (coin::value(&payment) &gt; 0) { transfer::public_transfer(payment, tx_context::sender(ctx)); }
-    <b>else</b> { coin::destroy_zero(payment); };
+    <b>if</b> (coin::value(&payment) &gt; 0) {
+        transfer::public_transfer(payment, tx_context::sender(ctx));
+    } <b>else</b> {
+        coin::destroy_zero(payment);
+    };
     // Record bet
     vector::push_back(&<b>mut</b> record.bets, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotBet">SpotBet</a> {
         user: tx_context::sender(ctx),
         is_yes,
-        escrow_amount,
-        amm_amount,
+        amount,
         timestamp: tx_context::epoch(ctx),
     });
     event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotBetPlacedEvent">SpotBetPlacedEvent</a> {
         post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
         user: tx_context::sender(ctx),
         is_yes,
-        escrow_amount,
-        amm_amount,
-    });
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_social_proof_of_truth_place_spot_bet_auto_init"></a>
-
-## Function `place_spot_bet_auto_init`
-
-Place bet and auto-initialize pool if missing (guarded in SPT)
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_place_spot_bet_auto_init">place_spot_bet_auto_init</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, spt_registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, spt_config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, payment: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, is_yes: bool, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_place_spot_bet_auto_init">place_spot_bet_auto_init</a>(
-    spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
-    spt_registry: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>,
-    spt_config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>,
-    record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
-    <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
-    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
-    block_list_registry: &BlockListRegistry,
-    payment: Coin&lt;MYS&gt;,
-    is_yes: bool,
-    amount: u64,
-    ctx: &<b>mut</b> TxContext
-) {
-    <b>assert</b>!(spot_config.enable_flag, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EDisabled">EDisabled</a>);
-    // Ensure there is no existing pool; create <b>if</b> allowed
-    <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
-    <b>let</b> exists = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_token_exists">social_contracts::social_proof_tokens::token_exists</a>(spt_registry, post_id);
-    <b>assert</b>!(!exists, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EAutoInitOnlyWhenMissing">EAutoInitOnlyWhenMissing</a>);
-    <b>let</b> <b>mut</b> maybe_pool = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ensure_post_token_pool">social_contracts::social_proof_tokens::ensure_post_token_pool</a>(
-        spt_registry,
-        spt_config,
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>,
-        ctx,
-    );
-    <b>assert</b>!(option::is_some(&maybe_pool), <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EThrottle">EThrottle</a>);
-    <b>let</b> <b>mut</b> pool = option::extract(&<b>mut</b> maybe_pool);
-    // Place bet using the newly created pool
-    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_place_spot_bet_with_pool">place_spot_bet_with_pool</a>(
-        spot_config,
-        spt_registry,
-        spt_config,
-        record,
-        <a href="../social_contracts/post.md#social_contracts_post">post</a>,
-        &<b>mut</b> pool,
-        <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
-        block_list_registry,
-        payment,
-        is_yes,
         amount,
-        ctx,
-    );
-    // Share pool after in-tx operations
-    transfer::public_share_object(pool);
-    // Consume the now-empty option to satisfy drop constraints
-    option::destroy_none(maybe_pool);
+    });
 }
 </code></pre>
 
@@ -1279,10 +1109,10 @@ Refund all escrow if unresolved beyond max window
     <b>let</b> len = vector::length(&record.bets);
     <b>while</b> (i &lt; len) {
         <b>let</b> bet = vector::borrow(&record.bets, i);
-        <b>if</b> (bet.escrow_amount &gt; 0) {
-            <b>let</b> c = coin::from_balance(balance::split(&<b>mut</b> record.escrow, bet.escrow_amount), ctx);
+        <b>if</b> (bet.amount &gt; 0) {
+            <b>let</b> c = coin::from_balance(balance::split(&<b>mut</b> record.escrow, bet.amount), ctx);
             transfer::public_transfer(c, bet.user);
-            event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRefundEvent">SpotRefundEvent</a> { post_id: record.post_id, user: bet.user, amount: bet.escrow_amount });
+            event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRefundEvent">SpotRefundEvent</a> { post_id: record.post_id, user: bet.user, amount: bet.amount });
         };
         i = i + 1;
     };
@@ -1330,10 +1160,10 @@ Refund all escrow if unresolved beyond max window
         <b>let</b> <b>mut</b> i = 0; <b>let</b> len = vector::length(&record.bets);
         <b>while</b> (i &lt; len) {
             <b>let</b> bet = vector::borrow(&record.bets, i);
-            <b>if</b> (bet.escrow_amount &gt; 0) {
-                <b>let</b> c = coin::from_balance(balance::split(&<b>mut</b> record.escrow, bet.escrow_amount), ctx);
+            <b>if</b> (bet.amount &gt; 0) {
+                <b>let</b> c = coin::from_balance(balance::split(&<b>mut</b> record.escrow, bet.amount), ctx);
                 transfer::public_transfer(c, bet.user);
-                event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRefundEvent">SpotRefundEvent</a> { post_id: record.post_id, user: bet.user, amount: bet.escrow_amount });
+                event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRefundEvent">SpotRefundEvent</a> { post_id: record.post_id, user: bet.user, amount: bet.amount });
             };
             i = i + 1;
         };
@@ -1362,8 +1192,8 @@ Refund all escrow if unresolved beyond max window
     <b>while</b> (i &lt; len) {
         <b>let</b> bet = vector::borrow(&record.bets, i);
         <b>let</b> winner = (bet.is_yes && is_yes_winning) || (!bet.is_yes && !is_yes_winning);
-        <b>if</b> (winner && winning_total &gt; 0 && bet.escrow_amount &gt; 0) {
-            <b>let</b> payout = (((bet.escrow_amount <b>as</b> u128) * (distributable <b>as</b> u128)) / (winning_total <b>as</b> u128)) <b>as</b> u64;
+        <b>if</b> (winner && winning_total &gt; 0 && bet.amount &gt; 0) {
+            <b>let</b> payout = (((bet.amount <b>as</b> u128) * (distributable <b>as</b> u128)) / (winning_total <b>as</b> u128)) <b>as</b> u64;
             <b>if</b> (payout &gt; 0) {
                 <b>let</b> c = coin::from_balance(balance::split(&<b>mut</b> record.escrow, payout), ctx);
                 transfer::public_transfer(c, bet.user);

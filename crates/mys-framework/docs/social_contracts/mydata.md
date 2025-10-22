@@ -106,7 +106,7 @@ Can be attached to posts (gated content) or profiles (data monetization)
 
 ## Struct `MyData`
 
-Universal MyData for encrypted data monetization using proper Seal patterns
+Universal MyData for encrypted data monetization
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a> <b>has</b> key, store
@@ -170,7 +170,7 @@ Universal MyData for encrypted data monetization using proper Seal patterns
 <code>encrypted_data: vector&lt;u8&gt;</code>
 </dt>
 <dd>
- Properly sealed content using Seal encryption
+ Properly sealed content using MyData encryption
 </dd>
 <dt>
 <code>encryption_id: vector&lt;u8&gt;</code>
@@ -605,7 +605,7 @@ Bootstrap initialization function - creates the MyData registry
 
 ## Function `create`
 
-Create new MyData data with proper Seal encryption
+Create new MyData data with proper MyData encryption
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_create">create</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_tags">tags</a>: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, encrypted_data: vector&lt;u8&gt;, encryption_id: vector&lt;u8&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>: u64, <a href="../social_contracts/mydata.md#social_contracts_mydata_geographic_region">geographic_region</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_data_quality">data_quality</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_sample_size">sample_size</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_collection_method">collection_method</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/mydata.md#social_contracts_mydata_is_updating">is_updating</a>: bool, <a href="../social_contracts/mydata.md#social_contracts_mydata_update_frequency">update_frequency</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>
@@ -624,7 +624,7 @@ Create new MyData data with proper Seal encryption
     <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_start">timestamp_start</a>: u64,
     <a href="../social_contracts/mydata.md#social_contracts_mydata_timestamp_end">timestamp_end</a>: Option&lt;u64&gt;,
     encrypted_data: vector&lt;u8&gt;,  // Pre-encrypted data from client
-    encryption_id: vector&lt;u8&gt;,   // Seal encryption ID
+    encryption_id: vector&lt;u8&gt;,   // <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a> encryption ID
     <a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>: Option&lt;u64&gt;,
     <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>: Option&lt;u64&gt;,
     <a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_duration_days">subscription_duration_days</a>: u64,

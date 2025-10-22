@@ -1,5 +1,5 @@
 [package]
-name = "USDC"
+name = "MyUSD"
 version = "0.0.1"
 published-at = "0x75d6"
 edition = "2024.beta"
@@ -9,4 +9,4 @@ MoveStdlib = { local = "../move-stdlib" }
 MySocial = { local = "../mys-framework" }
 
 [addresses]
-usdc = "0x75d6"
+myusd = "0x75d6"

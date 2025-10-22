@@ -2,20 +2,20 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-module usdc::usdc {
+module myusd::myusd {
     use mys::coin;
 
-    public struct USDC has drop {}
+    public struct MYUSD has drop {}
 
     const DECIMAL: u8 = 9;
 
-    fun init(otw: USDC, ctx: &mut mys::tx_context::TxContext) {
+    fun init(otw: MYUSD, ctx: &mut mys::tx_context::TxContext) {
         let (treasury_cap, metadata) = coin::create_currency(
             otw,
             DECIMAL,
-            b"USDC",
-            b"USD Coin",
-            b"Bridged USD Coin token",
+            b"myUSD",
+            b"MyUSD",
+            b"MySocial official USD stablecoin",
             std::option::none(),
             ctx
         );
@@ -26,7 +26,7 @@ module usdc::usdc {
     /// Test-only function to create bridge-compatible token setup
     /// This mirrors the pattern used in bridge tests
     #[test_only]
-    public fun create_bridge_token(ctx: &mut mys::tx_context::TxContext): (mys::package::UpgradeCap, mys::coin::TreasuryCap<USDC>, mys::coin::CoinMetadata<USDC>) {
+    public fun create_bridge_token(ctx: &mut mys::tx_context::TxContext): (mys::package::UpgradeCap, mys::coin::TreasuryCap<MYUSD>, mys::coin::CoinMetadata<MYUSD>) {
         use std::ascii;
         use std::type_name;
         use mys::address;
@@ -34,18 +34,18 @@ module usdc::usdc {
         use mys::package::test_publish;
         use mys::test_utils::create_one_time_witness;
 
-        let otw = create_one_time_witness<USDC>();
+        let otw = create_one_time_witness<MYUSD>();
         let (treasury_cap, metadata) = coin::create_currency(
             otw,
             DECIMAL,
-            b"USDC",
-            b"USD Coin",
-            b"Bridged USD Coin token",
+            b"myUSD",
+            b"MyUSD",
+            b"MySocial official USD stablecoin",
             std::option::none(),
             ctx
         );
         
-        let type_name = type_name::get<USDC>();
+        let type_name = type_name::get<MYUSD>();
         let address_bytes = hex::decode(
             ascii::into_bytes(type_name::get_address(&type_name)),
         );

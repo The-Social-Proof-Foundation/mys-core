@@ -22,7 +22,7 @@ module social_contracts::mydata {
     };
     use mys::mys::MYS;
     
-    // Proper Seal encryption support
+    // Proper encryption support
     use mydata::bf_hmac_encryption::{Self, EncryptedObject, VerifiedDerivedKey, PublicKey};
     
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
@@ -46,7 +46,7 @@ module social_contracts::mydata {
     const MAX_FREE_ACCESS_GRANTS: u64 = 100_000; // Limit free access to 100k users
     const MAX_U64: u64 = 18446744073709551615; // Max u64 value for overflow protection
 
-    /// Universal MyData for encrypted data monetization using proper Seal patterns
+    /// Universal MyData for encrypted data monetization
     public struct MyData has key, store {
         id: UID,
         owner: address,
@@ -62,9 +62,9 @@ module social_contracts::mydata {
         created_at: u64,
         last_updated: u64,
         
-        /// Properly sealed content using Seal encryption
-        encrypted_data: vector<u8>,             // Raw encrypted data from Seal
-        encryption_id: vector<u8>,              // Seal encryption ID for decryption
+        /// Properly sealed content using MyData encryption
+        encrypted_data: vector<u8>,             // Raw encrypted data from MyData
+        encryption_id: vector<u8>,              // MyData encryption ID for decryption
         
         /// Pricing options - user controlled
         one_time_price: Option<u64>,            // Price for one-time access (0 = free)
@@ -135,7 +135,7 @@ module social_contracts::mydata {
         transfer::share_object(registry);
     }
 
-    /// Create new MyData data with proper Seal encryption
+    /// Create new MyData data with proper MyData encryption
     public fun create(
         media_type: String,
         tags: vector<String>,
@@ -143,7 +143,7 @@ module social_contracts::mydata {
         timestamp_start: u64,
         timestamp_end: Option<u64>,
         encrypted_data: vector<u8>,  // Pre-encrypted data from client
-        encryption_id: vector<u8>,   // Seal encryption ID
+        encryption_id: vector<u8>,   // MyData encryption ID
         one_time_price: Option<u64>,
         subscription_price: Option<u64>,
         subscription_duration_days: u64,

@@ -152,7 +152,7 @@ async fn test_graphql_client_variables() {
         GraphqlQueryVariable {
             name: "deepbook_addr".to_string(),
             ty: "MysAddress!".to_string(),
-            value: json!("0xdee9"),
+            value: json!("0x0b0c"),
         },
     ];
     let res = cluster
@@ -192,12 +192,12 @@ async fn test_graphql_client_variables() {
         GraphqlQueryVariable {
             name: "deepbook_addr".to_string(),
             ty: "MysAddress!".to_string(),
-            value: json!("0xdee9"),
+            value: json!("0x0b0c"),
         },
         GraphqlQueryVariable {
             name: "deepbook_addr".to_string(),
             ty: "MysAddress!".to_string(),
-            value: json!("0xdee96666666"),
+            value: json!("0x0b0c66666666"),
         },
     ];
     let res = cluster
@@ -216,12 +216,12 @@ async fn test_graphql_client_variables() {
         GraphqlQueryVariable {
             name: "deepbook_addr".to_string(),
             ty: "MysAddress!".to_string(),
-            value: json!("0xdee9"),
+            value: json!("0x0b0c"),
         },
         GraphqlQueryVariable {
             name: "deepbook_addr".to_string(),
             ty: "MysAddressP!".to_string(),
-            value: json!("0xdee9"),
+            value: json!("0x0b0c"),
         },
     ];
     let res = cluster
@@ -240,22 +240,22 @@ async fn test_graphql_client_variables() {
         GraphqlQueryVariable {
             name: " deepbook_addr".to_string(),
             ty: "MysAddress!".to_string(),
-            value: json!("0xdee9"),
+            value: json!("0x0b0c"),
         },
         GraphqlQueryVariable {
             name: "4deepbook_addr".to_string(),
             ty: "MysAddressP!".to_string(),
-            value: json!("0xdee9"),
+            value: json!("0x0b0c"),
         },
         GraphqlQueryVariable {
             name: "".to_string(),
             ty: "MysAddress!".to_string(),
-            value: json!("0xdee9"),
+            value: json!("0x0b0c"),
         },
         GraphqlQueryVariable {
             name: " ".to_string(),
             ty: "MysAddress!".to_string(),
-            value: json!("0xdee9"),
+            value: json!("0x0b0c"),
         },
     ];
 

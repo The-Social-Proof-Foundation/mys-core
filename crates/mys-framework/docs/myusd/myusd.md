@@ -1,12 +1,12 @@
 ---
-title: Module `usdc::usdc`
+title: Module `myusd::myusd`
 ---
 
 
 
--  [Struct `USDC`](#usdc_usdc_USDC)
+-  [Struct `MYUSD`](#myusd_myusd_MYUSD)
 -  [Constants](#@Constants_0)
--  [Function `init`](#usdc_usdc_init)
+-  [Function `init`](#myusd_myusd_init)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
@@ -37,13 +37,13 @@ title: Module `usdc::usdc`
 
 
 
-<a name="usdc_usdc_USDC"></a>
+<a name="myusd_myusd_MYUSD"></a>
 
-## Struct `USDC`
+## Struct `MYUSD`
 
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../usdc/usdc.md#usdc_usdc_USDC">USDC</a> <b>has</b> drop
+<pre><code><b>public</b> <b>struct</b> <a href="../myusd/myusd.md#myusd_myusd_MYUSD">MYUSD</a> <b>has</b> drop
 </code></pre>
 
 
@@ -63,22 +63,22 @@ title: Module `usdc::usdc`
 ## Constants
 
 
-<a name="usdc_usdc_DECIMAL"></a>
+<a name="myusd_myusd_DECIMAL"></a>
 
 
 
-<pre><code><b>const</b> <a href="../usdc/usdc.md#usdc_usdc_DECIMAL">DECIMAL</a>: u8 = 9;
+<pre><code><b>const</b> <a href="../myusd/myusd.md#myusd_myusd_DECIMAL">DECIMAL</a>: u8 = 9;
 </code></pre>
 
 
 
-<a name="usdc_usdc_init"></a>
+<a name="myusd_myusd_init"></a>
 
 ## Function `init`
 
 
 
-<pre><code><b>fun</b> <a href="../usdc/usdc.md#usdc_usdc_init">init</a>(otw: <a href="../usdc/usdc.md#usdc_usdc_USDC">usdc::usdc::USDC</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../myusd/myusd.md#myusd_myusd_init">init</a>(otw: <a href="../myusd/myusd.md#myusd_myusd_MYUSD">myusd::myusd::MYUSD</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -87,13 +87,13 @@ title: Module `usdc::usdc`
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../usdc/usdc.md#usdc_usdc_init">init</a>(otw: <a href="../usdc/usdc.md#usdc_usdc_USDC">USDC</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>) {
+<pre><code><b>fun</b> <a href="../myusd/myusd.md#myusd_myusd_init">init</a>(otw: <a href="../myusd/myusd.md#myusd_myusd_MYUSD">MYUSD</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>) {
     <b>let</b> (treasury_cap, metadata) = coin::create_currency(
         otw,
-        <a href="../usdc/usdc.md#usdc_usdc_DECIMAL">DECIMAL</a>,
-        b"<a href="../usdc/usdc.md#usdc_usdc_USDC">USDC</a>",
-        b"USD Coin",
-        b"Bridged USD Coin token",
+        <a href="../myusd/myusd.md#myusd_myusd_DECIMAL">DECIMAL</a>,
+        b"myUSD",
+        b"MyUSD",
+        b"MySocial official USD stablecoin",
         <a href="../std/option.md#std_option_none">std::option::none</a>(),
         ctx
     );

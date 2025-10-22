@@ -2038,6 +2038,12 @@ create
 per_type_list
 	fun
 	0x2::deny_list
+CoinCreationAdminCap
+	public struct
+	0x2::coin
+CoinCreationBootstrapKey
+	public struct
+	0x2::coin
 Coin
 	public struct
 	0x2::coin
@@ -2058,6 +2064,12 @@ CurrencyCreated
 	0x2::coin
 DenyCap
 	public struct
+	0x2::coin
+init
+	fun
+	0x2::coin
+create_coin_creation_admin_cap
+	public fun
 	0x2::coin
 total_supply
 	public fun
@@ -2108,6 +2120,9 @@ destroy_zero
 	public fun
 	0x2::coin
 create_currency
+	public fun
+	0x2::coin
+create_currency_with_admin
 	public fun
 	0x2::coin
 create_regulated_currency_v2
@@ -3039,589 +3054,589 @@ check_zklogin_issuer_internal
 	0x2::zklogin_verified_issuer
 unsafe_mul
 	public(package) fun
-	0xdee9::math
+	0xb0c::math
 unsafe_mul_round
 	public(package) fun
-	0xdee9::math
+	0xb0c::math
 mul
 	public fun
-	0xdee9::math
+	0xb0c::math
 mul_round
 	public fun
-	0xdee9::math
+	0xb0c::math
 unsafe_div
 	public(package) fun
-	0xdee9::math
+	0xb0c::math
 unsafe_div_round
 	public(package) fun
-	0xdee9::math
+	0xb0c::math
 div_round
 	public fun
-	0xdee9::math
+	0xb0c::math
 count_leading_zeros
 	public(package) fun
-	0xdee9::math
+	0xb0c::math
 Account
 	public struct
-	0xdee9::custodian
+	0xb0c::custodian
 AccountCap
 	public struct
-	0xdee9::custodian
+	0xb0c::custodian
 Custodian
 	public struct
-	0xdee9::custodian
+	0xb0c::custodian
 mint_account_cap
 	public fun
-	0xdee9::custodian
+	0xb0c::custodian
 account_balance
 	public(package) fun
-	0xdee9::custodian
+	0xb0c::custodian
 new
 	public(package) fun
-	0xdee9::custodian
+	0xb0c::custodian
 withdraw_asset
 	public(package) fun
-	0xdee9::custodian
+	0xb0c::custodian
 increase_user_available_balance
 	public(package) fun
-	0xdee9::custodian
+	0xb0c::custodian
 decrease_user_available_balance
 	public(package) fun
-	0xdee9::custodian
+	0xb0c::custodian
 increase_user_locked_balance
 	public(package) fun
-	0xdee9::custodian
+	0xb0c::custodian
 decrease_user_locked_balance
 	public(package) fun
-	0xdee9::custodian
+	0xb0c::custodian
 lock_balance
 	public(package) fun
-	0xdee9::custodian
+	0xb0c::custodian
 unlock_balance
 	public(package) fun
-	0xdee9::custodian
+	0xb0c::custodian
 account_available_balance
 	public(package) fun
-	0xdee9::custodian
+	0xb0c::custodian
 account_locked_balance
 	public(package) fun
-	0xdee9::custodian
+	0xb0c::custodian
 borrow_mut_account_balance
 	fun
-	0xdee9::custodian
+	0xb0c::custodian
 Leaf
 	public struct
-	0xdee9::critbit
+	0xb0c::critbit
 InternalNode
 	public struct
-	0xdee9::critbit
+	0xb0c::critbit
 CritbitTree
 	public struct
-	0xdee9::critbit
+	0xb0c::critbit
 new
 	public(package) fun
-	0xdee9::critbit
+	0xb0c::critbit
 size
 	public(package) fun
-	0xdee9::critbit
+	0xb0c::critbit
 is_empty
 	public(package) fun
-	0xdee9::critbit
+	0xb0c::critbit
 min_leaf
 	public fun
-	0xdee9::critbit
+	0xb0c::critbit
 max_leaf
 	public fun
-	0xdee9::critbit
+	0xb0c::critbit
 previous_leaf
 	public fun
-	0xdee9::critbit
+	0xb0c::critbit
 next_leaf
 	public fun
-	0xdee9::critbit
+	0xb0c::critbit
 left_most_leaf
 	fun
-	0xdee9::critbit
+	0xb0c::critbit
 right_most_leaf
 	fun
-	0xdee9::critbit
+	0xb0c::critbit
 insert_leaf
 	public(package) fun
-	0xdee9::critbit
+	0xb0c::critbit
 find_leaf
 	public fun
-	0xdee9::critbit
+	0xb0c::critbit
 find_closest_key
 	public(package) fun
-	0xdee9::critbit
+	0xb0c::critbit
 remove_leaf_by_index
 	public(package) fun
-	0xdee9::critbit
+	0xb0c::critbit
 borrow_mut_leaf_by_index
 	public(package) fun
-	0xdee9::critbit
+	0xb0c::critbit
 borrow_leaf_by_index
 	public fun
-	0xdee9::critbit
+	0xb0c::critbit
 borrow_leaf_by_key
 	public fun
-	0xdee9::critbit
+	0xb0c::critbit
 drop
 	public(package) fun
-	0xdee9::critbit
+	0xb0c::critbit
 destroy_empty
 	public(package) fun
-	0xdee9::critbit
+	0xb0c::critbit
 get_closest_leaf_index_by_key
 	fun
-	0xdee9::critbit
+	0xb0c::critbit
 update_child
 	fun
-	0xdee9::critbit
+	0xb0c::critbit
 is_left_child
 	fun
-	0xdee9::critbit
+	0xb0c::critbit
 PoolCreated
 	public struct
-	0xdee9::clob
+	0xb0c::clob
 OrderPlacedV2
 	public struct
-	0xdee9::clob
+	0xb0c::clob
 OrderCanceled
 	public struct
-	0xdee9::clob
+	0xb0c::clob
 OrderFilledV2
 	public struct
-	0xdee9::clob
+	0xb0c::clob
 Order
 	public struct
-	0xdee9::clob
+	0xb0c::clob
 TickLevel
 	public struct
-	0xdee9::clob
+	0xb0c::clob
 Pool
 	public struct
-	0xdee9::clob
+	0xb0c::clob
 OrderPlaced
 	public struct
-	0xdee9::clob
+	0xb0c::clob
 OrderFilled
 	public struct
-	0xdee9::clob
+	0xb0c::clob
 destroy_empty_level
 	fun
-	0xdee9::clob
+	0xb0c::clob
 create_account
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 create_pool
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 deposit_base
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 deposit_quote
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 withdraw_base
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 withdraw_quote
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 swap_exact_base_for_quote
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 swap_exact_quote_for_base
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 match_bid_with_quote_quantity
 	fun
-	0xdee9::clob
+	0xb0c::clob
 match_bid
 	fun
-	0xdee9::clob
+	0xb0c::clob
 match_ask
 	fun
-	0xdee9::clob
+	0xb0c::clob
 place_market_order
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 inject_limit_order
 	fun
-	0xdee9::clob
+	0xb0c::clob
 place_limit_order
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 order_is_bid
 	fun
-	0xdee9::clob
+	0xb0c::clob
 emit_order_canceled
 	fun
-	0xdee9::clob
+	0xb0c::clob
 emit_order_filled
 	fun
-	0xdee9::clob
+	0xb0c::clob
 cancel_order
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 remove_order
 	fun
-	0xdee9::clob
+	0xb0c::clob
 cancel_all_orders
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 batch_cancel_order
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 list_open_orders
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 account_balance
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 get_market_price
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 get_level2_book_status_bid_side
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 get_level2_book_status_ask_side
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 get_level2_book_status
 	fun
-	0xdee9::clob
+	0xb0c::clob
 get_order_status
 	public fun
-	0xdee9::clob
+	0xb0c::clob
 Account
 	public struct
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 AccountCap
 	public struct
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 Custodian
 	public struct
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 mint_account_cap
 	public(package) fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 create_child_account_cap
 	public fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 delete_account_cap
 	public fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 account_owner
 	public fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 account_balance
 	public(package) fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 new
 	public(package) fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 withdraw_asset
 	public(package) fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 increase_user_available_balance
 	public(package) fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 decrease_user_available_balance
 	public(package) fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 increase_user_locked_balance
 	public(package) fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 decrease_user_locked_balance
 	public(package) fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 lock_balance
 	public(package) fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 unlock_balance
 	public(package) fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 account_available_balance
 	public(package) fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 account_locked_balance
 	public(package) fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 borrow_mut_account_balance
 	fun
-	0xdee9::custodian_v2
+	0xb0c::custodian_v2
 PoolCreated
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 OrderPlaced
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 OrderCanceled
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 AllOrdersCanceledComponent
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 AllOrdersCanceled
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 OrderFilled
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 DepositAsset
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 WithdrawAsset
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 MatchedOrderMetadata
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 Order
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 TickLevel
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 Pool
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 PoolOwnerCap
 	public struct
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 usr_open_orders_exist
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 usr_open_orders_for_address
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 usr_open_orders
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 withdraw_fees
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 delete_pool_owner_cap
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 destroy_empty_level
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 create_account
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 create_pool_
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 create_pool
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 create_customized_pool
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 create_pool_with_return_
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 create_pool_with_return
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 create_customized_pool_with_return
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 create_customized_pool_v2
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 deposit_base
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 deposit_quote
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 withdraw_base
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 withdraw_quote
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 swap_exact_base_for_quote
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 swap_exact_base_for_quote_with_metadata
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 swap_exact_quote_for_base
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 swap_exact_quote_for_base_with_metadata
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 match_bid_with_quote_quantity
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 match_bid
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 match_ask
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 place_market_order
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 place_market_order_with_metadata
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 place_market_order_int
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 inject_limit_order
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 place_limit_order
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 place_limit_order_with_metadata
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 place_limit_order_int
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 order_is_bid
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 emit_order_canceled
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 emit_order_filled
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 cancel_order
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 remove_order
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 cancel_all_orders
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 batch_cancel_order
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 clean_up_expired_orders
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 list_open_orders
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 account_balance
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 get_market_price
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 get_level2_book_status_bid_side
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 get_level2_book_status_ask_side
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 get_level2_book_status
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 get_order_status
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 matched_order_metadata
 	fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 matched_order_metadata_info
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 asks
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 bids
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 tick_size
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 maker_rebate_rate
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 taker_fee_rate
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 pool_size
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 open_orders
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 order_id
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 tick_level
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 original_quantity
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 quantity
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 is_bid
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 owner
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 expire_timestamp
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 quote_asset_trading_fees_value
 	public fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 clone_order
 	public(package) fun
-	0xdee9::clob_v2
+	0xb0c::clob_v2
 OrderPage
 	public struct
-	0xdee9::order_query
+	0xb0c::order_query
 iter_bids
 	public fun
-	0xdee9::order_query
+	0xb0c::order_query
 iter_asks
 	public fun
-	0xdee9::order_query
+	0xb0c::order_query
 iter_ticks_internal
 	fun
-	0xdee9::order_query
+	0xb0c::order_query
 orders
 	public fun
-	0xdee9::order_query
+	0xb0c::order_query
 has_next_page
 	public fun
-	0xdee9::order_query
+	0xb0c::order_query
 next_tick_level
 	public fun
-	0xdee9::order_query
+	0xb0c::order_query
 next_order_id
 	public fun
-	0xdee9::order_query
+	0xb0c::order_query
 order_id
 	public fun
-	0xdee9::order_query
+	0xb0c::order_query
 tick_level
 	public fun
-	0xdee9::order_query
-USDC
+	0xb0c::order_query
+MYUSD
 	public struct
-	0x75d6::usdc
+	0x75d6::myusd
 init
 	fun
-	0x75d6::usdc
+	0x75d6::myusd
 BridgeTreasury
 	public struct
 	0xb::treasury
@@ -4683,1873 +4698,2068 @@ to_string
 	0x1::u8
 UpgradeAdminCap
 	public struct
-	0xd880::upgrade
+	0x50c1::upgrade
 UpgradeEvent
 	public struct
-	0xd880::upgrade
+	0x50c1::upgrade
 ObjectMigratedEvent
 	public struct
-	0xd880::upgrade
+	0x50c1::upgrade
 authorize_upgrade
 	public fun
-	0xd880::upgrade
+	0x50c1::upgrade
 commit_upgrade
 	public fun
-	0xd880::upgrade
+	0x50c1::upgrade
 version
 	public fun
-	0xd880::upgrade
+	0x50c1::upgrade
 package_id
 	public fun
-	0xd880::upgrade
+	0x50c1::upgrade
 current_version
 	public fun
-	0xd880::upgrade
+	0x50c1::upgrade
 assert_version
 	public fun
-	0xd880::upgrade
+	0x50c1::upgrade
 emit_migration_event
 	public fun
-	0xd880::upgrade
+	0x50c1::upgrade
 create_upgrade_admin_cap
 	public(package) fun
-	0xd880::upgrade
+	0x50c1::upgrade
 BlockList
 	public struct
-	0xd880::block_list
+	0x50c1::block_list
 BlockListRegistry
 	public struct
-	0xd880::block_list
+	0x50c1::block_list
 UserBlockEvent
 	public struct
-	0xd880::block_list
+	0x50c1::block_list
 UserUnblockEvent
 	public struct
-	0xd880::block_list
+	0x50c1::block_list
 BlockListCreatedEvent
 	public struct
-	0xd880::block_list
+	0x50c1::block_list
 create_block_list
 	public fun
-	0xd880::block_list
+	0x50c1::block_list
 create_block_list_for_sender
 	public entry fun
-	0xd880::block_list
+	0x50c1::block_list
 bootstrap_init
 	public(package) fun
-	0xd880::block_list
+	0x50c1::block_list
 get_blocked_wallets_key
 	fun
-	0xd880::block_list
+	0x50c1::block_list
 block_wallet
 	public entry fun
-	0xd880::block_list
+	0x50c1::block_list
 unblock_wallet
 	public entry fun
-	0xd880::block_list
+	0x50c1::block_list
 has_block_list
 	public fun
-	0xd880::block_list
+	0x50c1::block_list
 find_block_list_id
 	public fun
-	0xd880::block_list
+	0x50c1::block_list
 is_blocked
 	public fun
-	0xd880::block_list
+	0x50c1::block_list
 blocked_count
 	public fun
-	0xd880::block_list
+	0x50c1::block_list
 get_blocked_wallets
 	public fun
-	0xd880::block_list
+	0x50c1::block_list
 version
 	public fun
-	0xd880::block_list
+	0x50c1::block_list
 borrow_version_mut
 	public fun
-	0xd880::block_list
+	0x50c1::block_list
 registry_version
 	public fun
-	0xd880::block_list
+	0x50c1::block_list
 borrow_registry_version_mut
 	public fun
-	0xd880::block_list
+	0x50c1::block_list
 migrate_block_list
 	public entry fun
-	0xd880::block_list
+	0x50c1::block_list
 migrate_block_list_registry
 	public entry fun
-	0xd880::block_list
+	0x50c1::block_list
 ProfileSubscriptionService
 	public struct
-	0xd880::subscription
+	0x50c1::subscription
 ProfileSubscription
 	public struct
-	0xd880::subscription
+	0x50c1::subscription
 ProfileSubscriptionCreatedEvent
 	public struct
-	0xd880::subscription
+	0x50c1::subscription
 ProfileSubscriptionRenewedEvent
 	public struct
-	0xd880::subscription
+	0x50c1::subscription
 ProfileSubscriptionCancelledEvent
 	public struct
-	0xd880::subscription
+	0x50c1::subscription
 ProfileSubscriptionUpdatedEvent
 	public struct
-	0xd880::subscription
+	0x50c1::subscription
 create_profile_service
 	public fun
-	0xd880::subscription
+	0x50c1::subscription
 create_profile_service_entry
 	public entry fun
-	0xd880::subscription
+	0x50c1::subscription
 subscribe_to_profile
 	public entry fun
-	0xd880::subscription
+	0x50c1::subscription
 renew_subscription
 	public entry fun
-	0xd880::subscription
+	0x50c1::subscription
 auto_renew_subscription
 	public entry fun
-	0xd880::subscription
+	0x50c1::subscription
 can_auto_renew
 	public fun
-	0xd880::subscription
+	0x50c1::subscription
 fund_renewal_balance
 	public entry fun
-	0xd880::subscription
+	0x50c1::subscription
 is_subscription_valid
 	public fun
-	0xd880::subscription
+	0x50c1::subscription
 seal_approve
 	public entry fun
-	0xd880::subscription
+	0x50c1::subscription
 update_service_fee
 	public entry fun
-	0xd880::subscription
+	0x50c1::subscription
 deactivate_service
 	public entry fun
-	0xd880::subscription
+	0x50c1::subscription
 cancel_subscription
 	public entry fun
-	0xd880::subscription
+	0x50c1::subscription
 service_monthly_fee
 	public fun
-	0xd880::subscription
+	0x50c1::subscription
 service_subscriber_count
 	public fun
-	0xd880::subscription
+	0x50c1::subscription
 subscription_expires_at
 	public fun
-	0xd880::subscription
+	0x50c1::subscription
 subscription_auto_renew
 	public fun
-	0xd880::subscription
+	0x50c1::subscription
 subscription_renewal_balance
 	public fun
-	0xd880::subscription
+	0x50c1::subscription
 EcosystemTreasury
 	public struct
-	0xd880::profile
+	0x50c1::profile
 UsernameRegistry
 	public struct
-	0xd880::profile
+	0x50c1::profile
 Profile
 	public struct
-	0xd880::profile
+	0x50c1::profile
 ProfileBadge
 	public struct
-	0xd880::profile
+	0x50c1::profile
 VestingWallet
 	public struct
-	0xd880::profile
+	0x50c1::profile
 BadgeAssignedEvent
 	public struct
-	0xd880::profile
+	0x50c1::profile
 BadgeRevokedEvent
 	public struct
-	0xd880::profile
+	0x50c1::profile
 ProfileCreatedEvent
 	public struct
-	0xd880::profile
+	0x50c1::profile
 ProfileUpdatedEvent
 	public struct
-	0xd880::profile
+	0x50c1::profile
 ProfileOfferCreatedEvent
 	public struct
-	0xd880::profile
+	0x50c1::profile
 ProfileOfferAcceptedEvent
 	public struct
-	0xd880::profile
+	0x50c1::profile
 ProfileOfferRejectedEvent
 	public struct
-	0xd880::profile
+	0x50c1::profile
 ProfileOffer
 	public struct
-	0xd880::profile
+	0x50c1::profile
 ProfileSaleFeeEvent
 	public struct
-	0xd880::profile
+	0x50c1::profile
 TokensVestedEvent
 	public struct
-	0xd880::profile
+	0x50c1::profile
 TokensClaimedEvent
 	public struct
-	0xd880::profile
+	0x50c1::profile
 bootstrap_init
 	public(package) fun
-	0xd880::profile
+	0x50c1::profile
 is_reserved_name
 	public fun
-	0xd880::profile
+	0x50c1::profile
 to_lowercase_bytes
 	fun
-	0xd880::profile
+	0x50c1::profile
 to_lowercase_byte
 	fun
-	0xd880::profile
+	0x50c1::profile
 ascii_to_string
 	fun
-	0xd880::profile
+	0x50c1::profile
 create_profile
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 transfer_profile
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 update_profile
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 display_name
 	public fun
-	0xd880::profile
+	0x50c1::profile
 bio
 	public fun
-	0xd880::profile
+	0x50c1::profile
 profile_picture
 	public fun
-	0xd880::profile
+	0x50c1::profile
 cover_photo
 	public fun
-	0xd880::profile
+	0x50c1::profile
 owner
 	public fun
-	0xd880::profile
+	0x50c1::profile
 id
 	public fun
-	0xd880::profile
+	0x50c1::profile
 last_updated
 	public fun
-	0xd880::profile
+	0x50c1::profile
 username
 	public fun
-	0xd880::profile
+	0x50c1::profile
 lookup_profile_by_username
 	public fun
-	0xd880::profile
+	0x50c1::profile
 lookup_profile_by_owner
 	public fun
-	0xd880::profile
+	0x50c1::profile
 is_authorized_service
 	public fun
-	0xd880::profile
+	0x50c1::profile
 authorize_service
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 revoke_authorization
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 get_id_address
 	public fun
-	0xd880::profile
+	0x50c1::profile
 get_owner
 	public fun
-	0xd880::profile
+	0x50c1::profile
 get_followers_count
 	public fun
-	0xd880::profile
+	0x50c1::profile
 get_post_count
 	public fun
-	0xd880::profile
+	0x50c1::profile
 get_tips_received
 	public fun
-	0xd880::profile
+	0x50c1::profile
 increment_followers_count
 	public fun
-	0xd880::profile
+	0x50c1::profile
 decrement_followers_count
 	public fun
-	0xd880::profile
+	0x50c1::profile
 increment_post_count
 	public fun
-	0xd880::profile
+	0x50c1::profile
 decrement_post_count
 	public fun
-	0xd880::profile
+	0x50c1::profile
 add_tips_received
 	public fun
-	0xd880::profile
+	0x50c1::profile
 get_following_count
 	public fun
-	0xd880::profile
+	0x50c1::profile
 increment_following_count
 	public fun
-	0xd880::profile
+	0x50c1::profile
 decrement_following_count
 	public fun
-	0xd880::profile
+	0x50c1::profile
 create_subscription_service
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 has_valid_subscription
 	public fun
-	0xd880::profile
-attach_my_ip
+	0x50c1::profile
+attach_mydata
 	public entry fun
-	0xd880::profile
-has_my_ip_attached
+	0x50c1::profile
+has_mydata_attached
 	public fun
-	0xd880::profile
-detach_my_ip
+	0x50c1::profile
+detach_mydata
 	public entry fun
-	0xd880::profile
-get_attached_my_ips
+	0x50c1::profile
+get_attached_mydata
 	public fun
-	0xd880::profile
-batch_attach_my_ips
+	0x50c1::profile
+batch_attach_mydata
 	public entry fun
-	0xd880::profile
-batch_detach_my_ips
+	0x50c1::profile
+batch_detach_mydata
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 create_offer
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 accept_offer
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 reject_or_revoke_offer
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 has_offer_from
 	public fun
-	0xd880::profile
+	0x50c1::profile
 has_offers
 	public fun
-	0xd880::profile
+	0x50c1::profile
 get_treasury_address
 	public fun
-	0xd880::profile
+	0x50c1::profile
 version
 	public fun
-	0xd880::profile
+	0x50c1::profile
 borrow_version_mut
 	public fun
-	0xd880::profile
+	0x50c1::profile
 migrate_registry
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 min_offer_amount
 	public fun
-	0xd880::profile
+	0x50c1::profile
 is_for_sale
 	public fun
-	0xd880::profile
+	0x50c1::profile
 add_badge_to_profile
 	public fun
-	0xd880::profile
+	0x50c1::profile
 remove_badge_from_profile
 	public fun
-	0xd880::profile
+	0x50c1::profile
 get_profile_badges
 	public fun
-	0xd880::profile
+	0x50c1::profile
 has_badge
 	public fun
-	0xd880::profile
+	0x50c1::profile
 get_badge
 	public fun
-	0xd880::profile
+	0x50c1::profile
 get_platform_badges
 	public fun
-	0xd880::profile
+	0x50c1::profile
 badge_count
 	public fun
-	0xd880::profile
+	0x50c1::profile
 vest_myso
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 claim_vested_tokens
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 claimable
 	public fun
-	0xd880::profile
+	0x50c1::profile
 calculate_claimable
 	fun
-	0xd880::profile
+	0x50c1::profile
 sqrt_approximation
 	fun
-	0xd880::profile
+	0x50c1::profile
 delete_vesting_wallet
 	public entry fun
-	0xd880::profile
+	0x50c1::profile
 vesting_balance
 	public fun
-	0xd880::profile
+	0x50c1::profile
 vesting_owner
 	public fun
-	0xd880::profile
+	0x50c1::profile
 vesting_start_time
 	public fun
-	0xd880::profile
+	0x50c1::profile
 vesting_duration
 	public fun
-	0xd880::profile
+	0x50c1::profile
 vesting_total_amount
 	public fun
-	0xd880::profile
+	0x50c1::profile
 vesting_claimed_amount
 	public fun
-	0xd880::profile
+	0x50c1::profile
 vesting_curve_factor
 	public fun
-	0xd880::profile
+	0x50c1::profile
+set_paid_messaging_settings
+	public entry fun
+	0x50c1::profile
+get_paid_messaging_settings
+	public fun
+	0x50c1::profile
+requires_paid_message
+	public fun
+	0x50c1::profile
+get_min_message_cost
+	public fun
+	0x50c1::profile
 GovernanceAdminCap
 	public struct
-	0xd880::governance
+	0x50c1::governance
 GovernanceDAO
 	public struct
-	0xd880::governance
+	0x50c1::governance
 Delegate
 	public struct
-	0xd880::governance
+	0x50c1::governance
 NominatedDelegate
 	public struct
-	0xd880::governance
+	0x50c1::governance
 Proposal
 	public struct
-	0xd880::governance
+	0x50c1::governance
 Vote
 	public struct
-	0xd880::governance
+	0x50c1::governance
 DelegateElectedEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 DelegateNominatedEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 DelegateVotedEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 ProposalSubmittedEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 DelegateVoteEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 CommunityVoteEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 AnonymousVoteEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 ProposalApprovedForVotingEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 ProposalRejectedEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 ProposalApprovedEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 ProposalRejectedByCommunityEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 ProposalImplementedEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 RewardsDistributedEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 VoteDecryptionFailedEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 ProposalRescindedEvent
 	public struct
-	0xd880::governance
+	0x50c1::governance
 bootstrap_init
 	public(package) fun
-	0xd880::governance
+	0x50c1::governance
 initialize_registry_tables
 	fun
-	0xd880::governance
+	0x50c1::governance
 update_governance_parameters
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 nominate_delegate
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 vote_for_delegate
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 update_delegate_panel
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 submit_proposal
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 submit_ecosystem_proposal
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 submit_proof_of_creativity_proposal
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 submit_proposal_internal
 	fun
-	0xd880::governance
+	0x50c1::governance
 rescind_proposal
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 delegate_vote_on_proposal
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 move_to_community_voting_by_id
 	fun
-	0xd880::governance
+	0x50c1::governance
 reject_proposal_by_id
 	fun
-	0xd880::governance
+	0x50c1::governance
 community_vote_on_proposal
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 community_vote_anonymous
 	public fun
-	0xd880::governance
+	0x50c1::governance
 finalize_proposal
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 finalize_proposal_anonymous
 	public fun
-	0xd880::governance
+	0x50c1::governance
 distribute_rewards
 	fun
-	0xd880::governance
+	0x50c1::governance
 mark_proposal_implemented
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 get_proposals_by_type
 	public fun
-	0xd880::governance
+	0x50c1::governance
 get_proposals_by_status
 	public fun
-	0xd880::governance
+	0x50c1::governance
 get_delegate_count
 	public fun
-	0xd880::governance
+	0x50c1::governance
 get_delegate_info
 	public fun
-	0xd880::governance
+	0x50c1::governance
 get_proposal_info
 	public fun
-	0xd880::governance
+	0x50c1::governance
 treasury_balance
 	public fun
-	0xd880::governance
+	0x50c1::governance
 calculate_vote_cost
 	public fun
-	0xd880::governance
+	0x50c1::governance
 is_delegate
 	public fun
-	0xd880::governance
+	0x50c1::governance
 is_delegate_term_expired
 	public fun
-	0xd880::governance
+	0x50c1::governance
 get_governance_parameters
 	public fun
-	0xd880::governance
+	0x50c1::governance
 reject_proposal_manually
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 create_platform_governance
 	public fun
-	0xd880::governance
+	0x50c1::governance
 version
 	public fun
-	0xd880::governance
+	0x50c1::governance
 set_version
 	public fun
-	0xd880::governance
+	0x50c1::governance
 migrate_registry
 	public entry fun
-	0xd880::governance
+	0x50c1::governance
 create_governance_admin_cap
 	public(package) fun
-	0xd880::governance
+	0x50c1::governance
 PlatformStatus
 	public struct
-	0xd880::platform
+	0x50c1::platform
 PlatformAdminCap
 	public struct
-	0xd880::platform
+	0x50c1::platform
 Platform
 	public struct
-	0xd880::platform
+	0x50c1::platform
 PlatformRegistry
 	public struct
-	0xd880::platform
+	0x50c1::platform
 PlatformCreatedEvent
 	public struct
-	0xd880::platform
+	0x50c1::platform
 PlatformUpdatedEvent
 	public struct
-	0xd880::platform
+	0x50c1::platform
 PlatformBlockedProfileEvent
 	public struct
-	0xd880::platform
+	0x50c1::platform
 PlatformUnblockedProfileEvent
 	public struct
-	0xd880::platform
+	0x50c1::platform
 ModeratorAddedEvent
 	public struct
-	0xd880::platform
+	0x50c1::platform
 ModeratorRemovedEvent
 	public struct
-	0xd880::platform
+	0x50c1::platform
 PlatformApprovalChangedEvent
 	public struct
-	0xd880::platform
+	0x50c1::platform
 UserJoinedPlatformEvent
 	public struct
-	0xd880::platform
+	0x50c1::platform
 UserLeftPlatformEvent
 	public struct
-	0xd880::platform
+	0x50c1::platform
 TokenAirdropEvent
 	public struct
-	0xd880::platform
+	0x50c1::platform
 bootstrap_init
 	public(package) fun
-	0xd880::platform
+	0x50c1::platform
 create_platform
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 update_platform
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 platform_version
 	public fun
-	0xd880::platform
+	0x50c1::platform
 borrow_platform_version_mut
 	public fun
-	0xd880::platform
+	0x50c1::platform
 registry_version
 	public fun
-	0xd880::platform
+	0x50c1::platform
 borrow_registry_version_mut
 	public fun
-	0xd880::platform
+	0x50c1::platform
 add_to_treasury
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 add_moderator
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 remove_moderator
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 block_profile
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 unblock_profile
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 toggle_platform_approval
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 new_status
 	public fun
-	0xd880::platform
+	0x50c1::platform
 status_value
 	public fun
-	0xd880::platform
+	0x50c1::platform
 join_platform
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 leave_platform
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 is_approved
 	public fun
-	0xd880::platform
+	0x50c1::platform
 has_joined_platform
 	public fun
-	0xd880::platform
+	0x50c1::platform
 is_developer_or_moderator
 	public fun
-	0xd880::platform
+	0x50c1::platform
 name
 	public fun
-	0xd880::platform
+	0x50c1::platform
 tagline
 	public fun
-	0xd880::platform
+	0x50c1::platform
 description
 	public fun
-	0xd880::platform
+	0x50c1::platform
 logo
 	public fun
-	0xd880::platform
+	0x50c1::platform
 developer
 	public fun
-	0xd880::platform
+	0x50c1::platform
 terms_of_service
 	public fun
-	0xd880::platform
+	0x50c1::platform
 privacy_policy
 	public fun
-	0xd880::platform
+	0x50c1::platform
 get_platforms
 	public fun
-	0xd880::platform
+	0x50c1::platform
 get_links
 	public fun
-	0xd880::platform
+	0x50c1::platform
 status
 	public fun
-	0xd880::platform
+	0x50c1::platform
 release_date
 	public fun
-	0xd880::platform
+	0x50c1::platform
 shutdown_date
 	public fun
-	0xd880::platform
+	0x50c1::platform
 created_at
 	public fun
-	0xd880::platform
+	0x50c1::platform
 treasury_balance
 	public fun
-	0xd880::platform
+	0x50c1::platform
 id
 	public fun
-	0xd880::platform
+	0x50c1::platform
 is_moderator
 	public fun
-	0xd880::platform
+	0x50c1::platform
 get_moderators
 	public fun
-	0xd880::platform
+	0x50c1::platform
 get_platform_by_name
 	public fun
-	0xd880::platform
+	0x50c1::platform
 get_platforms_by_developer
 	public fun
-	0xd880::platform
+	0x50c1::platform
 is_profile_blocked
 	public fun
-	0xd880::platform
+	0x50c1::platform
 is_profile_blocked_by_id
 	public fun
-	0xd880::platform
+	0x50c1::platform
 get_blocked_profiles
 	public fun
-	0xd880::platform
+	0x50c1::platform
 wants_dao_governance
 	public fun
-	0xd880::platform
+	0x50c1::platform
 governance_registry_id
 	public fun
-	0xd880::platform
+	0x50c1::platform
 governance_parameters
 	public fun
-	0xd880::platform
+	0x50c1::platform
 airdrop_from_treasury
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 assign_badge
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 revoke_badge
 	public entry fun
-	0xd880::platform
+	0x50c1::platform
 add_moderator_register
 	public fun
-	0xd880::platform
+	0x50c1::platform
 remove_moderator_unregister
 	public fun
-	0xd880::platform
+	0x50c1::platform
 create_platform_admin_cap
 	public(package) fun
-	0xd880::platform
+	0x50c1::platform
 Post
 	public struct
-	0xd880::post
+	0x50c1::post
 Comment
 	public struct
-	0xd880::post
+	0x50c1::post
 Repost
 	public struct
-	0xd880::post
+	0x50c1::post
 PredictionOption
 	public struct
-	0xd880::post
+	0x50c1::post
 PredictionBet
 	public struct
-	0xd880::post
+	0x50c1::post
 PredictionData
 	public struct
-	0xd880::post
+	0x50c1::post
 PromotionView
 	public struct
-	0xd880::post
+	0x50c1::post
 PromotionData
 	public struct
-	0xd880::post
+	0x50c1::post
 PostAdminCap
 	public struct
-	0xd880::post
+	0x50c1::post
 PostConfig
 	public struct
-	0xd880::post
+	0x50c1::post
 PostParametersUpdatedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PostCreatedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 CommentCreatedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 RepostEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 ReactionEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 RemoveReactionEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 TipEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 OwnershipTransferEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PostModerationEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PostUpdatedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 CommentUpdatedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PostReportedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 CommentReportedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PostDeletedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 CommentDeletedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PredictionCreatedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PredictionBetPlacedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PredictionResolvedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PredictionPayoutEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PredictionBetWithdrawnEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PromotedPostCreatedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PromotedPostViewConfirmedEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PromotionStatusToggledEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 PromotionFundsWithdrawnEvent
 	public struct
-	0xd880::post
+	0x50c1::post
 ModerationRecord
 	public struct
-	0xd880::post
+	0x50c1::post
 is_auto_pool_disabled
 	public fun
-	0xd880::post
+	0x50c1::post
 set_auto_pool_disabled
 	public entry fun
-	0xd880::post
+	0x50c1::post
 bootstrap_init
 	public(package) fun
-	0xd880::post
+	0x50c1::post
 set_predictions_enabled
 	public entry fun
-	0xd880::post
+	0x50c1::post
 set_prediction_fee
 	public entry fun
-	0xd880::post
+	0x50c1::post
 is_predictions_enabled
 	public fun
-	0xd880::post
+	0x50c1::post
 create_prediction_post
 	public entry fun
-	0xd880::post
+	0x50c1::post
 place_prediction_bet
 	public entry fun
-	0xd880::post
+	0x50c1::post
 withdraw_prediction_bet
 	public entry fun
-	0xd880::post
+	0x50c1::post
 resolve_prediction
 	public entry fun
-	0xd880::post
+	0x50c1::post
 create_post_internal
 	fun
-	0xd880::post
+	0x50c1::post
 create_post
 	public entry fun
-	0xd880::post
+	0x50c1::post
 create_comment
 	public entry fun
-	0xd880::post
+	0x50c1::post
 create_repost
 	public entry fun
-	0xd880::post
+	0x50c1::post
 delete_post
 	public entry fun
-	0xd880::post
+	0x50c1::post
 delete_comment
 	public entry fun
-	0xd880::post
+	0x50c1::post
 react_to_post
 	public entry fun
-	0xd880::post
+	0x50c1::post
 tip_post
 	public entry fun
-	0xd880::post
+	0x50c1::post
 apply_poc_redirection_and_transfer
 	fun
-	0xd880::post
+	0x50c1::post
 update_poc_result
 	public(package) fun
-	0xd880::post
+	0x50c1::post
 clear_poc_data
 	public(package) fun
-	0xd880::post
+	0x50c1::post
 tip_repost
 	public entry fun
-	0xd880::post
+	0x50c1::post
 tip_comment
 	public entry fun
-	0xd880::post
+	0x50c1::post
 transfer_post_ownership
 	public entry fun
-	0xd880::post
+	0x50c1::post
 admin_transfer_post_ownership
 	public entry fun
-	0xd880::post
+	0x50c1::post
 moderate_post
 	public entry fun
-	0xd880::post
+	0x50c1::post
 moderate_comment
 	public entry fun
-	0xd880::post
+	0x50c1::post
 update_post
 	public entry fun
-	0xd880::post
+	0x50c1::post
 update_comment
 	public entry fun
-	0xd880::post
+	0x50c1::post
 report_post
 	public entry fun
-	0xd880::post
+	0x50c1::post
 report_comment
 	public entry fun
-	0xd880::post
+	0x50c1::post
 react_to_comment
 	public entry fun
-	0xd880::post
+	0x50c1::post
 get_post_content
 	public fun
-	0xd880::post
+	0x50c1::post
 get_post_owner
 	public fun
-	0xd880::post
+	0x50c1::post
 get_post_id
 	public fun
-	0xd880::post
+	0x50c1::post
 get_post_comment_count
 	public fun
-	0xd880::post
+	0x50c1::post
 get_comment_owner
 	public fun
-	0xd880::post
+	0x50c1::post
 get_comment_post_id
 	public fun
-	0xd880::post
+	0x50c1::post
 get_id_address
 	public fun
-	0xd880::post
+	0x50c1::post
 get_reaction_count
 	public fun
-	0xd880::post
+	0x50c1::post
 get_tips_received
 	public fun
-	0xd880::post
+	0x50c1::post
 get_poc_badge_id
 	public fun
-	0xd880::post
+	0x50c1::post
 get_revenue_redirect_to
 	public fun
-	0xd880::post
+	0x50c1::post
 get_revenue_redirect_percentage
 	public fun
-	0xd880::post
+	0x50c1::post
 get_total_bet_amount
 	public fun
-	0xd880::post
+	0x50c1::post
 get_bets_count
 	public fun
-	0xd880::post
+	0x50c1::post
 get_bet_user
 	public fun
-	0xd880::post
+	0x50c1::post
 get_bet_option_id
 	public fun
-	0xd880::post
+	0x50c1::post
 get_bet_amount
 	public fun
-	0xd880::post
+	0x50c1::post
 version
 	public fun
-	0xd880::post
+	0x50c1::post
 borrow_version_mut
 	public fun
-	0xd880::post
+	0x50c1::post
 comment_version
 	public fun
-	0xd880::post
+	0x50c1::post
 borrow_comment_version_mut
 	public fun
-	0xd880::post
+	0x50c1::post
 repost_version
 	public fun
-	0xd880::post
+	0x50c1::post
 borrow_repost_version_mut
 	public fun
-	0xd880::post
+	0x50c1::post
 migrate_post
 	public entry fun
-	0xd880::post
+	0x50c1::post
 migrate_comment
 	public entry fun
-	0xd880::post
+	0x50c1::post
 migrate_repost
 	public entry fun
-	0xd880::post
+	0x50c1::post
 update_post_parameters
 	public entry fun
-	0xd880::post
+	0x50c1::post
 create_promoted_post
 	public fun
-	0xd880::post
+	0x50c1::post
 confirm_promoted_post_view
 	public entry fun
-	0xd880::post
+	0x50c1::post
 toggle_promotion_status
 	public entry fun
-	0xd880::post
+	0x50c1::post
 withdraw_promotion_funds
 	public entry fun
-	0xd880::post
+	0x50c1::post
 get_promotion_stats
 	public fun
-	0xd880::post
+	0x50c1::post
 has_user_viewed_promoted_post
 	public fun
-	0xd880::post
+	0x50c1::post
 get_promotion_id
 	public fun
-	0xd880::post
+	0x50c1::post
 set_moderation_status
 	public entry fun
-	0xd880::post
+	0x50c1::post
 is_content_approved
 	public fun
-	0xd880::post
+	0x50c1::post
 create_post_admin_cap
 	public(package) fun
-	0xd880::post
+	0x50c1::post
 SocialProofTokensAdminCap
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 SocialProofTokensConfig
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 TokenRegistry
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 ReservationPool
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 ReservationInfo
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 TokenInfo
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 TokenPool
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 SocialToken
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 ReservationPoolObject
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 TokenPoolCreatedEvent
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 PostPoolAutoInitializedEvent
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 TokenBoughtEvent
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 TokenSoldEvent
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 ReservationCreatedEvent
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 ReservationWithdrawnEvent
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 ThresholdMetEvent
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 ConfigUpdatedEvent
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 TokensAddedEvent
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 EmergencyKillSwitchEvent
 	public struct
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 bootstrap_init
 	public(package) fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 update_social_proof_tokens_config
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 toggle_emergency_kill_switch
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 is_trading_halted
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 reserve_towards_post
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 reserve_towards_profile
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 withdraw_reservation
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 create_reservation_pool
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 can_create_auction
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 create_social_proof_token
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 update_token_poc_data
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 calculate_poc_split
 	fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 apply_token_poc_redirection
 	fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 distribute_creator_fee
 	fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 distribute_creator_fee_from_pool
 	fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 buy_tokens
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 buy_more_tokens
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 sell_tokens
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 calculate_token_price
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 calculate_buy_price
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 calculate_sell_price
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 get_token_info
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 token_exists
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 get_token_owner
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 get_pool_price
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 get_user_balance
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 get_poc_redirect_to
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 get_poc_redirect_percentage
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 has_poc_redirection
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 get_pool_associated_id
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 set_poc_redirection
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 clear_poc_redirection
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
+get_ecosystem_treasury
+	public fun
+	0x50c1::social_proof_tokens
 registry_version
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 borrow_registry_version_mut
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 pool_version
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 borrow_pool_version_mut
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 reservation_pool_version
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 borrow_reservation_pool_version_mut
 	public fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 migrate_token_registry
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 migrate_token_pool
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 migrate_reservation_pool
 	public entry fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 create_social_proof_tokens_admin_cap
 	public(package) fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 ensure_post_token_pool
 	public(package) fun
-	0xd880::social_proof_tokens
+	0x50c1::social_proof_tokens
 SocialGraph
 	public struct
-	0xd880::social_graph
+	0x50c1::social_graph
 FollowEvent
 	public struct
-	0xd880::social_graph
+	0x50c1::social_graph
 UnfollowEvent
 	public struct
-	0xd880::social_graph
+	0x50c1::social_graph
 bootstrap_init
 	public(package) fun
-	0xd880::social_graph
+	0x50c1::social_graph
 follow
 	public entry fun
-	0xd880::social_graph
+	0x50c1::social_graph
 unfollow
 	public entry fun
-	0xd880::social_graph
+	0x50c1::social_graph
 migrate_social_graph
 	public entry fun
-	0xd880::social_graph
+	0x50c1::social_graph
 borrow_version_mut
 	public fun
-	0xd880::social_graph
+	0x50c1::social_graph
 version
 	public fun
-	0xd880::social_graph
+	0x50c1::social_graph
 is_following
 	public fun
-	0xd880::social_graph
+	0x50c1::social_graph
 following_count
 	public fun
-	0xd880::social_graph
+	0x50c1::social_graph
 follower_count
 	public fun
-	0xd880::social_graph
+	0x50c1::social_graph
 get_following
 	public fun
-	0xd880::social_graph
+	0x50c1::social_graph
 get_followers
 	public fun
-	0xd880::social_graph
+	0x50c1::social_graph
 PoCAdminCap
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 PoCConfig
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 Vote
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 PoCDispute
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 PoCRegistry
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 AnalysisSubmittedEvent
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 PoCBadgeIssuedEvent
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 RevenueRedirectionActivatedEvent
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 PoCDisputeSubmittedEvent
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 DisputeVoteCastEvent
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 PoCDisputeResolvedEvent
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 VotingRewardClaimedEvent
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 PoCConfigUpdatedEvent
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 TokenPoolSyncNeededEvent
 	public struct
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 bootstrap_init
 	public(package) fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 update_poc_config
 	public entry fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 analyze_and_update_post
 	public entry fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 update_token_pool_if_exists
 	fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 submit_poc_dispute
 	public entry fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 vote_on_dispute
 	public entry fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 resolve_dispute_voting
 	public entry fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 claim_voting_reward
 	public entry fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 get_threshold_for_media_type
 	fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 is_authorized_oracle
 	public fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 get_registry_stats
 	public fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 has_poc_data
 	public fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 get_dispute_voting_status
 	public fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 get_dispute_stakes
 	public fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 has_user_voted
 	public fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 config_version
 	public fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 dispute_version
 	public fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 registry_version
 	public fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 migrate_poc_config
 	public entry fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 migrate_poc_dispute
 	public entry fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 migrate_poc_registry
 	public entry fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 create_poc_admin_cap
 	public(package) fun
-	0xd880::proof_of_creativity
+	0x50c1::proof_of_creativity
 MyData
 	public struct
-	0xd880::mydata
+	0x50c1::mydata
 MyDataRegistry
 	public struct
-	0xd880::mydata
+	0x50c1::mydata
 MyDataCreatedEvent
 	public struct
-	0xd880::mydata
+	0x50c1::mydata
 PurchaseEvent
 	public struct
-	0xd880::mydata
+	0x50c1::mydata
 AccessGrantedEvent
 	public struct
-	0xd880::mydata
+	0x50c1::mydata
 bootstrap_init
 	public(package) fun
-	0xd880::mydata
+	0x50c1::mydata
 create
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 create_and_share
 	public entry fun
-	0xd880::mydata
+	0x50c1::mydata
 purchase_one_time
 	public entry fun
-	0xd880::mydata
+	0x50c1::mydata
 purchase_subscription
 	public entry fun
-	0xd880::mydata
+	0x50c1::mydata
 update_pricing
 	public entry fun
-	0xd880::mydata
+	0x50c1::mydata
 update_content
 	public entry fun
-	0xd880::mydata
+	0x50c1::mydata
 has_access
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 decrypt_data
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 grant_access
 	public entry fun
-	0xd880::mydata
+	0x50c1::mydata
 owner
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 media_type
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 tags
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 platform_id
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 one_time_price
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 subscription_price
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 subscription_duration_days
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 created_at
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 last_updated
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 timestamp_start
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 timestamp_end
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 geographic_region
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 data_quality
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 sample_size
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 collection_method
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 is_updating
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 update_frequency
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 purchaser_count
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 subscriber_count
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 is_one_time_for_sale
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 is_subscription_available
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 has_active_subscription
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 get_subscription_expiry
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 get_revenue_potential
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 has_any_sales
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 registry_get_owner
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 is_registered
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 register_in_registry
 	public entry fun
-	0xd880::mydata
+	0x50c1::mydata
 unregister_from_registry
 	public entry fun
-	0xd880::mydata
+	0x50c1::mydata
 version
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 borrow_version_mut
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 registry_version
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 borrow_registry_version_mut
 	public fun
-	0xd880::mydata
+	0x50c1::mydata
 migrate_mydata
 	public entry fun
-	0xd880::mydata
+	0x50c1::mydata
 migrate_registry
 	public entry fun
-	0xd880::mydata
-BootstrapKey
+	0x50c1::mydata
+Registry
 	public struct
-	0xd880::bootstrap
-init
-	fun
-	0xd880::bootstrap
-claim_all_admin_capabilities
-	public entry fun
-	0xd880::bootstrap
-is_used
-	public fun
-	0xd880::bootstrap
-version
-	public fun
-	0xd880::bootstrap
-SpotAdminCap
+	0x50c1::message
+Conversation
 	public struct
-	0xd880::social_proof_of_truth
-SpotConfig
+	0x50c1::message
+MessageDigest
 	public struct
-	0xd880::social_proof_of_truth
-SpotBet
+	0x50c1::message
+PaidMessageEscrow
 	public struct
-	0xd880::social_proof_of_truth
-SpotRecord
+	0x50c1::message
+ConversationCreated
 	public struct
-	0xd880::social_proof_of_truth
-SpotBetPlacedEvent
+	0x50c1::message
+ParticipantsAdded
 	public struct
-	0xd880::social_proof_of_truth
-SpotResolvedEvent
+	0x50c1::message
+ParticipantsRemoved
 	public struct
-	0xd880::social_proof_of_truth
-SpotDaoRequiredEvent
+	0x50c1::message
+RoleChanged
 	public struct
-	0xd880::social_proof_of_truth
-SpotPayoutEvent
+	0x50c1::message
+ConversationMetaSet
 	public struct
-	0xd880::social_proof_of_truth
-SpotRefundEvent
+	0x50c1::message
+MessageSent
 	public struct
-	0xd880::social_proof_of_truth
-get_status
-	public fun
-	0xd880::social_proof_of_truth
-get_total_yes_escrow
-	public fun
-	0xd880::social_proof_of_truth
-get_total_no_escrow
-	public fun
-	0xd880::social_proof_of_truth
-get_bets_len
-	public fun
-	0xd880::social_proof_of_truth
+	0x50c1::message
+MessageEdited
+	public struct
+	0x50c1::message
+MessageTombstoned
+	public struct
+	0x50c1::message
+DeliveredAck
+	public struct
+	0x50c1::message
+ReadAck
+	public struct
+	0x50c1::message
+Reacted
+	public struct
+	0x50c1::message
+Pinned
+	public struct
+	0x50c1::message
+KeyRotated
+	public struct
+	0x50c1::message
+MemberKeySubmitted
+	public struct
+	0x50c1::message
+Moderation
+	public struct
+	0x50c1::message
+Paused
+	public struct
+	0x50c1::message
+VersionSet
+	public struct
+	0x50c1::message
+RateLimitsSet
+	public struct
+	0x50c1::message
+PaidMessageSent
+	public struct
+	0x50c1::message
+PaidMessageReplied
+	public struct
+	0x50c1::message
+PaymentClaimed
+	public struct
+	0x50c1::message
+PaymentRefunded
+	public struct
+	0x50c1::message
 bootstrap_init
 	public(package) fun
-	0xd880::social_proof_of_truth
+	0x50c1::message
+set_relayer
+	public entry fun
+	0x50c1::message
+pause
+	public entry fun
+	0x50c1::message
+set_version
+	public entry fun
+	0x50c1::message
+transfer_admin
+	public entry fun
+	0x50c1::message
+create_conversation
+	public entry fun
+	0x50c1::message
+add_participants
+	public entry fun
+	0x50c1::message
+remove_participants
+	public entry fun
+	0x50c1::message
+leave_conversation
+	public entry fun
+	0x50c1::message
+set_role
+	public entry fun
+	0x50c1::message
+set_conv_meta
+	public entry fun
+	0x50c1::message
+use_nonce
+	public entry fun
+	0x50c1::message
+mark_dedupe
+	public entry fun
+	0x50c1::message
+send_message
+	public entry fun
+	0x50c1::message
+edit_message
+	public entry fun
+	0x50c1::message
+tombstone_message
+	public entry fun
+	0x50c1::message
+ack_delivery
+	public entry fun
+	0x50c1::message
+ack_read
+	public entry fun
+	0x50c1::message
+react
+	public entry fun
+	0x50c1::message
+pin
+	public entry fun
+	0x50c1::message
+unpin
+	public entry fun
+	0x50c1::message
+rotate_conv_key
+	public entry fun
+	0x50c1::message
+submit_member_key
+	public entry fun
+	0x50c1::message
+mod_remove
+	public entry fun
+	0x50c1::message
+set_rate_limits
+	public entry fun
+	0x50c1::message
+export_range
+	public fun
+	0x50c1::message
+is_member
+	public fun
+	0x50c1::message
+next_seq
+	public fun
+	0x50c1::message
+meta_hash
+	public fun
+	0x50c1::message
+get_role
+	public fun
+	0x50c1::message
+assert_role_at_least
+	fun
+	0x50c1::message
+enforce_rate_limits
+	fun
+	0x50c1::message
+send_paid_message
+	public entry fun
+	0x50c1::message
+reply_to_paid_message
+	public entry fun
+	0x50c1::message
+claim_payment_internal
+	fun
+	0x50c1::message
+refund_paid_message
+	public entry fun
+	0x50c1::message
+BootstrapKey
+	public struct
+	0x50c1::bootstrap
+init
+	fun
+	0x50c1::bootstrap
+claim_all_admin_capabilities
+	public entry fun
+	0x50c1::bootstrap
+is_used
+	public fun
+	0x50c1::bootstrap
+version
+	public fun
+	0x50c1::bootstrap
+SpotAdminCap
+	public struct
+	0x50c1::social_proof_of_truth
+SpotConfig
+	public struct
+	0x50c1::social_proof_of_truth
+SpotBet
+	public struct
+	0x50c1::social_proof_of_truth
+SpotRecord
+	public struct
+	0x50c1::social_proof_of_truth
+SpotBetPlacedEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotResolvedEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotDaoRequiredEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotPayoutEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotRefundEvent
+	public struct
+	0x50c1::social_proof_of_truth
+get_status
+	public fun
+	0x50c1::social_proof_of_truth
+get_total_yes_escrow
+	public fun
+	0x50c1::social_proof_of_truth
+get_total_no_escrow
+	public fun
+	0x50c1::social_proof_of_truth
+get_bets_len
+	public fun
+	0x50c1::social_proof_of_truth
+bootstrap_init
+	public(package) fun
+	0x50c1::social_proof_of_truth
 update_spot_config
 	public entry fun
-	0xd880::social_proof_of_truth
-split_amount
-	fun
-	0xd880::social_proof_of_truth
+	0x50c1::social_proof_of_truth
 create_spot_record_for_post
 	public entry fun
-	0xd880::social_proof_of_truth
-place_spot_bet_with_pool
+	0x50c1::social_proof_of_truth
+place_spot_bet
 	public entry fun
-	0xd880::social_proof_of_truth
-place_spot_bet_auto_init
-	public entry fun
-	0xd880::social_proof_of_truth
+	0x50c1::social_proof_of_truth
 oracle_resolve
 	public entry fun
-	0xd880::social_proof_of_truth
+	0x50c1::social_proof_of_truth
 finalize_via_dao
 	public entry fun
-	0xd880::social_proof_of_truth
+	0x50c1::social_proof_of_truth
 refund_unresolved
 	public entry fun
-	0xd880::social_proof_of_truth
+	0x50c1::social_proof_of_truth
 finalize_resolution_and_payout
 	fun
-	0xd880::social_proof_of_truth
+	0x50c1::social_proof_of_truth
 log
 	fun
-	0x5ea1::gf256
+	0xda7a::gf256
 exp
 	fun
-	0x5ea1::gf256
+	0xda7a::gf256
 add
 	public(package) fun
-	0x5ea1::gf256
+	0xda7a::gf256
 sub
 	public(package) fun
-	0x5ea1::gf256
+	0xda7a::gf256
 mul
 	public(package) fun
-	0x5ea1::gf256
+	0xda7a::gf256
 div
 	public(package) fun
-	0x5ea1::gf256
+	0xda7a::gf256
 Polynomial
 	public struct
-	0x5ea1::polynomial
+	0xda7a::polynomial
 evaluate
 	public fun
-	0x5ea1::polynomial
+	0xda7a::polynomial
 get_constant_term
 	public(package) fun
-	0x5ea1::polynomial
+	0xda7a::polynomial
 interpolate
 	public(package) fun
-	0x5ea1::polynomial
+	0xda7a::polynomial
 interpolate_all
 	public(package) fun
-	0x5ea1::polynomial
+	0xda7a::polynomial
 add
 	fun
-	0x5ea1::polynomial
+	0xda7a::polynomial
 mul
 	fun
-	0x5ea1::polynomial
+	0xda7a::polynomial
 div
 	fun
-	0x5ea1::polynomial
+	0xda7a::polynomial
 scale
 	fun
-	0x5ea1::polynomial
+	0xda7a::polynomial
 monic_linear
 	fun
-	0x5ea1::polynomial
+	0xda7a::polynomial
 kdf
 	public(package) fun
-	0x5ea1::kdf
+	0xda7a::kdf
 hash_to_g1_with_dst
 	public(package) fun
-	0x5ea1::kdf
+	0xda7a::kdf
 decrypt
 	public(package) fun
-	0x5ea1::hmac256ctr
+	0xda7a::hmac256ctr
 mac
 	fun
-	0x5ea1::hmac256ctr
+	0xda7a::hmac256ctr
 EncryptedObject
 	public struct
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 VerifiedDerivedKey
 	public struct
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 PublicKey
 	public struct
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 KeyPurpose
 	public enum
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 new_public_key
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 decrypt
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 decrypt_randomness
 	fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 safe_scalar_from_bytes
 	fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 verify_nonce
 	fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 verify_share
 	fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 decrypt_shares_with_derived_keys
 	fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 decrypt_all_shares_with_randomness
 	fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 create_full_id
 	fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 derive_key
 	fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 xor
 	fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 verify_derived_keys
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 verify_derived_key
 	fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 assert_all_unique
 	fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 parse_encrypted_object
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 peel_tuple_u8
 	fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 package_id
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 id
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 services
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 indices
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 threshold
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 nonce
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 encrypted_shares
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 encrypted_randomness
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 blob
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 aad
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 mac
 	public fun
-	0x5ea1::bf_hmac_encryption
+	0xda7a::bf_hmac_encryption
 KeyServer
 	public struct
-	0x5ea1::key_server
+	0xda7a::key_server
 KeyServerV1
 	public struct
-	0x5ea1::key_server
+	0xda7a::key_server
 create_and_transfer_v1
 	entry fun
-	0x5ea1::key_server
+	0xda7a::key_server
 v1
 	public fun
-	0x5ea1::key_server
+	0xda7a::key_server
 name
 	public fun
-	0x5ea1::key_server
+	0xda7a::key_server
 url
 	public fun
-	0x5ea1::key_server
+	0xda7a::key_server
 key_type
 	public fun
-	0x5ea1::key_server
+	0xda7a::key_server
 pk
 	public fun
-	0x5ea1::key_server
+	0xda7a::key_server
 id
 	public fun
-	0x5ea1::key_server
+	0xda7a::key_server
 pk_as_bf_bls12381
 	public fun
-	0x5ea1::key_server
+	0xda7a::key_server
 update
 	public fun
-	0x5ea1::key_server
+	0xda7a::key_server
 create_v1
 	fun
-	0x5ea1::key_server
+	0xda7a::key_server
