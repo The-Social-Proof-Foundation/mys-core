@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// Subscription module for the MySocial network
-/// Handles subscription services for profiles & MyIP
+/// Handles subscription services for profiles & MyData
 
 #[allow(duplicate_alias)]
 module social_contracts::subscription {

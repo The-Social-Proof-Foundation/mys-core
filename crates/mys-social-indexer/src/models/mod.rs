@@ -36,7 +36,7 @@ pub use poc::*;
 pub use post::*;
 pub use profile_events::*;
 pub use social_proof_token::*;
-// Explicitly import subscription types to avoid conflict with my_ip::REVENUE_TYPE_SUBSCRIPTION
+// Explicitly import subscription types to avoid conflict with mydata::REVENUE_TYPE_SUBSCRIPTION
 pub use subscription::{
     calculate_subscription_end_time, validate_monthly_fee, validate_subscription_duration,
     ActiveSubscription, NewProfileSubscription, NewProfileSubscriptionService,

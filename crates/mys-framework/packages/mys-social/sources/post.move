@@ -152,8 +152,8 @@ module social_contracts::post {
         revenue_redirect_to: Option<address>,
         /// Optional revenue redirection percentage (0-100)
         revenue_redirect_percentage: Option<u64>,
-        /// Reference to the intellectual property license for the post
-        my_ip_id: Option<address>,
+        /// Reference to the MyData for the post
+        mydata_id: Option<address>,
         /// Optional promotion data ID for promoted posts
         promotion_id: Option<address>,
         /// Opt-out flag to disable auto SPT pool initialization by SPoT
@@ -635,7 +635,7 @@ module social_contracts::post {
         block_list_registry: &block_list::BlockListRegistry,
         content: String,
         options: vector<String>,
-        mut media_urls: Option<vector<vector<u8>>>,
+        mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
         betting_end_time: Option<u64>,
@@ -684,18 +684,19 @@ module social_contracts::post {
         
         // Convert and validate media URLs if provided
         let media_option = if (option::is_some(&media_urls)) {
-            let urls_bytes = option::extract(&mut media_urls);
+            let url_strings = option::extract(&mut media_urls);
             
             // Validate media URLs count
-            assert!(vector::length(&urls_bytes) <= config.max_media_urls, ETooManyMediaUrls);
+            assert!(vector::length(&url_strings) <= config.max_media_urls, ETooManyMediaUrls);
             
-            // Convert media URL bytes to Url
+            // Convert string URLs to Url objects
             let mut urls = vector::empty<Url>();
             let mut i = 0;
-            let len = vector::length(&urls_bytes);
+            let len = vector::length(&url_strings);
             while (i < len) {
-                let url_bytes = *vector::borrow(&urls_bytes, i);
-                vector::push_back(&mut urls, url::new_unsafe_from_bytes(url_bytes));
+                let url_string = vector::borrow(&url_strings, i);
+                let url_bytes = string::as_bytes(url_string);
+                vector::push_back(&mut urls, url::new_unsafe_from_bytes(*url_bytes));
                 i = i + 1;
             };
             option::some(urls)
@@ -754,7 +755,7 @@ module social_contracts::post {
             option::none(), // poc_badge_id
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            option::none(), // my_ip_id
+            option::none(), // mydata_id
             option::none(), // promotion_id
             ctx
         );
@@ -1195,7 +1196,7 @@ module social_contracts::post {
         poc_badge_id: Option<ID>,
         revenue_redirect_to: Option<address>,
         revenue_redirect_percentage: Option<u64>,
-        my_ip_id: Option<address>,
+        mydata_id: Option<address>,
         promotion_id: Option<address>,
         ctx: &mut TxContext
     ): address {
@@ -1225,7 +1226,7 @@ module social_contracts::post {
             poc_badge_id,
             revenue_redirect_to,
             revenue_redirect_percentage,
-            my_ip_id,
+            mydata_id,
             promotion_id,
             disable_auto_pool: false,
             version: upgrade::current_version(),
@@ -1249,7 +1250,7 @@ module social_contracts::post {
         block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
         content: String,
-        mut media_urls: Option<vector<vector<u8>>>,
+        mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
         allow_comments: Option<bool>,
@@ -1289,18 +1290,19 @@ module social_contracts::post {
         
         // Convert and validate media URLs if provided
         let media_option = if (option::is_some(&media_urls)) {
-            let urls_bytes = option::extract(&mut media_urls);
+            let url_strings = option::extract(&mut media_urls);
             
             // Validate media URLs count using config
-            assert!(vector::length(&urls_bytes) <= config.max_media_urls, ETooManyMediaUrls);
+            assert!(vector::length(&url_strings) <= config.max_media_urls, ETooManyMediaUrls);
             
-            // Convert media URL bytes to Url
+            // Convert string URLs to Url objects
             let mut urls = vector::empty<Url>();
             let mut i = 0;
-            let len = vector::length(&urls_bytes);
+            let len = vector::length(&url_strings);
             while (i < len) {
-                let url_bytes = *vector::borrow(&urls_bytes, i);
-                vector::push_back(&mut urls, url::new_unsafe_from_bytes(url_bytes));
+                let url_string = vector::borrow(&url_strings, i);
+                let url_bytes = string::as_bytes(url_string);
+                vector::push_back(&mut urls, url::new_unsafe_from_bytes(*url_bytes));
                 i = i + 1;
             };
             option::some(urls)
@@ -1359,7 +1361,7 @@ module social_contracts::post {
             option::none(), // poc_badge_id
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            option::none(), // my_ip_id
+            option::none(), // mydata_id
             option::none(), // promotion_id
             ctx
         );
@@ -1386,7 +1388,7 @@ module social_contracts::post {
         parent_post: &mut Post,
         parent_comment_id: Option<address>,
         content: String,
-        mut media_urls: Option<vector<vector<u8>>>,
+        mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
         ctx: &mut TxContext
@@ -1423,18 +1425,19 @@ module social_contracts::post {
         
         // Convert and validate media URLs if provided
         let media_option = if (option::is_some(&media_urls)) {
-            let urls_bytes = option::extract(&mut media_urls);
+            let url_strings = option::extract(&mut media_urls);
             
             // Validate media URLs count using config
-            assert!(vector::length(&urls_bytes) <= config.max_media_urls, ETooManyMediaUrls);
+            assert!(vector::length(&url_strings) <= config.max_media_urls, ETooManyMediaUrls);
             
-            // Convert media URL bytes to Url objects
+            // Convert string URLs to Url objects
             let mut urls = vector::empty<Url>();
             let mut i = 0;
-            let len = vector::length(&urls_bytes);
+            let len = vector::length(&url_strings);
             while (i < len) {
-                let url_bytes = *vector::borrow(&urls_bytes, i);
-                vector::push_back(&mut urls, url::new_unsafe_from_bytes(url_bytes));
+                let url_string = vector::borrow(&url_strings, i);
+                let url_bytes = string::as_bytes(url_string);
+                vector::push_back(&mut urls, url::new_unsafe_from_bytes(*url_bytes));
                 i = i + 1;
             };
             option::some(urls)
@@ -1511,7 +1514,7 @@ module social_contracts::post {
         config: &PostConfig,
         original_post: &mut Post,
         mut content: Option<String>,
-        mut media_urls: Option<vector<vector<u8>>>,
+        mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
         allow_comments: Option<bool>,
@@ -1568,18 +1571,19 @@ module social_contracts::post {
         
         // Validate and process media URLs if provided
         let media_option = if (option::is_some(&media_urls)) {
-            let urls_bytes = option::extract(&mut media_urls);
+            let url_strings = option::extract(&mut media_urls);
             
             // Validate media URLs count
-            assert!(vector::length(&urls_bytes) <= config.max_media_urls, ETooManyMediaUrls);
+            assert!(vector::length(&url_strings) <= config.max_media_urls, ETooManyMediaUrls);
             
-            // Convert media URL bytes to Url
+            // Convert string URLs to Url objects
             let mut urls = vector::empty<Url>();
             let mut i = 0;
-            let len = vector::length(&urls_bytes);
+            let len = vector::length(&url_strings);
             while (i < len) {
-                let url_bytes = *vector::borrow(&urls_bytes, i);
-                vector::push_back(&mut urls, url::new_unsafe_from_bytes(url_bytes));
+                let url_string = vector::borrow(&url_strings, i);
+                let url_bytes = string::as_bytes(url_string);
+                vector::push_back(&mut urls, url::new_unsafe_from_bytes(*url_bytes));
                 i = i + 1;
             };
             option::some(urls)
@@ -1682,7 +1686,7 @@ module social_contracts::post {
             option::none(), // poc_badge_id
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            option::none(), // No MyIP for reposts
+            option::none(), // No MyData for reposts
             option::none(), // promotion_id
             ctx
         );
@@ -1743,7 +1747,7 @@ module social_contracts::post {
             poc_badge_id: _,
             revenue_redirect_to: _,
             revenue_redirect_percentage: _,
-            my_ip_id: _,
+            mydata_id: _,
             promotion_id: _,
             disable_auto_pool: _,
             version: _,
@@ -2330,7 +2334,7 @@ module social_contracts::post {
         post: &mut Post,
         config: &PostConfig,
         content: String,
-        mut media_urls: Option<vector<vector<u8>>>,
+        mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
         ctx: &mut TxContext
@@ -2352,18 +2356,19 @@ module social_contracts::post {
         
         // Convert and validate media URLs if provided
         if (option::is_some(&media_urls)) {
-            let urls_bytes = option::extract(&mut media_urls);
+            let url_strings = option::extract(&mut media_urls);
             
             // Validate media URLs count
-            assert!(vector::length(&urls_bytes) <= config.max_media_urls, ETooManyMediaUrls);
+            assert!(vector::length(&url_strings) <= config.max_media_urls, ETooManyMediaUrls);
             
-            // Convert media URL bytes to Url
+            // Convert string URLs to Url objects
             let mut urls = vector::empty<Url>();
             let mut i = 0;
-            let len = vector::length(&urls_bytes);
+            let len = vector::length(&url_strings);
             while (i < len) {
-                let url_bytes = *vector::borrow(&urls_bytes, i);
-                vector::push_back(&mut urls, url::new_unsafe_from_bytes(url_bytes));
+                let url_string = vector::borrow(&url_strings, i);
+                let url_bytes = string::as_bytes(url_string);
+                vector::push_back(&mut urls, url::new_unsafe_from_bytes(*url_bytes));
                 i = i + 1;
             };
             post.media = option::some(urls);
@@ -2722,7 +2727,7 @@ module social_contracts::post {
             option::none(), // poc_badge_id
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            option::none(), // No MyIP ID
+            option::none(), // No MyData ID
             option::none(), // promotion_id
             ctx
         )
@@ -2770,7 +2775,7 @@ module social_contracts::post {
             option::none(), // poc_badge_id
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            option::none(), // my_ip_id
+            option::none(), // mydata_id
             option::some(promotion_id), // promotion_id
             ctx
         );
@@ -2812,7 +2817,7 @@ module social_contracts::post {
             option::none(), // poc_badge_id
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            option::none(), // my_ip_id
+            option::none(), // mydata_id
             option::none(), // promotion_id
             ctx
         );
@@ -3097,10 +3102,10 @@ module social_contracts::post {
         _block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
         content: String,
-        mut media_urls: Option<vector<vector<u8>>>,
+        mut media_urls: Option<vector<String>>,
         mentions: Option<vector<address>>,
         metadata_json: Option<String>,
-        my_ip_id: Option<address>,
+        mydata_id: Option<address>,
         payment_per_view: u64,
         promotion_budget: Coin<MYS>,
         ctx: &mut TxContext
@@ -3129,13 +3134,14 @@ module social_contracts::post {
         
         // Validate and convert media URLs if provided
         let media_option = if (option::is_some(&media_urls)) {
-            let urls_bytes = option::extract(&mut media_urls);
-            assert!(vector::length(&urls_bytes) <= config.max_media_urls, ETooManyMediaUrls);
+            let url_strings = option::extract(&mut media_urls);
+            assert!(vector::length(&url_strings) <= config.max_media_urls, ETooManyMediaUrls);
             
             let mut urls = vector::empty<Url>();
             let mut i = 0;
-            while (i < vector::length(&urls_bytes)) {
-                let url_bytes = vector::borrow(&urls_bytes, i);
+            while (i < vector::length(&url_strings)) {
+                let url_string = vector::borrow(&url_strings, i);
+                let url_bytes = string::as_bytes(url_string);
                 let url = url::new_unsafe_from_bytes(*url_bytes);
                 vector::push_back(&mut urls, url);
                 i = i + 1;
@@ -3189,7 +3195,7 @@ module social_contracts::post {
             option::none(), // poc_badge_id
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
-            my_ip_id,
+            mydata_id,
             option::some(promotion_id),
             ctx
         );
