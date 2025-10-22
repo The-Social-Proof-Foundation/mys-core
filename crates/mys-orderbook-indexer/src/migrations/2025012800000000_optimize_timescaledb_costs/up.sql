@@ -101,8 +101,8 @@ END $$;
 -- Keep trading data for 2 years
 -- This balances historical analysis needs with storage costs
 -- Data older than 2 years will be AUTOMATICALLY DELETED
-SELECT add_retention_policy('order_fills', INTERVAL '730 days', if_not_exists => true);
-SELECT add_retention_policy('order_updates', INTERVAL '730 days', if_not_exists => true);
+SELECT add_retention_policy('order_fills', drop_after => INTERVAL '730 days', if_not_exists => true);
+SELECT add_retention_policy('order_updates', drop_after => INTERVAL '730 days', if_not_exists => true);
 
 DO $$
 BEGIN
@@ -112,11 +112,11 @@ END $$;
 -- Keep price data for 3 years
 -- Price history is valuable for longer-term analysis
 -- Data older than 3 years will be AUTOMATICALLY DELETED
-SELECT add_retention_policy('pool_prices', INTERVAL '1095 days', if_not_exists => true);
+SELECT add_retention_policy('pool_prices', drop_after => INTERVAL '1095 days', if_not_exists => true);
 
 -- Keep balance data for 2 years
 -- Data older than 2 years will be AUTOMATICALLY DELETED
-SELECT add_retention_policy('balances', INTERVAL '730 days', if_not_exists => true);
+SELECT add_retention_policy('balances', drop_after => INTERVAL '730 days', if_not_exists => true);
 
 DO $$
 BEGIN
@@ -126,18 +126,18 @@ END $$;
 -- Keep governance data for 1 year
 -- Governance history is less frequently accessed
 -- Data older than 1 year will be AUTOMATICALLY DELETED
-SELECT add_retention_policy('stakes', INTERVAL '365 days', if_not_exists => true);
-SELECT add_retention_policy('proposals', INTERVAL '365 days', if_not_exists => true);
-SELECT add_retention_policy('votes', INTERVAL '365 days', if_not_exists => true);
-SELECT add_retention_policy('rebates', INTERVAL '365 days', if_not_exists => true);
+SELECT add_retention_policy('stakes', drop_after => INTERVAL '365 days', if_not_exists => true);
+SELECT add_retention_policy('proposals', drop_after => INTERVAL '365 days', if_not_exists => true);
+SELECT add_retention_policy('votes', drop_after => INTERVAL '365 days', if_not_exists => true);
+SELECT add_retention_policy('rebates', drop_after => INTERVAL '365 days', if_not_exists => true);
 
 -- Keep flashloans for 1 year (relatively rare events)
 -- Data older than 1 year will be AUTOMATICALLY DELETED
-SELECT add_retention_policy('flashloans', INTERVAL '365 days', if_not_exists => true);
+SELECT add_retention_policy('flashloans', drop_after => INTERVAL '365 days', if_not_exists => true);
 
 -- Keep trade params for 2 years (infrequent but important changes)
 -- Data older than 2 years will be AUTOMATICALLY DELETED
-SELECT add_retention_policy('trade_params_update', INTERVAL '730 days', if_not_exists => true);
+SELECT add_retention_policy('trade_params_update', drop_after => INTERVAL '730 days', if_not_exists => true);
 
 DO $$
 BEGIN
