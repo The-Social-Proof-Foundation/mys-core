@@ -147,6 +147,10 @@ module social_contracts::profile {
         badges: vector<ProfileBadge>,
         /// Vector tracking attached MyData IDs for efficient iteration
         attached_mydata_ids: vector<address>,
+        /// Paid messaging: minimum cost to send a message to this profile (optional)
+        min_message_cost: Option<u64>,
+        /// Paid messaging: toggle to enable/disable paid messaging
+        paid_messaging_enabled: bool,
     }
 
     /// Profile Badge that can be assigned to profiles by platform admins/moderators
@@ -491,6 +495,8 @@ module social_contracts::profile {
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
             attached_mydata_ids: vector::empty<address>(),
+            min_message_cost: option::none(),
+            paid_messaging_enabled: false,
         };
         
         // Get the profile ID
@@ -1466,6 +1472,8 @@ module social_contracts::profile {
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
             attached_mydata_ids: vector::empty<address>(),
+            min_message_cost: option::none(),
+            paid_messaging_enabled: false,
         };
         
         // Get the profile ID and use it for registration
@@ -1903,6 +1911,37 @@ module social_contracts::profile {
     /// Get the curve factor of a vesting wallet
     public fun vesting_curve_factor(wallet: &VestingWallet): u64 {
         wallet.curve_factor
+    }
+
+    // === Paid Messaging Functions ===
+
+    /// Set paid messaging settings for a profile (owner only)
+    public entry fun set_paid_messaging_settings(
+        profile: &mut Profile,
+        enabled: bool,
+        min_cost: Option<u64>,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(profile.owner == sender, EUnauthorized);
+
+        profile.paid_messaging_enabled = enabled;
+        profile.min_message_cost = min_cost;
+    }
+
+    /// Get paid messaging settings for a profile
+    public fun get_paid_messaging_settings(profile: &Profile): (bool, Option<u64>) {
+        (profile.paid_messaging_enabled, profile.min_message_cost)
+    }
+
+    /// Check if a profile requires paid messages
+    public fun requires_paid_message(profile: &Profile): bool {
+        profile.paid_messaging_enabled && option::is_some(&profile.min_message_cost)
+    }
+
+    /// Get minimum message cost for a profile
+    public fun get_min_message_cost(profile: &Profile): Option<u64> {
+        profile.min_message_cost
     }
 
 }

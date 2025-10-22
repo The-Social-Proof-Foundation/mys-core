@@ -1597,6 +1597,11 @@ module social_contracts::social_proof_tokens {
         pool.poc_redirect_percentage = option::none();
     }
 
+    /// Get the ecosystem treasury address from config
+    public fun get_ecosystem_treasury(config: &SocialProofTokensConfig): address {
+        config.ecosystem_treasury
+    }
+
     // Test-only functions
     #[test_only]
     /// Initialize the social proof tokens system for testing
