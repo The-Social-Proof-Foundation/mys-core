@@ -50,8 +50,8 @@ END $$;
 -- High-frequency trading data: Compress after 30 days
 -- This keeps recent trading data uncompressed for fast queries while reducing costs
 -- Old setting: 7 days | Impact: Reduces compression overhead, keeps more recent data fast
-SELECT add_compression_policy('order_fills', compress_after => INTERVAL '30 days');
-SELECT add_compression_policy('order_updates', compress_after => INTERVAL '30 days');
+SELECT add_compression_policy('order_fills', INTERVAL '30d');
+SELECT add_compression_policy('order_updates', INTERVAL '30d');
 
 DO $$
 BEGIN
@@ -61,8 +61,8 @@ END $$;
 -- Medium-frequency data: Compress after 90 days
 -- Price and balance data is queried less frequently but still valuable
 -- Old setting: 30 days | Impact: Better query performance for price analysis
-SELECT add_compression_policy('pool_prices', compress_after => INTERVAL '90 days');
-SELECT add_compression_policy('balances', compress_after => INTERVAL '90 days');
+SELECT add_compression_policy('pool_prices', INTERVAL '90d');
+SELECT add_compression_policy('balances', INTERVAL '90d');
 
 DO $$
 BEGIN
@@ -72,12 +72,12 @@ END $$;
 -- Low-frequency data: Compress after 30 days
 -- Governance and rare events can be compressed sooner
 -- Old setting: 7 days | Impact: Reduces compression overhead
-SELECT add_compression_policy('flashloans', compress_after => INTERVAL '30 days');
-SELECT add_compression_policy('stakes', compress_after => INTERVAL '30 days');
-SELECT add_compression_policy('proposals', compress_after => INTERVAL '30 days');
-SELECT add_compression_policy('votes', compress_after => INTERVAL '30 days');
-SELECT add_compression_policy('rebates', compress_after => INTERVAL '30 days');
-SELECT add_compression_policy('trade_params_update', compress_after => INTERVAL '30 days');
+SELECT add_compression_policy('flashloans', INTERVAL '30d');
+SELECT add_compression_policy('stakes', INTERVAL '30d');
+SELECT add_compression_policy('proposals', INTERVAL '30d');
+SELECT add_compression_policy('votes', INTERVAL '30d');
+SELECT add_compression_policy('rebates', INTERVAL '30d');
+SELECT add_compression_policy('trade_params_update', INTERVAL '30d');
 
 DO $$
 BEGIN
@@ -95,46 +95,46 @@ BEGIN
     RAISE WARNING 'Make sure this aligns with your data retention requirements';
 END $$;
 
--- Keep trading data for 2 years (730 days)
+-- Keep trading data for 2 years
 -- This balances historical analysis needs with storage costs
 -- Data older than 2 years will be AUTOMATICALLY DELETED
-SELECT add_retention_policy('order_fills'::regclass, '730 days'::interval, true);
-SELECT add_retention_policy('order_updates'::regclass, '730 days'::interval, true);
+SELECT add_retention_policy('order_fills', INTERVAL '730d');
+SELECT add_retention_policy('order_updates', INTERVAL '730d');
 
 DO $$
 BEGIN
     RAISE NOTICE 'Step 3a: Trading data retention policies added (2 years)';
 END $$;
 
--- Keep price data for 3 years (1095 days)
+-- Keep price data for 3 years
 -- Price history is valuable for longer-term analysis
 -- Data older than 3 years will be AUTOMATICALLY DELETED
-SELECT add_retention_policy('pool_prices'::regclass, '1095 days'::interval, true);
+SELECT add_retention_policy('pool_prices', INTERVAL '1095d');
 
--- Keep balance data for 2 years (730 days)
+-- Keep balance data for 2 years
 -- Data older than 2 years will be AUTOMATICALLY DELETED
-SELECT add_retention_policy('balances'::regclass, '730 days'::interval, true);
+SELECT add_retention_policy('balances', INTERVAL '730d');
 
 DO $$
 BEGIN
     RAISE NOTICE 'Step 3b: Price/balance retention policies added (2-3 years)';
 END $$;
 
--- Keep governance data for 1 year (365 days)
+-- Keep governance data for 1 year
 -- Governance history is less frequently accessed
 -- Data older than 1 year will be AUTOMATICALLY DELETED
-SELECT add_retention_policy('stakes'::regclass, '365 days'::interval, true);
-SELECT add_retention_policy('proposals'::regclass, '365 days'::interval, true);
-SELECT add_retention_policy('votes'::regclass, '365 days'::interval, true);
-SELECT add_retention_policy('rebates'::regclass, '365 days'::interval, true);
+SELECT add_retention_policy('stakes', INTERVAL '365d');
+SELECT add_retention_policy('proposals', INTERVAL '365d');
+SELECT add_retention_policy('votes', INTERVAL '365d');
+SELECT add_retention_policy('rebates', INTERVAL '365d');
 
--- Keep flashloans for 1 year (365 days) - relatively rare events
+-- Keep flashloans for 1 year - relatively rare events
 -- Data older than 1 year will be AUTOMATICALLY DELETED
-SELECT add_retention_policy('flashloans'::regclass, '365 days'::interval, true);
+SELECT add_retention_policy('flashloans', INTERVAL '365d');
 
--- Keep trade params for 2 years (730 days) - infrequent but important changes
+-- Keep trade params for 2 years - infrequent but important changes
 -- Data older than 2 years will be AUTOMATICALLY DELETED
-SELECT add_retention_policy('trade_params_update'::regclass, '730 days'::interval, true);
+SELECT add_retention_policy('trade_params_update', INTERVAL '730d');
 
 DO $$
 BEGIN
