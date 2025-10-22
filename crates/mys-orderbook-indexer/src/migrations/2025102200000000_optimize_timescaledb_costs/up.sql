@@ -50,8 +50,8 @@ END $$;
 -- High-frequency trading data: Compress after 30 days
 -- This keeps recent trading data uncompressed for fast queries while reducing costs
 -- Old setting: 7 days | Impact: Reduces compression overhead, keeps more recent data fast
-SELECT add_compression_policy('order_fills'::regclass, INTERVAL '30 days');
-SELECT add_compression_policy('order_updates'::regclass, INTERVAL '30 days');
+SELECT add_compression_policy('order_fills', INTERVAL '30 days');
+SELECT add_compression_policy('order_updates', INTERVAL '30 days');
 
 DO $$
 BEGIN
@@ -61,8 +61,8 @@ END $$;
 -- Medium-frequency data: Compress after 90 days
 -- Price and balance data is queried less frequently but still valuable
 -- Old setting: 30 days | Impact: Better query performance for price analysis
-SELECT add_compression_policy('pool_prices'::regclass, INTERVAL '90 days');
-SELECT add_compression_policy('balances'::regclass, INTERVAL '90 days');
+SELECT add_compression_policy('pool_prices', INTERVAL '90 days');
+SELECT add_compression_policy('balances', INTERVAL '90 days');
 
 DO $$
 BEGIN
@@ -72,12 +72,12 @@ END $$;
 -- Low-frequency data: Compress after 30 days
 -- Governance and rare events can be compressed sooner
 -- Old setting: 7 days | Impact: Reduces compression overhead
-SELECT add_compression_policy('flashloans'::regclass, INTERVAL '30 days');
-SELECT add_compression_policy('stakes'::regclass, INTERVAL '30 days');
-SELECT add_compression_policy('proposals'::regclass, INTERVAL '30 days');
-SELECT add_compression_policy('votes'::regclass, INTERVAL '30 days');
-SELECT add_compression_policy('rebates'::regclass, INTERVAL '30 days');
-SELECT add_compression_policy('trade_params_update'::regclass, INTERVAL '30 days');
+SELECT add_compression_policy('flashloans', INTERVAL '30 days');
+SELECT add_compression_policy('stakes', INTERVAL '30 days');
+SELECT add_compression_policy('proposals', INTERVAL '30 days');
+SELECT add_compression_policy('votes', INTERVAL '30 days');
+SELECT add_compression_policy('rebates', INTERVAL '30 days');
+SELECT add_compression_policy('trade_params_update', INTERVAL '30 days');
 
 DO $$
 BEGIN

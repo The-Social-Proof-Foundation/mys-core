@@ -71,8 +71,8 @@ BEGIN
 END $$;
 
 -- High-frequency trading data: Compress after 7 days - ORIGINAL
-SELECT add_compression_policy('order_fills'::regclass, INTERVAL '7 days');
-SELECT add_compression_policy('order_updates'::regclass, INTERVAL '7 days');
+SELECT add_compression_policy('order_fills', INTERVAL '7 days');
+SELECT add_compression_policy('order_updates', INTERVAL '7 days');
 
 DO $$
 BEGIN
@@ -80,8 +80,8 @@ BEGIN
 END $$;
 
 -- Medium-frequency data: Compress after 30 days - ORIGINAL
-SELECT add_compression_policy('pool_prices'::regclass, INTERVAL '30 days');
-SELECT add_compression_policy('balances'::regclass, INTERVAL '30 days');
+SELECT add_compression_policy('pool_prices', INTERVAL '30 days');
+SELECT add_compression_policy('balances', INTERVAL '30 days');
 
 DO $$
 BEGIN
@@ -89,12 +89,12 @@ BEGIN
 END $$;
 
 -- Low-frequency data: Compress after 7 days - ORIGINAL
-SELECT add_compression_policy('flashloans'::regclass, INTERVAL '7 days');
-SELECT add_compression_policy('stakes'::regclass, INTERVAL '7 days');
-SELECT add_compression_policy('proposals'::regclass, INTERVAL '7 days');
-SELECT add_compression_policy('votes'::regclass, INTERVAL '7 days');
-SELECT add_compression_policy('rebates'::regclass, INTERVAL '7 days');
-SELECT add_compression_policy('trade_params_update'::regclass, INTERVAL '7 days');
+SELECT add_compression_policy('flashloans', INTERVAL '7 days');
+SELECT add_compression_policy('stakes', INTERVAL '7 days');
+SELECT add_compression_policy('proposals', INTERVAL '7 days');
+SELECT add_compression_policy('votes', INTERVAL '7 days');
+SELECT add_compression_policy('rebates', INTERVAL '7 days');
+SELECT add_compression_policy('trade_params_update', INTERVAL '7 days');
 
 DO $$
 BEGIN
