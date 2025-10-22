@@ -113,6 +113,7 @@ module social_contracts::message {
         rl_window_start: u64, // Window start timestamp
         rl_conv_count: u32, // Total messages in current window
         rl_user_counts: Table<address, u32>, // Per-user messages in current window
+        rl_active_users: vector<address>, // Track users with active counts in window
         // Paid messaging escrow
         paid_msg_escrow: Table<u64, PaidMessageEscrow>, // seq -> escrow
     }
@@ -383,6 +384,7 @@ module social_contracts::message {
             rl_window_start: 0,
             rl_conv_count: 0,
             rl_user_counts: table::new(ctx),
+            rl_active_users: vector::empty(),
             paid_msg_escrow: table::new(ctx),
         };
 
@@ -992,15 +994,18 @@ module social_contracts::message {
             // Reset window
             conv.rl_window_start = now;
             conv.rl_conv_count = 0;
-            // Clear all user counts
-            let keys = table_keys(&conv.rl_user_counts);
+            // Clear all user counts using tracked active users
             let mut i = 0;
-            let len = vector::length(&keys);
+            let len = vector::length(&conv.rl_active_users);
             while (i < len) {
-                let key = *vector::borrow(&keys, i);
-                table::remove(&mut conv.rl_user_counts, key);
+                let user = *vector::borrow(&conv.rl_active_users, i);
+                if (table::contains(&conv.rl_user_counts, user)) {
+                    table::remove(&mut conv.rl_user_counts, user);
+                };
                 i = i + 1;
             };
+            // Clear the active users list
+            conv.rl_active_users = vector::empty();
         };
 
         // Check conversation limit
@@ -1021,14 +1026,9 @@ module social_contracts::message {
             *count = *count + 1;
         } else {
             table::add(&mut conv.rl_user_counts, sender, 1);
+            // Track this user as active in the current window
+            vector::push_back(&mut conv.rl_active_users, sender);
         };
-    }
-
-    /// Helper to get all keys from a table (for clearing rate limit counters)
-    fun table_keys(_tbl: &Table<address, u32>): vector<address> {
-        // This is a workaround since Table doesn't expose keys()
-        // In production, you'd use a more efficient approach or Vec<address> tracking
-        vector::empty<address>()
     }
 
     // === Paid Messaging Functions ===
@@ -1038,7 +1038,6 @@ module social_contracts::message {
         registry: &Registry,
         conv: &mut Conversation,
         recipient_profile: &Profile,
-        _platform: &mut Platform,
         mut payment: Coin<MYS>,
         kind: u8,
         parent: u64,
@@ -1077,6 +1076,9 @@ module social_contracts::message {
         let member_nonces = table::borrow_mut(&mut conv.nonces, sender);
         assert!(!table::contains(member_nonces, nonce), E_NONCE_USED);
         table::add(member_nonces, nonce, true);
+
+        // Enforce rate limits (paid messages also subject to rate limits)
+        enforce_rate_limits(registry, conv, sender, clock);
 
         // Assign sequence number
         let seq = conv.next_seq;
@@ -1311,10 +1313,10 @@ module social_contracts::message {
         
         // Verify not already claimed
         assert!(!escrow.claimed, E_PAYMENT_ALREADY_CLAIMED);
-        
-        // Verify payment is expired
+
+        // Verify payment is expired (>= to include the expiration epoch)
         let current_epoch = tx_context::epoch(ctx);
-        assert!(current_epoch - escrow.created_epoch > PAYMENT_EXPIRATION_EPOCHS, E_PAYMENT_EXPIRED);
+        assert!(current_epoch - escrow.created_epoch >= PAYMENT_EXPIRATION_EPOCHS, E_PAYMENT_EXPIRED);
 
         let refund_amount = escrow.amount;
         
