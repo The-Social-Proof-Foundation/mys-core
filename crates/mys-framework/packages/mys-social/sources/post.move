@@ -68,6 +68,7 @@ module social_contracts::post {
     const EInsufficientPromotionFunds: u64 = 36;
     const EPromotionInactive: u64 = 37;
     const EInvalidViewDuration: u64 = 38;
+    const EOverflow: u64 = 39;
 
     /// Constants for size limits
     const MAX_CONTENT_LENGTH: u64 = 5000; // 5000 chars max for content
@@ -866,8 +867,9 @@ module social_contracts::post {
             let option = vector::borrow_mut(&mut prediction_data.options, option_index);
             if (option.id == option_id) {
                 option_valid = true;
-                
+
                 // Update total bet for this option
+                assert!(option.total_bet <= MAX_U64 - amount, EOverflow);
                 option.total_bet = option.total_bet + amount;
                 break
             };
@@ -892,8 +894,9 @@ module social_contracts::post {
         
         // Add bet to prediction data
         vector::push_back(&mut prediction_data.bets, bet);
-        
+
         // Update total bet amount
+        assert!(prediction_data.total_bet_amount <= MAX_U64 - amount, EOverflow);
         prediction_data.total_bet_amount = prediction_data.total_bet_amount + amount;
         
         // Emit bet placed event
@@ -1482,6 +1485,7 @@ module social_contracts::post {
         // Increment the parent post's comment count with overflow protection
         // Stop incrementing at max but allow commenting to continue
         if (parent_post.comment_count < MAX_U64) {
+            assert!(parent_post.comment_count <= MAX_U64 - 1, EOverflow);
             parent_post.comment_count = parent_post.comment_count + 1;
         };
         
@@ -1639,6 +1643,7 @@ module social_contracts::post {
         };
         
         // Increment original post repost count
+        assert!(original_post.repost_count <= MAX_U64 - 1, EOverflow);
         original_post.repost_count = original_post.repost_count + 1;
         
         // Set defaults for optional boolean parameters
@@ -1879,14 +1884,16 @@ module social_contracts::post {
         } else {
             // New reaction from this user
             table::add(&mut post.user_reactions, user, reaction);
-            
+
             // Increment post reaction count
+            assert!(post.reaction_count <= MAX_U64 - 1, EOverflow);
             post.reaction_count = post.reaction_count + 1;
         };
         
         // Increment count for the reaction
         if (table::contains(&post.reaction_counts, reaction)) {
             let count = *table::borrow(&post.reaction_counts, reaction);
+            assert!(count <= MAX_U64 - 1, EOverflow);
             *table::borrow_mut(&mut post.reaction_counts, reaction) = count + 1;
         } else {
             table::add(&mut post.reaction_counts, reaction, 1);
@@ -1901,10 +1908,11 @@ module social_contracts::post {
         });
     }
 
-    /// Tip a post creator with MySo tokens (with PoC revenue redirection support)
-    public entry fun tip_post(
+    /// Tip a post creator with any supported coin type (with PoC revenue redirection support)
+    /// Supports MYS and MYUSD
+    public entry fun tip_post<T>(
         post: &mut Post,
-        coins: &mut Coin<MYS>,
+        coins: &mut Coin<T>,
         amount: u64,
         ctx: &mut TxContext
     ) {
@@ -1922,9 +1930,9 @@ module social_contracts::post {
 
         // Check if tips are allowed on this post
         assert!(post.allow_tips, ETipsNotAllowed);
-        
+
         // Apply PoC redirection and transfer
-        let actual_received = apply_poc_redirection_and_transfer(
+        let actual_received = apply_poc_redirection_and_transfer<T>(
             post,
             post.owner,
             amount,
@@ -1936,6 +1944,7 @@ module social_contracts::post {
         );
         
         // Record total tips received for this post
+        assert!(post.tips_received <= MAX_U64 - actual_received, EOverflow);
         post.tips_received = post.tips_received + actual_received;
         
         // Emit tip event for amount actually received by post owner
@@ -1952,11 +1961,11 @@ module social_contracts::post {
 
     /// Helper function to apply PoC revenue redirection and transfer coins
     /// Returns the amount actually received by the intended recipient
-    fun apply_poc_redirection_and_transfer(
+    fun apply_poc_redirection_and_transfer<T>(
         post: &Post,
         intended_recipient: address,
         amount: u64,
-        coins: &mut Coin<MYS>,
+        coins: &mut Coin<T>,
         tipper: address,
         object_id: address,
         is_post_event: bool,
@@ -2012,7 +2021,7 @@ module social_contracts::post {
         amount
     }
 
-        /// Internal function to update PoC result (called only from proof_of_creativity module)
+    /// Internal function to update PoC result (called only from proof_of_creativity module)
     public(package) fun update_poc_result(
         post: &mut Post,
         result_type: u8, // 1 = badge issued, 2 = redirection applied
@@ -2040,12 +2049,13 @@ module social_contracts::post {
         post.revenue_redirect_percentage = option::none();
     }
      
-     /// Tip a repost with MySo tokens - applies 50/50 split between repost owner and original post owner
-    public entry fun tip_repost(
+     /// Tip a repost with any supported coin type - applies 50/50 split between repost owner and original post owner
+     /// Supports MYS and MYUSD
+    public entry fun tip_repost<T>(
         post: &mut Post, // The repost
         original_post: &mut Post, // The original post
         config: &PostConfig,
-        coin: &mut Coin<MYS>,
+        coin: &mut Coin<T>,
         amount: u64,
         ctx: &mut TxContext
     ) {
@@ -2078,7 +2088,7 @@ module social_contracts::post {
         // Skip split if repost owner and original post owner are the same
         if (post.owner == original_post.owner) {
             // Standard flow - apply PoC redirection for unified owner
-            let actual_received = apply_poc_redirection_and_transfer(
+            let actual_received = apply_poc_redirection_and_transfer<T>(
                 post,
                 post.owner,
                 amount,
@@ -2089,8 +2099,9 @@ module social_contracts::post {
                 ctx
             );
             
+            assert!(post.tips_received <= MAX_U64 - actual_received, EOverflow);
             post.tips_received = post.tips_received + actual_received;
-            
+
             // Emit tip event for amount actually received
             if (actual_received > 0) {
                 event::emit(TipEvent {
@@ -2107,7 +2118,7 @@ module social_contracts::post {
             let original_owner_amount = amount - repost_owner_amount;
             
             // Apply PoC redirection for repost owner's share
-            let repost_actual_received = apply_poc_redirection_and_transfer(
+            let repost_actual_received = apply_poc_redirection_and_transfer<T>(
                 post,
                 post.owner,
                 repost_owner_amount,
@@ -2117,9 +2128,9 @@ module social_contracts::post {
                 true,
                 ctx
             );
-            
+
             // Apply PoC redirection for original post owner's share
-            let original_actual_received = apply_poc_redirection_and_transfer(
+            let original_actual_received = apply_poc_redirection_and_transfer<T>(
                 original_post,
                 original_post.owner,
                 original_owner_amount,
@@ -2131,7 +2142,9 @@ module social_contracts::post {
             );
             
             // Update tip counters
+            assert!(post.tips_received <= MAX_U64 - repost_actual_received, EOverflow);
             post.tips_received = post.tips_received + repost_actual_received;
+            assert!(original_post.tips_received <= MAX_U64 - original_actual_received, EOverflow);
             original_post.tips_received = original_post.tips_received + original_actual_received;
             
             // Emit tip events for amounts actually received
@@ -2156,14 +2169,15 @@ module social_contracts::post {
             };
         }
     }
-    
-    /// Tip a comment with MySo tokens
+
+    /// Tip a comment with any supported coin type
+    /// Supports MYS and MYUSD
     /// Split is 80% to commenter, 20% to post owner (with PoC redirection on post owner's share)
-    public entry fun tip_comment(
+    public entry fun tip_comment<T>(
         comment: &mut Comment,
         post: &mut Post,
         config: &PostConfig,
-        coin: &mut Coin<MYS>,
+        coin: &mut Coin<T>,
         amount: u64,
         ctx: &mut TxContext
     ) {
@@ -2187,7 +2201,7 @@ module social_contracts::post {
         transfer::public_transfer(commenter_tip, comment.owner);
         
         // Apply PoC redirection for post owner's share
-        let post_owner_actual_received = apply_poc_redirection_and_transfer(
+        let post_owner_actual_received = apply_poc_redirection_and_transfer<T>(
             post,
             post.owner,
             post_owner_amount,
@@ -2199,7 +2213,9 @@ module social_contracts::post {
         );
         
         // Update tip counters
+        assert!(comment.tips_received <= MAX_U64 - commenter_amount, EOverflow);
         comment.tips_received = comment.tips_received + commenter_amount;
+        assert!(post.tips_received <= MAX_U64 - post_owner_actual_received, EOverflow);
         post.tips_received = post.tips_received + post_owner_actual_received;
         
         // Emit tip event for commenter
@@ -2562,14 +2578,16 @@ module social_contracts::post {
         } else {
             // New reaction from this user
             table::add(&mut comment.user_reactions, user, reaction);
-            
+
             // Increment comment reaction count
+            assert!(comment.reaction_count <= MAX_U64 - 1, EOverflow);
             comment.reaction_count = comment.reaction_count + 1;
         };
         
         // Increment count for the reaction
         if (table::contains(&comment.reaction_counts, reaction)) {
             let count = *table::borrow(&comment.reaction_counts, reaction);
+            assert!(count <= MAX_U64 - 1, EOverflow);
             *table::borrow_mut(&mut comment.reaction_counts, reaction) = count + 1;
         } else {
             table::add(&mut comment.reaction_counts, reaction, 1);

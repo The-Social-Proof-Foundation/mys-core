@@ -37,6 +37,7 @@ module social_contracts::social_proof_of_truth {
     const EWrongStatus: u64 = 6;
     const ENotOracle: u64 = 7;
     const ENoBets: u64 = 8;
+    const EOverflow: u64 = 9;
 
     /// Status
     const STATUS_OPEN: u8 = 1;
@@ -58,6 +59,9 @@ module social_contracts::social_proof_of_truth {
     const DEFAULT_PAYOUT_DELAY_EPOCHS: u64 = 0;
     const DEFAULT_FEE_BPS: u64 = 100; // 1%
     const DEFAULT_FEE_SPLIT_PLATFORM_BPS: u64 = 5000; // 50% of fee to platform
+
+    /// Maximum u64 value for overflow protection
+    const MAX_U64: u64 = 18446744073709551615;
 
     /// Admin capability for SPoT
     public struct SpotAdminCap has key, store { id: UID }
@@ -236,11 +240,16 @@ module social_contracts::social_proof_of_truth {
         // All funds go to escrow
         let bet_coin = coin::split(&mut payment, amount, ctx);
         balance::join(&mut record.escrow, coin::into_balance(bet_coin));
-        
-        if (is_yes) { 
-            record.total_yes_escrow = record.total_yes_escrow + amount; 
-        } else { 
-            record.total_no_escrow = record.total_no_escrow + amount; 
+
+        // Update escrow totals with overflow protection
+        if (is_yes) {
+            // Check for overflow before adding
+            assert!(record.total_yes_escrow <= MAX_U64 - amount, EOverflow);
+            record.total_yes_escrow = record.total_yes_escrow + amount;
+        } else {
+            // Check for overflow before adding
+            assert!(record.total_no_escrow <= MAX_U64 - amount, EOverflow);
+            record.total_no_escrow = record.total_no_escrow + amount;
         };
 
         // Refund any excess

@@ -47,11 +47,15 @@ module social_contracts::profile {
     // Vesting error codes
     const EInvalidStartTime: u64 = 15;
     const ENotVestingWalletOwner: u64 = 16;
+    const EOverflow: u64 = 17;
 
     const PROFILE_SALE_FEE_BPS: u64 = 500;
-    
+
     // Fixed-point precision for curve calculations (1000 = 1.0)
     const CURVE_PRECISION: u64 = 1000;
+
+    // Maximum u64 value for overflow protection
+    const MAX_U64: u64 = 18446744073709551615;
 
     /// Reserved usernames that cannot be registered
     const RESERVED_NAMES: vector<vector<u8>> = vector[
@@ -897,6 +901,7 @@ module social_contracts::profile {
 
     /// Increment followers count (called by follow module)
     public fun increment_followers_count(profile: &mut Profile): u64 {
+        assert!(profile.followers_count <= MAX_U64 - 1, EOverflow);
         profile.followers_count = profile.followers_count + 1;
         profile.followers_count
     }
@@ -911,6 +916,7 @@ module social_contracts::profile {
 
     /// Increment post count (called by post module when creating a post)
     public fun increment_post_count(profile: &mut Profile): u64 {
+        assert!(profile.post_count <= MAX_U64 - 1, EOverflow);
         profile.post_count = profile.post_count + 1;
         profile.post_count
     }
@@ -925,6 +931,7 @@ module social_contracts::profile {
 
     /// Add tips received (called by post/comment module when tipping)
     public fun add_tips_received(profile: &mut Profile, amount: u64): u64 {
+        assert!(profile.tips_received <= MAX_U64 - amount, EOverflow);
         profile.tips_received = profile.tips_received + amount;
         profile.tips_received
     }
@@ -936,6 +943,7 @@ module social_contracts::profile {
 
     /// Increment following count (called when this profile follows another profile)
     public fun increment_following_count(profile: &mut Profile): u64 {
+        assert!(profile.following_count <= MAX_U64 - 1, EOverflow);
         profile.following_count = profile.following_count + 1;
         profile.following_count
     }
@@ -1744,6 +1752,7 @@ module social_contracts::profile {
         // Only proceed if there are tokens to claim
         if (claimable_amount > 0) {
             // Update claimed amount
+            assert!(wallet.claimed_amount <= MAX_U64 - claimable_amount, EOverflow);
             wallet.claimed_amount = wallet.claimed_amount + claimable_amount;
             
             // Create coin from the claimable balance and transfer to owner
