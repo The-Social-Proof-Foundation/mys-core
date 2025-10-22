@@ -139,25 +139,8 @@ fun test_register_foreign_token() {
     env.destroy_env();
 }
 
-#[test]
-#[expected_failure(abort_code = bridge::treasury::ETokenSupplyNonZero)]
-fun test_register_foreign_token_non_zero_supply() {
-    let addr = @0x0;
-    let mut env = create_env(chain_ids::mys_testnet());
-    env.create_bridge_default();
-    let (upgrade_cap, mut treasury_cap, metadata) = create_test_token(env
-        .scenario()
-        .ctx());
-    let _coin = treasury_cap.mint(1, env.scenario().ctx());
-    env.register_foreign_token<TEST_TOKEN>(
-        treasury_cap,
-        upgrade_cap,
-        metadata,
-        addr,
-    );
-
-    abort 0
-}
+// NOTE: Test removed - zero supply check no longer enforced
+// Security is now enforced by CoinCreationAdminCap requirement
 
 #[test]
 #[expected_failure(abort_code = bridge::treasury::EInvalidNotionalValue)]

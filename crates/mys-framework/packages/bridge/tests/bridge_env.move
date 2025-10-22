@@ -49,9 +49,11 @@ module bridge::bridge_env {
     use mys::coin::{Self, Coin, CoinMetadata, TreasuryCap};
     use mys::ecdsa_k1::{KeyPair, secp256k1_keypair_from_seed, secp256k1_sign};
     use mys::event;
+    use mys::object;
     use mys::package::UpgradeCap;
     use mys::test_scenario::{Self, Scenario};
     use mys::test_utils::destroy;
+    use mys::tx_context::TxContext;
     use mys_system::governance_test_utils::{
         advance_epoch_with_reward_amounts,
         create_mys_system_state_for_testing,
@@ -1249,10 +1251,11 @@ module bridge::test_token {
     use std::ascii;
     use std::type_name;
     use mys::address;
-    use mys::coin::{CoinMetadata, TreasuryCap, create_currency};
+    use mys::coin::{CoinMetadata, TreasuryCap, create_currency_for_testing};
     use mys::hex;
     use mys::package::{UpgradeCap, test_publish};
     use mys::test_utils::create_one_time_witness;
+    use mys::tx_context::TxContext;
 
     public struct TEST_TOKEN has drop {}
 
@@ -1260,7 +1263,7 @@ module bridge::test_token {
         ctx: &mut TxContext,
     ): (UpgradeCap, TreasuryCap<TEST_TOKEN>, CoinMetadata<TEST_TOKEN>) {
         let otw = create_one_time_witness<TEST_TOKEN>();
-        let (treasury_cap, metadata) = create_currency(
+        let (treasury_cap, metadata) = create_currency_for_testing(
             otw,
             8,
             b"tst",
@@ -1286,10 +1289,11 @@ module bridge::btc {
     use std::ascii;
     use std::type_name;
     use mys::address;
-    use mys::coin::{CoinMetadata, TreasuryCap, create_currency};
+    use mys::coin::{CoinMetadata, TreasuryCap, create_currency_for_testing};
     use mys::hex;
     use mys::package::{UpgradeCap, test_publish};
     use mys::test_utils::create_one_time_witness;
+    use mys::tx_context::TxContext;
 
     public struct BTC has drop {}
 
@@ -1297,7 +1301,7 @@ module bridge::btc {
         ctx: &mut TxContext,
     ): (UpgradeCap, TreasuryCap<BTC>, CoinMetadata<BTC>) {
         let otw = create_one_time_witness<BTC>();
-        let (treasury_cap, metadata) = create_currency(
+        let (treasury_cap, metadata) = create_currency_for_testing(
             otw,
             8,
             b"btc",
@@ -1323,10 +1327,11 @@ module bridge::eth {
     use std::ascii;
     use std::type_name;
     use mys::address;
-    use mys::coin::{CoinMetadata, TreasuryCap, create_currency};
+    use mys::coin::{CoinMetadata, TreasuryCap, create_currency_for_testing};
     use mys::hex;
     use mys::package::{UpgradeCap, test_publish};
     use mys::test_utils::create_one_time_witness;
+    use mys::tx_context::TxContext;
 
     public struct ETH has drop {}
 
@@ -1334,7 +1339,7 @@ module bridge::eth {
         ctx: &mut TxContext,
     ): (UpgradeCap, TreasuryCap<ETH>, CoinMetadata<ETH>) {
         let otw = create_one_time_witness<ETH>();
-        let (treasury_cap, metadata) = create_currency(
+        let (treasury_cap, metadata) = create_currency_for_testing(
             otw,
             8,
             b"eth",
@@ -1360,10 +1365,11 @@ module bridge::usdc {
     use std::ascii;
     use std::type_name;
     use mys::address;
-    use mys::coin::{CoinMetadata, TreasuryCap, create_currency};
+    use mys::coin::{CoinMetadata, TreasuryCap, create_currency_for_testing};
     use mys::hex;
     use mys::package::{UpgradeCap, test_publish};
     use mys::test_utils::create_one_time_witness;
+    use mys::tx_context::TxContext;
 
     public struct USDC has drop {}
 
@@ -1371,7 +1377,7 @@ module bridge::usdc {
         ctx: &mut TxContext,
     ): (UpgradeCap, TreasuryCap<USDC>, CoinMetadata<USDC>) {
         let otw = create_one_time_witness<USDC>();
-        let (treasury_cap, metadata) = create_currency(
+        let (treasury_cap, metadata) = create_currency_for_testing(
             otw,
             6,
             b"usdc",
@@ -1397,10 +1403,11 @@ module bridge::usdt {
     use std::ascii;
     use std::type_name;
     use mys::address;
-    use mys::coin::{CoinMetadata, TreasuryCap, create_currency};
+    use mys::coin::{CoinMetadata, TreasuryCap, create_currency_for_testing};
     use mys::hex;
     use mys::package::{UpgradeCap, test_publish};
     use mys::test_utils::create_one_time_witness;
+    use mys::tx_context::TxContext;
 
     public struct USDT has drop {}
 
@@ -1408,7 +1415,7 @@ module bridge::usdt {
         ctx: &mut TxContext,
     ): (UpgradeCap, TreasuryCap<USDT>, CoinMetadata<USDT>) {
         let otw = create_one_time_witness<USDT>();
-        let (treasury_cap, metadata) = create_currency(
+        let (treasury_cap, metadata) = create_currency_for_testing(
             otw,
             6,
             b"usdt",

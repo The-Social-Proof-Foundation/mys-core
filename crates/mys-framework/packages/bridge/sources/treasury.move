@@ -24,11 +24,10 @@ module bridge::treasury {
 
     const EUnsupportedTokenType: u64 = 1;
     const EInvalidUpgradeCap: u64 = 2;
-    const ETokenSupplyNonZero: u64 = 3;
-    const EInvalidNotionalValue: u64 = 4;
-    const EInvalidNativeMysAmount: u64 = 5;
-    const ENativeMysAlreadyBootstrapped: u64 = 6;
-    const ENativeMysNotBootstrapped: u64 = 7;
+    const EInvalidNotionalValue: u64 = 3;
+    const EInvalidNativeMysAmount: u64 = 4;
+    const ENativeMysAlreadyBootstrapped: u64 = 5;
+    const ENativeMysNotBootstrapped: u64 = 6;
     
     // Required amount for native MYS bootstrap: 50 million MYS with 9 decimals
     const NATIVE_MYS_BOOTSTRAP_AMOUNT: u64 = 50_000_000_000_000_000;
@@ -115,8 +114,9 @@ module bridge::treasury {
         uc: UpgradeCap,
         metadata: &CoinMetadata<T>,
     ) {
-        // Make sure TreasuryCap has not been minted before.
-        assert!(coin::total_supply(&tc) == 0, ETokenSupplyNonZero);
+        // NOTE: Zero supply check removed to support admin-created tokens
+        // Security is now enforced by CoinCreationAdminCap requirement
+        
         let type_name = type_name::get<T>();
         let address_bytes = hex::decode(ascii::into_bytes(type_name::get_address(&type_name)));
         let coin_address = address::from_bytes(address_bytes);

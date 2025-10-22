@@ -14,6 +14,6 @@ id = "MoveStdlib"
 source = { local = "../move-stdlib" }
 
 [move.toolchain-version]
-compiler-version = "1.30.0"
+compiler-version = "0.0.1"
 edition = "2024.beta"
 flavor = "mys"
