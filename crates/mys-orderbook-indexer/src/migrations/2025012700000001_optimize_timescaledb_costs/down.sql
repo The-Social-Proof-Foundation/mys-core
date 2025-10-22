@@ -154,4 +154,3 @@ BEGIN
     RAISE NOTICE 'Consider re-applying optimization when ready: Run up.sql migration';
     RAISE NOTICE '========================================';
 END $$;
-
