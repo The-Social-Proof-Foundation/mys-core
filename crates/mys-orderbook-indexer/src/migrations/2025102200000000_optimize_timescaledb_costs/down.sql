@@ -1,7 +1,9 @@
 -- Rollback TimescaleDB compression timing optimization
--- This migration reverts compression timing back to original aggressive settings
+-- Reverts compression timing back to original aggressive settings (7/30 days)
 --
--- WARNING: This rollback will restore aggressive compression (7/30 days)
+-- NOTE: Our hypertables use BIGINT timestamps (checkpoint_timestamp_ms in milliseconds)
+-- Therefore compression policies must use INTEGER values, not INTERVAL
+--
 -- Expected downtime: None
 
 -- Verify TimescaleDB extension is available
@@ -37,27 +39,30 @@ BEGIN
 END $$;
 
 -- Step 2: Restore original aggressive compression timing
+-- Using INTEGER milliseconds for BIGINT timestamp columns
+-- 7 days = 604,800,000 ms
+-- 30 days = 2,592,000,000 ms
 DO $$
 BEGIN
     RAISE NOTICE 'Step 2: Restoring original compression policies...';
     RAISE WARNING 'Reverting to aggressive compression timing (7/30 days)';
 END $$;
 
--- Trading data: 7 days (original)
-SELECT add_compression_policy('order_fills', INTERVAL '7 days');
-SELECT add_compression_policy('order_updates', INTERVAL '7 days');
+-- Trading data: 7 days (604,800,000 ms) - original
+SELECT add_compression_policy('order_fills', BIGINT '604800000');
+SELECT add_compression_policy('order_updates', BIGINT '604800000');
 
--- Price/balance data: 30 days (original)
-SELECT add_compression_policy('pool_prices', INTERVAL '30 days');
-SELECT add_compression_policy('balances', INTERVAL '30 days');
+-- Price/balance data: 30 days (2,592,000,000 ms) - original
+SELECT add_compression_policy('pool_prices', BIGINT '2592000000');
+SELECT add_compression_policy('balances', BIGINT '2592000000');
 
--- Low-frequency data: 7 days (original)
-SELECT add_compression_policy('flashloans', INTERVAL '7 days');
-SELECT add_compression_policy('stakes', INTERVAL '7 days');
-SELECT add_compression_policy('proposals', INTERVAL '7 days');
-SELECT add_compression_policy('votes', INTERVAL '7 days');
-SELECT add_compression_policy('rebates', INTERVAL '7 days');
-SELECT add_compression_policy('trade_params_update', INTERVAL '7 days');
+-- Low-frequency data: 7 days (604,800,000 ms) - original
+SELECT add_compression_policy('flashloans', BIGINT '604800000');
+SELECT add_compression_policy('stakes', BIGINT '604800000');
+SELECT add_compression_policy('proposals', BIGINT '604800000');
+SELECT add_compression_policy('votes', BIGINT '604800000');
+SELECT add_compression_policy('rebates', BIGINT '604800000');
+SELECT add_compression_policy('trade_params_update', BIGINT '604800000');
 
 -- Final summary
 DO $$

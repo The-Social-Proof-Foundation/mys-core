@@ -1,6 +1,9 @@
 -- Optimize TimescaleDB compression timing for cost savings
 -- This migration adjusts compression timing from 7/30 days to 30/90 days
--- Provides 20-30% storage cost reduction with minimal changes
+-- Provides 20-30% storage cost reduction
+--
+-- NOTE: Our hypertables use BIGINT timestamps (checkpoint_timestamp_ms in milliseconds)
+-- Therefore compression policies must use INTEGER values, not INTERVAL
 --
 -- Expected downtime: None
 -- Rollback available: Yes (see down.sql)
@@ -36,29 +39,31 @@ BEGIN
     RAISE NOTICE 'Step 1: Compression policies removed successfully';
 END $$;
 
--- Step 2: Add compression policies with optimized timing (30/90 days)
--- No retention policies - keeping it simple to avoid compatibility issues
+-- Step 2: Add compression policies with optimized timing
+-- Using INTEGER milliseconds because our time column is BIGINT (checkpoint_timestamp_ms)
+-- 30 days = 2,592,000,000 ms
+-- 90 days = 7,776,000,000 ms
 DO $$
 BEGIN
     RAISE NOTICE 'Step 2: Adding optimized compression policies...';
-    RAISE NOTICE 'Using extended compression windows: 30 days (trading) and 90 days (prices)';
+    RAISE NOTICE 'Using integer milliseconds for BIGINT timestamp columns';
 END $$;
 
--- Trading data: 30 days (was 7 days)
-SELECT add_compression_policy('order_fills', INTERVAL '30 days');
-SELECT add_compression_policy('order_updates', INTERVAL '30 days');
+-- Trading data: 30 days (2,592,000,000 ms) - was 7 days
+SELECT add_compression_policy('order_fills', BIGINT '2592000000');
+SELECT add_compression_policy('order_updates', BIGINT '2592000000');
 
--- Price/balance data: 90 days (was 30 days)
-SELECT add_compression_policy('pool_prices', INTERVAL '90 days');
-SELECT add_compression_policy('balances', INTERVAL '90 days');
+-- Price/balance data: 90 days (7,776,000,000 ms) - was 30 days
+SELECT add_compression_policy('pool_prices', BIGINT '7776000000');
+SELECT add_compression_policy('balances', BIGINT '7776000000');
 
--- Low-frequency data: 30 days (was 7 days)
-SELECT add_compression_policy('flashloans', INTERVAL '30 days');
-SELECT add_compression_policy('stakes', INTERVAL '30 days');
-SELECT add_compression_policy('proposals', INTERVAL '30 days');
-SELECT add_compression_policy('votes', INTERVAL '30 days');
-SELECT add_compression_policy('rebates', INTERVAL '30 days');
-SELECT add_compression_policy('trade_params_update', INTERVAL '30 days');
+-- Low-frequency data: 30 days (2,592,000,000 ms) - was 7 days
+SELECT add_compression_policy('flashloans', BIGINT '2592000000');
+SELECT add_compression_policy('stakes', BIGINT '2592000000');
+SELECT add_compression_policy('proposals', BIGINT '2592000000');
+SELECT add_compression_policy('votes', BIGINT '2592000000');
+SELECT add_compression_policy('rebates', BIGINT '2592000000');
+SELECT add_compression_policy('trade_params_update', BIGINT '2592000000');
 
 -- Final summary
 DO $$
@@ -84,6 +89,6 @@ BEGIN
     RAISE NOTICE '  • Better query performance on recent data';
     RAISE NOTICE '';
     RAISE NOTICE 'Active compression policies: %', compression_count;
-    RAISE NOTICE 'Note: No retention policies added (data kept indefinitely)';
+    RAISE NOTICE 'Note: No retention policies (data kept indefinitely)';
     RAISE NOTICE '========================================';
 END $$;
