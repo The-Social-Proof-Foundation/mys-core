@@ -1,0 +1,20 @@
+# config.yaml format:
+
+# URL of the remote store
+remote_store_url: https://storage.googleapis.com/mysocial-testnet-checkpoints
+# MySocial RPC URL
+mys_rpc_url: https://fullnode.testnet.mysocial.network:9000
+# Database connection URL
+db_url: postgres://tsdbadmin:awbr7d1tc0cap9hp@fzbzpjk2c1.rrpamcwlae.tsdb.cloud.timescale.com:31452/tsdb?sslmode=require
+# Path to the checkpoints (optional)
+# checkpoints_path: <path>
+# OrderBook package ID
+orderbook_package_id: 0x0000000000000000000000000000000000000000000000000000000000000b0c
+# OrderBook genesis checkpoint
+orderbook_genesis_checkpoint: 0
+# Number of concurrent operations
+concurrency: 1
+# Client metric port
+metric_port: 9090
+# Service port
+service_port: 8080

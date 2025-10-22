@@ -1321,6 +1321,15 @@ Event emitted when a proposal is rescinded by its submitter
 
 
 
+<a name="social_contracts_governance_EOverflow"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>: u64 = 19;
+</code></pre>
+
+
+
 <a name="social_contracts_governance_EProposalNotFound"></a>
 
 
@@ -1363,6 +1372,16 @@ Error codes
 
 
 <pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>: u64 = 17;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_MAX_U64"></a>
+
+Maximum u64 value for overflow protection
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_MAX_U64">MAX_U64</a>: u64 = 18446744073709551615;
 </code></pre>
 
 
@@ -1773,8 +1792,10 @@ Users can change their vote at any time
             };
             // Add new vote
             <b>if</b> (upvote) {
+                <b>assert</b>!(delegate.upvotes &lt;= <a href="../social_contracts/governance.md#social_contracts_governance_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
                 delegate.upvotes = delegate.upvotes + 1;
             } <b>else</b> {
+                <b>assert</b>!(delegate.downvotes &lt;= <a href="../social_contracts/governance.md#social_contracts_governance_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
                 delegate.downvotes = delegate.downvotes + 1;
             };
             // Update record
@@ -1782,8 +1803,10 @@ Users can change their vote at any time
         } <b>else</b> {
             // First time voting <b>for</b> this target
             <b>if</b> (upvote) {
+                <b>assert</b>!(delegate.upvotes &lt;= <a href="../social_contracts/governance.md#social_contracts_governance_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
                 delegate.upvotes = delegate.upvotes + 1;
             } <b>else</b> {
+                <b>assert</b>!(delegate.downvotes &lt;= <a href="../social_contracts/governance.md#social_contracts_governance_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
                 delegate.downvotes = delegate.downvotes + 1;
             };
             // Record vote
@@ -1816,8 +1839,10 @@ Users can change their vote at any time
             };
             // Add new vote
             <b>if</b> (upvote) {
+                <b>assert</b>!(nominee.upvotes &lt;= <a href="../social_contracts/governance.md#social_contracts_governance_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
                 nominee.upvotes = nominee.upvotes + 1;
             } <b>else</b> {
+                <b>assert</b>!(nominee.downvotes &lt;= <a href="../social_contracts/governance.md#social_contracts_governance_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
                 nominee.downvotes = nominee.downvotes + 1;
             };
             // Update record
@@ -1825,8 +1850,10 @@ Users can change their vote at any time
         } <b>else</b> {
             // First time voting <b>for</b> this nominee
             <b>if</b> (upvote) {
+                <b>assert</b>!(nominee.upvotes &lt;= <a href="../social_contracts/governance.md#social_contracts_governance_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
                 nominee.upvotes = nominee.upvotes + 1;
             } <b>else</b> {
+                <b>assert</b>!(nominee.downvotes &lt;= <a href="../social_contracts/governance.md#social_contracts_governance_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
                 nominee.downvotes = nominee.downvotes + 1;
             };
             // Record vote

@@ -119,7 +119,7 @@ built_in_pkgs! {
     MYS_FRAMEWORK_ADDRESS / MYS_FRAMEWORK_PACKAGE_ID = 0x2;
     MYS_SYSTEM_ADDRESS / MYS_SYSTEM_PACKAGE_ID = 0x3;
     BRIDGE_ADDRESS / BRIDGE_PACKAGE_ID = 0xb;
-    DEEPBOOK_ADDRESS / DEEPBOOK_PACKAGE_ID = 0x0b0c;
+    ORDERBOOK_ADDRESS / ORDERBOOK_PACKAGE_ID = 0x0b0c;
     MYS_SOCIAL_ADDRESS / MYS_SOCIAL_PACKAGE_ID = 0x50c1;
     MYDATA_ADDRESS / MYDATA_PACKAGE_ID = 0xda7a;
     MYUSD_ADDRESS / MYUSD_PACKAGE_ID = 0x75d6;
@@ -145,7 +145,7 @@ pub fn mys_framework_address_concat_string(suffix: &str) -> String {
 /// Parses `s` as an address. Valid formats for addresses are:
 ///
 /// - A 256bit number, encoded in decimal, or hexadecimal with a leading "0x" prefix.
-/// - One of a number of pre-defined named addresses: std, mys, mys_system, deepbook.
+/// - One of a number of pre-defined named addresses: std, mys, mys_system, orderbook.
 ///
 /// Parsing succeeds if and only if `s` matches one of these formats exactly, with no remaining
 /// suffix. This function is intended for use within the authority codebases.
@@ -193,7 +193,7 @@ pub fn parse_mys_type_tag(s: &str) -> anyhow::Result<TypeTag> {
 /// Resolve well-known named addresses into numeric addresses.
 pub fn resolve_address(addr: &str) -> Option<AccountAddress> {
     match addr {
-        "deepbook" => Some(DEEPBOOK_ADDRESS),
+        "orderbook" => Some(ORDERBOOK_ADDRESS),
         "std" => Some(MOVE_STDLIB_ADDRESS),
         "mys" => Some(MYS_FRAMEWORK_ADDRESS),
         "mys_system" => Some(MYS_SYSTEM_ADDRESS),
@@ -457,7 +457,7 @@ mod tests {
         ];
         expected.assert_eq(&result.to_string());
 
-        let expected = expect!["0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x000000000000000000000000000000000000000000000000000000000000dee9::custodian_v2::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"];
+        let expected = expect!["0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x0000000000000000000000000000000000000000000000000000000000000b0c::custodian_v2::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"];
         expected.assert_eq(&result.to_canonical_string(/* with_prefix */ true));
     }
 
@@ -473,7 +473,7 @@ mod tests {
         ];
         expected.assert_eq(&result.to_string());
 
-        let expected = expect!["0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x000000000000000000000000000000000000000000000000000000000000dee9::custodian_v2::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"];
+        let expected = expect!["0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x0000000000000000000000000000000000000000000000000000000000000b0c::custodian_v2::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"];
         expected.assert_eq(&result.to_canonical_string(/* with_prefix */ true));
     }
 

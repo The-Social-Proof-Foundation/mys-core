@@ -7,9 +7,9 @@ use jsonrpsee::proc_macros::rpc;
 
 use mys_open_rpc_macros::open_rpc;
 
-#[open_rpc(namespace = "mysx", tag = "DeepBook Read API")]
+#[open_rpc(namespace = "mysx", tag = "OrderBook Read API")]
 #[rpc(server, client, namespace = "mysx")]
-pub trait DeepBookApi {
+pub trait OrderBookApi {
     #[method(name = "ping")]
     async fn ping(&self) -> RpcResult<String>;
 }

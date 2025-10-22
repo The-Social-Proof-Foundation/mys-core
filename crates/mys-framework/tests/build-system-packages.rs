@@ -39,7 +39,7 @@ fn build_system_packages() {
     // let crates_path = Path::new(CRATE_ROOT).join("..");
 
     let bridge_path = packages_path.join("bridge");
-    let deepbook_path = packages_path.join("deepbook");
+    let orderbook_path = packages_path.join("orderbook");
     let myusd_path = packages_path.join("myusd");
     let mys_system_path = packages_path.join("mys-system");
     let mys_framework_path = packages_path.join("mys-framework");
@@ -49,7 +49,7 @@ fn build_system_packages() {
 
     build_packages(
         &bridge_path,
-        &deepbook_path,
+        &orderbook_path,
         &myusd_path,
         &mys_system_path,
         &mys_framework_path,
@@ -87,7 +87,7 @@ fn check_diff(checked_in: &Path, built: &Path) {
 
 fn build_packages(
     bridge_path: &Path,
-    deepbook_path: &Path,
+    orderbook_path: &Path,
     myusd_path: &Path,
     mys_system_path: &Path,
     mys_framework_path: &Path,
@@ -107,7 +107,7 @@ fn build_packages(
     debug_assert!(!config.test_mode);
     build_packages_with_move_config(
         bridge_path,
-        deepbook_path,
+        orderbook_path,
         myusd_path,
         mys_system_path,
         mys_framework_path,
@@ -116,7 +116,7 @@ fn build_packages(
         mydata_path,
         out_dir,
         "bridge",
-        "deepbook",
+        "orderbook",
         "myusd",
         "mys-system",
         "mys-framework",
@@ -129,7 +129,7 @@ fn build_packages(
 
 fn build_packages_with_move_config(
     bridge_path: &Path,
-    deepbook_path: &Path,
+    orderbook_path: &Path,
     myusd_path: &Path,
     mys_system_path: &Path,
     mys_framework_path: &Path,
@@ -138,7 +138,7 @@ fn build_packages_with_move_config(
     mydata_path: &Path,
     out_dir: &Path,
     bridge_dir: &str,
-    deepbook_dir: &str,
+    orderbook_dir: &str,
     myusd_dir: &str,
     system_dir: &str,
     framework_dir: &str,
@@ -171,13 +171,13 @@ fn build_packages_with_move_config(
     }
     .build(mys_system_path)
     .unwrap();
-    let deepbook_pkg = BuildConfig {
+    let orderbook_pkg = BuildConfig {
         config: config.clone(),
         run_bytecode_verifier: true,
         print_diags_to_stderr: false,
         chain_id: None, // Framework pkg addr is agnostic to chain, resolves from Move.toml
     }
-    .build(deepbook_path)
+    .build(orderbook_path)
     .unwrap();
     let myusd_pkg = BuildConfig {
         config: config.clone(),
@@ -215,7 +215,7 @@ fn build_packages_with_move_config(
     let move_stdlib = stdlib_pkg.get_stdlib_modules();
     let mys_system = system_pkg.get_mys_system_modules();
     let mys_framework = framework_pkg.get_mys_framework_modules();
-    let deepbook = deepbook_pkg.get_deepbook_modules();
+    let orderbook = orderbook_pkg.get_orderbook_modules();
     let myusd = myusd_pkg.get_myusd_modules();
     let bridge = bridge_pkg.get_bridge_modules();
     let mys_social = mys_social_pkg.get_mys_social_modules();
@@ -227,8 +227,8 @@ fn build_packages_with_move_config(
     let mys_framework_members =
         serialize_modules_to_file(mys_framework, &compiled_packages_dir.join(framework_dir))
             .unwrap();
-    let deepbook_members =
-        serialize_modules_to_file(deepbook, &compiled_packages_dir.join(deepbook_dir)).unwrap();
+    let orderbook_members =
+        serialize_modules_to_file(orderbook, &compiled_packages_dir.join(orderbook_dir)).unwrap();
     let myusd_members =
         serialize_modules_to_file(myusd, &compiled_packages_dir.join(myusd_dir)).unwrap();
     let bridge_members =
@@ -248,7 +248,7 @@ fn build_packages_with_move_config(
         &mut files_to_write,
     );
     relocate_docs(
-        &deepbook_pkg.package.compiled_docs.unwrap(),
+        &orderbook_pkg.package.compiled_docs.unwrap(),
         &mut files_to_write,
     );
     relocate_docs(
@@ -284,7 +284,7 @@ fn build_packages_with_move_config(
     let published_api = [
         mys_system_members.join("\n"),
         mys_framework_members.join("\n"),
-        deepbook_members.join("\n"),
+        orderbook_members.join("\n"),
         myusd_members.join("\n"),
         bridge_members.join("\n"),
         stdlib_members.join("\n"),

@@ -23,7 +23,7 @@ Move.lock
 !crates/mys-framework/packages/move-stdlib/Move.lock
 !crates/mys-framework/packages/mys-framework/Move.lock
 !crates/mys-framework/packages/mys-system/Move.lock
-!crates/mys-framework/packages/deepbook/Move.lock
+!crates/mys-framework/packages/orderbook/Move.lock
 .trace
 .coverage_map.mvcov
 

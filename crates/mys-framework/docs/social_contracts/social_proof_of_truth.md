@@ -614,6 +614,15 @@ Errors
 
 
 
+<a name="social_contracts_social_proof_of_truth_EOverflow"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EOverflow">EOverflow</a>: u64 = 9;
+</code></pre>
+
+
+
 <a name="social_contracts_social_proof_of_truth_ETooClose"></a>
 
 
@@ -637,6 +646,16 @@ Errors
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>: u64 = 6;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_MAX_U64"></a>
+
+Maximum u64 value for overflow protection
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_U64">MAX_U64</a>: u64 = 18446744073709551615;
 </code></pre>
 
 
@@ -970,9 +989,14 @@ Place bet - all funds go to escrow
     // All funds go to escrow
     <b>let</b> bet_coin = coin::split(&<b>mut</b> payment, amount, ctx);
     balance::join(&<b>mut</b> record.escrow, coin::into_balance(bet_coin));
+    // Update escrow totals with overflow protection
     <b>if</b> (is_yes) {
+        // Check <b>for</b> overflow before adding
+        <b>assert</b>!(record.total_yes_escrow &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EOverflow">EOverflow</a>);
         record.total_yes_escrow = record.total_yes_escrow + amount;
     } <b>else</b> {
+        // Check <b>for</b> overflow before adding
+        <b>assert</b>!(record.total_no_escrow &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EOverflow">EOverflow</a>);
         record.total_no_escrow = record.total_no_escrow + amount;
     };
     // Refund any excess

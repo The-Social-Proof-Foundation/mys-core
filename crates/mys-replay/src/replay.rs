@@ -51,7 +51,7 @@ use mys_types::{
         CheckedInputObjects, InputObjectKind, InputObjects, ObjectReadResult, ObjectReadResultKind,
         SenderSignedData, Transaction, TransactionDataAPI, TransactionKind, VerifiedTransaction,
     },
-    DEEPBOOK_PACKAGE_ID,
+    ORDERBOOK_PACKAGE_ID,
 };
 use prometheus::Registry;
 use serde::{Deserialize, Serialize};
@@ -1028,7 +1028,7 @@ impl LocalExec {
         let mut ids = BuiltInFramework::all_package_ids();
 
         if protocol_version < 5 {
-            ids.retain(|id| *id != DEEPBOOK_PACKAGE_ID)
+            ids.retain(|id| *id != ORDERBOOK_PACKAGE_ID)
         }
         ids
     }

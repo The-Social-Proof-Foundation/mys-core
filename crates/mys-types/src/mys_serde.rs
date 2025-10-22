@@ -24,7 +24,7 @@ use serde_with::{Bytes, DeserializeAs, SerializeAs};
 use mys_protocol_config::ProtocolVersion;
 
 use crate::{
-    parse_mys_struct_tag, parse_mys_type_tag, DEEPBOOK_ADDRESS, MYS_CLOCK_ADDRESS,
+    parse_mys_struct_tag, parse_mys_type_tag, ORDERBOOK_ADDRESS, MYS_CLOCK_ADDRESS,
     MYS_FRAMEWORK_ADDRESS, MYS_SOCIAL_ADDRESS, MYS_SYSTEM_ADDRESS, MYS_SYSTEM_STATE_ADDRESS,
     MYDATA_ADDRESS, MYUSD_ADDRESS,
 };
@@ -172,7 +172,7 @@ const MYS_ADDRESSES: [AccountAddress; 10] = [
     AccountAddress::ONE,
     MYS_FRAMEWORK_ADDRESS,
     MYS_SYSTEM_ADDRESS,
-    DEEPBOOK_ADDRESS,
+    ORDERBOOK_ADDRESS,
     MYS_SYSTEM_STATE_ADDRESS,
     MYS_CLOCK_ADDRESS,
     MYS_SOCIAL_ADDRESS,

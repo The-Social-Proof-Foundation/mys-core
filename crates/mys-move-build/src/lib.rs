@@ -48,7 +48,7 @@ use mys_types::{
     error::{MysError, MysResult},
     is_system_package,
     move_package::{FnInfo, FnInfoKey, FnInfoMap, MovePackage},
-    BRIDGE_ADDRESS, DEEPBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYS_FRAMEWORK_ADDRESS,
+    BRIDGE_ADDRESS, ORDERBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYS_FRAMEWORK_ADDRESS,
     MYS_SOCIAL_ADDRESS, MYS_SYSTEM_ADDRESS, MYDATA_ADDRESS, MYUSD_ADDRESS,
 };
 use mys_verifier::verifier as mys_bytecode_verifier;
@@ -445,13 +445,13 @@ impl CompiledPackage {
             .collect()
     }
 
-    /// Get bytecode modules from DeepBook that are used by this package
-    pub fn get_deepbook_modules(&self) -> impl Iterator<Item = &CompiledModule> {
+    /// Get bytecode modules from OrderBook that are used by this package
+    pub fn get_orderbook_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
-            .filter(|m| *m.self_id().address() == DEEPBOOK_ADDRESS)
+            .filter(|m| *m.self_id().address() == ORDERBOOK_ADDRESS)
     }
 
-    /// Get bytecode modules from DeepBook that are used by this package
+    /// Get bytecode modules from OrderBook that are used by this package
     pub fn get_bridge_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
             .filter(|m| *m.self_id().address() == BRIDGE_ADDRESS)

@@ -1241,6 +1241,15 @@ Event emitted when vested tokens are claimed
 
 
 
+<a name="social_contracts_profile_EOverflow"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>: u64 = 17;
+</code></pre>
+
+
+
 <a name="social_contracts_profile_EProfileAlreadyExists"></a>
 
 Error codes
@@ -1292,6 +1301,15 @@ Error codes
 
 
 <pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotAvailable">EUsernameNotAvailable</a>: u64 = 5;
+</code></pre>
+
+
+
+<a name="social_contracts_profile_MAX_U64"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a>: u64 = 18446744073709551615;
 </code></pre>
 
 
@@ -2379,6 +2397,7 @@ Increment followers count (called by follow module)
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_increment_followers_count">increment_followers_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count + 1;
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count
 }
@@ -2433,6 +2452,7 @@ Increment post count (called by post module when creating a post)
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_increment_post_count">increment_post_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count + 1;
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count
 }
@@ -2487,6 +2507,7 @@ Add tips received (called by post/comment module when tipping)
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_add_tips_received">add_tips_received</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, amount: u64): u64 {
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.tips_received &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.tips_received = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.tips_received + amount;
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.tips_received
 }
@@ -2538,6 +2559,7 @@ Increment following count (called when this profile follows another profile)
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_increment_following_count">increment_following_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count + 1;
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count
 }
@@ -3761,6 +3783,7 @@ Only the wallet owner can claim tokens, and only claimable amounts
     // Only proceed <b>if</b> there are tokens to claim
     <b>if</b> (claimable_amount &gt; 0) {
         // Update claimed amount
+        <b>assert</b>!(wallet.claimed_amount &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - claimable_amount, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
         wallet.claimed_amount = wallet.claimed_amount + claimable_amount;
         // Create coin from the <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a> balance and transfer to <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
         <b>let</b> claimed_coin = coin::from_balance&lt;MYS&gt;(

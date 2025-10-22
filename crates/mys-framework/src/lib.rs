@@ -13,7 +13,7 @@ use mys_types::{
     digests::TransactionDigest,
     move_package::MovePackage,
     object::{Object, OBJECT_START_VERSION},
-    BRIDGE_PACKAGE_ID, DEEPBOOK_PACKAGE_ID, MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID,
+    BRIDGE_PACKAGE_ID, ORDERBOOK_PACKAGE_ID, MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID,
     MYS_SOCIAL_PACKAGE_ID, MYS_SYSTEM_PACKAGE_ID, MYDATA_PACKAGE_ID, MYUSD_PACKAGE_ID,
 };
 use serde::{Deserialize, Serialize};
@@ -160,9 +160,9 @@ impl BuiltInFramework {
                 ]
             ),
             (
-                DEEPBOOK_PACKAGE_ID,
-                "DeepBook",
-                "deepbook",
+                ORDERBOOK_PACKAGE_ID,
+                "OrderBook",
+                "orderbook",
                 [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
             ),
             (

@@ -1491,6 +1491,16 @@ Operation can only be performed by the admin
 
 
 
+<a name="social_contracts_social_proof_tokens_EOverflow"></a>
+
+Arithmetic overflow detected
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>: u64 = 22;
+</code></pre>
+
+
+
 <a name="social_contracts_social_proof_tokens_ESelfTrading"></a>
 
 Self trading not allowed
@@ -1556,6 +1566,15 @@ Viral threshold not met
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_HOLD_PERCENT_BPS">MAX_HOLD_PERCENT_BPS</a>: u64 = 500;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_MAX_U64"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a>: u64 = 18446744073709551615;
 </code></pre>
 
 
@@ -1823,6 +1842,7 @@ Reserve MYS tokens towards a post to support social proof token creation
     // Update reserver's balance in the pool
     <b>if</b> (table::contains(&reservation_pool_object.reservations, reserver)) {
         <b>let</b> reservation_balance = table::borrow_mut(&<b>mut</b> reservation_pool_object.reservations, reserver);
+        <b>assert</b>!(*reservation_balance &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
         *reservation_balance = *reservation_balance + amount;
     } <b>else</b> {
         table::add(&<b>mut</b> reservation_pool_object.reservations, reserver, amount);
@@ -1830,6 +1850,7 @@ Reserve MYS tokens towards a post to support social proof token creation
         vector::push_back(&<b>mut</b> reservation_pool_object.info.reservers, reserver);
     };
     // Update total reserved
+    <b>assert</b>!(reservation_pool_object.info.total_reserved &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
     reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + amount;
     // Update registry
     <b>if</b> (table::contains(&registry.reservation_pools, post_id)) {
@@ -1935,6 +1956,7 @@ Reserve MYS tokens towards a profile to support social proof token creation
     // Update reserver's balance in the pool
     <b>if</b> (table::contains(&reservation_pool_object.reservations, reserver)) {
         <b>let</b> reservation_balance = table::borrow_mut(&<b>mut</b> reservation_pool_object.reservations, reserver);
+        <b>assert</b>!(*reservation_balance &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
         *reservation_balance = *reservation_balance + amount;
     } <b>else</b> {
         table::add(&<b>mut</b> reservation_pool_object.reservations, reserver, amount);
@@ -1942,6 +1964,7 @@ Reserve MYS tokens towards a profile to support social proof token creation
         vector::push_back(&<b>mut</b> reservation_pool_object.info.reservers, reserver);
     };
     // Update total reserved
+    <b>assert</b>!(reservation_pool_object.info.total_reserved &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
     reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + amount;
     // Update registry
     <b>if</b> (table::contains(&registry.reservation_pools, profile_id)) {
@@ -2610,6 +2633,7 @@ This function handles buying tokens for first-time buyers of a specific token
     // Update holder's balance
     table::add(&<b>mut</b> pool.holders, buyer, amount);
     // Update circulating supply
+    <b>assert</b>!(pool.info.circulating_supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
     pool.info.circulating_supply = pool.info.circulating_supply + amount;
     // Mint new social token <b>for</b> the user
     <b>let</b> social_token = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a> {
@@ -2738,13 +2762,16 @@ This function allows users to add to their existing token holdings using MYS Coi
     // Update holder's balance
     <b>if</b> (table::contains(&pool.holders, buyer)) {
         <b>let</b> holder_balance = table::borrow_mut(&<b>mut</b> pool.holders, buyer);
+        <b>assert</b>!(*holder_balance &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
         *holder_balance = *holder_balance + amount;
     } <b>else</b> {
         table::add(&<b>mut</b> pool.holders, buyer, amount);
     };
     // Update circulating supply
+    <b>assert</b>!(pool.info.circulating_supply &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
     pool.info.circulating_supply = pool.info.circulating_supply + amount;
     // Update the user's social token
+    <b>assert</b>!(social_token.amount &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
     social_token.amount = social_token.amount + amount;
     // Calculate the new price after purchase
     <b>let</b> new_price = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_token_price">calculate_token_price</a>(

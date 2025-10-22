@@ -46,7 +46,7 @@ const MAX_PROTOCOL_VERSION: u64 = 75;
 //            `max_meter_ticks_per_module` limits each from 6_000_000 to 16_000_000. mys-system
 //            framework changes.
 // Version 11: Introduce `std::type_name::get_with_original_ids` to the system frameworks. Bound max depth of values within the VM.
-// Version 12: Changes to deepbook in framework to add API for querying marketplace.
+// Version 12: Changes to orderbook in framework to add API for querying marketplace.
 //             Change NW Batch to use versioned metadata field.
 //             Changes to mys-system package to add PTB-friendly unstake function, and minor cleanup.
 // Version 13: System package change deprecating `0x0b0c::clob` and `0x0b0c::custodian`, replaced by
@@ -59,7 +59,7 @@ const MAX_PROTOCOL_VERSION: u64 = 75;
 // Version 16: Enabled simplified_unwrap_then_delete feature flag, which allows the execution engine
 //             to no longer consult the object store when generating unwrapped_then_deleted in the
 //             effects; this also allows us to stop including wrapped tombstones in accumulator.
-//             Add self-matching prevention for deepbook.
+//             Add self-matching prevention for orderbook.
 // Version 17: Enable upgraded multisig support.
 // Version 18: Introduce execution layer versioning, preserve all existing behaviour in v0.
 //             Gas minimum charges moved to be a multiplier over the reference gas price. In this
@@ -103,7 +103,7 @@ const MAX_PROTOCOL_VERSION: u64 = 75;
 //             Add mys::token module to mys framework.
 //             Enable transfer to object in testnet.
 //             Enable Narwhal CertificateV2 on mainnet
-//             Make critbit tree and order getters public in deepbook.
+//             Make critbit tree and order getters public in orderbook.
 // Version 33: Add support for `receiving_object_id` function in framework
 //             Hardened OTW check.
 //             Enable transfer-to-object in mainnet.
@@ -135,7 +135,7 @@ const MAX_PROTOCOL_VERSION: u64 = 75;
 //             Enable Leader Scoring & Schedule Change for Mysticeti consensus on testnet.
 // Version 46: Enable native bridge in testnet
 //             Enable resharing at the same initial shared version.
-// Version 47: Deepbook changes (framework update)
+// Version 47: orderbook changes (framework update)
 // Version 48: Use tonic networking for Mysticeti.
 //             Resolve Move abort locations to the package id instead of the runtime module ID.
 //             Enable random beacon in testnet.

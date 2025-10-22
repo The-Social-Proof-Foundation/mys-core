@@ -88,8 +88,8 @@ use mys_types::{
 };
 use mys_types::{utils::to_sender_signed_transaction, MYS_SYSTEM_PACKAGE_ID};
 use mys_types::{BRIDGE_ADDRESS, MOVE_STDLIB_PACKAGE_ID};
-use mys_types::{DEEPBOOK_ADDRESS, MYS_DENY_LIST_OBJECT_ID};
-use mys_types::{DEEPBOOK_PACKAGE_ID, MYS_RANDOMNESS_STATE_OBJECT_ID};
+use mys_types::{ORDERBOOK_ADDRESS, MYS_DENY_LIST_OBJECT_ID};
+use mys_types::{ORDERBOOK_PACKAGE_ID, MYS_RANDOMNESS_STATE_OBJECT_ID};
 use once_cell::sync::Lazy;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use serde::Deserialize;
@@ -114,7 +114,7 @@ const DEFAULT_GAS_PRICE: u64 = 1_000;
 
 const WELL_KNOWN_OBJECTS: &[ObjectID] = &[
     MOVE_STDLIB_PACKAGE_ID,
-    DEEPBOOK_PACKAGE_ID,
+    ORDERBOOK_PACKAGE_ID,
     MYS_FRAMEWORK_PACKAGE_ID,
     MYS_SYSTEM_PACKAGE_ID,
     MYS_SYSTEM_STATE_OBJECT_ID,
@@ -2104,9 +2104,9 @@ static NAMED_ADDRESSES: Lazy<BTreeMap<String, NumericalAddress>> = Lazy::new(|| 
         ),
     );
     map.insert(
-        "deepbook".to_string(),
+        "orderbook".to_string(),
         NumericalAddress::new(
-            DEEPBOOK_ADDRESS.into_bytes(),
+            ORDERBOOK_ADDRESS.into_bytes(),
             move_compiler::shared::NumberFormat::Hex,
         ),
     );
@@ -2146,9 +2146,9 @@ pub static PRE_COMPILED: Lazy<FullyCompiledProgram> = Lazy::new(|| {
         buf.extend(["packages", "move-stdlib", "sources"]);
         buf.to_string_lossy().to_string()
     };
-    let deepbook_sources = {
+    let orderbook_sources = {
         let mut buf = mys_files.to_path_buf();
-        buf.extend(["packages", "deepbook", "sources"]);
+        buf.extend(["packages", "orderbook", "sources"]);
         buf.to_string_lossy().to_string()
     };
     let config = PackageConfig {
@@ -2168,7 +2168,7 @@ pub static PRE_COMPILED: Lazy<FullyCompiledProgram> = Lazy::new(|| {
                 mys_system_sources,
                 mys_sources,
                 mys_deps,
-                deepbook_sources,
+                orderbook_sources,
                 bridge_sources,
             ],
             named_address_map: NAMED_ADDRESSES.clone(),

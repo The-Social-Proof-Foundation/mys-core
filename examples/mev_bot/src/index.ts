@@ -95,7 +95,7 @@ const PoolCreated = bcs.struct('PoolCreated', {
 // Create a client connected to the Mys network
 const client = new MysClient({ url: 'https://mys-mainnet.mystenlabs.com/json-rpc' });
 
-// Retrieve all DeepBook pools using the PoolCreated events
+// Retrieve all OrderBook pools using the PoolCreated events
 let allPools = await retrieveAllPools();
 
 // Retrieve all expired orders from each pool

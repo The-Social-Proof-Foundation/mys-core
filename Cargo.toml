@@ -98,7 +98,7 @@ members = [
     "crates/mys-cost",
     "crates/mys-data-ingestion",
     "crates/mys-data-ingestion-core",
-    "crates/mys-deepbook-indexer",
+    "crates/mys-orderbook-indexer",
     "crates/mys-default-config",
     "crates/mys-e2e-tests",
     "crates/mys-edge-proxy",

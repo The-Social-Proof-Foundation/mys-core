@@ -9656,48 +9656,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mys-deepbook-indexer"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "axum 0.7.9",
- "backoff",
- "bcs",
- "bigdecimal",
- "clap",
- "diesel",
- "diesel-async 0.6.1",
- "diesel_migrations",
- "futures",
- "futures-util",
- "hex-literal 0.3.4",
- "mys-config",
- "mys-data-ingestion-core",
- "mys-indexer-builder",
- "mys-json-rpc-types",
- "mys-pg-db",
- "mys-sdk",
- "mys-types",
- "mysten-metrics",
- "prometheus",
- "rustls 0.23.32",
- "rustls-native-certs 0.8.1",
- "serde",
- "serde_json",
- "serde_yaml 0.8.26",
- "tap",
- "telemetry-subscribers",
- "tempfile",
- "tokio",
- "tokio-postgres",
- "tokio-postgres-rustls 0.13.0",
- "tower-http 0.5.2",
- "tracing",
- "webpki-roots 0.26.11",
-]
-
-[[package]]
 name = "mys-default-config"
 version = "0.0.1"
 dependencies = [
@@ -11112,6 +11070,48 @@ dependencies = [
  "telemetry-subscribers",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "mys-orderbook-indexer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum 0.7.9",
+ "backoff",
+ "bcs",
+ "bigdecimal",
+ "clap",
+ "diesel",
+ "diesel-async 0.6.1",
+ "diesel_migrations",
+ "futures",
+ "futures-util",
+ "hex-literal 0.3.4",
+ "mys-config",
+ "mys-data-ingestion-core",
+ "mys-indexer-builder",
+ "mys-json-rpc-types",
+ "mys-pg-db",
+ "mys-sdk",
+ "mys-types",
+ "mysten-metrics",
+ "prometheus",
+ "rustls 0.23.32",
+ "rustls-native-certs 0.8.1",
+ "serde",
+ "serde_json",
+ "serde_yaml 0.8.26",
+ "tap",
+ "telemetry-subscribers",
+ "tempfile",
+ "tokio",
+ "tokio-postgres",
+ "tokio-postgres-rustls 0.13.0",
+ "tower-http 0.5.2",
+ "tracing",
+ "webpki-roots 0.26.11",
 ]
 
 [[package]]

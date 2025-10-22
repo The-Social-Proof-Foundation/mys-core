@@ -2274,6 +2274,15 @@ Simple moderation record for tracking moderation decisions
 
 
 
+<a name="social_contracts_post_EOverflow"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>: u64 = 39;
+</code></pre>
+
+
+
 <a name="social_contracts_post_EPostNotFound"></a>
 
 
@@ -3175,6 +3184,7 @@ Place a bet on a prediction post
         <b>if</b> (option.id == option_id) {
             option_valid = <b>true</b>;
             // Update total bet <b>for</b> this option
+            <b>assert</b>!(option.total_bet &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
             option.total_bet = option.total_bet + amount;
             <b>break</b>
         };
@@ -3195,6 +3205,7 @@ Place a bet on a prediction post
     // Add bet to prediction data
     vector::push_back(&<b>mut</b> prediction_data.bets, bet);
     // Update total bet amount
+    <b>assert</b>!(prediction_data.total_bet_amount &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
     prediction_data.total_bet_amount = prediction_data.total_bet_amount + amount;
     // Emit bet placed event
     event::emit(<a href="../social_contracts/post.md#social_contracts_post_PredictionBetPlacedEvent">PredictionBetPlacedEvent</a> {
@@ -3803,6 +3814,7 @@ Returns the ID of the created comment
     // Increment the parent <a href="../social_contracts/post.md#social_contracts_post">post</a>'s comment count with overflow protection
     // Stop incrementing at max but allow commenting to <b>continue</b>
     <b>if</b> (parent_post.comment_count &lt; <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a>) {
+        <b>assert</b>!(parent_post.comment_count &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         parent_post.comment_count = parent_post.comment_count + 1;
     };
     // Emit comment created event
@@ -3958,6 +3970,7 @@ If content is empty/none, it's treated as a standard repost
         transfer::share_object(repost);
     };
     // Increment original <a href="../social_contracts/post.md#social_contracts_post">post</a> repost count
+    <b>assert</b>!(original_post.repost_count &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
     original_post.repost_count = original_post.repost_count + 1;
     // Set defaults <b>for</b> optional boolean parameters
     <b>let</b> final_allow_comments = <b>if</b> (option::is_some(&allow_comments)) {
@@ -4236,11 +4249,13 @@ If the user already has the exact same reaction, it will be removed (toggle beha
         // New reaction from this user
         table::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.user_reactions, user, reaction);
         // Increment <a href="../social_contracts/post.md#social_contracts_post">post</a> reaction count
+        <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_count &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_count = <a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_count + 1;
     };
     // Increment count <b>for</b> the reaction
     <b>if</b> (table::contains(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_counts, reaction)) {
         <b>let</b> count = *table::borrow(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_counts, reaction);
+        <b>assert</b>!(count &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         *table::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_counts, reaction) = count + 1;
     } <b>else</b> {
         table::add(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_counts, reaction, 1);
@@ -4263,10 +4278,11 @@ If the user already has the exact same reaction, it will be removed (toggle beha
 
 ## Function `tip_post`
 
-Tip a post creator with MySo tokens (with PoC revenue redirection support)
+Tip a post creator with any supported coin type (with PoC revenue redirection support)
+Supports MYS and MYUSD
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, coins: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, coins: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4275,9 +4291,9 @@ Tip a post creator with MySo tokens (with PoC revenue redirection support)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_post">tip_post</a>&lt;T&gt;(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
-    coins: &<b>mut</b> Coin&lt;MYS&gt;,
+    coins: &<b>mut</b> Coin&lt;T&gt;,
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -4294,7 +4310,7 @@ Tip a post creator with MySo tokens (with PoC revenue redirection support)
     // Check <b>if</b> tips are allowed on this <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.allow_tips, <a href="../social_contracts/post.md#social_contracts_post_ETipsNotAllowed">ETipsNotAllowed</a>);
     // Apply PoC redirection and transfer
-    <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>(
+    <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(
         <a href="../social_contracts/post.md#social_contracts_post">post</a>,
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
         amount,
@@ -4305,6 +4321,7 @@ Tip a post creator with MySo tokens (with PoC revenue redirection support)
         ctx
     );
     // Record total tips received <b>for</b> this <a href="../social_contracts/post.md#social_contracts_post">post</a>
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - actual_received, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received = <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received + actual_received;
     // Emit tip event <b>for</b> amount actually received by <a href="../social_contracts/post.md#social_contracts_post">post</a> owner
     <b>if</b> (actual_received &gt; 0) {
@@ -4331,7 +4348,7 @@ Helper function to apply PoC revenue redirection and transfer coins
 Returns the amount actually received by the intended recipient
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, intended_recipient: <b>address</b>, amount: u64, coins: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, tipper: <b>address</b>, object_id: <b>address</b>, is_post_event: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): u64
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, intended_recipient: <b>address</b>, amount: u64, coins: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;T&gt;, tipper: <b>address</b>, object_id: <b>address</b>, is_post_event: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): u64
 </code></pre>
 
 
@@ -4340,11 +4357,11 @@ Returns the amount actually received by the intended recipient
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     intended_recipient: <b>address</b>,
     amount: u64,
-    coins: &<b>mut</b> Coin&lt;MYS&gt;,
+    coins: &<b>mut</b> Coin&lt;T&gt;,
     tipper: <b>address</b>,
     object_id: <b>address</b>,
     is_post_event: bool,
@@ -4468,10 +4485,11 @@ Internal function to clear PoC data after dispute resolution
 
 ## Function `tip_repost`
 
-Tip a repost with MySo tokens - applies 50/50 split between repost owner and original post owner
+Tip a repost with any supported coin type - applies 50/50 split between repost owner and original post owner
+Supports MYS and MYUSD
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_repost">tip_repost</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, coin: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_repost">tip_repost</a>&lt;T&gt;(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, coin: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4480,11 +4498,11 @@ Tip a repost with MySo tokens - applies 50/50 split between repost owner and ori
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_repost">tip_repost</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_repost">tip_repost</a>&lt;T&gt;(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, // The repost
     original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>, // The original <a href="../social_contracts/post.md#social_contracts_post">post</a>
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
-    coin: &<b>mut</b> Coin&lt;MYS&gt;,
+    coin: &<b>mut</b> Coin&lt;T&gt;,
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -4510,7 +4528,7 @@ Tip a repost with MySo tokens - applies 50/50 split between repost owner and ori
     // Skip split <b>if</b> repost owner and original <a href="../social_contracts/post.md#social_contracts_post">post</a> owner are the same
     <b>if</b> (<a href="../social_contracts/post.md#social_contracts_post">post</a>.owner == original_post.owner) {
         // Standard flow - apply PoC redirection <b>for</b> unified owner
-        <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>(
+        <b>let</b> actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(
             <a href="../social_contracts/post.md#social_contracts_post">post</a>,
             <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
             amount,
@@ -4520,6 +4538,7 @@ Tip a repost with MySo tokens - applies 50/50 split between repost owner and ori
             <b>true</b>,
             ctx
         );
+        <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - actual_received, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received = <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received + actual_received;
         // Emit tip event <b>for</b> amount actually received
         <b>if</b> (actual_received &gt; 0) {
@@ -4536,7 +4555,7 @@ Tip a repost with MySo tokens - applies 50/50 split between repost owner and ori
         <b>let</b> repost_owner_amount = (amount * config.repost_tip_percentage) / 100;
         <b>let</b> original_owner_amount = amount - repost_owner_amount;
         // Apply PoC redirection <b>for</b> repost owner's share
-        <b>let</b> repost_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>(
+        <b>let</b> repost_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(
             <a href="../social_contracts/post.md#social_contracts_post">post</a>,
             <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
             repost_owner_amount,
@@ -4547,7 +4566,7 @@ Tip a repost with MySo tokens - applies 50/50 split between repost owner and ori
             ctx
         );
         // Apply PoC redirection <b>for</b> original <a href="../social_contracts/post.md#social_contracts_post">post</a> owner's share
-        <b>let</b> original_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>(
+        <b>let</b> original_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(
             original_post,
             original_post.owner,
             original_owner_amount,
@@ -4558,7 +4577,9 @@ Tip a repost with MySo tokens - applies 50/50 split between repost owner and ori
             ctx
         );
         // Update tip counters
+        <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - repost_actual_received, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received = <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received + repost_actual_received;
+        <b>assert</b>!(original_post.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - original_actual_received, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         original_post.tips_received = original_post.tips_received + original_actual_received;
         // Emit tip events <b>for</b> amounts actually received
         <b>if</b> (repost_actual_received &gt; 0) {
@@ -4591,11 +4612,12 @@ Tip a repost with MySo tokens - applies 50/50 split between repost owner and ori
 
 ## Function `tip_comment`
 
-Tip a comment with MySo tokens
+Tip a comment with any supported coin type
+Supports MYS and MYUSD
 Split is 80% to commenter, 20% to post owner (with PoC redirection on post owner's share)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_comment">tip_comment</a>(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, coin: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_comment">tip_comment</a>&lt;T&gt;(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, coin: &<b>mut</b> <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;T&gt;, amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4604,11 +4626,11 @@ Split is 80% to commenter, 20% to post owner (with PoC redirection on post owner
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_comment">tip_comment</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_tip_comment">tip_comment</a>&lt;T&gt;(
     comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
-    coin: &<b>mut</b> Coin&lt;MYS&gt;,
+    coin: &<b>mut</b> Coin&lt;T&gt;,
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -4626,7 +4648,7 @@ Split is 80% to commenter, 20% to post owner (with PoC redirection on post owner
     <b>let</b> commenter_tip = coin::split(coin, commenter_amount, ctx);
     transfer::public_transfer(commenter_tip, comment.owner);
     // Apply PoC redirection <b>for</b> <a href="../social_contracts/post.md#social_contracts_post">post</a> owner's share
-    <b>let</b> post_owner_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>(
+    <b>let</b> post_owner_actual_received = <a href="../social_contracts/post.md#social_contracts_post_apply_poc_redirection_and_transfer">apply_poc_redirection_and_transfer</a>&lt;T&gt;(
         <a href="../social_contracts/post.md#social_contracts_post">post</a>,
         <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner,
         post_owner_amount,
@@ -4637,7 +4659,9 @@ Split is 80% to commenter, 20% to post owner (with PoC redirection on post owner
         ctx
     );
     // Update tip counters
+    <b>assert</b>!(comment.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - commenter_amount, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
     comment.tips_received = comment.tips_received + commenter_amount;
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - post_owner_actual_received, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received = <a href="../social_contracts/post.md#social_contracts_post">post</a>.tips_received + post_owner_actual_received;
     // Emit tip event <b>for</b> commenter
     event::emit(<a href="../social_contracts/post.md#social_contracts_post_TipEvent">TipEvent</a> {
@@ -5141,11 +5165,13 @@ If the user already has the exact same reaction, it will be removed (toggle beha
         // New reaction from this user
         table::add(&<b>mut</b> comment.user_reactions, user, reaction);
         // Increment comment reaction count
+        <b>assert</b>!(comment.reaction_count &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         comment.reaction_count = comment.reaction_count + 1;
     };
     // Increment count <b>for</b> the reaction
     <b>if</b> (table::contains(&comment.reaction_counts, reaction)) {
         <b>let</b> count = *table::borrow(&comment.reaction_counts, reaction);
+        <b>assert</b>!(count &lt;= <a href="../social_contracts/post.md#social_contracts_post_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
         *table::borrow_mut(&<b>mut</b> comment.reaction_counts, reaction) = count + 1;
     } <b>else</b> {
         table::add(&<b>mut</b> comment.reaction_counts, reaction, 1);
