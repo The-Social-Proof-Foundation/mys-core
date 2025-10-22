@@ -70,31 +70,31 @@ BEGIN
     RAISE WARNING 'Reverting to aggressive compression timing (7/30 days)';
 END $$;
 
--- High-frequency trading data: Compress after 7 days (604,800,000 ms) - ORIGINAL
-SELECT add_compression_policy('order_fills', 604800000);
-SELECT add_compression_policy('order_updates', 604800000);
+-- High-frequency trading data: Compress after 7 days - ORIGINAL
+SELECT add_compression_policy('order_fills'::regclass, INTERVAL '7 days');
+SELECT add_compression_policy('order_updates'::regclass, INTERVAL '7 days');
 
 DO $$
 BEGIN
     RAISE NOTICE 'Step 3a: Trading data compression restored (7 days)';
 END $$;
 
--- Medium-frequency data: Compress after 30 days (2,592,000,000 ms) - ORIGINAL
-SELECT add_compression_policy('pool_prices', 2592000000);
-SELECT add_compression_policy('balances', 2592000000);
+-- Medium-frequency data: Compress after 30 days - ORIGINAL
+SELECT add_compression_policy('pool_prices'::regclass, INTERVAL '30 days');
+SELECT add_compression_policy('balances'::regclass, INTERVAL '30 days');
 
 DO $$
 BEGIN
     RAISE NOTICE 'Step 3b: Price/balance compression restored (30 days)';
 END $$;
 
--- Low-frequency data: Compress after 7 days (604,800,000 ms) - ORIGINAL
-SELECT add_compression_policy('flashloans', 604800000);
-SELECT add_compression_policy('stakes', 604800000);
-SELECT add_compression_policy('proposals', 604800000);
-SELECT add_compression_policy('votes', 604800000);
-SELECT add_compression_policy('rebates', 604800000);
-SELECT add_compression_policy('trade_params_update', 604800000);
+-- Low-frequency data: Compress after 7 days - ORIGINAL
+SELECT add_compression_policy('flashloans'::regclass, INTERVAL '7 days');
+SELECT add_compression_policy('stakes'::regclass, INTERVAL '7 days');
+SELECT add_compression_policy('proposals'::regclass, INTERVAL '7 days');
+SELECT add_compression_policy('votes'::regclass, INTERVAL '7 days');
+SELECT add_compression_policy('rebates'::regclass, INTERVAL '7 days');
+SELECT add_compression_policy('trade_params_update'::regclass, INTERVAL '7 days');
 
 DO $$
 BEGIN
