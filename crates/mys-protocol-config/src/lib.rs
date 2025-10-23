@@ -218,7 +218,7 @@ const MAX_PROTOCOL_VERSION: u64 = 75;
 //             Enable all gas costs for load_nitro_attestation.
 //             Enable zstd compression for consensus tonic network in mainnet.
 //             Enable the new commit rule for devnet.
-// Version 75: Reduce compute and storage gas costs by 50% to lower transaction fees.
+// Version 75: Reduce compute and storage gas costs by 25% to lower transaction fees.
 //             Affected parameters: base_tx_cost_fixed, package_publish_cost_fixed,
 //             obj_access_cost_read/mutate/delete/verify_per_byte, obj_data_cost_refundable,
 //             obj_metadata_cost_non_refundable, storage_gas_price.
@@ -3252,37 +3252,37 @@ impl ProtocolConfig {
                     }
                 }
                 75 => {
-                    // Reduce compute and storage gas costs by 50%
+                    // Reduce compute and storage gas costs by 25%
 
-                    // Compute costs - 50% reduction
+                    // Compute costs - 25% reduction
                     if let Some(cost) = cfg.base_tx_cost_fixed {
-                        cfg.base_tx_cost_fixed = Some(cost / 2);
+                        cfg.base_tx_cost_fixed = Some(cost / 4);
                     }
                     if let Some(cost) = cfg.package_publish_cost_fixed {
-                        cfg.package_publish_cost_fixed = Some(cost / 2);
+                        cfg.package_publish_cost_fixed = Some(cost / 4);
                     }
                     if let Some(cost) = cfg.obj_access_cost_read_per_byte {
-                        cfg.obj_access_cost_read_per_byte = Some(cost / 2);
+                        cfg.obj_access_cost_read_per_byte = Some(cost / 4);
                     }
                     if let Some(cost) = cfg.obj_access_cost_mutate_per_byte {
-                        cfg.obj_access_cost_mutate_per_byte = Some(cost / 2);
+                        cfg.obj_access_cost_mutate_per_byte = Some(cost / 4);
                     }
                     if let Some(cost) = cfg.obj_access_cost_delete_per_byte {
-                        cfg.obj_access_cost_delete_per_byte = Some(cost / 2);
+                        cfg.obj_access_cost_delete_per_byte = Some(cost / 4);
                     }
                     if let Some(cost) = cfg.obj_access_cost_verify_per_byte {
-                        cfg.obj_access_cost_verify_per_byte = Some(cost / 2);
+                        cfg.obj_access_cost_verify_per_byte = Some(cost / 4);
                     }
 
-                    // Storage costs - 50% reduction
+                    // Storage costs - 25% reduction
                     if let Some(cost) = cfg.obj_data_cost_refundable {
-                        cfg.obj_data_cost_refundable = Some(cost / 2);
+                        cfg.obj_data_cost_refundable = Some(cost / 4);
                     }
                     if let Some(cost) = cfg.obj_metadata_cost_non_refundable {
-                        cfg.obj_metadata_cost_non_refundable = Some(cost / 2);
+                        cfg.obj_metadata_cost_non_refundable = Some(cost / 4);
                     }
                     if let Some(price) = cfg.storage_gas_price {
-                        cfg.storage_gas_price = Some(price / 2);
+                        cfg.storage_gas_price = Some(price / 4);
                     }
                 }
                 // Use this template when making changes:
