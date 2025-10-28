@@ -102,7 +102,7 @@ macro_rules! built_in_ids {
             pub const $id: ObjectID = ObjectID::from_address($addr);
         )*
     }
-}
+} 
 
 macro_rules! built_in_pkgs {
     ($($addr:ident / $id:ident = $init:expr);* $(;)?) => {
@@ -121,8 +121,8 @@ built_in_pkgs! {
     BRIDGE_ADDRESS / BRIDGE_PACKAGE_ID = 0xb;
     ORDERBOOK_ADDRESS / ORDERBOOK_PACKAGE_ID = 0x0b0c;
     MYS_SOCIAL_ADDRESS / MYS_SOCIAL_PACKAGE_ID = 0x50c1;
-    MYDATA_ADDRESS / MYDATA_PACKAGE_ID = 0xda7a;
     MYUSD_ADDRESS / MYUSD_PACKAGE_ID = 0x75d6;
+    MYDATA_ADDRESS / MYDATA_PACKAGE_ID = 0xda7a;
 }
 
 built_in_ids! {
