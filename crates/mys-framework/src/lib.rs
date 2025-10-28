@@ -156,7 +156,8 @@ impl BuiltInFramework {
                 [
                     MOVE_STDLIB_PACKAGE_ID,
                     MYS_FRAMEWORK_PACKAGE_ID,
-                    MYDATA_PACKAGE_ID
+                    MYDATA_PACKAGE_ID,
+                    MYUSD_PACKAGE_ID
                 ]
             ),
             (
