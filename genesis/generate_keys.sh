@@ -279,7 +279,7 @@ cat > "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1759674600 # $(( $(date +%s) * 1000 ))
+  chain_start_timestamp_ms: 1761620400000 # $(( $(date +%s) * 1000 ))
 
   # Protocol version
   protocol_version: 75  # Latest version
@@ -295,7 +295,7 @@ parameters:
   # Stake subsidy parameters
   #
   # When to start paying stake subsidies (0 = from beginning)
-  stake_subsidy_start_epoch: 6
+  stake_subsidy_start_epoch: 0
 
   # Initial stake subsidy distribution amount per epoch (in MIST)
   # Default: 538,626 MySo = 538,626,000,000,000 MIST
