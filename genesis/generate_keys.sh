@@ -279,7 +279,7 @@ cat > "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1761714000000 # $(( $(date +%s) * 1000 ))
+  chain_start_timestamp_ms: 1761735600000 # $(( $(date +%s) * 1000 ))
 
   # Protocol version
   protocol_version: 75  # Latest version
@@ -318,7 +318,7 @@ accounts:
   # Social Proof Foundation
   - address: "$SOCIAL_PROOF_FOUNDATION_ADDRESS"
     gas_amounts:
-      - 665200000000000000 # 665,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators - 76 mill from staking subsidy)
+      - 695200000000000000 # 695,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators - 50 mill from staking subsidy)
   # Core Team
   - address: "$CORE_TEAM_ADDRESS"
     gas_amounts:
