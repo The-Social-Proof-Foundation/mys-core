@@ -138,22 +138,6 @@ impl BuiltInFramework {
                 [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
             ),
             (
-                BRIDGE_PACKAGE_ID,
-                "Bridge",
-                "bridge",
-                [
-                    MOVE_STDLIB_PACKAGE_ID,
-                    MYS_FRAMEWORK_PACKAGE_ID,
-                    MYS_SYSTEM_PACKAGE_ID
-                ]
-            ),
-            (
-                ORDERBOOK_PACKAGE_ID,
-                "OrderBook",
-                "orderbook",
-                [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
-            ),
-            (
                 MYUSD_PACKAGE_ID,
                 "MyUSD",
                 "myusd",
@@ -166,14 +150,29 @@ impl BuiltInFramework {
                 [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
             ),
             (
+                ORDERBOOK_PACKAGE_ID,
+                "OrderBook",
+                "orderbook",
+                [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
+            ),
+            (
+                BRIDGE_PACKAGE_ID,
+                "Bridge",
+                "bridge",
+                [
+                    MOVE_STDLIB_PACKAGE_ID,
+                    MYS_FRAMEWORK_PACKAGE_ID,
+                    MYS_SYSTEM_PACKAGE_ID
+                ]
+            ),
+            (
                 MYS_SOCIAL_PACKAGE_ID,
                 "MySocialContracts",
                 "mys-social",
                 [
                     MOVE_STDLIB_PACKAGE_ID,
                     MYS_FRAMEWORK_PACKAGE_ID,
-                    MYDATA_PACKAGE_ID,
-                    MYUSD_PACKAGE_ID
+                    MYDATA_PACKAGE_ID
                 ]
             )
         ])

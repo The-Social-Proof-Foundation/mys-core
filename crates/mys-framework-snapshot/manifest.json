@@ -1665,7 +1665,7 @@
     ]
   },
   "75": {
-    "git_revision": "5d820e84fb9a-dirty",
+    "git_revision": "ab1dbb4b5b34-dirty",
     "packages": [
       {
         "name": "MoveStdlib",
@@ -1683,16 +1683,6 @@
         "id": "0x0000000000000000000000000000000000000000000000000000000000000003"
       },
       {
-        "name": "Bridge",
-        "path": "crates/mys-framework/packages/bridge",
-        "id": "0x000000000000000000000000000000000000000000000000000000000000000b"
-      },
-      {
-        "name": "OrderBook",
-        "path": "crates/mys-framework/packages/orderbook",
-        "id": "0x0000000000000000000000000000000000000000000000000000000000000b0c"
-      },
-      {
         "name": "MyUSD",
         "path": "crates/mys-framework/packages/myusd",
         "id": "0x00000000000000000000000000000000000000000000000000000000000075d6"
@@ -1701,6 +1691,16 @@
         "name": "mydata",
         "path": "crates/mys-framework/packages/mydata",
         "id": "0x000000000000000000000000000000000000000000000000000000000000da7a"
+      },
+      {
+        "name": "OrderBook",
+        "path": "crates/mys-framework/packages/orderbook",
+        "id": "0x0000000000000000000000000000000000000000000000000000000000000b0c"
+      },
+      {
+        "name": "Bridge",
+        "path": "crates/mys-framework/packages/bridge",
+        "id": "0x000000000000000000000000000000000000000000000000000000000000000b"
       },
       {
         "name": "MySocialContracts",
