@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1761735600000 # 1761729953000
+  chain_start_timestamp_ms: 1761760800000 # 1761759211000
 
   # Protocol version
   protocol_version: 75  # Latest version
@@ -37,15 +37,15 @@ parameters:
 # Accounts to add tokens to
 accounts:
   # Faucet
-  - address: "0x24d67c4acd249dbb701733262dc1e4a36b288713c243765bb30bc94a36ae8f9f"
+  - address: "0xde237ca1056d17e45cf385c398a5afdcc5b7448d4c45a51271b5593385fd345c"
     gas_amounts:
       - 1000000000000000 # 1,000,000 MySo
   # Social Proof Foundation
-  - address: "0xa45b659c2d22fa1ce841e88441d6802bcf22a81434ede7daa64d87ccd2943b26"
+  - address: "0xae46d7ef2d15d41910cb10236f0f5ae6f41bd42e1665b6b5ee85263ff168d424"
     gas_amounts:
-      - 695200000000000000 # 695,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators - 50 mill from staking subsidy)
+      - 696200000000000000 # 696,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators - 50 mill from staking subsidy)
   # Core Team
-  - address: "0x00ce516c5233f5ff9c25c06ed5b22df3fdb482f0f3f3b52f0f0f90c89a7b9c83"
+  - address: "0x66cb8c7d371a5dd8ca2828fcb13919c374f6473dea4369be7894b15a0fbb613f"
     gas_amounts:
       - 249000000000000000 # 249,000,000 MySo (25% = 12.5% core + 12.5% marketing - 1 mill faucet)
 
