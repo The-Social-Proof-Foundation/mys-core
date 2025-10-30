@@ -53,7 +53,6 @@ module social_contracts::bootstrap {
     /// - Auto-configures all treasuries to caller's address
     public entry fun claim_all_admin_capabilities(
         key: &mut BootstrapKey,
-        coin_bootstrap_key: &mut coin::CoinCreationBootstrapKey,
         ctx: &mut TxContext
     ) {
         // === SECURITY CHECKS ===
@@ -105,8 +104,7 @@ module social_contracts::bootstrap {
         transfer::public_transfer(governance_admin_cap, admin);
         
         // Create CoinCreationAdminCap for coin creation administration
-        // This also marks the coin bootstrap key as used (one-time-only enforcement at coin module level)
-        let coin_creation_admin_cap = coin::create_coin_creation_admin_cap(coin_bootstrap_key, ctx);
+        let coin_creation_admin_cap = coin::create_coin_creation_admin_cap(ctx);
         transfer::public_transfer(coin_creation_admin_cap, admin);
         
         // Mark the bootstrap key as used - this cannot be undone

@@ -9,3 +9,4 @@ MoveStdlib = { local = "../move-stdlib" }
 
 [addresses]
 mys = "0x2"
+social_contracts = "0x50c1"
