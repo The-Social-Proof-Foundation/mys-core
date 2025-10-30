@@ -1977,7 +1977,7 @@ impl ProtocolConfig {
             binary_variant_handles: None,
             binary_variant_instantiation_handles: None,
             max_move_object_size: Some(250 * 1024),
-            max_move_package_size: Some(100 * 1024),
+            max_move_package_size: Some(1024 * 1024),
             max_publish_or_upgrade_per_ptb: None,
             max_tx_gas: Some(10_000_000_000),
             max_gas_price: Some(100_000),
