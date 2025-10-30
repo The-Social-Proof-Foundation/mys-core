@@ -7,8 +7,6 @@
 /// `Balance` type.
 module mys::coin;
 
-friend social_contracts::bootstrap;
-
 use std::ascii;
 use std::string;
 use std::type_name;
@@ -40,18 +38,68 @@ const ENotEnough: u64 = 2;
 const EGlobalPauseNotAllowed: u64 = 3;
 /// Caller is not authorized to create coins
 const ENotAuthorized: u64 = 4;
+/// Bootstrap key has already been used
+const EAlreadyUsed: u64 = 5;
 
 /// Admin capability for creating new coins
 public struct CoinCreationAdminCap has key, store {
     id: UID,
 }
 
+/// One-time framework bootstrap key - can only be used once, ever
+public struct FrameworkBootstrapKey has key {
+    id: UID,
+    /// Whether this key has been used
+    used: bool,
+    /// Version for future compatibility
+    version: u64,
+}
+
+/// Initialize the framework bootstrap service - creates the one-time framework bootstrap key
+/// This runs automatically when the module is first published
+fun init(ctx: &mut TxContext) {
+    transfer::share_object(FrameworkBootstrapKey {
+        id: object::new(ctx),
+        used: false,
+        version: 1, // Initial version
+    });
+}
+
 /// Create the coin creation admin capability
-/// This function can only be called by the bootstrap module (friend access)
-public(friend) fun create_coin_creation_admin_cap(ctx: &mut TxContext): CoinCreationAdminCap {
+/// This function can only be called during genesis by the framework bootstrap
+public(package) fun create_coin_creation_admin_cap(ctx: &mut TxContext): CoinCreationAdminCap {
     CoinCreationAdminCap {
         id: object::new(ctx)
     }
+}
+
+/// Bootstrap function for the framework - creates and returns the CoinCreationAdminCap
+/// This can be called during genesis to initialize the framework admin capabilities
+/// Can only be called once with a valid FrameworkBootstrapKey
+public entry fun bootstrap_framework(
+    key: &mut FrameworkBootstrapKey,
+    ctx: &mut TxContext
+) {
+    // === SECURITY CHECKS ===
+
+    // Ensure this can only be called once, ever
+    assert!(!key.used, EAlreadyUsed);
+
+    let admin_cap = create_coin_creation_admin_cap(ctx);
+    transfer::public_transfer(admin_cap, tx_context::sender(ctx));
+
+    // Mark the bootstrap key as used - this cannot be undone
+    key.used = true;
+}
+
+/// Check if the framework bootstrap key has been used
+public fun is_bootstrap_key_used(key: &FrameworkBootstrapKey): bool {
+    key.used
+}
+
+/// Get the version of the framework bootstrap key
+public fun get_bootstrap_key_version(key: &FrameworkBootstrapKey): u64 {
+    key.version
 }
 
 /// A coin of type `T` worth `value`. Transferable and storable

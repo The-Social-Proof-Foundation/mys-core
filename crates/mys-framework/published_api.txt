@@ -2041,7 +2041,7 @@ per_type_list
 CoinCreationAdminCap
 	public struct
 	0x2::coin
-CoinCreationBootstrapKey
+FrameworkBootstrapKey
 	public struct
 	0x2::coin
 Coin
@@ -2069,6 +2069,15 @@ init
 	fun
 	0x2::coin
 create_coin_creation_admin_cap
+	public(package) fun
+	0x2::coin
+bootstrap_framework
+	public entry fun
+	0x2::coin
+is_bootstrap_key_used
+	public fun
+	0x2::coin
+get_bootstrap_key_version
 	public fun
 	0x2::coin
 total_supply

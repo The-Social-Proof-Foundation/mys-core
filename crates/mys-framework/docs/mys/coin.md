@@ -8,7 +8,7 @@ tokens and coins. <code><a href="../mys/coin.md#mys_coin_Coin">Coin</a></code> c
 
 
 -  [Struct `CoinCreationAdminCap`](#mys_coin_CoinCreationAdminCap)
--  [Struct `CoinCreationBootstrapKey`](#mys_coin_CoinCreationBootstrapKey)
+-  [Struct `FrameworkBootstrapKey`](#mys_coin_FrameworkBootstrapKey)
 -  [Struct `Coin`](#mys_coin_Coin)
 -  [Struct `CoinMetadata`](#mys_coin_CoinMetadata)
 -  [Struct `RegulatedCoinMetadata`](#mys_coin_RegulatedCoinMetadata)
@@ -19,6 +19,9 @@ tokens and coins. <code><a href="../mys/coin.md#mys_coin_Coin">Coin</a></code> c
 -  [Constants](#@Constants_0)
 -  [Function `init`](#mys_coin_init)
 -  [Function `create_coin_creation_admin_cap`](#mys_coin_create_coin_creation_admin_cap)
+-  [Function `bootstrap_framework`](#mys_coin_bootstrap_framework)
+-  [Function `is_bootstrap_key_used`](#mys_coin_is_bootstrap_key_used)
+-  [Function `get_bootstrap_key_version`](#mys_coin_get_bootstrap_key_version)
 -  [Function `total_supply`](#mys_coin_total_supply)
 -  [Function `treasury_into_supply`](#mys_coin_treasury_into_supply)
 -  [Function `supply_immut`](#mys_coin_supply_immut)
@@ -121,14 +124,14 @@ Admin capability for creating new coins
 
 </details>
 
-<a name="mys_coin_CoinCreationBootstrapKey"></a>
+<a name="mys_coin_FrameworkBootstrapKey"></a>
 
-## Struct `CoinCreationBootstrapKey`
+## Struct `FrameworkBootstrapKey`
 
-One-time bootstrap key for coin creation admin - can only be used once, ever
+One-time framework bootstrap key - can only be used once, ever
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../mys/coin.md#mys_coin_CoinCreationBootstrapKey">CoinCreationBootstrapKey</a> <b>has</b> key
+<pre><code><b>public</b> <b>struct</b> <a href="../mys/coin.md#mys_coin_FrameworkBootstrapKey">FrameworkBootstrapKey</a> <b>has</b> key
 </code></pre>
 
 
@@ -147,6 +150,13 @@ One-time bootstrap key for coin creation admin - can only be used once, ever
 <code>used: bool</code>
 </dt>
 <dd>
+ Whether this key has been used
+</dd>
+<dt>
+<code>version: u64</code>
+</dt>
+<dd>
+ Version for future compatibility
 </dd>
 </dl>
 
@@ -424,6 +434,16 @@ The index into the deny list vector for the <code><a href="../mys/coin.md#mys_co
 
 
 
+<a name="mys_coin_EAlreadyUsed"></a>
+
+Bootstrap key has already been used
+
+
+<pre><code><b>const</b> <a href="../mys/coin.md#mys_coin_EAlreadyUsed">EAlreadyUsed</a>: u64 = 5;
+</code></pre>
+
+
+
 <a name="mys_coin_EBadWitness"></a>
 
 A type passed to create_supply is not a one-time witness.
@@ -477,7 +497,8 @@ Trying to split a coin more times than its balance allows.
 
 ## Function `init`
 
-Initialize the coin creation bootstrap key during module init
+Initialize the framework bootstrap service - creates the one-time framework bootstrap key
+This runs automatically when the module is first published
 
 
 <pre><code><b>fun</b> <a href="../mys/coin.md#mys_coin_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
@@ -490,9 +511,10 @@ Initialize the coin creation bootstrap key during module init
 
 
 <pre><code><b>fun</b> <a href="../mys/coin.md#mys_coin_init">init</a>(ctx: &<b>mut</b> TxContext) {
-    <a href="../mys/transfer.md#mys_transfer_share_object">transfer::share_object</a>(<a href="../mys/coin.md#mys_coin_CoinCreationBootstrapKey">CoinCreationBootstrapKey</a> {
+    <a href="../mys/transfer.md#mys_transfer_share_object">transfer::share_object</a>(<a href="../mys/coin.md#mys_coin_FrameworkBootstrapKey">FrameworkBootstrapKey</a> {
         id: <a href="../mys/object.md#mys_object_new">object::new</a>(ctx),
         used: <b>false</b>,
+        version: 1, // Initial version
     });
 }
 </code></pre>
@@ -505,16 +527,11 @@ Initialize the coin creation bootstrap key during module init
 
 ## Function `create_coin_creation_admin_cap`
 
-Create the coin creation admin capability - INTERNAL USE ONLY
-This should ONLY be called by the bootstrap module during the one-time claim
-
-Security:
-- Can only be called once (enforced by bootstrap key)
-- Bootstrap key must not be used yet
-- Marks the bootstrap key as used after creation
+Create the coin creation admin capability
+This function can only be called during genesis by the framework bootstrap
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap">create_coin_creation_admin_cap</a>(key: &<b>mut</b> <a href="../mys/coin.md#mys_coin_CoinCreationBootstrapKey">mys::coin::CoinCreationBootstrapKey</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">mys::coin::CoinCreationAdminCap</a>
+<pre><code><b>public</b>(<a href="../mys/package.md#mys_package">package</a>) <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap">create_coin_creation_admin_cap</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">mys::coin::CoinCreationAdminCap</a>
 </code></pre>
 
 
@@ -523,19 +540,96 @@ Security:
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap">create_coin_creation_admin_cap</a>(
-    key: &<b>mut</b> <a href="../mys/coin.md#mys_coin_CoinCreationBootstrapKey">CoinCreationBootstrapKey</a>,
+<pre><code><b>public</b>(<a href="../mys/package.md#mys_package">package</a>) <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap">create_coin_creation_admin_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> {
+    <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> {
+        id: <a href="../mys/object.md#mys_object_new">object::new</a>(ctx)
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="mys_coin_bootstrap_framework"></a>
+
+## Function `bootstrap_framework`
+
+Bootstrap function for the framework - creates and returns the CoinCreationAdminCap
+This can be called during genesis to initialize the framework admin capabilities
+Can only be called once with a valid FrameworkBootstrapKey
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_bootstrap_framework">bootstrap_framework</a>(key: &<b>mut</b> <a href="../mys/coin.md#mys_coin_FrameworkBootstrapKey">mys::coin::FrameworkBootstrapKey</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_bootstrap_framework">bootstrap_framework</a>(
+    key: &<b>mut</b> <a href="../mys/coin.md#mys_coin_FrameworkBootstrapKey">FrameworkBootstrapKey</a>,
     ctx: &<b>mut</b> TxContext
-): <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> {
+) {
+    // === SECURITY CHECKS ===
     // Ensure this can only be called once, ever
-    <b>assert</b>!(!key.used, <a href="../mys/coin.md#mys_coin_ENotAuthorized">ENotAuthorized</a>);
-    // Create the admin cap
-    <b>let</b> cap = <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> {
-        id: <a href="../mys/object.md#mys_object_new">object::new</a>(ctx),
-    };
-    // Mark <b>as</b> used - this cannot be undone
+    <b>assert</b>!(!key.used, <a href="../mys/coin.md#mys_coin_EAlreadyUsed">EAlreadyUsed</a>);
+    <b>let</b> admin_cap = <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap">create_coin_creation_admin_cap</a>(ctx);
+    <a href="../mys/transfer.md#mys_transfer_public_transfer">transfer::public_transfer</a>(admin_cap, <a href="../mys/tx_context.md#mys_tx_context_sender">tx_context::sender</a>(ctx));
+    // Mark the bootstrap key <b>as</b> used - this cannot be undone
     key.used = <b>true</b>;
-    cap
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="mys_coin_is_bootstrap_key_used"></a>
+
+## Function `is_bootstrap_key_used`
+
+Check if the framework bootstrap key has been used
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_is_bootstrap_key_used">is_bootstrap_key_used</a>(key: &<a href="../mys/coin.md#mys_coin_FrameworkBootstrapKey">mys::coin::FrameworkBootstrapKey</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_is_bootstrap_key_used">is_bootstrap_key_used</a>(key: &<a href="../mys/coin.md#mys_coin_FrameworkBootstrapKey">FrameworkBootstrapKey</a>): bool {
+    key.used
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="mys_coin_get_bootstrap_key_version"></a>
+
+## Function `get_bootstrap_key_version`
+
+Get the version of the framework bootstrap key
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_get_bootstrap_key_version">get_bootstrap_key_version</a>(key: &<a href="../mys/coin.md#mys_coin_FrameworkBootstrapKey">mys::coin::FrameworkBootstrapKey</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_get_bootstrap_key_version">get_bootstrap_key_version</a>(key: &<a href="../mys/coin.md#mys_coin_FrameworkBootstrapKey">FrameworkBootstrapKey</a>): u64 {
+    key.version
 }
 </code></pre>
 

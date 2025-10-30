@@ -19,7 +19,6 @@ module social_contracts::bootstrap {
     use social_contracts::proof_of_creativity::{Self, PoCAdminCap};
     use social_contracts::platform::{Self, PlatformAdminCap};
     use social_contracts::governance::{Self, GovernanceAdminCap};
-    use mys::coin::{Self, CoinCreationAdminCap};
     
     // === ERROR CODES ===
     const EAlreadyUsed: u64 = 0;
@@ -102,11 +101,7 @@ module social_contracts::bootstrap {
         // Create GovernanceAdminCap for governance administration
         let governance_admin_cap = governance::create_governance_admin_cap(ctx);
         transfer::public_transfer(governance_admin_cap, admin);
-        
-        // Create CoinCreationAdminCap for coin creation administration
-        let coin_creation_admin_cap = coin::create_coin_creation_admin_cap(ctx);
-        transfer::public_transfer(coin_creation_admin_cap, admin);
-        
+
         // Mark the bootstrap key as used - this cannot be undone
         key.used = true;
     }
