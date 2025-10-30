@@ -1769,7 +1769,7 @@
                   "u64": "256000"
                 },
                 "max_move_package_size": {
-                  "u64": "102400"
+                  "u64": "1048576"
                 },
                 "max_move_value_depth": null,
                 "max_move_vector_len": {

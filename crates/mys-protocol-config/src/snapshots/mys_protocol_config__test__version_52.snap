@@ -94,7 +94,7 @@ binary_field_handles: 500
 binary_field_instantiations: 250
 binary_friend_decls: 100
 max_move_object_size: 256000
-max_move_package_size: 102400
+max_move_package_size: 1048576
 max_publish_or_upgrade_per_ptb: 5
 max_tx_gas: 50000000000
 max_gas_price: 100000
@@ -296,4 +296,3 @@ max_deferral_rounds_for_congestion_control: 10
 min_checkpoint_interval_ms: 200
 checkpoint_summary_version_specific_data: 1
 max_soft_bundle_size: 5
-
