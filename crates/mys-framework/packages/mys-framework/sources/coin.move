@@ -7,6 +7,8 @@
 /// `Balance` type.
 module mys::coin;
 
+friend social_contracts::bootstrap;
+
 use std::ascii;
 use std::string;
 use std::type_name;
@@ -45,8 +47,8 @@ public struct CoinCreationAdminCap has key, store {
 }
 
 /// Create the coin creation admin capability
-/// This function is only callable by other modules in the same package
-public(package) fun create_coin_creation_admin_cap(ctx: &mut TxContext): CoinCreationAdminCap {
+/// This function can only be called by the bootstrap module (friend access)
+public(friend) fun create_coin_creation_admin_cap(ctx: &mut TxContext): CoinCreationAdminCap {
     CoinCreationAdminCap {
         id: object::new(ctx)
     }
