@@ -3253,9 +3253,9 @@ impl ProtocolConfig {
                     }
                 }
                 75 => {
-                    // Reduce compute and storage gas costs by 50%
+                    // Reduce compute and storage gas costs by 75%
 
-                    // Compute costs - 50% reduction
+                    // Compute costs - 75% reduction
                     if let Some(cost) = cfg.base_tx_cost_fixed {
                         cfg.base_tx_cost_fixed = Some(cost / 4);
                     }
@@ -3275,7 +3275,7 @@ impl ProtocolConfig {
                         cfg.obj_access_cost_verify_per_byte = Some(cost / 4);
                     }
 
-                    // Storage costs - 50% reduction
+                    // Storage costs - 75% reduction
                     if let Some(cost) = cfg.obj_data_cost_refundable {
                         cfg.obj_data_cost_refundable = Some(cost / 4);
                     }
