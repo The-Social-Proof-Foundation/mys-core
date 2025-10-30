@@ -44,43 +44,12 @@ public struct CoinCreationAdminCap has key, store {
     id: UID,
 }
 
-/// One-time bootstrap key for coin creation admin - can only be used once, ever
-public struct CoinCreationBootstrapKey has key {
-    id: UID,
-    used: bool,
-}
-
-/// Initialize the coin creation bootstrap key during module init
-fun init(ctx: &mut TxContext) {
-    transfer::share_object(CoinCreationBootstrapKey {
-        id: object::new(ctx),
-        used: false,
-    });
-}
-
-/// Create the coin creation admin capability - INTERNAL USE ONLY
-/// This should ONLY be called by the bootstrap module during the one-time claim
-/// 
-/// Security: 
-/// - Can only be called once (enforced by bootstrap key)
-/// - Bootstrap key must not be used yet
-/// - Marks the bootstrap key as used after creation
-public fun create_coin_creation_admin_cap(
-    key: &mut CoinCreationBootstrapKey,
-    ctx: &mut TxContext
-): CoinCreationAdminCap {
-    // Ensure this can only be called once, ever
-    assert!(!key.used, ENotAuthorized);
-    
-    // Create the admin cap
-    let cap = CoinCreationAdminCap {
-        id: object::new(ctx),
-    };
-    
-    // Mark as used - this cannot be undone
-    key.used = true;
-    
-    cap
+/// Create the coin creation admin capability
+/// This function is only callable by other modules in the same package
+public(package) fun create_coin_creation_admin_cap(ctx: &mut TxContext): CoinCreationAdminCap {
+    CoinCreationAdminCap {
+        id: object::new(ctx)
+    }
 }
 
 /// A coin of type `T` worth `value`. Transferable and storable
