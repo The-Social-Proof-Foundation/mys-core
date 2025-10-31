@@ -13,6 +13,9 @@ use std::type_name;
 use mys::balance::{Self, Balance, Supply};
 use mys::deny_list::DenyList;
 use mys::url::{Self, Url};
+use mys::object::{Self, UID};
+use mys::tx_context::{Self, TxContext};
+use mys::transfer;
 
 // Allows calling `.split_vec(amounts, ctx)` on `coin`
 public use fun mys::pay::split_vec as Coin.split_vec;
