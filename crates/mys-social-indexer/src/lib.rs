@@ -16,7 +16,7 @@ static MYSOCIAL_PACKAGE_ADDRESS: OnceCell<String> = OnceCell::new();
 
 /// Default MySocial package address if not set via environment
 pub const DEFAULT_MYSOCIAL_PACKAGE_ADDRESS: &str =
-    "0x000000000000000000000000000000000000000000000000000000000000d880";
+    "0x00000000000000000000000000000000000000000000000000000000000050c1";
 
 /// Module names within the MySocial package
 pub const PROFILE_MODULE_NAME: &str = "profile";
