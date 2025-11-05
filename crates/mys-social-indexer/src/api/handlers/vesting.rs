@@ -678,6 +678,7 @@ pub async fn get_vesting_leaderboard(
 // ===========================================================================
 
 /// Calculate claimable amount based on vesting schedule and curve factor
+/// This matches the calculation in the smart contract (profile.move)
 fn calculate_claimable_amount(wallet: &VestingWallet, current_time_ms: u64) -> i64 {
     let current_time = current_time_ms as i64;
 
@@ -695,21 +696,33 @@ fn calculate_claimable_amount(wallet: &VestingWallet, current_time_ms: u64) -> i
     let elapsed = current_time - wallet.start_time;
     let progress = elapsed as f64 / wallet.duration as f64;
 
-    // Apply curve factor to the progress
-    let curve_factor = wallet.curve_factor as f64 / 1000.0; // Convert to decimal
-    let adjusted_progress = if curve_factor == 1.0 {
+    // Normalize curve factor (1000 = linear)
+    let curve_factor_normalized = wallet.curve_factor as f64 / 1000.0;
+    
+    // Apply curve based on curve factor (matching smart contract logic)
+    let curved_progress = if wallet.curve_factor == 0 || wallet.curve_factor == 1000 {
         // Linear vesting
         progress
-    } else if curve_factor > 1.0 {
-        // Exponential curve (more tokens at the end)
-        progress.powf(2.0 / curve_factor)
+    } else if wallet.curve_factor > 1000 {
+        // Exponential curve (more tokens toward end)
+        // Use quadratic approximation: progress^2
+        let quadratic = progress * progress;
+        // Blend with linear based on how far curve_factor is from 1000
+        let steepness = curve_factor_normalized - 1.0;
+        let blend_factor = (steepness * 2.0).min(1.0);
+        progress * (1.0 - blend_factor) + quadratic * blend_factor
     } else {
-        // Logarithmic curve (more tokens at the start)
-        1.0 - (1.0 - progress).powf(curve_factor * 2.0)
+        // Logarithmic curve (more tokens toward start)
+        // Use square root approximation: sqrt(progress)
+        let sqrt_approx = progress.sqrt();
+        // Blend with linear based on how far curve_factor is from 1000
+        let steepness = 1.0 - curve_factor_normalized;
+        let blend_factor = (steepness * 2.0).min(1.0);
+        progress * (1.0 - blend_factor) + sqrt_approx * blend_factor
     };
 
     // Calculate total amount that should be claimable by now
-    let total_claimable = (wallet.total_amount as f64 * adjusted_progress) as i64;
+    let total_claimable = (wallet.total_amount as f64 * curved_progress) as i64;
 
     // Subtract already claimed amount to get newly claimable amount
     let newly_claimable = total_claimable - wallet.claimed_amount;

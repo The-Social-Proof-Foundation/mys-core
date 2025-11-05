@@ -46,6 +46,7 @@ table! {
         facebook_username -> Nullable<Text>,
         reddit_username -> Nullable<Text>,
         github_username -> Nullable<Text>,
+        instagram_username -> Nullable<Text>,
         // Block list address
         block_list_address -> Nullable<Varchar>,
         // Social proof token address
@@ -246,6 +247,59 @@ table! {
         event_time -> BigInt,
         time -> Timestamptz,
         transaction_id -> Varchar,
+    }
+}
+
+// Define profile_offers table (TimescaleDB hypertable)
+table! {
+    profile_offers (id, time) {
+        id -> Int4,
+        profile_id -> Varchar,
+        offeror_address -> Varchar,
+        amount -> BigInt,
+        status -> Varchar,
+        created_at -> BigInt,
+        updated_at -> BigInt,
+        resolved_at -> Nullable<BigInt>,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define profile_sale_fees table (TimescaleDB hypertable)
+table! {
+    profile_sale_fees (id, time) {
+        id -> Int4,
+        profile_id -> Varchar,
+        offeror_address -> Varchar,
+        previous_owner_address -> Varchar,
+        sale_amount -> BigInt,
+        fee_amount -> BigInt,
+        fee_recipient_address -> Varchar,
+        timestamp -> BigInt,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
+    }
+}
+
+// Define profile_badges table (TimescaleDB hypertable)
+table! {
+    profile_badges (id, time) {
+        id -> Int4,
+        profile_id -> Varchar,
+        badge_id -> Varchar,
+        badge_name -> Varchar,
+        badge_description -> Nullable<Text>,
+        badge_image_url -> Nullable<Varchar>,
+        platform_id -> Varchar,
+        assigned_by -> Varchar,
+        assigned_at -> BigInt,
+        revoked -> Bool,
+        revoked_at -> Nullable<BigInt>,
+        revoked_by -> Nullable<Varchar>,
+        badge_type -> SmallInt,
+        transaction_id -> Varchar,
+        time -> Timestamptz,
     }
 }
 
@@ -1307,6 +1361,9 @@ allow_tables_to_appear_in_same_query!(
     // Vesting tables
     vesting_wallets,
     vesting_events,
+    profile_offers,
+    profile_sale_fees,
+    profile_badges,
     posts,
     comments,
     reactions,

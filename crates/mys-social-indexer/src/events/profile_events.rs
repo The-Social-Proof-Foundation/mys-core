@@ -73,6 +73,11 @@ fn default_timestamp() -> u64 {
         .as_secs()
 }
 
+/// Default function for u8 fields that should be 0
+fn default_zero_u8() -> u8 {
+    0
+}
+
 /// Default function for numeric fields that should be 0
 fn default_zero() -> u64 {
     0
@@ -191,6 +196,7 @@ impl ProfileCreatedEvent {
             facebook_username: None,
             reddit_username: None,
             github_username: None,
+            instagram_username: None,
             block_list_address: None,
             social_proof_token_address: None,
         })
@@ -289,6 +295,9 @@ pub struct ProfileUpdatedEvent {
 
     #[serde(default)]
     pub github_username: Option<String>,
+
+    #[serde(default)]
+    pub instagram_username: Option<String>,
 
     #[serde(default)]
     pub min_offer_amount: Option<u64>,
@@ -512,4 +521,212 @@ impl TokensClaimedEvent {
 
         (wallet_update, event)
     }
+}
+
+/// Event emitted when an offer is created for a profile
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProfileOfferCreatedEvent {
+    /// ID of the profile
+    #[serde(rename = "profile_id", default)]
+    pub profile_id: String,
+
+    /// Address of the offeror
+    #[serde(rename = "offeror", default)]
+    pub offeror: String,
+
+    /// Amount of the offer in MYS tokens
+    #[serde(
+        rename = "amount",
+        default = "default_zero",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub amount: u64,
+
+    /// Timestamp when the offer was created
+    #[serde(
+        rename = "created_at",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub created_at: u64,
+}
+
+/// Event emitted when an offer is accepted
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProfileOfferAcceptedEvent {
+    /// ID of the profile
+    #[serde(rename = "profile_id", default)]
+    pub profile_id: String,
+
+    /// Address of the offeror (new owner)
+    #[serde(rename = "offeror", default)]
+    pub offeror: String,
+
+    /// Address of the previous owner
+    #[serde(rename = "previous_owner", default)]
+    pub previous_owner: String,
+
+    /// Amount of the offer in MYS tokens
+    #[serde(
+        rename = "amount",
+        default = "default_zero",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub amount: u64,
+
+    /// Timestamp when the offer was accepted
+    #[serde(
+        rename = "accepted_at",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub accepted_at: u64,
+}
+
+/// Event emitted when an offer is rejected or revoked
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProfileOfferRejectedEvent {
+    /// ID of the profile
+    #[serde(rename = "profile_id", default)]
+    pub profile_id: String,
+
+    /// Address of the offeror
+    #[serde(rename = "offeror", default)]
+    pub offeror: String,
+
+    /// Address of who rejected/revoked the offer
+    #[serde(rename = "rejected_by", default)]
+    pub rejected_by: String,
+
+    /// Amount of the offer in MYS tokens
+    #[serde(
+        rename = "amount",
+        default = "default_zero",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub amount: u64,
+
+    /// Timestamp when the offer was rejected/revoked
+    #[serde(
+        rename = "rejected_at",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub rejected_at: u64,
+
+    /// Whether this was a revocation (by offeror) vs rejection (by owner)
+    #[serde(rename = "is_revoked", default)]
+    pub is_revoked: bool,
+}
+
+/// Event emitted when a fee is collected from a profile sale
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProfileSaleFeeEvent {
+    /// ID of the profile
+    #[serde(rename = "profile_id", default)]
+    pub profile_id: String,
+
+    /// Address of the offeror (buyer)
+    #[serde(rename = "offeror", default)]
+    pub offeror: String,
+
+    /// Address of the previous owner (seller)
+    #[serde(rename = "previous_owner", default)]
+    pub previous_owner: String,
+
+    /// Total sale amount in MYS tokens
+    #[serde(
+        rename = "sale_amount",
+        default = "default_zero",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub sale_amount: u64,
+
+    /// Fee amount collected in MYS tokens
+    #[serde(
+        rename = "fee_amount",
+        default = "default_zero",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub fee_amount: u64,
+
+    /// Address that received the fee
+    #[serde(rename = "fee_recipient", default)]
+    pub fee_recipient: String,
+
+    /// Timestamp when the fee was collected
+    #[serde(
+        rename = "timestamp",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub timestamp: u64,
+}
+
+/// Event emitted when a badge is assigned to a profile
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BadgeAssignedEvent {
+    /// ID of the profile receiving the badge
+    #[serde(rename = "profile_id", default)]
+    pub profile_id: String,
+
+    /// Badge identifier
+    #[serde(rename = "badge_id", default)]
+    pub badge_id: String,
+
+    /// Badge name
+    #[serde(rename = "name", default)]
+    pub name: String,
+
+    /// Platform ID that issued the badge
+    #[serde(rename = "platform_id", default)]
+    pub platform_id: String,
+
+    /// Admin/moderator who assigned the badge
+    #[serde(rename = "assigned_by", default)]
+    pub assigned_by: String,
+
+    /// Timestamp when assigned
+    #[serde(
+        rename = "assigned_at",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub assigned_at: u64,
+
+    /// Badge type/tier (1-100)
+    #[serde(
+        rename = "badge_type",
+        default = "default_zero_u8",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub badge_type: u8,
+}
+
+/// Event emitted when a badge is revoked from a profile
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BadgeRevokedEvent {
+    /// ID of the profile losing the badge
+    #[serde(rename = "profile_id", default)]
+    pub profile_id: String,
+
+    /// Badge identifier
+    #[serde(rename = "badge_id", default)]
+    pub badge_id: String,
+
+    /// Platform ID that issued the badge
+    #[serde(rename = "platform_id", default)]
+    pub platform_id: String,
+
+    /// Admin/moderator who revoked the badge
+    #[serde(rename = "revoked_by", default)]
+    pub revoked_by: String,
+
+    /// Timestamp when revoked
+    #[serde(
+        rename = "revoked_at",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub revoked_at: u64,
 }

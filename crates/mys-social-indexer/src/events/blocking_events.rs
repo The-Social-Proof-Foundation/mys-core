@@ -901,9 +901,10 @@ pub async fn process_block_list_created_event(
                 x_username: None,
                 mastodon_username: None,
                 facebook_username: None,
-                reddit_username: None,
-                github_username: None,
-                block_list_address: Some(block_list_event.block_list_id.clone()),
+            reddit_username: None,
+            github_username: None,
+            instagram_username: None,
+            block_list_address: Some(block_list_event.block_list_id.clone()),
                 social_proof_token_address: None,
             };
 

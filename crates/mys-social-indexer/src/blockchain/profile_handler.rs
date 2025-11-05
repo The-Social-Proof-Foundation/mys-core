@@ -15,9 +15,12 @@ use crate::db::{Database, DbConnection};
 use crate::events::profile_event_types::{extract_profile_id, ProfileEventType};
 use crate::events::profile_events::{
     ProfileCreatedEvent, ProfileUpdatedEvent, TokensClaimedEvent, TokensVestedEvent,
+    ProfileOfferCreatedEvent, ProfileOfferAcceptedEvent, ProfileOfferRejectedEvent,
+    ProfileSaleFeeEvent, BadgeAssignedEvent, BadgeRevokedEvent,
 };
 use crate::models::indexer::NewIndexerProgress;
 use crate::models::profile_events::NewProfileEvent;
+use crate::models::profile_extras::{NewProfileOffer, NewProfileSaleFee, NewProfileBadge};
 use crate::schema;
 use crate::PROFILE_MODULE_NAME;
 
@@ -425,6 +428,10 @@ impl ProfileEventListener {
                     .github_username
                     .as_ref()
                     .or(existing_profile.github_username.as_ref())),
+                schema::profiles::instagram_username.eq(event
+                    .instagram_username
+                    .as_ref()
+                    .or(existing_profile.instagram_username.as_ref())),
                 schema::profiles::min_offer_amount.eq(event
                     .min_offer_amount
                     .map(|v| v as i64)
@@ -533,6 +540,216 @@ impl ProfileEventListener {
             "✅ Successfully processed tokens claimed: wallet_id={}, amount={}",
             event.wallet_id, event.claimed_amount
         );
+        Ok(())
+    }
+
+    /// Process a profile offer created event
+    async fn process_profile_offer_created(
+        &self,
+        event: &ProfileOfferCreatedEvent,
+        transaction_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+
+        info!(
+            "Processing ProfileOfferCreatedEvent: profile_id={}, offeror={}, amount={}",
+            event.profile_id, event.offeror, event.amount
+        );
+
+        let now = chrono::Utc::now().naive_utc();
+        let new_offer = NewProfileOffer {
+            profile_id: event.profile_id.clone(),
+            offeror_address: event.offeror.clone(),
+            amount: event.amount as i64,
+            status: "pending".to_string(),
+            created_at: event.created_at as i64,
+            updated_at: event.created_at as i64,
+            resolved_at: None,
+            transaction_id: transaction_id.to_string(),
+            time: now,
+        };
+
+        diesel::insert_into(schema::profile_offers::table)
+            .values(&new_offer)
+            .execute(&mut conn)
+            .await?;
+
+        info!("✅ Successfully processed profile offer created: profile_id={}", event.profile_id);
+        Ok(())
+    }
+
+    /// Process a profile offer accepted event
+    async fn process_profile_offer_accepted(
+        &self,
+        event: &ProfileOfferAcceptedEvent,
+        _transaction_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+
+        info!(
+            "Processing ProfileOfferAcceptedEvent: profile_id={}, offeror={}, amount={}",
+            event.profile_id, event.offeror, event.amount
+        );
+
+        // Update existing offer to accepted status
+        diesel::update(
+            schema::profile_offers::table
+                .filter(schema::profile_offers::profile_id.eq(&event.profile_id))
+                .filter(schema::profile_offers::offeror_address.eq(&event.offeror))
+                .filter(schema::profile_offers::status.eq("pending")),
+        )
+        .set((
+            schema::profile_offers::status.eq("accepted"),
+            schema::profile_offers::updated_at.eq(event.accepted_at as i64),
+            schema::profile_offers::resolved_at.eq(Some(event.accepted_at as i64)),
+        ))
+        .execute(&mut conn)
+        .await?;
+
+        info!("✅ Successfully processed profile offer accepted: profile_id={}", event.profile_id);
+        Ok(())
+    }
+
+    /// Process a profile offer rejected/revoked event
+    async fn process_profile_offer_rejected(
+        &self,
+        event: &ProfileOfferRejectedEvent,
+        _transaction_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+
+        info!(
+            "Processing ProfileOfferRejectedEvent: profile_id={}, offeror={}, is_revoked={}",
+            event.profile_id, event.offeror, event.is_revoked
+        );
+
+        let status = if event.is_revoked { "revoked" } else { "rejected" };
+
+        // Update existing offer to rejected/revoked status
+        diesel::update(
+            schema::profile_offers::table
+                .filter(schema::profile_offers::profile_id.eq(&event.profile_id))
+                .filter(schema::profile_offers::offeror_address.eq(&event.offeror))
+                .filter(schema::profile_offers::status.eq("pending")),
+        )
+        .set((
+            schema::profile_offers::status.eq(status),
+            schema::profile_offers::updated_at.eq(event.rejected_at as i64),
+            schema::profile_offers::resolved_at.eq(Some(event.rejected_at as i64)),
+        ))
+        .execute(&mut conn)
+        .await?;
+
+        info!("✅ Successfully processed profile offer {}: profile_id={}", status, event.profile_id);
+        Ok(())
+    }
+
+    /// Process a profile sale fee event
+    async fn process_profile_sale_fee(
+        &self,
+        event: &ProfileSaleFeeEvent,
+        transaction_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+
+        info!(
+            "Processing ProfileSaleFeeEvent: profile_id={}, sale_amount={}, fee_amount={}",
+            event.profile_id, event.sale_amount, event.fee_amount
+        );
+
+        let now = chrono::Utc::now().naive_utc();
+        let new_fee = NewProfileSaleFee {
+            profile_id: event.profile_id.clone(),
+            offeror_address: event.offeror.clone(),
+            previous_owner_address: event.previous_owner.clone(),
+            sale_amount: event.sale_amount as i64,
+            fee_amount: event.fee_amount as i64,
+            fee_recipient_address: event.fee_recipient.clone(),
+            timestamp: event.timestamp as i64,
+            transaction_id: transaction_id.to_string(),
+            time: now,
+        };
+
+        diesel::insert_into(schema::profile_sale_fees::table)
+            .values(&new_fee)
+            .execute(&mut conn)
+            .await?;
+
+        info!("✅ Successfully processed profile sale fee: profile_id={}", event.profile_id);
+        Ok(())
+    }
+
+    /// Process a badge assigned event
+    async fn process_badge_assigned(
+        &self,
+        event: &BadgeAssignedEvent,
+        transaction_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+
+        info!(
+            "Processing BadgeAssignedEvent: profile_id={}, badge_id={}, badge_name={}",
+            event.profile_id, event.badge_id, event.name
+        );
+
+        let now = chrono::Utc::now().naive_utc();
+        let new_badge = NewProfileBadge {
+            profile_id: event.profile_id.clone(),
+            badge_id: event.badge_id.clone(),
+            badge_name: event.name.clone(),
+            badge_description: None, // Not provided in event
+            badge_image_url: None,   // Not provided in event
+            platform_id: event.platform_id.clone(),
+            assigned_by: event.assigned_by.clone(),
+            assigned_at: event.assigned_at as i64,
+            revoked: false,
+            revoked_at: None,
+            revoked_by: None,
+            badge_type: event.badge_type as i16,
+            transaction_id: transaction_id.to_string(),
+            time: now,
+        };
+
+        diesel::insert_into(schema::profile_badges::table)
+            .values(&new_badge)
+            .execute(&mut conn)
+            .await?;
+
+        info!("✅ Successfully processed badge assigned: profile_id={}, badge_id={}", 
+              event.profile_id, event.badge_id);
+        Ok(())
+    }
+
+    /// Process a badge revoked event
+    async fn process_badge_revoked(
+        &self,
+        event: &BadgeRevokedEvent,
+        _transaction_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+
+        info!(
+            "Processing BadgeRevokedEvent: profile_id={}, badge_id={}",
+            event.profile_id, event.badge_id
+        );
+
+        // Update existing badge to revoked status
+        diesel::update(
+            schema::profile_badges::table
+                .filter(schema::profile_badges::profile_id.eq(&event.profile_id))
+                .filter(schema::profile_badges::badge_id.eq(&event.badge_id))
+                .filter(schema::profile_badges::revoked.eq(false)),
+        )
+        .set((
+            schema::profile_badges::revoked.eq(true),
+            schema::profile_badges::revoked_at.eq(Some(event.revoked_at as i64)),
+            schema::profile_badges::revoked_by.eq(Some(event.revoked_by.clone())),
+        ))
+        .execute(&mut conn)
+        .await?;
+
+        info!("✅ Successfully processed badge revoked: profile_id={}, badge_id={}", 
+              event.profile_id, event.badge_id);
         Ok(())
     }
 
@@ -722,6 +939,162 @@ impl ProfileEventListener {
                         }
                         Err(e) => {
                             error!("Failed to deserialize tokens claimed event: {}", e);
+                        }
+                    }
+                }
+                // Handle profile offer created event
+                else if event.event_type.ends_with("::ProfileOfferCreatedEvent") {
+                    info!(
+                        "Profile offer created event detected with data: {}",
+                        serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                    );
+
+                    match crate::events::event_utils::extract_event_fields(&event.data).and_then(
+                        |fields| {
+                            serde_json::from_value::<ProfileOfferCreatedEvent>(fields)
+                                .map_err(|e| anyhow::anyhow!(e))
+                        },
+                    ) {
+                        Ok(offer_event) => {
+                            if let Err(e) = self
+                                .process_profile_offer_created(&offer_event, &event.tx_digest)
+                                .await
+                            {
+                                error!("Failed to process profile offer created event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize profile offer created event: {}", e);
+                        }
+                    }
+                }
+                // Handle profile offer accepted event
+                else if event.event_type.ends_with("::ProfileOfferAcceptedEvent") {
+                    info!(
+                        "Profile offer accepted event detected with data: {}",
+                        serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                    );
+
+                    match crate::events::event_utils::extract_event_fields(&event.data).and_then(
+                        |fields| {
+                            serde_json::from_value::<ProfileOfferAcceptedEvent>(fields)
+                                .map_err(|e| anyhow::anyhow!(e))
+                        },
+                    ) {
+                        Ok(offer_event) => {
+                            if let Err(e) = self
+                                .process_profile_offer_accepted(&offer_event, &event.tx_digest)
+                                .await
+                            {
+                                error!("Failed to process profile offer accepted event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize profile offer accepted event: {}", e);
+                        }
+                    }
+                }
+                // Handle profile offer rejected/revoked event
+                else if event.event_type.ends_with("::ProfileOfferRejectedEvent") {
+                    info!(
+                        "Profile offer rejected/revoked event detected with data: {}",
+                        serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                    );
+
+                    match crate::events::event_utils::extract_event_fields(&event.data).and_then(
+                        |fields| {
+                            serde_json::from_value::<ProfileOfferRejectedEvent>(fields)
+                                .map_err(|e| anyhow::anyhow!(e))
+                        },
+                    ) {
+                        Ok(offer_event) => {
+                            if let Err(e) = self
+                                .process_profile_offer_rejected(&offer_event, &event.tx_digest)
+                                .await
+                            {
+                                error!("Failed to process profile offer rejected event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize profile offer rejected event: {}", e);
+                        }
+                    }
+                }
+                // Handle profile sale fee event
+                else if event.event_type.ends_with("::ProfileSaleFeeEvent") {
+                    info!(
+                        "Profile sale fee event detected with data: {}",
+                        serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                    );
+
+                    match crate::events::event_utils::extract_event_fields(&event.data).and_then(
+                        |fields| {
+                            serde_json::from_value::<ProfileSaleFeeEvent>(fields)
+                                .map_err(|e| anyhow::anyhow!(e))
+                        },
+                    ) {
+                        Ok(fee_event) => {
+                            if let Err(e) = self
+                                .process_profile_sale_fee(&fee_event, &event.tx_digest)
+                                .await
+                            {
+                                error!("Failed to process profile sale fee event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize profile sale fee event: {}", e);
+                        }
+                    }
+                }
+                // Handle badge assigned event
+                else if event.event_type.ends_with("::BadgeAssignedEvent") {
+                    info!(
+                        "Badge assigned event detected with data: {}",
+                        serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                    );
+
+                    match crate::events::event_utils::extract_event_fields(&event.data).and_then(
+                        |fields| {
+                            serde_json::from_value::<BadgeAssignedEvent>(fields)
+                                .map_err(|e| anyhow::anyhow!(e))
+                        },
+                    ) {
+                        Ok(badge_event) => {
+                            if let Err(e) = self
+                                .process_badge_assigned(&badge_event, &event.tx_digest)
+                                .await
+                            {
+                                error!("Failed to process badge assigned event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize badge assigned event: {}", e);
+                        }
+                    }
+                }
+                // Handle badge revoked event
+                else if event.event_type.ends_with("::BadgeRevokedEvent") {
+                    info!(
+                        "Badge revoked event detected with data: {}",
+                        serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                    );
+
+                    match crate::events::event_utils::extract_event_fields(&event.data).and_then(
+                        |fields| {
+                            serde_json::from_value::<BadgeRevokedEvent>(fields)
+                                .map_err(|e| anyhow::anyhow!(e))
+                        },
+                    ) {
+                        Ok(badge_event) => {
+                            if let Err(e) = self
+                                .process_badge_revoked(&badge_event, &event.tx_digest)
+                                .await
+                            {
+                                error!("Failed to process badge revoked event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize badge revoked event: {}", e);
                         }
                     }
                 }
