@@ -1,6 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::collections::HashMap;
+
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::Json;
@@ -11,7 +13,7 @@ use tracing::{debug, error};
 
 use crate::db::DbPool;
 use crate::models::{VestingEvent, VestingWallet, VestingWalletWithStatus};
-use crate::schema::{vesting_events, vesting_wallets};
+use crate::schema::{profiles, vesting_events, vesting_wallets};
 
 // ===========================================================================
 // REQUEST/RESPONSE TYPES
@@ -90,6 +92,9 @@ pub struct VestingAnalyticsResponse {
 #[derive(Debug, Serialize)]
 pub struct VestingLeaderboardEntry {
     pub owner_address: String,
+    pub username: Option<String>,
+    pub fullname: Option<String>,
+    pub profile_photo: Option<String>,
     pub total_vested: i64,
     pub total_claimed: i64,
     pub active_wallets: i64,
@@ -536,7 +541,7 @@ pub async fn get_vesting_analytics(
 
 /// Get vesting leaderboard
 pub async fn get_vesting_leaderboard(
-    Query(_query): Query<VestingQuery>,
+    Query(query): Query<VestingQuery>,
     State(pool): State<DbPool>,
 ) -> Result<Json<VestingLeaderboardResponse>, StatusCode> {
     debug!("Getting vesting leaderboard");
@@ -546,19 +551,124 @@ pub async fn get_vesting_leaderboard(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    // This would be a complex aggregation query in real implementation
-    // For now, we'll return a simplified version
+    // Calculate offset from page if provided
+    let offset = if query.page > 1 {
+        (query.page - 1) * query.limit
+    } else {
+        query.offset
+    };
+
+    // Get total count of distinct owners
     let total = vesting_wallets::table
         .select(vesting_wallets::owner_address)
         .distinct()
         .count()
         .get_result::<i64>(&mut conn)
         .await
-        .unwrap_or(0);
+        .map_err(|e| {
+            error!("Failed to get vesting leaderboard count: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
-    // Note: This is a simplified implementation
-    // In production, you'd want to use proper SQL aggregation
-    let entries: Vec<VestingLeaderboardEntry> = vec![];
+    // Get current time for calculating active wallets
+    let current_time = chrono::Utc::now().timestamp_millis() as i64;
+
+    // Load all wallets to aggregate by owner
+    let all_wallets = vesting_wallets::table
+        .load::<VestingWallet>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Failed to load vesting wallets: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // Aggregate by owner_address
+    let mut aggregated: HashMap<String, (i64, i64, i64, i64)> = HashMap::new();
+
+    for wallet in &all_wallets {
+        let entry = aggregated.entry(wallet.owner_address.clone()).or_insert((0, 0, 0, 0));
+        entry.0 += wallet.total_amount; // total_vested
+        entry.1 += wallet.claimed_amount; // total_claimed
+        
+        // Check if wallet is active (started but not finished and has remaining balance)
+        let start_time = wallet.start_time;
+        let end_time = start_time + wallet.duration;
+        if current_time >= start_time && current_time < end_time && wallet.remaining_balance > 0 {
+            entry.2 += 1; // active_wallets
+        }
+        
+        // Check if wallet is completed (fully claimed)
+        if wallet.remaining_balance == 0 {
+            entry.3 += 1; // completed_wallets
+        }
+    }
+
+    // Convert to Vec and sort by total_vested descending
+    let mut leaderboard_data: Vec<(String, i64, i64, i64, i64)> = aggregated
+        .into_iter()
+        .map(|(addr, (vested, claimed, active, completed))| {
+            (addr, vested, claimed, active, completed)
+        })
+        .collect();
+    
+    leaderboard_data.sort_by(|a, b| b.1.cmp(&a.1)); // Sort by total_vested descending
+
+    // Apply pagination
+    let paginated_data: Vec<(String, i64, i64, i64, i64)> = leaderboard_data
+        .into_iter()
+        .skip(offset as usize)
+        .take(query.limit as usize)
+        .collect();
+
+    // Get owner addresses for profile lookup
+    let owner_addresses: Vec<String> = paginated_data.iter().map(|(addr, _, _, _, _)| addr.clone()).collect();
+
+    // Load profiles for these addresses
+    let profiles_map: HashMap<String, (Option<String>, Option<String>, Option<String>)> = if !owner_addresses.is_empty() {
+        profiles::table
+            .filter(profiles::owner_address.eq_any(&owner_addresses))
+            .select((
+                profiles::owner_address,
+                profiles::username,
+                profiles::display_name,
+                profiles::profile_photo,
+            ))
+            .load::<(String, String, Option<String>, Option<String>)>(&mut conn)
+            .await
+            .map_err(|e| {
+                error!("Failed to load profiles: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?
+            .into_iter()
+            .map(|(addr, username, display_name, profile_photo)| {
+                (addr, (Some(username), display_name, profile_photo))
+            })
+            .collect()
+    } else {
+        HashMap::new()
+    };
+
+    // Build entries with profile data
+    let entries: Vec<VestingLeaderboardEntry> = paginated_data
+        .into_iter()
+        .map(|(owner_address, total_vested, total_claimed, active_wallets, completed_wallets)| {
+            let (username, fullname, profile_photo) = profiles_map
+                .get(&owner_address)
+                .cloned()
+                .unwrap_or((None, None, None));
+            
+            VestingLeaderboardEntry {
+                owner_address,
+                username,
+                fullname,
+                profile_photo,
+                total_vested,
+                total_claimed,
+                active_wallets,
+                completed_wallets,
+            }
+        })
+        .collect();
 
     Ok(Json(VestingLeaderboardResponse { entries, total }))
 }
