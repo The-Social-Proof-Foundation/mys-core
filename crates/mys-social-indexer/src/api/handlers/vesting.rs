@@ -42,9 +42,19 @@ fn default_page() -> i64 {
 /// Response type for vesting wallets list
 #[derive(Debug, Serialize)]
 pub struct VestingWalletsResponse {
-    pub wallets: Vec<VestingWalletWithStatus>,
+    pub wallets: Vec<VestingWalletWithProfile>,
     pub total: i64,
     pub pagination: PaginationInfo,
+}
+
+/// Vesting wallet with profile information
+#[derive(Debug, Serialize)]
+pub struct VestingWalletWithProfile {
+    #[serde(flatten)]
+    pub wallet: VestingWalletWithStatus,
+    pub username: Option<String>,
+    pub fullname: Option<String>,
+    pub profile_photo: Option<String>,
 }
 
 /// Response type for vesting events list
@@ -172,10 +182,198 @@ pub async fn get_vesting_wallets(
         .map(|wallet| VestingWalletWithStatus::from_wallet(wallet, current_time))
         .collect();
 
+    // Get owner addresses for profile lookup
+    let owner_addresses: Vec<String> = wallets_with_status
+        .iter()
+        .map(|w| w.wallet.owner_address.clone())
+        .collect();
+
+    // Load profiles for these addresses
+    let profiles_map: HashMap<String, (Option<String>, Option<String>, Option<String>)> = if !owner_addresses.is_empty() {
+        profiles::table
+            .filter(profiles::owner_address.eq_any(&owner_addresses))
+            .select((
+                profiles::owner_address,
+                profiles::username,
+                profiles::display_name,
+                profiles::profile_photo,
+            ))
+            .load::<(String, String, Option<String>, Option<String>)>(&mut conn)
+            .await
+            .map_err(|e| {
+                error!("Failed to load profiles: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?
+            .into_iter()
+            .map(|(addr, username, display_name, profile_photo)| {
+                (addr, (Some(username), display_name, profile_photo))
+            })
+            .collect()
+    } else {
+        HashMap::new()
+    };
+
+    // Combine wallets with profile data
+    let wallets_with_profiles: Vec<VestingWalletWithProfile> = wallets_with_status
+        .into_iter()
+        .map(|wallet| {
+            let (username, fullname, profile_photo) = profiles_map
+                .get(&wallet.wallet.owner_address)
+                .cloned()
+                .unwrap_or((None, None, None));
+            
+            VestingWalletWithProfile {
+                wallet,
+                username,
+                fullname,
+                profile_photo,
+            }
+        })
+        .collect();
+
     let total_pages = (total as f64 / query.limit as f64).ceil() as i64;
 
     Ok(Json(VestingWalletsResponse {
-        wallets: wallets_with_status,
+        wallets: wallets_with_profiles,
+        total,
+        pagination: PaginationInfo {
+            total,
+            limit: query.limit,
+            offset,
+            page: query.page,
+            total_pages,
+        },
+    }))
+}
+
+/// Get all active vesting wallets ordered by highest token holding
+/// Active wallets are those that have started, haven't ended, and have remaining balance > 0
+pub async fn get_active_vesting_wallets(
+    Query(query): Query<VestingQuery>,
+    State(pool): State<DbPool>,
+) -> Result<Json<VestingWalletsResponse>, StatusCode> {
+    debug!("Getting active vesting wallets ordered by token amount");
+
+    let mut conn = pool.get().await.map_err(|e| {
+        error!("Failed to get database connection: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    // Calculate offset from page if provided
+    let offset = if query.page > 1 {
+        (query.page - 1) * query.limit
+    } else {
+        query.offset
+    };
+
+    let current_time = chrono::Utc::now().timestamp_millis() as i64;
+
+    // Build the base query - filter for active wallets
+    // Active = has started, hasn't ended, and has remaining balance
+    let mut query_builder = vesting_wallets::table.into_boxed()
+        .filter(vesting_wallets::start_time.le(current_time)) // Has started
+        .filter(vesting_wallets::remaining_balance.gt(0)); // Has remaining balance
+
+    // Apply owner address filter if provided
+    if let Some(owner) = &query.owner_address {
+        query_builder = query_builder.filter(vesting_wallets::owner_address.eq(owner));
+    }
+
+    // Load all wallets first to filter by end time (since Diesel doesn't support arithmetic in filters easily)
+    let all_wallets = query_builder
+        .load::<VestingWallet>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Failed to get active vesting wallets: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // Filter for wallets that haven't ended yet
+    let active_wallets: Vec<VestingWallet> = all_wallets
+        .into_iter()
+        .filter(|w| {
+            let end_time = w.start_time + w.duration;
+            current_time < end_time
+        })
+        .collect();
+
+    let total = active_wallets.len() as i64;
+
+    // Sort by total_amount descending (highest token holding first)
+    let mut sorted_wallets = active_wallets;
+    sorted_wallets.sort_by(|a, b| b.total_amount.cmp(&a.total_amount));
+
+    // Apply pagination
+    let paginated_wallets: Vec<VestingWallet> = sorted_wallets
+        .into_iter()
+        .skip(offset as usize)
+        .take(query.limit as usize)
+        .collect();
+
+    // Convert to wallets with status (using current timestamp)
+    let current_time_ms = current_time as u64;
+    let wallets_with_status: Vec<VestingWalletWithStatus> = paginated_wallets
+        .into_iter()
+        .map(|wallet| VestingWalletWithStatus::from_wallet(wallet, current_time_ms))
+        .collect();
+
+    // Get owner addresses for profile lookup
+    let owner_addresses: Vec<String> = wallets_with_status
+        .iter()
+        .map(|w| w.wallet.owner_address.clone())
+        .collect();
+
+    // Load profiles for these addresses
+    let profiles_map: HashMap<String, (Option<String>, Option<String>, Option<String>)> = if !owner_addresses.is_empty() {
+        profiles::table
+            .filter(profiles::owner_address.eq_any(&owner_addresses))
+            .select((
+                profiles::owner_address,
+                profiles::username,
+                profiles::display_name,
+                profiles::profile_photo,
+            ))
+            .load::<(String, String, Option<String>, Option<String>)>(&mut conn)
+            .await
+            .map_err(|e| {
+                error!("Failed to load profiles: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?
+            .into_iter()
+            .map(|(addr, username, display_name, profile_photo)| {
+                (addr, (Some(username), display_name, profile_photo))
+            })
+            .collect()
+    } else {
+        HashMap::new()
+    };
+
+    // Combine wallets with profile data
+    let wallets_with_profiles: Vec<VestingWalletWithProfile> = wallets_with_status
+        .into_iter()
+        .map(|wallet| {
+            let (username, fullname, profile_photo) = profiles_map
+                .get(&wallet.wallet.owner_address)
+                .cloned()
+                .unwrap_or((None, None, None));
+            
+            VestingWalletWithProfile {
+                wallet,
+                username,
+                fullname,
+                profile_photo,
+            }
+        })
+        .collect();
+
+    let total_pages = if query.limit > 0 {
+        (total as f64 / query.limit as f64).ceil() as i64
+    } else {
+        0
+    };
+
+    Ok(Json(VestingWalletsResponse {
+        wallets: wallets_with_profiles,
         total,
         pagination: PaginationInfo {
             total,
@@ -375,10 +573,59 @@ pub async fn get_user_vesting_wallets(
         .map(|wallet| VestingWalletWithStatus::from_wallet(wallet, current_time))
         .collect();
 
+    // Get owner addresses for profile lookup
+    let owner_addresses: Vec<String> = wallets_with_status
+        .iter()
+        .map(|w| w.wallet.owner_address.clone())
+        .collect();
+
+    // Load profiles for these addresses
+    let profiles_map: HashMap<String, (Option<String>, Option<String>, Option<String>)> = if !owner_addresses.is_empty() {
+        profiles::table
+            .filter(profiles::owner_address.eq_any(&owner_addresses))
+            .select((
+                profiles::owner_address,
+                profiles::username,
+                profiles::display_name,
+                profiles::profile_photo,
+            ))
+            .load::<(String, String, Option<String>, Option<String>)>(&mut conn)
+            .await
+            .map_err(|e| {
+                error!("Failed to load profiles: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?
+            .into_iter()
+            .map(|(addr, username, display_name, profile_photo)| {
+                (addr, (Some(username), display_name, profile_photo))
+            })
+            .collect()
+    } else {
+        HashMap::new()
+    };
+
+    // Combine wallets with profile data
+    let wallets_with_profiles: Vec<VestingWalletWithProfile> = wallets_with_status
+        .into_iter()
+        .map(|wallet| {
+            let (username, fullname, profile_photo) = profiles_map
+                .get(&wallet.wallet.owner_address)
+                .cloned()
+                .unwrap_or((None, None, None));
+            
+            VestingWalletWithProfile {
+                wallet,
+                username,
+                fullname,
+                profile_photo,
+            }
+        })
+        .collect();
+
     let total_pages = (total as f64 / query.limit as f64).ceil() as i64;
 
     Ok(Json(VestingWalletsResponse {
-        wallets: wallets_with_status,
+        wallets: wallets_with_profiles,
         total,
         pagination: PaginationInfo {
             total,

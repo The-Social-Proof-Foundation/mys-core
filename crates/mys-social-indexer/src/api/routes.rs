@@ -66,7 +66,7 @@ use crate::api::handlers::subscriptions::{
 };
 // Import vesting handlers
 use crate::api::handlers::vesting::{
-    get_user_vesting_wallets, get_vesting_analytics, get_vesting_events, get_vesting_leaderboard,
+    get_active_vesting_wallets, get_user_vesting_wallets, get_vesting_analytics, get_vesting_events, get_vesting_leaderboard,
     get_vesting_wallet_by_id, get_vesting_wallet_claimable, get_vesting_wallet_events,
     get_vesting_wallets,
 };
@@ -190,6 +190,7 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/service-performance", get(get_service_performance))
         .route("/subscribers/:address/summary", get(get_subscriber_summary))
         // Vesting endpoints (using TimescaleDB)
+        .route("/vesting/wallets/active", get(get_active_vesting_wallets))
         .route("/vesting/wallets", get(get_vesting_wallets))
         .route("/vesting/wallets/:wallet_id", get(get_vesting_wallet_by_id))
         .route(

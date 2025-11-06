@@ -297,14 +297,27 @@ GET /search?query=social&page=2&limit=50
 - **GET /promotions/analytics/spending-trends** - Get platform-wide spending trends from continuous aggregates
 
 ### Token Vesting API
-- **GET /vesting/wallets** - List all vesting wallets with optional filtering by owner
+- **GET /vesting/wallets** - List all vesting wallets with optional filtering by owner. Returns wallet data with profile information (username, fullname, profile_photo)
+- **GET /vesting/wallets/active** - Get all active vesting wallets ordered by highest token holding (active = has started, hasn't ended, has remaining balance > 0). Returns wallet data with profile information
 - **GET /vesting/wallets/:wallet_id** - Get specific vesting wallet details with real-time status
 - **GET /vesting/wallets/:wallet_id/events** - Get complete event history for a vesting wallet
 - **GET /vesting/wallets/:wallet_id/claimable** - Get real-time claimable amount with progress details
-- **GET /vesting/users/:address/wallets** - Get all vesting wallets for a specific user address
+- **GET /vesting/users/:address/wallets** - Get all vesting wallets for a specific user address. Returns wallet data with profile information
 - **GET /vesting/events** - List all vesting events with optional owner filtering
 - **GET /vesting/analytics** - Get platform-wide vesting statistics and metrics
 - **GET /vesting/leaderboard** - Get vesting leaderboard (top users by vested amounts)
+
+#### Vesting Query Parameters
+- `limit` (optional) - Number of results per page (default: 50)
+- `offset` (optional) - Pagination offset (default: 0)
+- `page` (optional) - Page number for pagination (default: 1)
+- `owner_address` (optional) - Filter by wallet owner address
+
+#### Vesting Wallet Response Format
+Vesting wallet endpoints return wallets with the following additional fields:
+- `username` (optional) - Profile username of the wallet owner
+- `fullname` (optional) - Display name of the wallet owner
+- `profile_photo` (optional) - Profile photo URL of the wallet owner
 
 ### Proof of Creativity (PoC) API
 - **GET /poc/badges** - List all proof of creativity badges
