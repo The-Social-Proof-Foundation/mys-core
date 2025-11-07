@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS profile_offers (
 );
 
 -- Create TimescaleDB hypertable for profile offers
-SELECT create_hypertable('profile_offers', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable('profile_offers'::text, 'time'::text);
 
 -- Indexes for profile offers
 CREATE INDEX IF NOT EXISTS idx_profile_offers_profile_id_time ON profile_offers (profile_id, time DESC);
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS profile_sale_fees (
 );
 
 -- Create TimescaleDB hypertable for profile sale fees
-SELECT create_hypertable('profile_sale_fees', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable('profile_sale_fees'::text, 'time'::text);
 
 -- Indexes for profile sale fees
 CREATE INDEX IF NOT EXISTS idx_profile_sale_fees_profile_id_time ON profile_sale_fees (profile_id, time DESC);
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS profile_badges (
 );
 
 -- Create TimescaleDB hypertable for profile badges
-SELECT create_hypertable('profile_badges', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable('profile_badges'::text, 'time'::text);
 
 -- Indexes for profile badges
 CREATE INDEX IF NOT EXISTS idx_profile_badges_profile_id_time ON profile_badges (profile_id, time DESC);

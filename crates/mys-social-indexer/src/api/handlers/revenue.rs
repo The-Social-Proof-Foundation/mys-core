@@ -517,7 +517,7 @@ async fn build_revenue_leaderboard(
             total_transactions,
             total_unique_payers,
             ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as rank
-        FROM creator_revenue_summary
+        FROM spt_creator_revenue_summary
         WHERE total_revenue >= $1
     "
     .to_string();
@@ -686,7 +686,7 @@ async fn build_creator_revenue_stats(
             largest_single_transaction,
             active_days,
             last_revenue_date
-        FROM creator_revenue_summary
+        FROM spt_creator_revenue_summary
         WHERE creator_address = $1
     ";
 
@@ -789,10 +789,31 @@ async fn build_platform_revenue_stats(
         last_active_month: Option<chrono::NaiveDate>,
     }
 
-    let result: PlatformStatsResult = diesel::sql_query(stats_query)
+    let result: Option<PlatformStatsResult> = diesel::sql_query(stats_query)
         .bind::<diesel::sql_types::Text, _>(platform_address)
         .get_result(conn)
-        .await?;
+        .await
+        .optional()?;
+
+    let result = match result {
+        Some(r) => r,
+        None => {
+            // Return zero stats if platform has no revenue data
+            return Ok(PlatformRevenueStats {
+                platform_address: platform_address.to_string(),
+                total_revenue: 0,
+                subscription_revenue: 0,
+                mydata_revenue: 0,
+                spt_revenue: 0,
+                total_transactions: 0,
+                unique_creators: 0,
+                unique_payers: 0,
+                avg_transaction_amount: 0.0,
+                active_months: 0,
+                last_active_month: None,
+            });
+        }
+    };
 
     Ok(PlatformRevenueStats {
         platform_address: result.platform_address,
@@ -914,7 +935,7 @@ async fn build_top_creators_leaderboard(
             total_transactions,
             total_unique_payers,
             ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as rank
-        FROM creator_revenue_summary
+        FROM spt_creator_revenue_summary
         ORDER BY total_revenue DESC
         LIMIT $1
     ";
