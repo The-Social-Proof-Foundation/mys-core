@@ -15,7 +15,7 @@ use tracing::{debug, error};
 
 use crate::db::DbPool;
 use crate::models::platform::{
-    Platform, PlatformBlockedProfile, PlatformModerator, PlatformWithDetails,
+    Platform, PlatformModerator, PlatformWithDetails,
 };
 use crate::schema::{platform_blocked_profiles, platform_memberships, platform_moderators, platforms, profiles};
 use serde::Serialize;
@@ -372,29 +372,65 @@ pub async fn get_platform_moderators(
 
     let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
 
-    // Get moderators with pagination
+    // Get moderators with profile information using LEFT JOIN
+    // Join platform_moderators with profiles on moderator_address = owner_address
     let moderators_result = platform_moderators::table
         .filter(platform_moderators::platform_id.eq(&platform_id))
+        .left_join(
+            profiles::table.on(
+                profiles::owner_address.eq(platform_moderators::moderator_address),
+            ),
+        )
+        .select((
+            platform_moderators::id,
+            platform_moderators::platform_id,
+            platform_moderators::moderator_address,
+            platform_moderators::added_by,
+            platform_moderators::created_at,
+            profiles::username.nullable(),
+            profiles::display_name.nullable(),
+            profiles::profile_photo.nullable(),
+            profiles::owner_address.nullable(),
+        ))
         .order_by(platform_moderators::created_at.desc())
         .limit(limit)
         .offset(offset)
-        .load::<PlatformModerator>(&mut conn)
+        .load::<(i32, String, String, String, NaiveDateTime, Option<String>, Option<String>, Option<String>, Option<String>)>(&mut conn)
         .await;
 
     match moderators_result {
-        Ok(moderators) => (
-            StatusCode::OK,
-            Json(serde_json::json!({
-                "moderators": moderators,
-                "pagination": {
-                    "total": total_count,
-                    "limit": limit,
-                    "offset": offset,
-                    "page": page,
-                    "total_pages": total_pages
-                }
-            })),
-        ),
+        Ok(moderators_data) => {
+            let moderators: Vec<ModeratorWithProfile> = moderators_data
+                .into_iter()
+                .map(|(id, platform_id, moderator_address, added_by, created_at, username, fullname, profile_photo, wallet_address)| {
+                    ModeratorWithProfile {
+                        id,
+                        platform_id,
+                        moderator_address: moderator_address.clone(),
+                        added_by,
+                        created_at,
+                        username,
+                        fullname,
+                        profile_photo,
+                        wallet_address: wallet_address.or(Some(moderator_address)),
+                    }
+                })
+                .collect();
+
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "moderators": moderators,
+                    "pagination": {
+                        "total": total_count,
+                        "limit": limit,
+                        "offset": offset,
+                        "page": page,
+                        "total_pages": total_pages
+                    }
+                })),
+            )
+        }
         Err(e) => {
             error!("Failed to fetch moderators: {}", e);
             (
@@ -686,29 +722,65 @@ pub async fn get_platform_blocked_profiles(
 
     let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
 
-    // Get blocked profiles with pagination
+    // Get blocked profiles with profile information using LEFT JOIN
+    // Join platform_blocked_profiles with profiles on profile_id = owner_address
     let blocked_profiles_result = platform_blocked_profiles::table
         .filter(platform_blocked_profiles::platform_id.eq(&platform_id))
+        .left_join(
+            profiles::table.on(
+                profiles::owner_address.eq(platform_blocked_profiles::profile_id),
+            ),
+        )
+        .select((
+            platform_blocked_profiles::id,
+            platform_blocked_profiles::platform_id,
+            platform_blocked_profiles::profile_id,
+            platform_blocked_profiles::blocked_by,
+            platform_blocked_profiles::created_at,
+            profiles::username.nullable(),
+            profiles::display_name.nullable(),
+            profiles::profile_photo.nullable(),
+            profiles::owner_address.nullable(),
+        ))
         .order_by(platform_blocked_profiles::created_at.desc())
         .limit(limit)
         .offset(offset)
-        .load::<PlatformBlockedProfile>(&mut conn)
+        .load::<(i32, String, String, String, NaiveDateTime, Option<String>, Option<String>, Option<String>, Option<String>)>(&mut conn)
         .await;
 
     match blocked_profiles_result {
-        Ok(blocked) => (
-            StatusCode::OK,
-            Json(serde_json::json!({
-                "blocked_profiles": blocked,
-                "pagination": {
-                    "total": total_count,
-                    "limit": limit,
-                    "offset": offset,
-                    "page": page,
-                    "total_pages": total_pages
-                }
-            })),
-        ),
+        Ok(blocked_data) => {
+            let blocked_profiles: Vec<BlockedProfileWithProfile> = blocked_data
+                .into_iter()
+                .map(|(id, platform_id, profile_id, blocked_by, created_at, username, fullname, profile_photo, wallet_address)| {
+                    BlockedProfileWithProfile {
+                        id,
+                        platform_id,
+                        profile_id: profile_id.clone(),
+                        blocked_by,
+                        created_at,
+                        username,
+                        fullname,
+                        profile_photo,
+                        wallet_address: wallet_address.or(Some(profile_id)),
+                    }
+                })
+                .collect();
+
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "blocked_profiles": blocked_profiles,
+                    "pagination": {
+                        "total": total_count,
+                        "limit": limit,
+                        "offset": offset,
+                        "page": page,
+                        "total_pages": total_pages
+                    }
+                })),
+            )
+        }
         Err(e) => {
             error!("Failed to fetch blocked profiles: {}", e);
             (
@@ -730,6 +802,34 @@ pub struct PlatformMember {
     pub fullname: Option<String>,
     pub profile_photo: Option<String>,
     pub joined_at: NaiveDateTime,
+}
+
+/// Platform moderator with profile information
+#[derive(Debug, Serialize)]
+pub struct ModeratorWithProfile {
+    pub id: i32,
+    pub platform_id: String,
+    pub moderator_address: String,
+    pub added_by: String,
+    pub created_at: NaiveDateTime,
+    pub username: Option<String>,
+    pub fullname: Option<String>,
+    pub profile_photo: Option<String>,
+    pub wallet_address: Option<String>,
+}
+
+/// Platform blocked profile with profile information
+#[derive(Debug, Serialize)]
+pub struct BlockedProfileWithProfile {
+    pub id: i32,
+    pub platform_id: String,
+    pub profile_id: String,
+    pub blocked_by: String,
+    pub created_at: NaiveDateTime,
+    pub username: Option<String>,
+    pub fullname: Option<String>,
+    pub profile_photo: Option<String>,
+    pub wallet_address: Option<String>,
 }
 
 /// Get platform members with profile information
