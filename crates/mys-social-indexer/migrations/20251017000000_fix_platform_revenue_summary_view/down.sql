@@ -2,8 +2,11 @@
 -- Version: 20251017000000
 -- Purpose: Restore original view with last_active_time column
 
--- Revert platform_revenue_summary view to original definition with last_active_time
-CREATE OR REPLACE VIEW platform_revenue_summary AS
+-- Drop existing view first (required when changing column names)
+DROP VIEW IF EXISTS platform_revenue_summary CASCADE;
+
+-- Recreate platform_revenue_summary view with original definition
+CREATE VIEW platform_revenue_summary AS
 SELECT 
     platform_address,
     SUM(amount) AS total_revenue,

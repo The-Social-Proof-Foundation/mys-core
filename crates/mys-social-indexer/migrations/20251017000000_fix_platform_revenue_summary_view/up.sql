@@ -2,8 +2,11 @@
 -- Version: 20251017000000
 -- Purpose: Update view to match Rust code expectations for platform revenue stats endpoint
 
--- Update platform_revenue_summary view to replace last_active_time with last_active_month
-CREATE OR REPLACE VIEW platform_revenue_summary AS
+-- Drop existing view first (required when changing column names)
+DROP VIEW IF EXISTS platform_revenue_summary CASCADE;
+
+-- Recreate platform_revenue_summary view with last_active_month and updated column names
+CREATE VIEW platform_revenue_summary AS
 SELECT 
     platform_address,
     SUM(amount) AS total_revenue,
