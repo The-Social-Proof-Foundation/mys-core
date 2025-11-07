@@ -496,30 +496,22 @@ pub struct TokensClaimedEvent {
 }
 
 impl TokensClaimedEvent {
-    /// Convert the event to vesting update and event models
+    /// Convert the event to a database event model
+    /// 
+    /// Note: The wallet update is now handled separately in the processor
+    /// to ensure cumulative claimed_amount is calculated correctly.
     pub fn into_models(
         &self,
         transaction_id: String,
-    ) -> (
-        crate::models::UpdateVestingWallet,
-        crate::models::NewVestingEvent,
-    ) {
-        let wallet_update = crate::models::UpdateVestingWallet::from_tokens_claimed(
-            self.claimed_amount,
-            self.remaining_balance,
-            Some(self.claimed_at),
-        );
-
-        let event = crate::models::NewVestingEvent::from_tokens_claimed_event(
+    ) -> crate::models::NewVestingEvent {
+        crate::models::NewVestingEvent::from_tokens_claimed_event(
             self.wallet_id.clone(),
             self.owner.clone(),
             self.claimed_amount,
             self.remaining_balance,
             self.claimed_at,
             transaction_id,
-        );
-
-        (wallet_update, event)
+        )
     }
 }
 

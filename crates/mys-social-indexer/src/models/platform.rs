@@ -41,6 +41,18 @@ pub struct Platform {
     pub is_approved: bool,
     pub approval_changed_at: Option<NaiveDateTime>,
     pub approved_by: Option<String>,
+    pub wants_dao_governance: Option<bool>,
+    pub governance_registry_id: Option<String>,
+    pub delegate_count: Option<i64>,
+    pub delegate_term_epochs: Option<i64>,
+    pub max_votes_per_user: Option<i64>,
+    pub min_on_chain_age_days: Option<i64>,
+    pub proposal_submission_cost: Option<i64>,
+    pub quadratic_base_cost: Option<i64>,
+    pub quorum_votes: Option<i64>,
+    pub voting_period_epochs: Option<i64>,
+    pub treasury: Option<i64>,
+    pub version: Option<i64>,
 }
 
 /// DTO for inserting a new platform
@@ -65,6 +77,18 @@ pub struct NewPlatform {
     pub is_approved: bool,
     pub approval_changed_at: Option<NaiveDateTime>,
     pub approved_by: Option<String>,
+    pub wants_dao_governance: Option<bool>,
+    pub governance_registry_id: Option<String>,
+    pub delegate_count: Option<i64>,
+    pub delegate_term_epochs: Option<i64>,
+    pub max_votes_per_user: Option<i64>,
+    pub min_on_chain_age_days: Option<i64>,
+    pub proposal_submission_cost: Option<i64>,
+    pub quadratic_base_cost: Option<i64>,
+    pub quorum_votes: Option<i64>,
+    pub voting_period_epochs: Option<i64>,
+    pub treasury: Option<i64>,
+    pub version: Option<i64>,
 }
 
 /// DTO for updating a platform
@@ -86,6 +110,18 @@ pub struct UpdatePlatform {
     pub is_approved: Option<bool>,
     pub approval_changed_at: Option<NaiveDateTime>,
     pub approved_by: Option<String>,
+    pub wants_dao_governance: Option<bool>,
+    pub governance_registry_id: Option<String>,
+    pub delegate_count: Option<i64>,
+    pub delegate_term_epochs: Option<i64>,
+    pub max_votes_per_user: Option<i64>,
+    pub min_on_chain_age_days: Option<i64>,
+    pub proposal_submission_cost: Option<i64>,
+    pub quadratic_base_cost: Option<i64>,
+    pub quorum_votes: Option<i64>,
+    pub voting_period_epochs: Option<i64>,
+    pub treasury: Option<i64>,
+    pub version: Option<i64>,
 }
 
 /// Platform moderator model
@@ -177,6 +213,18 @@ pub struct PlatformWithDetails {
     pub is_approved: bool,
     pub approval_changed_at: Option<NaiveDateTime>,
     pub approved_by: Option<String>,
+    pub wants_dao_governance: Option<bool>,
+    pub governance_registry_id: Option<String>,
+    pub delegate_count: Option<i64>,
+    pub delegate_term_epochs: Option<i64>,
+    pub max_votes_per_user: Option<i64>,
+    pub min_on_chain_age_days: Option<i64>,
+    pub proposal_submission_cost: Option<i64>,
+    pub quadratic_base_cost: Option<i64>,
+    pub quorum_votes: Option<i64>,
+    pub voting_period_epochs: Option<i64>,
+    pub treasury: Option<i64>,
+    pub version: Option<i64>,
     // Related data
     pub moderator_count: i64,
     pub blocked_profiles_count: i64,
@@ -204,15 +252,43 @@ pub struct PlatformCreatedEvent {
     pub platform_id: String,
     pub name: String,
     pub tagline: String,
-    pub description: Option<String>, // Added this field
+    #[serde(default)]
+    pub description: Option<String>,
     pub developer: String,
-    pub logo: Option<String>, // Added this field
+    #[serde(default)]
+    pub logo: Option<String>,
     pub terms_of_service: String,
     pub privacy_policy: String,
     pub platforms: Vec<String>,
     pub links: Vec<String>,
     pub status: PlatformStatus,
     pub release_date: String,
+    #[serde(default)]
+    pub shutdown_date: Option<String>,
+    #[serde(default)]
+    pub wants_dao_governance: Option<bool>,
+    #[serde(default)]
+    pub governance_registry_id: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    pub delegate_count: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    pub delegate_term_epochs: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    pub max_votes_per_user: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    pub min_on_chain_age_days: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    pub proposal_submission_cost: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    pub quadratic_base_cost: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    pub quorum_votes: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    pub voting_period_epochs: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    pub treasury: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    pub version: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -308,6 +384,18 @@ where
         Some(serde_json::Value::Number(n)) => n.as_u64().unwrap_or(current_time),
         Some(serde_json::Value::String(s)) => s.parse::<u64>().unwrap_or(current_time),
         _ => current_time,
+    })
+}
+
+// Deserializer for u64 values that may come as strings or numbers from blockchain
+fn deserialize_u64_optional<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::deserialize(deserializer).map(|opt_val: Option<serde_json::Value>| match opt_val {
+        Some(serde_json::Value::Number(n)) => n.as_u64(),
+        Some(serde_json::Value::String(s)) => s.parse::<u64>().ok(),
+        _ => None,
     })
 }
 

@@ -117,6 +117,84 @@ fn extract_number_field(data: &serde_json::Value, field_name: &str) -> Option<u8
     None
 }
 
+fn extract_u64_optional_field(data: &serde_json::Value, field_name: &str) -> Option<u64> {
+    // Try direct access
+    if let Some(value) = data.get(field_name) {
+        if let Some(n) = value.as_u64() {
+            return Some(n);
+        }
+        if let Some(s) = value.as_str() {
+            if let Ok(n) = s.parse::<u64>() {
+                return Some(n);
+            }
+        }
+    }
+
+    // Try nested fields
+    if field_name.contains('.') {
+        let parts: Vec<&str> = field_name.split('.').collect();
+        let mut current = data;
+
+        for part in parts {
+            if let Some(next) = current.get(part) {
+                current = next;
+            } else {
+                return None;
+            }
+        }
+
+        if let Some(n) = current.as_u64() {
+            return Some(n);
+        }
+        if let Some(s) = current.as_str() {
+            if let Ok(n) = s.parse::<u64>() {
+                return Some(n);
+            }
+        }
+    }
+
+    None
+}
+
+fn extract_bool_optional_field(data: &serde_json::Value, field_name: &str) -> Option<bool> {
+    // Try direct access
+    if let Some(value) = data.get(field_name) {
+        if let Some(b) = value.as_bool() {
+            return Some(b);
+        }
+        if let Some(s) = value.as_str() {
+            if let Ok(b) = s.parse::<bool>() {
+                return Some(b);
+            }
+        }
+    }
+
+    // Try nested fields
+    if field_name.contains('.') {
+        let parts: Vec<&str> = field_name.split('.').collect();
+        let mut current = data;
+
+        for part in parts {
+            if let Some(next) = current.get(part) {
+                current = next;
+            } else {
+                return None;
+            }
+        }
+
+        if let Some(b) = current.as_bool() {
+            return Some(b);
+        }
+        if let Some(s) = current.as_str() {
+            if let Ok(b) = s.parse::<bool>() {
+                return Some(b);
+            }
+        }
+    }
+
+    None
+}
+
 /// Handler for platform-related blockchain events
 pub struct PlatformEventHandler {
     /// Database connection
@@ -203,7 +281,7 @@ impl PlatformEventHandler {
                             links: Some(serde_json::to_value(&event.links).unwrap_or_default()),
                             status: Some(event.status.status as i16),
                             release_date: Some(event.release_date.clone()),
-                            shutdown_date: None,
+                            shutdown_date: event.shutdown_date.clone(),
                             updated_at: Some(
                                 chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                                     .unwrap_or_else(|| chrono::Utc::now())
@@ -212,6 +290,18 @@ impl PlatformEventHandler {
                             is_approved: None, // Don't change approval status on update
                             approval_changed_at: None, // Don't change approval timestamp
                             approved_by: None, // Don't change approver
+                            wants_dao_governance: event.wants_dao_governance,
+                            governance_registry_id: event.governance_registry_id.clone(),
+                            delegate_count: event.delegate_count.map(|v| v as i64),
+                            delegate_term_epochs: event.delegate_term_epochs.map(|v| v as i64),
+                            max_votes_per_user: event.max_votes_per_user.map(|v| v as i64),
+                            min_on_chain_age_days: event.min_on_chain_age_days.map(|v| v as i64),
+                            proposal_submission_cost: event.proposal_submission_cost.map(|v| v as i64),
+                            quadratic_base_cost: event.quadratic_base_cost.map(|v| v as i64),
+                            quorum_votes: event.quorum_votes.map(|v| v as i64),
+                            voting_period_epochs: event.voting_period_epochs.map(|v| v as i64),
+                            treasury: event.treasury.map(|v| v as i64),
+                            version: event.version.map(|v| v as i64),
                         };
 
                         diesel::update(schema::platforms::table)
@@ -238,7 +328,7 @@ impl PlatformEventHandler {
                             links: Some(serde_json::to_value(&event.links).unwrap_or_default()),
                             status: event.status.status as i16,
                             release_date: Some(event.release_date.clone()),
-                            shutdown_date: None,
+                            shutdown_date: event.shutdown_date.clone(),
                             created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                                 .unwrap_or_else(|| chrono::Utc::now())
                                 .naive_utc(),
@@ -248,6 +338,18 @@ impl PlatformEventHandler {
                             is_approved: false, // New platforms are not approved by default
                             approval_changed_at: None, // No approval change yet
                             approved_by: None,  // No approver yet
+                            wants_dao_governance: event.wants_dao_governance,
+                            governance_registry_id: event.governance_registry_id.clone(),
+                            delegate_count: event.delegate_count.map(|v| v as i64),
+                            delegate_term_epochs: event.delegate_term_epochs.map(|v| v as i64),
+                            max_votes_per_user: event.max_votes_per_user.map(|v| v as i64),
+                            min_on_chain_age_days: event.min_on_chain_age_days.map(|v| v as i64),
+                            proposal_submission_cost: event.proposal_submission_cost.map(|v| v as i64),
+                            quadratic_base_cost: event.quadratic_base_cost.map(|v| v as i64),
+                            quorum_votes: event.quorum_votes.map(|v| v as i64),
+                            voting_period_epochs: event.voting_period_epochs.map(|v| v as i64),
+                            treasury: event.treasury.map(|v| v as i64),
+                            version: event.version.map(|v| v as i64),
                         };
 
                         // Insert platform
@@ -362,6 +464,18 @@ impl PlatformEventHandler {
                             is_approved: None, // Don't change approval status on regular update
                             approval_changed_at: None, // Don't change approval timestamp
                             approved_by: None, // Don't change approver
+                            wants_dao_governance: None, // Not in update event
+                            governance_registry_id: None, // Not in update event
+                            delegate_count: None, // Not in update event
+                            delegate_term_epochs: None, // Not in update event
+                            max_votes_per_user: None, // Not in update event
+                            min_on_chain_age_days: None, // Not in update event
+                            proposal_submission_cost: None, // Not in update event
+                            quadratic_base_cost: None, // Not in update event
+                            quorum_votes: None, // Not in update event
+                            voting_period_epochs: None, // Not in update event
+                            treasury: None, // Not in update event
+                            version: None, // Not in update event
                         };
 
                         diesel::update(schema::platforms::table)
@@ -408,6 +522,18 @@ impl PlatformEventHandler {
                             is_approved: false, // New platforms are not approved by default
                             approval_changed_at: None, // No approval change yet
                             approved_by: None,  // No approver yet
+                            wants_dao_governance: None, // Not in update event
+                            governance_registry_id: None, // Not in update event
+                            delegate_count: None, // Not in update event
+                            delegate_term_epochs: None, // Not in update event
+                            max_votes_per_user: None, // Not in update event
+                            min_on_chain_age_days: None, // Not in update event
+                            proposal_submission_cost: None, // Not in update event
+                            quadratic_base_cost: None, // Not in update event
+                            quorum_votes: None, // Not in update event
+                            voting_period_epochs: None, // Not in update event
+                            treasury: None, // Not in update event
+                            version: None, // Not in update event
                         };
 
                         diesel::insert_into(schema::platforms::table)
@@ -509,6 +635,18 @@ impl PlatformEventHandler {
                             is_approved: false, // New platforms are not approved by default
                             approval_changed_at: None, // No approval change yet
                             approved_by: None,  // No approver yet
+                            wants_dao_governance: None, // Not available for placeholder
+                            governance_registry_id: None, // Not available for placeholder
+                            delegate_count: None, // Not available for placeholder
+                            delegate_term_epochs: None, // Not available for placeholder
+                            max_votes_per_user: None, // Not available for placeholder
+                            min_on_chain_age_days: None, // Not available for placeholder
+                            proposal_submission_cost: None, // Not available for placeholder
+                            quadratic_base_cost: None, // Not available for placeholder
+                            quorum_votes: None, // Not available for placeholder
+                            voting_period_epochs: None, // Not available for placeholder
+                            treasury: None, // Not available for placeholder
+                            version: None, // Not available for placeholder
                         };
 
                         diesel::insert_into(schema::platforms::table)
@@ -880,6 +1018,18 @@ impl PlatformEventHandler {
                             is_approved: Some(event.is_approved),
                             approval_changed_at: Some(approval_changed_at),
                             approved_by: Some(event.approved_by.clone()),
+                            wants_dao_governance: None, // Don't change governance fields
+                            governance_registry_id: None, // Don't change governance fields
+                            delegate_count: None, // Don't change governance fields
+                            delegate_term_epochs: None, // Don't change governance fields
+                            max_votes_per_user: None, // Don't change governance fields
+                            min_on_chain_age_days: None, // Don't change governance fields
+                            proposal_submission_cost: None, // Don't change governance fields
+                            quadratic_base_cost: None, // Don't change governance fields
+                            quorum_votes: None, // Don't change governance fields
+                            voting_period_epochs: None, // Don't change governance fields
+                            treasury: None, // Don't change governance fields
+                            version: None, // Don't change governance fields
                         };
 
                         diesel::update(schema::platforms::table)
@@ -1228,6 +1378,33 @@ impl PlatformEventHandler {
                                         .unwrap_or(0),
                                 },
                                 release_date: extract_string_field(&event.data, "release_date"),
+                                shutdown_date: {
+                                    let shutdown = extract_string_field(&event.data, "shutdown_date");
+                                    if !shutdown.is_empty() {
+                                        Some(shutdown)
+                                    } else {
+                                        None
+                                    }
+                                },
+                                wants_dao_governance: extract_bool_optional_field(&event.data, "wants_dao_governance"),
+                                governance_registry_id: {
+                                    let reg_id = extract_string_field(&event.data, "governance_registry_id");
+                                    if !reg_id.is_empty() {
+                                        Some(reg_id)
+                                    } else {
+                                        None
+                                    }
+                                },
+                                delegate_count: extract_u64_optional_field(&event.data, "delegate_count"),
+                                delegate_term_epochs: extract_u64_optional_field(&event.data, "delegate_term_epochs"),
+                                max_votes_per_user: extract_u64_optional_field(&event.data, "max_votes_per_user"),
+                                min_on_chain_age_days: extract_u64_optional_field(&event.data, "min_on_chain_age_days"),
+                                proposal_submission_cost: extract_u64_optional_field(&event.data, "proposal_submission_cost"),
+                                quadratic_base_cost: extract_u64_optional_field(&event.data, "quadratic_base_cost"),
+                                quorum_votes: extract_u64_optional_field(&event.data, "quorum_votes"),
+                                voting_period_epochs: extract_u64_optional_field(&event.data, "voting_period_epochs"),
+                                treasury: extract_u64_optional_field(&event.data, "treasury"),
+                                version: extract_u64_optional_field(&event.data, "version"),
                             };
 
                             // If platform_id is empty, try other formats

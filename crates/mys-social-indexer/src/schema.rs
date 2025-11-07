@@ -114,6 +114,18 @@ table! {
         is_approved -> Bool,
         approval_changed_at -> Nullable<Timestamp>,
         approved_by -> Nullable<Varchar>,
+        wants_dao_governance -> Nullable<Bool>,
+        governance_registry_id -> Nullable<Varchar>,
+        delegate_count -> Nullable<BigInt>,
+        delegate_term_epochs -> Nullable<BigInt>,
+        max_votes_per_user -> Nullable<BigInt>,
+        min_on_chain_age_days -> Nullable<BigInt>,
+        proposal_submission_cost -> Nullable<BigInt>,
+        quadratic_base_cost -> Nullable<BigInt>,
+        quorum_votes -> Nullable<BigInt>,
+        voting_period_epochs -> Nullable<BigInt>,
+        treasury -> Nullable<BigInt>,
+        version -> Nullable<BigInt>,
     }
 }
 

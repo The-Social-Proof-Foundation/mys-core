@@ -42,6 +42,7 @@ use crate::models::indexer::NewIndexerProgress;
 use crate::schema;
 use crate::models::{
     NewSpotRecord, UpdateSpotRecord, NewSpotBet, NewSpotPayout, NewSpotRefund, NewSpotResolution,
+    VestingWallet, UpdateVestingWallet,
 };
 use diesel::dsl::now;
 
@@ -478,10 +479,45 @@ impl SocialIndexerWorker {
         info!("Processing TokensClaimedEvent: wallet_id={}, owner={}, claimed_amount={}, remaining_balance={}", 
               event.wallet_id, event.owner, event.claimed_amount, event.remaining_balance);
 
-        // Convert event to database models
-        let (wallet_update, new_event) = event.into_models(transaction_id.to_string());
+        // Fetch the existing wallet to get total_amount for calculating cumulative claimed_amount
+        let wallet = schema::vesting_wallets::table
+            .filter(schema::vesting_wallets::wallet_id.eq(&event.wallet_id))
+            .first::<VestingWallet>(&mut conn)
+            .await
+            .map_err(|e| {
+                anyhow!("Failed to fetch vesting wallet {}: {}", event.wallet_id, e)
+            })?;
 
-        // Update the vesting wallet with new claimed amount and remaining balance
+        // Calculate cumulative claimed_amount from total_amount and remaining_balance
+        // This ensures the invariant: claimed_amount + remaining_balance = total_amount
+        let total_claimed_amount = wallet.total_amount - (event.remaining_balance as i64);
+        
+        // Validate the calculation
+        if total_claimed_amount < 0 {
+            return Err(anyhow!(
+                "Invalid vesting state: remaining_balance ({}) exceeds total_amount ({}) for wallet {}",
+                event.remaining_balance,
+                wallet.total_amount,
+                event.wallet_id
+            ));
+        }
+
+        info!(
+            "Calculated cumulative claimed_amount: {} (total_amount: {}, remaining_balance: {})",
+            total_claimed_amount, wallet.total_amount, event.remaining_balance
+        );
+
+        // Create wallet update with cumulative claimed_amount
+        let wallet_update = UpdateVestingWallet::from_tokens_claimed(
+            total_claimed_amount as u64,
+            event.remaining_balance,
+            Some(event.claimed_at),
+        );
+
+        // Convert event to database event model (for event history)
+        let new_event = event.into_models(transaction_id.to_string());
+
+        // Update the vesting wallet with cumulative claimed amount and remaining balance
         diesel::update(
             schema::vesting_wallets::table
                 .filter(schema::vesting_wallets::wallet_id.eq(&event.wallet_id)),
@@ -497,8 +533,8 @@ impl SocialIndexerWorker {
             .await?;
 
         info!(
-            "✅ Successfully processed tokens claimed: wallet_id={}, amount={}",
-            event.wallet_id, event.claimed_amount
+            "✅ Successfully processed tokens claimed: wallet_id={}, incremental_amount={}, cumulative_claimed={}, remaining_balance={}",
+            event.wallet_id, event.claimed_amount, total_claimed_amount, event.remaining_balance
         );
         Ok(())
     }

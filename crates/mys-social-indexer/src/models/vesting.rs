@@ -92,8 +92,17 @@ impl NewVestingWallet {
 
 impl UpdateVestingWallet {
     /// Create an update for a vesting wallet when tokens are claimed
+    /// 
+    /// # Arguments
+    /// * `total_claimed_amount` - Cumulative total amount claimed (not incremental)
+    /// * `remaining_balance` - Remaining balance after this claim
+    /// * `timestamp` - Optional timestamp for the update
+    /// 
+    /// # Note
+    /// The `total_claimed_amount` should be calculated as `total_amount - remaining_balance`
+    /// to ensure the invariant `claimed_amount + remaining_balance = total_amount` is maintained.
     pub fn from_tokens_claimed(
-        claimed_amount: u64,
+        total_claimed_amount: u64,
         remaining_balance: u64,
         timestamp: Option<u64>,
     ) -> Self {
@@ -106,7 +115,7 @@ impl UpdateVestingWallet {
         };
 
         Self {
-            claimed_amount: Some(claimed_amount as i64),
+            claimed_amount: Some(total_claimed_amount as i64),
             remaining_balance: Some(remaining_balance as i64),
             updated_at: now,
         }

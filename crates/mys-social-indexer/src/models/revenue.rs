@@ -18,7 +18,7 @@ pub const SPT_TRANSACTION_TYPE_SELL: &str = "sell";
 
 // Revenue Sources
 pub const REVENUE_SOURCE_SUBSCRIPTION: &str = "subscription";
-pub const REVENUE_SOURCE_MY_IP: &str = "my_ip";
+pub const REVENUE_SOURCE_MY_IP: &str = "mydata"; // Updated from "my_ip" to "mydata"
 pub const REVENUE_SOURCE_SPT: &str = "spt";
 pub const REVENUE_SOURCE_TIPS: &str = "tips";
 pub const REVENUE_SOURCE_POSTS: &str = "posts";
