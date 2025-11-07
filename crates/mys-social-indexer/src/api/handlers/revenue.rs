@@ -399,21 +399,16 @@ pub async fn get_spt_pool_revenue(
 async fn build_revenue_dashboard(
     conn: &mut diesel_async::AsyncPgConnection,
 ) -> Result<RevenueDashboard> {
-    let now = Utc::now().naive_utc();
-    let twenty_four_hours_ago = now - Duration::hours(24);
-
-    // Use TimescaleDB view for 24h data
+    // Use revenue_dashboard_24h view which already aggregates last 24 hours
     let dashboard_query = r#"
         SELECT 
             revenue_source,
-            SUM(revenue_5min) as total_revenue_24h,
-            SUM(transactions_5min) as total_transactions_24h,
-            COUNT(DISTINCT active_creators) as unique_creators_24h,
-            COUNT(DISTINCT active_payers) as unique_payers_24h,
-            MAX(max_transaction) as largest_transaction_24h
-        FROM revenue_realtime_metrics
-        WHERE bucket >= $1
-        GROUP BY revenue_source
+            total_revenue_24h,
+            total_transactions_24h,
+            unique_creators_24h,
+            unique_payers_24h,
+            largest_transaction_24h
+        FROM revenue_dashboard_24h
         ORDER BY total_revenue_24h DESC
     "#;
 
@@ -434,7 +429,6 @@ async fn build_revenue_dashboard(
     }
 
     let dashboard_results: Vec<DashboardQueryResult> = diesel::sql_query(dashboard_query)
-        .bind::<diesel::sql_types::Timestamp, _>(twenty_four_hours_ago)
         .load(conn)
         .await?;
 
@@ -444,16 +438,31 @@ async fn build_revenue_dashboard(
         .iter()
         .map(|r| r.total_transactions_24h)
         .sum();
-    let unique_creators_24h = dashboard_results
-        .iter()
-        .map(|r| r.unique_creators_24h)
-        .max()
-        .unwrap_or(0);
-    let unique_payers_24h = dashboard_results
-        .iter()
-        .map(|r| r.unique_payers_24h)
-        .max()
-        .unwrap_or(0);
+    
+    // Get true unique counts across all revenue sources from unified_revenue
+    let unique_counts_query = r#"
+        SELECT 
+            COUNT(DISTINCT creator_address) as unique_creators_24h,
+            COUNT(DISTINCT payer_address) as unique_payers_24h
+        FROM unified_revenue
+        WHERE time >= NOW() - INTERVAL '24 hours'
+    "#;
+
+    #[derive(QueryableByName, Debug)]
+    struct UniqueCountsResult {
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        unique_creators_24h: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        unique_payers_24h: i64,
+    }
+
+    let unique_counts: UniqueCountsResult = diesel::sql_query(unique_counts_query)
+        .get_result(conn)
+        .await?;
+
+    let unique_creators_24h = unique_counts.unique_creators_24h;
+    let unique_payers_24h = unique_counts.unique_payers_24h;
+    
     let largest_transaction_24h = dashboard_results
         .iter()
         .map(|r| r.largest_transaction_24h)
@@ -502,7 +511,7 @@ async fn build_revenue_leaderboard(
             creator_address,
             total_revenue,
             total_subscription_revenue,
-            total_myip_revenue,
+            total_mydata_revenue,
             total_spt_revenue,
             total_tips_revenue,
             total_transactions,
@@ -516,7 +525,7 @@ async fn build_revenue_leaderboard(
     if let Some(revenue_source) = &params.revenue_source {
         match revenue_source.as_str() {
             "subscription" => leaderboard_query.push_str(" AND total_subscription_revenue > 0"),
-            "my_ip" => leaderboard_query.push_str(" AND total_myip_revenue > 0"),
+            "mydata" => leaderboard_query.push_str(" AND total_mydata_revenue > 0"),
             "spt" => leaderboard_query.push_str(" AND total_spt_revenue > 0"),
             "tips" => leaderboard_query.push_str(" AND total_tips_revenue > 0"),
             _ => {}
@@ -534,7 +543,7 @@ async fn build_revenue_leaderboard(
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         total_subscription_revenue: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
-        total_myip_revenue: i64,
+        total_mydata_revenue: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         total_spt_revenue: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
@@ -561,7 +570,7 @@ async fn build_revenue_leaderboard(
             total_revenue: r.total_revenue,
             revenue_breakdown: crate::models::revenue::RevenueBreakdown {
                 subscription_revenue: r.total_subscription_revenue,
-                myip_revenue: r.total_myip_revenue,
+                mydata_revenue: r.total_mydata_revenue,
                 spt_revenue: r.total_spt_revenue,
                 tips_revenue: r.total_tips_revenue,
                 posts_revenue: 0, // Not tracked separately yet
@@ -669,7 +678,7 @@ async fn build_creator_revenue_stats(
             creator_address,
             total_revenue,
             total_subscription_revenue,
-            total_myip_revenue,
+            total_mydata_revenue,
             total_spt_revenue,
             total_tips_revenue,
             total_transactions,
@@ -690,7 +699,7 @@ async fn build_creator_revenue_stats(
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         total_subscription_revenue: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
-        total_myip_revenue: i64,
+        total_mydata_revenue: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         total_spt_revenue: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
@@ -716,7 +725,7 @@ async fn build_creator_revenue_stats(
         creator_address: result.creator_address,
         total_revenue: result.total_revenue,
         subscription_revenue: result.total_subscription_revenue,
-        myip_revenue: result.total_myip_revenue,
+        mydata_revenue: result.total_mydata_revenue,
         spt_revenue: result.total_spt_revenue,
         tips_revenue: result.total_tips_revenue,
         posts_revenue: 0, // Not tracked separately yet
@@ -742,7 +751,7 @@ async fn build_platform_revenue_stats(
             platform_address,
             total_revenue,
             total_subscription_revenue,
-            total_myip_revenue,
+            total_mydata_revenue,
             total_spt_revenue,
             total_transactions,
             total_creators,
@@ -763,7 +772,7 @@ async fn build_platform_revenue_stats(
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         total_subscription_revenue: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
-        total_myip_revenue: i64,
+        total_mydata_revenue: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         total_spt_revenue: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
@@ -789,7 +798,7 @@ async fn build_platform_revenue_stats(
         platform_address: result.platform_address,
         total_revenue: result.total_revenue,
         subscription_revenue: result.total_subscription_revenue,
-        myip_revenue: result.total_myip_revenue,
+        mydata_revenue: result.total_mydata_revenue,
         spt_revenue: result.total_spt_revenue,
         total_transactions: result.total_transactions,
         unique_creators: result.total_creators,
@@ -899,7 +908,7 @@ async fn build_top_creators_leaderboard(
             creator_address,
             total_revenue,
             total_subscription_revenue,
-            total_myip_revenue,
+            total_mydata_revenue,
             total_spt_revenue,
             total_tips_revenue,
             total_transactions,
@@ -919,7 +928,7 @@ async fn build_top_creators_leaderboard(
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         total_subscription_revenue: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
-        total_myip_revenue: i64,
+        total_mydata_revenue: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         total_spt_revenue: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
@@ -945,7 +954,7 @@ async fn build_top_creators_leaderboard(
             total_revenue: r.total_revenue,
             revenue_breakdown: crate::models::revenue::RevenueBreakdown {
                 subscription_revenue: r.total_subscription_revenue,
-                myip_revenue: r.total_myip_revenue,
+                mydata_revenue: r.total_mydata_revenue,
                 spt_revenue: r.total_spt_revenue,
                 tips_revenue: r.total_tips_revenue,
                 posts_revenue: 0,
@@ -965,16 +974,18 @@ async fn build_recent_trends(
 ) -> Result<Vec<RevenueTimeSeriesPoint>> {
     let start_time = Utc::now().naive_utc() - Duration::hours(hours);
 
+    // Use TimescaleDB time_bucket function to aggregate by hour
     let query = "
         SELECT 
-            bucket,
+            time_bucket('1 hour', time) as bucket,
             revenue_source,
-            revenue_5min as total_revenue,
-            transactions_5min as transaction_count,
-            active_creators as unique_creators,
-            active_payers as unique_payers
-        FROM revenue_realtime_metrics
-        WHERE bucket >= $1
+            SUM(amount) as total_revenue,
+            COUNT(*) as transaction_count,
+            COUNT(DISTINCT creator_address) as unique_creators,
+            COUNT(DISTINCT payer_address) as unique_payers
+        FROM unified_revenue
+        WHERE time >= $1
+        GROUP BY bucket, revenue_source
         ORDER BY bucket ASC
     ";
 

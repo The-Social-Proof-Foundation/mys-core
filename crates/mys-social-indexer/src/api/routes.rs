@@ -25,7 +25,7 @@ use crate::api::handlers::mydata::{
 };
 use crate::api::handlers::platforms::{
     get_approved_platforms, get_platform_approval_status, get_platform_blocked_profiles,
-    get_platform_by_id, get_platform_moderators, get_platforms,
+    get_platform_by_id, get_platform_members, get_platform_moderators, get_platforms,
 };
 use crate::api::handlers::posts::{
     get_post_by_id, get_post_comments, get_post_promotion, get_post_reactions, get_post_reposts,
@@ -133,6 +133,7 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/platforms/:id/moderators", get(get_platform_moderators))
         .route("/platforms/:id/approval", get(get_platform_approval_status))
         .route("/platforms/:id/blocked", get(get_platform_blocked_profiles))
+        .route("/platforms/:id/members", get(get_platform_members))
         // Post endpoints (using TimescaleDB)
         .route("/posts", get(list_posts))
         .route("/posts/:id", get(get_post_by_id))

@@ -17,7 +17,8 @@ use crate::db::DbPool;
 use crate::models::platform::{
     Platform, PlatformBlockedProfile, PlatformModerator, PlatformWithDetails,
 };
-use crate::schema::{platform_blocked_profiles, platform_moderators, platforms};
+use crate::schema::{platform_blocked_profiles, platform_memberships, platform_moderators, platforms, profiles};
+use serde::Serialize;
 
 #[derive(Debug, Deserialize)]
 pub struct PlatformQuery {
@@ -678,6 +679,153 @@ pub async fn get_platform_blocked_profiles(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Failed to fetch blocked profiles: {}", e)
+                })),
+            )
+        }
+    }
+}
+
+/// Platform member with profile information
+#[derive(Debug, Serialize)]
+pub struct PlatformMember {
+    pub profile_id: String,
+    pub wallet_address: String,
+    pub username: String,
+    pub fullname: Option<String>,
+    pub profile_photo: Option<String>,
+    pub joined_at: NaiveDateTime,
+}
+
+/// Get platform members with profile information
+pub async fn get_platform_members(
+    State(db_pool): State<DbPool>,
+    Path(platform_id): Path<String>,
+    Query(query): Query<PlatformQuery>,
+) -> impl IntoResponse {
+    let limit = query.limit.unwrap_or(50);
+    let offset = query.offset.unwrap_or(0);
+    let page = query.page.unwrap_or(1);
+
+    // If page is provided, calculate the offset
+    let offset = if page > 1 { (page - 1) * limit } else { offset };
+
+    debug!("Getting members for platform: {}", platform_id);
+
+    let mut conn = match db_pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("Database connection error: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database error: {}", e)
+                })),
+            );
+        }
+    };
+
+    // Check if platform exists
+    let platform_exists = match platforms::table
+        .filter(platforms::platform_id.eq(&platform_id))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+    {
+        Ok(count) => count > 0,
+        Err(e) => {
+            error!("Failed to check platform: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Failed to check platform: {}", e)
+                })),
+            );
+        }
+    };
+
+    if !platform_exists {
+        debug!("Platform not found: {}", platform_id);
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Platform not found"
+            })),
+        );
+    }
+
+    // Get the total count for pagination info
+    let total_count = match platform_memberships::table
+        .filter(platform_memberships::platform_id.eq(&platform_id))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+    {
+        Ok(count) => count,
+        Err(_) => 0,
+    };
+
+    let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
+
+    // Join platform_memberships with profiles to get member information
+    // platform_memberships.profile_id matches profiles.owner_address
+    let members_result = platform_memberships::table
+        .filter(platform_memberships::platform_id.eq(&platform_id))
+        .inner_join(
+            profiles::table.on(
+                profiles::owner_address.eq(platform_memberships::profile_id),
+            ),
+        )
+        .select((
+            platform_memberships::profile_id,
+            profiles::owner_address,
+            profiles::username,
+            profiles::display_name.nullable(),
+            profiles::profile_photo.nullable(),
+            platform_memberships::joined_at,
+        ))
+        .order_by(platform_memberships::joined_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .load::<(String, String, String, Option<String>, Option<String>, NaiveDateTime)>(&mut conn)
+        .await;
+
+    match members_result {
+        Ok(members_data) => {
+            let members: Vec<PlatformMember> = members_data
+                .into_iter()
+                .map(|(profile_id, wallet_address, username, display_name, profile_photo, joined_at)| {
+                    PlatformMember {
+                        profile_id,
+                        wallet_address,
+                        username,
+                        fullname: display_name,
+                        profile_photo,
+                        joined_at,
+                    }
+                })
+                .collect();
+
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "members": members,
+                    "total": total_count,
+                    "pagination": {
+                        "total": total_count,
+                        "limit": limit,
+                        "offset": offset,
+                        "page": page,
+                        "total_pages": total_pages
+                    }
+                })),
+            )
+        }
+        Err(e) => {
+            error!("Failed to fetch platform members: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Failed to fetch platform members: {}", e)
                 })),
             )
         }

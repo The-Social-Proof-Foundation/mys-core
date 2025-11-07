@@ -154,7 +154,7 @@ pub struct CreatorRevenueStats {
     pub creator_address: String,
     pub total_revenue: i64,
     pub subscription_revenue: i64,
-    pub myip_revenue: i64,
+    pub mydata_revenue: i64,
     pub spt_revenue: i64,
     pub tips_revenue: i64,
     pub posts_revenue: i64,
@@ -171,7 +171,7 @@ pub struct PlatformRevenueStats {
     pub platform_address: String,
     pub total_revenue: i64,
     pub subscription_revenue: i64,
-    pub myip_revenue: i64,
+    pub mydata_revenue: i64,
     pub spt_revenue: i64,
     pub total_transactions: i64,
     pub unique_creators: i64,
@@ -205,7 +205,7 @@ pub struct RevenueLeaderboardEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RevenueBreakdown {
     pub subscription_revenue: i64,
-    pub myip_revenue: i64,
+    pub mydata_revenue: i64,
     pub spt_revenue: i64,
     pub tips_revenue: i64,
     pub posts_revenue: i64,

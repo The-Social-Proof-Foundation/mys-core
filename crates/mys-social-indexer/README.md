@@ -213,7 +213,7 @@ RUST_LOG=info,mys_social_indexer=debug
 - `spt-token` - Search social proof token pools by name, symbol, pool ID, owner, and associated ID
 - `spt-reservaton-pool` - Search staking pools by pool ID, associated ID, owner, and status
 - `governance-registry` - Search governance circles/registries (ecosystem, reputation, community notes) with delegate counts and voting parameters
-- `platform` - Search platforms by name, platform ID, developer address, and description
+- `platform` - Search platforms by name, platform ID, and developer address
 - `mydata` - Search MyData entries by ID, owner, media type, and tags
 - `proposal` - Search governance proposals by title, description, ID, and submitter
 
@@ -275,6 +275,7 @@ GET /search?query=social&page=2&limit=50
 - **GET /platforms/:id/moderators** - Get platform moderators
 - **GET /platforms/:id/approval** - Get platform approval status
 - **GET /platforms/:id/blocked** - Get profiles blocked by a platform
+- **GET /platforms/:id/members** - Get platform members with profile information 
 
 ### Post API
 - **GET /posts** - List posts

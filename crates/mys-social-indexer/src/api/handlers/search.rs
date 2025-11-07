@@ -261,7 +261,7 @@ pub async fn global_search(
             platform_id::TEXT as id,
             'platform' as entity_type,
             name as title,
-            description,
+            NULL as description,
             logo as image_url,
             platform_id as primary_field,
             developer_address as secondary_field,
