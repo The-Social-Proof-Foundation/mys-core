@@ -275,7 +275,9 @@ GET /search?query=social&page=2&limit=50
 - **GET /platforms/:id/moderators** - Get platform moderators
 - **GET /platforms/:id/approval** - Get platform approval status
 - **GET /platforms/:id/blocked** - Get profiles blocked by a platform
-- **GET /platforms/:id/members** - Get platform members with profile information 
+  - Query: `limit` (optional), `offset` (optional), `page` (optional), `search` (optional - searches usernames and wallet addresses)
+- **GET /platforms/:id/members** - Get platform members with profile information
+  - Query: `limit` (optional), `offset` (optional), `page` (optional), `search` (optional - searches usernames and wallet addresses) 
 
 ### Post API
 - **GET /posts** - List posts

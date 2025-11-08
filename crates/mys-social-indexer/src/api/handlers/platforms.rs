@@ -25,6 +25,7 @@ pub struct PlatformQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub page: Option<i64>,
+    pub search: Option<String>,
 }
 
 /// Get a list of all platforms with pagination
@@ -752,19 +753,48 @@ pub async fn get_platform_blocked_profiles(
         );
     }
 
-    // Get the total count for pagination info
-    let total_count = platform_blocked_profiles::table
+    // Prepare search pattern if provided
+    let search_pattern = query.search.as_ref()
+        .and_then(|s| {
+            let trimmed = s.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(format!("%{}%", trimmed))
+            }
+        });
+
+    // Build base query for counting
+    let mut count_query = platform_blocked_profiles::table
         .filter(platform_blocked_profiles::platform_id.eq(&platform_id))
-        .count()
-        .get_result::<i64>(&mut conn)
-        .await
-        .unwrap_or(0);
+        .left_join(
+            profiles::table.on(
+                profiles::owner_address.eq(platform_blocked_profiles::profile_id),
+            ),
+        )
+        .into_boxed();
+
+    // Apply search filter to count query if provided
+    if let Some(ref pattern) = search_pattern {
+        count_query = count_query.filter(
+            profiles::username
+                .ilike(pattern.clone())
+                .or(profiles::owner_address.ilike(pattern.clone())),
+        );
+    }
+
+    // Get the total count for pagination info
+    let total_count = match count_query.count().get_result::<i64>(&mut conn).await {
+        Ok(count) => count,
+        Err(_) => 0,
+    };
 
     let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
 
+    // Build query for fetching blocked profiles
     // Get blocked profiles with profile information using LEFT JOIN
     // Join platform_blocked_profiles with profiles on profile_id = owner_address
-    let blocked_profiles_result = platform_blocked_profiles::table
+    let mut blocked_profiles_query = platform_blocked_profiles::table
         .filter(platform_blocked_profiles::platform_id.eq(&platform_id))
         .left_join(
             profiles::table.on(
@@ -785,6 +815,18 @@ pub async fn get_platform_blocked_profiles(
         .order_by(platform_blocked_profiles::created_at.desc())
         .limit(limit)
         .offset(offset)
+        .into_boxed();
+
+    // Apply search filter to blocked profiles query if provided
+    if let Some(ref pattern) = search_pattern {
+        blocked_profiles_query = blocked_profiles_query.filter(
+            profiles::username
+                .ilike(pattern.clone())
+                .or(profiles::owner_address.ilike(pattern.clone())),
+        );
+    }
+
+    let blocked_profiles_result = blocked_profiles_query
         .load::<(i32, String, String, String, NaiveDateTime, Option<String>, Option<String>, Option<String>, Option<String>)>(&mut conn)
         .await;
 
@@ -929,22 +971,48 @@ pub async fn get_platform_members(
         );
     }
 
-    // Get the total count for pagination info
-    let total_count = match platform_memberships::table
+    // Prepare search pattern if provided
+    let search_pattern = query.search.as_ref()
+        .and_then(|s| {
+            let trimmed = s.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(format!("%{}%", trimmed))
+            }
+        });
+
+    // Build base query for counting
+    let mut count_query = platform_memberships::table
         .filter(platform_memberships::platform_id.eq(&platform_id))
-        .count()
-        .get_result::<i64>(&mut conn)
-        .await
-    {
+        .inner_join(
+            profiles::table.on(
+                profiles::owner_address.eq(platform_memberships::profile_id),
+            ),
+        )
+        .into_boxed();
+
+    // Apply search filter to count query if provided
+    if let Some(ref pattern) = search_pattern {
+        count_query = count_query.filter(
+            profiles::username
+                .ilike(pattern.clone())
+                .or(profiles::owner_address.ilike(pattern.clone())),
+        );
+    }
+
+    // Get the total count for pagination info
+    let total_count = match count_query.count().get_result::<i64>(&mut conn).await {
         Ok(count) => count,
         Err(_) => 0,
     };
 
     let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
 
+    // Build query for fetching members
     // Join platform_memberships with profiles to get member information
     // platform_memberships.profile_id matches profiles.owner_address
-    let members_result = platform_memberships::table
+    let mut members_query = platform_memberships::table
         .filter(platform_memberships::platform_id.eq(&platform_id))
         .inner_join(
             profiles::table.on(
@@ -962,6 +1030,18 @@ pub async fn get_platform_members(
         .order_by(platform_memberships::joined_at.desc())
         .limit(limit)
         .offset(offset)
+        .into_boxed();
+
+    // Apply search filter to members query if provided
+    if let Some(ref pattern) = search_pattern {
+        members_query = members_query.filter(
+            profiles::username
+                .ilike(pattern.clone())
+                .or(profiles::owner_address.ilike(pattern.clone())),
+        );
+    }
+
+    let members_result = members_query
         .load::<(String, String, String, Option<String>, Option<String>, NaiveDateTime)>(&mut conn)
         .await;
 
