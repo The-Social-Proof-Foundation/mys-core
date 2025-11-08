@@ -15,7 +15,7 @@ use tracing::{debug, error};
 
 use crate::db::DbPool;
 use crate::models::platform::{
-    Platform, PlatformModerator, PlatformWithDetails,
+    Platform, PlatformWithDetails,
 };
 use crate::schema::{platform_blocked_profiles, platform_memberships, platform_moderators, platforms, profiles};
 use serde::Serialize;
@@ -216,12 +216,52 @@ pub async fn get_platform_by_id(
                 .await
                 .unwrap_or(0);
 
-            // Get moderators
-            let moderators = platform_moderators::table
+            // Get moderators with profile information using LEFT JOIN
+            // Join platform_moderators with profiles on moderator_address = owner_address
+            let moderators_result = platform_moderators::table
                 .filter(platform_moderators::platform_id.eq(&platform.platform_id))
-                .load::<PlatformModerator>(&mut conn)
-                .await
-                .unwrap_or_default();
+                .left_join(
+                    profiles::table.on(
+                        profiles::owner_address.eq(platform_moderators::moderator_address),
+                    ),
+                )
+                .select((
+                    platform_moderators::id,
+                    platform_moderators::platform_id,
+                    platform_moderators::moderator_address,
+                    platform_moderators::added_by,
+                    platform_moderators::created_at,
+                    profiles::username.nullable(),
+                    profiles::display_name.nullable(),
+                    profiles::profile_photo.nullable(),
+                    profiles::owner_address.nullable(),
+                ))
+                .order_by(platform_moderators::created_at.desc())
+                .load::<(i32, String, String, String, NaiveDateTime, Option<String>, Option<String>, Option<String>, Option<String>)>(&mut conn)
+                .await;
+
+            let moderators: Vec<ModeratorWithProfile> = match moderators_result {
+                Ok(moderators_data) => moderators_data
+                    .into_iter()
+                    .map(|(id, platform_id, moderator_address, added_by, created_at, username, fullname, profile_photo, wallet_address)| {
+                        ModeratorWithProfile {
+                            id,
+                            platform_id,
+                            moderator_address: moderator_address.clone(),
+                            added_by,
+                            created_at,
+                            username,
+                            fullname,
+                            profile_photo,
+                            wallet_address: wallet_address.or(Some(moderator_address)),
+                        }
+                    })
+                    .collect(),
+                Err(e) => {
+                    error!("Failed to fetch moderators: {}", e);
+                    Vec::new()
+                }
+            };
 
             // Convert platform_names from JSON to Vec<String>
             let platform_names: Option<Vec<String>> = platform
