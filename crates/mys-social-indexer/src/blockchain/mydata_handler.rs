@@ -12,14 +12,19 @@ use tracing::{debug, error, info};
 
 use crate::db::{Database, DbConnection};
 use crate::events::{
+    event_utils::extract_event_fields,
     mydata_event_types::{
-        DataAccessGrantedEvent, DataAccessedEvent, DataCreatedEvent, DataPurchasedEvent,
-        RevenueDistributedEvent, SubscriptionCreatedEvent,
+        DataAccessGrantedEvent, DataAccessedEvent, DataCreatedEvent, DataPricingChangedEvent,
+        DataPurchasedEvent, DataRemovedEvent, DataTransferredEvent, DataTrendingEvent,
+        DataUpdatedEvent, OperationFailedEvent, RevenueDistributedEvent,
+        SubscriptionCancelledEvent, SubscriptionCreatedEvent, SubscriptionRenewedEvent,
+        SystemMaintenanceEvent,
     },
     mydata_events::EventBatch,
     parse_event,
 };
 
+use crate::models::mydata::NewMyDataAccessLog;
 use crate::schema::{
     mydata_access_logs, mydata_data, mydata_purchases, mydata_revenue, mydata_subscriptions,
 };
@@ -83,11 +88,20 @@ impl MyDataEventHandler {
         event_type.contains("::mydata::")
             || event_type.contains("::marketplace::")
             || event_type.ends_with("::DataCreatedEvent")
+            || event_type.ends_with("::DataUpdatedEvent")
+            || event_type.ends_with("::DataTransferredEvent")
             || event_type.ends_with("::DataPurchasedEvent")
             || event_type.ends_with("::SubscriptionCreatedEvent")
+            || event_type.ends_with("::SubscriptionRenewedEvent")
+            || event_type.ends_with("::SubscriptionCancelledEvent")
             || event_type.ends_with("::DataAccessGrantedEvent")
             || event_type.ends_with("::RevenueDistributedEvent")
             || event_type.ends_with("::DataAccessedEvent")
+            || event_type.ends_with("::DataPricingChangedEvent")
+            || event_type.ends_with("::DataRemovedEvent")
+            || event_type.ends_with("::DataTrendingEvent")
+            || event_type.ends_with("::OperationFailedEvent")
+            || event_type.ends_with("::SystemMaintenanceEvent")
     }
 
     /// Handle a blockchain event for MyData marketplace events
@@ -138,6 +152,69 @@ impl MyDataEventHandler {
             }
             _ if event_type.ends_with("::DataAccessedEvent") => {
                 self.handle_data_accessed_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::DataUpdatedEvent") => {
+                self.handle_data_updated_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::DataTransferredEvent") => {
+                self.handle_data_transferred_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::SubscriptionRenewedEvent") => {
+                self.handle_subscription_renewed_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::SubscriptionCancelledEvent") => {
+                self.handle_subscription_cancelled_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::DataPricingChangedEvent") => {
+                self.handle_data_pricing_changed_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::DataRemovedEvent") => {
+                self.handle_data_removed_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::DataTrendingEvent") => {
+                self.handle_data_trending_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::OperationFailedEvent") => {
+                self.handle_operation_failed_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::SystemMaintenanceEvent") => {
+                self.handle_system_maintenance_from_json(
                     &blockchain_event.data,
                     &blockchain_event.tx_digest,
                 )
@@ -615,6 +692,33 @@ impl MyDataEventHandler {
             _ if event_type.ends_with("::DataAccessedEvent") => {
                 self.handle_data_accessed(event, transaction_id).await?;
             }
+            _ if event_type.ends_with("::DataUpdatedEvent") => {
+                self.handle_data_updated(event, transaction_id).await?;
+            }
+            _ if event_type.ends_with("::DataTransferredEvent") => {
+                self.handle_data_transferred(event, transaction_id).await?;
+            }
+            _ if event_type.ends_with("::SubscriptionRenewedEvent") => {
+                self.handle_subscription_renewed(event, transaction_id).await?;
+            }
+            _ if event_type.ends_with("::SubscriptionCancelledEvent") => {
+                self.handle_subscription_cancelled(event, transaction_id).await?;
+            }
+            _ if event_type.ends_with("::DataPricingChangedEvent") => {
+                self.handle_data_pricing_changed(event, transaction_id).await?;
+            }
+            _ if event_type.ends_with("::DataRemovedEvent") => {
+                self.handle_data_removed(event, transaction_id).await?;
+            }
+            _ if event_type.ends_with("::DataTrendingEvent") => {
+                self.handle_data_trending(event, transaction_id).await?;
+            }
+            _ if event_type.ends_with("::OperationFailedEvent") => {
+                self.handle_operation_failed(event, transaction_id).await?;
+            }
+            _ if event_type.ends_with("::SystemMaintenanceEvent") => {
+                self.handle_system_maintenance(event, transaction_id).await?;
+            }
             _ => {
                 debug!("Unhandled MyData marketplace event type: {}", event_type);
             }
@@ -970,6 +1074,584 @@ impl MyDataEventHandler {
         }
 
         info!("Processed batch of {} events successfully", events_len);
+        Ok(())
+    }
+
+    /// Handle data updated event from JSON
+    async fn handle_data_updated_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing DataUpdatedEvent from JSON");
+
+        let fields = extract_event_fields(data)?;
+        let parsed_event: DataUpdatedEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse DataUpdatedEvent: {}", e))?;
+
+        let mut conn = self.get_connection().await?;
+
+        // Update mydata_data table with new values
+        let new_tags = serde_json::json!(parsed_event.new_tags);
+        diesel::update(mydata_data::table)
+            .filter(mydata_data::mydata_id.eq(&parsed_event.mydata_id))
+            .set((
+                mydata_data::tags.eq(new_tags),
+                mydata_data::one_time_price.eq(parsed_event.new_price_one_time.map(|p| p as i64)),
+                mydata_data::subscription_price.eq(parsed_event.new_price_subscription.map(|p| p as i64)),
+                mydata_data::data_quality.eq(parsed_event.new_data_quality.clone()),
+                mydata_data::last_updated.eq(parsed_event.last_updated as i64),
+                mydata_data::transaction_id.eq(transaction_id),
+            ))
+            .execute(&mut conn)
+            .await?;
+
+        info!("Processed DataUpdatedEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle data transferred event from JSON
+    async fn handle_data_transferred_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing DataTransferredEvent from JSON");
+
+        let fields = extract_event_fields(data)?;
+        let parsed_event: DataTransferredEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse DataTransferredEvent: {}", e))?;
+
+        let mut conn = self.get_connection().await?;
+
+        // Update owner
+        diesel::update(mydata_data::table)
+            .filter(mydata_data::mydata_id.eq(&parsed_event.mydata_id))
+            .set((
+                mydata_data::owner.eq(&parsed_event.to_owner),
+                mydata_data::last_updated.eq(parsed_event.transfer_time as i64),
+                mydata_data::transaction_id.eq(transaction_id),
+            ))
+            .execute(&mut conn)
+            .await?;
+
+        // Record transfer revenue if transfer_price exists
+        if let Some(revenue) = parsed_event.into_revenue(transaction_id.to_string()) {
+            diesel::insert_into(mydata_revenue::table)
+                .values(&revenue)
+                .execute(&mut conn)
+                .await?;
+        }
+
+        info!("Processed DataTransferredEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle subscription renewed event from JSON
+    async fn handle_subscription_renewed_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing SubscriptionRenewedEvent from JSON");
+
+        let fields = extract_event_fields(data)?;
+        let parsed_event: SubscriptionRenewedEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse SubscriptionRenewedEvent: {}", e))?;
+
+        let mut conn = self.get_connection().await?;
+
+        // Update existing subscription end time
+        diesel::update(mydata_subscriptions::table)
+            .filter(mydata_subscriptions::mydata_id.eq(&parsed_event.mydata_id))
+            .filter(mydata_subscriptions::subscriber.eq(&parsed_event.subscriber))
+            .filter(mydata_subscriptions::subscription_end.eq(parsed_event.old_subscription_end as i64))
+            .set(mydata_subscriptions::subscription_end.eq(parsed_event.new_subscription_end as i64))
+            .execute(&mut conn)
+            .await?;
+
+        // Create new subscription record for renewal period
+        let renewal_subscription = parsed_event.into_subscription_update(transaction_id.to_string())?;
+        diesel::insert_into(mydata_subscriptions::table)
+            .values(&renewal_subscription)
+            .execute(&mut conn)
+            .await?;
+
+        // Get owner for revenue record
+        let owner: String = mydata_data::table
+            .filter(mydata_data::mydata_id.eq(&parsed_event.mydata_id))
+            .select(mydata_data::owner)
+            .first(&mut conn)
+            .await?;
+
+        // Record renewal revenue
+        let mut revenue = parsed_event.into_revenue(transaction_id.to_string())?;
+        revenue.to_address = owner;
+        diesel::insert_into(mydata_revenue::table)
+            .values(&revenue)
+            .execute(&mut conn)
+            .await?;
+
+        info!("Processed SubscriptionRenewedEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle subscription cancelled event from JSON
+    async fn handle_subscription_cancelled_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing SubscriptionCancelledEvent from JSON");
+
+        let fields = extract_event_fields(data)?;
+        let parsed_event: SubscriptionCancelledEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse SubscriptionCancelledEvent: {}", e))?;
+
+        let mut conn = self.get_connection().await?;
+
+        // Update subscription end time to effective_end_time
+        diesel::update(mydata_subscriptions::table)
+            .filter(mydata_subscriptions::mydata_id.eq(&parsed_event.mydata_id))
+            .filter(mydata_subscriptions::subscriber.eq(&parsed_event.subscriber))
+            .filter(mydata_subscriptions::subscription_end.gt(parsed_event.cancellation_time as i64))
+            .set(mydata_subscriptions::subscription_end.eq(parsed_event.effective_end_time as i64))
+            .execute(&mut conn)
+            .await?;
+
+        // Record refund revenue if applicable
+        if parsed_event.refund_amount.is_some() && parsed_event.refund_amount.unwrap_or(0) > 0 {
+            let owner: String = mydata_data::table
+                .filter(mydata_data::mydata_id.eq(&parsed_event.mydata_id))
+                .select(mydata_data::owner)
+                .first(&mut conn)
+                .await?;
+
+            let refund_revenue = parsed_event.into_revenue(owner, transaction_id.to_string())?;
+            diesel::insert_into(mydata_revenue::table)
+                .values(&refund_revenue)
+                .execute(&mut conn)
+                .await?;
+        }
+
+        info!("Processed SubscriptionCancelledEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle data pricing changed event from JSON
+    async fn handle_data_pricing_changed_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing DataPricingChangedEvent from JSON");
+
+        let fields = extract_event_fields(data)?;
+        let parsed_event: DataPricingChangedEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse DataPricingChangedEvent: {}", e))?;
+
+        let mut conn = self.get_connection().await?;
+
+        // Update pricing fields
+        diesel::update(mydata_data::table)
+            .filter(mydata_data::mydata_id.eq(&parsed_event.mydata_id))
+            .set((
+                mydata_data::one_time_price.eq(parsed_event.new_one_time_price.map(|p| p as i64)),
+                mydata_data::subscription_price.eq(parsed_event.new_subscription_price.map(|p| p as i64)),
+                mydata_data::subscription_duration_days.eq(parsed_event.new_subscription_duration as i64),
+                mydata_data::last_updated.eq(parsed_event.change_time as i64),
+                mydata_data::transaction_id.eq(transaction_id),
+            ))
+            .execute(&mut conn)
+            .await?;
+
+        info!("Processed DataPricingChangedEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle data removed event from JSON
+    async fn handle_data_removed_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing DataRemovedEvent from JSON");
+
+        let fields = extract_event_fields(data)?;
+        let parsed_event: DataRemovedEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse DataRemovedEvent: {}", e))?;
+
+        let mut conn = self.get_connection().await?;
+
+        // Mark data as removed by setting timestamp_end to removal_time
+        diesel::update(mydata_data::table)
+            .filter(mydata_data::mydata_id.eq(&parsed_event.mydata_id))
+            .set((
+                mydata_data::timestamp_end.eq(Some(parsed_event.removal_time as i64)),
+                mydata_data::last_updated.eq(parsed_event.removal_time as i64),
+                mydata_data::transaction_id.eq(transaction_id),
+            ))
+            .execute(&mut conn)
+            .await?;
+
+        info!("Processed DataRemovedEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle data trending event from JSON
+    async fn handle_data_trending_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing DataTrendingEvent from JSON");
+
+        let fields = extract_event_fields(data)?;
+        let parsed_event: DataTrendingEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse DataTrendingEvent: {}", e))?;
+
+        // Log trending event to access_logs with special access_type for analytics
+        let mut conn = self.get_connection().await?;
+        let access_log = NewMyDataAccessLog {
+            mydata_id: parsed_event.mydata_id.clone(),
+            user_address: "system".to_string(),
+            access_type: format!("trending_score_{}", parsed_event.trending_score),
+            access_time: parsed_event.timestamp as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+
+        diesel::insert_into(mydata_access_logs::table)
+            .values(&access_log)
+            .execute(&mut conn)
+            .await?;
+
+        info!("Processed DataTrendingEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle operation failed event from JSON
+    async fn handle_operation_failed_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing OperationFailedEvent from JSON");
+
+        let fields = extract_event_fields(data)?;
+        let parsed_event: OperationFailedEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse OperationFailedEvent: {}", e))?;
+
+        // Log operation failure to access_logs with error details
+        // Note: OperationFailedEvent uses ip_id field name, which maps to mydata_id
+        if let Some(mydata_id) = &parsed_event.ip_id {
+            let mut conn = self.get_connection().await?;
+            let access_log = NewMyDataAccessLog {
+                mydata_id: mydata_id.clone(),
+                user_address: parsed_event.user_address.clone().unwrap_or_else(|| "unknown".to_string()),
+                access_type: format!("operation_failed_{}_{}", parsed_event.operation_type, parsed_event.error_code),
+                access_time: parsed_event.timestamp as i64,
+                transaction_id: transaction_id.to_string(),
+            };
+
+            diesel::insert_into(mydata_access_logs::table)
+                .values(&access_log)
+                .execute(&mut conn)
+                .await?;
+        }
+
+        info!("Processed OperationFailedEvent successfully");
+        Ok(())
+    }
+
+    /// Handle system maintenance event from JSON
+    async fn handle_system_maintenance_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing SystemMaintenanceEvent from JSON");
+
+        let fields = extract_event_fields(data)?;
+        let parsed_event: SystemMaintenanceEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse SystemMaintenanceEvent: {}", e))?;
+
+        // Log maintenance event for each affected data entry
+        let mut conn = self.get_connection().await?;
+        for mydata_id in &parsed_event.affected_data {
+            let access_log = NewMyDataAccessLog {
+                mydata_id: mydata_id.clone(),
+                user_address: "system".to_string(),
+                access_type: format!("maintenance_{}", parsed_event.maintenance_type),
+                access_time: parsed_event.start_time as i64,
+                transaction_id: transaction_id.to_string(),
+            };
+
+            diesel::insert_into(mydata_access_logs::table)
+                .values(&access_log)
+                .execute(&mut conn)
+                .await?;
+        }
+
+        info!("Processed SystemMaintenanceEvent successfully for {} affected entries", parsed_event.affected_data.len());
+        Ok(())
+    }
+
+    /// Handle data updated event
+    async fn handle_data_updated(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing DataUpdatedEvent");
+
+        let parsed_event = parse_event::<DataUpdatedEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse DataUpdatedEvent: {}", e))?;
+
+        let mut conn = self.db.get_connection().await?;
+
+        let new_tags = serde_json::json!(parsed_event.new_tags);
+        diesel::update(mydata_data::table)
+            .filter(mydata_data::mydata_id.eq(&parsed_event.mydata_id))
+            .set((
+                mydata_data::tags.eq(new_tags),
+                mydata_data::one_time_price.eq(parsed_event.new_price_one_time.map(|p| p as i64)),
+                mydata_data::subscription_price.eq(parsed_event.new_price_subscription.map(|p| p as i64)),
+                mydata_data::data_quality.eq(parsed_event.new_data_quality.clone()),
+                mydata_data::last_updated.eq(parsed_event.last_updated as i64),
+                mydata_data::transaction_id.eq(transaction_id),
+            ))
+            .execute(&mut conn)
+            .await?;
+
+        info!("Processed DataUpdatedEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle data transferred event
+    async fn handle_data_transferred(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing DataTransferredEvent");
+
+        let parsed_event = parse_event::<DataTransferredEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse DataTransferredEvent: {}", e))?;
+
+        let mut conn = self.db.get_connection().await?;
+
+        diesel::update(mydata_data::table)
+            .filter(mydata_data::mydata_id.eq(&parsed_event.mydata_id))
+            .set((
+                mydata_data::owner.eq(&parsed_event.to_owner),
+                mydata_data::last_updated.eq(parsed_event.transfer_time as i64),
+                mydata_data::transaction_id.eq(transaction_id),
+            ))
+            .execute(&mut conn)
+            .await?;
+
+        if let Some(revenue) = parsed_event.into_revenue(transaction_id.to_string()) {
+            diesel::insert_into(mydata_revenue::table)
+                .values(&revenue)
+                .execute(&mut conn)
+                .await?;
+        }
+
+        info!("Processed DataTransferredEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle subscription renewed event
+    async fn handle_subscription_renewed(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing SubscriptionRenewedEvent");
+
+        let parsed_event = parse_event::<SubscriptionRenewedEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse SubscriptionRenewedEvent: {}", e))?;
+
+        let mut conn = self.db.get_connection().await?;
+
+        diesel::update(mydata_subscriptions::table)
+            .filter(mydata_subscriptions::mydata_id.eq(&parsed_event.mydata_id))
+            .filter(mydata_subscriptions::subscriber.eq(&parsed_event.subscriber))
+            .filter(mydata_subscriptions::subscription_end.eq(parsed_event.old_subscription_end as i64))
+            .set(mydata_subscriptions::subscription_end.eq(parsed_event.new_subscription_end as i64))
+            .execute(&mut conn)
+            .await?;
+
+        let renewal_subscription = parsed_event.into_subscription_update(transaction_id.to_string())?;
+        diesel::insert_into(mydata_subscriptions::table)
+            .values(&renewal_subscription)
+            .execute(&mut conn)
+            .await?;
+
+        let owner: String = mydata_data::table
+            .filter(mydata_data::mydata_id.eq(&parsed_event.mydata_id))
+            .select(mydata_data::owner)
+            .first(&mut conn)
+            .await?;
+
+        let mut revenue = parsed_event.into_revenue(transaction_id.to_string())?;
+        revenue.to_address = owner;
+        diesel::insert_into(mydata_revenue::table)
+            .values(&revenue)
+            .execute(&mut conn)
+            .await?;
+
+        info!("Processed SubscriptionRenewedEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle subscription cancelled event
+    async fn handle_subscription_cancelled(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing SubscriptionCancelledEvent");
+
+        let parsed_event = parse_event::<SubscriptionCancelledEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse SubscriptionCancelledEvent: {}", e))?;
+
+        let mut conn = self.db.get_connection().await?;
+
+        diesel::update(mydata_subscriptions::table)
+            .filter(mydata_subscriptions::mydata_id.eq(&parsed_event.mydata_id))
+            .filter(mydata_subscriptions::subscriber.eq(&parsed_event.subscriber))
+            .filter(mydata_subscriptions::subscription_end.gt(parsed_event.cancellation_time as i64))
+            .set(mydata_subscriptions::subscription_end.eq(parsed_event.effective_end_time as i64))
+            .execute(&mut conn)
+            .await?;
+
+        if parsed_event.refund_amount.is_some() && parsed_event.refund_amount.unwrap_or(0) > 0 {
+            let owner: String = mydata_data::table
+                .filter(mydata_data::mydata_id.eq(&parsed_event.mydata_id))
+                .select(mydata_data::owner)
+                .first(&mut conn)
+                .await?;
+
+            let refund_revenue = parsed_event.into_revenue(owner, transaction_id.to_string())?;
+            diesel::insert_into(mydata_revenue::table)
+                .values(&refund_revenue)
+                .execute(&mut conn)
+                .await?;
+        }
+
+        info!("Processed SubscriptionCancelledEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle data pricing changed event
+    async fn handle_data_pricing_changed(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing DataPricingChangedEvent");
+
+        let parsed_event = parse_event::<DataPricingChangedEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse DataPricingChangedEvent: {}", e))?;
+
+        let mut conn = self.db.get_connection().await?;
+
+        diesel::update(mydata_data::table)
+            .filter(mydata_data::mydata_id.eq(&parsed_event.mydata_id))
+            .set((
+                mydata_data::one_time_price.eq(parsed_event.new_one_time_price.map(|p| p as i64)),
+                mydata_data::subscription_price.eq(parsed_event.new_subscription_price.map(|p| p as i64)),
+                mydata_data::subscription_duration_days.eq(parsed_event.new_subscription_duration as i64),
+                mydata_data::last_updated.eq(parsed_event.change_time as i64),
+                mydata_data::transaction_id.eq(transaction_id),
+            ))
+            .execute(&mut conn)
+            .await?;
+
+        info!("Processed DataPricingChangedEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle data removed event
+    async fn handle_data_removed(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing DataRemovedEvent");
+
+        let parsed_event = parse_event::<DataRemovedEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse DataRemovedEvent: {}", e))?;
+
+        let mut conn = self.db.get_connection().await?;
+
+        diesel::update(mydata_data::table)
+            .filter(mydata_data::mydata_id.eq(&parsed_event.mydata_id))
+            .set((
+                mydata_data::timestamp_end.eq(Some(parsed_event.removal_time as i64)),
+                mydata_data::last_updated.eq(parsed_event.removal_time as i64),
+                mydata_data::transaction_id.eq(transaction_id),
+            ))
+            .execute(&mut conn)
+            .await?;
+
+        info!("Processed DataRemovedEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle data trending event
+    async fn handle_data_trending(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing DataTrendingEvent");
+
+        let parsed_event = parse_event::<DataTrendingEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse DataTrendingEvent: {}", e))?;
+
+        let mut conn = self.db.get_connection().await?;
+        let access_log = NewMyDataAccessLog {
+            mydata_id: parsed_event.mydata_id.clone(),
+            user_address: "system".to_string(),
+            access_type: format!("trending_score_{}", parsed_event.trending_score),
+            access_time: parsed_event.timestamp as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+
+        diesel::insert_into(mydata_access_logs::table)
+            .values(&access_log)
+            .execute(&mut conn)
+            .await?;
+
+        info!("Processed DataTrendingEvent successfully for mydata_id: {}", parsed_event.mydata_id);
+        Ok(())
+    }
+
+    /// Handle operation failed event
+    async fn handle_operation_failed(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing OperationFailedEvent");
+
+        let parsed_event = parse_event::<OperationFailedEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse OperationFailedEvent: {}", e))?;
+
+        if let Some(mydata_id) = &parsed_event.ip_id {
+            let mut conn = self.db.get_connection().await?;
+            let access_log = NewMyDataAccessLog {
+                mydata_id: mydata_id.clone(),
+                user_address: parsed_event.user_address.clone().unwrap_or_else(|| "unknown".to_string()),
+                access_type: format!("operation_failed_{}_{}", parsed_event.operation_type, parsed_event.error_code),
+                access_time: parsed_event.timestamp as i64,
+                transaction_id: transaction_id.to_string(),
+            };
+
+            diesel::insert_into(mydata_access_logs::table)
+                .values(&access_log)
+                .execute(&mut conn)
+                .await?;
+        }
+
+        info!("Processed OperationFailedEvent successfully");
+        Ok(())
+    }
+
+    /// Handle system maintenance event
+    async fn handle_system_maintenance(&self, event: &MysEvent, transaction_id: &str) -> Result<()> {
+        info!("Processing SystemMaintenanceEvent");
+
+        let parsed_event = parse_event::<SystemMaintenanceEvent>(event)
+            .map_err(|e| anyhow!("Failed to parse SystemMaintenanceEvent: {}", e))?;
+
+        let mut conn = self.db.get_connection().await?;
+        for mydata_id in &parsed_event.affected_data {
+            let access_log = NewMyDataAccessLog {
+                mydata_id: mydata_id.clone(),
+                user_address: "system".to_string(),
+                access_type: format!("maintenance_{}", parsed_event.maintenance_type),
+                access_time: parsed_event.start_time as i64,
+                transaction_id: transaction_id.to_string(),
+            };
+
+            diesel::insert_into(mydata_access_logs::table)
+                .values(&access_log)
+                .execute(&mut conn)
+                .await?;
+        }
+
+        info!("Processed SystemMaintenanceEvent successfully for {} affected entries", parsed_event.affected_data.len());
         Ok(())
     }
 }

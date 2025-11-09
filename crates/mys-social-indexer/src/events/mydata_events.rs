@@ -8,8 +8,10 @@ use serde_json::Value;
 // Import marketplace event types
 use crate::events::mydata_event_types::{
     AnalyticsEvent, DataAccessGrantedEvent, DataAccessedEvent, DataCreatedEvent,
-    DataPurchasedEvent, DataTrendingEvent, OperationFailedEvent, RevenueDistributedEvent,
-    SubscriptionCreatedEvent, SubscriptionRenewedEvent,
+    DataPricingChangedEvent, DataPurchasedEvent, DataRemovedEvent, DataTransferredEvent,
+    DataTrendingEvent, DataUpdatedEvent, OperationFailedEvent, RevenueDistributedEvent,
+    SubscriptionCancelledEvent, SubscriptionCreatedEvent, SubscriptionRenewedEvent,
+    SystemMaintenanceEvent,
 };
 
 // Import marketplace model types
@@ -220,6 +222,54 @@ impl SubscriptionRenewedEvent {
             subscription_start: self.renewal_time as i64,
             subscription_end: self.new_subscription_end as i64,
             price: self.renewal_price as i64,
+            transaction_id,
+        })
+    }
+
+    pub fn into_revenue(&self, transaction_id: String) -> Result<NewMyDataRevenue> {
+        Ok(NewMyDataRevenue {
+            mydata_id: self.mydata_id.clone(),
+            from_address: self.subscriber.clone(),
+            to_address: self.subscriber.clone(), // Will be updated with actual owner
+            amount: self.renewal_price as i64,
+            revenue_type: "subscription_renewal".to_string(),
+            revenue_time: self.renewal_time as i64,
+            transaction_id,
+        })
+    }
+}
+
+// ============================================================================
+// SUBSCRIPTION CANCELLATION HANDLER
+// ============================================================================
+
+impl SubscriptionCancelledEvent {
+    pub fn into_revenue(&self, owner_address: String, transaction_id: String) -> Result<NewMyDataRevenue> {
+        Ok(NewMyDataRevenue {
+            mydata_id: self.mydata_id.clone(),
+            from_address: owner_address.clone(),
+            to_address: self.subscriber.clone(),
+            amount: self.refund_amount.unwrap_or(0) as i64,
+            revenue_type: "subscription_refund".to_string(),
+            revenue_time: self.cancellation_time as i64,
+            transaction_id,
+        })
+    }
+}
+
+// ============================================================================
+// DATA TRANSFER HANDLER
+// ============================================================================
+
+impl DataTransferredEvent {
+    pub fn into_revenue(&self, transaction_id: String) -> Option<NewMyDataRevenue> {
+        self.transfer_price.map(|price| NewMyDataRevenue {
+            mydata_id: self.mydata_id.clone(),
+            from_address: self.to_owner.clone(),
+            to_address: self.from_owner.clone(),
+            amount: price as i64,
+            revenue_type: "transfer".to_string(),
+            revenue_time: self.transfer_time as i64,
             transaction_id,
         })
     }
