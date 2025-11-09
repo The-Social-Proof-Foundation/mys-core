@@ -109,7 +109,8 @@ impl NewProfileEvent {
     /// Create a new profile event for a platform joined event
     pub fn from_platform_joined(event: &PlatformJoinedEvent, event_id: Option<String>) -> Self {
         let now = chrono::Utc::now().naive_utc();
-        let created_at = chrono::DateTime::from_timestamp(event.timestamp as i64, 0)
+        // event.timestamp is in milliseconds, convert to seconds for from_timestamp
+        let created_at = chrono::DateTime::from_timestamp((event.timestamp / 1000) as i64, 0)
             .unwrap_or_else(|| chrono::Utc::now())
             .naive_utc();
 
@@ -130,7 +131,8 @@ impl NewProfileEvent {
     /// Create a new profile event for a platform left event
     pub fn from_platform_left(event: &PlatformLeftEvent, event_id: Option<String>) -> Self {
         let now = chrono::Utc::now().naive_utc();
-        let created_at = chrono::DateTime::from_timestamp(event.timestamp as i64, 0)
+        // event.timestamp is in milliseconds, convert to seconds for from_timestamp
+        let created_at = chrono::DateTime::from_timestamp((event.timestamp / 1000) as i64, 0)
             .unwrap_or_else(|| chrono::Utc::now())
             .naive_utc();
 

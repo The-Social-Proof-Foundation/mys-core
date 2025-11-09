@@ -1146,6 +1146,10 @@ impl PlatformEventHandler {
 
         let mut conn = self.get_connection().await?;
 
+        // Extract timestamp from blockchain event before moving into closure
+        // The event.timestamp field is not a real timestamp but an epoch/sequence number
+        let event_timestamp_ms = blockchain_event.map(|e| e.timestamp_ms);
+
         // Start a transaction for atomicity
         conn.build_transaction()
             .run(|mut conn| {
@@ -1222,13 +1226,26 @@ impl PlatformEventHandler {
                         > 0;
 
                     if !membership_exists {
+                        // Use blockchain event timestamp if available, otherwise use current time
+                        // The event.timestamp field is not a real timestamp but an epoch/sequence number
+                        let joined_at = if let Some(timestamp_ms) = event_timestamp_ms {
+                            // Convert milliseconds to seconds for from_timestamp
+                            chrono::DateTime::from_timestamp(
+                                (timestamp_ms / 1000) as i64,
+                                0,
+                            )
+                            .unwrap_or_else(|| chrono::Utc::now())
+                            .naive_utc()
+                        } else {
+                            // Fallback to current time if no blockchain event timestamp
+                            chrono::Utc::now().naive_utc()
+                        };
+
                         // Create new membership
                         let new_membership = NewPlatformMembership {
                             platform_id: event.platform_id.clone(),
                             profile_id: event.profile_id.clone(),
-                            joined_at: chrono::DateTime::from_timestamp(event.timestamp as i64, 0)
-                                .unwrap_or_else(|| chrono::Utc::now())
-                                .naive_utc(),
+                            joined_at,
                         };
 
                         // Insert membership
@@ -1243,11 +1260,21 @@ impl PlatformEventHandler {
                         );
 
                         // Also create a profile event for this action to track in profile history
+                        // Use blockchain event timestamp in milliseconds, or current time as fallback
+                        let profile_event_timestamp = if let Some(timestamp_ms) = event_timestamp_ms {
+                            timestamp_ms
+                        } else {
+                            std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_millis() as u64
+                        };
+
                         let platform_join_event =
                             crate::events::profile_event_types::PlatformJoinedEvent {
                                 profile_id: event.profile_id.clone(),
                                 platform_id: event.platform_id.clone(),
-                                timestamp: event.timestamp,
+                                timestamp: profile_event_timestamp,
                             };
 
                         // We need to get the event ID again since it was moved in the platform_event
@@ -1290,6 +1317,10 @@ impl PlatformEventHandler {
         debug!("Processing user left platform event");
 
         let mut conn = self.get_connection().await?;
+
+        // Extract timestamp from blockchain event before moving into closure
+        // The event.timestamp field is not a real timestamp but an epoch/sequence number
+        let event_timestamp_ms = blockchain_event.map(|e| e.timestamp_ms);
 
         // Start a transaction for atomicity
         conn.build_transaction()
@@ -1346,11 +1377,21 @@ impl PlatformEventHandler {
                         );
 
                         // Also create a profile event for this action to track in profile history
+                        // Use blockchain event timestamp in milliseconds, or current time as fallback
+                        let profile_event_timestamp = if let Some(timestamp_ms) = event_timestamp_ms {
+                            timestamp_ms
+                        } else {
+                            std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_millis() as u64
+                        };
+
                         let platform_left_event =
                             crate::events::profile_event_types::PlatformLeftEvent {
                                 profile_id: event.profile_id.clone(),
                                 platform_id: event.platform_id.clone(),
-                                timestamp: event.timestamp,
+                                timestamp: profile_event_timestamp,
                             };
 
                         // We need to get the event ID again since it was moved in the platform_event
