@@ -988,7 +988,6 @@ pub async fn get_platform_members(
             profiles::table.on(
                 profiles::owner_address
                     .eq(platform_memberships::profile_id)
-                    .or(profiles::profile_id.eq(platform_memberships::profile_id))
                     .or(profiles::username.eq(platform_memberships::profile_id)),
             ),
         )
