@@ -156,6 +156,61 @@ fn extract_u64_optional_field(data: &serde_json::Value, field_name: &str) -> Opt
     None
 }
 
+/// Normalize date format from "MM/DD/YY" or "MM/DD/YYYY" to "YYYY-MM-DD"
+/// If the date is already in "YYYY-MM-DD" format, returns it unchanged
+/// If parsing fails, returns the original string
+fn normalize_date_format(date_str: &str) -> String {
+    if date_str.is_empty() {
+        return date_str.to_string();
+    }
+
+    // If already in YYYY-MM-DD format, return as-is
+    if date_str.matches('-').count() == 2 {
+        // Check if it matches YYYY-MM-DD pattern
+        let parts: Vec<&str> = date_str.split('-').collect();
+        if parts.len() == 3 && parts[0].len() == 4 {
+            return date_str.to_string();
+        }
+    }
+
+    // Try to parse MM/DD/YY or MM/DD/YYYY format
+    let parts: Vec<&str> = date_str.split('/').collect();
+    if parts.len() == 3 {
+        if let (Ok(month), Ok(day), year_str) = (
+            parts[0].parse::<u32>(),
+            parts[1].parse::<u32>(),
+            parts[2],
+        ) {
+            // Parse year
+            let year = if year_str.len() == 2 {
+                // 2-digit year: assume 20YY for years < 50, 19YY for years >= 50
+                if let Ok(yy) = year_str.parse::<u32>() {
+                    if yy < 50 {
+                        2000 + yy
+                    } else {
+                        1900 + yy
+                    }
+                } else {
+                    return date_str.to_string();
+                }
+            } else if year_str.len() == 4 {
+                // 4-digit year
+                year_str.parse::<u32>().unwrap_or(0)
+            } else {
+                return date_str.to_string();
+            };
+
+            // Validate month and day
+            if month >= 1 && month <= 12 && day >= 1 && day <= 31 && year > 0 {
+                return format!("{:04}-{:02}-{:02}", year, month, day);
+            }
+        }
+    }
+
+    // If parsing failed, return original string
+    date_str.to_string()
+}
+
 fn extract_bool_optional_field(data: &serde_json::Value, field_name: &str) -> Option<bool> {
     // Try direct access
     if let Some(value) = data.get(field_name) {
@@ -472,8 +527,8 @@ impl PlatformEventHandler {
                             ),
                             links: Some(serde_json::to_value(&event.links).unwrap_or_default()),
                             status: Some(event.status.status as i16),
-                            release_date: Some(event.release_date.clone()),
-                            shutdown_date: event.shutdown_date.clone().map(Some).unwrap_or(None),
+                            release_date: Some(normalize_date_format(&event.release_date)),
+                            shutdown_date: event.shutdown_date.clone().map(|d| Some(normalize_date_format(&d))).unwrap_or(None),
                             updated_at: Some(updated_at),
                             is_approved: None, // Don't change approval status on regular update
                             approval_changed_at: None, // Don't change approval timestamp
@@ -522,8 +577,8 @@ impl PlatformEventHandler {
                             ),
                             links: Some(serde_json::to_value(&event.links).unwrap_or_default()),
                             status: event.status.status as i16,
-                            release_date: Some(event.release_date.clone()),
-                            shutdown_date: event.shutdown_date.clone().map(Some).unwrap_or(None),
+                            release_date: Some(normalize_date_format(&event.release_date)),
+                            shutdown_date: event.shutdown_date.clone().map(|d| Some(normalize_date_format(&d))).unwrap_or(None),
                             created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                                 .unwrap_or_else(|| chrono::Utc::now())
                                 .naive_utc(),
