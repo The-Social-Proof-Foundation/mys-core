@@ -1224,43 +1224,48 @@ pub async fn check_platform_membership(
         );
     }
 
-    // Check membership in platform_memberships table
-    let is_member = match platform_memberships::table
+    // Check membership in platform_memberships table and get joined_at date
+    let membership_result = platform_memberships::table
         .filter(platform_memberships::platform_id.eq(&platform_id))
         .filter(platform_memberships::profile_id.eq(&profile_address))
-        .select(platform_memberships::id)
-        .first::<i32>(&mut conn)
-        .await
-    {
-        Ok(_) => {
+        .select(platform_memberships::joined_at)
+        .first::<chrono::NaiveDateTime>(&mut conn)
+        .await;
+
+    match membership_result {
+        Ok(joined_at) => {
             debug!(
                 "Found membership: profile {} is a member of platform {}",
                 profile_address, platform_id
             );
-            true
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "is_member": true,
+                    "joined_at": joined_at.format("%Y-%m-%dT%H:%M:%S%.f").to_string()
+                })),
+            )
         }
         Err(diesel::result::Error::NotFound) => {
             debug!(
                 "No membership found: profile {} is not a member of platform {}",
                 profile_address, platform_id
             );
-            false
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "is_member": false
+                })),
+            )
         }
         Err(e) => {
             error!("Error querying platform_memberships table: {}", e);
-            return (
+            (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Failed to check membership: {}", e)
                 })),
-            );
+            )
         }
-    };
-
-    (
-        StatusCode::OK,
-        Json(serde_json::json!({
-            "is_member": is_member
-        })),
-    )
+    }
 }

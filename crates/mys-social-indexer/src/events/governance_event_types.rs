@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::events::event_utils::deserialize_u64_from_string;
 use serde::{Deserialize, Serialize};
 
 /// Event emitted when a governance registry is created or updated
@@ -15,6 +16,7 @@ pub struct GovernanceRegistryEvent {
     pub quadratic_base_cost: u64,
     pub voting_period_epochs: u64,
     pub quorum_votes: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub updated_at: u64,
 }
 
@@ -25,6 +27,7 @@ pub struct DelegateNominatedEvent {
     pub profile_id: String,
     pub registry_type: u8,
     pub scheduled_term_start_epoch: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub nomination_time: u64,
 }
 
@@ -36,6 +39,7 @@ pub struct DelegateVotedEvent {
     pub registry_type: u8,
     pub is_active_delegate: bool,
     pub upvote: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub rated_at: u64,
 }
 
@@ -45,7 +49,9 @@ pub struct DelegateElectedEvent {
     pub address: String,
     pub profile_id: String,
     pub registry_type: u8,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub term_start: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub term_end: u64,
     pub upvotes: u64,
     pub downvotes: u64,
@@ -61,6 +67,7 @@ pub struct ProposalSubmittedEvent {
     pub reference_id: Option<String>,
     pub metadata_json: Option<serde_json::Value>,
     pub submitter: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub submission_time: u64,
     pub reward_pool: u64,
 }
@@ -71,6 +78,7 @@ pub struct DelegateVoteEvent {
     pub proposal_id: String,
     pub delegate_address: String,
     pub approve: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub vote_time: u64,
     pub reason: Option<String>,
 }
@@ -82,6 +90,7 @@ pub struct CommunityVoteEvent {
     pub voter_address: String,
     pub vote_weight: u64,
     pub approve: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub vote_time: u64,
     pub vote_cost: u64,
 }
@@ -90,7 +99,9 @@ pub struct CommunityVoteEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProposalApprovedForVotingEvent {
     pub proposal_id: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub voting_start_time: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub voting_end_time: u64,
 }
 
@@ -98,6 +109,7 @@ pub struct ProposalApprovedForVotingEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProposalRejectedEvent {
     pub proposal_id: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub rejection_time: u64,
 }
 
@@ -106,6 +118,7 @@ pub struct ProposalRejectedEvent {
 pub struct ProposalRescindedEvent {
     pub proposal_id: String,
     pub submitter: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub rescind_time: u64,
     pub refund_amount: u64,
 }
@@ -114,6 +127,7 @@ pub struct ProposalRescindedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProposalApprovedEvent {
     pub proposal_id: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub approval_time: u64,
 }
 
@@ -121,6 +135,7 @@ pub struct ProposalApprovedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProposalRejectedByCommunityEvent {
     pub proposal_id: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub rejection_time: u64,
 }
 
@@ -128,6 +143,7 @@ pub struct ProposalRejectedByCommunityEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProposalImplementedEvent {
     pub proposal_id: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub implementation_time: u64,
     pub implemented_description: String,
 }
@@ -138,6 +154,7 @@ pub struct RewardsDistributedEvent {
     pub proposal_id: String,
     pub recipient_address: String,
     pub amount: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub distribution_time: u64,
     pub distribution_type: String,
 }
@@ -147,6 +164,7 @@ pub struct RewardsDistributedEvent {
 pub struct AnonymousVoteEvent {
     pub proposal_id: String,
     pub voter: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub vote_time: u64,
     pub encrypted_vote_data: Vec<u8>,
 }
@@ -157,5 +175,6 @@ pub struct VoteDecryptionFailedEvent {
     pub proposal_id: String,
     pub voter: String,
     pub failure_reason: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }

@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::events::event_utils::deserialize_u64_from_string;
 use serde::{Deserialize, Serialize};
 
 /// Type of post event
@@ -38,6 +39,7 @@ pub struct PostCreatedEvent {
     pub metadata_json: Option<String>,
     pub post_type: String,
     pub parent_post_id: Option<String>,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub created_at: u64,
     /// Reference to MyData if attached
     pub mydata_id: Option<String>,
@@ -57,6 +59,7 @@ pub struct CommentCreatedEvent {
     pub media_urls: Option<Vec<String>>,
     pub mentions: Option<Vec<String>>,
     pub metadata_json: Option<String>,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub created_at: u64,
 }
 
@@ -67,6 +70,7 @@ pub struct ReactionEvent {
     pub user_address: String,
     pub reaction_text: String,
     pub is_post: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub created_at: u64,
 }
 
@@ -88,6 +92,7 @@ pub struct RepostEvent {
     pub is_original_post: bool,
     pub owner: String,
     pub profile_id: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub created_at: u64,
 }
 
@@ -99,6 +104,7 @@ pub struct TipEvent {
     pub to: String,
     pub amount: u64,
     pub is_post: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub tip_time: u64,
     /// Original intended recipient (before potential MyIP redirection)
     pub original_recipient: Option<String>,
@@ -144,6 +150,7 @@ pub struct ModerationEvent {
     pub platform_id: String,
     pub removed: bool,
     pub moderated_by: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub moderated_at: u64,
 }
 
@@ -156,6 +163,7 @@ pub struct ContentUpdateEvent {
     pub media_urls: Option<Vec<String>>,
     pub mentions: Option<Vec<String>>,
     pub metadata_json: Option<String>,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub updated_at: u64,
 }
 
@@ -167,6 +175,7 @@ pub struct ReportEvent {
     pub reporter: String,
     pub reason_code: u8,
     pub description: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub reported_at: u64,
 }
 
@@ -179,6 +188,7 @@ pub struct DeletionEvent {
     pub is_post: bool,
     pub post_type: Option<String>,
     pub post_id: Option<String>,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub deleted_at: u64,
 }
 
@@ -190,6 +200,7 @@ pub struct PromotedPostCreatedEvent {
     pub profile_id: String,
     pub payment_per_view: u64,
     pub total_budget: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub created_at: u64,
 }
 
@@ -201,6 +212,7 @@ pub struct PromotedPostViewConfirmedEvent {
     pub payment_amount: u64,
     pub view_duration: u64,
     pub platform_id: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -210,6 +222,7 @@ pub struct PromotionStatusToggledEvent {
     pub post_id: String,
     pub toggled_by: String,
     pub new_status: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -219,5 +232,6 @@ pub struct PromotionFundsWithdrawnEvent {
     pub post_id: String,
     pub owner: String,
     pub withdrawn_amount: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }

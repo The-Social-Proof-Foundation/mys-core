@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::events::event_utils::deserialize_u64_from_string;
 use serde::{Deserialize, Serialize};
 
 /// Type of PoC event
@@ -25,6 +26,7 @@ pub struct AnalysisSubmittedEvent {
     pub similarity_detected: bool,
     pub highest_similarity_score: u64,
     pub oracle_address: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -35,6 +37,7 @@ pub struct PocBadgeIssuedEvent {
     pub post_id: String,
     pub media_type: u8,
     pub issued_by: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -46,6 +49,7 @@ pub struct RevenueRedirectionActivatedEvent {
     pub original_post_id: String,
     pub redirect_percentage: u64,
     pub similarity_score: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -59,6 +63,7 @@ pub struct PocDisputeSubmittedEvent {
     pub stake_amount: u64,
     pub voting_start_epoch: u64,
     pub voting_end_epoch: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -71,6 +76,7 @@ pub struct DisputeVoteCastEvent {
     pub stake_amount: u64,
     pub total_uphold_stake: u64,
     pub total_overturn_stake: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -85,6 +91,7 @@ pub struct PocDisputeResolvedEvent {
     pub total_losing_stake: u64,
     pub badge_revoked: bool,
     pub redirection_removed: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -96,6 +103,7 @@ pub struct VotingRewardClaimedEvent {
     pub original_stake: u64,
     pub reward_amount: u64,
     pub total_payout: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -111,6 +119,7 @@ pub struct PocConfigUpdatedEvent {
     pub min_vote_stake: u64,
     pub max_vote_stake: u64,
     pub voting_duration_epochs: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -118,6 +127,7 @@ pub struct PocConfigUpdatedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenPoolSyncNeededEvent {
     pub post_id: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 

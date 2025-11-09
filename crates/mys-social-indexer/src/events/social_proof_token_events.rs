@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::events::event_utils::deserialize_u64_from_string;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -402,6 +403,7 @@ pub struct ReservationCreatedEvent {
     pub amount: u64,
     pub total_reserved: u64,
     pub threshold_met: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub reserved_at: u64,
 }
 
@@ -469,6 +471,7 @@ pub struct ReservationWithdrawnEvent {
     pub reserver: String,
     pub amount: u64,
     pub total_reserved: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub withdrawn_at: u64,
 }
 
@@ -502,6 +505,7 @@ pub struct ThresholdMetEvent {
     pub owner: String,
     pub total_reserved: u64,
     pub required_threshold: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -540,6 +544,7 @@ impl ThresholdMetEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigUpdatedEvent {
     pub updated_by: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
     pub total_fee_bps: u64,
     pub creator_fee_bps: u64,

@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::events::event_utils::{deserialize_u64_from_string, deserialize_optional_u64_from_string};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -16,8 +17,11 @@ pub struct DataCreatedEvent {
     pub media_type: String,
     pub tags: Vec<String>,
     pub platform_id: Option<String>,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp_start: u64,
+    #[serde(deserialize_with = "deserialize_optional_u64_from_string")]
     pub timestamp_end: Option<u64>,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub created_at: u64,
     pub one_time_price: Option<u64>,
     pub subscription_price: Option<u64>,
@@ -43,6 +47,7 @@ pub struct DataUpdatedEvent {
     pub new_price_subscription: Option<u64>,
     pub old_data_quality: Option<String>,
     pub new_data_quality: Option<String>,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub last_updated: u64,
 }
 
@@ -52,6 +57,7 @@ pub struct DataTransferredEvent {
     pub mydata_id: String,
     pub from_owner: String,
     pub to_owner: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub transfer_time: u64,
     pub transfer_price: Option<u64>,
 }
@@ -62,6 +68,7 @@ pub struct DataPurchasedEvent {
     pub mydata_id: String,
     pub buyer: String,
     pub price: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub purchase_time: u64,
     pub payment_token: Option<String>,
 }
@@ -71,7 +78,9 @@ pub struct DataPurchasedEvent {
 pub struct SubscriptionCreatedEvent {
     pub mydata_id: String,
     pub subscriber: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub subscription_start: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub subscription_end: u64,
     pub price: u64,
     pub payment_token: Option<String>,
@@ -82,9 +91,12 @@ pub struct SubscriptionCreatedEvent {
 pub struct SubscriptionRenewedEvent {
     pub mydata_id: String,
     pub subscriber: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub old_subscription_end: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub new_subscription_end: u64,
     pub renewal_price: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub renewal_time: u64,
 }
 
@@ -93,7 +105,9 @@ pub struct SubscriptionRenewedEvent {
 pub struct SubscriptionCancelledEvent {
     pub mydata_id: String,
     pub subscriber: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub cancellation_time: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub effective_end_time: u64, // When access actually ends
     pub refund_amount: Option<u64>,
 }
@@ -105,7 +119,9 @@ pub struct DataAccessGrantedEvent {
     pub grantor: String,
     pub grantee: String,
     pub access_type: String, // "preview", "grant", etc.
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub grant_time: u64,
+    #[serde(deserialize_with = "deserialize_optional_u64_from_string")]
     pub expiration_time: Option<u64>,
 }
 
@@ -117,6 +133,7 @@ pub struct RevenueDistributedEvent {
     pub to_address: String,
     pub amount: u64,
     pub revenue_type: String, // "one_time", "subscription", "grant"
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub distribution_time: u64,
     pub transaction_hash: Option<String>,
 }
@@ -127,6 +144,7 @@ pub struct DataAccessedEvent {
     pub mydata_id: String,
     pub user_address: String,
     pub access_type: String, // "one_time", "subscription", "grant", "preview"
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub access_time: u64,
     pub session_id: Option<String>,
 }
@@ -142,6 +160,7 @@ pub struct DataPricingChangedEvent {
     pub new_subscription_price: Option<u64>,
     pub old_subscription_duration: u64,
     pub new_subscription_duration: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub change_time: u64,
 }
 
@@ -150,6 +169,7 @@ pub struct DataPricingChangedEvent {
 pub struct DataRemovedEvent {
     pub mydata_id: String,
     pub owner: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub removal_time: u64,
     pub removal_reason: Option<String>,
 }
@@ -165,6 +185,7 @@ pub struct AnalyticsEvent {
     pub mydata_id: String,
     pub user_address: Option<String>,
     pub metadata: Value,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -177,6 +198,7 @@ pub struct DataTrendingEvent {
     pub unique_purchasers_24h: u64,
     pub revenue_24h: u64,
     pub access_count_24h: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -192,6 +214,7 @@ pub struct OperationFailedEvent {
     pub user_address: Option<String>,
     pub error_code: String,
     pub error_message: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 
@@ -200,7 +223,9 @@ pub struct OperationFailedEvent {
 pub struct SystemMaintenanceEvent {
     pub maintenance_type: String,
     pub affected_data: Vec<String>, // List of ip_ids
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub start_time: u64,
+    #[serde(deserialize_with = "deserialize_optional_u64_from_string")]
     pub end_time: Option<u64>,
     pub maintenance_reason: String,
 }

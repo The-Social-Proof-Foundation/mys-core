@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, Result};
+use serde::{Deserialize, Deserializer};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use tracing::debug;
@@ -124,4 +125,57 @@ where
 {
     let fields = extract_event_fields(value)?;
     parse_json_event::<T>(&fields)
+}
+
+/// Helper function to deserialize strings as numbers (u64)
+/// Handles both string and numeric inputs from blockchain events
+/// This is useful when blockchain sends numeric values as strings
+pub fn deserialize_u64_from_string<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrNumber {
+        String(String),
+        Number(u64),
+    }
+
+    match StringOrNumber::deserialize(deserializer) {
+        Ok(StringOrNumber::String(s)) => {
+            s.parse::<u64>().map_err(serde::de::Error::custom)
+        }
+        Ok(StringOrNumber::Number(n)) => Ok(n),
+        Err(e) => Err(e),
+    }
+}
+
+/// Helper function to deserialize optional strings as optional numbers (Option<u64>)
+/// Handles both string and numeric inputs from blockchain events, including None values
+pub fn deserialize_optional_u64_from_string<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrNumberOrNone {
+        String(String),
+        Number(u64),
+        None,
+    }
+
+    match StringOrNumberOrNone::deserialize(deserializer) {
+        Ok(StringOrNumberOrNone::String(s)) => {
+            if s.is_empty() {
+                Ok(None)
+            } else {
+                s.parse::<u64>()
+                    .map(Some)
+                    .map_err(serde::de::Error::custom)
+            }
+        }
+        Ok(StringOrNumberOrNone::Number(n)) => Ok(Some(n)),
+        Ok(StringOrNumberOrNone::None) => Ok(None),
+        Err(e) => Err(e),
+    }
 }

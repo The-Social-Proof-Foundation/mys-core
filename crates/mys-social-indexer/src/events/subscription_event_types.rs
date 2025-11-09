@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::events::event_utils::deserialize_u64_from_string;
 use crate::models::subscription::*;
 use anyhow::Result;
 use chrono::Utc;
@@ -55,6 +56,7 @@ impl From<SubscriptionEventType> for String {
 pub struct ProfileSubscriptionCreatedEvent {
     pub service_id: String,
     pub subscriber: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub expires_at: u64,
     pub monthly_fee: u64,
     pub auto_renew: bool,
@@ -122,6 +124,7 @@ impl ProfileSubscriptionCreatedEvent {
 pub struct ProfileSubscriptionRenewedEvent {
     pub subscription_id: String,
     pub subscriber: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub new_expires_at: u64,
     pub renewal_count: u64,
     pub auto_renewed: bool,
