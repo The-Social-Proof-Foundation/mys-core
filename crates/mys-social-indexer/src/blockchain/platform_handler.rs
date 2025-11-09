@@ -402,6 +402,9 @@ impl PlatformEventHandler {
 
         let mut conn = self.get_connection().await?;
 
+        // Extract timestamp from blockchain event before moving into closure
+        let event_timestamp_ms = blockchain_event.map(|e| e.timestamp_ms);
+
         // Start a transaction for atomicity
         conn.build_transaction()
             .run(|mut conn| {
@@ -441,6 +444,21 @@ impl PlatformEventHandler {
                         > 0;
 
                     if platform_exists {
+                        // Use blockchain event timestamp if available, otherwise use current time
+                        // The event.updated_at field is not a real timestamp but an epoch/sequence number
+                        let updated_at = if let Some(timestamp_ms) = event_timestamp_ms {
+                            // Convert milliseconds to seconds for from_timestamp
+                            chrono::DateTime::from_timestamp(
+                                (timestamp_ms / 1000) as i64,
+                                0,
+                            )
+                            .unwrap_or_else(|| chrono::Utc::now())
+                            .naive_utc()
+                        } else {
+                            // Fallback to current time if no blockchain event timestamp
+                            chrono::Utc::now().naive_utc()
+                        };
+
                         // Update existing platform
                         let platform_update = UpdatePlatform {
                             name: Some(event.name.clone()),
@@ -456,11 +474,7 @@ impl PlatformEventHandler {
                             status: Some(event.status.status as i16),
                             release_date: Some(event.release_date.clone()),
                             shutdown_date: event.shutdown_date.clone().map(Some).unwrap_or(None),
-                            updated_at: Some(
-                                chrono::DateTime::from_timestamp(event.updated_at as i64, 0)
-                                    .unwrap_or_else(|| chrono::Utc::now())
-                                    .naive_utc(),
-                            ),
+                            updated_at: Some(updated_at),
                             is_approved: None, // Don't change approval status on regular update
                             approval_changed_at: None, // Don't change approval timestamp
                             approved_by: None, // Don't change approver
@@ -513,12 +527,19 @@ impl PlatformEventHandler {
                             created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                                 .unwrap_or_else(|| chrono::Utc::now())
                                 .naive_utc(),
-                            updated_at: chrono::DateTime::from_timestamp(
-                                event.updated_at as i64,
-                                0,
-                            )
-                            .unwrap_or_else(|| chrono::Utc::now())
-                            .naive_utc(),
+                            updated_at: {
+                                // Use blockchain event timestamp if available, otherwise use current time
+                                if let Some(timestamp_ms) = event_timestamp_ms {
+                                    chrono::DateTime::from_timestamp(
+                                        (timestamp_ms / 1000) as i64,
+                                        0,
+                                    )
+                                    .unwrap_or_else(|| chrono::Utc::now())
+                                    .naive_utc()
+                                } else {
+                                    chrono::Utc::now().naive_utc()
+                                }
+                            },
                             is_approved: false, // New platforms are not approved by default
                             approval_changed_at: None, // No approval change yet
                             approved_by: None,  // No approver yet
