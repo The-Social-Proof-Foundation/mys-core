@@ -982,12 +982,14 @@ pub async fn get_platform_members(
             }
         });
 
-    // Build base query for counting
     let mut count_query = platform_memberships::table
         .filter(platform_memberships::platform_id.eq(&platform_id))
         .inner_join(
             profiles::table.on(
-                profiles::owner_address.eq(platform_memberships::profile_id),
+                profiles::owner_address
+                    .eq(platform_memberships::profile_id)
+                    .or(profiles::profile_id.eq(platform_memberships::profile_id))
+                    .or(profiles::username.eq(platform_memberships::profile_id)),
             ),
         )
         .into_boxed();
@@ -1009,14 +1011,13 @@ pub async fn get_platform_members(
 
     let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
 
-    // Build query for fetching members
-    // Join platform_memberships with profiles to get member information
-    // platform_memberships.profile_id matches profiles.owner_address
     let mut members_query = platform_memberships::table
         .filter(platform_memberships::platform_id.eq(&platform_id))
         .inner_join(
             profiles::table.on(
-                profiles::owner_address.eq(platform_memberships::profile_id),
+                profiles::owner_address
+                    .eq(platform_memberships::profile_id)
+                    .or(profiles::username.eq(platform_memberships::profile_id)),
             ),
         )
         .select((
