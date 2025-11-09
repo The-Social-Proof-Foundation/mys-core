@@ -453,6 +453,7 @@ pub struct PlatformUnblockedProfileEvent {
 pub struct UserJoinedPlatformEvent {
     pub profile_id: String,
     pub platform_id: String,
+    #[serde(default)]
     pub user: String,
     #[serde(deserialize_with = "deserialize_timestamp")]
     pub timestamp: u64,
@@ -462,6 +463,7 @@ pub struct UserJoinedPlatformEvent {
 pub struct UserLeftPlatformEvent {
     pub profile_id: String,
     pub platform_id: String,
+    #[serde(default)]
     pub user: String,
     #[serde(deserialize_with = "deserialize_timestamp")]
     pub timestamp: u64,

@@ -10,6 +10,7 @@ use tracing::{debug, error, info, warn};
 // Serde json utilities
 
 use crate::db::{Database, DbConnection};
+use crate::events::event_utils;
 use crate::events::platform_events::PlatformEventType;
 use crate::models::platform::*;
 use crate::schema;
@@ -1543,17 +1544,43 @@ impl PlatformEventHandler {
                 }
                 PlatformEventType::UserJoinedPlatform => {
                     info!("Processing UserJoinedPlatform event");
-                    let platform_event: UserJoinedPlatformEvent =
-                        serde_json::from_value(event.data.clone())?;
-                    self.process_user_joined_platform_event(&platform_event, Some(&event))
-                        .await?;
+                    match event_utils::extract_event_fields(&event.data).and_then(|fields| {
+                        serde_json::from_value::<UserJoinedPlatformEvent>(fields)
+                            .map_err(|e| anyhow!("Failed to deserialize UserJoinedPlatformEvent: {}", e))
+                    }) {
+                        Ok(platform_event) => {
+                            self.process_user_joined_platform_event(&platform_event, Some(&event))
+                                .await?;
+                        }
+                        Err(e) => {
+                            error!("Failed to parse UserJoinedPlatformEvent: {}", e);
+                            error!(
+                                "Event data: {}",
+                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                            );
+                            return Err(e);
+                        }
+                    }
                 }
                 PlatformEventType::UserLeftPlatform => {
                     info!("Processing UserLeftPlatform event");
-                    let platform_event: UserLeftPlatformEvent =
-                        serde_json::from_value(event.data.clone())?;
-                    self.process_user_left_platform_event(&platform_event, Some(&event))
-                        .await?;
+                    match event_utils::extract_event_fields(&event.data).and_then(|fields| {
+                        serde_json::from_value::<UserLeftPlatformEvent>(fields)
+                            .map_err(|e| anyhow!("Failed to deserialize UserLeftPlatformEvent: {}", e))
+                    }) {
+                        Ok(platform_event) => {
+                            self.process_user_left_platform_event(&platform_event, Some(&event))
+                                .await?;
+                        }
+                        Err(e) => {
+                            error!("Failed to parse UserLeftPlatformEvent: {}", e);
+                            error!(
+                                "Event data: {}",
+                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                            );
+                            return Err(e);
+                        }
+                    }
                 }
             }
         } else {
