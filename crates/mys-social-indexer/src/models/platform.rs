@@ -412,6 +412,7 @@ pub struct PlatformUpdatedEvent {
     pub status: PlatformStatus,
     pub release_date: String,
     pub shutdown_date: Option<String>,
+    #[serde(deserialize_with = "deserialize_timestamp")]
     pub updated_at: u64,
 }
 

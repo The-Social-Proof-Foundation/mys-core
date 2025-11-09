@@ -1087,3 +1087,180 @@ pub async fn get_platform_members(
         }
     }
 }
+
+/// Check if a profile is a member of a platform
+pub async fn check_platform_membership(
+    Path((platform_id, profile_id)): Path<(String, String)>,
+    State(db_pool): State<DbPool>,
+) -> impl IntoResponse {
+    debug!(
+        "Checking if profile {} is a member of platform {}",
+        profile_id, platform_id
+    );
+
+    // Input validation
+    if platform_id.trim().is_empty() || profile_id.trim().is_empty() {
+        debug!("Invalid IDs: empty string");
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Platform ID and profile ID are required"
+            })),
+        );
+    }
+
+    // Basic length validation to prevent potential attacks
+    if platform_id.len() > 256 || profile_id.len() > 256 {
+        debug!("Invalid IDs: too long");
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Platform ID and profile ID must be 256 characters or less"
+            })),
+        );
+    }
+
+    let mut conn = match db_pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("Database connection error: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database error: {}", e)
+                })),
+            );
+        }
+    };
+
+    // Resolve profile_id to wallet address if needed
+    // profile_id in platform_memberships is the wallet address (owner_address)
+    // Supports: wallet address (0x...), profile_id, or username
+    let profile_address = if profile_id.starts_with("0x") {
+        profile_id.clone()
+    } else {
+        // Try to resolve as profile_id first
+        match profiles::table
+            .filter(profiles::profile_id.eq(&profile_id))
+            .select(profiles::owner_address)
+            .first::<String>(&mut conn)
+            .await
+        {
+            Ok(addr) => {
+                debug!("Resolved profile_id {} to wallet address {}", profile_id, addr);
+                addr
+            }
+            Err(diesel::result::Error::NotFound) => {
+                // If profile_id not found, try resolving as username
+                match profiles::table
+                    .filter(profiles::username.eq(&profile_id))
+                    .select(profiles::owner_address)
+                    .first::<String>(&mut conn)
+                    .await
+                {
+                    Ok(addr) => {
+                        debug!("Resolved username {} to wallet address {}", profile_id, addr);
+                        addr
+                    }
+                    Err(diesel::result::Error::NotFound) => {
+                        // If neither found, return error
+                        debug!("Profile ID or username not found: {}", profile_id);
+                        return (
+                            StatusCode::NOT_FOUND,
+                            Json(serde_json::json!({
+                                "error": format!("Profile not found: {}", profile_id)
+                            })),
+                        );
+                    }
+                    Err(e) => {
+                        error!("Error resolving username: {}", e);
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(serde_json::json!({
+                                "error": format!("Failed to resolve username: {}", e)
+                            })),
+                        );
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Error resolving profile_id: {}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": format!("Failed to resolve profile ID: {}", e)
+                    })),
+                );
+            }
+        }
+    };
+
+    // Check if platform exists
+    let platform_exists = match platforms::table
+        .filter(platforms::platform_id.eq(&platform_id))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+    {
+        Ok(count) => count > 0,
+        Err(e) => {
+            error!("Failed to check platform existence: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Failed to check platform: {}", e)
+                })),
+            );
+        }
+    };
+
+    if !platform_exists {
+        debug!("Platform not found: {}", platform_id);
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Platform not found"
+            })),
+        );
+    }
+
+    // Check membership in platform_memberships table
+    let is_member = match platform_memberships::table
+        .filter(platform_memberships::platform_id.eq(&platform_id))
+        .filter(platform_memberships::profile_id.eq(&profile_address))
+        .select(platform_memberships::id)
+        .first::<i32>(&mut conn)
+        .await
+    {
+        Ok(_) => {
+            debug!(
+                "Found membership: profile {} is a member of platform {}",
+                profile_address, platform_id
+            );
+            true
+        }
+        Err(diesel::result::Error::NotFound) => {
+            debug!(
+                "No membership found: profile {} is not a member of platform {}",
+                profile_address, platform_id
+            );
+            false
+        }
+        Err(e) => {
+            error!("Error querying platform_memberships table: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Failed to check membership: {}", e)
+                })),
+            );
+        }
+    };
+
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "is_member": is_member
+        })),
+    )
+}

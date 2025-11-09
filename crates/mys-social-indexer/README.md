@@ -277,7 +277,9 @@ GET /search?query=social&page=2&limit=50
 - **GET /platforms/:id/blocked** - Get profiles blocked by a platform
   - Query: `limit` (optional), `offset` (optional), `page` (optional), `search` (optional - searches usernames and wallet addresses)
 - **GET /platforms/:id/members** - Get platform members with profile information
-  - Query: `limit` (optional), `offset` (optional), `page` (optional), `search` (optional - searches usernames and wallet addresses) 
+  - Query: `limit` (optional), `offset` (optional), `page` (optional), `search` (optional - searches usernames and wallet addresses)
+- **GET /platforms/:id/membership/:profile_id** - Check if a profile is a member of a platform
+  - Accepts wallet addresses (0x...), profile IDs, or usernames for `profile_id` 
 
 ### Post API
 - **GET /posts** - List posts
