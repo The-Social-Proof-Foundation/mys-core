@@ -5,6 +5,7 @@ use anyhow::{anyhow, Result};
 use chrono::Utc;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
+use serde_json;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
@@ -16,6 +17,9 @@ use crate::events::post_event_types::{
     ModerationEvent as PostModerationEvent, PostCreatedEvent, PromotedPostCreatedEvent,
     PromotedPostViewConfirmedEvent, PromotionFundsWithdrawnEvent, PromotionStatusToggledEvent,
     ReactionEvent, RemoveReactionEvent, ReportEvent, RepostEvent, TipEvent,
+    OwnershipTransferEvent, PredictionCreatedEvent, PredictionBetPlacedEvent,
+    PredictionResolvedEvent, PredictionPayoutEvent, PredictionBetWithdrawnEvent,
+    PostParametersUpdatedEvent,
 };
 use crate::events::{event_utils::parse_json_event, parse_event};
 use crate::models::indexer::NewIndexerProgress;
@@ -607,6 +611,33 @@ impl PostEventHandler {
         Ok(())
     }
 
+    /// Process an ownership transfer event
+    async fn process_ownership_transfer(&self, event: &OwnershipTransferEvent, tx_id: &str) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+
+        info!(
+            "Processing ownership transfer: {} from {} to {}",
+            event.object_id, event.previous_owner, event.new_owner
+        );
+
+        if event.is_post {
+            diesel::update(schema::posts::table)
+                .filter(schema::posts::post_id.eq(&event.object_id))
+                .set(schema::posts::owner.eq(&event.new_owner))
+                .execute(&mut conn)
+                .await?;
+        } else {
+            diesel::update(schema::comments::table)
+                .filter(schema::comments::comment_id.eq(&event.object_id))
+                .set(schema::comments::owner.eq(&event.new_owner))
+                .execute(&mut conn)
+                .await?;
+        }
+
+        info!("Successfully processed ownership transfer");
+        Ok(())
+    }
+
     /// Process a promoted post created event
     async fn process_promoted_post_created(
         &self,
@@ -1038,6 +1069,112 @@ impl PostEventHandler {
                         }
                     }
                 }
+                // Handle post updated event
+                else if event.event_type.ends_with("::PostUpdatedEvent") {
+                    match parse_json_event::<ContentUpdateEvent>(&event.data) {
+                        Ok(update_event) => {
+                            if let Err(e) = self.process_content_update(&update_event, &tx_id).await {
+                                error!("Failed to process post updated event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize post updated event: {}", e);
+                        }
+                    }
+                }
+                // Handle comment updated event
+                else if event.event_type.ends_with("::CommentUpdatedEvent") {
+                    match parse_json_event::<ContentUpdateEvent>(&event.data) {
+                        Ok(update_event) => {
+                            if let Err(e) = self.process_content_update(&update_event, &tx_id).await {
+                                error!("Failed to process comment updated event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize comment updated event: {}", e);
+                        }
+                    }
+                }
+                // Handle ownership transfer event
+                else if event.event_type.ends_with("::OwnershipTransferEvent") {
+                    match parse_json_event::<OwnershipTransferEvent>(&event.data) {
+                        Ok(transfer_event) => {
+                            if let Err(e) = self.process_ownership_transfer(&transfer_event, &tx_id).await {
+                                error!("Failed to process ownership transfer event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize ownership transfer event: {}", e);
+                        }
+                    }
+                }
+                // Handle prediction events (logged for now, can be extended later)
+                else if event.event_type.ends_with("::PredictionCreatedEvent") {
+                    match parse_json_event::<PredictionCreatedEvent>(&event.data) {
+                        Ok(prediction_event) => {
+                            info!("Prediction created: post_id={}, prediction_data_id={}", 
+                                prediction_event.post_id, prediction_event.prediction_data_id);
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize prediction created event: {}", e);
+                        }
+                    }
+                }
+                else if event.event_type.ends_with("::PredictionBetPlacedEvent") {
+                    match parse_json_event::<PredictionBetPlacedEvent>(&event.data) {
+                        Ok(bet_event) => {
+                            info!("Prediction bet placed: post_id={}, user={}, amount={}", 
+                                bet_event.post_id, bet_event.user, bet_event.amount);
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize prediction bet placed event: {}", e);
+                        }
+                    }
+                }
+                else if event.event_type.ends_with("::PredictionResolvedEvent") {
+                    match parse_json_event::<PredictionResolvedEvent>(&event.data) {
+                        Ok(resolved_event) => {
+                            info!("Prediction resolved: post_id={}, winning_option_id={}", 
+                                resolved_event.post_id, resolved_event.winning_option_id);
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize prediction resolved event: {}", e);
+                        }
+                    }
+                }
+                else if event.event_type.ends_with("::PredictionPayoutEvent") {
+                    match parse_json_event::<PredictionPayoutEvent>(&event.data) {
+                        Ok(payout_event) => {
+                            info!("Prediction payout: post_id={}, user={}, amount={}", 
+                                payout_event.post_id, payout_event.user, payout_event.amount);
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize prediction payout event: {}", e);
+                        }
+                    }
+                }
+                else if event.event_type.ends_with("::PredictionBetWithdrawnEvent") {
+                    match parse_json_event::<PredictionBetWithdrawnEvent>(&event.data) {
+                        Ok(withdrawn_event) => {
+                            info!("Prediction bet withdrawn: post_id={}, user={}, withdrawal_amount={}", 
+                                withdrawn_event.post_id, withdrawn_event.user, withdrawn_event.withdrawal_amount);
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize prediction bet withdrawn event: {}", e);
+                        }
+                    }
+                }
+                // Handle post parameters updated event
+                else if event.event_type.ends_with("::PostParametersUpdatedEvent") {
+                    match parse_json_event::<PostParametersUpdatedEvent>(&event.data) {
+                        Ok(params_event) => {
+                            info!("Post parameters updated by: {}", params_event.updated_by);
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize post parameters updated event: {}", e);
+                        }
+                    }
+                }
                 // Handle promoted post view confirmed event
                 else if event
                     .event_type
@@ -1146,7 +1283,7 @@ pub async fn handle_event(
     } else if event_type.ends_with("::ReactionEvent") {
         handle_reaction(db, event, transaction_id).await?;
     } else if event_type.ends_with("::RemoveReactionEvent") {
-        // Handle remove reaction event if needed
+        handle_remove_reaction(db, event, transaction_id).await?;
     } else if event_type.ends_with("::RepostEvent") {
         handle_repost(db, event, transaction_id).await?;
     } else if event_type.ends_with("::TipEvent") {
@@ -1161,6 +1298,24 @@ pub async fn handle_event(
         || event_type.ends_with("::CommentDeletedEvent")
     {
         handle_deletion(db, event, transaction_id).await?;
+    } else if event_type.ends_with("::PostUpdatedEvent") {
+        handle_post_updated(db, event, transaction_id).await?;
+    } else if event_type.ends_with("::CommentUpdatedEvent") {
+        handle_comment_updated(db, event, transaction_id).await?;
+    } else if event_type.ends_with("::OwnershipTransferEvent") {
+        handle_ownership_transfer(db, event, transaction_id).await?;
+    } else if event_type.ends_with("::PredictionCreatedEvent") {
+        handle_prediction_created(db, event, transaction_id).await?;
+    } else if event_type.ends_with("::PredictionBetPlacedEvent") {
+        handle_prediction_bet_placed(db, event, transaction_id).await?;
+    } else if event_type.ends_with("::PredictionResolvedEvent") {
+        handle_prediction_resolved(db, event, transaction_id).await?;
+    } else if event_type.ends_with("::PredictionPayoutEvent") {
+        handle_prediction_payout(db, event, transaction_id).await?;
+    } else if event_type.ends_with("::PredictionBetWithdrawnEvent") {
+        handle_prediction_bet_withdrawn(db, event, transaction_id).await?;
+    } else if event_type.ends_with("::PostParametersUpdatedEvent") {
+        handle_post_parameters_updated(db, event, transaction_id).await?;
     } else {
         debug!("Unhandled post event type: {}", event_type);
     }
@@ -1209,6 +1364,35 @@ async fn handle_post_created(
         ))
         .execute(&mut conn)
         .await?;
+
+    // Increment post_count for the profile (with graceful error handling)
+    match diesel::update(crate::schema::profiles::table)
+        .filter(crate::schema::profiles::owner_address.eq(&parsed_event.owner))
+        .set(crate::schema::profiles::post_count.eq(crate::schema::profiles::post_count + 1))
+        .execute(&mut conn)
+        .await
+    {
+        Ok(updated_rows) => {
+            if updated_rows > 0 {
+                info!(
+                    "Successfully incremented post_count for profile: {}",
+                    parsed_event.owner
+                );
+            } else {
+                warn!(
+                    "No profile found to increment post_count for owner: {}",
+                    parsed_event.owner
+                );
+            }
+        }
+        Err(e) => {
+            // Log error but don't fail the transaction
+            error!(
+                "Failed to increment post_count for profile {}: {}. Post creation succeeded.",
+                parsed_event.owner, e
+            );
+        }
+    }
 
     info!("Processed PostCreatedEvent successfully");
     Ok(())
@@ -1573,5 +1757,298 @@ async fn handle_deletion(db: &Arc<Database>, event: &MysEvent, transaction_id: &
     }
 
     info!("Processed DeletionEvent successfully");
+    Ok(())
+}
+
+/// Handle remove reaction event
+async fn handle_remove_reaction(
+    db: &Arc<Database>,
+    event: &MysEvent,
+    transaction_id: &str,
+) -> Result<()> {
+    info!("Processing RemoveReactionEvent");
+
+    let parsed_event = parse_event::<RemoveReactionEvent>(event)
+        .map_err(|e| anyhow!("Failed to parse RemoveReactionEvent: {}", e))?;
+
+    let mut conn = db.get_connection().await?;
+
+    // Update reaction count in the database
+    if parsed_event.is_post {
+        diesel::update(posts::table)
+            .filter(posts::post_id.eq(&parsed_event.object_id))
+            .set(posts::reaction_count.eq(posts::reaction_count - 1))
+            .execute(&mut conn)
+            .await?;
+    } else {
+        diesel::update(comments::table)
+            .filter(comments::comment_id.eq(&parsed_event.object_id))
+            .set(comments::reaction_count.eq(comments::reaction_count - 1))
+            .execute(&mut conn)
+            .await?;
+    }
+
+    info!("Processed RemoveReactionEvent successfully");
+    Ok(())
+}
+
+/// Handle post updated event
+async fn handle_post_updated(
+    db: &Arc<Database>,
+    event: &MysEvent,
+    _transaction_id: &str,
+) -> Result<()> {
+    info!("Processing PostUpdatedEvent");
+
+    let parsed_event = parse_event::<ContentUpdateEvent>(event)
+        .map_err(|e| anyhow!("Failed to parse PostUpdatedEvent: {}", e))?;
+
+    let mut conn = db.get_connection().await?;
+
+    // Convert media_urls and mentions to JSON if present
+    let media_urls_json: Option<serde_json::Value> = parsed_event
+        .media_urls
+        .as_ref()
+        .map(|urls| serde_json::to_value(urls).unwrap_or(serde_json::json!(null)));
+
+    let mentions_json: Option<serde_json::Value> = parsed_event
+        .mentions
+        .as_ref()
+        .map(|mentions| serde_json::to_value(mentions).unwrap_or(serde_json::json!(null)));
+
+    // Parse metadata JSON if present
+    let metadata_json: Option<serde_json::Value> = parsed_event
+        .metadata_json
+        .as_ref()
+        .map(|json_str| serde_json::from_str(json_str).unwrap_or(serde_json::json!(null)));
+
+    // Update post content
+    diesel::update(posts::table)
+        .filter(posts::post_id.eq(&parsed_event.object_id))
+        .set((
+            posts::content.eq(&parsed_event.content),
+            posts::media_urls.eq(&media_urls_json),
+            posts::mentions.eq(&mentions_json),
+            posts::metadata_json.eq(&metadata_json),
+            posts::updated_at.eq(Some(parsed_event.updated_at as i64)),
+        ))
+        .execute(&mut conn)
+        .await?;
+
+    info!("Processed PostUpdatedEvent successfully");
+    Ok(())
+}
+
+/// Handle comment updated event
+async fn handle_comment_updated(
+    db: &Arc<Database>,
+    event: &MysEvent,
+    _transaction_id: &str,
+) -> Result<()> {
+    info!("Processing CommentUpdatedEvent");
+
+    let parsed_event = parse_event::<ContentUpdateEvent>(event)
+        .map_err(|e| anyhow!("Failed to parse CommentUpdatedEvent: {}", e))?;
+
+    let mut conn = db.get_connection().await?;
+
+    // Convert media_urls and mentions to JSON if present
+    let media_urls_json: Option<serde_json::Value> = parsed_event
+        .media_urls
+        .as_ref()
+        .map(|urls| serde_json::to_value(urls).unwrap_or(serde_json::json!(null)));
+
+    let mentions_json: Option<serde_json::Value> = parsed_event
+        .mentions
+        .as_ref()
+        .map(|mentions| serde_json::to_value(mentions).unwrap_or(serde_json::json!(null)));
+
+    // Parse metadata JSON if present
+    let metadata_json: Option<serde_json::Value> = parsed_event
+        .metadata_json
+        .as_ref()
+        .map(|json_str| serde_json::from_str(json_str).unwrap_or(serde_json::json!(null)));
+
+    // Update comment content
+    diesel::update(comments::table)
+        .filter(comments::comment_id.eq(&parsed_event.object_id))
+        .set((
+            comments::content.eq(&parsed_event.content),
+            comments::media_urls.eq(&media_urls_json),
+            comments::mentions.eq(&mentions_json),
+            comments::metadata_json.eq(&metadata_json),
+            comments::updated_at.eq(Some(parsed_event.updated_at as i64)),
+        ))
+        .execute(&mut conn)
+        .await?;
+
+    info!("Processed CommentUpdatedEvent successfully");
+    Ok(())
+}
+
+/// Handle ownership transfer event
+async fn handle_ownership_transfer(
+    db: &Arc<Database>,
+    event: &MysEvent,
+    _transaction_id: &str,
+) -> Result<()> {
+    info!("Processing OwnershipTransferEvent");
+
+    let parsed_event = parse_event::<OwnershipTransferEvent>(event)
+        .map_err(|e| anyhow!("Failed to parse OwnershipTransferEvent: {}", e))?;
+
+    let mut conn = db.get_connection().await?;
+
+    if parsed_event.is_post {
+        // Update post ownership
+        diesel::update(posts::table)
+            .filter(posts::post_id.eq(&parsed_event.object_id))
+            .set(posts::owner.eq(&parsed_event.new_owner))
+            .execute(&mut conn)
+            .await?;
+    } else {
+        // Update comment ownership
+        diesel::update(comments::table)
+            .filter(comments::comment_id.eq(&parsed_event.object_id))
+            .set(comments::owner.eq(&parsed_event.new_owner))
+            .execute(&mut conn)
+            .await?;
+    }
+
+    info!("Processed OwnershipTransferEvent successfully");
+    Ok(())
+}
+
+/// Handle prediction created event
+async fn handle_prediction_created(
+    _db: &Arc<Database>,
+    event: &MysEvent,
+    _transaction_id: &str,
+) -> Result<()> {
+    info!("Processing PredictionCreatedEvent");
+
+    let parsed_event = parse_event::<PredictionCreatedEvent>(event)
+        .map_err(|e| anyhow!("Failed to parse PredictionCreatedEvent: {}", e))?;
+
+    // Prediction posts are handled as regular posts, but we log this for tracking
+    info!(
+        "Prediction post created: post_id={}, prediction_data_id={}, options={:?}",
+        parsed_event.post_id, parsed_event.prediction_data_id, parsed_event.options
+    );
+
+    // The post itself is already handled by PostCreatedEvent
+    // This handler is for tracking prediction-specific metadata if needed in the future
+    Ok(())
+}
+
+/// Handle prediction bet placed event
+async fn handle_prediction_bet_placed(
+    _db: &Arc<Database>,
+    event: &MysEvent,
+    _transaction_id: &str,
+) -> Result<()> {
+    info!("Processing PredictionBetPlacedEvent");
+
+    let parsed_event = parse_event::<PredictionBetPlacedEvent>(event)
+        .map_err(|e| anyhow!("Failed to parse PredictionBetPlacedEvent: {}", e))?;
+
+    info!(
+        "Prediction bet placed: post_id={}, user={}, option_id={}, amount={}",
+        parsed_event.post_id, parsed_event.user, parsed_event.option_id, parsed_event.amount
+    );
+
+    // Log prediction bets for analytics
+    // Future: Could store in a predictions_bets table if needed
+    Ok(())
+}
+
+/// Handle prediction resolved event
+async fn handle_prediction_resolved(
+    _db: &Arc<Database>,
+    event: &MysEvent,
+    _transaction_id: &str,
+) -> Result<()> {
+    info!("Processing PredictionResolvedEvent");
+
+    let parsed_event = parse_event::<PredictionResolvedEvent>(event)
+        .map_err(|e| anyhow!("Failed to parse PredictionResolvedEvent: {}", e))?;
+
+    info!(
+        "Prediction resolved: post_id={}, winning_option_id={}, total_bet_amount={}, winning_amount={}, resolved_by={}",
+        parsed_event.post_id,
+        parsed_event.winning_option_id,
+        parsed_event.total_bet_amount,
+        parsed_event.winning_amount,
+        parsed_event.resolved_by
+    );
+
+    // Log prediction resolution for analytics
+    // Future: Could update a predictions table with resolution status
+    Ok(())
+}
+
+/// Handle prediction payout event
+async fn handle_prediction_payout(
+    _db: &Arc<Database>,
+    event: &MysEvent,
+    _transaction_id: &str,
+) -> Result<()> {
+    info!("Processing PredictionPayoutEvent");
+
+    let parsed_event = parse_event::<PredictionPayoutEvent>(event)
+        .map_err(|e| anyhow!("Failed to parse PredictionPayoutEvent: {}", e))?;
+
+    info!(
+        "Prediction payout: post_id={}, user={}, amount={}",
+        parsed_event.post_id, parsed_event.user, parsed_event.amount
+    );
+
+    // Log prediction payouts for analytics
+    // Future: Could track payouts in a predictions_payouts table
+    Ok(())
+}
+
+/// Handle prediction bet withdrawn event
+async fn handle_prediction_bet_withdrawn(
+    _db: &Arc<Database>,
+    event: &MysEvent,
+    _transaction_id: &str,
+) -> Result<()> {
+    info!("Processing PredictionBetWithdrawnEvent");
+
+    let parsed_event = parse_event::<PredictionBetWithdrawnEvent>(event)
+        .map_err(|e| anyhow!("Failed to parse PredictionBetWithdrawnEvent: {}", e))?;
+
+    info!(
+        "Prediction bet withdrawn: post_id={}, user={}, option_id={}, original_amount={}, withdrawal_amount={}",
+        parsed_event.post_id,
+        parsed_event.user,
+        parsed_event.option_id,
+        parsed_event.original_amount,
+        parsed_event.withdrawal_amount
+    );
+
+    // Log prediction bet withdrawals for analytics
+    Ok(())
+}
+
+/// Handle post parameters updated event
+async fn handle_post_parameters_updated(
+    _db: &Arc<Database>,
+    event: &MysEvent,
+    _transaction_id: &str,
+) -> Result<()> {
+    info!("Processing PostParametersUpdatedEvent");
+
+    let parsed_event = parse_event::<PostParametersUpdatedEvent>(event)
+        .map_err(|e| anyhow!("Failed to parse PostParametersUpdatedEvent: {}", e))?;
+
+    info!(
+        "Post parameters updated by: {}, max_content_length={}, max_media_urls={}",
+        parsed_event.updated_by, parsed_event.max_content_length, parsed_event.max_media_urls
+    );
+
+    // Log configuration changes for audit purposes
+    // Future: Could store in a post_config_history table
     Ok(())
 }

@@ -27,6 +27,7 @@ use crate::events::{
     SpotPayoutEvent as SpotPayoutEvt,
     SpotRefundEvent as SpotRefundEvt,
     TokensVestedEvent, TokensClaimedEvent,
+    PostCreatedEvent,
 };
 use crate::models::profile::{NewProfile, NewProfilePlatformLink, UpdateProfile};
 use crate::models::username::{NewUsername, UpdateUsername, NewUsernameHistory};
@@ -1402,6 +1403,13 @@ impl Worker for SocialIndexerWorker {
                         }
                     },
                     
+                    // Post events - check for ::post:: module specifically
+                    t if t.contains("::post::") && t.ends_with("PostCreatedEvent") => {
+                        info!("🚨 WORKER: PostCreatedEvent detected - routing to post handler");
+                        // Use the handler to process post events
+                        if let Err(e) = crate::blockchain::handler::handle_event(&self.db, event, &event.tx_digest.clone().unwrap_or_default()).await {
+                            error!("Failed to process PostCreatedEvent: {}", e);
+                        }
                     // Content events
                     t if t.starts_with(MODULE_PREFIX_CONTENT) && t.ends_with("ContentCreatedEvent") => {
                         if let Ok(event) = parse_event::<ContentCreatedEvent>(event) {
