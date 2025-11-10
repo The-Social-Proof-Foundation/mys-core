@@ -1226,20 +1226,10 @@ impl PlatformEventHandler {
                         > 0;
 
                     if !membership_exists {
-                        // Use blockchain event timestamp if available, otherwise use current time
-                        // The event.timestamp field is not a real timestamp but an epoch/sequence number
-                        let joined_at = if let Some(timestamp_ms) = event_timestamp_ms {
-                            // Convert milliseconds to seconds for from_timestamp
-                            chrono::DateTime::from_timestamp(
-                                (timestamp_ms / 1000) as i64,
-                                0,
-                            )
+                        // Use current time for joined_at, matching platform creation style
+                        let joined_at = chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                             .unwrap_or_else(|| chrono::Utc::now())
-                            .naive_utc()
-                        } else {
-                            // Fallback to current time if no blockchain event timestamp
-                            chrono::Utc::now().naive_utc()
-                        };
+                            .naive_utc();
 
                         // Create new membership
                         let new_membership = NewPlatformMembership {
