@@ -251,7 +251,7 @@ GET /search?query=social&page=2&limit=50
 - **GET /profiles/:id/platforms** - Get platform membership events (history)
 - **GET /profiles/:id/platform-memberships** - Get all platforms a profile is currently a member of
   - Query: `limit` (optional), `offset` (optional), `page` (optional), `search` (optional - searches platform name, platform ID, or tagline)
-  - Accepts wallet addresses (0x...), profile IDs, or usernames for `id`
+  - Accepts profile ID for `id` parameter (wallet addresses starting with "0x" are also supported for legacy compatibility)
 - **GET /profiles/:id/blocking** - Get blocking history
 
 ### Social Graph API

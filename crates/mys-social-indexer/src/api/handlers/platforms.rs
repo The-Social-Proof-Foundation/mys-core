@@ -1332,11 +1332,12 @@ pub async fn get_profile_platforms(
 
     // Resolve profile_id to wallet address if needed
     // profile_id in platform_memberships is the wallet address (owner_address)
-    // Supports: wallet address (0x...), profile_id, or username
+    // Supports: wallet address (if starts with "0x"), otherwise treats as profile_id
     let profile_address = if profile_id.starts_with("0x") {
+        // It's already a wallet address
         profile_id.clone()
     } else {
-        // Try to resolve as profile_id first
+        // It might be a profile ID, look up the wallet address
         match profiles::table
             .filter(profiles::profile_id.eq(&profile_id))
             .select(profiles::owner_address)
@@ -1348,37 +1349,9 @@ pub async fn get_profile_platforms(
                 addr
             }
             Err(diesel::result::Error::NotFound) => {
-                // If profile_id not found, try resolving as username
-                match profiles::table
-                    .filter(profiles::username.eq(&profile_id))
-                    .select(profiles::owner_address)
-                    .first::<String>(&mut conn)
-                    .await
-                {
-                    Ok(addr) => {
-                        debug!("Resolved username {} to wallet address {}", profile_id, addr);
-                        addr
-                    }
-                    Err(diesel::result::Error::NotFound) => {
-                        // If neither found, return error
-                        debug!("Profile ID or username not found: {}", profile_id);
-                        return (
-                            StatusCode::NOT_FOUND,
-                            Json(serde_json::json!({
-                                "error": format!("Profile not found: {}", profile_id)
-                            })),
-                        );
-                    }
-                    Err(e) => {
-                        error!("Error resolving username: {}", e);
-                        return (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            Json(serde_json::json!({
-                                "error": format!("Failed to resolve username: {}", e)
-                            })),
-                        );
-                    }
-                }
+                // If profile_id not found, assume it's a wallet address (for legacy data)
+                debug!("Profile ID not found, treating as wallet address: {}", profile_id);
+                profile_id.clone()
             }
             Err(e) => {
                 error!("Error resolving profile_id: {}", e);
