@@ -984,11 +984,11 @@ pub async fn get_platform_members(
 
     let mut count_query = platform_memberships::table
         .filter(platform_memberships::platform_id.eq(&platform_id))
-        .inner_join(
+        .left_join(
             profiles::table.on(
-                profiles::owner_address
-                    .eq(platform_memberships::profile_id)
-                    .or(profiles::username.eq(platform_memberships::profile_id)),
+                diesel::dsl::sql::<diesel::sql_types::Bool>(
+                    "profiles.owner_address = platform_memberships.profile_id OR profiles.username = platform_memberships.profile_id OR profiles.profile_id = platform_memberships.profile_id",
+                )
             ),
         )
         .into_boxed();
@@ -1012,17 +1012,17 @@ pub async fn get_platform_members(
 
     let mut members_query = platform_memberships::table
         .filter(platform_memberships::platform_id.eq(&platform_id))
-        .inner_join(
+        .left_join(
             profiles::table.on(
-                profiles::owner_address
-                    .eq(platform_memberships::profile_id)
-                    .or(profiles::username.eq(platform_memberships::profile_id)),
+                diesel::dsl::sql::<diesel::sql_types::Bool>(
+                    "profiles.owner_address = platform_memberships.profile_id OR profiles.username = platform_memberships.profile_id OR profiles.profile_id = platform_memberships.profile_id",
+                )
             ),
         )
         .select((
             platform_memberships::profile_id,
-            profiles::owner_address,
-            profiles::username,
+            profiles::owner_address.nullable(),
+            profiles::username.nullable(),
             profiles::display_name.nullable(),
             profiles::profile_photo.nullable(),
             platform_memberships::joined_at,
@@ -1042,8 +1042,10 @@ pub async fn get_platform_members(
     }
 
     let members_result = members_query
-        .load::<(String, String, String, Option<String>, Option<String>, NaiveDateTime)>(&mut conn)
+        .load::<(String, Option<String>, Option<String>, Option<String>, Option<String>, NaiveDateTime)>(&mut conn)
         .await;
+
+    debug!("Members query result: {:?}", members_result.is_ok());
 
     match members_result {
         Ok(members_data) => {
@@ -1051,9 +1053,9 @@ pub async fn get_platform_members(
                 .into_iter()
                 .map(|(profile_id, wallet_address, username, display_name, profile_photo, joined_at)| {
                     PlatformMember {
-                        profile_id,
-                        wallet_address,
-                        username,
+                        profile_id: profile_id.clone(),
+                        wallet_address: wallet_address.unwrap_or_else(|| profile_id.clone()),
+                        username: username.unwrap_or_else(|| "unknown".to_string()),
                         fullname: display_name,
                         profile_photo,
                         joined_at,
