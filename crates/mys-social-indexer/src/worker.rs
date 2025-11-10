@@ -1451,9 +1451,30 @@ impl Worker for SocialIndexerWorker {
                     // Post events - check for ::post:: module specifically
                     t if t.contains("::post::") && t.ends_with("PostCreatedEvent") => {
                         info!("🚨 WORKER: PostCreatedEvent detected - routing to post handler");
+                        
+                        // Extract transaction digest from event, with fallback
+                        let tx_digest = event.tx_digest.clone().unwrap_or_else(|| {
+                            warn!("No transaction digest found in event for PostCreatedEvent, using empty string");
+                            String::new()
+                        });
+                        
+                        info!("📝 WORKER: Processing PostCreatedEvent");
+                        info!("📝 WORKER: Event type: {}", type_str);
+                        info!("📝 WORKER: Transaction digest: {}", tx_digest);
+                        info!("📝 WORKER: Event data: {}", serde_json::to_string_pretty(event).unwrap_or_default());
+                        
                         // Use the handler to process post events
-                        if let Err(e) = crate::blockchain::handler::handle_event(&self.db, event, &event.tx_digest.clone().unwrap_or_default()).await {
-                            error!("Failed to process PostCreatedEvent: {}", e);
+                        match crate::blockchain::handler::handle_event(&self.db, event, &tx_digest).await {
+                            Ok(_) => {
+                                info!("✅ WORKER: Successfully processed PostCreatedEvent");
+                            }
+                            Err(e) => {
+                                error!("❌ WORKER: Failed to process PostCreatedEvent");
+                                error!("❌ WORKER: Error: {}", e);
+                                error!("❌ WORKER: Error chain: {:?}", e);
+                                error!("❌ WORKER: Event type: {}", type_str);
+                                error!("❌ WORKER: Transaction digest: {}", tx_digest);
+                            }
                         }
                     },
                     // Content events
