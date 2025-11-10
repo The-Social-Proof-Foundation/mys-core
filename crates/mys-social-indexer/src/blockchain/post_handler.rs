@@ -85,13 +85,23 @@ impl PostEventHandler {
     }
 
     /// Process a post created event
-    async fn process_post_created(&self, event: &PostCreatedEvent, tx_id: &str) -> Result<()> {
+    async fn process_post_created(&self, event: &PostCreatedEvent, tx_id: &str, timestamp_ms: Option<u64>) -> Result<()> {
         let mut conn = self.get_connection().await?;
 
         info!("Processing post created: {}", event.post_id);
 
         // Convert event to database model
         let mut new_post = event.into_model()?;
+        
+        // If created_at is 0 (missing from event), use blockchain event timestamp
+        if new_post.created_at == 0 {
+            if let Some(ts_ms) = timestamp_ms {
+                new_post.created_at = (ts_ms / 1000) as i64;
+                // Update the ID to use the timestamp
+                new_post.id = format!("{}:{}", event.post_id, new_post.created_at);
+            }
+        }
+        
         new_post.transaction_id = tx_id.to_string();
 
         // Insert into the database
@@ -911,7 +921,7 @@ impl PostEventHandler {
                 if event.event_type.ends_with("::PostCreatedEvent") {
                     match parse_json_event::<PostCreatedEvent>(&event.data) {
                         Ok(post_event) => {
-                            if let Err(e) = self.process_post_created(&post_event, &tx_id).await {
+                            if let Err(e) = self.process_post_created(&post_event, &tx_id, Some(event.timestamp_ms)).await {
                                 error!("Failed to process post created event: {}", e);
                             }
                         }
@@ -1342,6 +1352,16 @@ async fn handle_post_created(
 
     // Convert event to model
     let mut new_post = parsed_event.into_model()?;
+    
+    // If created_at is 0 (missing from event), use current time
+    if new_post.created_at == 0 {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default();
+        new_post.created_at = now.as_secs() as i64;
+        // Update the ID to use the timestamp
+        new_post.id = format!("{}:{}", parsed_event.post_id, new_post.created_at);
+    }
 
     // Set the transaction ID
     new_post.transaction_id = transaction_id.to_string();

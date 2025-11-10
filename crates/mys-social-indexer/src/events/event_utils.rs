@@ -179,3 +179,29 @@ where
         Err(e) => Err(e),
     }
 }
+
+/// Helper function to deserialize u64 from string/number with default to 0 if missing
+/// Used for fields that may not be present in older event formats
+pub fn deserialize_u64_from_string_optional<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrNumber {
+        String(String),
+        Number(u64),
+    }
+
+    match StringOrNumber::deserialize(deserializer) {
+        Ok(StringOrNumber::String(s)) => {
+            if s.is_empty() {
+                Ok(0)
+            } else {
+                s.parse::<u64>().map_err(serde::de::Error::custom)
+            }
+        }
+        Ok(StringOrNumber::Number(n)) => Ok(n),
+        Err(_) => Ok(0),
+    }
+}

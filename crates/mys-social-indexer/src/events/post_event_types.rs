@@ -1,7 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::events::event_utils::deserialize_u64_from_string;
+use crate::events::event_utils::{deserialize_u64_from_string, deserialize_u64_from_string_optional};
 use serde::{Deserialize, Serialize};
 
 /// Type of post event
@@ -34,16 +34,18 @@ pub struct PostCreatedEvent {
     pub owner: String,
     pub profile_id: String,
     pub content: String,
+    #[serde(default)]
     pub media_urls: Option<Vec<String>>,
     pub mentions: Option<Vec<String>>,
+    #[serde(default)]
     pub metadata_json: Option<String>,
     pub post_type: String,
     pub parent_post_id: Option<String>,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    #[serde(default, deserialize_with = "deserialize_u64_from_string_optional")]
     pub created_at: u64,
-    /// Reference to MyData if attached
+    #[serde(default)]
     pub mydata_id: Option<String>,
-    /// Reference to promotion data if this is a promoted post
+    #[serde(default)]
     pub promotion_id: Option<String>,
 }
 
