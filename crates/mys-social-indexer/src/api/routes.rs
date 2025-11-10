@@ -26,7 +26,7 @@ use crate::api::handlers::mydata::{
 use crate::api::handlers::platforms::{
     check_platform_membership, get_approved_platforms, get_platform_approval_status,
     get_platform_blocked_profiles, get_platform_by_id, get_platform_members,
-    get_platform_moderators, get_platforms,
+    get_platform_moderators, get_platforms, get_profile_platforms,
 };
 use crate::api::handlers::posts::{
     get_post_by_id, get_post_comments, get_post_promotion, get_post_reactions, get_post_reposts,
@@ -104,6 +104,7 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/profiles/:id/posts", get(get_profile_posts))
         .route("/profiles/:id/events", get(get_profile_events))
         .route("/profiles/:id/platforms", get(get_platform_memberships))
+        .route("/profiles/:id/platform-memberships", get(get_profile_platforms))
         .route("/profiles/:id/blocking", get(get_blocking_history))
         // Social Graph endpoints
         .route("/profiles/:id/following", get(get_following))

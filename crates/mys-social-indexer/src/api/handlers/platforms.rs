@@ -1271,3 +1271,318 @@ pub async fn check_platform_membership(
         }
     }
 }
+
+/// Platform membership with platform details
+#[derive(Debug, Serialize)]
+pub struct PlatformMembership {
+    #[serde(flatten)]
+    pub platform: PlatformWithDetails,
+    pub joined_at: NaiveDateTime,
+}
+
+/// Get all platforms a profile is a member of
+pub async fn get_profile_platforms(
+    Path(profile_id): Path<String>,
+    Query(query): Query<PlatformQuery>,
+    State(db_pool): State<DbPool>,
+) -> impl IntoResponse {
+    debug!("Getting platforms for profile: {}", profile_id);
+
+    // Input validation
+    if profile_id.trim().is_empty() {
+        debug!("Invalid profile_id: empty string");
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Profile ID is required"
+            })),
+        );
+    }
+
+    // Basic length validation to prevent potential attacks
+    if profile_id.len() > 256 {
+        debug!("Invalid profile_id: too long");
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Profile ID must be 256 characters or less"
+            })),
+        );
+    }
+
+    let limit = query.limit.unwrap_or(50);
+    let offset = query.offset.unwrap_or(0);
+    let page = query.page.unwrap_or(1);
+
+    // If page is provided, calculate the offset
+    let offset = if page > 1 { (page - 1) * limit } else { offset };
+
+    let mut conn = match db_pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("Database connection error: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database error: {}", e)
+                })),
+            );
+        }
+    };
+
+    // Resolve profile_id to wallet address if needed
+    // profile_id in platform_memberships is the wallet address (owner_address)
+    // Supports: wallet address (0x...), profile_id, or username
+    let profile_address = if profile_id.starts_with("0x") {
+        profile_id.clone()
+    } else {
+        // Try to resolve as profile_id first
+        match profiles::table
+            .filter(profiles::profile_id.eq(&profile_id))
+            .select(profiles::owner_address)
+            .first::<String>(&mut conn)
+            .await
+        {
+            Ok(addr) => {
+                debug!("Resolved profile_id {} to wallet address {}", profile_id, addr);
+                addr
+            }
+            Err(diesel::result::Error::NotFound) => {
+                // If profile_id not found, try resolving as username
+                match profiles::table
+                    .filter(profiles::username.eq(&profile_id))
+                    .select(profiles::owner_address)
+                    .first::<String>(&mut conn)
+                    .await
+                {
+                    Ok(addr) => {
+                        debug!("Resolved username {} to wallet address {}", profile_id, addr);
+                        addr
+                    }
+                    Err(diesel::result::Error::NotFound) => {
+                        // If neither found, return error
+                        debug!("Profile ID or username not found: {}", profile_id);
+                        return (
+                            StatusCode::NOT_FOUND,
+                            Json(serde_json::json!({
+                                "error": format!("Profile not found: {}", profile_id)
+                            })),
+                        );
+                    }
+                    Err(e) => {
+                        error!("Error resolving username: {}", e);
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(serde_json::json!({
+                                "error": format!("Failed to resolve username: {}", e)
+                            })),
+                        );
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Error resolving profile_id: {}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": format!("Failed to resolve profile ID: {}", e)
+                    })),
+                );
+            }
+        }
+    };
+
+    // Prepare search pattern if provided
+    let search_pattern = query.search.as_ref().and_then(|s| {
+        let trimmed = s.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(format!("%{}%", trimmed))
+        }
+    });
+
+    // Build count query
+    let mut count_query = platform_memberships::table
+        .filter(platform_memberships::profile_id.eq(&profile_address))
+        .inner_join(platforms::table.on(platforms::platform_id.eq(platform_memberships::platform_id)))
+        .into_boxed();
+
+    // Apply search filter to count query if provided
+    if let Some(ref pattern) = search_pattern {
+        count_query = count_query.filter(
+            platforms::name
+                .ilike(pattern.clone())
+                .or(platforms::platform_id.ilike(pattern.clone()))
+                .or(platforms::tagline.ilike(pattern.clone())),
+        );
+    }
+
+    // Get the total count for pagination info
+    let total_count = match count_query.count().get_result::<i64>(&mut conn).await {
+        Ok(count) => count,
+        Err(e) => {
+            error!("Failed to get platform memberships count: {}", e);
+            0
+        }
+    };
+
+    let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
+
+    // Build main query - join platform_memberships with platforms
+    let mut platforms_query = platform_memberships::table
+        .filter(platform_memberships::profile_id.eq(&profile_address))
+        .inner_join(platforms::table.on(platforms::platform_id.eq(platform_memberships::platform_id)))
+        .select((
+            platforms::id,
+            platforms::platform_id,
+            platforms::name,
+            platforms::tagline,
+            platforms::description,
+            platforms::logo,
+            platforms::developer_address,
+            platforms::terms_of_service,
+            platforms::privacy_policy,
+            platforms::platform_names,
+            platforms::links,
+            platforms::status,
+            platforms::release_date,
+            platforms::shutdown_date,
+            platforms::created_at,
+            platforms::updated_at,
+            platforms::is_approved,
+            platforms::approval_changed_at,
+            platforms::approved_by,
+            platforms::wants_dao_governance,
+            platforms::governance_registry_id,
+            platforms::delegate_count,
+            platforms::delegate_term_epochs,
+            platforms::max_votes_per_user,
+            platforms::min_on_chain_age_days,
+            platforms::proposal_submission_cost,
+            platforms::quadratic_base_cost,
+            platforms::quorum_votes,
+            platforms::voting_period_epochs,
+            platforms::treasury,
+            platforms::version,
+            platform_memberships::joined_at,
+        ))
+        .order_by(platform_memberships::joined_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .into_boxed();
+
+    // Apply search filter to platforms query if provided
+    if let Some(ref pattern) = search_pattern {
+        platforms_query = platforms_query.filter(
+            platforms::name
+                .ilike(pattern.clone())
+                .or(platforms::platform_id.ilike(pattern.clone()))
+                .or(platforms::tagline.ilike(pattern.clone())),
+        );
+    }
+
+    let platforms_result = platforms_query
+        .load::<(i32, String, String, String, Option<String>, Option<String>, String, Option<String>, Option<String>, Option<serde_json::Value>, Option<serde_json::Value>, i16, Option<String>, Option<String>, NaiveDateTime, NaiveDateTime, bool, Option<NaiveDateTime>, Option<String>, Option<bool>, Option<String>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, NaiveDateTime)>(&mut conn)
+        .await;
+
+    match platforms_result {
+        Ok(platforms_data) => {
+            let mut platform_memberships = Vec::with_capacity(platforms_data.len());
+
+            for (id, platform_id, name, tagline, description, logo, developer_address, terms_of_service, privacy_policy, platform_names, links, status, release_date, shutdown_date, created_at, updated_at, is_approved, approval_changed_at, approved_by, wants_dao_governance, governance_registry_id, delegate_count, delegate_term_epochs, max_votes_per_user, min_on_chain_age_days, proposal_submission_cost, quadratic_base_cost, quorum_votes, voting_period_epochs, treasury, version, joined_at) in platforms_data {
+                // Get moderator count
+                let moderator_count = platform_moderators::table
+                    .filter(platform_moderators::platform_id.eq(&platform_id))
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0);
+
+                // Get blocked profiles count
+                let blocked_count = platform_blocked_profiles::table
+                    .filter(platform_blocked_profiles::platform_id.eq(&platform_id))
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0);
+
+                // Convert platform_names from JSON to Vec<String>
+                let platform_names_vec: Option<Vec<String>> = platform_names
+                    .as_ref()
+                    .and_then(|json| serde_json::from_value(json.clone()).ok());
+
+                // Convert links from JSON to Vec<String>
+                let links_vec: Option<Vec<String>> = links
+                    .as_ref()
+                    .and_then(|json| serde_json::from_value(json.clone()).ok());
+
+                // Build platform with details
+                let platform = PlatformWithDetails {
+                    id,
+                    platform_id: platform_id.clone(),
+                    name,
+                    tagline,
+                    description,
+                    logo,
+                    developer_address,
+                    terms_of_service,
+                    privacy_policy,
+                    platform_names: platform_names_vec,
+                    links: links_vec,
+                    status,
+                    status_text: PlatformWithDetails::status_to_text(status),
+                    release_date,
+                    shutdown_date,
+                    created_at,
+                    updated_at,
+                    is_approved,
+                    approval_changed_at,
+                    approved_by,
+                    wants_dao_governance,
+                    governance_registry_id,
+                    delegate_count,
+                    delegate_term_epochs,
+                    max_votes_per_user,
+                    min_on_chain_age_days,
+                    proposal_submission_cost,
+                    quadratic_base_cost,
+                    quorum_votes,
+                    voting_period_epochs,
+                    treasury,
+                    version,
+                    moderator_count,
+                    blocked_profiles_count: blocked_count,
+                };
+
+                platform_memberships.push(PlatformMembership {
+                    platform,
+                    joined_at,
+                });
+            }
+
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "platforms": platform_memberships,
+                    "pagination": {
+                        "total": total_count,
+                        "limit": limit,
+                        "offset": offset,
+                        "page": page,
+                        "total_pages": total_pages
+                    }
+                })),
+            )
+        }
+        Err(e) => {
+            error!("Failed to fetch profile platforms: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Failed to fetch profile platforms: {}", e)
+                })),
+            )
+        }
+    }
+}

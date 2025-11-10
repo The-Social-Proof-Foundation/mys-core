@@ -248,7 +248,10 @@ GET /search?query=social&page=2&limit=50
 - **GET /profiles/username/:username/availability** - Check if a username is available for registration
 - **GET /profiles/:id/posts** - Get posts by a profile
 - **GET /profiles/:id/events** - Get profile events
-- **GET /profiles/:id/platforms** - Get platform memberships
+- **GET /profiles/:id/platforms** - Get platform membership events (history)
+- **GET /profiles/:id/platform-memberships** - Get all platforms a profile is currently a member of
+  - Query: `limit` (optional), `offset` (optional), `page` (optional), `search` (optional - searches platform name, platform ID, or tagline)
+  - Accepts wallet addresses (0x...), profile IDs, or usernames for `id`
 - **GET /profiles/:id/blocking** - Get blocking history
 
 ### Social Graph API
