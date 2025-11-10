@@ -36,6 +36,19 @@ module social_contracts::platform {
     const EWrongVersion: u64 = 7;
     const EInsufficientTreasuryFunds: u64 = 8;
     const EEmptyRecipientsList: u64 = 9;
+    const EInvalidBadgeType: u64 = 10;
+    const EBadgeNameTooLong: u64 = 11;
+    const EBadgeDescriptionTooLong: u64 = 12;
+    const EBadgeImageUrlTooLong: u64 = 13;
+    const EInvalidReasoning: u64 = 14;
+
+    /// Maximum lengths for badge fields
+    const MAX_BADGE_NAME_LENGTH: u64 = 100;
+    const MAX_BADGE_DESCRIPTION_LENGTH: u64 = 500;
+    const MAX_BADGE_IMAGE_URL_LENGTH: u64 = 2048;
+    
+    /// Maximum length for approval reasoning
+    const MAX_REASONING_LENGTH: u64 = 2000; // Max characters for approval reasoning
 
     /// Field names for dynamic fields
     const MODERATORS_FIELD: vector<u8> = b"moderators";
@@ -187,6 +200,7 @@ module social_contracts::platform {
         platform_id: address,
         approved: bool,
         changed_by: address,
+        reasoning: Option<String>, // Optional reasoning for approval/disapproval
     }
 
     /// Event emitted when a user joins a platform
@@ -422,8 +436,8 @@ module social_contracts::platform {
             platform.governance_registry_id = option::some(registry_id);
         };
         
-        // Transfer platform to developer
-        transfer::transfer(platform, developer);
+        // Share platform as a shared object (publicly accessible)
+        transfer::share_object(platform);
     }
 
     /// Update platform information
@@ -507,6 +521,9 @@ module social_contracts::platform {
         amount: u64,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        
         // Verify caller is platform developer or moderator
         let caller = tx_context::sender(ctx);
         assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
@@ -525,6 +542,9 @@ module social_contracts::platform {
         moderator_address: address,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        
         // Verify caller is platform developer
         let caller = tx_context::sender(ctx);
         assert!(platform.developer == caller, EUnauthorized);
@@ -551,6 +571,9 @@ module social_contracts::platform {
         moderator_address: address,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        
         // Verify caller is platform developer
         let caller = tx_context::sender(ctx);
         assert!(platform.developer == caller, EUnauthorized);
@@ -580,6 +603,9 @@ module social_contracts::platform {
         profile_id: address,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        
         // Verify caller is platform developer or moderator
         let caller = tx_context::sender(ctx);
         assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
@@ -613,6 +639,9 @@ module social_contracts::platform {
         profile_id: address,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        
         // Verify caller is platform developer or moderator
         let caller = tx_context::sender(ctx);
         assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
@@ -641,10 +670,12 @@ module social_contracts::platform {
     }
 
     /// Toggle platform approval status (requires PlatformAdminCap only)
+    /// Optional reasoning can be provided to explain the decision
     public entry fun toggle_platform_approval(
         registry: &mut PlatformRegistry,
         platform_id: address,
         _: &PlatformAdminCap,
+        reasoning: Option<String>,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -654,6 +685,12 @@ module social_contracts::platform {
         // Verify the platform exists in the registry
         assert!(table::contains(&registry.platform_approvals, platform_id), EUnauthorized);
         
+        // Validate reasoning length if provided
+        if (option::is_some(&reasoning)) {
+            let reasoning_val = option::borrow(&reasoning);
+            assert!(string::length(reasoning_val) <= MAX_REASONING_LENGTH, EInvalidReasoning);
+        };
+        
         // Get current approval status and toggle it
         let current_approval = *table::borrow(&registry.platform_approvals, platform_id);
         let new_approval = !current_approval;
@@ -661,11 +698,12 @@ module social_contracts::platform {
         // Update the approval status in the registry
         *table::borrow_mut(&mut registry.platform_approvals, platform_id) = new_approval;
         
-        // Emit approval status changed event
+        // Emit approval status changed event with reasoning
         event::emit(PlatformApprovalChangedEvent {
             platform_id,
             approved: new_approval,
             changed_by: tx_context::sender(ctx),
+            reasoning,
         });
     }
 
@@ -1027,6 +1065,7 @@ module social_contracts::platform {
     /// Assign a badge to a profile - can only be called by platform admin/moderator
     /// This is the primary entry point for badge assignment
     public entry fun assign_badge(
+        platform_registry: &PlatformRegistry,
         platform: &Platform,
         profile: &mut profile::Profile,
         badge_name: String,
@@ -1035,18 +1074,34 @@ module social_contracts::platform {
         badge_type: u8,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        
         // Verify caller is platform admin or moderator
         let caller = tx_context::sender(ctx);
         assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
         
-        // Get platform ID
+        // Verify platform is approved
         let platform_id = object::uid_to_address(&platform.id);
+        assert!(is_approved(platform_registry, platform_id), EUnauthorized);
+        
+        // Validate badge type (1-100 as documented)
+        assert!(badge_type >= 1 && badge_type <= 100, EInvalidBadgeType);
+        
+        // Validate badge field lengths
+        assert!(string::length(&badge_name) > 0 && string::length(&badge_name) <= MAX_BADGE_NAME_LENGTH, EBadgeNameTooLong);
+        assert!(string::length(&badge_description) <= MAX_BADGE_DESCRIPTION_LENGTH, EBadgeDescriptionTooLong);
+        assert!(string::length(&badge_image_url) > 0 && string::length(&badge_image_url) <= MAX_BADGE_IMAGE_URL_LENGTH, EBadgeImageUrlTooLong);
         
         // Get current time
         let now = tx_context::epoch(ctx);
         
-        // Create a unique badge ID
+        // Create a unique badge ID by including platform ID to prevent collisions
         let mut badge_id = string::utf8(b"badge_");
+        // Convert platform ID to hex string and append to ensure uniqueness
+        let platform_id_str = mys::address::to_string(platform_id);
+        string::append(&mut badge_id, platform_id_str);
+        string::append(&mut badge_id, string::utf8(b"_"));
         string::append(&mut badge_id, badge_name);
         
         // Add the badge directly to the profile
@@ -1066,17 +1121,22 @@ module social_contracts::platform {
     /// Revoke a badge from a profile - can only be called by platform admin/moderator
     /// This is the primary entry point for badge revocation
     public entry fun revoke_badge(
+        platform_registry: &PlatformRegistry,
         platform: &Platform,
         profile: &mut profile::Profile,
         badge_id: String,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        
         // Verify caller is platform admin or moderator
         let caller = tx_context::sender(ctx);
         assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
         
-        // Get platform ID
+        // Verify platform is approved
         let platform_id = object::uid_to_address(&platform.id);
+        assert!(is_approved(platform_registry, platform_id), EUnauthorized);
         
         // Get current time
         let now = tx_context::epoch(ctx);

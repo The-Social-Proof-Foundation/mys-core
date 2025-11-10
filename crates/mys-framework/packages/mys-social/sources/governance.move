@@ -366,6 +366,9 @@ module social_contracts::governance {
         quorum_votes: u64,
         _ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         // Admin capability verification is handled by type system
         // Ensure parameters are sensible
         assert!(delegate_count > 1, EInvalidParameter);
@@ -395,6 +398,9 @@ module social_contracts::governance {
         profile_registry: &profile::UsernameRegistry,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         let caller = tx_context::sender(ctx);
         let current_epoch = tx_context::epoch(ctx);
         
@@ -441,6 +447,9 @@ module social_contracts::governance {
         upvote: bool,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         let caller = tx_context::sender(ctx);
         
         // Don't allow self-voting
@@ -472,10 +481,12 @@ module social_contracts::governance {
                     return
                 };
                 
-                // Different vote - remove previous vote
+                // Different vote - remove previous vote with underflow protection
                 if (previous_vote) {
+                    assert!(delegate.upvotes > 0, EOverflow);
                     delegate.upvotes = delegate.upvotes - 1;
                 } else {
+                    assert!(delegate.downvotes > 0, EOverflow);
                     delegate.downvotes = delegate.downvotes - 1;
                 };
                 
@@ -528,10 +539,12 @@ module social_contracts::governance {
                     return
                 };
                 
-                // Different vote - remove previous vote
+                // Different vote - remove previous vote with underflow protection
                 if (previous_vote) {
+                    assert!(nominee.upvotes > 0, EOverflow);
                     nominee.upvotes = nominee.upvotes - 1;
                 } else {
+                    assert!(nominee.downvotes > 0, EOverflow);
                     nominee.downvotes = nominee.downvotes - 1;
                 };
                 
@@ -581,6 +594,9 @@ module social_contracts::governance {
         registry: &mut GovernanceDAO,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         let current_epoch = tx_context::epoch(ctx);
         let delegate_term_epochs = registry.delegate_term_epochs;
         assert!(delegate_term_epochs > 0, EInvalidParameter);
@@ -831,6 +847,9 @@ module social_contracts::governance {
         coin: &mut Coin<MYS>,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         // Verify proposal type is valid
         assert!(proposal_type <= PROPOSAL_TYPE_PLATFORM, EInvalidParameter);
         
@@ -1007,6 +1026,9 @@ module social_contracts::governance {
         proposal_id: ID,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         let caller = tx_context::sender(ctx);
         let current_time = tx_context::epoch_timestamp_ms(ctx);
         
@@ -1072,6 +1094,9 @@ module social_contracts::governance {
         mut reason: Option<String>,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         let caller = tx_context::sender(ctx);
         let current_time = tx_context::epoch_timestamp_ms(ctx);
         
@@ -1254,6 +1279,9 @@ module social_contracts::governance {
         coin: &mut Coin<MYS>,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         let caller = tx_context::sender(ctx);
         let current_time = tx_context::epoch_timestamp_ms(ctx);
         // Also get the current epoch for timing checks
@@ -1373,6 +1401,9 @@ module social_contracts::governance {
         proposal_id: ID,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         let current_epoch = tx_context::epoch(ctx);
         let current_time = tx_context::epoch_timestamp_ms(ctx);
         
@@ -1505,6 +1536,9 @@ module social_contracts::governance {
         public_keys: &vector<PublicKey>,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         let current_epoch = tx_context::epoch(ctx);
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
 
@@ -1584,22 +1618,24 @@ module social_contracts::governance {
         {
             let proposal = table::borrow_mut(&mut registry.proposals, proposal_id);
             
-            // Process votes for
+            // Process votes for with overflow protection
             let mut i = 0;
             let len = vector::length(&votes_for);
             while (i < len) {
                 let addr = *vector::borrow(&votes_for, i);
+                assert!(proposal.community_votes_for <= MAX_U64 - 1, EOverflow);
                 proposal.community_votes_for = proposal.community_votes_for + 1;
                 let voted_for: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_FOR_FIELD);
                 vec_set::insert(voted_for, addr);
                 i = i + 1;
             };
             
-            // Process votes against
+            // Process votes against with overflow protection
             let mut i = 0;
             let len = vector::length(&votes_against);
             while (i < len) {
                 let addr = *vector::borrow(&votes_against, i);
+                assert!(proposal.community_votes_against <= MAX_U64 - 1, EOverflow);
                 proposal.community_votes_against = proposal.community_votes_against + 1;
                 let voted_against: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_AGAINST_FIELD);
                 vec_set::insert(voted_against, addr);
@@ -1686,6 +1722,9 @@ module social_contracts::governance {
         description: Option<String>,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         let caller = tx_context::sender(ctx);
         let current_time = tx_context::epoch_timestamp_ms(ctx);
         
@@ -1873,6 +1912,9 @@ module social_contracts::governance {
         proposal_id: ID,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         // Verify caller is a delegate
         let caller = tx_context::sender(ctx);
         assert!(table::contains(&registry.delegates, caller), ENotDelegate);

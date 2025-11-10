@@ -137,12 +137,6 @@ module social_contracts::profile {
         instagram_username: Option<String>,
         /// Last updated timestamp for profile data
         last_updated: u64,
-        /// Number of followers
-        followers_count: u64,
-        /// Number of profiles this user is following
-        following_count: u64,
-        /// Number of posts created by this profile
-        post_count: u64,
         /// Total amount of tips received
         tips_received: u64,
         /// Minimum offer amount in MYSO tokens the owner is willing to accept (optional)
@@ -492,9 +486,6 @@ module social_contracts::profile {
             github_username: option::none(),
             instagram_username: option::none(),
             last_updated: now,
-            followers_count: 0,
-            following_count: 0,
-            post_count: 0,
             tips_received: 0,
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
@@ -884,49 +875,9 @@ module social_contracts::profile {
         profile.owner
     }
 
-    /// Get the followers count for a profile
-    public fun get_followers_count(profile: &Profile): u64 {
-        profile.followers_count
-    }
-
-    /// Get the post count for a profile
-    public fun get_post_count(profile: &Profile): u64 {
-        profile.post_count
-    }
-
     /// Get the tips received for a profile
     public fun get_tips_received(profile: &Profile): u64 {
         profile.tips_received
-    }
-
-    /// Increment followers count (called by follow module)
-    public fun increment_followers_count(profile: &mut Profile): u64 {
-        assert!(profile.followers_count <= MAX_U64 - 1, EOverflow);
-        profile.followers_count = profile.followers_count + 1;
-        profile.followers_count
-    }
-
-    /// Decrement followers count (called by follow module)
-    public fun decrement_followers_count(profile: &mut Profile): u64 {
-        if (profile.followers_count > 0) {
-            profile.followers_count = profile.followers_count - 1;
-        };
-        profile.followers_count
-    }
-
-    /// Increment post count (called by post module when creating a post)
-    public fun increment_post_count(profile: &mut Profile): u64 {
-        assert!(profile.post_count <= MAX_U64 - 1, EOverflow);
-        profile.post_count = profile.post_count + 1;
-        profile.post_count
-    }
-
-    /// Decrement post count (called by post module when deleting a post)
-    public fun decrement_post_count(profile: &mut Profile): u64 {
-        if (profile.post_count > 0) {
-            profile.post_count = profile.post_count - 1;
-        };
-        profile.post_count
     }
 
     /// Add tips received (called by post/comment module when tipping)
@@ -934,26 +885,6 @@ module social_contracts::profile {
         assert!(profile.tips_received <= MAX_U64 - amount, EOverflow);
         profile.tips_received = profile.tips_received + amount;
         profile.tips_received
-    }
-
-    /// Get the following count for a profile
-    public fun get_following_count(profile: &Profile): u64 {
-        profile.following_count
-    }
-
-    /// Increment following count (called when this profile follows another profile)
-    public fun increment_following_count(profile: &mut Profile): u64 {
-        assert!(profile.following_count <= MAX_U64 - 1, EOverflow);
-        profile.following_count = profile.following_count + 1;
-        profile.following_count
-    }
-
-    /// Decrement following count (called when this profile unfollows another profile)
-    public fun decrement_following_count(profile: &mut Profile): u64 {
-        if (profile.following_count > 0) {
-            profile.following_count = profile.following_count - 1;
-        };
-        profile.following_count
     }
 
     /// Create a subscription service for this profile (creates separate service object)
@@ -1473,10 +1404,7 @@ module social_contracts::profile {
             github_username: option::none(),
             instagram_username: option::none(),
             last_updated: epoch,
-            followers_count: 0,
-            post_count: 0,
             tips_received: 0,
-            following_count: 0,
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
             attached_mydata_ids: vector::empty<address>(),
@@ -1656,6 +1584,11 @@ module social_contracts::profile {
     }
     
     /// Count the number of badges a profile has
+    /// Get the badge ID from a ProfileBadge
+    public fun badge_id(badge: &ProfileBadge): String {
+        badge.badge_id
+    }
+
     public fun badge_count(profile: &Profile): u64 {
         vector::length(&profile.badges)
     }

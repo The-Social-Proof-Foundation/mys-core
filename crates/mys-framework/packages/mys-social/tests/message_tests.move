@@ -103,10 +103,10 @@ module social_contracts::message_tests {
         // Verify conversation exists
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let conv = test_scenario::take_shared<Conversation>(&scenario);
             assert!(message::is_member(&conv, USER1), 0);
             assert!(message::next_seq(&conv) == 1, 1);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         test_scenario::end(scenario);
@@ -158,7 +158,7 @@ module social_contracts::message_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             
             let mut participants = vector::empty<address>();
             vector::push_back(&mut participants, USER2);
@@ -169,7 +169,7 @@ module social_contracts::message_tests {
             assert!(message::is_member(&conv, USER2), 0);
             assert!(message::is_member(&conv, USER3), 1);
             
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         test_scenario::end(scenario);
@@ -190,24 +190,24 @@ module social_contracts::message_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let mut participants = vector::empty<address>();
             vector::push_back(&mut participants, USER2);
             message::add_participants(&mut conv, participants, test_scenario::ctx(&mut scenario));
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         // Remove participant
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let mut participants = vector::empty<address>();
             vector::push_back(&mut participants, USER2);
             message::remove_participants(&mut conv, participants, test_scenario::ctx(&mut scenario));
             
             assert!(!message::is_member(&conv, USER2), 0);
             
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         test_scenario::end(scenario);
@@ -227,20 +227,20 @@ module social_contracts::message_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let mut participants = vector::empty<address>();
             vector::push_back(&mut participants, USER2);
             message::add_participants(&mut conv, participants, test_scenario::ctx(&mut scenario));
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         // USER2 leaves
         test_scenario::next_tx(&mut scenario, USER2);
         {
-            let mut conv = test_scenario::take_from_address<Conversation>(&scenario, USER1);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             message::leave_conversation(&mut conv, test_scenario::ctx(&mut scenario));
             assert!(!message::is_member(&conv, USER2), 0);
-            test_scenario::return_to_address(USER1, conv);
+            test_scenario::return_shared(conv);
         };
 
         test_scenario::end(scenario);
@@ -264,7 +264,7 @@ module social_contracts::message_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<Registry>(&scenario);
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             message::send_message(
@@ -285,7 +285,7 @@ module social_contracts::message_tests {
             assert!(message::next_seq(&conv) == 2, 0);
             
             test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
             test_scenario::return_shared(clock);
         };
 
@@ -310,7 +310,7 @@ module social_contracts::message_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<Registry>(&scenario);
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             message::send_message(
@@ -329,7 +329,7 @@ module social_contracts::message_tests {
             );
             
             test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
             test_scenario::return_shared(clock);
         };
 
@@ -337,7 +337,7 @@ module social_contracts::message_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<Registry>(&scenario);
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             message::send_message(
@@ -356,7 +356,7 @@ module social_contracts::message_tests {
             );
             
             test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
             test_scenario::return_shared(clock);
         };
 
@@ -381,7 +381,7 @@ module social_contracts::message_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<Registry>(&scenario);
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             message::send_message(
@@ -400,7 +400,7 @@ module social_contracts::message_tests {
             );
             
             test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
             test_scenario::return_shared(clock);
         };
 
@@ -408,7 +408,7 @@ module social_contracts::message_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<Registry>(&scenario);
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             message::send_message(
@@ -427,7 +427,7 @@ module social_contracts::message_tests {
             );
             
             test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
             test_scenario::return_shared(clock);
         };
 
@@ -453,16 +453,16 @@ module social_contracts::message_tests {
         // Set low rate limit (1 message per user per window)
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             message::set_rate_limits(&mut conv, 60, 1, 100, test_scenario::ctx(&mut scenario));
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         // Send first message (should succeed)
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<Registry>(&scenario);
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             message::send_message(
@@ -481,7 +481,7 @@ module social_contracts::message_tests {
             );
             
             test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
             test_scenario::return_shared(clock);
         };
 
@@ -489,7 +489,7 @@ module social_contracts::message_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<Registry>(&scenario);
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             message::send_message(
@@ -508,7 +508,7 @@ module social_contracts::message_tests {
             );
             
             test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
             test_scenario::return_shared(clock);
         };
 
@@ -534,7 +534,7 @@ module social_contracts::message_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<Registry>(&scenario);
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             message::send_message(
@@ -553,14 +553,14 @@ module social_contracts::message_tests {
             );
             
             test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
             test_scenario::return_shared(clock);
         };
 
         // Edit message
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             
             message::edit_message(
                 &mut conv,
@@ -570,7 +570,7 @@ module social_contracts::message_tests {
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         test_scenario::end(scenario);
@@ -593,7 +593,7 @@ module social_contracts::message_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<Registry>(&scenario);
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             message::send_message(
@@ -612,14 +612,14 @@ module social_contracts::message_tests {
             );
             
             test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
             test_scenario::return_shared(clock);
         };
 
         // Tombstone message
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             
             message::tombstone_message(
                 &mut conv,
@@ -628,7 +628,7 @@ module social_contracts::message_tests {
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         test_scenario::end(scenario);
@@ -650,9 +650,9 @@ module social_contracts::message_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             message::ack_delivery(&mut conv, 5, test_scenario::ctx(&mut scenario));
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         test_scenario::end(scenario);
@@ -672,9 +672,9 @@ module social_contracts::message_tests {
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             message::ack_read(&mut conv, 3, test_scenario::ctx(&mut scenario));
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         test_scenario::end(scenario);
@@ -699,7 +699,7 @@ module social_contracts::message_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<Registry>(&scenario);
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             message::send_message(
@@ -718,14 +718,14 @@ module social_contracts::message_tests {
             );
             
             test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
             test_scenario::return_shared(clock);
         };
 
         // React to the message
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             
             message::react(
                 &mut conv,
@@ -735,7 +735,7 @@ module social_contracts::message_tests {
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         test_scenario::end(scenario);
@@ -758,7 +758,7 @@ module social_contracts::message_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<Registry>(&scenario);
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             message::send_message(
@@ -777,24 +777,24 @@ module social_contracts::message_tests {
             );
             
             test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
             test_scenario::return_shared(clock);
         };
 
         // Pin the message (admin can pin)
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             message::pin(&mut conv, 1, test_scenario::ctx(&mut scenario));
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         // Unpin the message
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             message::unpin(&mut conv, 1, test_scenario::ctx(&mut scenario));
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         test_scenario::end(scenario);
@@ -819,7 +819,7 @@ module social_contracts::message_tests {
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<Registry>(&scenario);
-            let mut conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let mut conv = test_scenario::take_shared<Conversation>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             message::send_message(&registry, &mut conv, 0, 0, b"msg1", b"", b"", 1000, b"d1", 1, &clock, test_scenario::ctx(&mut scenario));
@@ -827,19 +827,19 @@ module social_contracts::message_tests {
             message::send_message(&registry, &mut conv, 0, 0, b"msg3", b"", b"", 1002, b"d3", 3, &clock, test_scenario::ctx(&mut scenario));
             
             test_scenario::return_shared(registry);
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
             test_scenario::return_shared(clock);
         };
 
         // Export range
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let conv = test_scenario::take_from_sender<Conversation>(&scenario);
+            let conv = test_scenario::take_shared<Conversation>(&scenario);
             
             let messages = message::export_range(&conv, 1, 2);
             assert!(vector::length(&messages) == 2, 0);
             
-            test_scenario::return_to_sender(&scenario, conv);
+            test_scenario::return_shared(conv);
         };
 
         test_scenario::end(scenario);

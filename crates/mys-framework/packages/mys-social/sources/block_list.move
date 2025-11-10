@@ -80,6 +80,9 @@ module social_contracts::block_list {
     /// Create a new block list for the sender
     /// This is an explicit operation to create a block list, even if not blocking anyone yet
     public entry fun create_block_list_for_sender(registry: &mut BlockListRegistry, ctx: &mut TxContext) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         let sender = tx_context::sender(ctx);
         
         // Check if a block list already exists for the sender
@@ -140,6 +143,9 @@ module social_contracts::block_list {
         blocked_wallet_address: address,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         // Get the sender address (wallet address of the blocker)
         let sender = tx_context::sender(ctx);
         
@@ -208,6 +214,9 @@ module social_contracts::block_list {
         blocked_wallet_address: address,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
         // Get the sender address (wallet address of the blocker)
         let sender = tx_context::sender(ctx);
         

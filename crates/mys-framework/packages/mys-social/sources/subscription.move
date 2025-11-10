@@ -16,6 +16,7 @@ module social_contracts::subscription {
         event
     };
     use mys::mys::MYS;
+    use social_contracts::upgrade;
     
     /// Error codes
     const EInvalidFee: u64 = 12;
@@ -23,6 +24,14 @@ module social_contracts::subscription {
     const ESubscriptionExpired: u64 = 78;
     const EAutoRenewalDisabled: u64 = 79;
     const ENotSubscriptionOwner: u64 = 80;
+    const EWrongVersion: u64 = 81;
+    const EOverflow: u64 = 82;
+    const EInvalidInput: u64 = 83;
+
+    /// Constants for validation
+    const MAX_RENEWAL_MONTHS: u64 = 120; // Maximum 10 years of renewal funding
+    const MAX_U64: u64 = 18446744073709551615; // Max u64 value for overflow protection
+    const THIRTY_DAYS_MS: u64 = 2_592_000_000; // 30 days in milliseconds
 
     /// Profile subscription service - one per profile
     public struct ProfileSubscriptionService has key {
@@ -95,13 +104,16 @@ module social_contracts::subscription {
         monthly_fee: u64,
         ctx: &mut TxContext
     ): ProfileSubscriptionService {
+        // Validate monthly fee
+        assert!(monthly_fee > 0, EInvalidFee);
+        
         ProfileSubscriptionService {
             id: object::new(ctx),
             profile_owner,
             monthly_fee,
             active: true,
             subscriber_count: 0,
-            version: 1,
+            version: upgrade::current_version(),
         }
     }
 
@@ -110,6 +122,9 @@ module social_contracts::subscription {
         monthly_fee: u64,
         ctx: &mut TxContext
     ) {
+        // Validate monthly fee
+        assert!(monthly_fee > 0, EInvalidFee);
+        
         let service = create_profile_service(
             tx_context::sender(ctx),
             monthly_fee,
@@ -127,12 +142,24 @@ module social_contracts::subscription {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(service.version == upgrade::current_version(), EWrongVersion);
+        
         assert!(service.active, ENoAccess);
+        
+        // Validate renewal_months if auto-renew is enabled
+        if (auto_renew) {
+            assert!(renewal_months <= MAX_RENEWAL_MONTHS, EInvalidInput);
+        };
+        
         let subscriber = tx_context::sender(ctx);
         let now = clock::timestamp_ms(clock);
         
         // Calculate required payment (1 month + renewal months if auto-renew)
         let months_to_pay = if (auto_renew) { 1 + renewal_months } else { 1 };
+        
+        // Overflow protection for multiplication
+        assert!(months_to_pay <= MAX_U64 / service.monthly_fee, EOverflow);
         let total_required = service.monthly_fee * months_to_pay;
         assert!(coin::value(payment) >= total_required, EInvalidFee);
 
@@ -142,14 +169,18 @@ module social_contracts::subscription {
 
         // Take renewal payment if auto-renew enabled
         let renewal_balance = if (auto_renew && renewal_months > 0) {
-            let renewal_payment = coin::split(payment, service.monthly_fee * renewal_months, ctx);
+            // Overflow protection for renewal payment calculation
+            assert!(renewal_months <= MAX_U64 / service.monthly_fee, EOverflow);
+            let renewal_amount = service.monthly_fee * renewal_months;
+            let renewal_payment = coin::split(payment, renewal_amount, ctx);
             coin::into_balance(renewal_payment)
         } else {
             balance::zero<MYS>()
         };
 
-        // Calculate expiration (30 days from now)
-        let expires_at = now + (30 * 24 * 60 * 60 * 1000); // 30 days in milliseconds
+        // Calculate expiration (30 days from now) with overflow protection
+        assert!(now <= MAX_U64 - THIRTY_DAYS_MS, EOverflow);
+        let expires_at = now + THIRTY_DAYS_MS;
 
         let subscription = ProfileSubscription {
             id: object::new(ctx),
@@ -162,6 +193,8 @@ module social_contracts::subscription {
             renewal_count: 0,
         };
 
+        // Overflow protection for subscriber count
+        assert!(service.subscriber_count <= MAX_U64 - 1, EOverflow);
         service.subscriber_count = service.subscriber_count + 1;
 
         event::emit(ProfileSubscriptionCreatedEvent {
@@ -183,6 +216,9 @@ module social_contracts::subscription {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(service.version == upgrade::current_version(), EWrongVersion);
+        
         let subscriber = tx_context::sender(ctx);
         assert!(subscription.subscriber == subscriber, ENotSubscriptionOwner);
         assert!(subscription.service_id == object::id(service), ENoAccess);
@@ -192,15 +228,20 @@ module social_contracts::subscription {
 
         // Extend expiration by 30 days
         let now = clock::timestamp_ms(clock);
-        let extension = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+        let extension = THIRTY_DAYS_MS;
         
         // If subscription is expired, start from now, otherwise extend current expiration
+        // Overflow protection for timestamp addition
         subscription.expires_at = if (now > subscription.expires_at) {
+            assert!(now <= MAX_U64 - extension, EOverflow);
             now + extension
         } else {
+            assert!(subscription.expires_at <= MAX_U64 - extension, EOverflow);
             subscription.expires_at + extension
         };
         
+        // Overflow protection for renewal count
+        assert!(subscription.renewal_count <= MAX_U64 - 1, EOverflow);
         subscription.renewal_count = subscription.renewal_count + 1;
 
         event::emit(ProfileSubscriptionRenewedEvent {
@@ -220,6 +261,9 @@ module social_contracts::subscription {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(service.version == upgrade::current_version(), EWrongVersion);
+        
         assert!(subscription.service_id == object::id(service), ENoAccess);
         assert!(subscription.auto_renew, EAutoRenewalDisabled);
         
@@ -254,8 +298,14 @@ module social_contracts::subscription {
         transfer::public_transfer(renewal_payment, service.profile_owner);
         
         // Pre-calculate extension to avoid repeated calculations
-        let extension = 2_592_000_000; // 30 days in milliseconds (pre-calculated)
+        let extension = THIRTY_DAYS_MS;
+        
+        // Overflow protection for timestamp addition
+        assert!(now <= MAX_U64 - extension, EOverflow);
         subscription.expires_at = now + extension;
+        
+        // Overflow protection for renewal count
+        assert!(subscription.renewal_count <= MAX_U64 - 1, EOverflow);
         subscription.renewal_count = subscription.renewal_count + 1;
 
         event::emit(ProfileSubscriptionRenewedEvent {
@@ -327,7 +377,14 @@ module social_contracts::subscription {
         new_fee: u64,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(service.version == upgrade::current_version(), EWrongVersion);
+        
         assert!(tx_context::sender(ctx) == service.profile_owner, ENotSubscriptionOwner);
+        
+        // Validate new fee
+        assert!(new_fee > 0, EInvalidFee);
+        
         let old_fee = service.monthly_fee;
         service.monthly_fee = new_fee;
         
@@ -345,6 +402,9 @@ module social_contracts::subscription {
         service: &mut ProfileSubscriptionService,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(service.version == upgrade::current_version(), EWrongVersion);
+        
         assert!(tx_context::sender(ctx) == service.profile_owner, ENotSubscriptionOwner);
         service.active = false;
     }
@@ -355,6 +415,9 @@ module social_contracts::subscription {
         mut subscription: ProfileSubscription,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(service.version == upgrade::current_version(), EWrongVersion);
+        
         let subscriber = tx_context::sender(ctx);
         assert!(subscription.subscriber == subscriber, ENotSubscriptionOwner);
         assert!(subscription.service_id == object::id(service), ENoAccess);
@@ -369,6 +432,8 @@ module social_contracts::subscription {
             transfer::public_transfer(refund, subscriber);
         };
 
+        // Underflow protection for subscriber count
+        assert!(service.subscriber_count > 0, EOverflow);
         service.subscriber_count = service.subscriber_count - 1;
 
         event::emit(ProfileSubscriptionCancelledEvent {

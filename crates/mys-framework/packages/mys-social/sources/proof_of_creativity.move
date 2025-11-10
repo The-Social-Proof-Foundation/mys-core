@@ -35,6 +35,8 @@ module social_contracts::proof_of_creativity {
     const EVotingEnded: u64 = 16;
     const EAlreadyVoted: u64 = 17;
     const ENoVotesToResolve: u64 = 18;
+    const EInvalidReasoning: u64 = 19;
+    const EInvalidEvidenceUrls: u64 = 20;
 
     /// Media type constants
     const MEDIA_TYPE_IMAGE: u8 = 1;
@@ -60,6 +62,10 @@ module social_contracts::proof_of_creativity {
     const DEFAULT_MIN_VOTE_STAKE: u64 = 1_000_000_000; // 1 MYS minimum to vote
     const DEFAULT_MAX_VOTE_STAKE: u64 = 100_000_000_000; // 100 MYS maximum per vote
     const DEFAULT_VOTING_DURATION_EPOCHS: u64 = 7; // 7 epochs voting period
+    
+    /// Validation constants
+    const MAX_REASONING_LENGTH: u64 = 5000; // Max characters for reasoning
+    const MAX_EVIDENCE_URLS: u64 = 10; // Max number of evidence URLs
 
     /// Admin capability for Proof of Creativity system management
     public struct PoCAdminCap has key, store {
@@ -165,6 +171,8 @@ module social_contracts::proof_of_creativity {
         highest_similarity_score: u64,
         oracle_address: address,
         timestamp: u64,
+        reasoning: Option<String>, // Optional reasoning from oracle
+        evidence_urls: Option<vector<String>>, // Optional array of evidence URLs
     }
 
     /// Event emitted when a PoC badge is issued
@@ -351,6 +359,7 @@ module social_contracts::proof_of_creativity {
     /// SINGLE ENTRY POINT: Oracle analyzes content and updates post PoC status
     /// This is the ONLY function the PoC server needs to call
     /// Automatically updates token pool if it exists
+    /// Reasoning and evidence URLs are optional for transparency and accountability
     public entry fun analyze_and_update_post(
         config: &PoCConfig,
         registry: &mut PoCRegistry,
@@ -359,6 +368,8 @@ module social_contracts::proof_of_creativity {
         media_type: u8,
         highest_similarity_score: u64,
         mut original_creator: Option<address>,
+        reasoning: Option<String>,
+        evidence_urls: Option<vector<String>>,
         ctx: &mut TxContext
     ) {
         let caller = tx_context::sender(ctx);
@@ -375,6 +386,19 @@ module social_contracts::proof_of_creativity {
             media_type == MEDIA_TYPE_AUDIO,
             EInvalidMediaType
         );
+        
+        // Validate reasoning if provided
+        if (option::is_some(&reasoning)) {
+            let reasoning_val = option::borrow(&reasoning);
+            let reasoning_len = string::length(reasoning_val);
+            assert!(reasoning_len <= MAX_REASONING_LENGTH, EInvalidReasoning);
+        };
+        
+        // Validate evidence URLs array if provided
+        if (option::is_some(&evidence_urls)) {
+            let urls = option::borrow(&evidence_urls);
+            assert!(vector::length(urls) <= MAX_EVIDENCE_URLS, EInvalidEvidenceUrls);
+        };
         
         // Get threshold for this media type
         let threshold = get_threshold_for_media_type(config, media_type);
@@ -443,7 +467,7 @@ module social_contracts::proof_of_creativity {
             });
         };
         
-        // Emit analysis event
+        // Emit analysis event with reasoning and evidence URLs
         event::emit(AnalysisSubmittedEvent {
             post_id,
             media_type,
@@ -451,6 +475,8 @@ module social_contracts::proof_of_creativity {
             highest_similarity_score,
             oracle_address: caller,
             timestamp,
+            reasoning,
+            evidence_urls,
         });
         
         // Automatically update token pool if it exists

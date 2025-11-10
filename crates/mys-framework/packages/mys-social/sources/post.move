@@ -994,8 +994,9 @@ module social_contracts::post {
         // Ensure there's enough balance in the repayment coin
         assert!(coin::value(repayment_coin) >= withdrawal_amount, EInvalidTipAmount);
         
-        // Update prediction data
+        // Update prediction data with underflow protection
         // 1. Decrease the total bet amount
+        assert!(prediction_data.total_bet_amount >= user_bet_amount, EOverflow);
         prediction_data.total_bet_amount = prediction_data.total_bet_amount - user_bet_amount;
         
         // 2. Decrease the option's total bet amount
@@ -1003,6 +1004,7 @@ module social_contracts::post {
         while (option_index < options_len) {
             let option = vector::borrow_mut(&mut prediction_data.options, option_index);
             if (option.id == user_option_id) {
+                assert!(option.total_bet >= user_bet_amount, EOverflow);
                 option.total_bet = option.total_bet - user_bet_amount;
                 break
             };
@@ -1856,7 +1858,8 @@ module social_contracts::post {
                     *table::borrow_mut(&mut post.reaction_counts, reaction) = count - 1;
                 };
                 
-                // Decrement post reaction count
+                // Decrement post reaction count with underflow protection
+                assert!(post.reaction_count > 0, EOverflow);
                 post.reaction_count = post.reaction_count - 1;
                 
                 // Emit remove reaction event
@@ -2246,6 +2249,9 @@ module social_contracts::post {
         registry: &UsernameRegistry,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(post.version == upgrade::current_version(), EWrongVersion);
+        
         let current_owner = tx_context::sender(ctx);
         
         // Verify current owner is authorized
@@ -2280,6 +2286,9 @@ module social_contracts::post {
     ) {
         // Admin capability verification is handled by type system
         
+        // Check version compatibility
+        assert!(post.version == upgrade::current_version(), EWrongVersion);
+        
         // Look up the profile ID for the new owner (for reference, not ownership)
         let mut profile_id_option = social_contracts::profile::lookup_profile_by_owner(registry, new_owner);
         assert!(option::is_some(&profile_id_option), EUnauthorized);
@@ -2303,12 +2312,21 @@ module social_contracts::post {
     public entry fun moderate_post(
         post: &mut Post,
         platform: &platform::Platform,
+        platform_registry: &platform::PlatformRegistry,
         remove: bool,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(post.version == upgrade::current_version(), EWrongVersion);
+        assert!(platform::platform_version(platform) == upgrade::current_version(), EWrongVersion);
+        
         // Verify caller is platform developer or moderator
         let caller = tx_context::sender(ctx);
         assert!(platform::is_developer_or_moderator(platform, caller), EUnauthorized);
+        
+        // Verify platform is approved
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
         
         // Update post status
         post.removed_from_platform = remove;
@@ -2326,12 +2344,21 @@ module social_contracts::post {
     public entry fun moderate_comment(
         comment: &mut Comment,
         platform: &platform::Platform,
+        platform_registry: &platform::PlatformRegistry,
         remove: bool,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(comment.version == upgrade::current_version(), EWrongVersion);
+        assert!(platform::platform_version(platform) == upgrade::current_version(), EWrongVersion);
+        
         // Verify caller is platform developer or moderator
         let caller = tx_context::sender(ctx);
         assert!(platform::is_developer_or_moderator(platform, caller), EUnauthorized);
+        
+        // Verify platform is approved
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
         
         // Update comment status
         comment.removed_from_platform = remove;
@@ -2550,7 +2577,8 @@ module social_contracts::post {
                     *table::borrow_mut(&mut comment.reaction_counts, reaction) = count - 1;
                 };
                 
-                // Decrement comment reaction count
+                // Decrement comment reaction count with underflow protection
+                assert!(comment.reaction_count > 0, EOverflow);
                 comment.reaction_count = comment.reaction_count - 1;
                 
                 // Emit remove reaction event
@@ -3400,13 +3428,22 @@ module social_contracts::post {
     public entry fun set_moderation_status(
         post: &mut Post,
         platform: &platform::Platform,
+        platform_registry: &platform::PlatformRegistry,
         status: u8, // MODERATION_APPROVED or MODERATION_FLAGGED
         reason: Option<String>,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(post.version == upgrade::current_version(), EWrongVersion);
+        assert!(platform::platform_version(platform) == upgrade::current_version(), EWrongVersion);
+        
         // Verify caller is platform developer or moderator
         let caller = tx_context::sender(ctx);
         assert!(platform::is_developer_or_moderator(platform, caller), EUnauthorized);
+        
+        // Verify platform is approved
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
         
         // Validate status
         assert!(status == MODERATION_APPROVED || status == MODERATION_FLAGGED, EUnauthorized);

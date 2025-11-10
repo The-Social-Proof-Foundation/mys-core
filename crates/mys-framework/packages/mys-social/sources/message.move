@@ -25,6 +25,7 @@ module social_contracts::message {
     use social_contracts::profile::{Self, Profile};
     use social_contracts::platform::{Self, Platform};
     use social_contracts::social_proof_tokens::{Self as spt, SocialProofTokensConfig};
+    use social_contracts::upgrade;
 
     // === Error Codes ===
     
@@ -45,6 +46,7 @@ module social_contracts::message {
     const E_PAYMENT_EXPIRED: u64 = 15;
     const E_PAYMENT_ALREADY_CLAIMED: u64 = 16;
     const E_REPLY_TOO_SHORT: u64 = 17;
+    const E_WRONG_VERSION: u64 = 18;
 
     // === Roles ===
     
@@ -347,13 +349,16 @@ module social_contracts::message {
         new_admin: address,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility (Registry uses u32, upgrade uses u64)
+        assert!((registry.version as u64) == upgrade::current_version(), E_WRONG_VERSION);
+        
         assert!(tx_context::sender(ctx) == registry.admin, E_NOT_ADMIN);
         registry.admin = new_admin;
     }
 
     // === Conversation & ACL Functions ===
 
-    /// Create a new conversation (owned by creator)
+    /// Create a new conversation (shared object, publicly accessible)
     public entry fun create_conversation(
         registry: &Registry,
         kind: u8,
@@ -400,7 +405,7 @@ module social_contracts::message {
             creator: sender,
         });
 
-        transfer::transfer(conv, sender);
+        transfer::share_object(conv);
     }
 
     /// Add participants to conversation (admin/mod only)
@@ -567,6 +572,8 @@ module social_contracts::message {
         ctx: &mut TxContext
     ) {
         assert!(!registry.paused, E_PAUSED);
+        // Note: Conversation doesn't have version field - this would require structural change
+        // For now, we rely on Registry version check which is checked at creation
         let sender = tx_context::sender(ctx);
         assert!(table::contains(&conv.members, sender), E_NOT_MEMBER);
 
@@ -1179,8 +1186,12 @@ module social_contracts::message {
         // Verify payment not already claimed
         assert!(!escrow.claimed, E_PAYMENT_ALREADY_CLAIMED);
         
-        // Verify payment not expired
+        // Verify payment not expired (with underflow protection)
         let current_epoch = tx_context::epoch(ctx);
+        // Check for clock issues - if created_epoch is in the future, treat as expired
+        if (current_epoch < escrow.created_epoch) {
+            abort E_PAYMENT_EXPIRED
+        };
         assert!(current_epoch - escrow.created_epoch <= PAYMENT_EXPIRATION_EPOCHS, E_PAYMENT_EXPIRED);
 
         // Check dedupe
@@ -1254,9 +1265,9 @@ module social_contracts::message {
 
         let total_amount = escrow.amount;
         
-        // Calculate fees
-        let platform_fee = (total_amount * PAID_MSG_PLATFORM_FEE_BPS) / 10000;
-        let treasury_fee = (total_amount * PAID_MSG_TREASURY_FEE_BPS) / 10000;
+        // Calculate fees with overflow protection using u128 intermediate values
+        let platform_fee = (((total_amount as u128) * (PAID_MSG_PLATFORM_FEE_BPS as u128)) / 10000) as u64;
+        let treasury_fee = (((total_amount as u128) * (PAID_MSG_TREASURY_FEE_BPS as u128)) / 10000) as u64;
         let net_amount = total_amount - platform_fee - treasury_fee;
 
         // Split and distribute payments
@@ -1314,9 +1325,14 @@ module social_contracts::message {
         // Verify not already claimed
         assert!(!escrow.claimed, E_PAYMENT_ALREADY_CLAIMED);
 
-        // Verify payment is expired (>= to include the expiration epoch)
+        // Verify payment is expired (>= to include the expiration epoch) with underflow protection
         let current_epoch = tx_context::epoch(ctx);
-        assert!(current_epoch - escrow.created_epoch >= PAYMENT_EXPIRATION_EPOCHS, E_PAYMENT_EXPIRED);
+        // Check for clock issues - if created_epoch is in the future, allow refund
+        if (current_epoch < escrow.created_epoch) {
+            // Clock issue - allow refund as a safety measure
+        } else {
+            assert!(current_epoch - escrow.created_epoch >= PAYMENT_EXPIRATION_EPOCHS, E_PAYMENT_EXPIRED);
+        };
 
         let refund_amount = escrow.amount;
         

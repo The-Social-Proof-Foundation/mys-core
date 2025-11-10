@@ -79,6 +79,8 @@ module social_contracts::social_proof_tokens {
     const ETradingHalted: u64 = 21;
     /// Arithmetic overflow detected
     const EOverflow: u64 = 22;
+    /// Wrong version - object version mismatch
+    const EWrongVersion: u64 = 23;
 
     // === Constants ===
     // Token types
@@ -999,6 +1001,9 @@ module social_contracts::social_proof_tokens {
         post: &Post,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(pool.version == upgrade::current_version(), EWrongVersion);
+        
         // Verify this is a post token pool
         assert!(pool.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
         
@@ -1123,6 +1128,9 @@ module social_contracts::social_proof_tokens {
         amount: u64,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(pool.version == upgrade::current_version(), EWrongVersion);
+        
         // Check if trading is halted
         assert!(!config.trading_halted, ETradingHalted);
         
@@ -1253,6 +1261,9 @@ module social_contracts::social_proof_tokens {
         social_token: &mut SocialToken,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(pool.version == upgrade::current_version(), EWrongVersion);
+        
         // Check if trading is halted
         assert!(!config.trading_halted, ETradingHalted);
         
@@ -1382,6 +1393,9 @@ module social_contracts::social_proof_tokens {
         amount: u64,
         ctx: &mut TxContext
     ) {
+        // Check version compatibility
+        assert!(pool.version == upgrade::current_version(), EWrongVersion);
+        
         // Check if trading is halted
         assert!(!config.trading_halted, ETradingHalted);
         

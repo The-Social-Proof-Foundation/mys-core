@@ -4,7 +4,7 @@
 #[test_only]
 #[allow(unused_use, unused_variable, unused_assignment, duplicate_alias)]
 module social_contracts::social_proof_of_truth_tests {
-    use std::{string, option, vector};
+    use std::{string::{Self, String}, option, vector};
 
     use mys::test_scenario::{Self, Scenario};
     use mys::tx_context;
@@ -189,7 +189,18 @@ module social_contracts::social_proof_of_truth_tests {
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
-            spot::oracle_resolve(&cfg, &mut rec, &post_ref, true, 9000, test_scenario::ctx(&mut scen));
+            let mut evidence_urls = vector::empty<String>();
+            vector::push_back(&mut evidence_urls, string::utf8(b"https://example.com/evidence1"));
+            spot::oracle_resolve(
+                &cfg, 
+                &mut rec, 
+                &post_ref, 
+                true, 
+                9000, 
+                string::utf8(b"Test reasoning: High confidence resolution"),
+                evidence_urls,
+                test_scenario::ctx(&mut scen)
+            );
             // Resolved
             assert!(spot::get_status(&rec) == 3, 3); // STATUS_RESOLVED
             test_scenario::return_shared(cfg);
@@ -252,7 +263,18 @@ module social_contracts::social_proof_of_truth_tests {
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
-            spot::oracle_resolve(&cfg, &mut rec, &post_ref, true, 1000, test_scenario::ctx(&mut scen));
+            let mut evidence_urls = vector::empty<String>();
+            vector::push_back(&mut evidence_urls, string::utf8(b"https://example.com/evidence2"));
+            spot::oracle_resolve(
+                &cfg, 
+                &mut rec, 
+                &post_ref, 
+                true, 
+                1000, 
+                string::utf8(b"Test reasoning: Low confidence, requires DAO"),
+                evidence_urls,
+                test_scenario::ctx(&mut scen)
+            );
             assert!(spot::get_status(&rec) == 2, 3); // DAO_REQUIRED
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(rec);
@@ -265,7 +287,15 @@ module social_contracts::social_proof_of_truth_tests {
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
-            spot::finalize_via_dao(&cfg, &mut rec, &post_ref, 3, test_scenario::ctx(&mut scen)); // OUTCOME_DRAW
+            spot::finalize_via_dao(
+                &cfg, 
+                &mut rec, 
+                &post_ref, 
+                3, 
+                option::some(string::utf8(b"DAO consensus: Draw outcome")),
+                option::none(),
+                test_scenario::ctx(&mut scen)
+            ); // OUTCOME_DRAW
             assert!(spot::get_status(&rec) == 3, 4); // RESOLVED
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(rec);

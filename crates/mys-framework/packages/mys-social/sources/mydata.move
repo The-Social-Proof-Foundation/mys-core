@@ -285,6 +285,9 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(mydata.version == upgrade::current_version(), EInvalidInput);
+        
         let buyer = tx_context::sender(ctx);
         
         // Check if one-time purchase is available
@@ -322,6 +325,9 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(mydata.version == upgrade::current_version(), EInvalidInput);
+        
         let buyer = tx_context::sender(ctx);
         
         // Check if subscription is available
@@ -386,6 +392,9 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(mydata.version == upgrade::current_version(), EInvalidInput);
+        
         assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
         
         // Validate new prices
@@ -426,6 +435,9 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(mydata.version == upgrade::current_version(), EInvalidInput);
+        
         assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
         
         if (option::is_some(&new_encrypted_data)) {
@@ -491,6 +503,9 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(mydata.version == upgrade::current_version(), EInvalidInput);
+        
         assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
         assert!(user != mydata.owner, ESelfPurchase); // Owner doesn't need granted access
         
@@ -639,6 +654,9 @@ module social_contracts::mydata {
         mydata: &MyData,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EInvalidInput);
+        
         assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
         let ip_id = object::uid_to_address(&mydata.id);
         
@@ -653,6 +671,9 @@ module social_contracts::mydata {
         ip_id: address,
         ctx: &mut TxContext,
     ) {
+        // Check version compatibility
+        assert!(registry.version == upgrade::current_version(), EInvalidInput);
+        
         if (table::contains(&registry.ip_to_owner, ip_id)) {
             let owner = *table::borrow(&registry.ip_to_owner, ip_id);
             assert!(tx_context::sender(ctx) == owner, EUnauthorized);

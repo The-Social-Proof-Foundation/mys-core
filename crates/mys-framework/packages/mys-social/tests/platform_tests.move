@@ -68,7 +68,7 @@ module social_contracts::platform_tests {
         // Add moderator to platform and set approval
         test_scenario::next_tx(scenario, PLATFORM_ADMIN);
         {
-            let mut platform = test_scenario::take_from_sender<Platform>(scenario);
+            let mut platform = test_scenario::take_shared<Platform>(scenario);
             let mut registry = test_scenario::take_shared<PlatformRegistry>(scenario);
             
             platform::add_moderator(
@@ -81,7 +81,7 @@ module social_contracts::platform_tests {
             let platform_id = object::uid_to_address(platform::id(&platform));
             platform::test_set_approval(&mut registry, platform_id, true);
             
-            test_scenario::return_to_sender(scenario, platform);
+            test_scenario::return_shared(platform);
             test_scenario::return_shared(registry);
         };
     }
@@ -135,13 +135,15 @@ module social_contracts::platform_tests {
         // Platform admin assigns a badge to the user's profile
         test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
         {
-            let platform = test_scenario::take_from_sender<Platform>(&scenario);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let platform = test_scenario::take_shared<Platform>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             let badge_name = string::utf8(b"VIP");
             
             // Assign badge
             platform::assign_badge(
+                &registry,
                 &platform,
                 &mut user_profile,
                 badge_name,
@@ -158,14 +160,16 @@ module social_contracts::platform_tests {
             // Verify badge count
             assert!(profile::badge_count(&user_profile) == 1, 2);
             
-            // Verify badge details
-            let badge_id = string::utf8(b"badge_VIP");
+            // Verify badge details - badge ID now includes platform ID bytes, so get it from the badge
+            let badge = vector::borrow(&badges, 0);
+            let badge_id = profile::badge_id(badge);
             assert!(profile::has_badge(&user_profile, &badge_id), 3);
             
             let badge_opt = profile::get_badge(&user_profile, &badge_id);
             assert!(option::is_some(&badge_opt), 4);
             
-            test_scenario::return_to_sender(&scenario, platform);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
         
@@ -191,14 +195,15 @@ module social_contracts::platform_tests {
         // Platform moderator assigns a badge to the user's profile
         test_scenario::next_tx(&mut scenario, PLATFORM_MOD);
         {
-            let platform = test_scenario::take_from_address<Platform>(&scenario, PLATFORM_ADMIN);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let platform = test_scenario::take_shared<Platform>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             let badge_name = string::utf8(b"Contributor");
-            let badge_id = string::utf8(b"badge_Contributor");
             
             // Assign badge
             platform::assign_badge(
+                &registry,
                 &platform,
                 &mut user_profile,
                 badge_name,
@@ -208,12 +213,16 @@ module social_contracts::platform_tests {
                 test_scenario::ctx(&mut scenario)
             );
             
-            // Verify badge was assigned
+            // Verify badge was assigned and get the actual badge ID
             assert!(profile::badge_count(&user_profile) == 1, 1);
+            let badges = profile::get_profile_badges(&user_profile);
+            let badge = vector::borrow(&badges, 0);
+            let badge_id = profile::badge_id(badge);
             assert!(profile::has_badge(&user_profile, &badge_id), 2);
             
             // Now revoke the badge
             platform::revoke_badge(
+                &registry,
                 &platform,
                 &mut user_profile,
                 badge_id,
@@ -224,7 +233,8 @@ module social_contracts::platform_tests {
             assert!(profile::badge_count(&user_profile) == 0, 3);
             assert!(!profile::has_badge(&user_profile, &badge_id), 4);
             
-            test_scenario::return_to_address(PLATFORM_ADMIN, platform);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
         
@@ -250,7 +260,8 @@ module social_contracts::platform_tests {
         // Platform admin assigns multiple badges to the user's profile
         test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
         {
-            let platform = test_scenario::take_from_sender<Platform>(&scenario);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let platform = test_scenario::take_shared<Platform>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             // Create the platform ID for later comparisons
@@ -258,6 +269,7 @@ module social_contracts::platform_tests {
             
             // Assign first badge
             platform::assign_badge(
+                &registry,
                 &platform,
                 &mut user_profile,
                 string::utf8(b"VIP"),
@@ -269,6 +281,7 @@ module social_contracts::platform_tests {
             
             // Assign second badge
             platform::assign_badge(
+                &registry,
                 &platform,
                 &mut user_profile,
                 string::utf8(b"Moderator"),
@@ -285,7 +298,8 @@ module social_contracts::platform_tests {
             let platform_badges = profile::get_platform_badges(&user_profile, platform_id);
             assert!(vector::length(&platform_badges) == 2, 2);
             
-            test_scenario::return_to_sender(&scenario, platform);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
         
@@ -312,11 +326,13 @@ module social_contracts::platform_tests {
         // Normal user attempts to assign a badge (should fail)
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let platform = test_scenario::take_from_address<Platform>(&scenario, PLATFORM_ADMIN);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let platform = test_scenario::take_shared<Platform>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             // This should fail with EUnauthorized since USER1 is neither platform admin nor moderator
             platform::assign_badge(
+                &registry,
                 &platform,
                 &mut user_profile,
                 string::utf8(b"Fake"),
@@ -326,7 +342,8 @@ module social_contracts::platform_tests {
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_to_address(PLATFORM_ADMIN, platform);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
         
@@ -353,13 +370,15 @@ module social_contracts::platform_tests {
         // Platform admin assigns a badge, then tries to assign the same badge again
         test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
         {
-            let platform = test_scenario::take_from_sender<Platform>(&scenario);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let platform = test_scenario::take_shared<Platform>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             let badge_name = string::utf8(b"VIP");
             
             // Assign badge first time - should succeed
             platform::assign_badge(
+                &registry,
                 &platform,
                 &mut user_profile,
                 badge_name,
@@ -371,6 +390,7 @@ module social_contracts::platform_tests {
             
             // Try to assign the same badge again - should fail
             platform::assign_badge(
+                &registry,
                 &platform,
                 &mut user_profile,
                 badge_name,
@@ -381,7 +401,8 @@ module social_contracts::platform_tests {
             );
             
             // Not reached due to expected failure
-            test_scenario::return_to_sender(&scenario, platform);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
         
@@ -408,11 +429,14 @@ module social_contracts::platform_tests {
         // Platform admin tries to revoke a nonexistent badge
         test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
         {
-            let platform = test_scenario::take_from_sender<Platform>(&scenario);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let platform = test_scenario::take_shared<Platform>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             // Try to revoke a nonexistent badge - should fail
+            // Note: badge ID format changed to include platform ID bytes, but we're testing with a fake ID
             platform::revoke_badge(
+                &registry,
                 &platform,
                 &mut user_profile,
                 string::utf8(b"badge_NonexistentBadge"),
@@ -420,7 +444,8 @@ module social_contracts::platform_tests {
             );
             
             // Not reached due to expected failure
-            test_scenario::return_to_sender(&scenario, platform);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
         
@@ -446,11 +471,13 @@ module social_contracts::platform_tests {
         // Platform admin assigns a badge to the user's profile
         test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
         {
-            let platform = test_scenario::take_from_sender<Platform>(&scenario);
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let platform = test_scenario::take_shared<Platform>(&scenario);
             let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
             
             // Assign badge
             platform::assign_badge(
+                &registry,
                 &platform,
                 &mut user_profile,
                 string::utf8(b"VIP"),
@@ -463,7 +490,8 @@ module social_contracts::platform_tests {
             // Verify badge was assigned
             assert!(profile::badge_count(&user_profile) == 1, 1);
             
-            test_scenario::return_to_sender(&scenario, platform);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(platform);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
         };
         
@@ -491,7 +519,11 @@ module social_contracts::platform_tests {
             
             // Verify badge is still on the profile after transfer
             assert!(profile::badge_count(&profile) == 1, 2);
-            assert!(profile::has_badge(&profile, &string::utf8(b"badge_VIP")), 3);
+            // Badge ID format changed - get the actual badge ID from the badges
+            let badges = profile::get_profile_badges(&profile);
+            let badge = vector::borrow(&badges, 0);
+            let badge_id = profile::badge_id(badge);
+            assert!(profile::has_badge(&profile, &badge_id), 3);
             
             test_scenario::return_to_sender(&scenario, profile);
         };

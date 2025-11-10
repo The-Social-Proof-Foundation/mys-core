@@ -38,6 +38,7 @@ module social_contracts::social_proof_of_truth {
     const ENotOracle: u64 = 7;
     const ENoBets: u64 = 8;
     const EOverflow: u64 = 9;
+    const EInvalidReasoning: u64 = 10;
 
     /// Status
     const STATUS_OPEN: u8 = 1;
@@ -62,6 +63,11 @@ module social_contracts::social_proof_of_truth {
 
     /// Maximum u64 value for overflow protection
     const MAX_U64: u64 = 18446744073709551615;
+    
+    /// Validation constants
+    const MAX_REASONING_LENGTH: u64 = 5000; // Max characters for reasoning
+    const MAX_EVIDENCE_URLS: u64 = 10; // Max number of evidence URLs
+    const MIN_REASONING_LENGTH: u64 = 10; // Minimum characters for reasoning
 
     /// Admin capability for SPoT
     public struct SpotAdminCap has key, store { id: UID }
@@ -119,11 +125,14 @@ module social_contracts::social_proof_of_truth {
         outcome: u8,
         total_escrow: u64,
         fee_taken: u64,
+        reasoning: String, // Required reasoning from oracle
+        evidence_urls: vector<String>, // Required array of evidence URLs (at least 1)
     }
 
     public struct SpotDaoRequiredEvent has copy, drop {
         post_id: address,
         confidence_bps: u64,
+        reasoning: String, // Required reasoning why DAO is needed
     }
 
     public struct SpotPayoutEvent has copy, drop {
@@ -276,12 +285,15 @@ module social_contracts::social_proof_of_truth {
     }
 
     /// Oracle resolution (YES/NO, or too close → DAO_REQUIRED)
+    /// Requires reasoning and at least one evidence URL for transparency and accountability
     public entry fun oracle_resolve(
         spot_config: &SpotConfig,
         record: &mut SpotRecord,
         post: &Post,
         outcome_yes: bool,
         confidence_bps: u64,
+        reasoning: String,
+        evidence_urls: vector<String>,
         ctx: &mut TxContext
     ) {
         assert!(tx_context::sender(ctx) == spot_config.oracle_address, ENotOracle);
@@ -290,28 +302,67 @@ module social_contracts::social_proof_of_truth {
         let now = tx_context::epoch(ctx);
         assert!(now >= record.created_epoch + spot_config.resolution_window_epochs, ETooEarly);
 
+        // Validate reasoning is required and within limits
+        let reasoning_len = string::length(&reasoning);
+        assert!(reasoning_len >= MIN_REASONING_LENGTH, EInvalidReasoning);
+        assert!(reasoning_len <= MAX_REASONING_LENGTH, EInvalidReasoning);
+        
+        // Validate evidence URLs - at least one required
+        let evidence_urls_len = vector::length(&evidence_urls);
+        assert!(evidence_urls_len > 0, EInvalidAmount); // At least one evidence URL required
+        assert!(evidence_urls_len <= MAX_EVIDENCE_URLS, EInvalidAmount);
+
         if (confidence_bps < spot_config.confidence_threshold_bps) {
             record.status = STATUS_DAO_REQUIRED;
-            event::emit(SpotDaoRequiredEvent { post_id: post::get_id_address(post), confidence_bps });
+            event::emit(SpotDaoRequiredEvent { 
+                post_id: post::get_id_address(post), 
+                confidence_bps,
+                reasoning,
+            });
             return
         };
 
         // Resolve outcome
         let outcome = if (outcome_yes) { OUTCOME_YES } else { OUTCOME_NO };
-        finalize_resolution_and_payout(spot_config, record, post, outcome, ctx);
+        // Convert required vector to Option for internal function
+        finalize_resolution_and_payout(spot_config, record, post, outcome, reasoning, option::some(evidence_urls), ctx);
     }
 
     /// DAO finalization (YES/NO/DRAW/UNAPPLICABLE)
+    /// Reasoning is optional as it represents culmination of community discussion
     public entry fun finalize_via_dao(
         spot_config: &SpotConfig,
         record: &mut SpotRecord,
         post: &Post,
         outcome: u8,
+        mut reasoning: Option<String>,
+        evidence_urls: Option<vector<String>>,
         ctx: &mut TxContext
     ) {
         // Allow when DAO_REQUIRED or still OPEN (off-chain DAO direct)
         assert!(record.status == STATUS_DAO_REQUIRED || record.status == STATUS_OPEN, EWrongStatus);
-        finalize_resolution_and_payout(spot_config, record, post, outcome, ctx);
+        
+        // Validate reasoning if provided
+        if (option::is_some(&reasoning)) {
+            let reasoning_val = option::borrow(&reasoning);
+            let reasoning_len = string::length(reasoning_val);
+            assert!(reasoning_len <= MAX_REASONING_LENGTH, EInvalidReasoning);
+        };
+        
+        // Validate evidence URLs if provided
+        if (option::is_some(&evidence_urls)) {
+            let urls = option::borrow(&evidence_urls);
+            assert!(vector::length(urls) <= MAX_EVIDENCE_URLS, EInvalidAmount);
+        };
+        
+        // Use provided reasoning or default message if not provided
+        let final_reasoning = if (option::is_some(&reasoning)) {
+            option::extract(&mut reasoning)
+        } else {
+            string::utf8(b"DAO resolution based on community discussion")
+        };
+        
+        finalize_resolution_and_payout(spot_config, record, post, outcome, final_reasoning, evidence_urls, ctx);
     }
 
     /// Refund all escrow if unresolved beyond max window
@@ -350,6 +401,8 @@ module social_contracts::social_proof_of_truth {
         record: &mut SpotRecord,
         post: &Post,
         outcome: u8,
+        reasoning: String,
+        evidence_urls: Option<vector<String>>,
         ctx: &mut TxContext
     ) {
         assert!(record.status == STATUS_OPEN || record.status == STATUS_DAO_REQUIRED, EWrongStatus);
@@ -375,7 +428,20 @@ module social_contracts::social_proof_of_truth {
             record.status = STATUS_RESOLVED;
             record.outcome = option::some(outcome);
             record.last_resolution_epoch = tx_context::epoch(ctx);
-            event::emit(SpotResolvedEvent { post_id: post::get_id_address(post), outcome, total_escrow, fee_taken: 0 });
+            // Convert Option to vector for event (use empty vector if None)
+            let evidence_urls_vec = if (option::is_some(&evidence_urls)) {
+                *option::borrow(&evidence_urls)
+            } else {
+                vector::empty<String>()
+            };
+            event::emit(SpotResolvedEvent { 
+                post_id: post::get_id_address(post), 
+                outcome, 
+                total_escrow, 
+                fee_taken: 0,
+                reasoning,
+                evidence_urls: evidence_urls_vec,
+            });
             return
         };
 
@@ -415,6 +481,19 @@ module social_contracts::social_proof_of_truth {
         record.status = STATUS_RESOLVED;
         record.outcome = option::some(outcome);
         record.last_resolution_epoch = tx_context::epoch(ctx);
-        event::emit(SpotResolvedEvent { post_id: post::get_id_address(post), outcome, total_escrow, fee_taken: fee });
+        // Convert Option to vector for event (use empty vector if None)
+        let evidence_urls_vec = if (option::is_some(&evidence_urls)) {
+            *option::borrow(&evidence_urls)
+        } else {
+            vector::empty<String>()
+        };
+        event::emit(SpotResolvedEvent { 
+            post_id: post::get_id_address(post), 
+            outcome, 
+            total_escrow, 
+            fee_taken: fee,
+            reasoning,
+            evidence_urls: evidence_urls_vec,
+        });
     }
 }
