@@ -105,9 +105,10 @@ impl PostEventHandler {
         new_post.transaction_id = tx_id.to_string();
 
         // Insert into the database
+        // Note: posts table has composite primary key (id, time) for TimescaleDB
         diesel::insert_into(schema::posts::table)
             .values(new_post)
-            .on_conflict(schema::posts::id)
+            .on_conflict((schema::posts::id, schema::posts::time))
             .do_update()
             .set(schema::posts::transaction_id.eq(tx_id))
             .execute(&mut conn)
@@ -1382,10 +1383,12 @@ async fn handle_post_created(
     // Set the transaction ID
     new_post.transaction_id = transaction_id.to_string();
 
-    // Insert the new post into the database with explicit field updates
+    // Insert the new post into the database
+    // Note: posts table has composite primary key (id, time) for TimescaleDB
+    // We use post_id for conflict resolution since id includes timestamp
     diesel::insert_into(posts::table)
         .values(&new_post)
-        .on_conflict(posts::id) // Assuming id is unique
+        .on_conflict((posts::id, posts::time))
         .do_update()
         .set((
             posts::post_id.eq(&new_post.post_id),
