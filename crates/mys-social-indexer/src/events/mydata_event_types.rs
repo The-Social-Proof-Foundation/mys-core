@@ -9,7 +9,42 @@ use serde_json::Value;
 // MARKETPLACE EVENT TYPES
 // ============================================================================
 
-/// Event emitted when new data is added to the marketplace
+/// Event emitted when new MyData is created (from smart contract)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MyDataCreatedEvent {
+    pub ip_id: String,
+    pub owner: String,
+    pub media_type: String,
+    pub platform_id: Option<String>,
+    pub one_time_price: Option<u64>,
+    pub subscription_price: Option<u64>,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub created_at: u64,
+}
+
+/// Event emitted when MyData is purchased (one-time or subscription)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PurchaseEvent {
+    pub ip_id: String,
+    pub buyer: String,
+    pub price: u64,
+    pub purchase_type: String, // "one_time" or "subscription"
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub timestamp: u64,
+}
+
+/// Event emitted when access is granted (pricing update, content update, or free access)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AccessGrantedEvent {
+    pub ip_id: String,
+    pub user: String,
+    pub access_type: String, // "pricing_update", "content_update", "one_time", "subscription"
+    pub granted_by: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub timestamp: u64,
+}
+
+/// Event emitted when new data is added to the marketplace (legacy)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataCreatedEvent {
     pub mydata_id: String,

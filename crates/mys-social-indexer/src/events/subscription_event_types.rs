@@ -18,7 +18,21 @@ pub enum SubscriptionEventType {
 
 impl SubscriptionEventType {
     pub fn from_str(s: &str) -> Option<Self> {
+        // Use ends_with for precise matching, but also support contains for flexibility
         match s {
+            s if s.ends_with("::ProfileSubscriptionCreatedEvent") || s.ends_with("ProfileSubscriptionCreatedEvent") => {
+                Some(Self::ProfileSubscriptionCreated)
+            }
+            s if s.ends_with("::ProfileSubscriptionRenewedEvent") || s.ends_with("ProfileSubscriptionRenewedEvent") => {
+                Some(Self::ProfileSubscriptionRenewed)
+            }
+            s if s.ends_with("::ProfileSubscriptionCancelledEvent") || s.ends_with("ProfileSubscriptionCancelledEvent") => {
+                Some(Self::ProfileSubscriptionCancelled)
+            }
+            s if s.ends_with("::ProfileSubscriptionUpdatedEvent") || s.ends_with("ProfileSubscriptionUpdatedEvent") => {
+                Some(Self::ProfileSubscriptionUpdated)
+            }
+            // Fallback to contains for backward compatibility
             s if s.contains("::ProfileSubscriptionCreatedEvent") => {
                 Some(Self::ProfileSubscriptionCreated)
             }

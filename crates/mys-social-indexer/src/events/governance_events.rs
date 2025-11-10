@@ -280,11 +280,11 @@ pub async fn process_delegate_voted_event(
                 // Create delegate rating record
                 let new_rating = NewDelegateRating {
                     target_address: voted_event.target_address.clone(),
-                    voter_address: voted_event.voter_address.clone(),
+                    voter_address: voted_event.voter.clone(), // Use voter field
                     registry_type: voted_event.registry_type as i16,
                     is_active_delegate: voted_event.is_active_delegate,
                     upvote: voted_event.upvote,
-                    rated_at: voted_event.rated_at as i64,
+                    rated_at: Utc::now().timestamp(), // Use current time since event doesn't have timestamp
                     transaction_id: event_id.to_string(),
                 };
 
@@ -305,77 +305,42 @@ pub async fn process_delegate_voted_event(
                     .execute(tx_conn)
                     .await?;
 
-                // Update vote counts based on active status
+                // Update vote counts using the new counts from the event
+                // The event already contains the updated counts, so we use those directly
                 if voted_event.is_active_delegate {
-                    // Update delegate record based on vote type
-                    if voted_event.upvote {
-                        diesel::update(crate::schema::delegates::table)
-                            .filter(
-                                crate::schema::delegates::address
-                                    .eq(&voted_event.target_address)
-                                    .and(
-                                        crate::schema::delegates::registry_type
-                                            .eq(voted_event.registry_type as i16),
-                                    ),
-                            )
-                            .set(
-                                crate::schema::delegates::upvotes
-                                    .eq(crate::schema::delegates::upvotes + 1),
-                            )
-                            .execute(tx_conn)
-                            .await?;
-                    } else {
-                        diesel::update(crate::schema::delegates::table)
-                            .filter(
-                                crate::schema::delegates::address
-                                    .eq(&voted_event.target_address)
-                                    .and(
-                                        crate::schema::delegates::registry_type
-                                            .eq(voted_event.registry_type as i16),
-                                    ),
-                            )
-                            .set(
-                                crate::schema::delegates::downvotes
-                                    .eq(crate::schema::delegates::downvotes + 1),
-                            )
-                            .execute(tx_conn)
-                            .await?;
-                    }
+                    // Update delegate record with new vote counts
+                    diesel::update(crate::schema::delegates::table)
+                        .filter(
+                            crate::schema::delegates::address
+                                .eq(&voted_event.target_address)
+                                .and(
+                                    crate::schema::delegates::registry_type
+                                        .eq(voted_event.registry_type as i16),
+                                ),
+                        )
+                        .set((
+                            crate::schema::delegates::upvotes.eq(voted_event.new_upvote_count as i64),
+                            crate::schema::delegates::downvotes.eq(voted_event.new_downvote_count as i64),
+                        ))
+                        .execute(tx_conn)
+                        .await?;
                 } else {
-                    // Update nominee record based on vote type
-                    if voted_event.upvote {
-                        diesel::update(crate::schema::nominated_delegates::table)
-                            .filter(
-                                crate::schema::nominated_delegates::address
-                                    .eq(&voted_event.target_address)
-                                    .and(
-                                        crate::schema::nominated_delegates::registry_type
-                                            .eq(voted_event.registry_type as i16),
-                                    ),
-                            )
-                            .set(
-                                crate::schema::nominated_delegates::upvotes
-                                    .eq(crate::schema::nominated_delegates::upvotes + 1),
-                            )
-                            .execute(tx_conn)
-                            .await?;
-                    } else {
-                        diesel::update(crate::schema::nominated_delegates::table)
-                            .filter(
-                                crate::schema::nominated_delegates::address
-                                    .eq(&voted_event.target_address)
-                                    .and(
-                                        crate::schema::nominated_delegates::registry_type
-                                            .eq(voted_event.registry_type as i16),
-                                    ),
-                            )
-                            .set(
-                                crate::schema::nominated_delegates::downvotes
-                                    .eq(crate::schema::nominated_delegates::downvotes + 1),
-                            )
-                            .execute(tx_conn)
-                            .await?;
-                    }
+                    // Update nominee record with new vote counts
+                    diesel::update(crate::schema::nominated_delegates::table)
+                        .filter(
+                            crate::schema::nominated_delegates::address
+                                .eq(&voted_event.target_address)
+                                .and(
+                                    crate::schema::nominated_delegates::registry_type
+                                        .eq(voted_event.registry_type as i16),
+                                ),
+                        )
+                        .set((
+                            crate::schema::nominated_delegates::upvotes.eq(voted_event.new_upvote_count as i64),
+                            crate::schema::nominated_delegates::downvotes.eq(voted_event.new_downvote_count as i64),
+                        ))
+                        .execute(tx_conn)
+                        .await?;
                 }
 
                 // Record this event in the governance_events table
@@ -951,6 +916,108 @@ pub async fn process_proposal_rescinded_event(
     Ok(())
 }
 
+/// Process a proposal rejected by community event
+pub async fn process_proposal_rejected_by_community_event(
+    conn: &mut DbConnection,
+    event: &Value,
+    event_id: &str,
+) -> Result<()> {
+    debug!("Processing proposal rejected by community event");
+
+    // Parse the event
+    let rejected_event = parse_json_event::<ProposalRejectedByCommunityEvent>(event)?;
+
+    // Begin transaction
+    conn.build_transaction()
+        .run(|tx_conn| {
+            Box::pin(async move {
+                // Update proposal status
+                diesel::update(crate::schema::proposals::table)
+                    .filter(crate::schema::proposals::id.eq(&rejected_event.proposal_id))
+                    .set((
+                        crate::schema::proposals::status.eq(GOVERNANCE_STATUS_REJECTED as i16),
+                        crate::schema::proposals::community_votes_for.eq(rejected_event.votes_for as i64),
+                        crate::schema::proposals::community_votes_against.eq(rejected_event.votes_against as i64),
+                    ))
+                    .execute(tx_conn)
+                    .await?;
+
+                // Update delegate stats - delegates who voted against win, delegates who voted for lose
+                let delegate_votes = diesel::sql_query(
+                    "
+                    SELECT dv.delegate_address, dv.approve, p.submitter
+                    FROM delegate_votes dv
+                    JOIN proposals p ON dv.proposal_id = p.id
+                    WHERE dv.proposal_id = $1
+                ",
+                )
+                .bind::<diesel::sql_types::Text, _>(&rejected_event.proposal_id)
+                .load::<DelegateVoteResult>(tx_conn)
+                .await?;
+
+                // Update each delegate's win/loss count
+                for vote in &delegate_votes {
+                    if !vote.approve {
+                        // Delegate voted against - they win since proposal was rejected
+                        diesel::update(crate::schema::delegates::table)
+                            .filter(crate::schema::delegates::address.eq(&vote.delegate_address))
+                            .set(
+                                crate::schema::delegates::sided_winning_proposals
+                                    .eq(crate::schema::delegates::sided_winning_proposals + 1),
+                            )
+                            .execute(tx_conn)
+                            .await?;
+                    } else {
+                        // Delegate voted for - they lose since proposal was rejected
+                        diesel::update(crate::schema::delegates::table)
+                            .filter(crate::schema::delegates::address.eq(&vote.delegate_address))
+                            .set(
+                                crate::schema::delegates::sided_losing_proposals
+                                    .eq(crate::schema::delegates::sided_losing_proposals + 1),
+                            )
+                            .execute(tx_conn)
+                            .await?;
+                    }
+                }
+
+                // Record this event in the governance_events table
+                let proposal_type_query =
+                    diesel::sql_query("SELECT proposal_type FROM proposals WHERE id = $1")
+                        .bind::<diesel::sql_types::Text, _>(&rejected_event.proposal_id)
+                        .load::<ProposalTypeResult>(tx_conn)
+                        .await?;
+
+                if let Some(result) = proposal_type_query.get(0) {
+                    let governance_event = NewGovernanceEvent {
+                        event_type: "ProposalRejectedByCommunityEvent".to_string(),
+                        registry_type: result.proposal_type,
+                        event_data: event.clone(),
+                        event_id: event_id.to_string(),
+                        created_at: Utc::now(),
+                        anonymous_voting_related: None,
+                    };
+
+                    diesel::insert_into(crate::schema::governance_events::table)
+                        .values(&governance_event)
+                        .execute(tx_conn)
+                        .await?;
+                } else {
+                    error!(
+                        "Failed to find proposal type for proposal ID: {}",
+                        rejected_event.proposal_id
+                    );
+                }
+
+                info!("Processed proposal rejected by community event successfully");
+
+                Ok::<_, anyhow::Error>(())
+            })
+        })
+        .await?;
+
+    Ok(())
+}
+
 /// Process a proposal approved event
 pub async fn process_proposal_approved_event(
     conn: &mut DbConnection,
@@ -969,7 +1036,11 @@ pub async fn process_proposal_approved_event(
                 // Update proposal status
                 diesel::update(crate::schema::proposals::table)
                     .filter(crate::schema::proposals::id.eq(&approved_event.proposal_id))
-                    .set(crate::schema::proposals::status.eq(GOVERNANCE_STATUS_APPROVED as i16))
+                    .set((
+                        crate::schema::proposals::status.eq(GOVERNANCE_STATUS_APPROVED as i16),
+                        crate::schema::proposals::community_votes_for.eq(approved_event.votes_for as i64),
+                        crate::schema::proposals::community_votes_against.eq(approved_event.votes_against as i64),
+                    ))
                     .execute(tx_conn)
                     .await?;
 
@@ -1122,13 +1193,16 @@ pub async fn process_rewards_distributed_event(
     // Parse the event
     let rewards_event = parse_json_event::<RewardsDistributedEvent>(event)?;
 
-    // Create reward distribution record
+    // Note: The RewardsDistributedEvent contains aggregate data (total_reward, recipient_count)
+    // but the database model expects individual recipient records. Since we don't have
+    // individual recipient addresses from the event, we create an aggregate record
+    // with a placeholder recipient_address indicating this is an aggregate distribution.
     let new_distribution = NewRewardDistribution {
         proposal_id: rewards_event.proposal_id.clone(),
-        recipient_address: rewards_event.recipient_address.clone(),
-        amount: rewards_event.amount as i64,
+        recipient_address: format!("aggregate_{}", rewards_event.proposal_id), // Aggregate placeholder
+        amount: rewards_event.total_reward as i64,
         distribution_time: rewards_event.distribution_time as i64,
-        distribution_type: Some(rewards_event.distribution_type.clone()),
+        distribution_type: Some(format!("aggregate_{}_recipients", rewards_event.recipient_count)),
         transaction_id: event_id.to_string(),
     };
 

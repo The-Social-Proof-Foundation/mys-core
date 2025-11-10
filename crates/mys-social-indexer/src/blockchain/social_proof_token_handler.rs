@@ -15,9 +15,11 @@ use crate::blockchain::handler_trait::{
 use crate::blockchain::listener::BlockchainEvent;
 use crate::db::Database;
 use crate::events::social_proof_token_events::{
-    ConfigUpdatedEvent, SocialProofBuyEvent, SocialProofInitPoolEvent,
+    ConfigUpdatedEvent, EmergencyKillSwitchEvent, PostPoolAutoInitializedEvent,
+    SocialProofBuyEvent, SocialProofInitPoolEvent,
     SocialProofReservationCreatedEvent, SocialProofReservationWithdrawnEvent, SocialProofSellEvent,
-    SocialProofThresholdMetEvent,
+    SocialProofThresholdMetEvent, TokenBoughtEvent, TokenSoldEvent, TokensAddedEvent,
+    TokenPoolCreatedEvent,
 };
 use crate::models::indexer::NewIndexerProgress;
 use crate::models::social_proof_token::{
@@ -79,7 +81,181 @@ impl SocialProofTokenHandler {
         Ok(())
     }
 
-    /// Process buy events
+    /// Process token bought events (from smart contract)
+    async fn process_token_bought_event(&mut self, event: &BlockchainEvent) -> Result<()> {
+        info!("Processing SPT token bought event: {}", event.event_id);
+
+        // Extract and parse the event
+        let fields = Self::extract_event_fields(&event.data)?;
+        let buy_event = serde_json::from_value::<TokenBoughtEvent>(fields)
+            .map_err(|e| anyhow!("Failed to parse TokenBoughtEvent: {}", e))?;
+
+        let mut conn = self.base.get_connection().await?;
+        let timestamp = (event.timestamp_ms / 1000) as i64;
+        let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
+
+        // Get the latest token pool to update supply and price
+        let latest_pool = schema::social_proof_token_pools::table
+            .filter(schema::social_proof_token_pools::pool_id.eq(&buy_event.id))
+            .order_by(schema::social_proof_token_pools::time.desc())
+            .first::<SocialProofTokenPool>(&mut conn)
+            .await
+            .map_err(|e| anyhow!("Failed to get latest token pool: {}", e))?;
+
+        // Create updated token pool record
+        let new_circulating_supply = latest_pool.circulating_supply + buy_event.amount as i64;
+        let new_token_pool = NewSocialProofTokenPool {
+            pool_id: latest_pool.pool_id.clone(),
+            owner: latest_pool.owner.clone(),
+            name: latest_pool.name.clone(),
+            symbol: latest_pool.symbol.clone(),
+            token_type: latest_pool.token_type,
+            associated_id: latest_pool.associated_id.clone(),
+            base_price: latest_pool.base_price,
+            quadratic_coefficient: latest_pool.quadratic_coefficient,
+            circulating_supply: new_circulating_supply,
+            created_at: latest_pool.created_at,
+            time: datetime,
+            transaction_id: event.tx_digest.clone(),
+        };
+
+        // Insert transaction record
+        let mut tx = buy_event.into_transaction_model(timestamp as u64, event.tx_digest.clone())?;
+        tx.time = datetime;
+
+        diesel::insert_into(schema::spt_transactions::table)
+            .values(&tx)
+            .execute(&mut conn)
+            .await?;
+
+        // Update or insert holding for buyer
+        let mut holding = buy_event.into_holding_model(timestamp as u64, event.tx_digest.clone())?;
+        holding.time = datetime;
+
+        diesel::insert_into(schema::spt_holdings::table)
+            .values(&holding)
+            .execute(&mut conn)
+            .await?;
+
+        // Insert price history record
+        let mut price_history = buy_event.create_price_history(
+            new_circulating_supply,
+            timestamp as u64,
+            event.tx_digest.clone(),
+        )?;
+        price_history.time = datetime;
+
+        diesel::insert_into(schema::spt_price_history::table)
+            .values(&price_history)
+            .execute(&mut conn)
+            .await?;
+
+        // Insert updated token pool
+        diesel::insert_into(schema::social_proof_token_pools::table)
+            .values(&new_token_pool)
+            .execute(&mut conn)
+            .await?;
+
+        // Update progress tracking
+        self.update_progress().await?;
+
+        info!(
+            "Successfully processed token bought event for pool: {}, buyer: {}, amount: {}, new supply: {}",
+            buy_event.id, buy_event.buyer, buy_event.amount, new_circulating_supply
+        );
+        Ok(())
+    }
+
+    /// Process token sold events (from smart contract)
+    async fn process_token_sold_event(&mut self, event: &BlockchainEvent) -> Result<()> {
+        info!("Processing SPT token sold event: {}", event.event_id);
+
+        // Extract and parse the event
+        let fields = Self::extract_event_fields(&event.data)?;
+        let sell_event = serde_json::from_value::<TokenSoldEvent>(fields)
+            .map_err(|e| anyhow!("Failed to parse TokenSoldEvent: {}", e))?;
+
+        let mut conn = self.base.get_connection().await?;
+        let timestamp = (event.timestamp_ms / 1000) as i64;
+        let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
+
+        // Get the latest token pool to update supply and price
+        let latest_pool = schema::social_proof_token_pools::table
+            .filter(schema::social_proof_token_pools::pool_id.eq(&sell_event.id))
+            .order_by(schema::social_proof_token_pools::time.desc())
+            .first::<SocialProofTokenPool>(&mut conn)
+            .await
+            .map_err(|e| anyhow!("Failed to get latest token pool for sell event: {}", e))?;
+
+        // Calculate new circulating supply (reduce by sold amount)
+        let new_circulating_supply = latest_pool
+            .circulating_supply
+            .saturating_sub(sell_event.amount as i64);
+
+        // Create updated token pool record
+        let new_token_pool = NewSocialProofTokenPool {
+            pool_id: latest_pool.pool_id.clone(),
+            owner: latest_pool.owner.clone(),
+            name: latest_pool.name.clone(),
+            symbol: latest_pool.symbol.clone(),
+            token_type: latest_pool.token_type,
+            associated_id: latest_pool.associated_id.clone(),
+            base_price: latest_pool.base_price,
+            quadratic_coefficient: latest_pool.quadratic_coefficient,
+            circulating_supply: new_circulating_supply,
+            created_at: latest_pool.created_at,
+            time: datetime,
+            transaction_id: event.tx_digest.clone(),
+        };
+
+        // Insert transaction record
+        let mut tx = sell_event.into_transaction_model(timestamp as u64, event.tx_digest.clone())?;
+        tx.time = datetime;
+
+        diesel::insert_into(schema::spt_transactions::table)
+            .values(&tx)
+            .execute(&mut conn)
+            .await?;
+
+        // Update holding for seller (reduce their holding amount)
+        let mut holding = sell_event.into_holding_model(timestamp as u64, event.tx_digest.clone())?;
+        holding.time = datetime;
+
+        diesel::insert_into(schema::spt_holdings::table)
+            .values(&holding)
+            .execute(&mut conn)
+            .await?;
+
+        // Insert price history record with new supply
+        let mut price_history = sell_event.create_price_history(
+            new_circulating_supply,
+            timestamp as u64,
+            event.tx_digest.clone(),
+        )?;
+        price_history.time = datetime;
+
+        diesel::insert_into(schema::spt_price_history::table)
+            .values(&price_history)
+            .execute(&mut conn)
+            .await?;
+
+        // Insert updated token pool with reduced supply
+        diesel::insert_into(schema::social_proof_token_pools::table)
+            .values(&new_token_pool)
+            .execute(&mut conn)
+            .await?;
+
+        // Update progress tracking
+        self.update_progress().await?;
+
+        info!(
+            "Successfully processed token sold event for pool: {}, seller: {}, amount: {}, new supply: {}",
+            sell_event.id, sell_event.seller, sell_event.amount, new_circulating_supply
+        );
+        Ok(())
+    }
+
+    /// Process buy events (legacy format)
     async fn process_buy_event(&mut self, event: &BlockchainEvent) -> Result<()> {
         info!("Processing SPT buy event: {}", event.event_id);
 
@@ -539,6 +715,140 @@ impl SocialProofTokenHandler {
         Ok(())
     }
 
+    /// Process post pool auto-initialized events
+    async fn process_post_pool_auto_initialized_event(&mut self, event: &BlockchainEvent) -> Result<()> {
+        info!(
+            "Processing SPT post pool auto-initialized event: {}",
+            event.event_id
+        );
+
+        // Extract and parse the event
+        let fields = Self::extract_event_fields(&event.data)?;
+        let auto_init_event = serde_json::from_value::<PostPoolAutoInitializedEvent>(fields)
+            .map_err(|e| anyhow!("Failed to parse PostPoolAutoInitializedEvent: {}", e))?;
+
+        let mut conn = self.base.get_connection().await?;
+        let timestamp = (event.timestamp_ms / 1000) as i64;
+        let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
+
+        // Convert to database model
+        let mut token_pool = auto_init_event.into_model(timestamp as u64, event.tx_digest.clone())?;
+        token_pool.time = datetime;
+
+        // Insert into database
+        diesel::insert_into(schema::social_proof_token_pools::table)
+            .values(&token_pool)
+            .execute(&mut conn)
+            .await?;
+
+        // Update progress tracking
+        self.update_progress().await?;
+
+        info!(
+            "Successfully processed post pool auto-initialized event for post: {}, owner: {}",
+            auto_init_event.post_id, auto_init_event.owner
+        );
+        Ok(())
+    }
+
+    /// Process tokens added events (when tokens are added to existing holdings)
+    async fn process_tokens_added_event(&mut self, event: &BlockchainEvent) -> Result<()> {
+        info!("Processing SPT tokens added event: {}", event.event_id);
+
+        // Extract and parse the event
+        let fields = Self::extract_event_fields(&event.data)?;
+        let tokens_added_event = serde_json::from_value::<TokensAddedEvent>(fields)
+            .map_err(|e| anyhow!("Failed to parse TokensAddedEvent: {}", e))?;
+
+        let mut conn = self.base.get_connection().await?;
+        let timestamp = (event.timestamp_ms / 1000) as i64;
+        let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
+
+        // Update holding for the owner
+        let mut holding = tokens_added_event.into_holding_model(timestamp as u64, event.tx_digest.clone())?;
+        holding.time = datetime;
+
+        diesel::insert_into(schema::spt_holdings::table)
+            .values(&holding)
+            .execute(&mut conn)
+            .await?;
+
+        // Get the latest token pool to update supply
+        let latest_pool = schema::social_proof_token_pools::table
+            .filter(schema::social_proof_token_pools::pool_id.eq(&tokens_added_event.pool_id))
+            .order_by(schema::social_proof_token_pools::time.desc())
+            .first::<SocialProofTokenPool>(&mut conn)
+            .await
+            .optional()?;
+
+        if let Some(pool) = latest_pool {
+            // Update circulating supply
+            let new_circulating_supply = pool.circulating_supply + tokens_added_event.amount as i64;
+            let updated_pool = NewSocialProofTokenPool {
+                pool_id: pool.pool_id.clone(),
+                owner: pool.owner.clone(),
+                name: pool.name.clone(),
+                symbol: pool.symbol.clone(),
+                token_type: pool.token_type,
+                associated_id: pool.associated_id.clone(),
+                base_price: pool.base_price,
+                quadratic_coefficient: pool.quadratic_coefficient,
+                circulating_supply: new_circulating_supply,
+                created_at: pool.created_at,
+                time: datetime,
+                transaction_id: event.tx_digest.clone(),
+            };
+
+            diesel::insert_into(schema::social_proof_token_pools::table)
+                .values(&updated_pool)
+                .execute(&mut conn)
+                .await?;
+        }
+
+        // Update progress tracking
+        self.update_progress().await?;
+
+        info!(
+            "Successfully processed tokens added event for pool: {}, owner: {}, amount: {}",
+            tokens_added_event.pool_id, tokens_added_event.owner, tokens_added_event.amount
+        );
+        Ok(())
+    }
+
+    /// Process emergency kill switch events
+    async fn process_emergency_kill_switch_event(&mut self, event: &BlockchainEvent) -> Result<()> {
+        info!("Processing SPT emergency kill switch event: {}", event.event_id);
+
+        // Extract and parse the event
+        let fields = Self::extract_event_fields(&event.data)?;
+        let kill_switch_event = serde_json::from_value::<EmergencyKillSwitchEvent>(fields)
+            .map_err(|e| anyhow!("Failed to parse EmergencyKillSwitchEvent: {}", e))?;
+
+        let mut conn = self.base.get_connection().await?;
+        let timestamp = (event.timestamp_ms / 1000) as i64;
+        let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
+
+        // Log the kill switch event to exchange config table
+        let mut config = kill_switch_event.into_exchange_config_model(timestamp as u64, event.tx_digest.clone())?;
+        config.time = datetime;
+
+        diesel::insert_into(schema::spt_exchange_config::table)
+            .values(&config)
+            .execute(&mut conn)
+            .await?;
+
+        // Update progress tracking
+        self.update_progress().await?;
+
+        warn!(
+            "Emergency kill switch {} by admin: {}, reason: {}",
+            if kill_switch_event.trading_halted { "ACTIVATED" } else { "DEACTIVATED" },
+            kill_switch_event.admin,
+            kill_switch_event.reason
+        );
+        Ok(())
+    }
+
     /// Process token pool created events and update profile with social proof token address
     async fn process_token_pool_created_event(&mut self, event: &BlockchainEvent) -> Result<()> {
         info!(
@@ -660,6 +970,7 @@ impl BlockchainEventHandler for SocialProofTokenHandler {
 
         // Route to appropriate handler based on event type
         let result = match event_type {
+            // Legacy event names (for backward compatibility)
             t if t.contains("::social_proof_token::") && t.ends_with("::InitPoolEvent") => {
                 self.process_init_pool_event(&event).await
             }
@@ -669,29 +980,59 @@ impl BlockchainEventHandler for SocialProofTokenHandler {
             t if t.contains("::social_proof_token::") && t.ends_with("::SellEvent") => {
                 self.process_sell_event(&event).await
             }
+            // Current event names from smart contract
             t if t.contains("::social_proof_tokens::")
-                && t.ends_with("::ReservationCreatedEvent") =>
+                && (t.ends_with("::TokenPoolCreatedEvent") || t.ends_with("TokenPoolCreatedEvent")) =>
+            {
+                self.process_token_pool_created_event(&event).await
+            }
+            t if t.contains("::social_proof_tokens::")
+                && (t.ends_with("::PostPoolAutoInitializedEvent") || t.ends_with("PostPoolAutoInitializedEvent")) =>
+            {
+                self.process_post_pool_auto_initialized_event(&event).await
+            }
+            t if t.contains("::social_proof_tokens::")
+                && (t.ends_with("::TokenBoughtEvent") || t.ends_with("TokenBoughtEvent")) =>
+            {
+                self.process_token_bought_event(&event).await
+            }
+            t if t.contains("::social_proof_tokens::")
+                && (t.ends_with("::TokenSoldEvent") || t.ends_with("TokenSoldEvent")) =>
+            {
+                self.process_token_sold_event(&event).await
+            }
+            t if t.contains("::social_proof_tokens::")
+                && (t.ends_with("::TokensAddedEvent") || t.ends_with("TokensAddedEvent")) =>
+            {
+                self.process_tokens_added_event(&event).await
+            }
+            t if t.contains("::social_proof_tokens::")
+                && (t.ends_with("::ReservationCreatedEvent") || t.ends_with("ReservationCreatedEvent")) =>
             {
                 self.process_reservation_created_event(&event).await
             }
             t if t.contains("::social_proof_tokens::")
-                && t.ends_with("::ReservationWithdrawnEvent") =>
+                && (t.ends_with("::ReservationWithdrawnEvent") || t.ends_with("ReservationWithdrawnEvent")) =>
             {
                 self.process_reservation_withdrawn_event(&event).await
             }
-            t if t.contains("::social_proof_tokens::") && t.ends_with("::ThresholdMetEvent") => {
+            t if t.contains("::social_proof_tokens::")
+                && (t.ends_with("::ThresholdMetEvent") || t.ends_with("ThresholdMetEvent")) =>
+            {
                 self.process_threshold_met_event(&event).await
             }
-            t if t.contains("::social_proof_tokens::") && t.ends_with("::ConfigUpdatedEvent") => {
+            t if t.contains("::social_proof_tokens::")
+                && (t.ends_with("::ConfigUpdatedEvent") || t.ends_with("ConfigUpdatedEvent")) =>
+            {
                 self.process_config_updated_event(&event).await
             }
             t if t.contains("::social_proof_tokens::")
-                && t.ends_with("::TokenPoolCreatedEvent") =>
+                && (t.ends_with("::EmergencyKillSwitchEvent") || t.ends_with("EmergencyKillSwitchEvent")) =>
             {
-                self.process_token_pool_created_event(&event).await
+                self.process_emergency_kill_switch_event(&event).await
             }
             _ => {
-                debug!("Ignoring unhandled SPT event type: {}", event_type);
+                warn!("Received unhandled SPT event type: {} (event_id: {})", event_type, event.event_id);
                 return Ok(());
             }
         };

@@ -258,8 +258,11 @@ impl SocialGraphEventHandler {
             if event.event_type.contains("::social_graph::") {
                 info!("Processing social graph event: {}", event.event_type);
 
+                let mut event_handled = false;
+
                 // Handle follow event
                 if event.event_type.ends_with("::FollowEvent") {
+                    event_handled = true;
                     // Extract fields from JSON and parse as FollowEvent
                     match crate::events::event_utils::extract_event_fields(&event.data).and_then(
                         |fields| {
@@ -282,6 +285,7 @@ impl SocialGraphEventHandler {
 
                 // Handle unfollow event
                 if event.event_type.ends_with("::UnfollowEvent") {
+                    event_handled = true;
                     // Extract fields from JSON and parse as UnfollowEvent
                     match crate::events::event_utils::extract_event_fields(&event.data).and_then(
                         |fields| {
@@ -301,6 +305,14 @@ impl SocialGraphEventHandler {
                             error!("Failed to parse unfollow event: {}", e);
                         }
                     }
+                }
+
+                // Warn if we received a social_graph event but didn't handle it
+                if !event_handled {
+                    warn!(
+                        "Received unhandled social_graph event: {} (event_id: {})",
+                        event.event_type, event.event_id
+                    );
                 }
 
                 // Update progress after processing the event

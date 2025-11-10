@@ -24,6 +24,18 @@ pub enum ProfileEventType {
     TokensVested,
     // Vested tokens are claimed
     TokensClaimed,
+    // Profile offer created
+    ProfileOfferCreated,
+    // Profile offer accepted
+    ProfileOfferAccepted,
+    // Profile offer rejected/revoked
+    ProfileOfferRejected,
+    // Profile sale fee collected
+    ProfileSaleFee,
+    // Badge assigned to profile
+    BadgeAssigned,
+    // Badge revoked from profile
+    BadgeRevoked,
 }
 
 impl ProfileEventType {
@@ -48,6 +60,12 @@ impl ProfileEventType {
             }
             s if s.contains("::TokensVestedEvent") => Some(Self::TokensVested),
             s if s.contains("::TokensClaimedEvent") => Some(Self::TokensClaimed),
+            s if s.contains("::ProfileOfferCreatedEvent") => Some(Self::ProfileOfferCreated),
+            s if s.contains("::ProfileOfferAcceptedEvent") => Some(Self::ProfileOfferAccepted),
+            s if s.contains("::ProfileOfferRejectedEvent") => Some(Self::ProfileOfferRejected),
+            s if s.contains("::ProfileSaleFeeEvent") => Some(Self::ProfileSaleFee),
+            s if s.contains("::BadgeAssignedEvent") => Some(Self::BadgeAssigned),
+            s if s.contains("::BadgeRevokedEvent") => Some(Self::BadgeRevoked),
             _ => None,
         }
     }
@@ -65,6 +83,12 @@ impl ProfileEventType {
             Self::PlatformLeft => "PlatformLeftEvent",
             Self::TokensVested => "TokensVestedEvent",
             Self::TokensClaimed => "TokensClaimedEvent",
+            Self::ProfileOfferCreated => "ProfileOfferCreatedEvent",
+            Self::ProfileOfferAccepted => "ProfileOfferAcceptedEvent",
+            Self::ProfileOfferRejected => "ProfileOfferRejectedEvent",
+            Self::ProfileSaleFee => "ProfileSaleFeeEvent",
+            Self::BadgeAssigned => "BadgeAssignedEvent",
+            Self::BadgeRevoked => "BadgeRevokedEvent",
         }
     }
 }

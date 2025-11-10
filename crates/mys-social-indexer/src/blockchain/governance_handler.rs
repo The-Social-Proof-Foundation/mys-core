@@ -5,7 +5,7 @@ use anyhow::Result;
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use crate::blockchain::listener::BlockchainEvent;
 use crate::db::Database;
@@ -108,7 +108,18 @@ impl GovernanceEventHandler {
                 process_proposal_approved_for_voting_event(conn, event_data, event_id).await?;
             }
             "reject_proposal" | "ProposalRejected" => {
-                process_proposal_rejected_event(conn, event_data, event_id).await?;
+                // Check if this is ProposalRejectedEvent (by delegates) or ProposalRejectedByCommunityEvent
+                // by checking the event data structure
+                if event_data.get("votes_for").is_some() && event_data.get("votes_against").is_some() {
+                    // This is ProposalRejectedByCommunityEvent
+                    process_proposal_rejected_by_community_event(conn, event_data, event_id).await?;
+                } else {
+                    // This is ProposalRejectedEvent (by delegates)
+                    process_proposal_rejected_event(conn, event_data, event_id).await?;
+                }
+            }
+            "ProposalRejectedByCommunity" => {
+                process_proposal_rejected_by_community_event(conn, event_data, event_id).await?;
             }
             "rescind_proposal" | "ProposalRescinded" => {
                 process_proposal_rescinded_event(conn, event_data, event_id).await?;
@@ -129,7 +140,10 @@ impl GovernanceEventHandler {
                 process_vote_decryption_failed_event(conn, event_data, event_id).await?;
             }
             _ => {
-                debug!("Unknown governance function: {}", function_name);
+                warn!(
+                    "Received unhandled governance event: {} (event_id: {})",
+                    function_name, event_id
+                );
             }
         }
 

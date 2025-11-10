@@ -266,14 +266,19 @@ impl PocEventHandler {
 
     fn is_poc_event(event_type: &str) -> bool {
         event_type.contains("::poc::")
+            || event_type.contains("::proof_of_creativity::")
             || event_type.ends_with("AnalysisSubmittedEvent")
             || event_type.ends_with("PocBadgeIssuedEvent")
+            || event_type.ends_with("PoCBadgeIssuedEvent") // Handle both casings
             || event_type.ends_with("RevenueRedirectionActivatedEvent")
             || event_type.ends_with("PocDisputeSubmittedEvent")
+            || event_type.ends_with("PoCDisputeSubmittedEvent") // Handle both casings
             || event_type.ends_with("DisputeVoteCastEvent")
             || event_type.ends_with("PocDisputeResolvedEvent")
+            || event_type.ends_with("PoCDisputeResolvedEvent") // Handle both casings
             || event_type.ends_with("VotingRewardClaimedEvent")
             || event_type.ends_with("PocConfigUpdatedEvent")
+            || event_type.ends_with("PoCConfigUpdatedEvent") // Handle both casings
             || event_type.ends_with("TokenPoolSyncNeededEvent")
     }
 
@@ -294,29 +299,36 @@ impl PocEventHandler {
                 continue;
             }
 
+            info!("Processing PoC event: {}", event.event_type);
+
             let result = if event.event_type.ends_with("AnalysisSubmittedEvent") {
                 self.handle_analysis_submitted(&event).await
-            } else if event.event_type.ends_with("PocBadgeIssuedEvent") {
+            } else if event.event_type.ends_with("PocBadgeIssuedEvent") 
+                || event.event_type.ends_with("PoCBadgeIssuedEvent") {
                 self.handle_badge_issued(&event).await
-            } else if event
-                .event_type
-                .ends_with("RevenueRedirectionActivatedEvent")
-            {
+            } else if event.event_type.ends_with("RevenueRedirectionActivatedEvent") {
                 self.handle_revenue_redirection(&event).await
-            } else if event.event_type.ends_with("PocDisputeSubmittedEvent") {
+            } else if event.event_type.ends_with("PocDisputeSubmittedEvent")
+                || event.event_type.ends_with("PoCDisputeSubmittedEvent") {
                 self.handle_dispute_submitted(&event).await
             } else if event.event_type.ends_with("DisputeVoteCastEvent") {
                 self.handle_vote_cast(&event).await
-            } else if event.event_type.ends_with("PocDisputeResolvedEvent") {
+            } else if event.event_type.ends_with("PocDisputeResolvedEvent")
+                || event.event_type.ends_with("PoCDisputeResolvedEvent") {
                 self.handle_dispute_resolved(&event).await
             } else if event.event_type.ends_with("VotingRewardClaimedEvent") {
                 self.handle_reward_claimed(&event).await
-            } else if event.event_type.ends_with("PocConfigUpdatedEvent") {
+            } else if event.event_type.ends_with("PocConfigUpdatedEvent")
+                || event.event_type.ends_with("PoCConfigUpdatedEvent") {
                 self.handle_config_updated(&event).await
             } else if event.event_type.ends_with("TokenPoolSyncNeededEvent") {
                 self.handle_token_pool_sync_needed(&event).await
             } else {
-                debug!("Unhandled PoC event type: {}", event.event_type);
+                // Unhandled PoC event
+                warn!(
+                    "Received unhandled PoC event: {} (event_id: {})",
+                    event.event_type, event.event_id
+                );
                 Ok(())
             };
 

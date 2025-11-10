@@ -266,6 +266,22 @@ impl TokenSoldEvent {
         })
     }
 
+    /// Convert the event to a holding model (negative amount for sell)
+    pub fn into_holding_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofTokenHolding> {
+        Ok(NewSocialProofTokenHolding {
+            pool_id: self.id.clone(),
+            holder_address: self.seller.clone(),
+            amount: -(self.amount as i64), // Negative amount as the seller is selling
+            acquired_at: timestamp as i64,
+            time: chrono::Utc::now(),
+            transaction_id,
+        })
+    }
+
     /// Create price history for the transaction
     pub fn create_price_history(
         &self,
@@ -1377,6 +1393,81 @@ impl SocialProofThresholdMetEvent {
             status: RESERVATION_POOL_STATUS_THRESHOLD_MET.to_string(),
             created_at: self.timestamp,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(time, 0)
+                .unwrap_or_else(|| chrono::Utc::now()),
+            transaction_id,
+        })
+    }
+}
+
+/// Event emitted when a post pool is auto-initialized by SPoT flow
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PostPoolAutoInitializedEvent {
+    pub post_id: String,
+    pub owner: String,
+    pub base_price: u64,
+    pub quadratic_coefficient: u64,
+    pub by: String,
+}
+
+impl PostPoolAutoInitializedEvent {
+    /// Convert the event to a token pool model
+    pub fn into_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSocialProofTokenPool> {
+        Ok(NewSocialProofTokenPool {
+            pool_id: self.post_id.clone(), // Use post_id as pool_id for auto-initialized pools
+            token_type: TOKEN_TYPE_POST,
+            owner: self.owner.clone(),
+            associated_id: self.post_id.clone(),
+            symbol: "PPOST".to_string(),
+            name: "Post Token".to_string(),
+            circulating_supply: 1, // Auto-initialized pools start with 1 token
+            base_price: self.base_price as i64,
+            quadratic_coefficient: self.quadratic_coefficient as i64,
+            created_at: timestamp as i64,
+            time: chrono::Utc::now(),
+            transaction_id,
+        })
+    }
+}
+
+/// Event emitted when emergency kill switch is toggled
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmergencyKillSwitchEvent {
+    pub admin: String,
+    pub trading_halted: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub timestamp: u64,
+    pub reason: String,
+}
+
+impl EmergencyKillSwitchEvent {
+    /// Convert the event to an exchange config model (for logging kill switch state)
+    pub fn into_exchange_config_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSptExchangeConfig> {
+        // Create a minimal config record to log the kill switch event
+        // Most fields will be defaults since we're only tracking the kill switch state
+        Ok(NewSptExchangeConfig {
+            updated_by: self.admin.clone(),
+            post_threshold: 0, // Not updated in this event
+            profile_threshold: 0, // Not updated in this event
+            max_individual_reservation_bps: 0, // Not updated in this event
+            total_fee_bps: 0, // Not updated in this event
+            creator_fee_bps: 0, // Not updated in this event
+            platform_fee_bps: 0, // Not updated in this event
+            treasury_fee_bps: 0, // Not updated in this event
+            base_price: 0, // Not updated in this event
+            quadratic_coefficient: 0, // Not updated in this event
+            ecosystem_treasury: "".to_string(), // Not updated in this event
+            max_hold_percent_bps: 0, // Not updated in this event
+            trading_halted: self.trading_halted,
+            updated_at: self.timestamp as i64,
+            time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,
         })

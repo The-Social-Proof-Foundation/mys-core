@@ -310,6 +310,10 @@ impl EventPattern {
             },
             EventPattern::Module {
                 package: package_address.to_string(),
+                module: "social_proof_tokens".to_string(), // Current module name
+            },
+            EventPattern::Module {
+                package: package_address.to_string(),
                 module: "token_exchange".to_string(),
             },
         ]

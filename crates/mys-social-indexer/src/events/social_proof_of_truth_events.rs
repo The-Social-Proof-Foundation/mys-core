@@ -16,8 +16,7 @@ pub struct SpotBetPlacedEvent {
     pub post_id: String,
     pub user: String,
     pub is_yes: bool,
-    pub escrow_amount: u64,
-    pub amm_amount: u64,
+    pub amount: u64, // Matches contract - all funds go to escrow
 }
 
 impl SpotBetPlacedEvent {
@@ -26,8 +25,8 @@ impl SpotBetPlacedEvent {
             post_id: self.post_id.clone(),
             user_address: self.user.clone(),
             is_yes: self.is_yes,
-            escrow_amount: self.escrow_amount as i64,
-            amm_amount: self.amm_amount as i64,
+            escrow_amount: self.amount as i64, // amount goes to escrow
+            amm_amount: 0, // No AMM in current contract
             timestamp_epoch: epoch as i64,
             time: Utc::now(),
             transaction_id: tx,

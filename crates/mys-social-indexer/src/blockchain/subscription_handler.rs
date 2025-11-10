@@ -108,7 +108,10 @@ impl SubscriptionEventHandler {
                 }
             }
         } else {
-            warn!("Unknown subscription event type: {}", event.event_type);
+            warn!(
+                "Received unhandled subscription event: {} (event_id: {})",
+                event.event_type, event.event_id
+            );
         }
 
         info!(

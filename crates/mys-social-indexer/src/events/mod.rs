@@ -77,6 +77,7 @@ pub use post_event_types::{
 pub use social_proof_token_events::{
     ConfigUpdatedEvent, ReservationCreatedEvent, ReservationWithdrawnEvent, ThresholdMetEvent,
     TokenBoughtEvent, TokenPoolCreatedEvent, TokenSoldEvent, TokensAddedEvent,
+    PostPoolAutoInitializedEvent, EmergencyKillSwitchEvent,
 };
 
 // Re-export SPoT events

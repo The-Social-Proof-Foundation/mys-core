@@ -35,12 +35,12 @@ pub struct DelegateNominatedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DelegateVotedEvent {
     pub target_address: String,
-    pub voter_address: String,
+    pub voter: String, // Changed from voter_address to match contract
     pub registry_type: u8,
     pub is_active_delegate: bool,
     pub upvote: bool,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub rated_at: u64,
+    pub new_upvote_count: u64,
+    pub new_downvote_count: u64,
 }
 
 /// Event emitted when a delegate is elected
@@ -129,6 +129,8 @@ pub struct ProposalApprovedEvent {
     pub proposal_id: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub approval_time: u64,
+    pub votes_for: u64,
+    pub votes_against: u64,
 }
 
 /// Event emitted when a proposal is rejected by community vote
@@ -137,6 +139,8 @@ pub struct ProposalRejectedByCommunityEvent {
     pub proposal_id: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub rejection_time: u64,
+    pub votes_for: u64,
+    pub votes_against: u64,
 }
 
 /// Event emitted when a proposal is implemented
@@ -152,11 +156,10 @@ pub struct ProposalImplementedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RewardsDistributedEvent {
     pub proposal_id: String,
-    pub recipient_address: String,
-    pub amount: u64,
+    pub total_reward: u64,
+    pub recipient_count: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub distribution_time: u64,
-    pub distribution_type: String,
 }
 
 /// Event emitted when an anonymous vote is submitted

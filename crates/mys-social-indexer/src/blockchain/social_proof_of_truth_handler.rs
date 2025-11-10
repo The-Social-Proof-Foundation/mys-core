@@ -153,7 +153,7 @@ impl SocialProofOfTruthEventHandler {
             .await?;
 
         // Update aggregated escrow amounts.
-        if parsed.escrow_amount > 0 {
+        if parsed.amount > 0 {
             let sql = if parsed.is_yes {
                 "UPDATE spot_records SET total_yes_escrow = total_yes_escrow + $1, updated_at = NOW() WHERE post_id = $2"
             } else {
@@ -161,7 +161,7 @@ impl SocialProofOfTruthEventHandler {
             };
 
             diesel::sql_query(sql)
-                .bind::<BigInt, _>(parsed.escrow_amount as i64)
+                .bind::<BigInt, _>(parsed.amount as i64)
                 .bind::<Text, _>(&parsed.post_id)
                 .execute(&mut conn)
                 .await?;
@@ -181,9 +181,9 @@ impl SocialProofOfTruthEventHandler {
             post_id: parsed.post_id.clone(),
             user_address: Some(parsed.user.clone()),
             is_yes: Some(parsed.is_yes),
-            escrow_amount: Some(parsed.escrow_amount as i64),
-            amm_amount: Some(parsed.amm_amount as i64),
-            amount: None,
+            escrow_amount: Some(parsed.amount as i64), // amount goes to escrow
+            amm_amount: Some(0), // No AMM in current contract
+            amount: Some(parsed.amount as i64),
             outcome: None,
             total_escrow: None,
             fee_taken: None,
@@ -449,7 +449,7 @@ impl SocialProofOfTruthEventHandler {
             } else if event.event_type.ends_with("SpotRefundEvent") {
                 self.handle_spot_refund(&event).await
             } else {
-                debug!("Unhandled SPoT event type: {}", event.event_type);
+                warn!("Received unhandled SPoT event: {} (event_id: {})", event.event_type, event.event_id);
                 Ok(())
             };
 

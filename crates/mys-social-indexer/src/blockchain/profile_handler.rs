@@ -501,6 +501,20 @@ impl ProfileEventListener {
             .execute(&mut conn)
             .await?;
 
+        // Log to profile_events table (using owner as profile_id since vesting is per-user)
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::TokensVested.to_str(),
+            event.owner.clone(),
+            serde_json::to_value(event)?,
+            Some(transaction_id.to_string()),
+            Some(event.vested_at / 1000), // Convert ms to seconds
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
+
         info!(
             "✅ Successfully processed tokens vested: wallet_id={}",
             event.wallet_id
@@ -572,6 +586,20 @@ impl ProfileEventListener {
             .execute(&mut conn)
             .await?;
 
+        // Log to profile_events table (using owner as profile_id since vesting is per-user)
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::TokensClaimed.to_str(),
+            event.owner.clone(),
+            serde_json::to_value(event)?,
+            Some(transaction_id.to_string()),
+            Some(event.claimed_at / 1000), // Convert ms to seconds
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
+
         info!(
             "✅ Successfully processed tokens claimed: wallet_id={}, incremental_amount={}, cumulative_claimed={}, remaining_balance={}",
             event.wallet_id, event.claimed_amount, total_claimed_amount, event.remaining_balance
@@ -610,6 +638,20 @@ impl ProfileEventListener {
             .execute(&mut conn)
             .await?;
 
+        // Log to profile_events table
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::ProfileOfferCreated.to_str(),
+            event.profile_id.clone(),
+            serde_json::to_value(event)?,
+            Some(transaction_id.to_string()),
+            Some(event.created_at),
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
+
         info!("✅ Successfully processed profile offer created: profile_id={}", event.profile_id);
         Ok(())
     }
@@ -618,7 +660,7 @@ impl ProfileEventListener {
     async fn process_profile_offer_accepted(
         &self,
         event: &ProfileOfferAcceptedEvent,
-        _transaction_id: &str,
+        transaction_id: &str,
     ) -> Result<()> {
         let mut conn = self.get_connection().await?;
 
@@ -642,6 +684,20 @@ impl ProfileEventListener {
         .execute(&mut conn)
         .await?;
 
+        // Log to profile_events table
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::ProfileOfferAccepted.to_str(),
+            event.profile_id.clone(),
+            serde_json::to_value(event)?,
+            Some(transaction_id.to_string()),
+            Some(event.accepted_at),
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
+
         info!("✅ Successfully processed profile offer accepted: profile_id={}", event.profile_id);
         Ok(())
     }
@@ -650,7 +706,7 @@ impl ProfileEventListener {
     async fn process_profile_offer_rejected(
         &self,
         event: &ProfileOfferRejectedEvent,
-        _transaction_id: &str,
+        transaction_id: &str,
     ) -> Result<()> {
         let mut conn = self.get_connection().await?;
 
@@ -675,6 +731,20 @@ impl ProfileEventListener {
         ))
         .execute(&mut conn)
         .await?;
+
+        // Log to profile_events table
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::ProfileOfferRejected.to_str(),
+            event.profile_id.clone(),
+            serde_json::to_value(event)?,
+            Some(transaction_id.to_string()),
+            Some(event.rejected_at),
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
 
         info!("✅ Successfully processed profile offer {}: profile_id={}", status, event.profile_id);
         Ok(())
@@ -708,6 +778,20 @@ impl ProfileEventListener {
 
         diesel::insert_into(schema::profile_sale_fees::table)
             .values(&new_fee)
+            .execute(&mut conn)
+            .await?;
+
+        // Log to profile_events table
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::ProfileSaleFee.to_str(),
+            event.profile_id.clone(),
+            serde_json::to_value(event)?,
+            Some(transaction_id.to_string()),
+            Some(event.timestamp),
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
             .execute(&mut conn)
             .await?;
 
@@ -751,6 +835,20 @@ impl ProfileEventListener {
             .execute(&mut conn)
             .await?;
 
+        // Log to profile_events table
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::BadgeAssigned.to_str(),
+            event.profile_id.clone(),
+            serde_json::to_value(event)?,
+            Some(transaction_id.to_string()),
+            Some(event.assigned_at),
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
+
         info!("✅ Successfully processed badge assigned: profile_id={}, badge_id={}", 
               event.profile_id, event.badge_id);
         Ok(())
@@ -760,7 +858,7 @@ impl ProfileEventListener {
     async fn process_badge_revoked(
         &self,
         event: &BadgeRevokedEvent,
-        _transaction_id: &str,
+        transaction_id: &str,
     ) -> Result<()> {
         let mut conn = self.get_connection().await?;
 
@@ -783,6 +881,20 @@ impl ProfileEventListener {
         ))
         .execute(&mut conn)
         .await?;
+
+        // Log to profile_events table
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::BadgeRevoked.to_str(),
+            event.profile_id.clone(),
+            serde_json::to_value(event)?,
+            Some(transaction_id.to_string()),
+            Some(event.revoked_at),
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
 
         info!("✅ Successfully processed badge revoked: profile_id={}, badge_id={}", 
               event.profile_id, event.badge_id);

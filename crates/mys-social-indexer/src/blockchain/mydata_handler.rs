@@ -8,17 +8,17 @@ use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::db::{Database, DbConnection};
 use crate::events::{
     event_utils::extract_event_fields,
     mydata_event_types::{
-        DataAccessGrantedEvent, DataAccessedEvent, DataCreatedEvent, DataPricingChangedEvent,
-        DataPurchasedEvent, DataRemovedEvent, DataTransferredEvent, DataTrendingEvent,
-        DataUpdatedEvent, OperationFailedEvent, RevenueDistributedEvent,
-        SubscriptionCancelledEvent, SubscriptionCreatedEvent, SubscriptionRenewedEvent,
-        SystemMaintenanceEvent,
+        AccessGrantedEvent, DataAccessGrantedEvent, DataAccessedEvent, DataCreatedEvent,
+        DataPricingChangedEvent, DataPurchasedEvent, DataRemovedEvent, DataTransferredEvent,
+        DataTrendingEvent, DataUpdatedEvent, MyDataCreatedEvent, OperationFailedEvent,
+        PurchaseEvent, RevenueDistributedEvent, SubscriptionCancelledEvent,
+        SubscriptionCreatedEvent, SubscriptionRenewedEvent, SystemMaintenanceEvent,
     },
     mydata_events::EventBatch,
     parse_event,
@@ -115,6 +115,29 @@ impl MyDataEventHandler {
 
         // Process each marketplace event type based on the parsed JSON data
         match () {
+            // Actual contract events
+            _ if event_type.ends_with("::MyDataCreatedEvent") || event_type.ends_with("MyDataCreatedEvent") => {
+                self.handle_mydata_created_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::PurchaseEvent") || event_type.ends_with("PurchaseEvent") => {
+                self.handle_purchase_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::AccessGrantedEvent") || event_type.ends_with("AccessGrantedEvent") => {
+                self.handle_access_granted_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            // Legacy event names (for backward compatibility)
             _ if event_type.ends_with("::DataCreatedEvent") => {
                 self.handle_data_created_from_json(
                     &blockchain_event.data,
@@ -221,7 +244,7 @@ impl MyDataEventHandler {
                 .await?;
             }
             _ => {
-                debug!("Unhandled MyData marketplace event type: {}", event_type);
+                warn!("Received unhandled MyData event: {} (event_id: {})", event_type, blockchain_event.event_id);
             }
         }
 
@@ -1652,6 +1675,300 @@ impl MyDataEventHandler {
         }
 
         info!("Processed SystemMaintenanceEvent successfully for {} affected entries", parsed_event.affected_data.len());
+        Ok(())
+    }
+
+    /// Handle MyDataCreatedEvent from JSON (actual contract event)
+    async fn handle_mydata_created_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing MyDataCreatedEvent from JSON");
+
+        // Parse the event using serde
+        let fields = extract_event_fields(data)?;
+        let event: MyDataCreatedEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse MyDataCreatedEvent: {}", e))?;
+
+        info!(
+            "Parsed MyDataCreatedEvent: ip_id={}, owner={}, media_type={}",
+            event.ip_id, event.owner, event.media_type
+        );
+
+        let mut conn = self.get_connection().await?;
+
+        // Create a new data entry
+        let new_data = crate::models::mydata::NewMyDataData {
+            mydata_id: event.ip_id.clone(),
+            owner: event.owner.clone(),
+            media_type: event.media_type.clone(),
+            tags: serde_json::json!([]), // Tags not in MyDataCreatedEvent
+            platform_id: event.platform_id.clone(),
+            timestamp_start: 0, // Not in event
+            timestamp_end: None, // Not in event
+            created_at: event.created_at as i64,
+            last_updated: event.created_at as i64,
+            one_time_price: event.one_time_price.map(|p| p as i64),
+            subscription_price: event.subscription_price.map(|p| p as i64),
+            subscription_duration_days: 30, // Default, not in event
+            geographic_region: None,
+            data_quality: None,
+            sample_size: None,
+            collection_method: None,
+            is_updating: false,
+            update_frequency: None,
+            version: 1, // Default version for new data
+            transaction_id: transaction_id.to_string(),
+        };
+
+        diesel::insert_into(mydata_data::table)
+            .values(&new_data)
+            .on_conflict(mydata_data::mydata_id)
+            .do_update()
+            .set((
+                mydata_data::owner.eq(&new_data.owner),
+                mydata_data::media_type.eq(&new_data.media_type),
+                mydata_data::one_time_price.eq(new_data.one_time_price),
+                mydata_data::subscription_price.eq(new_data.subscription_price),
+                mydata_data::last_updated.eq(new_data.last_updated),
+                mydata_data::transaction_id.eq(transaction_id.to_string()),
+            ))
+            .execute(&mut conn)
+            .await?;
+
+        info!(
+            "Processed MyDataCreatedEvent successfully for ip_id: {}",
+            event.ip_id
+        );
+        Ok(())
+    }
+
+    /// Handle PurchaseEvent from JSON (actual contract event - handles both one-time and subscription)
+    async fn handle_purchase_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing PurchaseEvent from JSON");
+
+        // Parse the event using serde
+        let fields = extract_event_fields(data)?;
+        let event: PurchaseEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse PurchaseEvent: {}", e))?;
+
+        info!(
+            "Parsed PurchaseEvent: ip_id={}, buyer={}, price={}, purchase_type={}",
+            event.ip_id, event.buyer, event.price, event.purchase_type
+        );
+
+        let mut conn = self.get_connection().await?;
+
+        // Record the purchase
+        let purchase = crate::models::mydata::NewMyDataPurchase {
+            mydata_id: event.ip_id.clone(),
+            buyer: event.buyer.clone(),
+            price: event.price as i64,
+            purchase_type: event.purchase_type.clone(),
+            purchase_time: event.timestamp as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+
+        diesel::insert_into(mydata_purchases::table)
+            .values(&purchase)
+            .execute(&mut conn)
+            .await?;
+
+        // If it's a subscription purchase, also create a subscription record
+        if event.purchase_type == "subscription" {
+            // We need to calculate subscription end time - but it's not in the event
+            // We'll need to get it from the MyData record or use a default
+            // For now, we'll create a subscription record with the purchase time as start
+            // The actual end time should be calculated based on subscription_duration_days
+            let subscription = crate::models::mydata::NewMyDataSubscription {
+                mydata_id: event.ip_id.clone(),
+                subscriber: event.buyer.clone(),
+                subscription_start: event.timestamp as i64,
+                subscription_end: event.timestamp as i64 + (30 * 24 * 60 * 60), // Default 30 days, should be fetched from MyData
+                price: event.price as i64,
+                transaction_id: transaction_id.to_string(),
+            };
+
+            diesel::insert_into(mydata_subscriptions::table)
+                .values(&subscription)
+                .on_conflict((mydata_subscriptions::mydata_id, mydata_subscriptions::subscriber))
+                .do_update()
+                .set((
+                    mydata_subscriptions::subscription_end.eq(subscription.subscription_end),
+                    mydata_subscriptions::transaction_id.eq(transaction_id.to_string()),
+                ))
+                .execute(&mut conn)
+                .await?;
+        }
+
+        // Record access log
+        let access_log = crate::models::NewMyDataAccessLog {
+            mydata_id: event.ip_id.clone(),
+            user_address: event.buyer.clone(),
+            access_type: event.purchase_type.clone(),
+            access_time: event.timestamp as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+
+        diesel::insert_into(mydata_access_logs::table)
+            .values(&access_log)
+            .execute(&mut conn)
+            .await?;
+
+        // Record revenue - we need to get the owner from MyData record
+        // For now, we'll leave to_address empty and update it later if needed
+        let revenue = crate::models::mydata::NewMyDataRevenue {
+            mydata_id: event.ip_id.clone(),
+            from_address: event.buyer.clone(),
+            to_address: "".to_string(), // Owner should be fetched from MyData record
+            amount: event.price as i64,
+            revenue_type: event.purchase_type.clone(),
+            revenue_time: event.timestamp as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+
+        diesel::insert_into(mydata_revenue::table)
+            .values(&revenue)
+            .execute(&mut conn)
+            .await?;
+
+        info!(
+            "Processed PurchaseEvent successfully for ip_id: {}, purchase_type: {}",
+            event.ip_id, event.purchase_type
+        );
+        Ok(())
+    }
+
+    /// Handle AccessGrantedEvent from JSON (actual contract event - handles pricing_update, content_update, and free access)
+    async fn handle_access_granted_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing AccessGrantedEvent from JSON");
+
+        // Parse the event using serde
+        let fields = extract_event_fields(data)?;
+        let event: AccessGrantedEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse AccessGrantedEvent: {}", e))?;
+
+        info!(
+            "Parsed AccessGrantedEvent: ip_id={}, user={}, access_type={}, granted_by={}",
+            event.ip_id, event.user, event.access_type, event.granted_by
+        );
+
+        let mut conn = self.get_connection().await?;
+
+        // Handle different access types
+        match event.access_type.as_str() {
+            "pricing_update" => {
+                // This is a pricing update - we should update the MyData record
+                // But the event doesn't contain the new prices, so we'll just log it
+                info!("Pricing update for MyData: {}", event.ip_id);
+                
+                // Log as access event for tracking
+                let access_log = crate::models::NewMyDataAccessLog {
+                    mydata_id: event.ip_id.clone(),
+                    user_address: event.user.clone(),
+                    access_type: "pricing_update".to_string(),
+                    access_time: event.timestamp as i64,
+                    transaction_id: transaction_id.to_string(),
+                };
+
+                diesel::insert_into(mydata_access_logs::table)
+                    .values(&access_log)
+                    .execute(&mut conn)
+                    .await?;
+            }
+            "content_update" => {
+                // This is a content update - update last_updated timestamp
+                diesel::update(mydata_data::table)
+                    .filter(mydata_data::mydata_id.eq(&event.ip_id))
+                    .set(mydata_data::last_updated.eq(event.timestamp as i64))
+                    .execute(&mut conn)
+                    .await?;
+
+                // Log as access event for tracking
+                let access_log = crate::models::NewMyDataAccessLog {
+                    mydata_id: event.ip_id.clone(),
+                    user_address: event.user.clone(),
+                    access_type: "content_update".to_string(),
+                    access_time: event.timestamp as i64,
+                    transaction_id: transaction_id.to_string(),
+                };
+
+                diesel::insert_into(mydata_access_logs::table)
+                    .values(&access_log)
+                    .execute(&mut conn)
+                    .await?;
+            }
+            "one_time" | "subscription" => {
+                // Free access granted - create access log and potentially subscription record
+                let access_log = crate::models::NewMyDataAccessLog {
+                    mydata_id: event.ip_id.clone(),
+                    user_address: event.user.clone(),
+                    access_type: event.access_type.clone(),
+                    access_time: event.timestamp as i64,
+                    transaction_id: transaction_id.to_string(),
+                };
+
+                diesel::insert_into(mydata_access_logs::table)
+                    .values(&access_log)
+                    .execute(&mut conn)
+                    .await?;
+
+                // If it's a subscription grant, create subscription record
+                if event.access_type == "subscription" {
+                    // Default to 30 days subscription duration
+                    let subscription = crate::models::mydata::NewMyDataSubscription {
+                        mydata_id: event.ip_id.clone(),
+                        subscriber: event.user.clone(),
+                        subscription_start: event.timestamp as i64,
+                        subscription_end: event.timestamp as i64 + (30 * 24 * 60 * 60),
+                        price: 0, // Free access
+                        transaction_id: transaction_id.to_string(),
+                    };
+
+                    diesel::insert_into(mydata_subscriptions::table)
+                        .values(&subscription)
+                        .on_conflict((mydata_subscriptions::mydata_id, mydata_subscriptions::subscriber))
+                        .do_update()
+                        .set((
+                            mydata_subscriptions::subscription_end.eq(subscription.subscription_end),
+                            mydata_subscriptions::transaction_id.eq(transaction_id.to_string()),
+                        ))
+                        .execute(&mut conn)
+                        .await?;
+                }
+            }
+            _ => {
+                warn!("Unknown access_type in AccessGrantedEvent: {}", event.access_type);
+                
+                // Still log it as an access event
+                let access_log = crate::models::NewMyDataAccessLog {
+                    mydata_id: event.ip_id.clone(),
+                    user_address: event.user.clone(),
+                    access_type: event.access_type.clone(),
+                    access_time: event.timestamp as i64,
+                    transaction_id: transaction_id.to_string(),
+                };
+
+                diesel::insert_into(mydata_access_logs::table)
+                    .values(&access_log)
+                    .execute(&mut conn)
+                    .await?;
+            }
+        }
+
+        info!(
+            "Processed AccessGrantedEvent successfully for ip_id: {}, access_type: {}",
+            event.ip_id, event.access_type
+        );
         Ok(())
     }
 }
