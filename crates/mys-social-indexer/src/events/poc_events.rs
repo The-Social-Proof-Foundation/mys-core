@@ -25,9 +25,11 @@ impl AnalysisSubmittedEvent {
             similarity_detected: self.similarity_detected,
             highest_similarity_score: self.highest_similarity_score as i64,
             oracle_address: self.oracle_address.clone(),
-            original_creator: None, // This will be determined by the oracle analysis
+            original_creator: None,
             analysis_timestamp: self.timestamp as i64,
-            transaction_id: "".to_string(), // Will be set by handler
+            transaction_id: "".to_string(),
+            reasoning: self.reasoning.clone(),
+            evidence_urls: self.evidence_urls.as_ref().map(|urls| serde_json::json!(urls)),
         })
     }
 }

@@ -478,6 +478,49 @@ impl ProfileEventListener {
         // Convert event to database models
         let (new_wallet, new_event) = event.into_models(transaction_id.to_string());
 
+        // Check if wallet already exists to preserve claimed_amount
+        let existing_wallet_result = schema::vesting_wallets::table
+            .filter(schema::vesting_wallets::wallet_id.eq(&event.wallet_id))
+            .first::<VestingWallet>(&mut conn)
+            .await;
+
+        let (claimed_amount, remaining_balance) = match existing_wallet_result {
+            Ok(existing_wallet) => {
+                // Wallet exists - preserve claimed_amount and recalculate remaining_balance
+                let new_total = new_wallet.total_amount;
+                let preserved_claimed = existing_wallet.claimed_amount;
+                let recalculated_remaining = new_total - preserved_claimed;
+
+                // Validate the recalculation
+                if recalculated_remaining < 0 {
+                    return Err(anyhow!(
+                        "Invalid vesting state: new total_amount ({}) is less than existing claimed_amount ({}) for wallet {}",
+                        new_total,
+                        preserved_claimed,
+                        event.wallet_id
+                    ));
+                }
+
+                info!(
+                    "Updating existing wallet {}: preserving claimed_amount={}, recalculating remaining_balance={} (new_total={})",
+                    event.wallet_id, preserved_claimed, recalculated_remaining, new_total
+                );
+
+                (preserved_claimed, recalculated_remaining)
+            }
+            Err(diesel::NotFound) => {
+                // New wallet - use default values
+                info!(
+                    "Creating new wallet {}: claimed_amount=0, remaining_balance={}",
+                    event.wallet_id, new_wallet.total_amount
+                );
+                (new_wallet.claimed_amount, new_wallet.remaining_balance)
+            }
+            Err(e) => {
+                return Err(anyhow!("Failed to check existing wallet {}: {}", event.wallet_id, e));
+            }
+        };
+
         // Insert the vesting wallet (or update if it already exists)
         diesel::insert_into(schema::vesting_wallets::table)
             .values(&new_wallet)
@@ -489,6 +532,8 @@ impl ProfileEventListener {
                 schema::vesting_wallets::start_time.eq(&new_wallet.start_time),
                 schema::vesting_wallets::duration.eq(&new_wallet.duration),
                 schema::vesting_wallets::curve_factor.eq(&new_wallet.curve_factor),
+                schema::vesting_wallets::claimed_amount.eq(claimed_amount),
+                schema::vesting_wallets::remaining_balance.eq(remaining_balance),
                 schema::vesting_wallets::updated_at.eq(&new_wallet.updated_at),
                 schema::vesting_wallets::transaction_id.eq(&new_wallet.transaction_id),
             ))

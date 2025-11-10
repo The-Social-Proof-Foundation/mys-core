@@ -110,6 +110,10 @@ pub struct PocAnalysisResult {
     pub transaction_id: String,
     #[diesel(sql_type = Timestamptz)]
     pub time: DateTime<Utc>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub reasoning: Option<String>,
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub evidence_urls: Option<serde_json::Value>,
 }
 
 /// New PoC analysis result model for insertion
@@ -124,6 +128,8 @@ pub struct NewPocAnalysisResult {
     pub original_creator: Option<String>,
     pub analysis_timestamp: i64,
     pub transaction_id: String,
+    pub reasoning: Option<String>,
+    pub evidence_urls: Option<serde_json::Value>,
 }
 
 /// PoC dispute model for database

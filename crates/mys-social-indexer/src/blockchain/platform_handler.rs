@@ -304,6 +304,7 @@ impl PlatformEventHandler {
                         created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                             .unwrap_or_else(|| chrono::Utc::now())
                             .naive_utc(),
+                        reasoning: None,
                     };
 
                     // Insert platform event
@@ -482,6 +483,7 @@ impl PlatformEventHandler {
                         created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                             .unwrap_or_else(|| chrono::Utc::now())
                             .naive_utc(),
+                        reasoning: None,
                     };
 
                     // Insert platform event
@@ -665,6 +667,7 @@ impl PlatformEventHandler {
                         created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                             .unwrap_or_else(|| chrono::Utc::now())
                             .naive_utc(),
+                        reasoning: None,
                     };
 
                     // Insert platform event
@@ -804,6 +807,7 @@ impl PlatformEventHandler {
                         created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                             .unwrap_or_else(|| chrono::Utc::now())
                             .naive_utc(),
+                        reasoning: None,
                     };
 
                     // Insert platform event
@@ -870,6 +874,7 @@ impl PlatformEventHandler {
                         created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                             .unwrap_or_else(|| chrono::Utc::now())
                             .naive_utc(),
+                        reasoning: None,
                     };
 
                     // Insert platform event
@@ -979,6 +984,7 @@ impl PlatformEventHandler {
                         created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                             .unwrap_or_else(|| chrono::Utc::now())
                             .naive_utc(),
+                        reasoning: None,
                     };
 
                     // Insert platform event
@@ -1054,6 +1060,7 @@ impl PlatformEventHandler {
                         created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                             .unwrap_or_else(|| chrono::Utc::now())
                             .naive_utc(),
+                        reasoning: event.reasoning.clone(),
                     };
 
                     // Insert platform event
@@ -1171,6 +1178,7 @@ impl PlatformEventHandler {
                         created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                             .unwrap_or_else(|| chrono::Utc::now())
                             .naive_utc(),
+                        reasoning: None,
                     };
 
                     // Insert platform event
@@ -1333,6 +1341,7 @@ impl PlatformEventHandler {
                         created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
                             .unwrap_or_else(|| chrono::Utc::now())
                             .naive_utc(),
+                        reasoning: None,
                     };
 
                     // Insert platform event

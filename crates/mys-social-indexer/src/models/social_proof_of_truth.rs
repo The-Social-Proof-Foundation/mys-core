@@ -137,6 +137,8 @@ pub struct NewSpotResolution {
     pub resolved_epoch: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub reasoning: String,
+    pub evidence_urls: serde_json::Value,
 }
 
 // =============================================================================

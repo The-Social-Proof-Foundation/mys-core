@@ -160,6 +160,7 @@ table! {
         event_data -> Jsonb,
         event_id -> Nullable<Varchar>,
         created_at -> Timestamp,
+        reasoning -> Nullable<Text>,
     }
 }
 
@@ -952,6 +953,8 @@ table! {
         analysis_timestamp -> Int8,
         transaction_id -> Varchar,
         time -> Timestamptz,
+        reasoning -> Nullable<Text>,
+        evidence_urls -> Nullable<Jsonb>,
     }
 }
 
@@ -1318,6 +1321,8 @@ table! {
         resolved_epoch -> BigInt,
         time -> Timestamptz,
         transaction_id -> Varchar,
+        reasoning -> Text,
+        evidence_urls -> Jsonb,
     }
 }
 

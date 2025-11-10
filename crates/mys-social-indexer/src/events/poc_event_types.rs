@@ -28,6 +28,10 @@ pub struct AnalysisSubmittedEvent {
     pub oracle_address: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
+    #[serde(default)]
+    pub reasoning: Option<String>,
+    #[serde(default)]
+    pub evidence_urls: Option<Vec<String>>,
 }
 
 /// PoC badge issued event from blockchain

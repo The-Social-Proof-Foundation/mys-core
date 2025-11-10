@@ -41,6 +41,8 @@ pub struct SpotResolvedEvent {
     pub outcome: u8,
     pub total_escrow: u64,
     pub fee_taken: u64,
+    pub reasoning: String,
+    pub evidence_urls: Vec<String>,
 }
 
 impl SpotResolvedEvent {
@@ -53,6 +55,8 @@ impl SpotResolvedEvent {
             resolved_epoch: epoch as i64,
             time: Utc::now(),
             transaction_id: tx,
+            reasoning: self.reasoning.clone(),
+            evidence_urls: serde_json::json!(self.evidence_urls),
         })
     }
 }
@@ -62,6 +66,7 @@ impl SpotResolvedEvent {
 pub struct SpotDaoRequiredEvent {
     pub post_id: String,
     pub confidence_bps: u64,
+    pub reasoning: String,
 }
 
 // Matches social_contracts::social_proof_of_truth::SpotPayoutEvent

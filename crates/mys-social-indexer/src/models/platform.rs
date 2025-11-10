@@ -176,6 +176,7 @@ pub struct PlatformEvent {
     pub event_data: serde_json::Value,
     pub event_id: Option<String>,
     pub created_at: NaiveDateTime,
+    pub reasoning: Option<String>,
 }
 
 /// DTO for inserting a new platform event
@@ -187,6 +188,7 @@ pub struct NewPlatformEvent {
     pub event_data: serde_json::Value,
     pub event_id: Option<String>,
     pub created_at: NaiveDateTime,
+    pub reasoning: Option<String>,
 }
 
 /// Platform with related data for API responses
@@ -300,6 +302,8 @@ pub struct PlatformApprovalChangedEvent {
     pub approved_by: String,
     #[serde(default, deserialize_with = "deserialize_timestamp_optional")]
     pub changed_at: u64,
+    #[serde(default)]
+    pub reasoning: Option<String>,
 }
 
 // Standard deserializer for timestamps that accepts both string and number formats
