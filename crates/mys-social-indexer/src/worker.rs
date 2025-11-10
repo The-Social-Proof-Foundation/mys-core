@@ -1410,6 +1410,7 @@ impl Worker for SocialIndexerWorker {
                         if let Err(e) = crate::blockchain::handler::handle_event(&self.db, event, &event.tx_digest.clone().unwrap_or_default()).await {
                             error!("Failed to process PostCreatedEvent: {}", e);
                         }
+                    },
                     // Content events
                     t if t.starts_with(MODULE_PREFIX_CONTENT) && t.ends_with("ContentCreatedEvent") => {
                         if let Ok(event) = parse_event::<ContentCreatedEvent>(event) {
