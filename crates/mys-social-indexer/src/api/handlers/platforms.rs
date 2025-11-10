@@ -17,7 +17,7 @@ use crate::db::DbPool;
 use crate::models::platform::{
     Platform, PlatformWithDetails,
 };
-use crate::schema::{platform_blocked_profiles, platform_memberships, platform_moderators, platforms, profiles};
+use crate::schema::{platform_blocked_profiles, platform_memberships, platform_moderators, platforms, profiles, social_graph_relationships};
 use serde::Serialize;
 
 #[derive(Debug, Deserialize)]
@@ -26,6 +26,7 @@ pub struct PlatformQuery {
     pub offset: Option<i64>,
     pub page: Option<i64>,
     pub search: Option<String>,
+    pub viewer_id: Option<String>,
 }
 
 /// Get a list of all platforms with pagination
@@ -255,6 +256,7 @@ pub async fn get_platform_by_id(
                             fullname,
                             profile_photo,
                             wallet_address: wallet_address.or(Some(moderator_address)),
+                            is_following: None,
                         }
                     })
                     .collect(),
@@ -413,37 +415,107 @@ pub async fn get_platform_moderators(
 
     let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
 
+    // Resolve viewer_id to wallet address if provided
+    let viewer_wallet = if let Some(ref viewer_id) = query.viewer_id {
+        if viewer_id.starts_with("0x") {
+            viewer_id.clone()
+        } else {
+            match profiles::table
+                .filter(
+                    profiles::profile_id.eq(viewer_id)
+                        .or(profiles::username.eq(viewer_id))
+                        .or(profiles::owner_address.eq(viewer_id)),
+                )
+                .select(profiles::owner_address)
+                .first::<String>(&mut conn)
+                .await
+            {
+                Ok(addr) => addr,
+                Err(_) => viewer_id.clone(),
+            }
+        }
+    } else {
+        String::new()
+    };
+
     // Get moderators with profile information using LEFT JOIN
     // Join platform_moderators with profiles on moderator_address = owner_address
-    let moderators_result = platform_moderators::table
-        .filter(platform_moderators::platform_id.eq(&platform_id))
-        .left_join(
-            profiles::table.on(
-                profiles::owner_address.eq(platform_moderators::moderator_address),
-            ),
-        )
-        .select((
-            platform_moderators::id,
-            platform_moderators::platform_id,
-            platform_moderators::moderator_address,
-            platform_moderators::added_by,
-            platform_moderators::created_at,
-            profiles::username.nullable(),
-            profiles::display_name.nullable(),
-            profiles::profile_photo.nullable(),
-            profiles::owner_address.nullable(),
-        ))
-        .order_by(platform_moderators::created_at.desc())
-        .limit(limit)
-        .offset(offset)
-        .load::<(i32, String, String, String, NaiveDateTime, Option<String>, Option<String>, Option<String>, Option<String>)>(&mut conn)
-        .await;
+    // Also LEFT JOIN with social_graph_relationships to check if viewer is following
+    let moderators_result = if !viewer_wallet.is_empty() {
+        platform_moderators::table
+            .filter(platform_moderators::platform_id.eq(&platform_id))
+            .left_join(
+                profiles::table.on(
+                    profiles::owner_address.eq(platform_moderators::moderator_address),
+                ),
+            )
+            .left_join(
+                social_graph_relationships::table.on(
+                    social_graph_relationships::follower_address
+                        .eq(&viewer_wallet)
+                        .and(
+                            diesel::dsl::sql::<diesel::sql_types::Bool>(
+                                "social_graph_relationships.following_address = platform_moderators.moderator_address OR social_graph_relationships.following_address = profiles.owner_address",
+                            )
+                        ),
+                ),
+            )
+            .select((
+                platform_moderators::id,
+                platform_moderators::platform_id,
+                platform_moderators::moderator_address,
+                platform_moderators::added_by,
+                platform_moderators::created_at,
+                profiles::username.nullable(),
+                profiles::display_name.nullable(),
+                profiles::profile_photo.nullable(),
+                profiles::owner_address.nullable(),
+                social_graph_relationships::id.nullable(),
+            ))
+            .order_by(platform_moderators::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .load::<(i32, String, String, String, NaiveDateTime, Option<String>, Option<String>, Option<String>, Option<String>, Option<i32>)>(&mut conn)
+            .await
+    } else {
+        platform_moderators::table
+            .filter(platform_moderators::platform_id.eq(&platform_id))
+            .left_join(
+                profiles::table.on(
+                    profiles::owner_address.eq(platform_moderators::moderator_address),
+                ),
+            )
+            .select((
+                platform_moderators::id,
+                platform_moderators::platform_id,
+                platform_moderators::moderator_address,
+                platform_moderators::added_by,
+                platform_moderators::created_at,
+                profiles::username.nullable(),
+                profiles::display_name.nullable(),
+                profiles::profile_photo.nullable(),
+                profiles::owner_address.nullable(),
+            ))
+            .order_by(platform_moderators::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .load::<(i32, String, String, String, NaiveDateTime, Option<String>, Option<String>, Option<String>, Option<String>)>(&mut conn)
+            .await
+            .map(|results| {
+                results
+                    .into_iter()
+                    .map(|(id, platform_id, moderator_address, added_by, created_at, username, fullname, profile_photo, wallet_address)| {
+                        (id, platform_id, moderator_address, added_by, created_at, username, fullname, profile_photo, wallet_address, None)
+                    })
+                    .collect()
+            })
+    };
 
     match moderators_result {
         Ok(moderators_data) => {
             let moderators: Vec<ModeratorWithProfile> = moderators_data
                 .into_iter()
-                .map(|(id, platform_id, moderator_address, added_by, created_at, username, fullname, profile_photo, wallet_address)| {
+                .map(|(id, platform_id, moderator_address, added_by, created_at, username, fullname, profile_photo, wallet_address, relationship_id)| {
                     ModeratorWithProfile {
                         id,
                         platform_id,
@@ -454,6 +526,11 @@ pub async fn get_platform_moderators(
                         fullname,
                         profile_photo,
                         wallet_address: wallet_address.or(Some(moderator_address)),
+                        is_following: if !viewer_wallet.is_empty() {
+                            Some(relationship_id.is_some())
+                        } else {
+                            None
+                        },
                     }
                 })
                 .collect();
@@ -884,6 +961,7 @@ pub struct PlatformMember {
     pub fullname: Option<String>,
     pub profile_photo: Option<String>,
     pub joined_at: NaiveDateTime,
+    pub is_following: Option<bool>,
 }
 
 /// Platform moderator with profile information
@@ -898,6 +976,7 @@ pub struct ModeratorWithProfile {
     pub fullname: Option<String>,
     pub profile_photo: Option<String>,
     pub wallet_address: Option<String>,
+    pub is_following: Option<bool>,
 }
 
 /// Platform blocked profile with profile information
@@ -1010,6 +1089,40 @@ pub async fn get_platform_members(
 
     let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
 
+    // Resolve viewer_id to wallet address if provided
+    let viewer_wallet = if let Some(ref viewer_id) = query.viewer_id {
+        if viewer_id.starts_with("0x") {
+            viewer_id.clone()
+        } else {
+            match profiles::table
+                .filter(
+                    profiles::profile_id.eq(viewer_id)
+                        .or(profiles::username.eq(viewer_id))
+                        .or(profiles::owner_address.eq(viewer_id)),
+                )
+                .select(profiles::owner_address)
+                .first::<String>(&mut conn)
+                .await
+            {
+                Ok(addr) => addr,
+                Err(_) => viewer_id.clone(),
+            }
+        }
+    } else {
+        String::new()
+    };
+
+    // Build members query with optional follow status check
+    // Always include the join, but make it conditional via SQL (use 1=0 when viewer_wallet is empty)
+    let join_condition = if !viewer_wallet.is_empty() {
+        format!(
+            "social_graph_relationships.follower_address = '{}' AND (social_graph_relationships.following_address = platform_memberships.profile_id OR social_graph_relationships.following_address = COALESCE(profiles.owner_address, '') OR social_graph_relationships.following_address = COALESCE(profiles.username, '') OR social_graph_relationships.following_address = COALESCE(profiles.profile_id, ''))",
+            viewer_wallet.replace("'", "''")
+        )
+    } else {
+        "1=0".to_string() // Never match when viewer_wallet is empty
+    };
+
     let mut members_query = platform_memberships::table
         .filter(platform_memberships::platform_id.eq(&platform_id))
         .left_join(
@@ -1019,6 +1132,11 @@ pub async fn get_platform_members(
                 )
             ),
         )
+        .left_join(
+            social_graph_relationships::table.on(
+                diesel::dsl::sql::<diesel::sql_types::Bool>(&join_condition)
+            ),
+        )
         .select((
             platform_memberships::profile_id,
             profiles::owner_address.nullable(),
@@ -1026,6 +1144,7 @@ pub async fn get_platform_members(
             profiles::display_name.nullable(),
             profiles::profile_photo.nullable(),
             platform_memberships::joined_at,
+            social_graph_relationships::id.nullable(),
         ))
         .order_by(platform_memberships::joined_at.desc())
         .limit(limit)
@@ -1042,7 +1161,7 @@ pub async fn get_platform_members(
     }
 
     let members_result = members_query
-        .load::<(String, Option<String>, Option<String>, Option<String>, Option<String>, NaiveDateTime)>(&mut conn)
+        .load::<(String, Option<String>, Option<String>, Option<String>, Option<String>, NaiveDateTime, Option<i32>)>(&mut conn)
         .await;
 
     debug!("Members query result: {:?}", members_result.is_ok());
@@ -1051,7 +1170,7 @@ pub async fn get_platform_members(
         Ok(members_data) => {
             let members: Vec<PlatformMember> = members_data
                 .into_iter()
-                .map(|(profile_id, wallet_address, username, display_name, profile_photo, joined_at)| {
+                .map(|(profile_id, wallet_address, username, display_name, profile_photo, joined_at, relationship_id)| {
                     PlatformMember {
                         profile_id: profile_id.clone(),
                         wallet_address: wallet_address.unwrap_or_else(|| profile_id.clone()),
@@ -1059,6 +1178,11 @@ pub async fn get_platform_members(
                         fullname: display_name,
                         profile_photo,
                         joined_at,
+                        is_following: if !viewer_wallet.is_empty() {
+                            Some(relationship_id.is_some())
+                        } else {
+                            None
+                        },
                     }
                 })
                 .collect();
