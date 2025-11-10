@@ -28,19 +28,24 @@ pub enum PostEventType {
 }
 
 /// Post created event from blockchain
+/// NOTE: This matches the contract's PostCreatedEvent structure exactly:
+/// - post_id, owner, profile_id, content, post_type, parent_post_id, mentions
+/// - media_urls, metadata_json, created_at, mydata_id, promotion_id are NOT in the contract event
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostCreatedEvent {
     pub post_id: String,
     pub owner: String,
     pub profile_id: String,
     pub content: String,
-    #[serde(default)]
-    pub media_urls: Option<Vec<String>>,
-    pub mentions: Option<Vec<String>>,
-    #[serde(default)]
-    pub metadata_json: Option<String>,
     pub post_type: String,
     pub parent_post_id: Option<String>,
+    pub mentions: Option<Vec<String>>,
+    // These fields are NOT in the contract event but are needed for database storage
+    // They will be set to None/0 when parsing the event
+    #[serde(default)]
+    pub media_urls: Option<Vec<String>>,
+    #[serde(default)]
+    pub metadata_json: Option<String>,
     #[serde(default, deserialize_with = "deserialize_u64_from_string_optional")]
     pub created_at: u64,
     #[serde(default)]

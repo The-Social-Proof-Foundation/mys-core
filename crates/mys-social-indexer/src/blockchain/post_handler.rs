@@ -1340,12 +1340,28 @@ async fn handle_post_created(
     transaction_id: &str,
 ) -> Result<()> {
     info!("Processing PostCreatedEvent");
+    info!("Raw event type: {}", event.type_);
+    info!("Raw event data: {}", serde_json::to_string_pretty(event).unwrap_or_default());
 
     // Parse the event
     let parsed_event = parse_event::<PostCreatedEvent>(event)
-        .map_err(|e| anyhow!("Failed to parse PostCreatedEvent: {}", e))?;
+        .map_err(|e| {
+            error!("Failed to parse PostCreatedEvent");
+            error!("Error: {}", e);
+            error!("Event type: {}", event.type_);
+            error!("Event JSON: {}", serde_json::to_string_pretty(event).unwrap_or_default());
+            anyhow!("Failed to parse PostCreatedEvent: {}", e)
+        })?;
 
-    info!("Parsed PostCreatedEvent: post_id={}", parsed_event.post_id);
+    info!("Parsed PostCreatedEvent successfully");
+    info!("  post_id: {}", parsed_event.post_id);
+    info!("  owner: {}", parsed_event.owner);
+    info!("  profile_id: {}", parsed_event.profile_id);
+    info!("  content length: {}", parsed_event.content.len());
+    info!("  post_type: {}", parsed_event.post_type);
+    info!("  parent_post_id: {:?}", parsed_event.parent_post_id);
+    info!("  mentions: {:?}", parsed_event.mentions);
+    info!("  created_at: {}", parsed_event.created_at);
 
     // Get a database connection
     let mut conn = db.get_connection().await?;
