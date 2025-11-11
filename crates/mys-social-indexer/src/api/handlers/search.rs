@@ -130,7 +130,7 @@ pub async fn global_search(
         SELECT 
             owner_address::TEXT as id,
             'profile' as entity_type,
-            COALESCE(username, 'Anonymous Profile') as title,
+            COALESCE(display_name, username, 'Anonymous Profile') as title,
             bio as description,
             profile_photo as image_url,
             username as primary_field,
