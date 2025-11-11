@@ -9,11 +9,14 @@ use axum::{
 };
 use diesel::deserialize::QueryableByName;
 use diesel::pg::Pg;
+use diesel::prelude::*;
 use diesel::sql_types::*;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
+use tracing::{debug, error};
 
 use crate::db::DbPool;
+use crate::schema::profiles;
 
 // Query parameters for post listing
 #[derive(Debug, Deserialize)]
@@ -557,6 +560,7 @@ pub async fn get_trending_posts(
 }
 
 /// Get posts by a specific profile
+/// Supports profile_id, wallet address (0x...), or username
 pub async fn get_profile_posts(
     State(pool): State<DbPool>,
     Path(profile_id): Path<String>,
@@ -573,11 +577,114 @@ pub async fn get_profile_posts(
         }
     };
 
+    // Resolve profile_id, wallet address, or username to the actual profile_id used in posts table
+    let (resolved_profile_id, is_wallet_address) = if profile_id.starts_with("0x") {
+        // It's a wallet address - resolve to profile_id
+        debug!("Resolving wallet address to profile_id: {}", profile_id);
+        match profiles::table
+            .filter(profiles::owner_address.eq(&profile_id))
+            .select(profiles::profile_id.nullable())
+            .first::<Option<String>>(&mut conn)
+            .await
+        {
+            Ok(Some(pid)) => {
+                debug!("Resolved wallet address {} to profile_id {}", profile_id, pid);
+                (pid, false) // Resolved to profile_id, not a wallet address anymore
+            }
+            Ok(None) | Err(diesel::result::Error::NotFound) => {
+                // No profile_id found, will query by owner field
+                debug!("Wallet address not found in profiles, will query by owner field: {}", profile_id);
+                (profile_id.clone(), true) // Keep as wallet address to query by owner
+            }
+            Err(e) => {
+                error!("Error resolving wallet address: {}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": format!("Failed to resolve wallet address: {}", e)
+                    })),
+                )
+                    .into_response();
+            }
+        }
+    } else {
+        // Try to resolve as profile_id first
+        match profiles::table
+            .filter(profiles::profile_id.eq(&profile_id))
+            .select(profiles::profile_id.nullable())
+            .first::<Option<String>>(&mut conn)
+            .await
+        {
+            Ok(Some(pid)) => {
+                debug!("Found profile_id: {}", pid);
+                (pid, false)
+            }
+            Ok(None) => {
+                // Profile found but no profile_id - use input as-is
+                debug!("Profile found but no profile_id, using input as-is: {}", profile_id);
+                (profile_id.clone(), false)
+            }
+            Err(diesel::result::Error::NotFound) => {
+                // If profile_id not found, try resolving as username
+                debug!("Profile ID not found, trying username: {}", profile_id);
+                match profiles::table
+                    .filter(profiles::username.eq(&profile_id))
+                    .select(profiles::profile_id.nullable())
+                    .first::<Option<String>>(&mut conn)
+                    .await
+                {
+                    Ok(Some(pid)) => {
+                        debug!("Resolved username {} to profile_id {}", profile_id, pid);
+                        (pid, false)
+                    }
+                    Ok(None) => {
+                        // Username found but no profile_id - use username as-is
+                        debug!("Username found but no profile_id, using username: {}", profile_id);
+                        (profile_id.clone(), false)
+                    }
+                    Err(diesel::result::Error::NotFound) => {
+                        // Neither profile_id nor username found - use as-is (might be a legacy profile_id)
+                        debug!("Profile ID and username not found, using as-is: {}", profile_id);
+                        (profile_id.clone(), false)
+                    }
+                    Err(e) => {
+                        error!("Error resolving username: {}", e);
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(serde_json::json!({
+                                "error": format!("Failed to resolve username: {}", e)
+                            })),
+                        )
+                            .into_response();
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Error resolving profile_id: {}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": format!("Failed to resolve profile ID: {}", e)
+                    })),
+                )
+                    .into_response();
+            }
+        }
+    };
+
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
     let include_deleted = params.include_deleted.unwrap_or(false);
 
-    let mut query = "
+    // Build query - use profile_id if resolved, otherwise query by owner field for wallet addresses
+    let where_clause = if is_wallet_address {
+        "p.owner = $1"
+    } else {
+        "p.profile_id = $1"
+    };
+
+    let mut query = format!(
+        "
         SELECT 
             p.post_id, p.owner, p.profile_id, p.content, p.created_at, p.deleted_at, p.removed_from_platform, 
             p.reaction_count, p.comment_count, p.repost_count, p.tips_received,
@@ -588,8 +695,10 @@ pub async fn get_profile_posts(
         FROM 
             posts p
         WHERE 
-            p.profile_id = $1
-    ".to_string();
+            {}
+        ",
+        where_clause
+    );
 
     if !include_deleted {
         query.push_str(" AND p.deleted_at IS NULL AND p.removed_from_platform = false");
@@ -611,7 +720,7 @@ pub async fn get_profile_posts(
     query.push_str(" ORDER BY p.created_at DESC LIMIT $2 OFFSET $3");
 
     let posts_result = diesel::sql_query(&query)
-        .bind::<Text, _>(profile_id)
+        .bind::<Text, _>(resolved_profile_id)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<PostWithEngagementInfo>(&mut conn)

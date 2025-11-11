@@ -701,6 +701,8 @@ mod tests {
             analysis_timestamp: Utc::now().timestamp(),
             time: Utc::now(),
             transaction_id: "test_tx_006".to_string(),
+            reasoning: None,
+            evidence_urls: None,
         };
 
         assert_eq!(analysis.post_id, "test_post_001");
