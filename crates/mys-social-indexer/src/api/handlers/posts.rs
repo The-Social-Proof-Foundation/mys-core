@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, error};
 
 use crate::db::DbPool;
+use crate::db::query_types::CountResult;
 use crate::schema::profiles;
 
 // Query parameters for post listing
@@ -86,6 +87,22 @@ pub struct PostResponse {
     pub post: PostBasic,
     pub engagement_score: i64,
     pub trending_score: f64,
+}
+
+// Pagination info structure
+#[derive(Debug, Serialize)]
+pub struct PaginationInfo {
+    pub limit: i64,
+    pub offset: i64,
+    pub total: i64,
+    pub total_pages: i64,
+}
+
+// API response structure with pagination
+#[derive(Debug, Serialize)]
+pub struct ApiResponse<T> {
+    pub data: T,
+    pub pagination: PaginationInfo,
 }
 
 // Comment data model
@@ -719,6 +736,48 @@ pub async fn get_profile_posts(
 
     query.push_str(" ORDER BY p.created_at DESC LIMIT $2 OFFSET $3");
 
+    // Build count query with same WHERE conditions
+    let mut count_query = format!(
+        "
+        SELECT COUNT(*) as count
+        FROM posts p
+        WHERE {}
+        ",
+        where_clause
+    );
+
+    if !include_deleted {
+        count_query.push_str(" AND p.deleted_at IS NULL AND p.removed_from_platform = false");
+    }
+
+    // Filter by platform_id if provided
+    if let Some(platform_id) = &params.platform_id {
+        count_query.push_str(&format!(
+            "
+            AND EXISTS (
+                SELECT 1 FROM posts_moderation_events pme 
+                WHERE pme.object_id = p.post_id AND pme.platform_id = '{}'
+                AND pme.removed = false
+            )",
+            platform_id
+        ));
+    }
+
+    // Get total count for pagination
+    let count_result = diesel::sql_query(&count_query)
+        .bind::<Text, _>(&resolved_profile_id)
+        .get_result::<CountResult>(&mut conn)
+        .await;
+
+    let total = match count_result {
+        Ok(result) => result.count,
+        Err(e) => {
+            error!("Error getting post count: {}", e);
+            // If count fails, still return posts but with total = 0
+            0
+        }
+    };
+
     let posts_result = diesel::sql_query(&query)
         .bind::<Text, _>(resolved_profile_id)
         .bind::<BigInt, _>(limit)
@@ -751,7 +810,24 @@ pub async fn get_profile_posts(
                 })
                 .collect();
 
-            Json(post_responses).into_response()
+            // Calculate total pages
+            let total_pages = if total == 0 {
+                0
+            } else {
+                (total + limit - 1) / limit
+            };
+
+            // Return response with pagination metadata
+            Json(ApiResponse {
+                data: post_responses,
+                pagination: PaginationInfo {
+                    limit,
+                    offset,
+                    total,
+                    total_pages,
+                },
+            })
+            .into_response()
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
