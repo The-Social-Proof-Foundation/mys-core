@@ -4,8 +4,12 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
+    response::{IntoResponse, Response},
     Json,
 };
+use diesel::deserialize::QueryableByName;
+use diesel::pg::Pg;
+use diesel::sql_types::*;
 use diesel::OptionalExtension;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
@@ -1937,4 +1941,124 @@ pub async fn get_token_liquidity_profile(
         },
         pagination: None,
     }))
+}
+
+/// SPT Configuration response structure
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct SptConfigInfo {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+
+    #[diesel(sql_type = BigInt)]
+    pub post_threshold: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub profile_threshold: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_individual_reservation_bps: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub total_fee_bps: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub creator_fee_bps: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub platform_fee_bps: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub treasury_fee_bps: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub base_price: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub quadratic_coefficient: i64,
+
+    #[diesel(sql_type = Text)]
+    pub ecosystem_treasury: String,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_hold_percent_bps: i64,
+
+    #[diesel(sql_type = Bool)]
+    pub trading_halted: bool,
+
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// Get current social proof tokens configuration
+pub async fn get_spt_configuration(State(db): State<Arc<Database>>) -> Response {
+    let mut conn = match db.get_connection().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("Database connection error: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database connection error: {}", e)
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    let query = "
+        SELECT 
+            updated_by,
+            post_threshold,
+            profile_threshold,
+            max_individual_reservation_bps,
+            total_fee_bps,
+            creator_fee_bps,
+            platform_fee_bps,
+            treasury_fee_bps,
+            base_price,
+            quadratic_coefficient,
+            ecosystem_treasury,
+            max_hold_percent_bps,
+            trading_halted,
+            updated_at,
+            time,
+            transaction_id
+        FROM spt_exchange_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .get_result::<SptConfigInfo>(&mut conn)
+        .await;
+
+    match result {
+        Ok(config) => Json(config).into_response(),
+        Err(diesel::result::Error::NotFound) => {
+            (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Social proof tokens configuration not found"
+                })),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            error!("Database error getting SPT configuration: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database error: {}", e)
+                })),
+            )
+                .into_response()
+        }
+    }
 }

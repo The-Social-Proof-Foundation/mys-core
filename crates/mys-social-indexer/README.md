@@ -405,6 +405,9 @@ Vesting wallet endpoints return wallets with the following additional fields:
 - **GET /social-proof-token/reservaton-pools/:id** - Get reservaton pool details by pool ID
 - **GET /social-proof-token/reservaton-pools/:id/reservatons** - Get individual reservatons for a pool
 
+#### Configuration
+- **GET /social-proof-token/configuration** - Get current social proof tokens exchange configuration (thresholds, fees, trading status, etc.)
+
 #### Analytics & Insights
 - **GET /social-proof-token/popular** - Get popular token pools
 - **GET /social-proof-token/users/:address/holdings** - Get token holdings for a user

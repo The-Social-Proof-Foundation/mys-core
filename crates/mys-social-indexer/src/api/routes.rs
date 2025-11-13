@@ -45,8 +45,8 @@ use crate::api::handlers::social_graph::{
 };
 // Import social proof token handlers
 use crate::api::handlers::social_proof_token::{
-    get_creator_revenue_streams, get_market_sentiment, get_popular_tokens, get_spt_holdings,
-    get_spt_pool_by_associated_id, get_spt_pool_by_id, get_spt_price_history,
+    get_creator_revenue_streams, get_market_sentiment, get_popular_tokens, get_spt_configuration,
+    get_spt_holdings, get_spt_pool_by_associated_id, get_spt_pool_by_id, get_spt_price_history,
     get_spt_reservation_pool_by_id, get_spt_reservation_pools, get_spt_reservations_by_pool,
     get_spt_transactions, get_token_liquidity_profile, get_top_performing_tokens,
     get_user_portfolio_performance, get_user_spt_holdings, list_spt_pools,
@@ -355,6 +355,10 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route(
             "/social-proof-token/pools/:id/liquidity-profile",
             get(get_token_liquidity_profile),
+        )
+        .route(
+            "/social-proof-token/configuration",
+            get(get_spt_configuration),
         )
         .route("/search", get(global_search))
         .with_state(db);
