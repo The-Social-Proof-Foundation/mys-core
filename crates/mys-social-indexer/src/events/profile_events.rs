@@ -199,6 +199,7 @@ impl ProfileCreatedEvent {
             instagram_username: None,
             block_list_address: None,
             social_proof_token_address: None,
+            reservation_pool_address: None, // Will be set when reservation pool is created
         })
     }
 }
