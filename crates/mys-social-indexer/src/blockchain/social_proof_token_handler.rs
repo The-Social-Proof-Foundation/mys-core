@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 use crate::blockchain::handler_trait::{
     BaseHandler, BlockchainEventHandler, HandlerHealth, HandlerStats,
@@ -684,20 +684,17 @@ impl SocialProofTokenHandler {
 
     /// Process config updated events
     async fn process_config_updated_event(&mut self, event: &BlockchainEvent) -> Result<()> {
-        info!("Processing SPT config updated event: {}", event.event_id);
-
-        // Extract and parse the event
         let fields = Self::extract_event_fields(&event.data)?;
         let config_event = serde_json::from_value::<ConfigUpdatedEvent>(fields)
             .map_err(|e| anyhow!("Failed to parse ConfigUpdatedEvent: {}", e))?;
 
         let mut conn = self.base.get_connection().await?;
-        let timestamp = (event.timestamp_ms / 1000) as i64;
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
 
-        // Update token exchange config
-        let mut config =
-            config_event.into_exchange_config_model(timestamp as u64, event.tx_digest.clone())?;
+        let mut config = config_event.into_exchange_config_model(
+            (event.timestamp_ms / 1000) as u64,
+            event.tx_digest.clone(),
+        )?;
         config.time = datetime;
 
         diesel::insert_into(schema::spt_exchange_config::table)
@@ -705,13 +702,7 @@ impl SocialProofTokenHandler {
             .execute(&mut conn)
             .await?;
 
-        // Update progress tracking
         self.update_progress().await?;
-
-        info!(
-            "Successfully processed config updated event by: {}, trading_halted: {}",
-            config_event.updated_by, config.trading_halted
-        );
         Ok(())
     }
 
@@ -1021,9 +1012,7 @@ impl BlockchainEventHandler for SocialProofTokenHandler {
             {
                 self.process_threshold_met_event(&event).await
             }
-            t if t.contains("::social_proof_tokens::")
-                && (t.ends_with("::ConfigUpdatedEvent") || t.ends_with("ConfigUpdatedEvent")) =>
-            {
+            t if t.contains("::social_proof_tokens::") && t.contains("ConfigUpdated") => {
                 self.process_config_updated_event(&event).await
             }
             t if t.contains("::social_proof_tokens::")
