@@ -15,11 +15,11 @@ use crate::blockchain::handler_trait::{
 use crate::blockchain::listener::BlockchainEvent;
 use crate::db::Database;
 use crate::events::social_proof_token_events::{
-    ConfigUpdatedEvent, EmergencyKillSwitchEvent, PostPoolAutoInitializedEvent,
-    SocialProofBuyEvent, SocialProofInitPoolEvent,
-    SocialProofReservationCreatedEvent, SocialProofReservationWithdrawnEvent, SocialProofSellEvent,
-    SocialProofThresholdMetEvent, TokenBoughtEvent, TokenSoldEvent, TokensAddedEvent,
-    TokenPoolCreatedEvent,
+    ConfigUpdatedEvent, EmergencyKillSwitchEvent, PocRedirectionUpdatedEvent,
+    PostPoolAutoInitializedEvent, ReservationPoolCreatedEvent, SocialProofBuyEvent,
+    SocialProofInitPoolEvent, SocialProofReservationCreatedEvent, SocialProofReservationWithdrawnEvent,
+    SocialProofSellEvent, SocialProofThresholdMetEvent, TokenBoughtEvent, TokenSoldEvent,
+    TokensAddedEvent, TokenPoolCreatedEvent,
 };
 use crate::models::indexer::NewIndexerProgress;
 use crate::models::social_proof_token::{
@@ -652,6 +652,30 @@ impl SocialProofTokenHandler {
         Ok(())
     }
 
+    /// Process reservation pool created events
+    async fn process_reservation_pool_created_event(&mut self, event: &BlockchainEvent) -> Result<()> {
+        let fields = Self::extract_event_fields(&event.data)?;
+        let pool_event = serde_json::from_value::<ReservationPoolCreatedEvent>(fields)
+            .map_err(|e| anyhow!("Failed to parse ReservationPoolCreatedEvent: {}", e))?;
+
+        let mut conn = self.base.get_connection().await?;
+        let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
+
+        let mut reservation_pool = pool_event.into_reservation_pool_model(
+            (event.timestamp_ms / 1000) as u64,
+            event.tx_digest.clone(),
+        )?;
+        reservation_pool.time = datetime;
+
+        diesel::insert_into(schema::spt_reservation_pools::table)
+            .values(&reservation_pool)
+            .execute(&mut conn)
+            .await?;
+
+        self.update_progress().await?;
+        Ok(())
+    }
+
     /// Process threshold met events
     async fn process_threshold_met_event(&mut self, event: &BlockchainEvent) -> Result<()> {
         info!("Processing SPT threshold met event: {}", event.event_id);
@@ -679,6 +703,30 @@ impl SocialProofTokenHandler {
         self.update_progress().await?;
 
         info!("Successfully processed threshold met event");
+        Ok(())
+    }
+
+    /// Process PoC redirection updated events
+    async fn process_poc_redirection_updated_event(&mut self, event: &BlockchainEvent) -> Result<()> {
+        let fields = Self::extract_event_fields(&event.data)?;
+        let redirection_event = serde_json::from_value::<PocRedirectionUpdatedEvent>(fields)
+            .map_err(|e| anyhow!("Failed to parse PocRedirectionUpdatedEvent: {}", e))?;
+
+        let mut conn = self.base.get_connection().await?;
+
+        // Update the post's revenue redirection fields
+        diesel::update(schema::posts::table)
+            .filter(schema::posts::post_id.eq(&redirection_event.post_id))
+            .set((
+                schema::posts::revenue_redirect_to.eq(redirection_event.redirect_to.as_ref()),
+                schema::posts::revenue_redirect_percentage.eq(
+                    redirection_event.redirect_percentage.map(|p| p as i64),
+                ),
+            ))
+            .execute(&mut conn)
+            .await?;
+
+        self.update_progress().await?;
         Ok(())
     }
 
@@ -998,6 +1046,11 @@ impl BlockchainEventHandler for SocialProofTokenHandler {
                 self.process_tokens_added_event(&event).await
             }
             t if t.contains("::social_proof_tokens::")
+                && (t.ends_with("::ReservationPoolCreatedEvent") || t.ends_with("ReservationPoolCreatedEvent")) =>
+            {
+                self.process_reservation_pool_created_event(&event).await
+            }
+            t if t.contains("::social_proof_tokens::")
                 && (t.ends_with("::ReservationCreatedEvent") || t.ends_with("ReservationCreatedEvent")) =>
             {
                 self.process_reservation_created_event(&event).await
@@ -1014,6 +1067,11 @@ impl BlockchainEventHandler for SocialProofTokenHandler {
             }
             t if t.contains("::social_proof_tokens::") && t.contains("ConfigUpdated") => {
                 self.process_config_updated_event(&event).await
+            }
+            t if t.contains("::social_proof_tokens::")
+                && (t.ends_with("::PocRedirectionUpdatedEvent") || t.ends_with("PocRedirectionUpdatedEvent")) =>
+            {
+                self.process_poc_redirection_updated_event(&event).await
             }
             t if t.contains("::social_proof_tokens::")
                 && (t.ends_with("::EmergencyKillSwitchEvent") || t.ends_with("EmergencyKillSwitchEvent")) =>

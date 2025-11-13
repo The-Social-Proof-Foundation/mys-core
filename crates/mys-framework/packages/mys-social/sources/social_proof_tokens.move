@@ -334,6 +334,16 @@ module social_contracts::social_proof_tokens {
         timestamp: u64,
     }
 
+    /// Event emitted when a reservation pool is created
+    public struct ReservationPoolCreatedEvent has copy, drop {
+        associated_id: address,
+        token_type: u8,
+        owner: address,
+        required_threshold: u64,
+        pool_object_id: address,
+        created_at: u64,
+    }
+
     /// Event emitted when social proof tokens config is updated
     public struct ConfigUpdatedEvent has copy, drop {
         /// Who performed the update
@@ -375,6 +385,22 @@ module social_contracts::social_proof_tokens {
         timestamp: u64,
         /// Reason for the action (optional)
         reason: String,
+    }
+
+    /// Event emitted when PoC redirection data is updated for a token pool
+    public struct PocRedirectionUpdatedEvent has copy, drop {
+        /// Token pool ID
+        pool_id: address,
+        /// Associated post ID
+        post_id: address,
+        /// Address to redirect revenue to (None if cleared)
+        redirect_to: Option<address>,
+        /// Percentage of revenue to redirect (None if cleared)
+        redirect_percentage: Option<u64>,
+        /// Who performed the update
+        updated_by: address,
+        /// Timestamp of the update
+        timestamp: u64,
     }
 
     /// Bootstrap initialization function - creates the social proof tokens configuration and registry
@@ -832,6 +858,18 @@ module social_contracts::social_proof_tokens {
             version: upgrade::current_version(),
         };
         
+        let pool_object_id = object::uid_to_address(&reservation_pool_object.id);
+        
+        // Emit reservation pool created event
+        event::emit(ReservationPoolCreatedEvent {
+            associated_id,
+            token_type,
+            owner,
+            required_threshold,
+            pool_object_id,
+            created_at: now,
+        });
+        
         transfer::share_object(reservation_pool_object);
     }
 
@@ -1016,17 +1054,30 @@ module social_contracts::social_proof_tokens {
         assert!(caller == post::get_post_owner(post), ENotAuthorized);
         
         // Copy PoC data from post to pool
-        pool.poc_redirect_to = if (option::is_some(post::get_revenue_redirect_to(post))) {
+        let redirect_to = if (option::is_some(post::get_revenue_redirect_to(post))) {
             option::some(*option::borrow(post::get_revenue_redirect_to(post)))
         } else {
             option::none()
         };
         
-        pool.poc_redirect_percentage = if (option::is_some(post::get_revenue_redirect_percentage(post))) {
+        let redirect_percentage = if (option::is_some(post::get_revenue_redirect_percentage(post))) {
             option::some(*option::borrow(post::get_revenue_redirect_percentage(post)))
         } else {
             option::none()
         };
+        
+        pool.poc_redirect_to = redirect_to;
+        pool.poc_redirect_percentage = redirect_percentage;
+        
+        // Emit PoC redirection updated event
+        event::emit(PocRedirectionUpdatedEvent {
+            pool_id: object::uid_to_address(&pool.id),
+            post_id,
+            redirect_to,
+            redirect_percentage,
+            updated_by: caller,
+            timestamp: tx_context::epoch(ctx),
+        });
     }
 
     /// Calculate PoC revenue split - shared utility for consistent logic

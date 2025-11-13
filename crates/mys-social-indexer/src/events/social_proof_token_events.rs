@@ -410,6 +410,90 @@ impl TokensAddedEvent {
     }
 }
 
+/// Event emitted when a reservation pool is created
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReservationPoolCreatedEvent {
+    pub associated_id: String,
+    pub token_type: u8,
+    pub owner: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub required_threshold: u64,
+    pub pool_object_id: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub created_at: u64,
+}
+
+impl TryFrom<Value> for ReservationPoolCreatedEvent {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        let obj = value
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object"))?;
+
+        Ok(Self {
+            associated_id: obj
+                .get("associated_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid associated_id"))?
+                .to_string(),
+            token_type: obj
+                .get("token_type")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid token_type"))? as u8,
+            owner: obj
+                .get("owner")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid owner"))?
+                .to_string(),
+            required_threshold: obj
+                .get("required_threshold")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid required_threshold"))?,
+            pool_object_id: obj
+                .get("pool_object_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid pool_object_id"))?
+                .to_string(),
+            created_at: obj
+                .get("created_at")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid created_at"))?,
+        })
+    }
+}
+
+impl ReservationPoolCreatedEvent {
+    /// Convert the event to a reservation pool model
+    pub fn into_reservation_pool_model(
+        &self,
+        timestamp: u64,
+        transaction_id: String,
+    ) -> Result<NewSptReservationPool> {
+        let token_type = match self.token_type {
+            1 => TOKEN_TYPE_PROFILE,
+            2 => TOKEN_TYPE_POST,
+            _ => return Err(anyhow!("Invalid token type: {}", self.token_type)),
+        };
+
+        let pool_id = format!("reservation_pool_{}", self.associated_id);
+
+        Ok(NewSptReservationPool {
+            pool_id,
+            associated_id: self.associated_id.clone(),
+            token_type,
+            owner: self.owner.clone(),
+            total_reserved: 0,
+            required_threshold: self.required_threshold as i64,
+            status: RESERVATION_POOL_STATUS_ACTIVE.to_string(),
+            created_at: self.created_at as i64,
+            time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
+                .unwrap_or_else(|| chrono::Utc::now()),
+            transaction_id,
+        })
+    }
+}
+
 /// Event emitted when MYS is reserved towards a post/profile
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReservationCreatedEvent {
@@ -552,6 +636,70 @@ impl ThresholdMetEvent {
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,
+        })
+    }
+}
+
+/// Event emitted when PoC redirection is updated for a token pool
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PocRedirectionUpdatedEvent {
+    pub pool_id: String,
+    pub post_id: String,
+    pub redirect_to: Option<String>,
+    pub redirect_percentage: Option<u64>,
+    pub updated_by: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub timestamp: u64,
+}
+
+impl TryFrom<Value> for PocRedirectionUpdatedEvent {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        let obj = value
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object"))?;
+
+        Ok(Self {
+            pool_id: obj
+                .get("pool_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid pool_id"))?
+                .to_string(),
+            post_id: obj
+                .get("post_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid post_id"))?
+                .to_string(),
+            redirect_to: obj
+                .get("redirect_to")
+                .map(|v| {
+                    if v.is_null() {
+                        None
+                    } else {
+                        v.as_str().map(|s| s.to_string())
+                    }
+                })
+                .unwrap_or(None),
+            redirect_percentage: obj
+                .get("redirect_percentage")
+                .map(|v| {
+                    if v.is_null() {
+                        None
+                    } else {
+                        v.as_u64()
+                    }
+                })
+                .unwrap_or(None),
+            updated_by: obj
+                .get("updated_by")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid updated_by"))?
+                .to_string(),
+            timestamp: obj
+                .get("timestamp")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| anyhow!("Missing or invalid timestamp"))?,
         })
     }
 }
