@@ -39,7 +39,6 @@ impl SocialProofTokenHandler {
         }
     }
 
-    /// Helper to convert timestamp to DateTime
     fn timestamp_to_datetime(timestamp_ms: u64) -> DateTime<Utc> {
         let timestamp_secs = (timestamp_ms / 1000) as i64;
         DateTime::<Utc>::from_timestamp(timestamp_secs, 0).unwrap_or_else(|| Utc::now())
