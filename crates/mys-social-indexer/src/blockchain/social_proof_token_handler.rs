@@ -672,6 +672,19 @@ impl SocialProofTokenHandler {
             .execute(&mut conn)
             .await?;
 
+        // Update profile with reservation pool address if this is a profile token
+        if pool_event.token_type == 1 {
+            // 1 = Profile token type
+            diesel::update(schema::profiles::table)
+                .filter(schema::profiles::owner_address.eq(&pool_event.owner))
+                .set((
+                    schema::profiles::reservation_pool_address.eq(&pool_event.pool_object_id),
+                    schema::profiles::updated_at.eq(chrono::Utc::now().naive_utc()),
+                ))
+                .execute(&mut conn)
+                .await?;
+        }
+
         self.update_progress().await?;
         Ok(())
     }

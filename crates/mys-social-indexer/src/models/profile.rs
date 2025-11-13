@@ -51,6 +51,8 @@ pub struct Profile {
     pub block_list_address: Option<String>,
     // Social proof token address
     pub social_proof_token_address: Option<String>,
+    // Reservation pool object address
+    pub reservation_pool_address: Option<String>,
 }
 
 #[derive(Debug, Insertable, Serialize, Deserialize)]
@@ -102,6 +104,8 @@ pub struct NewProfile {
     pub block_list_address: Option<String>,
     // Social proof token address
     pub social_proof_token_address: Option<String>,
+    // Reservation pool object address
+    pub reservation_pool_address: Option<String>,
 }
 
 #[derive(Debug, AsChangeset, Serialize, Deserialize)]
