@@ -14,6 +14,9 @@ pub enum SubscriptionEventType {
     ProfileSubscriptionRenewed,
     ProfileSubscriptionCancelled,
     ProfileSubscriptionUpdated,
+    ProfileSubscriptionServiceCreated,
+    RenewalBalanceFunded,
+    ProfileSubscriptionServiceDeactivated,
 }
 
 impl SubscriptionEventType {
@@ -32,6 +35,15 @@ impl SubscriptionEventType {
             s if s.ends_with("::ProfileSubscriptionUpdatedEvent") || s.ends_with("ProfileSubscriptionUpdatedEvent") => {
                 Some(Self::ProfileSubscriptionUpdated)
             }
+            s if s.ends_with("::ProfileSubscriptionServiceCreatedEvent") || s.ends_with("ProfileSubscriptionServiceCreatedEvent") => {
+                Some(Self::ProfileSubscriptionServiceCreated)
+            }
+            s if s.ends_with("::RenewalBalanceFundedEvent") || s.ends_with("RenewalBalanceFundedEvent") => {
+                Some(Self::RenewalBalanceFunded)
+            }
+            s if s.ends_with("::ProfileSubscriptionServiceDeactivatedEvent") || s.ends_with("ProfileSubscriptionServiceDeactivatedEvent") => {
+                Some(Self::ProfileSubscriptionServiceDeactivated)
+            }
             // Fallback to contains for backward compatibility
             s if s.contains("::ProfileSubscriptionCreatedEvent") => {
                 Some(Self::ProfileSubscriptionCreated)
@@ -45,6 +57,15 @@ impl SubscriptionEventType {
             s if s.contains("::ProfileSubscriptionUpdatedEvent") => {
                 Some(Self::ProfileSubscriptionUpdated)
             }
+            s if s.contains("::ProfileSubscriptionServiceCreatedEvent") => {
+                Some(Self::ProfileSubscriptionServiceCreated)
+            }
+            s if s.contains("::RenewalBalanceFundedEvent") => {
+                Some(Self::RenewalBalanceFunded)
+            }
+            s if s.contains("::ProfileSubscriptionServiceDeactivatedEvent") => {
+                Some(Self::ProfileSubscriptionServiceDeactivated)
+            }
             _ => None,
         }
     }
@@ -55,6 +76,9 @@ impl SubscriptionEventType {
             Self::ProfileSubscriptionRenewed => "ProfileSubscriptionRenewedEvent",
             Self::ProfileSubscriptionCancelled => "ProfileSubscriptionCancelledEvent",
             Self::ProfileSubscriptionUpdated => "ProfileSubscriptionUpdatedEvent",
+            Self::ProfileSubscriptionServiceCreated => "ProfileSubscriptionServiceCreatedEvent",
+            Self::RenewalBalanceFunded => "RenewalBalanceFundedEvent",
+            Self::ProfileSubscriptionServiceDeactivated => "ProfileSubscriptionServiceDeactivatedEvent",
         }
     }
 }
@@ -261,6 +285,112 @@ impl ProfileSubscriptionUpdatedEvent {
             subscriber: None,
             event_data: serde_json::to_value(self)?,
             event_time: Utc::now().timestamp(),
+            time: Utc::now().naive_utc(),
+            transaction_id: tx_id,
+            processing_success: true,
+            processing_error: None,
+        })
+    }
+}
+
+/// Event emitted when a subscription service is created
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProfileSubscriptionServiceCreatedEvent {
+    pub service_id: String,
+    pub profile_owner: String,
+    pub monthly_fee: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub created_at: u64,
+}
+
+impl ProfileSubscriptionServiceCreatedEvent {
+    pub fn into_service_model(
+        &self,
+        profile_id: String,
+        tx_id: String,
+    ) -> Result<NewProfileSubscriptionService> {
+        Ok(NewProfileSubscriptionService {
+            service_id: self.service_id.clone(),
+            profile_owner: self.profile_owner.clone(),
+            profile_id,
+            monthly_fee: self.monthly_fee as i64,
+            active: true,
+            subscriber_count: 0,
+            created_at: self.created_at as i64,
+            updated_at: None,
+            time: Utc::now().naive_utc(),
+            transaction_id: tx_id,
+        })
+    }
+
+    pub fn into_event_model(&self, tx_id: String) -> Result<NewSubscriptionEvent> {
+        Ok(NewSubscriptionEvent {
+            event_type: SubscriptionEventType::ProfileSubscriptionServiceCreated
+                .to_str()
+                .to_string(),
+            subscription_id: None,
+            service_id: Some(self.service_id.clone()),
+            subscriber: None,
+            event_data: serde_json::to_value(self)?,
+            event_time: self.created_at as i64,
+            time: Utc::now().naive_utc(),
+            transaction_id: tx_id,
+            processing_success: true,
+            processing_error: None,
+        })
+    }
+}
+
+/// Event emitted when renewal balance is funded
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RenewalBalanceFundedEvent {
+    pub subscription_id: String,
+    pub subscriber: String,
+    pub funded_amount: u64,
+    pub new_balance: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub timestamp: u64,
+}
+
+impl RenewalBalanceFundedEvent {
+    pub fn into_event_model(&self, tx_id: String) -> Result<NewSubscriptionEvent> {
+        Ok(NewSubscriptionEvent {
+            event_type: SubscriptionEventType::RenewalBalanceFunded
+                .to_str()
+                .to_string(),
+            subscription_id: Some(self.subscription_id.clone()),
+            service_id: None, // Will be fetched from existing subscription
+            subscriber: Some(self.subscriber.clone()),
+            event_data: serde_json::to_value(self)?,
+            event_time: self.timestamp as i64,
+            time: Utc::now().naive_utc(),
+            transaction_id: tx_id,
+            processing_success: true,
+            processing_error: None,
+        })
+    }
+}
+
+/// Event emitted when a subscription service is deactivated
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProfileSubscriptionServiceDeactivatedEvent {
+    pub service_id: String,
+    pub profile_owner: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub deactivated_at: u64,
+}
+
+impl ProfileSubscriptionServiceDeactivatedEvent {
+    pub fn into_event_model(&self, tx_id: String) -> Result<NewSubscriptionEvent> {
+        Ok(NewSubscriptionEvent {
+            event_type: SubscriptionEventType::ProfileSubscriptionServiceDeactivated
+                .to_str()
+                .to_string(),
+            subscription_id: None,
+            service_id: Some(self.service_id.clone()),
+            subscriber: None,
+            event_data: serde_json::to_value(self)?,
+            event_time: self.deactivated_at as i64,
             time: Utc::now().naive_utc(),
             transaction_id: tx_id,
             processing_success: true,

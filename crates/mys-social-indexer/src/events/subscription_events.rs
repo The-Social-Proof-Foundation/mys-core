@@ -29,6 +29,13 @@ pub fn validate_subscription_event_detailed(event_data: &Value, event_type: &str
             validate_cancelled_event(event_data)
         }
         t if t.contains("ProfileSubscriptionUpdatedEvent") => validate_updated_event(event_data),
+        t if t.contains("ProfileSubscriptionServiceCreatedEvent") => {
+            validate_service_created_event(event_data)
+        }
+        t if t.contains("RenewalBalanceFundedEvent") => validate_renewal_balance_funded_event(event_data),
+        t if t.contains("ProfileSubscriptionServiceDeactivatedEvent") => {
+            validate_service_deactivated_event(event_data)
+        }
         _ => {
             error!("Unknown subscription event type: {}", event_type);
             Err(anyhow::anyhow!(
@@ -167,6 +174,96 @@ fn validate_updated_event(event_data: &Value) -> Result<()> {
     }
 
     debug!("ProfileSubscriptionUpdatedEvent validation passed");
+    Ok(())
+}
+
+/// Validate ProfileSubscriptionServiceCreatedEvent structure
+fn validate_service_created_event(event_data: &Value) -> Result<()> {
+    let required_fields = ["service_id", "profile_owner", "monthly_fee", "created_at"];
+
+    for field in &required_fields {
+        if event_data.get(field).is_none() {
+            return Err(anyhow::anyhow!(
+                "Missing required field '{}' in ProfileSubscriptionServiceCreatedEvent",
+                field
+            ));
+        }
+    }
+
+    // Validate data types
+    if let Some(monthly_fee) = event_data.get("monthly_fee") {
+        if !monthly_fee.is_number() {
+            return Err(anyhow::anyhow!("monthly_fee must be a number"));
+        }
+    }
+
+    if let Some(created_at) = event_data.get("created_at") {
+        if !created_at.is_number() {
+            return Err(anyhow::anyhow!("created_at must be a number"));
+        }
+    }
+
+    debug!("ProfileSubscriptionServiceCreatedEvent validation passed");
+    Ok(())
+}
+
+/// Validate RenewalBalanceFundedEvent structure
+fn validate_renewal_balance_funded_event(event_data: &Value) -> Result<()> {
+    let required_fields = ["subscription_id", "subscriber", "funded_amount", "new_balance", "timestamp"];
+
+    for field in &required_fields {
+        if event_data.get(field).is_none() {
+            return Err(anyhow::anyhow!(
+                "Missing required field '{}' in RenewalBalanceFundedEvent",
+                field
+            ));
+        }
+    }
+
+    // Validate data types
+    if let Some(funded_amount) = event_data.get("funded_amount") {
+        if !funded_amount.is_number() {
+            return Err(anyhow::anyhow!("funded_amount must be a number"));
+        }
+    }
+
+    if let Some(new_balance) = event_data.get("new_balance") {
+        if !new_balance.is_number() {
+            return Err(anyhow::anyhow!("new_balance must be a number"));
+        }
+    }
+
+    if let Some(timestamp) = event_data.get("timestamp") {
+        if !timestamp.is_number() {
+            return Err(anyhow::anyhow!("timestamp must be a number"));
+        }
+    }
+
+    debug!("RenewalBalanceFundedEvent validation passed");
+    Ok(())
+}
+
+/// Validate ProfileSubscriptionServiceDeactivatedEvent structure
+fn validate_service_deactivated_event(event_data: &Value) -> Result<()> {
+    let required_fields = ["service_id", "profile_owner", "deactivated_at"];
+
+    for field in &required_fields {
+        if event_data.get(field).is_none() {
+            return Err(anyhow::anyhow!(
+                "Missing required field '{}' in ProfileSubscriptionServiceDeactivatedEvent",
+                field
+            ));
+        }
+    }
+
+    // Validate data types
+    if let Some(deactivated_at) = event_data.get("deactivated_at") {
+        if !deactivated_at.is_number() {
+            return Err(anyhow::anyhow!("deactivated_at must be a number"));
+        }
+    }
+
+    debug!("ProfileSubscriptionServiceDeactivatedEvent validation passed");
     Ok(())
 }
 

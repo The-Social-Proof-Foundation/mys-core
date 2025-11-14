@@ -119,7 +119,8 @@ pub use subscription_event_types::{
     extract_service_id, extract_subscriber, extract_subscription_id, generate_subscription_id,
     validate_subscription_event, ProfileSubscriptionCancelledEvent,
     ProfileSubscriptionCreatedEvent, ProfileSubscriptionRenewedEvent,
-    ProfileSubscriptionUpdatedEvent, SubscriptionEventType,
+    ProfileSubscriptionServiceCreatedEvent, ProfileSubscriptionServiceDeactivatedEvent,
+    ProfileSubscriptionUpdatedEvent, RenewalBalanceFundedEvent, SubscriptionEventType,
 };
 
 // Define placeholder event types for other modules

@@ -11,9 +11,14 @@ use tracing::{debug, error, info, warn};
 
 use crate::blockchain::listener::BlockchainEvent;
 use crate::db::{Database, DbConnection};
-use crate::events::subscription_event_types::*;
+use crate::events::subscription_event_types::{
+    extract_service_id, extract_subscriber, extract_subscription_id,
+    ProfileSubscriptionCancelledEvent, ProfileSubscriptionCreatedEvent,
+    ProfileSubscriptionRenewedEvent, ProfileSubscriptionServiceCreatedEvent,
+    ProfileSubscriptionServiceDeactivatedEvent, ProfileSubscriptionUpdatedEvent,
+    RenewalBalanceFundedEvent, SubscriptionEventType,
+};
 use crate::events::subscription_events::*;
-use crate::events::SubscriptionEventType;
 use crate::models::subscription::*;
 use crate::schema;
 use crate::SUBSCRIPTION_MODULE_NAME;
@@ -104,6 +109,18 @@ impl SubscriptionEventHandler {
                 }
                 SubscriptionEventType::ProfileSubscriptionUpdated => {
                     self.process_subscription_updated(conn, &event_data, &event.tx_digest)
+                        .await?;
+                }
+                SubscriptionEventType::ProfileSubscriptionServiceCreated => {
+                    self.process_service_created(conn, &event_data, &event.tx_digest)
+                        .await?;
+                }
+                SubscriptionEventType::RenewalBalanceFunded => {
+                    self.process_renewal_balance_funded(conn, &event_data, &event.tx_digest)
+                        .await?;
+                }
+                SubscriptionEventType::ProfileSubscriptionServiceDeactivated => {
+                    self.process_service_deactivated(conn, &event_data, &event.tx_digest)
                         .await?;
                 }
             }
@@ -402,6 +419,164 @@ impl SubscriptionEventHandler {
 
                 info!(
                     "Successfully updated subscription service: {}",
+                    event.service_id
+                );
+                Ok(())
+            })
+        })
+        .await
+    }
+
+    /// Process ProfileSubscriptionServiceCreatedEvent
+    async fn process_service_created(
+        &self,
+        conn: &mut DbConnection,
+        event_data: &serde_json::Value,
+        tx_id: &str,
+    ) -> Result<()> {
+        // Parse the event
+        let event: ProfileSubscriptionServiceCreatedEvent = parse_subscription_event(event_data)?;
+
+        info!(
+            "Processing subscription service creation: service_id={}, profile_owner={}",
+            event.service_id, event.profile_owner
+        );
+
+        // Start database transaction
+        conn.transaction(|conn| {
+            Box::pin(async move {
+                // 1. Get profile_id from profile_owner
+                let profile_id: Option<String> = schema::profiles::table
+                    .filter(schema::profiles::owner_address.eq(&event.profile_owner))
+                    .select(schema::profiles::profile_id.nullable())
+                    .first(conn)
+                    .await
+                    .optional()?
+                    .flatten();
+
+                // Use profile_id if available, otherwise use profile_owner as fallback
+                let profile_id = profile_id.unwrap_or_else(|| event.profile_owner.clone());
+
+                // 2. Create service record
+                let new_service = event.into_service_model(profile_id, tx_id.to_string())?;
+
+                diesel::insert_into(schema::profile_subscription_services::table)
+                    .values(&new_service)
+                    .on_conflict(schema::profile_subscription_services::service_id)
+                    .do_update()
+                    .set((
+                        schema::profile_subscription_services::monthly_fee.eq(&new_service.monthly_fee),
+                        schema::profile_subscription_services::active.eq(true),
+                        schema::profile_subscription_services::updated_at.eq(Some(event.created_at as i64)),
+                    ))
+                    .execute(conn)
+                    .await?;
+
+                // 3. Create event log
+                let event_log = event.into_event_model(tx_id.to_string())?;
+
+                diesel::insert_into(schema::subscription_events::table)
+                    .values(&event_log)
+                    .execute(conn)
+                    .await?;
+
+                info!(
+                    "Successfully created subscription service: {}",
+                    event.service_id
+                );
+                Ok(())
+            })
+        })
+        .await
+    }
+
+    /// Process RenewalBalanceFundedEvent
+    async fn process_renewal_balance_funded(
+        &self,
+        conn: &mut DbConnection,
+        event_data: &serde_json::Value,
+        tx_id: &str,
+    ) -> Result<()> {
+        // Parse the event
+        let event: RenewalBalanceFundedEvent = parse_subscription_event(event_data)?;
+
+        info!(
+            "Processing renewal balance funded: subscription_id={}, funded_amount={}, new_balance={}",
+            event.subscription_id, event.funded_amount, event.new_balance
+        );
+
+        // Start database transaction
+        conn.transaction(|conn| {
+            Box::pin(async move {
+                // 1. Update subscription renewal_balance
+                diesel::update(schema::profile_subscriptions::table)
+                    .filter(
+                        schema::profile_subscriptions::subscription_id.eq(&event.subscription_id),
+                    )
+                    .set((
+                        schema::profile_subscriptions::renewal_balance.eq(event.new_balance as i64),
+                        schema::profile_subscriptions::processing_success.eq(true),
+                        schema::profile_subscriptions::processing_error.eq::<Option<String>>(None),
+                    ))
+                    .execute(conn)
+                    .await?;
+
+                // 2. Create event log
+                let event_log = event.into_event_model(tx_id.to_string())?;
+
+                diesel::insert_into(schema::subscription_events::table)
+                    .values(&event_log)
+                    .execute(conn)
+                    .await?;
+
+                info!(
+                    "Successfully updated renewal balance for subscription: {}",
+                    event.subscription_id
+                );
+                Ok(())
+            })
+        })
+        .await
+    }
+
+    /// Process ProfileSubscriptionServiceDeactivatedEvent
+    async fn process_service_deactivated(
+        &self,
+        conn: &mut DbConnection,
+        event_data: &serde_json::Value,
+        tx_id: &str,
+    ) -> Result<()> {
+        // Parse the event
+        let event: ProfileSubscriptionServiceDeactivatedEvent = parse_subscription_event(event_data)?;
+
+        info!(
+            "Processing subscription service deactivation: service_id={}, profile_owner={}",
+            event.service_id, event.profile_owner
+        );
+
+        // Start database transaction
+        conn.transaction(|conn| {
+            Box::pin(async move {
+                // 1. Update service record to mark as inactive
+                diesel::update(schema::profile_subscription_services::table)
+                    .filter(schema::profile_subscription_services::service_id.eq(&event.service_id))
+                    .set((
+                        schema::profile_subscription_services::active.eq(false),
+                        schema::profile_subscription_services::updated_at.eq(Some(event.deactivated_at as i64)),
+                    ))
+                    .execute(conn)
+                    .await?;
+
+                // 2. Create event log
+                let event_log = event.into_event_model(tx_id.to_string())?;
+
+                diesel::insert_into(schema::subscription_events::table)
+                    .values(&event_log)
+                    .execute(conn)
+                    .await?;
+
+                info!(
+                    "Successfully deactivated subscription service: {}",
                     event.service_id
                 );
                 Ok(())
