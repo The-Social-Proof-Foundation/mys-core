@@ -15,9 +15,10 @@ use crate::blockchain::listener::BlockchainEvent;
 use crate::db::{Database, DbConnection};
 use crate::events::event_utils::extract_event_fields;
 use crate::events::social_proof_of_truth_events::{
-    SpotBetPlacedEvent, SpotDaoRequiredEvent, SpotPayoutEvent, SpotRefundEvent, SpotResolvedEvent,
+    SpotBetPlacedEvent, SpotConfigUpdatedEvent, SpotDaoRequiredEvent, SpotPayoutEvent,
+    SpotRecordCreatedEvent, SpotRefundEvent, SpotResolvedEvent,
 };
-use crate::models::social_proof_of_truth::{NewSocialProofOfTruthEvent, NewSpotEventLog};
+use crate::models::social_proof_of_truth::{NewSocialProofOfTruthEvent, NewSpotConfig, NewSpotEventLog};
 use crate::schema;
 
 /// Handler for Social Proof of Truth (SPoT) blockchain events.
@@ -384,6 +385,139 @@ impl SocialProofOfTruthEventHandler {
             .await
     }
 
+    async fn handle_spot_config_updated(&self, event: &BlockchainEvent) -> Result<()> {
+        let parsed = Self::parse_event::<SpotConfigUpdatedEvent>(&event.data)?;
+        let mut conn = self.get_connection().await?;
+
+        // Log the config update event
+        // Note: Config updates don't have a post_id, so we use a special placeholder
+        // since spot_events.post_id has a NOT NULL constraint
+        const GLOBAL_CONFIG_POST_ID: &str = "GLOBAL_CONFIG";
+        Self::log_spot_event(
+            &mut conn,
+            "SpotConfigUpdatedEvent",
+            GLOBAL_CONFIG_POST_ID,
+            &parsed,
+            Some(event.event_id.clone()),
+        )
+        .await?;
+
+        // Insert into spot_config table
+        let datetime = Self::event_time(event);
+        let timestamp_ms = event.timestamp_ms as i64;
+        let new_config = NewSpotConfig {
+            updated_by: parsed.updated_by.clone(),
+            enable_flag: parsed.enable_flag,
+            confidence_threshold_bps: parsed.confidence_threshold_bps as i64,
+            resolution_window_epochs: parsed.resolution_window_epochs as i64,
+            max_resolution_window_epochs: parsed.max_resolution_window_epochs as i64,
+            payout_delay_epochs: parsed.payout_delay_epochs as i64,
+            fee_bps: parsed.fee_bps as i64,
+            fee_split_bps_platform: parsed.fee_split_bps_platform as i64,
+            platform_treasury: parsed.platform_treasury.clone(),
+            chain_treasury: parsed.chain_treasury.clone(),
+            oracle_address: parsed.oracle_address.clone(),
+            max_single_bet: parsed.max_single_bet as i64,
+            timestamp_ms,
+            time: datetime,
+            transaction_id: event.tx_digest.clone(),
+        };
+
+        diesel::insert_into(schema::spot_config::table)
+            .values(&new_config)
+            .execute(&mut conn)
+            .await?;
+
+        // Create unified event entry
+        // For config updates, we use a placeholder post_id since they're global
+        let unified = NewSocialProofOfTruthEvent {
+            event_type: "SpotConfigUpdatedEvent".to_string(),
+            post_id: GLOBAL_CONFIG_POST_ID.to_string(),
+            user_address: Some(parsed.updated_by.clone()),
+            is_yes: None,
+            escrow_amount: None,
+            amm_amount: None,
+            amount: None,
+            outcome: None,
+            total_escrow: None,
+            fee_taken: None,
+            confidence_bps: Some(parsed.confidence_threshold_bps as i64),
+            timestamp_epoch: Self::timestamp_epoch(event),
+            time: Utc::now(),
+            event_id: None,
+            transaction_id: None,
+            raw_event: Some(serde_json::to_value(&parsed)?),
+        };
+
+        self.write_unified(&mut conn, event, "SpotConfigUpdatedEvent", unified)
+            .await
+    }
+
+    async fn handle_spot_record_created(&self, event: &BlockchainEvent) -> Result<()> {
+        let parsed = Self::parse_event::<SpotRecordCreatedEvent>(&event.data)?;
+        let tx = event.tx_digest.clone();
+        let timestamp_epoch = Self::timestamp_epoch(event);
+
+        let mut conn = self.get_connection().await?;
+
+        // Create or update the spot record
+        // Use the created_epoch from the event
+        let created_epoch = parsed.created_epoch as i64;
+        let insert_sql = "INSERT INTO spot_records (post_id, status, outcome, amm_split_bps_used, total_yes_escrow, total_no_escrow, created_epoch, last_resolution_epoch, version, created_at, updated_at, transaction_id) \
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), $10) \
+            ON CONFLICT (post_id) DO UPDATE SET \
+                created_epoch = EXCLUDED.created_epoch, \
+                updated_at = NOW(), \
+                transaction_id = EXCLUDED.transaction_id";
+
+        diesel::sql_query(insert_sql)
+            .bind::<Text, _>(&parsed.post_id)
+            .bind::<SmallInt, _>(1) // STATUS_OPEN
+            .bind::<Nullable<SmallInt>, _>(None::<i16>)
+            .bind::<Integer, _>(3000) // Default AMM split
+            .bind::<BigInt, _>(0)
+            .bind::<BigInt, _>(0)
+            .bind::<BigInt, _>(created_epoch)
+            .bind::<Nullable<BigInt>, _>(None::<i64>)
+            .bind::<BigInt, _>(1) // Version
+            .bind::<Text, _>(&tx)
+            .execute(&mut conn)
+            .await?;
+
+        // Log the record created event
+        Self::log_spot_event(
+            &mut conn,
+            "SpotRecordCreatedEvent",
+            &parsed.post_id,
+            &parsed,
+            Some(event.event_id.clone()),
+        )
+        .await?;
+
+        // Create unified event entry
+        let unified = NewSocialProofOfTruthEvent {
+            event_type: "SpotRecordCreatedEvent".to_string(),
+            post_id: parsed.post_id.clone(),
+            user_address: None,
+            is_yes: None,
+            escrow_amount: None,
+            amm_amount: None,
+            amount: None,
+            outcome: None,
+            total_escrow: None,
+            fee_taken: None,
+            confidence_bps: None,
+            timestamp_epoch,
+            time: Utc::now(),
+            event_id: None,
+            transaction_id: None,
+            raw_event: Some(serde_json::to_value(&parsed)?),
+        };
+
+        self.write_unified(&mut conn, event, "SpotRecordCreatedEvent", unified)
+            .await
+    }
+
     async fn write_unified(
         &self,
         conn: &mut DbConnection,
@@ -401,6 +535,8 @@ impl SocialProofOfTruthEventHandler {
             || event_type.ends_with("SpotDaoRequiredEvent")
             || event_type.ends_with("SpotPayoutEvent")
             || event_type.ends_with("SpotRefundEvent")
+            || event_type.ends_with("SpotConfigUpdatedEvent")
+            || event_type.ends_with("SpotRecordCreatedEvent")
     }
 
     async fn update_progress(&self) -> Result<()> {
@@ -448,6 +584,10 @@ impl SocialProofOfTruthEventHandler {
                 self.handle_spot_payout(&event).await
             } else if event.event_type.ends_with("SpotRefundEvent") {
                 self.handle_spot_refund(&event).await
+            } else if event.event_type.ends_with("SpotConfigUpdatedEvent") {
+                self.handle_spot_config_updated(&event).await
+            } else if event.event_type.ends_with("SpotRecordCreatedEvent") {
+                self.handle_spot_record_created(&event).await
             } else {
                 warn!("Received unhandled SPoT event: {} (event_id: {})", event.event_type, event.event_id);
                 Ok(())

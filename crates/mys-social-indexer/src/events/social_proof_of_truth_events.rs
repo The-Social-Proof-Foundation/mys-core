@@ -111,6 +111,32 @@ impl SpotRefundEvent {
     }
 }
 
+// Matches social_contracts::social_proof_of_truth::SpotConfigUpdatedEvent
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpotConfigUpdatedEvent {
+    pub updated_by: String,
+    pub enable_flag: bool,
+    pub confidence_threshold_bps: u64,
+    pub resolution_window_epochs: u64,
+    pub max_resolution_window_epochs: u64,
+    pub payout_delay_epochs: u64,
+    pub fee_bps: u64,
+    pub fee_split_bps_platform: u64,
+    pub platform_treasury: String,
+    pub chain_treasury: String,
+    pub oracle_address: String,
+    pub max_single_bet: u64,
+    pub timestamp: u64,
+}
+
+// Matches social_contracts::social_proof_of_truth::SpotRecordCreatedEvent
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpotRecordCreatedEvent {
+    pub record_id: String,
+    pub post_id: String,
+    pub created_epoch: u64,
+}
+
 // Helper to create initial record if needed
 pub fn default_record_for_post(
     post_id: &str,

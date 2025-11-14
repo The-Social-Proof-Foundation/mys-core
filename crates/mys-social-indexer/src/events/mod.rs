@@ -84,7 +84,8 @@ pub use social_proof_token_events::{
 
 // Re-export SPoT events
 pub use social_proof_of_truth_events::{
-    SpotBetPlacedEvent, SpotDaoRequiredEvent, SpotPayoutEvent, SpotRefundEvent, SpotResolvedEvent,
+    SpotBetPlacedEvent, SpotConfigUpdatedEvent, SpotDaoRequiredEvent, SpotPayoutEvent,
+    SpotRecordCreatedEvent, SpotRefundEvent, SpotResolvedEvent,
 };
 
 // Re-export social proof token event types

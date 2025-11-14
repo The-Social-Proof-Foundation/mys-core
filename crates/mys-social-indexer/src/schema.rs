@@ -1371,6 +1371,28 @@ table! {
     }
 }
 
+// spot_config: global SPoT configuration (hypertable)
+table! {
+    spot_config (id, time) {
+        id -> Int4,
+        updated_by -> Varchar,
+        enable_flag -> Bool,
+        confidence_threshold_bps -> Int8,
+        resolution_window_epochs -> Int8,
+        max_resolution_window_epochs -> Int8,
+        payout_delay_epochs -> Int8,
+        fee_bps -> Int8,
+        fee_split_bps_platform -> Int8,
+        platform_treasury -> Varchar,
+        chain_treasury -> Varchar,
+        oracle_address -> Varchar,
+        max_single_bet -> Int8,
+        timestamp_ms -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
 // Unified SPoT events table (hypertable)
 table! {
     social_proof_of_truth (id, time) {

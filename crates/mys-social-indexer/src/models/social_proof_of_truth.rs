@@ -3,9 +3,10 @@
 
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    spot_bets, spot_events, spot_payouts, spot_records, spot_refunds, spot_resolutions,
+    spot_bets, spot_config, spot_events, spot_payouts, spot_records, spot_refunds, spot_resolutions,
 };
 
 // =============================================================================
@@ -178,4 +179,49 @@ pub struct NewSocialProofOfTruthEvent {
     pub event_id: Option<String>,
     pub transaction_id: Option<String>,
     pub raw_event: Option<serde_json::Value>,
+}
+
+// =============================================================================
+// SPoT Configuration (hypertable)
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable)]
+#[diesel(table_name = spot_config)]
+pub struct SpotConfig {
+    pub id: i32,
+    pub updated_by: String,
+    pub enable_flag: bool,
+    pub confidence_threshold_bps: i64,
+    pub resolution_window_epochs: i64,
+    pub max_resolution_window_epochs: i64,
+    pub payout_delay_epochs: i64,
+    pub fee_bps: i64,
+    pub fee_split_bps_platform: i64,
+    pub platform_treasury: String,
+    pub chain_treasury: String,
+    pub oracle_address: String,
+    pub max_single_bet: i64,
+    pub timestamp_ms: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = spot_config)]
+pub struct NewSpotConfig {
+    pub updated_by: String,
+    pub enable_flag: bool,
+    pub confidence_threshold_bps: i64,
+    pub resolution_window_epochs: i64,
+    pub max_resolution_window_epochs: i64,
+    pub payout_delay_epochs: i64,
+    pub fee_bps: i64,
+    pub fee_split_bps_platform: i64,
+    pub platform_treasury: String,
+    pub chain_treasury: String,
+    pub oracle_address: String,
+    pub max_single_bet: i64,
+    pub timestamp_ms: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
 }
