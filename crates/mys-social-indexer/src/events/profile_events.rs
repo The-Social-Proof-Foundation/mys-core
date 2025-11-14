@@ -201,6 +201,8 @@ impl ProfileCreatedEvent {
             social_proof_token_address: None,
             reservation_pool_address: None, // Will be set when reservation pool is created
             selected_badge_id: None, // Will be set when badge is selected
+            paid_messaging_enabled: false, // Default to disabled
+            paid_messaging_min_cost: None, // Default to no minimum cost
         })
     }
 }
@@ -767,4 +769,36 @@ pub struct VestingWalletDeletedEvent {
         deserialize_with = "deserialize_number_from_string"
     )]
     pub deleted_at: u64,
+}
+
+/// Event emitted when paid messaging settings are updated
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaidMessagingSettingsUpdatedEvent {
+    /// ID of the profile
+    #[serde(rename = "profile_id", default)]
+    pub profile_id: String,
+
+    /// Owner of the profile
+    #[serde(rename = "owner", default)]
+    pub owner: String,
+
+    /// Whether paid messaging is enabled
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Minimum cost for messaging (in MYS tokens)
+    #[serde(
+        rename = "min_cost",
+        default,
+        deserialize_with = "deserialize_optional_number_from_string"
+    )]
+    pub min_cost: Option<u64>,
+
+    /// Timestamp when settings were updated
+    #[serde(
+        rename = "updated_at",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub updated_at: u64,
 }

@@ -1424,6 +1424,102 @@ impl PlatformEventHandler {
         Ok(())
     }
 
+    /// Process a treasury funded event
+    async fn process_treasury_funded_event(
+        &self,
+        event: &TreasuryFundedEvent,
+        blockchain_event: Option<&BlockchainEvent>,
+    ) -> Result<()> {
+        debug!("Processing treasury funded event");
+
+        let mut conn = self.get_connection().await?;
+
+        // Start a transaction for atomicity
+        conn.build_transaction()
+            .run(|mut conn| {
+                Box::pin(async move {
+                    // Store event for historical record
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default();
+
+                    // Get event_id from blockchain_event if available
+                    let event_id = blockchain_event.map(|e| e.event_id.clone());
+
+                    // Create new platform event record
+                    let platform_event = NewPlatformEvent {
+                        event_type: PlatformEventType::TreasuryFunded.to_str().to_string(),
+                        platform_id: event.platform_id.clone(),
+                        event_data: serde_json::to_value(event).unwrap_or_default(),
+                        event_id,
+                        created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                            .unwrap_or_else(|| chrono::Utc::now())
+                            .naive_utc(),
+                        reasoning: None,
+                    };
+
+                    // Insert platform event
+                    diesel::insert_into(schema::platform_events::table)
+                        .values(&platform_event)
+                        .execute(&mut conn)
+                        .await?;
+
+                    // Update platform treasury balance
+                    let platform_update = UpdatePlatform {
+                        name: None,
+                        tagline: None,
+                        description: None,
+                        logo: None,
+                        terms_of_service: None,
+                        privacy_policy: None,
+                        platform_names: None,
+                        links: None,
+                        status: None,
+                        release_date: None,
+                        shutdown_date: None,
+                        updated_at: Some(
+                            chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                                .unwrap_or_else(|| chrono::Utc::now())
+                                .naive_utc(),
+                        ),
+                        is_approved: None,
+                        approval_changed_at: None,
+                        approved_by: None,
+                        wants_dao_governance: None,
+                        governance_registry_id: None,
+                        delegate_count: None,
+                        delegate_term_epochs: None,
+                        max_votes_per_user: None,
+                        min_on_chain_age_days: None,
+                        proposal_submission_cost: None,
+                        quadratic_base_cost: None,
+                        quorum_votes: None,
+                        voting_period_epochs: None,
+                        treasury: Some(event.new_balance as i64),
+                        version: None,
+                    };
+
+                    diesel::update(schema::platforms::table)
+                        .filter(schema::platforms::platform_id.eq(&event.platform_id))
+                        .set(&platform_update)
+                        .execute(&mut conn)
+                        .await?;
+
+                    info!(
+                        "Updated platform treasury: platform_id={}, new_balance={}",
+                        event.platform_id, event.new_balance
+                    );
+
+                    Result::<_, diesel::result::Error>::Ok(())
+                })
+            })
+            .await?;
+
+        info!("Successfully processed treasury funded event");
+
+        Ok(())
+    }
+
     /// Process raw blockchain events
     async fn process_event(&self, event: BlockchainEvent) -> Result<()> {
         debug!("Platform handler examining event: {}", event.event_type);
@@ -1614,6 +1710,26 @@ impl PlatformEventHandler {
                         }
                         Err(e) => {
                             error!("Failed to parse UserLeftPlatformEvent: {}", e);
+                            error!(
+                                "Event data: {}",
+                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                            );
+                            return Err(e);
+                        }
+                    }
+                }
+                PlatformEventType::TreasuryFunded => {
+                    info!("Processing TreasuryFunded event");
+                    match event_utils::extract_event_fields(&event.data).and_then(|fields| {
+                        serde_json::from_value::<TreasuryFundedEvent>(fields)
+                            .map_err(|e| anyhow!("Failed to deserialize TreasuryFundedEvent: {}", e))
+                    }) {
+                        Ok(treasury_event) => {
+                            self.process_treasury_funded_event(&treasury_event, Some(&event))
+                                .await?;
+                        }
+                        Err(e) => {
+                            error!("Failed to parse TreasuryFundedEvent: {}", e);
                             error!(
                                 "Event data: {}",
                                 serde_json::to_string_pretty(&event.data).unwrap_or_default()

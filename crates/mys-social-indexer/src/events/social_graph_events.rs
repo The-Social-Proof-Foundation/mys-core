@@ -86,6 +86,8 @@ impl FollowEvent {
             block_list_address: None,
             social_proof_token_address: None,
             selected_badge_id: None,
+            paid_messaging_enabled: None,
+            paid_messaging_min_cost: None,
         }
     }
 
@@ -122,6 +124,8 @@ impl FollowEvent {
             block_list_address: None,
             social_proof_token_address: None,
             selected_badge_id: None,
+            paid_messaging_enabled: None,
+            paid_messaging_min_cost: None,
         }
     }
 }
@@ -160,6 +164,8 @@ impl UnfollowEvent {
             block_list_address: None,
             social_proof_token_address: None,
             selected_badge_id: None,
+            paid_messaging_enabled: None,
+            paid_messaging_min_cost: None,
         }
     }
 
@@ -196,6 +202,8 @@ impl UnfollowEvent {
             block_list_address: None,
             social_proof_token_address: None,
             selected_badge_id: None,
+            paid_messaging_enabled: None,
+            paid_messaging_min_cost: None,
         }
     }
 }

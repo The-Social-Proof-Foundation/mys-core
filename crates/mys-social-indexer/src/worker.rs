@@ -237,6 +237,12 @@ impl SocialIndexerWorker {
             facebook_username: event.facebook_username.clone(),
             reddit_username: event.reddit_username.clone(),
             github_username: event.github_username.clone(),
+            instagram_username: event.instagram_username.clone(),
+            block_list_address: event.block_list_address.clone(),
+            social_proof_token_address: event.social_proof_token_address.clone(),
+            selected_badge_id: event.selected_badge_id.clone(),
+            paid_messaging_enabled: None, // Not updated via ProfileUpdatedEvent
+            paid_messaging_min_cost: None, // Not updated via ProfileUpdatedEvent
         };
         
         info!("Updating profile with:");

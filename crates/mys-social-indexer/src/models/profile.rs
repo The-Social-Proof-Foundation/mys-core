@@ -55,6 +55,11 @@ pub struct Profile {
     pub reservation_pool_address: Option<String>,
     // Selected badge ID - the badge currently selected for display
     pub selected_badge_id: Option<String>,
+    // Paid messaging settings
+    #[serde(default)]
+    pub paid_messaging_enabled: bool,
+    #[serde(default)]
+    pub paid_messaging_min_cost: Option<i64>,
 }
 
 #[derive(Debug, Insertable, Serialize, Deserialize)]
@@ -110,6 +115,11 @@ pub struct NewProfile {
     pub reservation_pool_address: Option<String>,
     // Selected badge ID - the badge currently selected for display
     pub selected_badge_id: Option<String>,
+    // Paid messaging settings
+    #[serde(default)]
+    pub paid_messaging_enabled: bool,
+    #[serde(default)]
+    pub paid_messaging_min_cost: Option<i64>,
 }
 
 #[derive(Debug, AsChangeset, Serialize, Deserialize)]
@@ -152,4 +162,7 @@ pub struct UpdateProfile {
     pub social_proof_token_address: Option<String>,
     // Selected badge ID - the badge currently selected for display
     pub selected_badge_id: Option<String>,
+    // Paid messaging settings
+    pub paid_messaging_enabled: Option<bool>,
+    pub paid_messaging_min_cost: Option<i64>,
 }

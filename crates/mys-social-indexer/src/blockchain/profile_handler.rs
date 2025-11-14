@@ -17,7 +17,7 @@ use crate::events::profile_events::{
     ProfileCreatedEvent, ProfileUpdatedEvent, TokensClaimedEvent, TokensVestedEvent,
     ProfileOfferCreatedEvent, ProfileOfferAcceptedEvent, ProfileOfferRejectedEvent,
     ProfileSaleFeeEvent, BadgeAssignedEvent, BadgeRevokedEvent, BadgeSelectedEvent,
-    VestingWalletDeletedEvent,
+    VestingWalletDeletedEvent, PaidMessagingSettingsUpdatedEvent,
 };
 use crate::models::indexer::NewIndexerProgress;
 use crate::models::profile_events::NewProfileEvent;
@@ -1102,6 +1102,49 @@ impl ProfileEventListener {
         Ok(())
     }
 
+    /// Process a paid messaging settings updated event
+    async fn process_paid_messaging_settings_updated(
+        &self,
+        event: &PaidMessagingSettingsUpdatedEvent,
+        transaction_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+
+        info!(
+            "Processing PaidMessagingSettingsUpdatedEvent: profile_id={}, enabled={}, min_cost={:?}",
+            event.profile_id, event.enabled, event.min_cost
+        );
+
+        // Update the profile with paid messaging settings
+        diesel::update(schema::profiles::table)
+            .filter(schema::profiles::profile_id.eq(&event.profile_id))
+            .set((
+                schema::profiles::paid_messaging_enabled.eq(event.enabled),
+                schema::profiles::paid_messaging_min_cost.eq(event.min_cost.map(|v| v as i64)),
+                schema::profiles::updated_at.eq(chrono::Utc::now().naive_utc()),
+            ))
+            .execute(&mut conn)
+            .await?;
+
+        // Log to profile_events table
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::PaidMessagingSettingsUpdated.to_str(),
+            event.profile_id.clone(),
+            serde_json::to_value(event)?,
+            Some(transaction_id.to_string()),
+            Some(event.updated_at / 1000), // Convert ms to seconds
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
+
+        info!("✅ Successfully processed paid messaging settings updated: profile_id={}", 
+              event.profile_id);
+        Ok(())
+    }
+
     async fn persist_profile_event(
         &self,
         event_type: &str,
@@ -1524,6 +1567,32 @@ impl ProfileEventListener {
                         .await
                     {
                         error!("Failed to process service revoked event: {}", e);
+                    }
+                }
+                // Handle paid messaging settings updated event
+                else if event.event_type.ends_with("::PaidMessagingSettingsUpdatedEvent") {
+                    info!(
+                        "Paid messaging settings updated event detected with data: {}",
+                        serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                    );
+
+                    match crate::events::event_utils::extract_event_fields(&event.data).and_then(
+                        |fields| {
+                            serde_json::from_value::<PaidMessagingSettingsUpdatedEvent>(fields)
+                                .map_err(|e| anyhow::anyhow!(e))
+                        },
+                    ) {
+                        Ok(settings_event) => {
+                            if let Err(e) = self
+                                .process_paid_messaging_settings_updated(&settings_event, &event.tx_digest)
+                                .await
+                            {
+                                error!("Failed to process paid messaging settings updated event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize paid messaging settings updated event: {}", e);
+                        }
                     }
                 }
 

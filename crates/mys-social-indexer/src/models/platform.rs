@@ -473,6 +473,51 @@ pub struct UserLeftPlatformEvent {
     pub timestamp: u64,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TreasuryFundedEvent {
+    pub platform_id: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string_or_number")]
+    pub amount: u64,
+    pub funded_by: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string_or_number")]
+    pub new_balance: u64,
+    #[serde(deserialize_with = "deserialize_timestamp")]
+    pub timestamp: u64,
+}
+
+// Helper deserializer for u64 that accepts both string and number
+fn deserialize_u64_from_string_or_number<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Visitor;
+    struct U64Visitor;
+
+    impl<'de> Visitor<'de> for U64Visitor {
+        type Value = u64;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a number or string representing a u64")
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value)
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            value.parse::<u64>().map_err(serde::de::Error::custom)
+        }
+    }
+
+    deserializer.deserialize_any(U64Visitor)
+}
+
 #[derive(Debug, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = platform_memberships)]
 pub struct NewPlatformMembership {

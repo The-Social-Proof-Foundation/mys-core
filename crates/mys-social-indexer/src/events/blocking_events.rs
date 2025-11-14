@@ -887,7 +887,6 @@ pub async fn process_block_list_created_event(
                 blocked_count: None,
                 post_count: None,
                 min_offer_amount: None,
-                selected_badge_id: None,
                 birthdate: None,
                 current_location: None,
                 raised_location: None,
@@ -902,11 +901,14 @@ pub async fn process_block_list_created_event(
                 x_username: None,
                 mastodon_username: None,
                 facebook_username: None,
-            reddit_username: None,
-            github_username: None,
-            instagram_username: None,
-            block_list_address: Some(block_list_event.block_list_id.clone()),
+                reddit_username: None,
+                github_username: None,
+                instagram_username: None,
+                block_list_address: Some(block_list_event.block_list_id.clone()),
                 social_proof_token_address: None,
+                selected_badge_id: None,
+                paid_messaging_enabled: None,
+                paid_messaging_min_cost: None,
             };
 
             diesel::update(profiles::table)

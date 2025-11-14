@@ -16,6 +16,7 @@ pub enum PlatformEventType {
     PlatformApprovalChanged,
     UserJoinedPlatform,
     UserLeftPlatform,
+    TreasuryFunded,
 }
 
 impl PlatformEventType {
@@ -32,6 +33,7 @@ impl PlatformEventType {
             }
             s if s.contains("::UserJoinedPlatformEvent") => Some(Self::UserJoinedPlatform),
             s if s.contains("::UserLeftPlatformEvent") => Some(Self::UserLeftPlatform),
+            s if s.contains("::TreasuryFundedEvent") => Some(Self::TreasuryFunded),
             _ => None,
         }
     }
@@ -47,6 +49,7 @@ impl PlatformEventType {
             Self::PlatformApprovalChanged => "PlatformApprovalChangedEvent",
             Self::UserJoinedPlatform => "UserJoinedPlatformEvent",
             Self::UserLeftPlatform => "UserLeftPlatformEvent",
+            Self::TreasuryFunded => "TreasuryFundedEvent",
         }
     }
 }

@@ -40,6 +40,8 @@ pub enum ProfileEventType {
     BadgeSelected,
     // Vesting wallet deleted
     VestingWalletDeleted,
+    // Paid messaging settings updated
+    PaidMessagingSettingsUpdated,
 }
 
 impl ProfileEventType {
@@ -72,6 +74,7 @@ impl ProfileEventType {
             s if s.contains("::BadgeRevokedEvent") => Some(Self::BadgeRevoked),
             s if s.contains("::BadgeSelectedEvent") => Some(Self::BadgeSelected),
             s if s.contains("::VestingWalletDeletedEvent") => Some(Self::VestingWalletDeleted),
+            s if s.contains("::PaidMessagingSettingsUpdatedEvent") => Some(Self::PaidMessagingSettingsUpdated),
             _ => None,
         }
     }
@@ -97,6 +100,7 @@ impl ProfileEventType {
             Self::BadgeRevoked => "BadgeRevokedEvent",
             Self::BadgeSelected => "BadgeSelectedEvent",
             Self::VestingWalletDeleted => "VestingWalletDeletedEvent",
+            Self::PaidMessagingSettingsUpdated => "PaidMessagingSettingsUpdatedEvent",
         }
     }
 }
