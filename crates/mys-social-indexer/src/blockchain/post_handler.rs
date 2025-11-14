@@ -19,7 +19,8 @@ use crate::events::post_event_types::{
     ReactionEvent, RemoveReactionEvent, ReportEvent, RepostEvent, TipEvent,
     OwnershipTransferEvent, PredictionCreatedEvent, PredictionBetPlacedEvent,
     PredictionResolvedEvent, PredictionPayoutEvent, PredictionBetWithdrawnEvent,
-    PostParametersUpdatedEvent,
+    PostParametersUpdatedEvent, AutoPoolDisabledUpdatedEvent,
+    PredictionsEnabledUpdatedEvent, PredictionFeeUpdatedEvent,
 };
 use crate::events::{event_utils::parse_json_event, parse_event};
 use crate::models::indexer::NewIndexerProgress;
@@ -623,7 +624,7 @@ impl PostEventHandler {
     }
 
     /// Process an ownership transfer event
-    async fn process_ownership_transfer(&self, event: &OwnershipTransferEvent, tx_id: &str) -> Result<()> {
+    async fn process_ownership_transfer(&self, event: &OwnershipTransferEvent) -> Result<()> {
         let mut conn = self.get_connection().await?;
 
         info!(
@@ -1110,7 +1111,7 @@ impl PostEventHandler {
                 else if event.event_type.ends_with("::OwnershipTransferEvent") {
                     match parse_json_event::<OwnershipTransferEvent>(&event.data) {
                         Ok(transfer_event) => {
-                            if let Err(e) = self.process_ownership_transfer(&transfer_event, &tx_id).await {
+                            if let Err(e) = self.process_ownership_transfer(&transfer_event).await {
                                 error!("Failed to process ownership transfer event: {}", e);
                             }
                         }
@@ -1183,6 +1184,54 @@ impl PostEventHandler {
                         }
                         Err(e) => {
                             error!("Failed to deserialize post parameters updated event: {}", e);
+                        }
+                    }
+                }
+                // Handle auto pool disabled updated event
+                else if event.event_type.ends_with("::AutoPoolDisabledUpdatedEvent") {
+                    match parse_json_event::<AutoPoolDisabledUpdatedEvent>(&event.data) {
+                        Ok(auto_pool_event) => {
+                            if let Err(e) = self
+                                .process_auto_pool_disabled_updated(&auto_pool_event)
+                                .await
+                            {
+                                error!("Failed to process auto pool disabled updated event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize auto pool disabled updated event: {}", e);
+                        }
+                    }
+                }
+                // Handle predictions enabled updated event
+                else if event.event_type.ends_with("::PredictionsEnabledUpdatedEvent") {
+                    match parse_json_event::<PredictionsEnabledUpdatedEvent>(&event.data) {
+                        Ok(predictions_enabled_event) => {
+                            if let Err(e) = self
+                                .process_predictions_enabled_updated(&predictions_enabled_event, &tx_id)
+                                .await
+                            {
+                                error!("Failed to process predictions enabled updated event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize predictions enabled updated event: {}", e);
+                        }
+                    }
+                }
+                // Handle prediction fee updated event
+                else if event.event_type.ends_with("::PredictionFeeUpdatedEvent") {
+                    match parse_json_event::<PredictionFeeUpdatedEvent>(&event.data) {
+                        Ok(prediction_fee_event) => {
+                            if let Err(e) = self
+                                .process_prediction_fee_updated(&prediction_fee_event, &tx_id)
+                                .await
+                            {
+                                error!("Failed to process prediction fee updated event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize prediction fee updated event: {}", e);
                         }
                     }
                 }
@@ -1260,6 +1309,121 @@ impl PostEventHandler {
         info!("Post event handler terminated");
         Ok(())
     }
+
+    /// Process an auto pool disabled updated event
+    async fn process_auto_pool_disabled_updated(&self, event: &AutoPoolDisabledUpdatedEvent) -> Result<()> {
+        info!("Processing auto pool disabled updated event for post: {}", event.post_id);
+
+        let mut conn = self.get_connection().await?;
+
+        // Update the post's auto_pool_disabled flag and updated_at timestamp
+        diesel::update(schema::posts::table)
+            .filter(schema::posts::post_id.eq(&event.post_id))
+            .set((
+                schema::posts::auto_pool_disabled.eq(event.disabled),
+                schema::posts::updated_at.eq(Some(event.timestamp as i64)),
+            ))
+            .execute(&mut conn)
+            .await?;
+
+        info!(
+            "Auto pool disabled updated for post: {}, disabled: {}, owner: {}",
+            event.post_id, event.disabled, event.owner
+        );
+
+        Ok(())
+    }
+
+    /// Process a predictions enabled updated event
+    async fn process_predictions_enabled_updated(&self, event: &PredictionsEnabledUpdatedEvent, tx_id: &str) -> Result<()> {
+        info!("Processing predictions enabled updated event");
+
+        let mut conn = self.get_connection().await?;
+        let datetime = chrono::DateTime::<chrono::Utc>::from_timestamp(event.timestamp as i64 / 1000, 0)
+            .unwrap_or_else(|| chrono::Utc::now());
+
+        // Get the latest prediction config to preserve fee_bps and treasury
+        let latest_config = schema::post_prediction_config::table
+            .order_by(schema::post_prediction_config::time.desc())
+            .first::<crate::models::post::PostPredictionConfig>(&mut conn)
+            .await
+            .optional()?;
+
+        // Use existing fee_bps and treasury if available, otherwise use defaults
+        let fee_bps = latest_config.as_ref().map(|c| c.fee_bps).unwrap_or(0);
+        let treasury = latest_config
+            .as_ref()
+            .map(|c| c.treasury.clone())
+            .unwrap_or_else(|| "".to_string());
+
+        // Insert new prediction config record
+        let new_config = crate::models::post::NewPostPredictionConfig {
+            updated_by: event.updated_by.clone(),
+            predictions_enabled: event.enabled,
+            fee_bps,
+            treasury,
+            updated_at: event.timestamp as i64,
+            time: datetime,
+            transaction_id: tx_id.to_string(),
+        };
+
+        diesel::insert_into(schema::post_prediction_config::table)
+            .values(&new_config)
+            .execute(&mut conn)
+            .await?;
+
+        info!(
+            "Predictions enabled updated by: {}, enabled: {}, timestamp: {}",
+            event.updated_by, event.enabled, event.timestamp
+        );
+
+        Ok(())
+    }
+
+    /// Process a prediction fee updated event
+    async fn process_prediction_fee_updated(&self, event: &PredictionFeeUpdatedEvent, tx_id: &str) -> Result<()> {
+        info!("Processing prediction fee updated event");
+
+        let mut conn = self.get_connection().await?;
+        let datetime = chrono::DateTime::<chrono::Utc>::from_timestamp(event.timestamp as i64 / 1000, 0)
+            .unwrap_or_else(|| chrono::Utc::now());
+
+        // Get the latest prediction config to preserve predictions_enabled
+        let latest_config = schema::post_prediction_config::table
+            .order_by(schema::post_prediction_config::time.desc())
+            .first::<crate::models::post::PostPredictionConfig>(&mut conn)
+            .await
+            .optional()?;
+
+        // Use existing predictions_enabled if available, otherwise default to true
+        let predictions_enabled = latest_config
+            .as_ref()
+            .map(|c| c.predictions_enabled)
+            .unwrap_or(true);
+
+        // Insert new prediction config record
+        let new_config = crate::models::post::NewPostPredictionConfig {
+            updated_by: event.updated_by.clone(),
+            predictions_enabled,
+            fee_bps: event.fee_bps as i64,
+            treasury: event.treasury.clone(),
+            updated_at: event.timestamp as i64,
+            time: datetime,
+            transaction_id: tx_id.to_string(),
+        };
+
+        diesel::insert_into(schema::post_prediction_config::table)
+            .values(&new_config)
+            .execute(&mut conn)
+            .await?;
+
+        info!(
+            "Prediction fee updated by: {}, fee_bps: {}, treasury: {}, timestamp: {}",
+            event.updated_by, event.fee_bps, event.treasury, event.timestamp
+        );
+
+        Ok(())
+    }
 }
 
 // Helper struct for sql queries
@@ -1294,7 +1458,7 @@ pub async fn handle_event(
     } else if event_type.ends_with("::ReactionEvent") {
         handle_reaction(db, event, transaction_id).await?;
     } else if event_type.ends_with("::RemoveReactionEvent") {
-        handle_remove_reaction(db, event, transaction_id).await?;
+        handle_remove_reaction(db, event).await?;
     } else if event_type.ends_with("::RepostEvent") {
         handle_repost(db, event, transaction_id).await?;
     } else if event_type.ends_with("::TipEvent") {
@@ -1803,7 +1967,6 @@ async fn handle_deletion(db: &Arc<Database>, event: &MysEvent, transaction_id: &
 async fn handle_remove_reaction(
     db: &Arc<Database>,
     event: &MysEvent,
-    transaction_id: &str,
 ) -> Result<()> {
     info!("Processing RemoveReactionEvent");
 

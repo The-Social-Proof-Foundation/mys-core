@@ -1,7 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::events::event_utils::{deserialize_u64_from_string, deserialize_u64_from_string_optional};
+use crate::events::event_utils::{deserialize_u64_from_string, deserialize_u64_from_string_optional, deserialize_optional_u64_from_string};
 use serde::{Deserialize, Serialize};
 
 /// Type of post event
@@ -30,7 +30,8 @@ pub enum PostEventType {
 /// Post created event from blockchain
 /// NOTE: This matches the contract's PostCreatedEvent structure exactly:
 /// - post_id, owner, profile_id, content, post_type, parent_post_id, mentions
-/// - media_urls, metadata_json, created_at, mydata_id, promotion_id are NOT in the contract event
+/// - media_urls, metadata_json, mydata_id, promotion_id, poc_badge_id, revenue_redirect_to, revenue_redirect_percentage, disable_auto_pool
+/// - created_at is NOT in the contract event but is needed for database storage
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostCreatedEvent {
     pub post_id: String,
@@ -40,18 +41,18 @@ pub struct PostCreatedEvent {
     pub post_type: String,
     pub parent_post_id: Option<String>,
     pub mentions: Option<Vec<String>>,
-    // These fields are NOT in the contract event but are needed for database storage
-    // They will be set to None/0 when parsing the event
-    #[serde(default)]
     pub media_urls: Option<Vec<String>>,
-    #[serde(default)]
     pub metadata_json: Option<String>,
+    pub mydata_id: Option<String>,
+    pub promotion_id: Option<String>,
+    pub poc_badge_id: Option<String>,
+    pub revenue_redirect_to: Option<String>,
+    #[serde(deserialize_with = "deserialize_optional_u64_from_string")]
+    pub revenue_redirect_percentage: Option<u64>,
+    pub disable_auto_pool: bool,
+    // This field is NOT in the contract event but is needed for database storage
     #[serde(default, deserialize_with = "deserialize_u64_from_string_optional")]
     pub created_at: u64,
-    #[serde(default)]
-    pub mydata_id: Option<String>,
-    #[serde(default)]
-    pub promotion_id: Option<String>,
 }
 
 /// Comment created event from blockchain
@@ -316,4 +317,33 @@ pub struct PostParametersUpdatedEvent {
     pub commenter_tip_percentage: u64,
     pub repost_tip_percentage: u64,
     pub max_prediction_options: u64,
+}
+
+/// Auto pool disabled updated event from blockchain
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoPoolDisabledUpdatedEvent {
+    pub post_id: String,
+    pub owner: String,
+    pub disabled: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub timestamp: u64,
+}
+
+/// Predictions enabled updated event from blockchain
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PredictionsEnabledUpdatedEvent {
+    pub updated_by: String,
+    pub enabled: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub timestamp: u64,
+}
+
+/// Prediction fee updated event from blockchain
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PredictionFeeUpdatedEvent {
+    pub updated_by: String,
+    pub fee_bps: u64,
+    pub treasury: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub timestamp: u64,
 }

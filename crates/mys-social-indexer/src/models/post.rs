@@ -3,7 +3,7 @@
 
 use chrono::{DateTime, Utc};
 use diesel::sql_types::*;
-use diesel::{Insertable, QueryableByName, Selectable};
+use diesel::{Insertable, Queryable, QueryableByName, Selectable};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -56,6 +56,14 @@ pub struct Post {
     pub mydata_id: Option<String>,
     pub revenue_recipient: Option<String>,
     pub promotion_id: Option<String>,
+    #[diesel(sql_type = Nullable<Varchar>)]
+    pub poc_badge_id: Option<String>,
+    #[diesel(sql_type = Nullable<Varchar>)]
+    pub revenue_redirect_to: Option<String>,
+    #[diesel(sql_type = Nullable<Int8>)]
+    pub revenue_redirect_percentage: Option<i64>,
+    #[diesel(sql_type = Bool)]
+    pub auto_pool_disabled: bool,
 }
 
 /// New post model for insertion
@@ -85,6 +93,10 @@ pub struct NewPost {
     pub mydata_id: Option<String>,
     pub revenue_recipient: Option<String>,
     pub promotion_id: Option<String>,
+    pub poc_badge_id: Option<String>,
+    pub revenue_redirect_to: Option<String>,
+    pub revenue_redirect_percentage: Option<i64>,
+    pub auto_pool_disabled: bool,
 }
 
 /// Comment model for database
@@ -589,5 +601,32 @@ pub struct NewPromotionBudgetEvent {
     pub amount: i64,
     pub remaining_budget: i64,
     pub timestamp: i64,
+    pub transaction_id: String,
+}
+
+/// Post prediction config model for database
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable)]
+#[diesel(table_name = crate::schema::post_prediction_config)]
+pub struct PostPredictionConfig {
+    pub id: i32,
+    pub updated_by: String,
+    pub predictions_enabled: bool,
+    pub fee_bps: i64,
+    pub treasury: String,
+    pub updated_at: i64,
+    pub time: DateTime<Utc>,
+    pub transaction_id: String,
+}
+
+/// New post prediction config model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::post_prediction_config)]
+pub struct NewPostPredictionConfig {
+    pub updated_by: String,
+    pub predictions_enabled: bool,
+    pub fee_bps: i64,
+    pub treasury: String,
+    pub updated_at: i64,
+    pub time: DateTime<Utc>,
     pub transaction_id: String,
 }

@@ -70,7 +70,8 @@ pub use post_event_types::{
     PostEventType, ReactionEvent, RemoveReactionEvent, ReportEvent, RepostEvent, TipEvent,
     OwnershipTransferEvent, PredictionCreatedEvent, PredictionBetPlacedEvent,
     PredictionResolvedEvent, PredictionPayoutEvent, PredictionBetWithdrawnEvent,
-    PostParametersUpdatedEvent,
+    PostParametersUpdatedEvent, AutoPoolDisabledUpdatedEvent,
+    PredictionsEnabledUpdatedEvent, PredictionFeeUpdatedEvent,
 };
 
 // Re-export social proof token events

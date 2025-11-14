@@ -65,6 +65,10 @@ impl PostCreatedEvent {
             mydata_id: self.mydata_id.clone(),
             revenue_recipient: None, // Revenue tracking handled via unified revenue system
             promotion_id: self.promotion_id.clone(),
+            poc_badge_id: self.poc_badge_id.clone(),
+            revenue_redirect_to: self.revenue_redirect_to.clone(),
+            revenue_redirect_percentage: self.revenue_redirect_percentage.map(|p| p as i64),
+            auto_pool_disabled: self.disable_auto_pool,
         })
     }
 }

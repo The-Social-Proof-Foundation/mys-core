@@ -12,6 +12,8 @@ pub enum SocialProofTokenEventType {
     TokenSold,
     /// Tokens were added to an existing holding
     TokensAdded,
+    /// A reservation pool was created
+    ReservationPoolCreated,
     /// MySo was reserved towards a post/profile
     ReservationCreated,
     /// MySo reservation was withdrawn
@@ -32,6 +34,7 @@ impl SocialProofTokenEventType {
             Self::TokenBought => "TokenBought",
             Self::TokenSold => "TokenSold",
             Self::TokensAdded => "TokensAdded",
+            Self::ReservationPoolCreated => "ReservationPoolCreated",
             Self::ReservationCreated => "ReservationCreated",
             Self::ReservationWithdrawn => "ReservationWithdrawn",
             Self::ThresholdMet => "ThresholdMet",
@@ -47,6 +50,7 @@ impl SocialProofTokenEventType {
             "TokenBought" => Some(Self::TokenBought),
             "TokenSold" => Some(Self::TokenSold),
             "TokensAdded" => Some(Self::TokensAdded),
+            "ReservationPoolCreated" => Some(Self::ReservationPoolCreated),
             "ReservationCreated" => Some(Self::ReservationCreated),
             "ReservationWithdrawn" => Some(Self::ReservationWithdrawn),
             "ThresholdMet" => Some(Self::ThresholdMet),

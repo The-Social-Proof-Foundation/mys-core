@@ -386,6 +386,14 @@ module social_contracts::post {
         post_type: String,
         parent_post_id: Option<address>,
         mentions: Option<vector<address>>,
+        media_urls: Option<vector<String>>,
+        metadata_json: Option<String>,
+        mydata_id: Option<address>,
+        promotion_id: Option<address>,
+        poc_badge_id: Option<ID>,
+        revenue_redirect_to: Option<address>,
+        revenue_redirect_percentage: Option<u64>,
+        disable_auto_pool: bool,
     }
 
     /// Comment created event
@@ -784,6 +792,9 @@ module social_contracts::post {
             true // Default to allowing tips
         };
         
+        // Convert media URLs to strings for event (before moving media_option)
+        let media_urls_for_event = convert_urls_to_strings(&media_option);
+        
         // Create the post with prediction type
         let post_id = create_post_internal(
             owner,
@@ -804,6 +815,7 @@ module social_contracts::post {
             option::none(), // revenue_redirect_percentage
             option::none(), // mydata_id
             option::none(), // promotion_id
+            true, // disable_auto_pool - default to disabling auto pool
             ctx
         );
         
@@ -868,6 +880,14 @@ module social_contracts::post {
             post_type: string::utf8(POST_TYPE_PREDICTION),
             parent_post_id: option::none(),
             mentions,
+            media_urls: media_urls_for_event,
+            metadata_json,
+            mydata_id: option::none(),
+            promotion_id: option::none(),
+            poc_badge_id: option::none(),
+            revenue_redirect_to: option::none(),
+            revenue_redirect_percentage: option::none(),
+            disable_auto_pool: true,
         });
         
         // Share prediction data
@@ -1229,6 +1249,25 @@ module social_contracts::post {
         };
     }
 
+    /// Convert Option<vector<Url>> to Option<vector<String>> for events
+    fun convert_urls_to_strings(media_option: &Option<vector<Url>>): Option<vector<String>> {
+        if (option::is_some(media_option)) {
+            let urls = option::borrow(media_option);
+            let mut url_strings = vector::empty<String>();
+            let len = vector::length(urls);
+            let mut i = 0;
+            while (i < len) {
+                let url = vector::borrow(urls, i);
+                let url_string = string::from_ascii(url::inner_url(url));
+                vector::push_back(&mut url_strings, url_string);
+                i = i + 1;
+            };
+            option::some(url_strings)
+        } else {
+            option::none()
+        }
+    }
+
     /// Internal function to create a post and return its ID
     fun create_post_internal(
         owner: address,
@@ -1249,6 +1288,7 @@ module social_contracts::post {
         revenue_redirect_percentage: Option<u64>,
         mydata_id: Option<address>,
         promotion_id: Option<address>,
+        disable_auto_pool: bool,
         ctx: &mut TxContext
     ): address {
         let post = Post {
@@ -1279,7 +1319,7 @@ module social_contracts::post {
             revenue_redirect_percentage,
             mydata_id,
             promotion_id,
-            disable_auto_pool: false,
+            disable_auto_pool,
             version: upgrade::current_version(),
         };
         
@@ -1394,6 +1434,9 @@ module social_contracts::post {
             true // Default to allowing tips
         };
         
+        // Convert media URLs to strings for event (before moving media_option)
+        let media_urls_for_event = convert_urls_to_strings(&media_option);
+        
         // Create and share the post
         let post_id = create_post_internal(
             owner,
@@ -1414,6 +1457,7 @@ module social_contracts::post {
             option::none(), // revenue_redirect_percentage
             option::none(), // mydata_id
             option::none(), // promotion_id
+            true, // disable_auto_pool - default to disabling auto pool
             ctx
         );
         
@@ -1426,6 +1470,14 @@ module social_contracts::post {
             post_type: string::utf8(POST_TYPE_STANDARD),
             parent_post_id: option::none(),
             mentions,
+            media_urls: media_urls_for_event,
+            metadata_json,
+            mydata_id: option::none(),
+            promotion_id: option::none(),
+            poc_badge_id: option::none(),
+            revenue_redirect_to: option::none(),
+            revenue_redirect_percentage: option::none(),
+            disable_auto_pool: true, // disable_auto_pool value used in create_post_internal
         });
     }
 
@@ -1574,6 +1626,7 @@ module social_contracts::post {
         allow_reposts: Option<bool>,
         allow_quotes: Option<bool>,
         allow_tips: Option<bool>,
+        disable_auto_pool: Option<bool>,
         ctx: &mut TxContext
     ) {
         let owner = tx_context::sender(ctx);
@@ -1721,6 +1774,16 @@ module social_contracts::post {
             true // Default to allowing tips
         };
         
+        // Set default for disable_auto_pool
+        let final_disable_auto_pool = if (option::is_some(&disable_auto_pool)) {
+            *option::borrow(&disable_auto_pool)
+        } else {
+            true // Default to disabling auto pool - users must opt-in
+        };
+        
+        // Convert media URLs to strings for event (before moving media_option)
+        let media_urls_for_event = convert_urls_to_strings(&media_option);
+        
         // Create and share the repost post
         let repost_post_id = create_post_internal(
             owner,
@@ -1741,6 +1804,7 @@ module social_contracts::post {
             option::none(), // revenue_redirect_percentage
             option::none(), // No MyData for reposts
             option::none(), // promotion_id
+            final_disable_auto_pool,
             ctx
         );
         
@@ -1753,6 +1817,14 @@ module social_contracts::post {
             post_type,
             parent_post_id: option::some(original_post_id),
             mentions,
+            media_urls: media_urls_for_event,
+            metadata_json,
+            mydata_id: option::none(),
+            promotion_id: option::none(),
+            poc_badge_id: option::none(),
+            revenue_redirect_to: option::none(),
+            revenue_redirect_percentage: option::none(),
+            disable_auto_pool: final_disable_auto_pool, // disable_auto_pool value used in create_post_internal
         });
     }
 
@@ -2821,6 +2893,7 @@ module social_contracts::post {
             option::none(), // revenue_redirect_percentage
             option::none(), // No MyData ID
             option::none(), // promotion_id
+            true, // disable_auto_pool - default to disabling auto pool
             ctx
         )
     }
@@ -2869,6 +2942,7 @@ module social_contracts::post {
             option::none(), // revenue_redirect_percentage
             option::none(), // mydata_id
             option::some(promotion_id), // promotion_id
+            true, // disable_auto_pool - default to disabling auto pool
             ctx
         );
         
@@ -2911,6 +2985,7 @@ module social_contracts::post {
             option::none(), // revenue_redirect_percentage
             option::none(), // mydata_id
             option::none(), // promotion_id
+            true, // disable_auto_pool - default to disabling auto pool
             ctx
         );
         
@@ -3289,6 +3364,7 @@ module social_contracts::post {
             option::none(), // revenue_redirect_percentage
             mydata_id,
             option::some(promotion_id),
+            true, // disable_auto_pool - default to disabling auto pool
             ctx
         );
         

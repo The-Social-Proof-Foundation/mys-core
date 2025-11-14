@@ -357,6 +357,8 @@ table! {
         encrypted_content_hash -> Nullable<Varchar>,
         // Promotion fields
         promotion_id -> Nullable<Varchar>,
+        // Auto pool fields
+        auto_pool_disabled -> Bool,
     }
 }
 
@@ -1245,6 +1247,20 @@ table! {
         amount -> Int8,
         remaining_budget -> Int8,
         timestamp -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// Define post_prediction_config table
+table! {
+    post_prediction_config (id, time) {
+        id -> Int4,
+        updated_by -> Varchar,
+        predictions_enabled -> Bool,
+        fee_bps -> Int8,
+        treasury -> Varchar,
+        updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
     }
