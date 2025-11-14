@@ -1386,3 +1386,78 @@ pub async fn process_vote_decryption_failed_event(
 
     Ok(())
 }
+
+/// Process a governance parameters updated event
+pub async fn process_governance_parameters_updated_event(
+    conn: &mut DbConnection,
+    event: &Value,
+    event_id: &str,
+) -> Result<()> {
+    debug!("Processing governance parameters updated event");
+
+    // Parse the event
+    let params_event = parse_json_event::<GovernanceParametersUpdatedEvent>(event)?;
+
+    // Insert or update registry with the new parameters
+    let new_registry = NewGovernanceRegistry {
+        registry_type: params_event.registry_type as i16,
+        delegate_count: params_event.delegate_count as i64,
+        delegate_term_epochs: params_event.delegate_term_epochs as i64,
+        proposal_submission_cost: params_event.proposal_submission_cost as i64,
+        min_on_chain_age_days: params_event.min_on_chain_age_days as i64,
+        max_votes_per_user: params_event.max_votes_per_user as i64,
+        quadratic_base_cost: params_event.quadratic_base_cost as i64,
+        voting_period_epochs: params_event.voting_period_epochs as i64,
+        quorum_votes: params_event.quorum_votes as i64,
+        updated_at: params_event.timestamp as i64,
+        transaction_id: event_id.to_string(),
+    };
+
+    let result = diesel::insert_into(crate::schema::governance_registries::table)
+        .values(&new_registry)
+        .on_conflict(crate::schema::governance_registries::registry_type)
+        .do_update()
+        .set((
+            crate::schema::governance_registries::delegate_count.eq(new_registry.delegate_count),
+            crate::schema::governance_registries::delegate_term_epochs
+                .eq(new_registry.delegate_term_epochs),
+            crate::schema::governance_registries::proposal_submission_cost
+                .eq(new_registry.proposal_submission_cost),
+            crate::schema::governance_registries::min_on_chain_age_days
+                .eq(new_registry.min_on_chain_age_days),
+            crate::schema::governance_registries::max_votes_per_user
+                .eq(new_registry.max_votes_per_user),
+            crate::schema::governance_registries::quadratic_base_cost
+                .eq(new_registry.quadratic_base_cost),
+            crate::schema::governance_registries::voting_period_epochs
+                .eq(new_registry.voting_period_epochs),
+            crate::schema::governance_registries::quorum_votes.eq(new_registry.quorum_votes),
+            crate::schema::governance_registries::updated_at.eq(new_registry.updated_at),
+            crate::schema::governance_registries::transaction_id.eq(event_id.to_string()),
+        ))
+        .execute(conn)
+        .await?;
+
+    info!(
+        "Processed governance parameters updated event: {} rows affected",
+        result
+    );
+
+    // Record this event in the governance_events table
+    // This preserves the updated_by field in the event data
+    let governance_event = NewGovernanceEvent {
+        event_type: "GovernanceParametersUpdatedEvent".to_string(),
+        registry_type: params_event.registry_type as i16,
+        event_data: event.clone(),
+        event_id: event_id.to_string(),
+        created_at: Utc::now(),
+        anonymous_voting_related: None,
+    };
+
+    diesel::insert_into(crate::schema::governance_events::table)
+        .values(&governance_event)
+        .execute(conn)
+        .await?;
+
+    Ok(())
+}

@@ -20,7 +20,7 @@ use crate::events::{
         PurchaseEvent, RevenueDistributedEvent, SubscriptionCancelledEvent,
         SubscriptionCreatedEvent, SubscriptionRenewedEvent, SystemMaintenanceEvent,
     },
-    mydata_events::EventBatch,
+    mydata_events::{process_mydata_registered_event, process_mydata_unregistered_event, EventBatch},
     parse_event,
 };
 
@@ -134,6 +134,20 @@ impl MyDataEventHandler {
                 self.handle_access_granted_from_json(
                     &blockchain_event.data,
                     &blockchain_event.tx_digest,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::MyDataRegisteredEvent") || event_type.ends_with("MyDataRegisteredEvent") => {
+                self.handle_mydata_registered_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.event_id,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::MyDataUnregisteredEvent") || event_type.ends_with("MyDataUnregisteredEvent") => {
+                self.handle_mydata_unregistered_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.event_id,
                 )
                 .await?;
             }
@@ -741,6 +755,12 @@ impl MyDataEventHandler {
             }
             _ if event_type.ends_with("::SystemMaintenanceEvent") => {
                 self.handle_system_maintenance(event, transaction_id).await?;
+            }
+            _ if event_type.ends_with("::MyDataRegisteredEvent") => {
+                self.handle_mydata_registered(event, transaction_id).await?;
+            }
+            _ if event_type.ends_with("::MyDataUnregisteredEvent") => {
+                self.handle_mydata_unregistered(event, transaction_id).await?;
             }
             _ => {
                 debug!("Unhandled MyData marketplace event type: {}", event_type);
@@ -1969,6 +1989,52 @@ impl MyDataEventHandler {
             "Processed AccessGrantedEvent successfully for ip_id: {}, access_type: {}",
             event.ip_id, event.access_type
         );
+        Ok(())
+    }
+
+    /// Handle MyDataRegisteredEvent from JSON data
+    async fn handle_mydata_registered_from_json(
+        &self,
+        event_data: &serde_json::Value,
+        event_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.db.get_connection().await?;
+        process_mydata_registered_event(&mut conn, event_data, event_id).await?;
+        Ok(())
+    }
+
+    /// Handle MyDataUnregisteredEvent from JSON data
+    async fn handle_mydata_unregistered_from_json(
+        &self,
+        event_data: &serde_json::Value,
+        event_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.db.get_connection().await?;
+        process_mydata_unregistered_event(&mut conn, event_data, event_id).await?;
+        Ok(())
+    }
+
+    /// Handle MyDataRegisteredEvent from parsed event
+    async fn handle_mydata_registered(
+        &self,
+        event: &MysEvent,
+        transaction_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.db.get_connection().await?;
+        let event_data = extract_event_fields(&serde_json::to_value(event)?)?;
+        process_mydata_registered_event(&mut conn, &event_data, transaction_id).await?;
+        Ok(())
+    }
+
+    /// Handle MyDataUnregisteredEvent from parsed event
+    async fn handle_mydata_unregistered(
+        &self,
+        event: &MysEvent,
+        transaction_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.db.get_connection().await?;
+        let event_data = extract_event_fields(&serde_json::to_value(event)?)?;
+        process_mydata_unregistered_event(&mut conn, &event_data, transaction_id).await?;
         Ok(())
     }
 }

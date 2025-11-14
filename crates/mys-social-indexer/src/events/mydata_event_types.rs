@@ -209,6 +209,24 @@ pub struct DataRemovedEvent {
     pub removal_reason: Option<String>,
 }
 
+/// Event emitted when MyData is registered in the registry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MyDataRegisteredEvent {
+    pub ip_id: String,
+    pub owner: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub registered_at: u64,
+}
+
+/// Event emitted when MyData is unregistered from the registry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MyDataUnregisteredEvent {
+    pub ip_id: String,
+    pub owner: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub unregistered_at: u64,
+}
+
 // ============================================================================
 // ANALYTICS EVENTS
 // ============================================================================
@@ -285,6 +303,8 @@ pub const EVENT_DATA_REMOVED: &str = "data_removed";
 pub const EVENT_DATA_TRENDING: &str = "data_trending";
 pub const EVENT_OPERATION_FAILED: &str = "operation_failed";
 pub const EVENT_SYSTEM_MAINTENANCE: &str = "system_maintenance";
+pub const EVENT_MYDATA_REGISTERED: &str = "mydata_registered";
+pub const EVENT_MYDATA_UNREGISTERED: &str = "mydata_unregistered";
 
 // Media type constants
 pub const MEDIA_TYPE_TEXT: &str = "text";

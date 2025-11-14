@@ -9,7 +9,8 @@ use serde_json::Value;
 
 // Import tables from schema
 use crate::schema::{
-    mydata_access_logs, mydata_data, mydata_purchases, mydata_revenue, mydata_subscriptions,
+    mydata_access_logs, mydata_data, mydata_purchases, mydata_registry, mydata_revenue,
+    mydata_subscriptions,
 };
 
 // ============================================================================
@@ -161,6 +162,30 @@ pub struct NewMyDataAccessLog {
     pub user_address: String,
     pub access_type: String,
     pub access_time: i64,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
+#[diesel(table_name = mydata_registry)]
+#[diesel(primary_key(ip_id))]
+pub struct MyDataRegistry {
+    pub ip_id: String,
+    pub owner: String,
+    pub registered_at: i64,
+    pub unregistered_at: Option<i64>,
+    pub is_active: bool,
+    pub time: DateTime<Utc>,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = mydata_registry)]
+pub struct NewMyDataRegistry {
+    pub ip_id: String,
+    pub owner: String,
+    pub registered_at: i64,
+    pub unregistered_at: Option<i64>,
+    pub is_active: bool,
     pub transaction_id: String,
 }
 

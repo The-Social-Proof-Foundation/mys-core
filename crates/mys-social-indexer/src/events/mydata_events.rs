@@ -9,14 +9,16 @@ use serde_json::Value;
 use crate::events::mydata_event_types::{
     AccessGrantedEvent, AnalyticsEvent, DataAccessGrantedEvent, DataAccessedEvent, DataCreatedEvent,
     DataPricingChangedEvent, DataPurchasedEvent, DataRemovedEvent, DataTransferredEvent,
-    DataTrendingEvent, DataUpdatedEvent, MyDataCreatedEvent, OperationFailedEvent,
-    PurchaseEvent, RevenueDistributedEvent, SubscriptionCancelledEvent, SubscriptionCreatedEvent,
-    SubscriptionRenewedEvent, SystemMaintenanceEvent,
+    DataTrendingEvent, DataUpdatedEvent, MyDataCreatedEvent, MyDataRegisteredEvent,
+    MyDataUnregisteredEvent, OperationFailedEvent, PurchaseEvent, RevenueDistributedEvent,
+    SubscriptionCancelledEvent, SubscriptionCreatedEvent, SubscriptionRenewedEvent,
+    SystemMaintenanceEvent,
 };
 
 // Import marketplace model types
 use crate::models::mydata::{
-    NewMyDataAccessLog, NewMyDataData, NewMyDataPurchase, NewMyDataRevenue, NewMyDataSubscription,
+    NewMyDataAccessLog, NewMyDataData, NewMyDataPurchase, NewMyDataRegistry, NewMyDataRevenue,
+    NewMyDataSubscription,
 };
 
 // ============================================================================
@@ -360,4 +362,106 @@ impl EventBatch {
             && self.revenue_records.is_empty()
             && self.access_logs.is_empty()
     }
+}
+
+// ============================================================================
+// REGISTRY EVENT PROCESSING
+// ============================================================================
+
+/// Process a MyData registered event
+pub async fn process_mydata_registered_event(
+    conn: &mut crate::db::DbConnection,
+    event: &serde_json::Value,
+    event_id: &str,
+) -> anyhow::Result<()> {
+    use crate::events::event_utils::parse_json_event;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+    use tracing::{debug, info};
+
+    debug!("Processing MyData registered event");
+
+    // Parse the event
+    let registered_event = parse_json_event::<MyDataRegisteredEvent>(event)?;
+
+    // Create new registry entry
+    let new_registry = NewMyDataRegistry {
+        ip_id: registered_event.ip_id.clone(),
+        owner: registered_event.owner.clone(),
+        registered_at: registered_event.registered_at as i64,
+        unregistered_at: None,
+        is_active: true,
+        transaction_id: event_id.to_string(),
+    };
+
+    // Insert or update registry entry
+    // If entry exists, update it to active status (re-registration)
+    let result = diesel::insert_into(crate::schema::mydata_registry::table)
+        .values(&new_registry)
+        .on_conflict(crate::schema::mydata_registry::ip_id)
+        .do_update()
+        .set((
+            crate::schema::mydata_registry::owner.eq(new_registry.owner.clone()),
+            crate::schema::mydata_registry::registered_at.eq(new_registry.registered_at),
+            crate::schema::mydata_registry::unregistered_at.eq(None::<i64>),
+            crate::schema::mydata_registry::is_active.eq(true),
+            crate::schema::mydata_registry::transaction_id.eq(event_id.to_string()),
+        ))
+        .execute(conn)
+        .await?;
+
+    info!(
+        "Processed MyData registered event: ip_id={}, owner={}, rows_affected={}",
+        registered_event.ip_id, registered_event.owner, result
+    );
+
+    Ok(())
+}
+
+/// Process a MyData unregistered event
+pub async fn process_mydata_unregistered_event(
+    conn: &mut crate::db::DbConnection,
+    event: &serde_json::Value,
+    event_id: &str,
+) -> anyhow::Result<()> {
+    use crate::events::event_utils::parse_json_event;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+    use tracing::{debug, info, warn};
+
+    debug!("Processing MyData unregistered event");
+
+    // Parse the event
+    let unregistered_event = parse_json_event::<MyDataUnregisteredEvent>(event)?;
+
+    // Update registry entry to mark as inactive
+    let result = diesel::update(crate::schema::mydata_registry::table)
+        .filter(
+            crate::schema::mydata_registry::ip_id
+                .eq(&unregistered_event.ip_id)
+                .and(crate::schema::mydata_registry::owner.eq(&unregistered_event.owner))
+                .and(crate::schema::mydata_registry::is_active.eq(true)),
+        )
+        .set((
+            crate::schema::mydata_registry::unregistered_at
+                .eq(unregistered_event.unregistered_at as i64),
+            crate::schema::mydata_registry::is_active.eq(false),
+            crate::schema::mydata_registry::transaction_id.eq(event_id.to_string()),
+        ))
+        .execute(conn)
+        .await?;
+
+    if result == 0 {
+        warn!(
+            "MyData unregistered event: No active registry entry found for ip_id={}, owner={}",
+            unregistered_event.ip_id, unregistered_event.owner
+        );
+    } else {
+        info!(
+            "Processed MyData unregistered event: ip_id={}, owner={}, rows_affected={}",
+            unregistered_event.ip_id, unregistered_event.owner, result
+        );
+    }
+
+    Ok(())
 }

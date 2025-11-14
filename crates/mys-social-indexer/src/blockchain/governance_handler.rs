@@ -139,6 +139,9 @@ impl GovernanceEventHandler {
             "VoteDecryptionFailed" => {
                 process_vote_decryption_failed_event(conn, event_data, event_id).await?;
             }
+            "update_governance_parameters" | "GovernanceParametersUpdated" => {
+                process_governance_parameters_updated_event(conn, event_data, event_id).await?;
+            }
             _ => {
                 warn!(
                     "Received unhandled governance event: {} (event_id: {})",

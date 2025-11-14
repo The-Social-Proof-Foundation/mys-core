@@ -590,6 +590,19 @@ table! {
     }
 }
 
+// MyData Registry table - tracks IP ID to owner mappings
+table! {
+    mydata_registry (ip_id) {
+        ip_id -> Varchar,
+        owner -> Varchar,
+        registered_at -> Int8,
+        unregistered_at -> Nullable<Int8>,
+        is_active -> Bool,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
 // ===========================================================================
 // SOCIAL PROOF TOKEN TABLES
 // ===========================================================================
@@ -1417,6 +1430,7 @@ allow_tables_to_appear_in_same_query!(
     mydata_subscriptions,
     mydata_revenue,
     mydata_access_logs,
+    mydata_registry,
     // Social Proof Token tables
     social_proof_token_pools,
     spt_holdings,
