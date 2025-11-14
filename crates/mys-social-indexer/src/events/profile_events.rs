@@ -200,6 +200,7 @@ impl ProfileCreatedEvent {
             block_list_address: None,
             social_proof_token_address: None,
             reservation_pool_address: None, // Will be set when reservation pool is created
+            selected_badge_id: None, // Will be set when badge is selected
         })
     }
 }
@@ -722,4 +723,48 @@ pub struct BadgeRevokedEvent {
         deserialize_with = "deserialize_number_from_string"
     )]
     pub revoked_at: u64,
+}
+
+/// Event emitted when a profile owner selects a badge to display
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BadgeSelectedEvent {
+    /// ID of the profile
+    #[serde(rename = "profile_id", default)]
+    pub profile_id: String,
+
+    /// Badge identifier that was selected
+    #[serde(rename = "badge_id", default)]
+    pub badge_id: String,
+
+    /// Owner who selected the badge
+    #[serde(rename = "selected_by", default)]
+    pub selected_by: String,
+
+    /// Timestamp when selected
+    #[serde(
+        rename = "selected_at",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub selected_at: u64,
+}
+
+/// Event emitted when a vesting wallet is deleted
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VestingWalletDeletedEvent {
+    /// ID of the vesting wallet
+    #[serde(rename = "wallet_id", default)]
+    pub wallet_id: String,
+
+    /// Owner of the wallet
+    #[serde(rename = "owner", default)]
+    pub owner: String,
+
+    /// Timestamp when deleted
+    #[serde(
+        rename = "deleted_at",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub deleted_at: u64,
 }

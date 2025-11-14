@@ -53,6 +53,8 @@ table! {
         social_proof_token_address -> Nullable<Varchar>,
         // Reservation pool object address
         reservation_pool_address -> Nullable<Varchar>,
+        // Selected badge ID - the badge currently selected for display
+        selected_badge_id -> Nullable<Varchar>,
     }
 }
 

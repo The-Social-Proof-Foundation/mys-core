@@ -122,6 +122,18 @@ module social_contracts::mydata {
         timestamp: u64,
     }
 
+    public struct MyDataRegisteredEvent has copy, drop {
+        ip_id: address,
+        owner: address,
+        registered_at: u64,
+    }
+
+    public struct MyDataUnregisteredEvent has copy, drop {
+        ip_id: address,
+        owner: address,
+        unregistered_at: u64,
+    }
+
     // === Core Functions ===
 
     /// Bootstrap initialization function - creates the MyData registry
@@ -652,6 +664,7 @@ module social_contracts::mydata {
     public entry fun register_in_registry(
         registry: &mut MyDataRegistry,
         mydata: &MyData,
+        clock: &Clock,
         ctx: &mut TxContext,
     ) {
         // Check version compatibility
@@ -662,6 +675,13 @@ module social_contracts::mydata {
         
         if (!table::contains(&registry.ip_to_owner, ip_id)) {
             table::add(&mut registry.ip_to_owner, ip_id, mydata.owner);
+            
+            // Emit registration event
+            event::emit(MyDataRegisteredEvent {
+                ip_id,
+                owner: mydata.owner,
+                registered_at: clock::timestamp_ms(clock),
+            });
         };
     }
 
@@ -669,6 +689,7 @@ module social_contracts::mydata {
     public entry fun unregister_from_registry(
         registry: &mut MyDataRegistry,
         ip_id: address,
+        clock: &Clock,
         ctx: &mut TxContext,
     ) {
         // Check version compatibility
@@ -678,6 +699,13 @@ module social_contracts::mydata {
             let owner = *table::borrow(&registry.ip_to_owner, ip_id);
             assert!(tx_context::sender(ctx) == owner, EUnauthorized);
             table::remove(&mut registry.ip_to_owner, ip_id);
+            
+            // Emit unregistration event
+            event::emit(MyDataUnregisteredEvent {
+                ip_id,
+                owner,
+                unregistered_at: clock::timestamp_ms(clock),
+            });
         };
     }
 

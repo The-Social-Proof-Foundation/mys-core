@@ -229,6 +229,15 @@ module social_contracts::platform {
         timestamp: u64,
     }
 
+    /// Event emitted when tokens are added to platform treasury
+    public struct TreasuryFundedEvent has copy, drop {
+        platform_id: address,
+        amount: u64,
+        funded_by: address,
+        new_balance: u64,
+        timestamp: u64,
+    }
+
     /// Bootstrap initialization function - creates the platform registry
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let registry = PlatformRegistry {
@@ -534,6 +543,17 @@ module social_contracts::platform {
         // Split coin and add to treasury
         let treasury_coin = coin::split(coin, amount, ctx);
         balance::join(&mut platform.treasury, coin::into_balance(treasury_coin));
+        
+        // Emit treasury funded event
+        let platform_id = object::uid_to_address(&platform.id);
+        let new_balance = balance::value(&platform.treasury);
+        event::emit(TreasuryFundedEvent {
+            platform_id,
+            amount,
+            funded_by: caller,
+            new_balance,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+        });
     }
 
     /// Add a moderator to a platform

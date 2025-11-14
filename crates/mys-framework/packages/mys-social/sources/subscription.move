@@ -98,6 +98,30 @@ module social_contracts::subscription {
         updated_by: address,
     }
 
+    /// Event emitted when a subscription service is created
+    public struct ProfileSubscriptionServiceCreatedEvent has copy, drop {
+        service_id: ID,
+        profile_owner: address,
+        monthly_fee: u64,
+        created_at: u64,
+    }
+
+    /// Event emitted when renewal balance is funded
+    public struct RenewalBalanceFundedEvent has copy, drop {
+        subscription_id: ID,
+        subscriber: address,
+        funded_amount: u64,
+        new_balance: u64,
+        timestamp: u64,
+    }
+
+    /// Event emitted when a subscription service is deactivated
+    public struct ProfileSubscriptionServiceDeactivatedEvent has copy, drop {
+        service_id: ID,
+        profile_owner: address,
+        deactivated_at: u64,
+    }
+
     /// Create a subscription service for a profile (called by profile owner)
     public fun create_profile_service(
         profile_owner: address,
@@ -120,17 +144,29 @@ module social_contracts::subscription {
     /// Entry function to create and share a profile subscription service
     public entry fun create_profile_service_entry(
         monthly_fee: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         // Validate monthly fee
         assert!(monthly_fee > 0, EInvalidFee);
         
+        let profile_owner = tx_context::sender(ctx);
         let service = create_profile_service(
-            tx_context::sender(ctx),
+            profile_owner,
             monthly_fee,
             ctx
         );
+        let service_id = object::id(&service);
+        
         transfer::share_object(service);
+        
+        // Emit service created event
+        event::emit(ProfileSubscriptionServiceCreatedEvent {
+            service_id,
+            profile_owner,
+            monthly_fee,
+            created_at: clock::timestamp_ms(clock),
+        });
     }
 
     /// Subscribe to a profile with optional auto-renewal
@@ -338,12 +374,23 @@ module social_contracts::subscription {
     public entry fun fund_renewal_balance(
         subscription: &mut ProfileSubscription,
         payment: Coin<MYS>,
+        clock: &Clock,
         ctx: &mut TxContext,
     ) {
         let subscriber = tx_context::sender(ctx);
         assert!(subscription.subscriber == subscriber, ENotSubscriptionOwner);
         
+        let funded_amount = coin::value(&payment);
         balance::join(&mut subscription.renewal_balance, coin::into_balance(payment));
+        
+        // Emit renewal balance funded event
+        event::emit(RenewalBalanceFundedEvent {
+            subscription_id: object::id(subscription),
+            subscriber,
+            funded_amount,
+            new_balance: balance::value(&subscription.renewal_balance),
+            timestamp: clock::timestamp_ms(clock),
+        });
     }
 
     /// Check if a subscription is valid for access
@@ -400,6 +447,7 @@ module social_contracts::subscription {
     /// Deactivate service (profile owner only)
     public entry fun deactivate_service(
         service: &mut ProfileSubscriptionService,
+        clock: &Clock,
         ctx: &mut TxContext,
     ) {
         // Check version compatibility
@@ -407,6 +455,13 @@ module social_contracts::subscription {
         
         assert!(tx_context::sender(ctx) == service.profile_owner, ENotSubscriptionOwner);
         service.active = false;
+        
+        // Emit service deactivated event
+        event::emit(ProfileSubscriptionServiceDeactivatedEvent {
+            service_id: object::id(service),
+            profile_owner: service.profile_owner,
+            deactivated_at: clock::timestamp_ms(clock),
+        });
     }
 
     /// Cancel subscription and get refund of unused renewal balance

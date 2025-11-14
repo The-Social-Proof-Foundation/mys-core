@@ -34,7 +34,6 @@ module social_contracts::profile {
     const EProfileCreateFailed: u64 = 3;
     const EReservedName: u64 = 4;
     const EUsernameNotAvailable: u64 = 5;
-    const ENotAuthorizedService: u64 = 6;
     // New error codes for profile offers
     const EOfferAlreadyExists: u64 = 7;
     const EOfferDoesNotExist: u64 = 8;
@@ -44,6 +43,7 @@ module social_contracts::profile {
     const EOfferBelowMinimum: u64 = 12;
     const EBadgeNotFound: u64 = 13;
     const EBadgeAlreadyExists: u64 = 14;
+    const ESelectedBadgeNotFound: u64 = 18;
     // Vesting error codes
     const EInvalidStartTime: u64 = 15;
     const ENotVestingWalletOwner: u64 = 16;
@@ -87,8 +87,6 @@ module social_contracts::profile {
     const USERNAME_FIELD: vector<u8> = b"username";
     // Field name for offers
     const OFFERS_FIELD: vector<u8> = b"profile_offers";
-    // Field for storing MyData references
-    const MYDATA_FIELD: vector<u8> = b"mydata";
 
     /// Social Ecosystem Treasury that receives fees from profile sales
     public struct EcosystemTreasury has key {
@@ -143,8 +141,9 @@ module social_contracts::profile {
         min_offer_amount: Option<u64>,
         /// Collection of badges assigned to the profile
         badges: vector<ProfileBadge>,
-        /// Vector tracking attached MyData IDs for efficient iteration
-        attached_mydata_ids: vector<address>,
+        /// Badge ID of the selected/primary badge to display (optional)
+        /// If None, the first badge in the badges vector should be displayed
+        selected_badge_id: Option<String>,
         /// Paid messaging: minimum cost to send a message to this profile (optional)
         min_message_cost: Option<u64>,
         /// Paid messaging: toggle to enable/disable paid messaging
@@ -225,6 +224,18 @@ module social_contracts::profile {
         revoked_by: address,
         /// Timestamp when revoked
         revoked_at: u64,
+    }
+
+    /// Event emitted when a profile owner selects a badge to display
+    public struct BadgeSelectedEvent has copy, drop {
+        /// ID of the profile
+        profile_id: address,
+        /// Badge identifier that was selected
+        badge_id: String,
+        /// Owner who selected the badge
+        selected_by: address,
+        /// Timestamp when selected
+        selected_at: u64,
     }
 
     /// Profile created event
@@ -323,6 +334,22 @@ module social_contracts::profile {
         claimed_amount: u64,
         remaining_balance: u64,
         claimed_at: u64,
+    }
+
+    /// Event emitted when a vesting wallet is deleted
+    public struct VestingWalletDeletedEvent has copy, drop {
+        wallet_id: address,
+        owner: address,
+        deleted_at: u64,
+    }
+
+    /// Event emitted when paid messaging settings are updated
+    public struct PaidMessagingSettingsUpdatedEvent has copy, drop {
+        profile_id: address,
+        owner: address,
+        enabled: bool,
+        min_cost: Option<u64>,
+        updated_at: u64,
     }
     
     /// Bootstrap initialization function - creates the username registry and treasury
@@ -489,7 +516,7 @@ module social_contracts::profile {
             tips_received: 0,
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
-            attached_mydata_ids: vector::empty<address>(),
+            selected_badge_id: option::none(),
             min_message_cost: option::none(),
             paid_messaging_enabled: false,
         };
@@ -498,7 +525,6 @@ module social_contracts::profile {
         let profile_id = object::uid_to_address(&profile.id);
         
         // Store the username directly on the profile
-        // We'll create the authorized_services table only when needed (lazy initialization)
         if (dynamic_field::exists_(&profile.id, USERNAME_FIELD)) {
             // This should never happen but we check as a safeguard
             abort EProfileCreateFailed
@@ -621,7 +647,6 @@ module social_contracts::profile {
     }
 
     /// Only the profile owner can update profile information
-    /// Authorized services (via authorize_read_service) can only read data, never modify it
     public entry fun update_profile(
         profile: &mut Profile,
         // Basic profile fields
@@ -801,70 +826,6 @@ module social_contracts::profile {
         }
     }
     
-    /// Check if an address is registered in the authorized_services table
-    /// Tests if the address is in the authorized_services table
-    /// Returns false if the address is not authorized or if the authorization table doesn't exist
-    public fun is_authorized_service(profile: &Profile, address: address): bool {
-        if (!dynamic_field::exists_(&profile.id, b"authorized_services")) {
-            return false
-        };
-        
-        let authorized_services = dynamic_field::borrow<vector<u8>, Table<address, String>>(&profile.id, b"authorized_services");
-        table::contains(authorized_services, address)
-    }
-    
-    /// Add an authorized service to a profile, initializing the table if needed
-    /// Only the profile owner can authorize services
-    public entry fun authorize_service(
-        profile: &mut Profile, 
-        service_address: address, 
-        service_name: String, 
-        ctx: &mut TxContext
-    ) {
-        // Verify the sender is the owner - only owner can authorize services
-        let sender = tx_context::sender(ctx);
-        assert!(profile.owner == sender, EUnauthorized);
-        
-        // Verify service address is not the same as owner (would be redundant)
-        assert!(service_address != profile.owner, ENotAuthorizedService);
-        
-        // Create the table if it doesn't exist
-        if (!dynamic_field::exists_(&profile.id, b"authorized_services")) {
-            let authorized_services = table::new<address, String>(ctx);
-            dynamic_field::add(&mut profile.id, b"authorized_services", authorized_services);
-        };
-        
-        // Get the table and add the service
-        let authorized_services = dynamic_field::borrow_mut<vector<u8>, Table<address, String>>(&mut profile.id, b"authorized_services");
-        
-        // Only add if not already in the table
-        if (!table::contains(authorized_services, service_address)) {
-            table::add(authorized_services, service_address, service_name);
-        };
-    }
-    
-    /// Remove an authorized service from a profile
-    public entry fun revoke_authorization(
-        profile: &mut Profile,
-        service_address: address,
-        ctx: &mut TxContext
-    ) {
-        // Verify the sender is the owner - only owner can revoke authorizations
-        let sender = tx_context::sender(ctx);
-        assert!(profile.owner == sender, EUnauthorized);
-        
-        // Check if authorized_services table exists
-        if (!dynamic_field::exists_(&profile.id, b"authorized_services")) {
-            return
-        };
-        
-        // Get the table and remove the service if it exists
-        let authorized_services = dynamic_field::borrow_mut<vector<u8>, Table<address, String>>(&mut profile.id, b"authorized_services");
-        if (table::contains(authorized_services, service_address)) {
-            table::remove(authorized_services, service_address);
-        };
-    }
-
     /// Get the ID address of a profile
     public fun get_id_address(profile: &Profile): address {
         object::uid_to_address(&profile.id)
@@ -891,12 +852,13 @@ module social_contracts::profile {
     public entry fun create_subscription_service(
         profile: &Profile,
         monthly_fee: u64,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
         
         // Create the subscription service and share it
-        subscription::create_profile_service_entry(monthly_fee, ctx);
+        subscription::create_profile_service_entry(monthly_fee, clock, ctx);
     }
 
     /// Check if a viewer has a valid subscription (uses subscription module functions)
@@ -906,161 +868,6 @@ module social_contracts::profile {
         clock: &Clock,
     ): bool {
         subscription::is_subscription_valid(subscription, service, clock)
-    }
-
-    /// Attach MyData to profile for data monetization
-    public entry fun attach_mydata(
-        profile: &mut Profile,
-        mydata_id: address,
-        ctx: &mut TxContext
-    ) {
-        assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
-        
-        // Initialize table if it doesn't exist
-        if (!dynamic_field::exists_(&profile.id, MYDATA_FIELD)) {
-            let tbl = table::new<address, bool>(ctx);
-            dynamic_field::add(&mut profile.id, MYDATA_FIELD, tbl);
-        };
-        
-        let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, bool>>(
-            &mut profile.id,
-            MYDATA_FIELD,
-        );
-        
-        // Only add if not already attached
-        if (!table::contains(tbl, mydata_id)) {
-            table::add(tbl, mydata_id, true);
-            // Also add to the tracking vector for efficient iteration
-            vector::push_back(&mut profile.attached_mydata_ids, mydata_id);
-        };
-    }
-
-    /// Check if a MyData is attached to this profile
-    public fun has_mydata_attached(profile: &Profile, mydata_id: address): bool {
-        if (!dynamic_field::exists_(&profile.id, MYDATA_FIELD)) {
-            return false
-        };
-        let tbl = dynamic_field::borrow<vector<u8>, Table<address, bool>>(
-            &profile.id,
-            MYDATA_FIELD,
-        );
-        table::contains(tbl, mydata_id)
-    }
-
-    /// Remove a MyData attachment from the profile
-    public entry fun detach_mydata(
-        profile: &mut Profile,
-        mydata_id: address,
-        ctx: &mut TxContext
-    ) {
-        assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
-        
-        if (!dynamic_field::exists_(&profile.id, MYDATA_FIELD)) {
-            return
-        };
-        
-        let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, bool>>(
-            &mut profile.id,
-            MYDATA_FIELD,
-        );
-        
-        if (table::contains(tbl, mydata_id)) {
-            table::remove(tbl, mydata_id);
-            
-            // Also remove from the tracking vector
-            let mut i = 0;
-            let len = vector::length(&profile.attached_mydata_ids);
-            while (i < len) {
-                if (*vector::borrow(&profile.attached_mydata_ids, i) == mydata_id) {
-                    vector::remove(&mut profile.attached_mydata_ids, i);
-                    break
-                };
-                i = i + 1;
-            };
-        };
-    }
-
-    /// Get all attached MyData IDs for this profile
-    public fun get_attached_mydata(profile: &Profile): vector<address> {
-        // Return a copy of the attached MyData IDs vector for efficient iteration
-        profile.attached_mydata_ids
-    }
-
-    /// Batch attach multiple MyData to profile for gas optimization
-    public entry fun batch_attach_mydata(
-        profile: &mut Profile,
-        mydata_ids: vector<address>,
-        ctx: &mut TxContext
-    ) {
-        assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
-        
-        // Initialize table if it doesn't exist
-        if (!dynamic_field::exists_(&profile.id, MYDATA_FIELD)) {
-            let tbl = table::new<address, bool>(ctx);
-            dynamic_field::add(&mut profile.id, MYDATA_FIELD, tbl);
-        };
-        
-        let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, bool>>(
-            &mut profile.id,
-            MYDATA_FIELD,
-        );
-        
-        let mut i = 0;
-        let len = vector::length(&mydata_ids);
-        
-        while (i < len) {
-            let mydata_id = *vector::borrow(&mydata_ids, i);
-            
-            // Only add if not already attached
-            if (!table::contains(tbl, mydata_id)) {
-                table::add(tbl, mydata_id, true);
-                vector::push_back(&mut profile.attached_mydata_ids, mydata_id);
-            };
-            
-            i = i + 1;
-        };
-    }
-
-    /// Batch detach multiple MyData from profile for gas optimization
-    public entry fun batch_detach_mydata(
-        profile: &mut Profile,
-        mydata_ids: vector<address>,
-        ctx: &mut TxContext
-    ) {
-        assert!(tx_context::sender(ctx) == profile.owner, EUnauthorized);
-        
-        if (!dynamic_field::exists_(&profile.id, MYDATA_FIELD)) {
-            return
-        };
-        
-        let tbl = dynamic_field::borrow_mut<vector<u8>, Table<address, bool>>(
-            &mut profile.id,
-            MYDATA_FIELD,
-        );
-        
-        let mut i = 0;
-        let len = vector::length(&mydata_ids);
-        
-        while (i < len) {
-            let mydata_id = *vector::borrow(&mydata_ids, i);
-            
-            if (table::contains(tbl, mydata_id)) {
-                table::remove(tbl, mydata_id);
-                
-                // Remove from tracking vector
-                let mut j = 0;
-                let vec_len = vector::length(&profile.attached_mydata_ids);
-                while (j < vec_len) {
-                    if (*vector::borrow(&profile.attached_mydata_ids, j) == mydata_id) {
-                        vector::remove(&mut profile.attached_mydata_ids, j);
-                        break
-                    };
-                    j = j + 1;
-                };
-            };
-            
-            i = i + 1;
-        };
     }
 
     /// Create an offer to purchase a profile
@@ -1251,7 +1058,7 @@ module social_contracts::profile {
     
     /// Reject or revoke an offer on a profile
     /// Can be called by the profile owner to reject or the offeror to revoke
-    /// Returns locked MYSO tokens to the offeror
+    /// Returns locked MYSO tokenv s to the offeror
     public entry fun reject_or_revoke_offer(
         profile: &mut Profile,
         offeror: address,
@@ -1407,7 +1214,7 @@ module social_contracts::profile {
             tips_received: 0,
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
-            attached_mydata_ids: vector::empty<address>(),
+            selected_badge_id: option::none(),
             min_message_cost: option::none(),
             paid_messaging_enabled: false,
         };
@@ -1474,6 +1281,11 @@ module social_contracts::profile {
         // Add the badge to the profile
         vector::push_back(&mut profile.badges, badge);
         
+        // If no badge is currently selected and this is the first badge, auto-select it
+        if (option::is_none(&profile.selected_badge_id) && vector::length(&profile.badges) == 1) {
+            profile.selected_badge_id = option::some(badge_id);
+        };
+        
         // Emit badge assigned event
         event::emit(BadgeAssignedEvent {
             profile_id: object::uid_to_address(&profile.id),
@@ -1509,6 +1321,14 @@ module social_contracts::profile {
                 // Remove the badge at this index
                 vector::remove(&mut profile.badges, i);
                 found = true;
+                
+                // If the removed badge was the selected badge, clear the selection
+                if (option::is_some(&profile.selected_badge_id)) {
+                    let selected_id = option::borrow(&profile.selected_badge_id);
+                    if (string::as_bytes(selected_id) == string::as_bytes(badge_id)) {
+                        profile.selected_badge_id = option::none();
+                    };
+                };
                 
                 // Emit badge revoked event
                 event::emit(BadgeRevokedEvent {
@@ -1591,6 +1411,106 @@ module social_contracts::profile {
 
     public fun badge_count(profile: &Profile): u64 {
         vector::length(&profile.badges)
+    }
+
+    /// Set the selected badge to display for a profile (owner only)
+    /// The badge must exist in the profile's badges collection
+    public entry fun set_selected_badge(
+        profile: &mut Profile,
+        badge_id: String,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        
+        // Verify sender is the profile owner
+        assert!(profile.owner == sender, EUnauthorized);
+        
+        // Verify the badge exists in the profile's badges
+        let mut badge_exists = false;
+        let mut i = 0;
+        let len = vector::length(&profile.badges);
+        while (i < len) {
+            let badge = vector::borrow(&profile.badges, i);
+            if (string::as_bytes(&badge.badge_id) == string::as_bytes(&badge_id)) {
+                badge_exists = true;
+                break
+            };
+            i = i + 1;
+        };
+        
+        assert!(badge_exists, ESelectedBadgeNotFound);
+        
+        // Set the selected badge
+        profile.selected_badge_id = option::some(badge_id);
+        
+        // Emit badge selected event
+        event::emit(BadgeSelectedEvent {
+            profile_id: object::uid_to_address(&profile.id),
+            badge_id: badge_id,
+            selected_by: sender,
+            selected_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Get the selected badge ID for a profile
+    public fun get_selected_badge_id(profile: &Profile): Option<String> {
+        profile.selected_badge_id
+    }
+
+    /// Get the badge that should be displayed for a profile
+    /// Returns the selected badge if one is set, otherwise returns the first badge
+    /// Returns None if the profile has no badges
+    public fun get_display_badge(profile: &Profile): Option<ProfileBadge> {
+        let badge_count = vector::length(&profile.badges);
+        
+        // If no badges exist, return None
+        if (badge_count == 0) {
+            return option::none()
+        };
+        
+        // If a badge is selected, find and return it
+        if (option::is_some(&profile.selected_badge_id)) {
+            let selected_id = option::borrow(&profile.selected_badge_id);
+            let mut i = 0;
+            while (i < badge_count) {
+                let badge = vector::borrow(&profile.badges, i);
+                if (string::as_bytes(&badge.badge_id) == string::as_bytes(selected_id)) {
+                    return option::some(*badge)
+                };
+                i = i + 1;
+            };
+        };
+        
+        // If no badge is selected or selected badge not found, return the first badge
+        option::some(*vector::borrow(&profile.badges, 0))
+    }
+
+    /// Clear the selected badge (owner only)
+    /// After clearing, the first badge will be displayed by default
+    public entry fun clear_selected_badge(
+        profile: &mut Profile,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        
+        // Verify sender is the profile owner
+        assert!(profile.owner == sender, EUnauthorized);
+        
+        // Only clear if a badge is currently selected
+        if (option::is_some(&profile.selected_badge_id)) {
+            profile.selected_badge_id = option::none();
+            
+            // Emit badge selected event with empty badge_id to indicate clearing
+            // Note: We'll use an empty string to indicate clearing
+            event::emit(BadgeSelectedEvent {
+                profile_id: object::uid_to_address(&profile.id),
+                badge_id: string::utf8(b""), // Empty string indicates clearing
+                selected_by: sender,
+                selected_at: clock::timestamp_ms(clock),
+            });
+        };
     }
 
     // === Vesting Functions ===
@@ -1794,11 +1714,14 @@ module social_contracts::profile {
 
     /// Delete an empty vesting wallet
     /// Can only be called when the wallet balance is zero
-    public entry fun delete_vesting_wallet(wallet: VestingWallet, ctx: &mut TxContext) {
+    public entry fun delete_vesting_wallet(wallet: VestingWallet, clock: &Clock, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
         
         // Verify sender is the wallet owner
         assert!(wallet.owner == sender, ENotVestingWalletOwner);
+        
+        let wallet_id = object::uid_to_address(&wallet.id);
+        let owner = wallet.owner;
         
         let VestingWallet { 
             id, 
@@ -1810,6 +1733,13 @@ module social_contracts::profile {
             total_amount: _,
             curve_factor: _
         } = wallet;
+        
+        // Emit wallet deleted event before deletion
+        event::emit(VestingWalletDeletedEvent {
+            wallet_id,
+            owner,
+            deleted_at: clock::timestamp_ms(clock),
+        });
         
         // Delete the wallet ID
         object::delete(id);
@@ -1862,6 +1792,7 @@ module social_contracts::profile {
         profile: &mut Profile,
         enabled: bool,
         min_cost: Option<u64>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
@@ -1869,6 +1800,15 @@ module social_contracts::profile {
 
         profile.paid_messaging_enabled = enabled;
         profile.min_message_cost = min_cost;
+        
+        // Emit paid messaging settings updated event
+        event::emit(PaidMessagingSettingsUpdatedEvent {
+            profile_id: object::uid_to_address(&profile.id),
+            owner: sender,
+            enabled,
+            min_cost,
+            updated_at: clock::timestamp_ms(clock),
+        });
     }
 
     /// Get paid messaging settings for a profile

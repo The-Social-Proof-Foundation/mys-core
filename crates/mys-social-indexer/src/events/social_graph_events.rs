@@ -85,6 +85,7 @@ impl FollowEvent {
             instagram_username: None,
             block_list_address: None,
             social_proof_token_address: None,
+            selected_badge_id: None,
         }
     }
 
@@ -120,6 +121,7 @@ impl FollowEvent {
             instagram_username: None,
             block_list_address: None,
             social_proof_token_address: None,
+            selected_badge_id: None,
         }
     }
 }
@@ -157,6 +159,7 @@ impl UnfollowEvent {
             instagram_username: None,
             block_list_address: None,
             social_proof_token_address: None,
+            selected_badge_id: None,
         }
     }
 
@@ -192,6 +195,7 @@ impl UnfollowEvent {
             instagram_username: None,
             block_list_address: None,
             social_proof_token_address: None,
+            selected_badge_id: None,
         }
     }
 }

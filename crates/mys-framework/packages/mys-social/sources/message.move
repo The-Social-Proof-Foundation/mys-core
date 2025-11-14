@@ -248,6 +248,18 @@ module social_contracts::message {
         version: u32,
     }
 
+    public struct RelayerUpdated has copy, drop {
+        old_relayer: address,
+        new_relayer: address,
+        updated_by: address,
+    }
+
+    public struct AdminTransferred has copy, drop {
+        old_admin: address,
+        new_admin: address,
+        transferred_by: address,
+    }
+
     public struct RateLimitsSet has copy, drop {
         conv: address,
         window_secs: u64,
@@ -318,7 +330,15 @@ module social_contracts::message {
         ctx: &mut TxContext
     ) {
         assert!(tx_context::sender(ctx) == registry.admin, E_NOT_ADMIN);
+        let old_relayer = registry.relayer;
         registry.relayer = new_relayer;
+        
+        // Emit relayer updated event
+        event::emit(RelayerUpdated {
+            old_relayer,
+            new_relayer,
+            updated_by: tx_context::sender(ctx),
+        });
     }
 
     /// Pause/unpause the protocol (admin only)
@@ -353,7 +373,15 @@ module social_contracts::message {
         assert!((registry.version as u64) == upgrade::current_version(), E_WRONG_VERSION);
         
         assert!(tx_context::sender(ctx) == registry.admin, E_NOT_ADMIN);
+        let old_admin = registry.admin;
         registry.admin = new_admin;
+        
+        // Emit admin transferred event
+        event::emit(AdminTransferred {
+            old_admin,
+            new_admin,
+            transferred_by: tx_context::sender(ctx),
+        });
     }
 
     // === Conversation & ACL Functions ===

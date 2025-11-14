@@ -1471,12 +1471,14 @@ module social_contracts::profile_tests {
         // USER2 deletes the empty vesting wallet
         test_scenario::next_tx(&mut scenario, USER2);
         {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
             let vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
             
             // Delete the empty wallet
-            profile::delete_vesting_wallet(vesting_wallet, test_scenario::ctx(&mut scenario));
+            profile::delete_vesting_wallet(vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
             
             // Wallet should no longer exist
+            test_scenario::return_shared(clock);
         };
         
         test_scenario::end(scenario);

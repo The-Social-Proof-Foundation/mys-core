@@ -147,6 +147,28 @@ module social_contracts::social_proof_of_truth {
         amount: u64,
     }
 
+    public struct SpotConfigUpdatedEvent has copy, drop {
+        updated_by: address,
+        enable_flag: bool,
+        confidence_threshold_bps: u64,
+        resolution_window_epochs: u64,
+        max_resolution_window_epochs: u64,
+        payout_delay_epochs: u64,
+        fee_bps: u64,
+        fee_split_bps_platform: u64,
+        platform_treasury: address,
+        chain_treasury: address,
+        oracle_address: address,
+        max_single_bet: u64,
+        timestamp: u64,
+    }
+
+    public struct SpotRecordCreatedEvent has copy, drop {
+        record_id: address,
+        post_id: address,
+        created_epoch: u64,
+    }
+
     // Public getters for testing/inspection
     public fun get_status(rec: &SpotRecord): u8 { rec.status }
     public fun get_total_yes_escrow(rec: &SpotRecord): u64 { rec.total_yes_escrow }
@@ -189,7 +211,7 @@ module social_contracts::social_proof_of_truth {
         chain_treasury: address,
         oracle_address: address,
         max_single_bet: u64,
-        _ctx: &mut TxContext
+        ctx: &mut TxContext
     ) {
         // Basic bounds
         assert!(confidence_threshold_bps <= 10000, EInvalidAmount);
@@ -206,6 +228,23 @@ module social_contracts::social_proof_of_truth {
         config.chain_treasury = chain_treasury;
         config.oracle_address = oracle_address;
         config.max_single_bet = max_single_bet;
+        
+        // Emit config updated event
+        event::emit(SpotConfigUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            enable_flag,
+            confidence_threshold_bps,
+            resolution_window_epochs,
+            max_resolution_window_epochs,
+            payout_delay_epochs,
+            fee_bps,
+            fee_split_bps_platform,
+            platform_treasury,
+            chain_treasury,
+            oracle_address,
+            max_single_bet,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+        });
     }
 
     // Create a SPoT record for a post
@@ -228,7 +267,18 @@ module social_contracts::social_proof_of_truth {
             last_resolution_epoch: 0,
             version: upgrade::current_version(),
         };
+        let record_id = object::uid_to_address(&record.id);
+        let created_epoch = record.created_epoch;
+        let post_id = record.post_id;
+        
         transfer::share_object(record);
+        
+        // Emit record created event
+        event::emit(SpotRecordCreatedEvent {
+            record_id,
+            post_id,
+            created_epoch,
+        });
     }
 
     /// Place bet - all funds go to escrow

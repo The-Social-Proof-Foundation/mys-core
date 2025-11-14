@@ -16,7 +16,8 @@ use crate::events::profile_event_types::{extract_profile_id, ProfileEventType};
 use crate::events::profile_events::{
     ProfileCreatedEvent, ProfileUpdatedEvent, TokensClaimedEvent, TokensVestedEvent,
     ProfileOfferCreatedEvent, ProfileOfferAcceptedEvent, ProfileOfferRejectedEvent,
-    ProfileSaleFeeEvent, BadgeAssignedEvent, BadgeRevokedEvent,
+    ProfileSaleFeeEvent, BadgeAssignedEvent, BadgeRevokedEvent, BadgeSelectedEvent,
+    VestingWalletDeletedEvent,
 };
 use crate::models::indexer::NewIndexerProgress;
 use crate::models::profile_events::NewProfileEvent;
@@ -946,6 +947,161 @@ impl ProfileEventListener {
         Ok(())
     }
 
+    /// Process a badge selected event
+    async fn process_badge_selected(
+        &self,
+        event: &BadgeSelectedEvent,
+        transaction_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+
+        info!(
+            "Processing BadgeSelectedEvent: profile_id={}, badge_id={}, selected_by={}",
+            event.profile_id, event.badge_id, event.selected_by
+        );
+
+        // Verify the badge exists and is not revoked for this profile
+        let badge_exists = schema::profile_badges::table
+            .filter(schema::profile_badges::profile_id.eq(&event.profile_id))
+            .filter(schema::profile_badges::badge_id.eq(&event.badge_id))
+            .filter(schema::profile_badges::revoked.eq(false))
+            .first::<crate::models::profile_extras::ProfileBadge>(&mut conn)
+            .await;
+
+        match badge_exists {
+            Ok(_) => {
+                // Badge exists and is not revoked, update the profile's selected_badge_id
+                diesel::update(schema::profiles::table)
+                    .filter(schema::profiles::profile_id.eq(&event.profile_id))
+                    .set(schema::profiles::selected_badge_id.eq(Some(event.badge_id.clone())))
+                    .execute(&mut conn)
+                    .await?;
+
+                info!(
+                    "Updated selected_badge_id for profile {} to badge {}",
+                    event.profile_id, event.badge_id
+                );
+            }
+            Err(diesel::NotFound) => {
+                warn!(
+                    "Badge {} not found or revoked for profile {}, skipping selected_badge_id update",
+                    event.badge_id, event.profile_id
+                );
+            }
+            Err(e) => {
+                return Err(anyhow!("Failed to check badge existence: {}", e));
+            }
+        }
+
+        // Log to profile_events table
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::BadgeSelected.to_str(),
+            event.profile_id.clone(),
+            serde_json::to_value(event)?,
+            Some(transaction_id.to_string()),
+            Some(event.selected_at),
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
+
+        info!("✅ Successfully processed badge selected: profile_id={}, badge_id={}", 
+              event.profile_id, event.badge_id);
+        Ok(())
+    }
+
+    /// Process a vesting wallet deleted event
+    async fn process_vesting_wallet_deleted(
+        &self,
+        event: &VestingWalletDeletedEvent,
+        transaction_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+
+        info!(
+            "Processing VestingWalletDeletedEvent: wallet_id={}, owner={}",
+            event.wallet_id, event.owner
+        );
+
+        // Check if wallet exists before attempting deletion
+        let wallet_exists = schema::vesting_wallets::table
+            .filter(schema::vesting_wallets::wallet_id.eq(&event.wallet_id))
+            .first::<VestingWallet>(&mut conn)
+            .await;
+
+        match wallet_exists {
+            Ok(wallet) => {
+                // Create a deletion event record in vesting_events table
+                let deletion_event = crate::models::NewVestingEvent {
+                    wallet_id: event.wallet_id.clone(),
+                    event_type: "VestingWalletDeleted".to_string(),
+                    owner_address: event.owner.clone(),
+                    amount: 0, // No amount for deletion
+                    remaining_balance: Some(0), // Wallet is deleted, balance is 0
+                    start_time: None,
+                    duration: None,
+                    curve_factor: None,
+                    event_time: event.deleted_at as i64,
+                    time: chrono::DateTime::from_timestamp(
+                        (event.deleted_at / 1000) as i64,
+                        ((event.deleted_at % 1000) * 1_000_000) as u32,
+                    )
+                    .unwrap_or_else(chrono::Utc::now),
+                    transaction_id: transaction_id.to_string(),
+                };
+
+                // Insert deletion event first
+                diesel::insert_into(schema::vesting_events::table)
+                    .values(&deletion_event)
+                    .execute(&mut conn)
+                    .await?;
+
+                // Delete the wallet
+                diesel::delete(
+                    schema::vesting_wallets::table
+                        .filter(schema::vesting_wallets::wallet_id.eq(&event.wallet_id)),
+                )
+                .execute(&mut conn)
+                .await?;
+
+                info!(
+                    "Deleted vesting wallet {} (owner: {}, total_amount: {})",
+                    event.wallet_id, wallet.owner_address, wallet.total_amount
+                );
+            }
+            Err(diesel::NotFound) => {
+                warn!(
+                    "Vesting wallet {} not found, skipping deletion",
+                    event.wallet_id
+                );
+                // Still log the event even if wallet doesn't exist
+            }
+            Err(e) => {
+                return Err(anyhow!("Failed to check wallet existence: {}", e));
+            }
+        }
+
+        // Log to profile_events table (using owner as profile_id since vesting is per-user)
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::VestingWalletDeleted.to_str(),
+            event.owner.clone(),
+            serde_json::to_value(event)?,
+            Some(transaction_id.to_string()),
+            Some(event.deleted_at / 1000), // Convert ms to seconds
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
+
+        info!("✅ Successfully processed vesting wallet deleted: wallet_id={}", 
+              event.wallet_id);
+        Ok(())
+    }
+
     async fn persist_profile_event(
         &self,
         event_type: &str,
@@ -1288,6 +1444,58 @@ impl ProfileEventListener {
                         }
                         Err(e) => {
                             error!("Failed to deserialize badge revoked event: {}", e);
+                        }
+                    }
+                }
+                // Handle badge selected event
+                else if event.event_type.ends_with("::BadgeSelectedEvent") {
+                    info!(
+                        "Badge selected event detected with data: {}",
+                        serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                    );
+
+                    match crate::events::event_utils::extract_event_fields(&event.data).and_then(
+                        |fields| {
+                            serde_json::from_value::<BadgeSelectedEvent>(fields)
+                                .map_err(|e| anyhow::anyhow!(e))
+                        },
+                    ) {
+                        Ok(badge_event) => {
+                            if let Err(e) = self
+                                .process_badge_selected(&badge_event, &event.tx_digest)
+                                .await
+                            {
+                                error!("Failed to process badge selected event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize badge selected event: {}", e);
+                        }
+                    }
+                }
+                // Handle vesting wallet deleted event
+                else if event.event_type.ends_with("::VestingWalletDeletedEvent") {
+                    info!(
+                        "Vesting wallet deleted event detected with data: {}",
+                        serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                    );
+
+                    match crate::events::event_utils::extract_event_fields(&event.data).and_then(
+                        |fields| {
+                            serde_json::from_value::<VestingWalletDeletedEvent>(fields)
+                                .map_err(|e| anyhow::anyhow!(e))
+                        },
+                    ) {
+                        Ok(vesting_event) => {
+                            if let Err(e) = self
+                                .process_vesting_wallet_deleted(&vesting_event, &event.tx_digest)
+                                .await
+                            {
+                                error!("Failed to process vesting wallet deleted event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize vesting wallet deleted event: {}", e);
                         }
                     }
                 }

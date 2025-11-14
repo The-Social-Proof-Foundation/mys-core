@@ -279,6 +279,21 @@ module social_contracts::governance {
         refund_amount: u64,
     }
 
+    /// Event emitted when governance parameters are updated
+    public struct GovernanceParametersUpdatedEvent has copy, drop {
+        registry_type: u8,
+        updated_by: address,
+        delegate_count: u64,
+        delegate_term_epochs: u64,
+        proposal_submission_cost: u64,
+        min_on_chain_age_days: u64,
+        max_votes_per_user: u64,
+        quadratic_base_cost: u64,
+        voting_period_epochs: u64,
+        quorum_votes: u64,
+        timestamp: u64,
+    }
+
     /// Bootstrap initialization function - creates the governance registries
     /// This function has the same logic as init() but can be called by bootstrap
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
@@ -389,6 +404,21 @@ module social_contracts::governance {
         registry.quadratic_base_cost = quadratic_base_cost;
         registry.voting_period_epochs = voting_period_epochs;
         registry.quorum_votes = quorum_votes;
+        
+        // Emit governance parameters updated event
+        event::emit(GovernanceParametersUpdatedEvent {
+            registry_type: registry.registry_type,
+            updated_by: tx_context::sender(_ctx),
+            delegate_count,
+            delegate_term_epochs,
+            proposal_submission_cost,
+            min_on_chain_age_days,
+            max_votes_per_user,
+            quadratic_base_cost,
+            voting_period_epochs,
+            quorum_votes,
+            timestamp: tx_context::epoch_timestamp_ms(_ctx),
+        });
     }
 
     /// Nominate self as a delegate

@@ -175,6 +175,14 @@ module social_contracts::post {
         let caller = tx_context::sender(ctx);
         assert!(caller == post.owner, EUnauthorized);
         post.disable_auto_pool = disabled;
+        
+        // Emit event for auto pool disabled flag update
+        event::emit(AutoPoolDisabledUpdatedEvent {
+            post_id: object::uid_to_address(&post.id),
+            owner: caller,
+            disabled,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+        });
     }
 
     /// Comment object for posts, supporting nested comments
@@ -344,6 +352,29 @@ module social_contracts::post {
         repost_tip_percentage: u64,
         /// New max prediction options value
         max_prediction_options: u64,
+    }
+
+    /// Event emitted when auto pool disabled flag is updated
+    public struct AutoPoolDisabledUpdatedEvent has copy, drop {
+        post_id: address,
+        owner: address,
+        disabled: bool,
+        timestamp: u64,
+    }
+
+    /// Event emitted when predictions enabled flag is updated
+    public struct PredictionsEnabledUpdatedEvent has copy, drop {
+        updated_by: address,
+        enabled: bool,
+        timestamp: u64,
+    }
+
+    /// Event emitted when prediction fee is updated
+    public struct PredictionFeeUpdatedEvent has copy, drop {
+        updated_by: address,
+        fee_bps: u64,
+        treasury: address,
+        timestamp: u64,
     }
 
     /// Post created event
@@ -595,12 +626,19 @@ module social_contracts::post {
         _: &PostAdminCap,
         config: &mut PostConfig,
         enabled: bool,
-        _ctx: &mut TxContext
+        ctx: &mut TxContext
     ) {
         // Admin capability verification is handled by type system
         
         // Update configuration
         config.predictions_enabled = enabled;
+        
+        // Emit event for predictions enabled flag update
+        event::emit(PredictionsEnabledUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            enabled,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+        });
     }
     
     /// Set prediction fee (admin only)
@@ -609,7 +647,7 @@ module social_contracts::post {
         config: &mut PostConfig,
         fee_bps: u64,
         treasury: address,
-        _ctx: &mut TxContext
+        ctx: &mut TxContext
     ) {
         // Admin capability verification is handled by type system
         
@@ -619,6 +657,14 @@ module social_contracts::post {
         // Update configuration
         config.prediction_fee_bps = fee_bps;
         config.prediction_treasury = treasury;
+        
+        // Emit event for prediction fee update
+        event::emit(PredictionFeeUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            fee_bps,
+            treasury,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+        });
     }
     
     /// Check if predictions are enabled

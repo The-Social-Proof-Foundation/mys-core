@@ -36,6 +36,10 @@ pub enum ProfileEventType {
     BadgeAssigned,
     // Badge revoked from profile
     BadgeRevoked,
+    // Badge selected by profile owner
+    BadgeSelected,
+    // Vesting wallet deleted
+    VestingWalletDeleted,
 }
 
 impl ProfileEventType {
@@ -66,6 +70,8 @@ impl ProfileEventType {
             s if s.contains("::ProfileSaleFeeEvent") => Some(Self::ProfileSaleFee),
             s if s.contains("::BadgeAssignedEvent") => Some(Self::BadgeAssigned),
             s if s.contains("::BadgeRevokedEvent") => Some(Self::BadgeRevoked),
+            s if s.contains("::BadgeSelectedEvent") => Some(Self::BadgeSelected),
+            s if s.contains("::VestingWalletDeletedEvent") => Some(Self::VestingWalletDeleted),
             _ => None,
         }
     }
@@ -89,6 +95,8 @@ impl ProfileEventType {
             Self::ProfileSaleFee => "ProfileSaleFeeEvent",
             Self::BadgeAssigned => "BadgeAssignedEvent",
             Self::BadgeRevoked => "BadgeRevokedEvent",
+            Self::BadgeSelected => "BadgeSelectedEvent",
+            Self::VestingWalletDeleted => "VestingWalletDeletedEvent",
         }
     }
 }

@@ -887,6 +887,7 @@ pub async fn process_block_list_created_event(
                 blocked_count: None,
                 post_count: None,
                 min_offer_amount: None,
+                selected_badge_id: None,
                 birthdate: None,
                 current_location: None,
                 raised_location: None,

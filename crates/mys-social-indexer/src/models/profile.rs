@@ -53,6 +53,8 @@ pub struct Profile {
     pub social_proof_token_address: Option<String>,
     // Reservation pool object address
     pub reservation_pool_address: Option<String>,
+    // Selected badge ID - the badge currently selected for display
+    pub selected_badge_id: Option<String>,
 }
 
 #[derive(Debug, Insertable, Serialize, Deserialize)]
@@ -106,6 +108,8 @@ pub struct NewProfile {
     pub social_proof_token_address: Option<String>,
     // Reservation pool object address
     pub reservation_pool_address: Option<String>,
+    // Selected badge ID - the badge currently selected for display
+    pub selected_badge_id: Option<String>,
 }
 
 #[derive(Debug, AsChangeset, Serialize, Deserialize)]
@@ -146,4 +150,6 @@ pub struct UpdateProfile {
     pub block_list_address: Option<String>,
     // Social proof token address
     pub social_proof_token_address: Option<String>,
+    // Selected badge ID - the badge currently selected for display
+    pub selected_badge_id: Option<String>,
 }
