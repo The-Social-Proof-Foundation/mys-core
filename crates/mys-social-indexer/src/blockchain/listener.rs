@@ -462,6 +462,10 @@ impl BlockchainEventListener {
             .duration_since(std::time::UNIX_EPOCH)?
             .as_millis() as u64;
 
+        // Track consecutive errors to detect stuck state
+        let mut consecutive_errors = 0;
+        const MAX_CONSECUTIVE_ERRORS: u32 = 5;
+
         // Poll for events
         loop {
             interval.tick().await;
@@ -477,6 +481,8 @@ impl BlockchainEventListener {
                 .await
             {
                 Ok(events) => {
+                    consecutive_errors = 0;
+                    
                     // Process events in reverse order (oldest to newest)
                     for event in events.data.into_iter().rev() {
                         // Get the timestamp
@@ -551,7 +557,27 @@ impl BlockchainEventListener {
                     }
                 }
                 Err(e) => {
-                    error!("Error querying events: {}", e);
+                    let error_msg = e.to_string();
+                    consecutive_errors += 1;
+                    
+                    error!("Error querying events ({} consecutive): {}", consecutive_errors, error_msg);
+                    
+                    // If we get a stale transaction events digest error, reset timestamp
+                    // to skip past the problematic transaction and continue processing
+                    if error_msg.contains("Could not find the referenced transaction events") {
+                        warn!("Stale transaction events digest detected, resetting timestamp to skip past it");
+                        // Reset to current time minus a small buffer to avoid missing recent events
+                        last_seen_timestamp = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_millis() as u64 - 60000; // 1 minute ago
+                        
+                        // If we've hit this error multiple times, recreate the client to reset internal state
+                        if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+                            warn!("Too many consecutive errors, recreating client to reset state");
+                            return Err(anyhow!("Stuck on stale transaction events digest, restarting listener"));
+                        }
+                    }
                 }
             }
         }
