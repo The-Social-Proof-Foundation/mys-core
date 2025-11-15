@@ -6,7 +6,7 @@ use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::db::DbConnection;
 use crate::events::profile_event_types::{BlockAddedEvent, BlockRemovedEvent};
@@ -300,6 +300,23 @@ pub async fn process_profile_block_event(
                     error!("Failed to insert block event into profile_events: {}", e);
                 }
             }
+
+            // Write to relay outbox for notifications
+            let event_data = serde_json::json!({
+                "blocker_address": block_event.blocker,
+                "blocked_address": block_event.blocked,
+            });
+            if let Err(e) = crate::relay_outbox::write_notification_event(
+                conn,
+                "blocked.created",
+                &event_data,
+                None, // event_id not available in this context
+                None, // transaction_id not available in this context
+            )
+            .await
+            {
+                warn!("Failed to write block event to outbox: {}", e);
+            }
         }
         (Err(e), _) => {
             error!("Failed to insert into blocked_events table: {}", e);
@@ -477,6 +494,23 @@ pub async fn process_profile_unblock_event(
                 Err(e) => {
                     error!("Failed to insert unblock event into profile_events: {}", e);
                 }
+            }
+
+            // Write to relay outbox for notifications
+            let event_data = serde_json::json!({
+                "blocker_address": unblock_event.blocker,
+                "unblocked_address": unblock_event.unblocked,
+            });
+            if let Err(e) = crate::relay_outbox::write_notification_event(
+                conn,
+                "unblocked.created",
+                &event_data,
+                None, // event_id not available in this context
+                None, // transaction_id not available in this context
+            )
+            .await
+            {
+                warn!("Failed to write unblock event to outbox: {}", e);
             }
 
             // Decrement blocker's blocked_count only if an active relationship was removed

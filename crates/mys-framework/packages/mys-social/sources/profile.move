@@ -148,6 +148,8 @@ module social_contracts::profile {
         min_message_cost: Option<u64>,
         /// Paid messaging: toggle to enable/disable paid messaging
         paid_messaging_enabled: bool,
+        /// Version for upgrades
+        version: u64,
     }
 
     /// Profile Badge that can be assigned to profiles by platform admins/moderators
@@ -519,6 +521,7 @@ module social_contracts::profile {
             selected_badge_id: option::none(),
             min_message_cost: option::none(),
             paid_messaging_enabled: false,
+            version: upgrade::current_version(),
         };
         
         // Get the profile ID
@@ -1217,6 +1220,7 @@ module social_contracts::profile {
             selected_badge_id: option::none(),
             min_message_cost: option::none(),
             paid_messaging_enabled: false,
+            version: upgrade::current_version(),
         };
         
         // Get the profile ID and use it for registration
@@ -1682,7 +1686,12 @@ module social_contracts::profile {
         let total_claimable = ((wallet.total_amount as u128) * curved_progress) / (CURVE_PRECISION as u128);
         
         // Subtract already claimed amount to get newly claimable amount
-        let newly_claimable = (total_claimable as u64) - wallet.claimed_amount;
+        let total_claimable_u64 = total_claimable as u64;
+        let newly_claimable = if (total_claimable_u64 >= wallet.claimed_amount) {
+            total_claimable_u64 - wallet.claimed_amount
+        } else {
+            0
+        };
         
         // Ensure we don't exceed the remaining balance
         let remaining_balance = balance::value(&wallet.balance);

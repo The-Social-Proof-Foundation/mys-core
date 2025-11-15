@@ -1419,6 +1419,22 @@ table! {
     }
 }
 
+// Relay outbox table for CDC
+table! {
+    relay_outbox (id) {
+        id -> BigInt,
+        event_type -> Text,
+        event_data -> Jsonb,
+        event_id -> Nullable<Text>,
+        transaction_id -> Nullable<Text>,
+        created_at -> Timestamptz,
+        processed_at -> Nullable<Timestamptz>,
+        published_at -> Nullable<Timestamptz>,
+        retry_count -> Integer,
+        error_message -> Nullable<Text>,
+    }
+}
+
 // Allow joining the tables if needed
 allow_tables_to_appear_in_same_query!(
     profiles,
@@ -1509,4 +1525,6 @@ allow_tables_to_appear_in_same_query!(
     spot_resolutions,
     spot_events,
     social_proof_of_truth,
+    // Relay tables
+    relay_outbox,
 );

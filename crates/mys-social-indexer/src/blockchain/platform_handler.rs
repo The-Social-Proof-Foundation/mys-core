@@ -771,6 +771,25 @@ impl PlatformEventHandler {
             })
             .await?;
 
+        // Write to relay outbox for notifications - notify the moderator (outside transaction)
+        let mut outbox_conn = self.get_connection().await?;
+        let event_data = serde_json::json!({
+            "platform_id": event.platform_id,
+            "moderator_address": event.moderator_address,
+            "added_by": event.added_by,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut outbox_conn,
+            "platform.moderator_added",
+            &event_data,
+            blockchain_event.map(|e| e.event_id.as_str()),
+            blockchain_event.map(|e| e.tx_digest.as_str()),
+        )
+        .await
+        {
+            warn!("Failed to write moderator added event to outbox: {}", e);
+        }
+
         info!("Successfully processed moderator added event");
 
         Ok(())
@@ -837,6 +856,25 @@ impl PlatformEventHandler {
                 })
             })
             .await?;
+
+        // Write to relay outbox for notifications - notify the moderator (outside transaction)
+        let mut outbox_conn = self.get_connection().await?;
+        let event_data = serde_json::json!({
+            "platform_id": event.platform_id,
+            "moderator_address": event.moderator_address,
+            "removed_by": event.removed_by,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut outbox_conn,
+            "platform.moderator_removed",
+            &event_data,
+            blockchain_event.map(|e| e.event_id.as_str()),
+            blockchain_event.map(|e| e.tx_digest.as_str()),
+        )
+        .await
+        {
+            warn!("Failed to write moderator removed event to outbox: {}", e);
+        }
 
         info!("Successfully processed moderator removed event");
 
@@ -1301,6 +1339,26 @@ impl PlatformEventHandler {
             })
             .await?;
 
+        // Write to relay outbox for notifications - notify platform moderators/owners (outside transaction)
+        // Note: We could also notify the user who joined, but typically platform events
+        // are more relevant to platform admins
+        let mut outbox_conn = self.get_connection().await?;
+        let event_data = serde_json::json!({
+            "platform_id": event.platform_id,
+            "profile_id": event.profile_id,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut outbox_conn,
+            "platform.user_joined",
+            &event_data,
+            blockchain_event.map(|e| e.event_id.as_str()),
+            blockchain_event.map(|e| e.tx_digest.as_str()),
+        )
+        .await
+        {
+            warn!("Failed to write user joined event to outbox: {}", e);
+        }
+
         info!("Successfully processed user joined platform event");
 
         Ok(())
@@ -1418,6 +1476,24 @@ impl PlatformEventHandler {
                 })
             })
             .await?;
+
+        // Write to relay outbox for notifications - notify platform moderators/owners (outside transaction)
+        let mut outbox_conn = self.get_connection().await?;
+        let event_data = serde_json::json!({
+            "platform_id": event.platform_id,
+            "profile_id": event.profile_id,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut outbox_conn,
+            "platform.user_left",
+            &event_data,
+            blockchain_event.map(|e| e.event_id.as_str()),
+            blockchain_event.map(|e| e.tx_digest.as_str()),
+        )
+        .await
+        {
+            warn!("Failed to write user left event to outbox: {}", e);
+        }
 
         info!("Successfully processed user left platform event");
 

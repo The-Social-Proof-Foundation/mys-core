@@ -7,6 +7,7 @@ pub mod config;
 pub mod db;
 pub mod events;
 pub mod models;
+pub mod relay_outbox;
 pub mod schema;
 
 use once_cell::sync::OnceCell;

@@ -7,7 +7,6 @@ pub use routes::build_router;
 
 use anyhow::Result;
 use axum::http::Method;
-use axum_server::bind;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
@@ -46,8 +45,9 @@ impl ApiServer {
 
         info!("Starting API server on {}", self.addr);
 
-        // Start the server
-        bind(self.addr).serve(app.into_make_service()).await?;
+        // Start the server using axum::serve (standard in axum 0.7)
+        let listener = tokio::net::TcpListener::bind(self.addr).await?;
+        axum::serve(listener, app).await?;
 
         Ok(())
     }

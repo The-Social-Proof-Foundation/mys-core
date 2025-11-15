@@ -119,6 +119,23 @@ impl SocialGraphEventHandler {
             .execute(&mut conn)
             .await?;
 
+        // Write to relay outbox for notifications
+        let event_data = serde_json::json!({
+            "follower_address": event.follower,
+            "following_address": event.following,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut conn,
+            "follow.created",
+            &event_data,
+            blockchain_event.map(|e| e.event_id.as_str()),
+            blockchain_event.map(|e| e.tx_digest.as_str()),
+        )
+        .await
+        {
+            warn!("Failed to write follow event to outbox: {}", e);
+        }
+
         // Update the follower's following_count (+1)
         // First try to update by profile_id, then by owner_address if no rows affected
         let follower_updated = diesel::update(schema::profiles::table)
@@ -193,6 +210,23 @@ impl SocialGraphEventHandler {
             .values(&event_log)
             .execute(&mut conn)
             .await?;
+
+        // Write to relay outbox for notifications
+        let event_data = serde_json::json!({
+            "follower_address": event.follower,
+            "unfollowed_address": event.unfollowed,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut conn,
+            "unfollow.created",
+            &event_data,
+            blockchain_event.map(|e| e.event_id.as_str()),
+            blockchain_event.map(|e| e.tx_digest.as_str()),
+        )
+        .await
+        {
+            warn!("Failed to write unfollow event to outbox: {}", e);
+        }
 
         // Update the follower's following_count (-1)
         // First try to update by profile_id, then by owner_address if no rows affected

@@ -515,6 +515,25 @@ impl ProfileEventListener {
                     "Creating new wallet {}: claimed_amount=0, remaining_balance={}",
                     event.wallet_id, new_wallet.total_amount
                 );
+                
+                // Write to relay outbox for notifications (new wallet created)
+                let event_data = serde_json::json!({
+                    "wallet_id": event.wallet_id,
+                    "owner_address": event.owner,
+                    "total_amount": event.total_amount,
+                });
+                if let Err(e) = crate::relay_outbox::write_notification_event(
+                    &mut conn,
+                    "vesting_wallet.created",
+                    &event_data,
+                    None,
+                    Some(transaction_id),
+                )
+                .await
+                {
+                    warn!("Failed to write vesting wallet created event to outbox: {}", e);
+                }
+                
                 (new_wallet.claimed_amount, new_wallet.remaining_balance)
             }
             Err(e) => {

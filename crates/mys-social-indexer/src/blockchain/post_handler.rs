@@ -1597,6 +1597,25 @@ async fn handle_post_created(
         }
     }
 
+    // Write to relay outbox for notifications
+    // Note: Post created events may trigger notifications for followers
+    let event_data = serde_json::json!({
+        "post_id": parsed_event.post_id,
+        "post_owner": parsed_event.owner,
+        "profile_id": parsed_event.profile_id,
+    });
+    if let Err(e) = crate::relay_outbox::write_notification_event(
+        &mut conn,
+        "post.created",
+        &event_data,
+        Some(&parsed_event.post_id),
+        Some(transaction_id),
+    )
+    .await
+    {
+        warn!("Failed to write post created event to outbox: {}", e);
+    }
+
     info!("Processed PostCreatedEvent successfully");
     Ok(())
 }
@@ -1646,6 +1665,32 @@ async fn handle_comment_created(
         ))
         .execute(&mut conn)
         .await?;
+
+    // Write to relay outbox for notifications
+    if let Ok(post_owner) = posts::table
+        .filter(posts::post_id.eq(&parsed_event.post_id))
+        .select(posts::owner)
+        .first::<String>(&mut conn)
+        .await
+    {
+        let event_data = serde_json::json!({
+            "post_id": parsed_event.post_id,
+            "post_owner": post_owner,
+            "commenter": parsed_event.owner,
+            "comment_id": parsed_event.comment_id,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut conn,
+            "comment.created",
+            &event_data,
+            Some(&parsed_event.comment_id),
+            Some(transaction_id),
+        )
+        .await
+        {
+            warn!("Failed to write comment to outbox: {}", e);
+        }
+    }
 
     info!("Processed CommentCreatedEvent successfully");
     Ok(())
@@ -1705,6 +1750,32 @@ async fn handle_reaction(db: &Arc<Database>, event: &MysEvent, transaction_id: &
             .await?;
     }
 
+    // Write to relay outbox for notifications
+    if let Ok(post_owner) = posts::table
+        .filter(posts::post_id.eq(&parsed_event.object_id))
+        .select(posts::owner)
+        .first::<String>(&mut conn)
+        .await
+    {
+        let event_data = serde_json::json!({
+            "post_id": parsed_event.object_id,
+            "post_owner": post_owner,
+            "reactor": parsed_event.user_address,
+            "reaction": parsed_event.reaction_text,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut conn,
+            "reaction.created",
+            &event_data,
+            Some(&format!("{}:{}", parsed_event.object_id, parsed_event.user_address)),
+            Some(transaction_id),
+        )
+        .await
+        {
+            warn!("Failed to write reaction to outbox: {}", e);
+        }
+    }
+
     info!("Processed ReactionEvent successfully");
     Ok(())
 }
@@ -1755,6 +1826,32 @@ async fn handle_repost(db: &Arc<Database>, event: &MysEvent, transaction_id: &st
             .set(posts::repost_count.eq(posts::repost_count + 1))
             .execute(&mut conn)
             .await?;
+
+        // Write to relay outbox for notifications - notify original post owner
+        if let Ok(post_owner) = posts::table
+            .filter(posts::post_id.eq(&parsed_event.original_id))
+            .select(posts::owner)
+            .first::<String>(&mut conn)
+            .await
+        {
+            let event_data = serde_json::json!({
+                "post_id": parsed_event.original_id,
+                "post_owner": post_owner,
+                "reposter": parsed_event.owner,
+                "repost_id": parsed_event.repost_id,
+            });
+            if let Err(e) = crate::relay_outbox::write_notification_event(
+                &mut conn,
+                "repost.created",
+                &event_data,
+                Some(&parsed_event.repost_id),
+                Some(transaction_id),
+            )
+            .await
+            {
+                warn!("Failed to write repost event to outbox: {}", e);
+            }
+        }
     } else {
         diesel::update(comments::table)
             .filter(comments::comment_id.eq(&parsed_event.original_id))
@@ -1817,6 +1914,26 @@ async fn handle_tip(db: &Arc<Database>, event: &MysEvent, transaction_id: &str) 
         .values(&unified_revenue)
         .execute(&mut conn)
         .await?;
+
+    // Write to relay outbox for notifications - notify recipient
+    let event_data = serde_json::json!({
+        "object_id": parsed_event.object_id,
+        "recipient": parsed_event.to,
+        "tipper": parsed_event.from,
+        "amount": parsed_event.amount,
+        "is_post": parsed_event.is_post,
+    });
+    if let Err(e) = crate::relay_outbox::write_notification_event(
+        &mut conn,
+        "tip.created",
+        &event_data,
+        Some(&format!("{}:{}", parsed_event.object_id, parsed_event.from)),
+        Some(transaction_id),
+    )
+    .await
+    {
+        warn!("Failed to write tip event to outbox: {}", e);
+    }
 
     info!("Processed TipEvent with revenue tracking successfully");
     Ok(())
@@ -2092,7 +2209,7 @@ async fn handle_comment_updated(
 async fn handle_ownership_transfer(
     db: &Arc<Database>,
     event: &MysEvent,
-    _transaction_id: &str,
+    transaction_id: &str,
 ) -> Result<()> {
     info!("Processing OwnershipTransferEvent");
 
@@ -2108,6 +2225,25 @@ async fn handle_ownership_transfer(
             .set(posts::owner.eq(&parsed_event.new_owner))
             .execute(&mut conn)
             .await?;
+
+        // Write to relay outbox for notifications - notify new owner
+        let event_data = serde_json::json!({
+            "object_id": parsed_event.object_id,
+            "previous_owner": parsed_event.previous_owner,
+            "new_owner": parsed_event.new_owner,
+            "is_post": true,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut conn,
+            "ownership.transferred",
+            &event_data,
+            Some(&parsed_event.object_id),
+            Some(transaction_id),
+        )
+        .await
+        {
+            warn!("Failed to write ownership transfer event to outbox: {}", e);
+        }
     } else {
         // Update comment ownership
         diesel::update(comments::table)
@@ -2145,9 +2281,9 @@ async fn handle_prediction_created(
 
 /// Handle prediction bet placed event
 async fn handle_prediction_bet_placed(
-    _db: &Arc<Database>,
+    db: &Arc<Database>,
     event: &MysEvent,
-    _transaction_id: &str,
+    transaction_id: &str,
 ) -> Result<()> {
     info!("Processing PredictionBetPlacedEvent");
 
@@ -2159,6 +2295,34 @@ async fn handle_prediction_bet_placed(
         parsed_event.post_id, parsed_event.user, parsed_event.option_id, parsed_event.amount
     );
 
+    // Write to relay outbox for notifications - notify post owner
+    let mut conn = db.get_connection().await?;
+    if let Ok(post_owner) = posts::table
+        .filter(posts::post_id.eq(&parsed_event.post_id))
+        .select(posts::owner)
+        .first::<String>(&mut conn)
+        .await
+    {
+        let event_data = serde_json::json!({
+            "post_id": parsed_event.post_id,
+            "post_owner": post_owner,
+            "bettor": parsed_event.user,
+            "option_id": parsed_event.option_id,
+            "amount": parsed_event.amount,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut conn,
+            "prediction.bet_placed",
+            &event_data,
+            Some(&format!("{}:{}", parsed_event.post_id, parsed_event.user)),
+            Some(transaction_id),
+        )
+        .await
+        {
+            warn!("Failed to write prediction bet event to outbox: {}", e);
+        }
+    }
+
     // Log prediction bets for analytics
     // Future: Could store in a predictions_bets table if needed
     Ok(())
@@ -2166,9 +2330,9 @@ async fn handle_prediction_bet_placed(
 
 /// Handle prediction resolved event
 async fn handle_prediction_resolved(
-    _db: &Arc<Database>,
+    db: &Arc<Database>,
     event: &MysEvent,
-    _transaction_id: &str,
+    transaction_id: &str,
 ) -> Result<()> {
     info!("Processing PredictionResolvedEvent");
 
@@ -2184,16 +2348,45 @@ async fn handle_prediction_resolved(
         parsed_event.resolved_by
     );
 
+    // Write to relay outbox for notifications - notify post owner
+    let mut conn = db.get_connection().await?;
+    if let Ok(post_owner) = posts::table
+        .filter(posts::post_id.eq(&parsed_event.post_id))
+        .select(posts::owner)
+        .first::<String>(&mut conn)
+        .await
+    {
+        let event_data = serde_json::json!({
+            "post_id": parsed_event.post_id,
+            "post_owner": post_owner,
+            "winning_option_id": parsed_event.winning_option_id,
+            "total_bet_amount": parsed_event.total_bet_amount,
+            "winning_amount": parsed_event.winning_amount,
+            "resolved_by": parsed_event.resolved_by,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut conn,
+            "prediction.resolved",
+            &event_data,
+            Some(&parsed_event.post_id),
+            Some(transaction_id),
+        )
+        .await
+        {
+            warn!("Failed to write prediction resolved event to outbox: {}", e);
+        }
+    }
+
     // Log prediction resolution for analytics
-    // Future: Could update a predictions table with resolution status
+    // Note: Individual bettors will be notified via prediction.payout events
     Ok(())
 }
 
 /// Handle prediction payout event
 async fn handle_prediction_payout(
-    _db: &Arc<Database>,
+    db: &Arc<Database>,
     event: &MysEvent,
-    _transaction_id: &str,
+    transaction_id: &str,
 ) -> Result<()> {
     info!("Processing PredictionPayoutEvent");
 
@@ -2204,6 +2397,25 @@ async fn handle_prediction_payout(
         "Prediction payout: post_id={}, user={}, amount={}",
         parsed_event.post_id, parsed_event.user, parsed_event.amount
     );
+
+    // Write to relay outbox for notifications - notify recipient
+    let mut conn = db.get_connection().await?;
+    let event_data = serde_json::json!({
+        "post_id": parsed_event.post_id,
+        "recipient": parsed_event.user,
+        "amount": parsed_event.amount,
+    });
+    if let Err(e) = crate::relay_outbox::write_notification_event(
+        &mut conn,
+        "prediction.payout",
+        &event_data,
+        Some(&format!("{}:{}", parsed_event.post_id, parsed_event.user)),
+        Some(transaction_id),
+    )
+    .await
+    {
+        warn!("Failed to write prediction payout event to outbox: {}", e);
+    }
 
     // Log prediction payouts for analytics
     // Future: Could track payouts in a predictions_payouts table

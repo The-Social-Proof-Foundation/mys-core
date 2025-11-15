@@ -155,6 +155,27 @@ impl SocialProofTokenHandler {
             .execute(&mut conn)
             .await?;
 
+        // Write to relay outbox for notifications - notify pool owner
+        let event_data = serde_json::json!({
+            "pool_id": buy_event.id,
+            "pool_owner": latest_pool.owner,
+            "buyer": buy_event.buyer,
+            "amount": buy_event.amount,
+            "mys_amount": buy_event.mys_amount,
+            "new_price": buy_event.new_price,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut conn,
+            "spt.token_bought",
+            &event_data,
+            Some(&format!("{}:{}", buy_event.id, buy_event.buyer)),
+            Some(&event.tx_digest),
+        )
+        .await
+        {
+            warn!("Failed to write token bought event to outbox: {}", e);
+        }
+
         // Update progress tracking
         self.update_progress().await?;
 
@@ -243,6 +264,27 @@ impl SocialProofTokenHandler {
             .values(&new_token_pool)
             .execute(&mut conn)
             .await?;
+
+        // Write to relay outbox for notifications - notify pool owner
+        let event_data = serde_json::json!({
+            "pool_id": sell_event.id,
+            "pool_owner": latest_pool.owner,
+            "seller": sell_event.seller,
+            "amount": sell_event.amount,
+            "mys_amount": sell_event.mys_amount,
+            "new_price": sell_event.new_price,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            &mut conn,
+            "spt.token_sold",
+            &event_data,
+            Some(&format!("{}:{}", sell_event.id, sell_event.seller)),
+            Some(&event.tx_digest),
+        )
+        .await
+        {
+            warn!("Failed to write token sold event to outbox: {}", e);
+        }
 
         // Update progress tracking
         self.update_progress().await?;
@@ -521,6 +563,60 @@ impl SocialProofTokenHandler {
                 .values(&new_pool)
                 .execute(&mut conn)
                 .await?;
+        }
+
+        // Write to relay outbox for notifications - notify associated post/profile owner
+        // Extract owner from associated_id (e.g., "post_0x123" -> get post owner, "profile_0x456" -> get profile owner)
+        let associated_owner = if reservation_event.associated_id.starts_with("post_") {
+            // Extract post_id and get owner
+            let post_id = reservation_event.associated_id.replace("post_", "");
+            if let Ok(post_owner) = crate::schema::posts::table
+                .filter(crate::schema::posts::post_id.eq(&post_id))
+                .select(crate::schema::posts::owner)
+                .first::<String>(&mut conn)
+                .await
+            {
+                Some(post_owner)
+            } else {
+                None
+            }
+        } else if reservation_event.associated_id.starts_with("profile_") {
+            // Extract profile_id and get owner
+            let profile_id = reservation_event.associated_id.replace("profile_", "");
+            if let Ok(profile_owner) = crate::schema::profiles::table
+                .filter(crate::schema::profiles::profile_id.eq(&profile_id))
+                .select(crate::schema::profiles::owner_address)
+                .first::<String>(&mut conn)
+                .await
+            {
+                Some(profile_owner)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        if let Some(owner) = associated_owner {
+            let event_data = serde_json::json!({
+                "associated_id": reservation_event.associated_id,
+                "associated_owner": owner,
+                "reserver": reservation_event.reserver,
+                "amount": reservation_event.amount,
+                "total_reserved": reservation_event.total_reserved,
+                "threshold_met": reservation_event.threshold_met,
+            });
+            if let Err(e) = crate::relay_outbox::write_notification_event(
+                &mut conn,
+                "spt.reservation_created",
+                &event_data,
+                Some(&format!("{}:{}", reservation_event.associated_id, reservation_event.reserver)),
+                Some(&event.tx_digest),
+            )
+            .await
+            {
+                warn!("Failed to write reservation created event to outbox: {}", e);
+            }
         }
 
         // Update progress tracking
@@ -854,6 +950,25 @@ impl SocialProofTokenHandler {
                 .values(&updated_pool)
                 .execute(&mut conn)
                 .await?;
+
+            // Write to relay outbox for notifications - notify pool owner
+            let event_data = serde_json::json!({
+                "pool_id": tokens_added_event.pool_id,
+                "pool_owner": pool.owner,
+                "recipient": tokens_added_event.owner,
+                "amount": tokens_added_event.amount,
+            });
+            if let Err(e) = crate::relay_outbox::write_notification_event(
+                &mut conn,
+                "spt.tokens_added",
+                &event_data,
+                Some(&format!("{}:{}", tokens_added_event.pool_id, tokens_added_event.owner)),
+                Some(&event.tx_digest),
+            )
+            .await
+            {
+                warn!("Failed to write tokens added event to outbox: {}", e);
+            }
         }
 
         // Update progress tracking

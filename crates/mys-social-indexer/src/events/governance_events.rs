@@ -6,7 +6,7 @@ use chrono::Utc;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use serde_json::Value;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::db::query_types::{DelegateVoteResult, ProposalTypeResult};
 use crate::db::DbConnection;
@@ -437,6 +437,26 @@ pub async fn process_proposal_submitted_event(
         .execute(conn)
         .await?;
 
+    // Write to relay outbox for notifications - notify delegates/platform admins
+    // Note: Proposal submissions are important for governance participants
+    let event_data = serde_json::json!({
+        "proposal_id": proposal_event.id,
+        "submitter": proposal_event.submitter,
+        "title": proposal_event.title,
+        "proposal_type": proposal_event.proposal_type,
+    });
+    if let Err(e) = crate::relay_outbox::write_notification_event(
+        conn,
+        "governance.proposal_submitted",
+        &event_data,
+        Some(&proposal_event.id),
+        Some(event_id),
+    )
+    .await
+    {
+        warn!("Failed to write proposal submitted event to outbox: {}", e);
+    }
+
     Ok(())
 }
 
@@ -738,14 +758,16 @@ pub async fn process_proposal_rejected_event(
 
     // Parse the event
     let rejected_event = parse_json_event::<ProposalRejectedEvent>(event)?;
+    let proposal_id = rejected_event.proposal_id.clone();
 
     // Begin transaction
     conn.build_transaction()
         .run(|tx_conn| {
+            let proposal_id = proposal_id.clone();
             Box::pin(async move {
                 // Update proposal status
                 diesel::update(crate::schema::proposals::table)
-                    .filter(crate::schema::proposals::id.eq(&rejected_event.proposal_id))
+                    .filter(crate::schema::proposals::id.eq(&proposal_id))
                     .set(crate::schema::proposals::status.eq(GOVERNANCE_STATUS_REJECTED as i16))
                     .execute(tx_conn)
                     .await?;
@@ -761,7 +783,7 @@ pub async fn process_proposal_rejected_event(
                     WHERE dv.proposal_id = $1
                 ",
                 )
-                .bind::<diesel::sql_types::Text, _>(&rejected_event.proposal_id)
+                .bind::<diesel::sql_types::Text, _>(&proposal_id)
                 .load::<DelegateVoteResult>(tx_conn)
                 .await?;
 
@@ -793,7 +815,7 @@ pub async fn process_proposal_rejected_event(
                 // We need to get the proposal type from the proposal
                 let proposal_type_query =
                     diesel::sql_query("SELECT proposal_type FROM proposals WHERE id = $1")
-                        .bind::<diesel::sql_types::Text, _>(&rejected_event.proposal_id)
+                        .bind::<diesel::sql_types::Text, _>(&proposal_id)
                         .load::<ProposalTypeResult>(tx_conn)
                         .await?;
 
@@ -814,7 +836,7 @@ pub async fn process_proposal_rejected_event(
                 } else {
                     error!(
                         "Failed to find proposal type for proposal ID: {}",
-                        rejected_event.proposal_id
+                        proposal_id
                     );
                 }
 
@@ -824,6 +846,31 @@ pub async fn process_proposal_rejected_event(
             })
         })
         .await?;
+
+    // Write to relay outbox for notifications - notify proposal submitter
+    // Get submitter from proposal
+    if let Ok(submitter) = crate::schema::proposals::table
+        .filter(crate::schema::proposals::id.eq(&proposal_id))
+        .select(crate::schema::proposals::submitter)
+        .first::<String>(conn)
+        .await
+    {
+        let event_data = serde_json::json!({
+            "proposal_id": proposal_id,
+            "submitter": submitter,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            conn,
+            "governance.proposal_rejected",
+            &event_data,
+            Some(&proposal_id),
+            Some(event_id),
+        )
+        .await
+        {
+            warn!("Failed to write proposal rejected event to outbox: {}", e);
+        }
+    }
 
     Ok(())
 }
@@ -926,14 +973,16 @@ pub async fn process_proposal_rejected_by_community_event(
 
     // Parse the event
     let rejected_event = parse_json_event::<ProposalRejectedByCommunityEvent>(event)?;
+    let proposal_id = rejected_event.proposal_id.clone();
 
     // Begin transaction
     conn.build_transaction()
         .run(|tx_conn| {
+            let proposal_id = proposal_id.clone();
             Box::pin(async move {
                 // Update proposal status
                 diesel::update(crate::schema::proposals::table)
-                    .filter(crate::schema::proposals::id.eq(&rejected_event.proposal_id))
+                    .filter(crate::schema::proposals::id.eq(&proposal_id))
                     .set((
                         crate::schema::proposals::status.eq(GOVERNANCE_STATUS_REJECTED as i16),
                         crate::schema::proposals::community_votes_for.eq(rejected_event.votes_for as i64),
@@ -951,7 +1000,7 @@ pub async fn process_proposal_rejected_by_community_event(
                     WHERE dv.proposal_id = $1
                 ",
                 )
-                .bind::<diesel::sql_types::Text, _>(&rejected_event.proposal_id)
+                .bind::<diesel::sql_types::Text, _>(&proposal_id)
                 .load::<DelegateVoteResult>(tx_conn)
                 .await?;
 
@@ -983,7 +1032,7 @@ pub async fn process_proposal_rejected_by_community_event(
                 // Record this event in the governance_events table
                 let proposal_type_query =
                     diesel::sql_query("SELECT proposal_type FROM proposals WHERE id = $1")
-                        .bind::<diesel::sql_types::Text, _>(&rejected_event.proposal_id)
+                        .bind::<diesel::sql_types::Text, _>(&proposal_id)
                         .load::<ProposalTypeResult>(tx_conn)
                         .await?;
 
@@ -1004,7 +1053,7 @@ pub async fn process_proposal_rejected_by_community_event(
                 } else {
                     error!(
                         "Failed to find proposal type for proposal ID: {}",
-                        rejected_event.proposal_id
+                        proposal_id
                     );
                 }
 
@@ -1014,6 +1063,33 @@ pub async fn process_proposal_rejected_by_community_event(
             })
         })
         .await?;
+
+    // Write to relay outbox for notifications - notify proposal submitter
+    // Get submitter from proposal
+    if let Ok(submitter) = crate::schema::proposals::table
+        .filter(crate::schema::proposals::id.eq(&proposal_id))
+        .select(crate::schema::proposals::submitter)
+        .first::<String>(conn)
+        .await
+    {
+        let event_data = serde_json::json!({
+            "proposal_id": proposal_id,
+            "submitter": submitter,
+            "votes_for": rejected_event.votes_for,
+            "votes_against": rejected_event.votes_against,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            conn,
+            "governance.proposal_rejected_by_community",
+            &event_data,
+            Some(&proposal_id),
+            Some(event_id),
+        )
+        .await
+        {
+            warn!("Failed to write proposal rejected by community event to outbox: {}", e);
+        }
+    }
 
     Ok(())
 }
@@ -1028,14 +1104,16 @@ pub async fn process_proposal_approved_event(
 
     // Parse the event
     let approved_event = parse_json_event::<ProposalApprovedEvent>(event)?;
+    let proposal_id = approved_event.proposal_id.clone();
 
     // Begin transaction
     conn.build_transaction()
         .run(|tx_conn| {
+            let proposal_id = proposal_id.clone();
             Box::pin(async move {
                 // Update proposal status
                 diesel::update(crate::schema::proposals::table)
-                    .filter(crate::schema::proposals::id.eq(&approved_event.proposal_id))
+                    .filter(crate::schema::proposals::id.eq(&proposal_id))
                     .set((
                         crate::schema::proposals::status.eq(GOVERNANCE_STATUS_APPROVED as i16),
                         crate::schema::proposals::community_votes_for.eq(approved_event.votes_for as i64),
@@ -1055,7 +1133,7 @@ pub async fn process_proposal_approved_event(
                     WHERE dv.proposal_id = $1
                 ",
                 )
-                .bind::<diesel::sql_types::Text, _>(&approved_event.proposal_id)
+                .bind::<diesel::sql_types::Text, _>(&proposal_id)
                 .load::<DelegateVoteResult>(tx_conn)
                 .await?;
 
@@ -1086,7 +1164,7 @@ pub async fn process_proposal_approved_event(
                 // We need to get the proposal type from the proposal
                 let proposal_type_query =
                     diesel::sql_query("SELECT proposal_type FROM proposals WHERE id = $1")
-                        .bind::<diesel::sql_types::Text, _>(&approved_event.proposal_id)
+                        .bind::<diesel::sql_types::Text, _>(&proposal_id)
                         .load::<ProposalTypeResult>(tx_conn)
                         .await?;
 
@@ -1107,7 +1185,7 @@ pub async fn process_proposal_approved_event(
                 } else {
                     error!(
                         "Failed to find proposal type for proposal ID: {}",
-                        approved_event.proposal_id
+                        proposal_id
                     );
                 }
 
@@ -1117,6 +1195,33 @@ pub async fn process_proposal_approved_event(
             })
         })
         .await?;
+
+    // Write to relay outbox for notifications - notify proposal submitter
+    // Get submitter from proposal
+    if let Ok(submitter) = crate::schema::proposals::table
+        .filter(crate::schema::proposals::id.eq(&proposal_id))
+        .select(crate::schema::proposals::submitter)
+        .first::<String>(conn)
+        .await
+    {
+        let event_data = serde_json::json!({
+            "proposal_id": proposal_id,
+            "submitter": submitter,
+            "votes_for": approved_event.votes_for,
+            "votes_against": approved_event.votes_against,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            conn,
+            "governance.proposal_approved",
+            &event_data,
+            Some(&proposal_id),
+            Some(event_id),
+        )
+        .await
+        {
+            warn!("Failed to write proposal approved event to outbox: {}", e);
+        }
+    }
 
     Ok(())
 }
@@ -1131,10 +1236,11 @@ pub async fn process_proposal_implemented_event(
 
     // Parse the event
     let implemented_event = parse_json_event::<ProposalImplementedEvent>(event)?;
+    let proposal_id = implemented_event.proposal_id.clone();
 
     // Update proposal status
     let result = diesel::update(crate::schema::proposals::table)
-        .filter(crate::schema::proposals::id.eq(&implemented_event.proposal_id))
+        .filter(crate::schema::proposals::id.eq(&proposal_id))
         .set((
             crate::schema::proposals::status.eq(GOVERNANCE_STATUS_IMPLEMENTED as i16),
             crate::schema::proposals::implementation_time
@@ -1150,11 +1256,37 @@ pub async fn process_proposal_implemented_event(
         result
     );
 
+    // Write to relay outbox for notifications - notify proposal submitter
+    // Get submitter from proposal
+    if let Ok(submitter) = crate::schema::proposals::table
+        .filter(crate::schema::proposals::id.eq(&proposal_id))
+        .select(crate::schema::proposals::submitter)
+        .first::<String>(conn)
+        .await
+    {
+        let event_data = serde_json::json!({
+            "proposal_id": proposal_id,
+            "submitter": submitter,
+            "implementation_time": implemented_event.implementation_time,
+        });
+        if let Err(e) = crate::relay_outbox::write_notification_event(
+            conn,
+            "governance.proposal_implemented",
+            &event_data,
+            Some(&proposal_id),
+            Some(event_id),
+        )
+        .await
+        {
+            warn!("Failed to write proposal implemented event to outbox: {}", e);
+        }
+    }
+
     // Record this event in the governance_events table
     // We need to get the proposal type from the proposal
     let proposal_type_query =
         diesel::sql_query("SELECT proposal_type FROM proposals WHERE id = $1")
-            .bind::<diesel::sql_types::Text, _>(&implemented_event.proposal_id)
+            .bind::<diesel::sql_types::Text, _>(&proposal_id)
             .load::<ProposalTypeResult>(conn)
             .await?;
 
@@ -1175,7 +1307,7 @@ pub async fn process_proposal_implemented_event(
     } else {
         error!(
             "Failed to find proposal type for proposal ID: {}",
-            implemented_event.proposal_id
+            proposal_id
         );
     }
 

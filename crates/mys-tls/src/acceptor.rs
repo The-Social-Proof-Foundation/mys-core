@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::{middleware::AddExtension, Extension};
+#[cfg(feature = "axum-server")]
 use axum_server::{
     accept::Accept,
     tls_rustls::{RustlsAcceptor, RustlsConfig},
@@ -38,19 +39,32 @@ impl TlsConnectionInfo {
 /// An `Acceptor` that will provide `TlsConnectionInfo` as an axum `Extension` for use in handlers.
 #[derive(Debug, Clone)]
 pub struct TlsAcceptor {
+    #[cfg(feature = "axum-server")]
     inner: RustlsAcceptor,
+    #[cfg(not(feature = "axum-server"))]
+    _config: Arc<rustls::ServerConfig>,
 }
 
 impl TlsAcceptor {
     pub fn new(config: rustls::ServerConfig) -> Self {
-        Self {
-            inner: RustlsAcceptor::new(RustlsConfig::from_config(Arc::new(config))),
+        #[cfg(feature = "axum-server")]
+        {
+            Self {
+                inner: RustlsAcceptor::new(RustlsConfig::from_config(Arc::new(config))),
+            }
+        }
+        #[cfg(not(feature = "axum-server"))]
+        {
+            Self {
+                _config: Arc::new(config),
+            }
         }
     }
 }
 
 type BoxFuture<'a, T> = std::pin::Pin<Box<dyn std::future::Future<Output = T> + Send + 'a>>;
 
+#[cfg(feature = "axum-server")]
 impl<I, S> Accept<I, S> for TlsAcceptor
 where
     I: AsyncRead + AsyncWrite + Unpin + Send + 'static,
