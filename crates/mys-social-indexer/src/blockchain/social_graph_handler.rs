@@ -188,15 +188,8 @@ impl SocialGraphEventHandler {
             .execute(&mut conn)
             .await?;
 
-        if deleted_count == 0 {
-            info!(
-                "No follow relationship to remove: {} -> {}",
-                event.follower, event.unfollowed
-            );
-            return Ok(());
-        }
-
         // Log the unfollow event to social_graph_events table
+        // Always log the event even if relationship wasn't found (event happened on-chain)
         let event_log = crate::models::social_graph::NewSocialGraphEvent {
             event_type: "unfollow".to_string(),
             follower_address: event.follower.clone(),
