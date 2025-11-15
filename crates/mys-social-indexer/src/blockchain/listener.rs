@@ -465,6 +465,9 @@ impl BlockchainEventListener {
         // Track consecutive errors to detect stuck state
         let mut consecutive_errors = 0;
         const MAX_CONSECUTIVE_ERRORS: u32 = 5;
+        
+        // Use a mutable reference to client so we can recreate it
+        let mut client = client;
 
         // Poll for events
         loop {
@@ -575,7 +578,29 @@ impl BlockchainEventListener {
                         // If we've hit this error multiple times, recreate the client to reset internal state
                         if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
                             warn!("Too many consecutive errors, recreating client to reset state");
-                            return Err(anyhow!("Stuck on stale transaction events digest, restarting listener"));
+                            
+                            // Recreate the client
+                            match MysClientBuilder::default()
+                                .build(&self.config.blockchain.rpc_url)
+                                .await
+                            {
+                                Ok(new_client) => {
+                                    info!("Successfully recreated client, continuing polling");
+                                    client = new_client;
+                                    consecutive_errors = 0; // Reset error counter
+                                    // Wait a bit before retrying to give the node time to clear stale state
+                                    tokio::time::sleep(Duration::from_secs(5)).await;
+                                }
+                                Err(e) => {
+                                    error!("Failed to recreate client: {}", e);
+                                    // Wait longer before retrying
+                                    tokio::time::sleep(Duration::from_secs(30)).await;
+                                }
+                            }
+                        } else {
+                            // For fewer errors, wait with exponential backoff
+                            let backoff_secs = (consecutive_errors as u64).min(10);
+                            tokio::time::sleep(Duration::from_secs(backoff_secs)).await;
                         }
                     }
                 }
