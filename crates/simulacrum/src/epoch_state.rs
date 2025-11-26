@@ -114,6 +114,7 @@ impl EpochState {
             &receiving_object_refs,
             deny_config,
             &store,
+            &store,
         )?;
 
         let (input_objects, receiving_objects) = store.read_objects_for_synchronous_execution(
