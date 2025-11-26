@@ -13,6 +13,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `VestingWallet`](#social_contracts_profile_VestingWallet)
 -  [Struct `BadgeAssignedEvent`](#social_contracts_profile_BadgeAssignedEvent)
 -  [Struct `BadgeRevokedEvent`](#social_contracts_profile_BadgeRevokedEvent)
+-  [Struct `BadgeSelectedEvent`](#social_contracts_profile_BadgeSelectedEvent)
 -  [Struct `ProfileCreatedEvent`](#social_contracts_profile_ProfileCreatedEvent)
 -  [Struct `ProfileUpdatedEvent`](#social_contracts_profile_ProfileUpdatedEvent)
 -  [Struct `ProfileOfferCreatedEvent`](#social_contracts_profile_ProfileOfferCreatedEvent)
@@ -22,6 +23,8 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `ProfileSaleFeeEvent`](#social_contracts_profile_ProfileSaleFeeEvent)
 -  [Struct `TokensVestedEvent`](#social_contracts_profile_TokensVestedEvent)
 -  [Struct `TokensClaimedEvent`](#social_contracts_profile_TokensClaimedEvent)
+-  [Struct `VestingWalletDeletedEvent`](#social_contracts_profile_VestingWalletDeletedEvent)
+-  [Struct `PaidMessagingSettingsUpdatedEvent`](#social_contracts_profile_PaidMessagingSettingsUpdatedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_profile_bootstrap_init)
 -  [Function `is_reserved_name`](#social_contracts_profile_is_reserved_name)
@@ -41,30 +44,12 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `username`](#social_contracts_profile_username)
 -  [Function `lookup_profile_by_username`](#social_contracts_profile_lookup_profile_by_username)
 -  [Function `lookup_profile_by_owner`](#social_contracts_profile_lookup_profile_by_owner)
--  [Function `is_authorized_service`](#social_contracts_profile_is_authorized_service)
--  [Function `authorize_service`](#social_contracts_profile_authorize_service)
--  [Function `revoke_authorization`](#social_contracts_profile_revoke_authorization)
 -  [Function `get_id_address`](#social_contracts_profile_get_id_address)
 -  [Function `get_owner`](#social_contracts_profile_get_owner)
--  [Function `get_followers_count`](#social_contracts_profile_get_followers_count)
--  [Function `get_post_count`](#social_contracts_profile_get_post_count)
 -  [Function `get_tips_received`](#social_contracts_profile_get_tips_received)
--  [Function `increment_followers_count`](#social_contracts_profile_increment_followers_count)
--  [Function `decrement_followers_count`](#social_contracts_profile_decrement_followers_count)
--  [Function `increment_post_count`](#social_contracts_profile_increment_post_count)
--  [Function `decrement_post_count`](#social_contracts_profile_decrement_post_count)
 -  [Function `add_tips_received`](#social_contracts_profile_add_tips_received)
--  [Function `get_following_count`](#social_contracts_profile_get_following_count)
--  [Function `increment_following_count`](#social_contracts_profile_increment_following_count)
--  [Function `decrement_following_count`](#social_contracts_profile_decrement_following_count)
 -  [Function `create_subscription_service`](#social_contracts_profile_create_subscription_service)
 -  [Function `has_valid_subscription`](#social_contracts_profile_has_valid_subscription)
--  [Function `attach_mydata`](#social_contracts_profile_attach_mydata)
--  [Function `has_mydata_attached`](#social_contracts_profile_has_mydata_attached)
--  [Function `detach_mydata`](#social_contracts_profile_detach_mydata)
--  [Function `get_attached_mydata`](#social_contracts_profile_get_attached_mydata)
--  [Function `batch_attach_mydata`](#social_contracts_profile_batch_attach_mydata)
--  [Function `batch_detach_mydata`](#social_contracts_profile_batch_detach_mydata)
 -  [Function `create_offer`](#social_contracts_profile_create_offer)
 -  [Function `accept_offer`](#social_contracts_profile_accept_offer)
 -  [Function `reject_or_revoke_offer`](#social_contracts_profile_reject_or_revoke_offer)
@@ -82,7 +67,12 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `has_badge`](#social_contracts_profile_has_badge)
 -  [Function `get_badge`](#social_contracts_profile_get_badge)
 -  [Function `get_platform_badges`](#social_contracts_profile_get_platform_badges)
+-  [Function `badge_id`](#social_contracts_profile_badge_id)
 -  [Function `badge_count`](#social_contracts_profile_badge_count)
+-  [Function `set_selected_badge`](#social_contracts_profile_set_selected_badge)
+-  [Function `get_selected_badge_id`](#social_contracts_profile_get_selected_badge_id)
+-  [Function `get_display_badge`](#social_contracts_profile_get_display_badge)
+-  [Function `clear_selected_badge`](#social_contracts_profile_clear_selected_badge)
 -  [Function `vest_myso`](#social_contracts_profile_vest_myso)
 -  [Function `claim_vested_tokens`](#social_contracts_profile_claim_vested_tokens)
 -  [Function `claimable`](#social_contracts_profile_claimable)
@@ -311,24 +301,6 @@ Profile object that contains user information
  Last updated timestamp for profile data
 </dd>
 <dt>
-<code>followers_count: u64</code>
-</dt>
-<dd>
- Number of followers
-</dd>
-<dt>
-<code>following_count: u64</code>
-</dt>
-<dd>
- Number of profiles this user is following
-</dd>
-<dt>
-<code>post_count: u64</code>
-</dt>
-<dd>
- Number of posts created by this profile
-</dd>
-<dt>
 <code>tips_received: u64</code>
 </dt>
 <dd>
@@ -347,10 +319,11 @@ Profile object that contains user information
  Collection of badges assigned to the profile
 </dd>
 <dt>
-<code>attached_mydata_ids: vector&lt;<b>address</b>&gt;</code>
+<code>selected_badge_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
 </dt>
 <dd>
- Vector tracking attached MyData IDs for efficient iteration
+ Badge ID of the selected/primary badge to display (optional)
+ If None, the first badge in the badges vector should be displayed
 </dd>
 <dt>
 <code>min_message_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
@@ -363,6 +336,12 @@ Profile object that contains user information
 </dt>
 <dd>
  Paid messaging: toggle to enable/disable paid messaging
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: u64</code>
+</dt>
+<dd>
+ Version for upgrades
 </dd>
 </dl>
 
@@ -388,7 +367,7 @@ These badges cannot be transferred or sold and stay with the profile
 
 <dl>
 <dt>
-<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
  Unique identifier for the badge (platform ID + badge name)
@@ -533,7 +512,7 @@ Event emitted when a badge is assigned to a profile
  ID of the profile receiving the badge
 </dd>
 <dt>
-<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
  Badge identifier
@@ -597,7 +576,7 @@ Event emitted when a badge is revoked from a profile
  ID of the profile losing the badge
 </dd>
 <dt>
-<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
  Badge identifier
@@ -619,6 +598,52 @@ Event emitted when a badge is revoked from a profile
 </dt>
 <dd>
  Timestamp when revoked
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_BadgeSelectedEvent"></a>
+
+## Struct `BadgeSelectedEvent`
+
+Event emitted when a profile owner selects a badge to display
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_BadgeSelectedEvent">BadgeSelectedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>profile_id: <b>address</b></code>
+</dt>
+<dd>
+ ID of the profile
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+ Badge identifier that was selected
+</dd>
+<dt>
+<code>selected_by: <b>address</b></code>
+</dt>
+<dd>
+ Owner who selected the badge
+</dd>
+<dt>
+<code>selected_at: u64</code>
+</dt>
+<dd>
+ Timestamp when selected
 </dd>
 </dl>
 
@@ -1128,6 +1153,90 @@ Event emitted when vested tokens are claimed
 
 </details>
 
+<a name="social_contracts_profile_VestingWalletDeletedEvent"></a>
+
+## Struct `VestingWalletDeletedEvent`
+
+Event emitted when a vesting wallet is deleted
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWalletDeletedEvent">VestingWalletDeletedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>wallet_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>deleted_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_PaidMessagingSettingsUpdatedEvent"></a>
+
+## Struct `PaidMessagingSettingsUpdatedEvent`
+
+Event emitted when paid messaging settings are updated
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_PaidMessagingSettingsUpdatedEvent">PaidMessagingSettingsUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -1192,15 +1301,6 @@ Event emitted when vested tokens are claimed
 
 
 <pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_EInvalidUsername">EInvalidUsername</a>: u64 = 2;
-</code></pre>
-
-
-
-<a name="social_contracts_profile_ENotAuthorizedService"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_ENotAuthorizedService">ENotAuthorizedService</a>: u64 = 6;
 </code></pre>
 
 
@@ -1278,6 +1378,15 @@ Error codes
 
 
 
+<a name="social_contracts_profile_ESelectedBadgeNotFound"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_ESelectedBadgeNotFound">ESelectedBadgeNotFound</a>: u64 = 18;
+</code></pre>
+
+
+
 <a name="social_contracts_profile_EUnauthorized"></a>
 
 
@@ -1310,15 +1419,6 @@ Error codes
 
 
 <pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a>: u64 = 18446744073709551615;
-</code></pre>
-
-
-
-<a name="social_contracts_profile_MYDATA_FIELD"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>: vector&lt;u8&gt; = vector[109, 121, 100, 97, 116, 97];
 </code></pre>
 
 
@@ -1611,20 +1711,17 @@ This is the main entry point for new users, combining profile and username creat
         github_username: option::none(),
         instagram_username: option::none(),
         <a href="../social_contracts/profile.md#social_contracts_profile_last_updated">last_updated</a>: now,
-        followers_count: 0,
-        following_count: 0,
-        post_count: 0,
         tips_received: 0,
         <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: option::none(),
         badges: vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt;(),
-        attached_mydata_ids: vector::empty&lt;<b>address</b>&gt;(),
+        selected_badge_id: option::none(),
         min_message_cost: option::none(),
         paid_messaging_enabled: <b>false</b>,
+        <a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     // Get the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID
     <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
     // Store the <a href="../social_contracts/profile.md#social_contracts_profile_username">username</a> directly on the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
-    // We'll create the authorized_services table only when needed (lazy initialization)
     <b>if</b> (dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_USERNAME_FIELD">USERNAME_FIELD</a>)) {
         // This should never happen but we check <b>as</b> a safeguard
         <b>abort</b> <a href="../social_contracts/profile.md#social_contracts_profile_EProfileCreateFailed">EProfileCreateFailed</a>
@@ -1761,7 +1858,6 @@ The username stays with the profile, and the transfer updates registry mappings
 ## Function `update_profile`
 
 Only the profile owner can update profile information
-Authorized services (via authorize_read_service) can only read data, never modify it
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_update_profile">update_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, new_display_name: <a href="../std/string.md#std_string_String">std::string::String</a>, new_bio: <a href="../std/string.md#std_string_String">std::string::String</a>, new_profile_picture_url: vector&lt;u8&gt;, new_cover_photo_url: vector&lt;u8&gt;, x_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, mastodon_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, facebook_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, reddit_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, github_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, instagram_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile_min_offer_amount">min_offer_amount</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
@@ -2138,123 +2234,6 @@ Lookup profile ID by owner address
 
 </details>
 
-<a name="social_contracts_profile_is_authorized_service"></a>
-
-## Function `is_authorized_service`
-
-Check if an address is registered in the authorized_services table
-Tests if the address is in the authorized_services table
-Returns false if the address is not authorized or if the authorization table doesn't exist
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_authorized_service">is_authorized_service</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <b>address</b>: <b>address</b>): bool
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_authorized_service">is_authorized_service</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, <b>address</b>: <b>address</b>): bool {
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, b"authorized_services")) {
-        <b>return</b> <b>false</b>
-    };
-    <b>let</b> authorized_services = dynamic_field::borrow&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, String&gt;&gt;(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, b"authorized_services");
-    table::contains(authorized_services, <b>address</b>)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_authorize_service"></a>
-
-## Function `authorize_service`
-
-Add an authorized service to a profile, initializing the table if needed
-Only the profile owner can authorize services
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_authorize_service">authorize_service</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, service_address: <b>address</b>, service_name: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_authorize_service">authorize_service</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    service_address: <b>address</b>,
-    service_name: String,
-    ctx: &<b>mut</b> TxContext
-) {
-    // Verify the sender is the <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> - only <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> can authorize services
-    <b>let</b> sender = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    // Verify service <b>address</b> is not the same <b>as</b> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> (would be redundant)
-    <b>assert</b>!(service_address != <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_ENotAuthorizedService">ENotAuthorizedService</a>);
-    // Create the table <b>if</b> it doesn't exist
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, b"authorized_services")) {
-        <b>let</b> authorized_services = table::new&lt;<b>address</b>, String&gt;(ctx);
-        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, b"authorized_services", authorized_services);
-    };
-    // Get the table and add the service
-    <b>let</b> authorized_services = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, String&gt;&gt;(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, b"authorized_services");
-    // Only add <b>if</b> not already in the table
-    <b>if</b> (!table::contains(authorized_services, service_address)) {
-        table::add(authorized_services, service_address, service_name);
-    };
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_revoke_authorization"></a>
-
-## Function `revoke_authorization`
-
-Remove an authorized service from a profile
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_revoke_authorization">revoke_authorization</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, service_address: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_revoke_authorization">revoke_authorization</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    service_address: <b>address</b>,
-    ctx: &<b>mut</b> TxContext
-) {
-    // Verify the sender is the <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> - only <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> can revoke authorizations
-    <b>let</b> sender = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    // Check <b>if</b> authorized_services table exists
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, b"authorized_services")) {
-        <b>return</b>
-    };
-    // Get the table and remove the service <b>if</b> it exists
-    <b>let</b> authorized_services = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, String&gt;&gt;(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, b"authorized_services");
-    <b>if</b> (table::contains(authorized_services, service_address)) {
-        table::remove(authorized_services, service_address);
-    };
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_profile_get_id_address"></a>
 
 ## Function `get_id_address`
@@ -2305,56 +2284,6 @@ Get the owner of a profile
 
 </details>
 
-<a name="social_contracts_profile_get_followers_count"></a>
-
-## Function `get_followers_count`
-
-Get the followers count for a profile
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_followers_count">get_followers_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_followers_count">get_followers_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_get_post_count"></a>
-
-## Function `get_post_count`
-
-Get the post count for a profile
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_post_count">get_post_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_post_count">get_post_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_profile_get_tips_received"></a>
 
 ## Function `get_tips_received`
@@ -2373,116 +2302,6 @@ Get the tips received for a profile
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_tips_received">get_tips_received</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.tips_received
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_increment_followers_count"></a>
-
-## Function `increment_followers_count`
-
-Increment followers count (called by follow module)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_increment_followers_count">increment_followers_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_increment_followers_count">increment_followers_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count + 1;
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_decrement_followers_count"></a>
-
-## Function `decrement_followers_count`
-
-Decrement followers count (called by follow module)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_decrement_followers_count">decrement_followers_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_decrement_followers_count">decrement_followers_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
-    <b>if</b> (<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count &gt; 0) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count - 1;
-    };
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.followers_count
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_increment_post_count"></a>
-
-## Function `increment_post_count`
-
-Increment post count (called by post module when creating a post)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_increment_post_count">increment_post_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_increment_post_count">increment_post_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count + 1;
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_decrement_post_count"></a>
-
-## Function `decrement_post_count`
-
-Decrement post count (called by post module when deleting a post)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_decrement_post_count">decrement_post_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_decrement_post_count">decrement_post_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
-    <b>if</b> (<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count &gt; 0) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count - 1;
-    };
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.post_count
 }
 </code></pre>
 
@@ -2517,86 +2336,6 @@ Add tips received (called by post/comment module when tipping)
 
 </details>
 
-<a name="social_contracts_profile_get_following_count"></a>
-
-## Function `get_following_count`
-
-Get the following count for a profile
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_following_count">get_following_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_following_count">get_following_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_increment_following_count"></a>
-
-## Function `increment_following_count`
-
-Increment following count (called when this profile follows another profile)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_increment_following_count">increment_following_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_increment_following_count">increment_following_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count + 1;
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_decrement_following_count"></a>
-
-## Function `decrement_following_count`
-
-Decrement following count (called when this profile unfollows another profile)
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_decrement_following_count">decrement_following_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_decrement_following_count">decrement_following_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
-    <b>if</b> (<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count &gt; 0) {
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count - 1;
-    };
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.following_count
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_profile_create_subscription_service"></a>
 
 ## Function `create_subscription_service`
@@ -2604,7 +2343,7 @@ Decrement following count (called when this profile unfollows another profile)
 Create a subscription service for this profile (creates separate service object)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_subscription_service">create_subscription_service</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, monthly_fee: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_subscription_service">create_subscription_service</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, monthly_fee: u64, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2616,11 +2355,12 @@ Create a subscription service for this profile (creates separate service object)
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_create_subscription_service">create_subscription_service</a>(
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
     monthly_fee: u64,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
     // Create the <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> service and share it
-    <a href="../social_contracts/subscription.md#social_contracts_subscription_create_profile_service_entry">subscription::create_profile_service_entry</a>(monthly_fee, ctx);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_create_profile_service_entry">subscription::create_profile_service_entry</a>(monthly_fee, clock, ctx);
 }
 </code></pre>
 
@@ -2650,261 +2390,6 @@ Check if a viewer has a valid subscription (uses subscription module functions)
     clock: &Clock,
 ): bool {
     <a href="../social_contracts/subscription.md#social_contracts_subscription_is_subscription_valid">subscription::is_subscription_valid</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>, service, clock)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_attach_mydata"></a>
-
-## Function `attach_mydata`
-
-Attach MyData to profile for data monetization
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_attach_mydata">attach_mydata</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, mydata_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_attach_mydata">attach_mydata</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    mydata_id: <b>address</b>,
-    ctx: &<b>mut</b> TxContext
-) {
-    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    // Initialize table <b>if</b> it doesn't exist
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>)) {
-        <b>let</b> tbl = table::new&lt;<b>address</b>, bool&gt;(ctx);
-        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>, tbl);
-    };
-    <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
-        &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>,
-    );
-    // Only add <b>if</b> not already attached
-    <b>if</b> (!table::contains(tbl, mydata_id)) {
-        table::add(tbl, mydata_id, <b>true</b>);
-        // Also add to the tracking vector <b>for</b> efficient iteration
-        vector::push_back(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids, mydata_id);
-    };
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_has_mydata_attached"></a>
-
-## Function `has_mydata_attached`
-
-Check if a MyData is attached to this profile
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_mydata_attached">has_mydata_attached</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, mydata_id: <b>address</b>): bool
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_mydata_attached">has_mydata_attached</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, mydata_id: <b>address</b>): bool {
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>)) {
-        <b>return</b> <b>false</b>
-    };
-    <b>let</b> tbl = dynamic_field::borrow&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
-        &<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>,
-    );
-    table::contains(tbl, mydata_id)
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_detach_mydata"></a>
-
-## Function `detach_mydata`
-
-Remove a MyData attachment from the profile
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_detach_mydata">detach_mydata</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, mydata_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_detach_mydata">detach_mydata</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    mydata_id: <b>address</b>,
-    ctx: &<b>mut</b> TxContext
-) {
-    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>)) {
-        <b>return</b>
-    };
-    <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
-        &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>,
-    );
-    <b>if</b> (table::contains(tbl, mydata_id)) {
-        table::remove(tbl, mydata_id);
-        // Also remove from the tracking vector
-        <b>let</b> <b>mut</b> i = 0;
-        <b>let</b> len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids);
-        <b>while</b> (i &lt; len) {
-            <b>if</b> (*vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids, i) == mydata_id) {
-                vector::remove(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids, i);
-                <b>break</b>
-            };
-            i = i + 1;
-        };
-    };
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_get_attached_mydata"></a>
-
-## Function `get_attached_mydata`
-
-Get all attached MyData IDs for this profile
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_attached_mydata">get_attached_mydata</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): vector&lt;<b>address</b>&gt;
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_attached_mydata">get_attached_mydata</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): vector&lt;<b>address</b>&gt; {
-    // Return a <b>copy</b> of the attached MyData IDs vector <b>for</b> efficient iteration
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_batch_attach_mydata"></a>
-
-## Function `batch_attach_mydata`
-
-Batch attach multiple MyData to profile for gas optimization
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_attach_mydata">batch_attach_mydata</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, mydata_ids: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_attach_mydata">batch_attach_mydata</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    mydata_ids: vector&lt;<b>address</b>&gt;,
-    ctx: &<b>mut</b> TxContext
-) {
-    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    // Initialize table <b>if</b> it doesn't exist
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>)) {
-        <b>let</b> tbl = table::new&lt;<b>address</b>, bool&gt;(ctx);
-        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>, tbl);
-    };
-    <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
-        &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>,
-    );
-    <b>let</b> <b>mut</b> i = 0;
-    <b>let</b> len = vector::length(&mydata_ids);
-    <b>while</b> (i &lt; len) {
-        <b>let</b> mydata_id = *vector::borrow(&mydata_ids, i);
-        // Only add <b>if</b> not already attached
-        <b>if</b> (!table::contains(tbl, mydata_id)) {
-            table::add(tbl, mydata_id, <b>true</b>);
-            vector::push_back(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids, mydata_id);
-        };
-        i = i + 1;
-    };
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_profile_batch_detach_mydata"></a>
-
-## Function `batch_detach_mydata`
-
-Batch detach multiple MyData from profile for gas optimization
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_detach_mydata">batch_detach_mydata</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, mydata_ids: vector&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_batch_detach_mydata">batch_detach_mydata</a>(
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    mydata_ids: vector&lt;<b>address</b>&gt;,
-    ctx: &<b>mut</b> TxContext
-) {
-    <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
-    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>, <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>)) {
-        <b>return</b>
-    };
-    <b>let</b> tbl = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, Table&lt;<b>address</b>, bool&gt;&gt;(
-        &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
-        <a href="../social_contracts/profile.md#social_contracts_profile_MYDATA_FIELD">MYDATA_FIELD</a>,
-    );
-    <b>let</b> <b>mut</b> i = 0;
-    <b>let</b> len = vector::length(&mydata_ids);
-    <b>while</b> (i &lt; len) {
-        <b>let</b> mydata_id = *vector::borrow(&mydata_ids, i);
-        <b>if</b> (table::contains(tbl, mydata_id)) {
-            table::remove(tbl, mydata_id);
-            // Remove from tracking vector
-            <b>let</b> <b>mut</b> j = 0;
-            <b>let</b> vec_len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids);
-            <b>while</b> (j &lt; vec_len) {
-                <b>if</b> (*vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids, j) == mydata_id) {
-                    vector::remove(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.attached_mydata_ids, j);
-                    <b>break</b>
-                };
-                j = j + 1;
-            };
-        };
-        i = i + 1;
-    };
 }
 </code></pre>
 
@@ -3115,7 +2600,7 @@ Transfers tokens to the profile owner and profile ownership to the offeror
 
 Reject or revoke an offer on a profile
 Can be called by the profile owner to reject or the offeror to revoke
-Returns locked MYSO tokens to the offeror
+Returns locked MYSO tokenv s to the offeror
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_reject_or_revoke_offer">reject_or_revoke_offer</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, offeror: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
@@ -3399,7 +2884,7 @@ Adds a badge to a profile - called by platform module
 This function trusts the caller has done authorization checks
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_add_badge_to_profile">add_badge_to_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_image_url: <a href="../std/string.md#std_string_String">std::string::String</a>, platform_id: <b>address</b>, timestamp: u64, issuer: <b>address</b>, badge_type: u8)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_add_badge_to_profile">add_badge_to_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_image_url: <a href="../std/string.md#std_string_String">std::string::String</a>, platform_id: <b>address</b>, timestamp: u64, issuer: <b>address</b>, badge_type: u8)
 </code></pre>
 
 
@@ -3410,7 +2895,7 @@ This function trusts the caller has done authorization checks
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_add_badge_to_profile">add_badge_to_profile</a>(
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    badge_id: String,
+    <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: String,
     badge_name: String,
     badge_description: String,
     badge_image_url: String,
@@ -3421,7 +2906,7 @@ This function trusts the caller has done authorization checks
 ) {
     // Create the new badge
     <b>let</b> badge = <a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a> {
-        badge_id: badge_id,
+        <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>,
         name: badge_name,
         description: badge_description,
         image_url: badge_image_url,
@@ -3435,17 +2920,21 @@ This function trusts the caller has done authorization checks
     <b>let</b> len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges);
     <b>while</b> (i &lt; len) {
         <b>let</b> existing_badge = vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges, i);
-        <b>if</b> (string::as_bytes(&existing_badge.badge_id) == string::as_bytes(&badge_id)) {
+        <b>if</b> (string::as_bytes(&existing_badge.<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>) == string::as_bytes(&<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
             <b>abort</b> <a href="../social_contracts/profile.md#social_contracts_profile_EBadgeAlreadyExists">EBadgeAlreadyExists</a>
         };
         i = i + 1;
     };
     // Add the badge to the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     vector::push_back(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges, badge);
+    // If no badge is currently selected and this is the first badge, auto-select it
+    <b>if</b> (option::is_none(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id) && vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges) == 1) {
+        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id = option::some(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>);
+    };
     // Emit badge assigned event
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_BadgeAssignedEvent">BadgeAssignedEvent</a> {
         profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
-        badge_id: badge_id,
+        <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>,
         name: badge_name,
         platform_id,
         assigned_by: issuer,
@@ -3467,7 +2956,7 @@ Removes a badge from a profile - called by platform module
 This function trusts the caller has done authorization checks
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">remove_badge_from_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: &<a href="../std/string.md#std_string_String">std::string::String</a>, platform_id: <b>address</b>, revoker: <b>address</b>, timestamp: u64)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">remove_badge_from_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &<a href="../std/string.md#std_string_String">std::string::String</a>, platform_id: <b>address</b>, revoker: <b>address</b>, timestamp: u64)
 </code></pre>
 
 
@@ -3478,7 +2967,7 @@ This function trusts the caller has done authorization checks
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">remove_badge_from_profile</a>(
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
-    badge_id: &String,
+    <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &String,
     platform_id: <b>address</b>,
     revoker: <b>address</b>,
     timestamp: u64
@@ -3489,16 +2978,23 @@ This function trusts the caller has done authorization checks
     <b>let</b> len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges);
     <b>while</b> (i &lt; len) {
         <b>let</b> badge = vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges, i);
-        <b>if</b> (string::as_bytes(&badge.badge_id) == string::as_bytes(badge_id)) {
+        <b>if</b> (string::as_bytes(&badge.<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>) == string::as_bytes(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
             // Ensure badge was issued by this <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
             <b>assert</b>!(badge.platform_id == platform_id, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
             // Remove the badge at this index
             vector::remove(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges, i);
             found = <b>true</b>;
+            // If the removed badge was the selected badge, clear the selection
+            <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id)) {
+                <b>let</b> selected_id = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id);
+                <b>if</b> (string::as_bytes(selected_id) == string::as_bytes(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
+                    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id = option::none();
+                };
+            };
             // Emit badge revoked event
             event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_BadgeRevokedEvent">BadgeRevokedEvent</a> {
                 profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
-                badge_id: *badge_id,
+                <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: *<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>,
                 platform_id,
                 revoked_by: revoker,
                 revoked_at: timestamp,
@@ -3548,7 +3044,7 @@ Get all badges associated with a profile
 Check if a profile has a specific badge
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_badge">has_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: &<a href="../std/string.md#std_string_String">std::string::String</a>): bool
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_badge">has_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &<a href="../std/string.md#std_string_String">std::string::String</a>): bool
 </code></pre>
 
 
@@ -3557,12 +3053,12 @@ Check if a profile has a specific badge
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_badge">has_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, badge_id: &String): bool {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_has_badge">has_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &String): bool {
     <b>let</b> <b>mut</b> i = 0;
     <b>let</b> len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges);
     <b>while</b> (i &lt; len) {
         <b>let</b> badge = vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges, i);
-        <b>if</b> (string::as_bytes(&badge.badge_id) == string::as_bytes(badge_id)) {
+        <b>if</b> (string::as_bytes(&badge.<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>) == string::as_bytes(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
             <b>return</b> <b>true</b>
         };
         i = i + 1;
@@ -3582,7 +3078,7 @@ Check if a profile has a specific badge
 Get a specific badge from a profile by badge ID
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_badge">get_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: &<a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">social_contracts::profile::ProfileBadge</a>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_badge">get_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &<a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">social_contracts::profile::ProfileBadge</a>&gt;
 </code></pre>
 
 
@@ -3591,12 +3087,12 @@ Get a specific badge from a profile by badge ID
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_badge">get_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, badge_id: &String): Option&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt; {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_badge">get_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &String): Option&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt; {
     <b>let</b> <b>mut</b> i = 0;
     <b>let</b> len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges);
     <b>while</b> (i &lt; len) {
         <b>let</b> badge = vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges, i);
-        <b>if</b> (string::as_bytes(&badge.badge_id) == string::as_bytes(badge_id)) {
+        <b>if</b> (string::as_bytes(&badge.<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>) == string::as_bytes(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
             <b>return</b> option::some(*badge)
         };
         i = i + 1;
@@ -3644,11 +3140,36 @@ Get badges issued by a specific platform
 
 </details>
 
+<a name="social_contracts_profile_badge_id"></a>
+
+## Function `badge_id`
+
+Count the number of badges a profile has
+Get the badge ID from a ProfileBadge
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>(badge: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">social_contracts::profile::ProfileBadge</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>(badge: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>): String {
+    badge.<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_profile_badge_count"></a>
 
 ## Function `badge_count`
 
-Count the number of badges a profile has
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_badge_count">badge_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): u64
@@ -3662,6 +3183,175 @@ Count the number of badges a profile has
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_badge_count">badge_count</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): u64 {
     vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_set_selected_badge"></a>
+
+## Function `set_selected_badge`
+
+Set the selected badge to display for a profile (owner only)
+The badge must exist in the profile's badges collection
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_set_selected_badge">set_selected_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_set_selected_badge">set_selected_badge</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: String,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    // Verify sender is the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    // Verify the badge exists in the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>'s badges
+    <b>let</b> <b>mut</b> badge_exists = <b>false</b>;
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> len = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges);
+    <b>while</b> (i &lt; len) {
+        <b>let</b> badge = vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges, i);
+        <b>if</b> (string::as_bytes(&badge.<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>) == string::as_bytes(&<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)) {
+            badge_exists = <b>true</b>;
+            <b>break</b>
+        };
+        i = i + 1;
+    };
+    <b>assert</b>!(badge_exists, <a href="../social_contracts/profile.md#social_contracts_profile_ESelectedBadgeNotFound">ESelectedBadgeNotFound</a>);
+    // Set the selected badge
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id = option::some(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>);
+    // Emit badge selected event
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_BadgeSelectedEvent">BadgeSelectedEvent</a> {
+        profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
+        <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>,
+        selected_by: sender,
+        selected_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_get_selected_badge_id"></a>
+
+## Function `get_selected_badge_id`
+
+Get the selected badge ID for a profile
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_selected_badge_id">get_selected_badge_id</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_selected_badge_id">get_selected_badge_id</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): Option&lt;String&gt; {
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_get_display_badge"></a>
+
+## Function `get_display_badge`
+
+Get the badge that should be displayed for a profile
+Returns the selected badge if one is set, otherwise returns the first badge
+Returns None if the profile has no badges
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_display_badge">get_display_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">social_contracts::profile::ProfileBadge</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_get_display_badge">get_display_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>): Option&lt;<a href="../social_contracts/profile.md#social_contracts_profile_ProfileBadge">ProfileBadge</a>&gt; {
+    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_badge_count">badge_count</a> = vector::length(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges);
+    // If no badges exist, <b>return</b> None
+    <b>if</b> (<a href="../social_contracts/profile.md#social_contracts_profile_badge_count">badge_count</a> == 0) {
+        <b>return</b> option::none()
+    };
+    // If a badge is selected, find and <b>return</b> it
+    <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id)) {
+        <b>let</b> selected_id = option::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id);
+        <b>let</b> <b>mut</b> i = 0;
+        <b>while</b> (i &lt; <a href="../social_contracts/profile.md#social_contracts_profile_badge_count">badge_count</a>) {
+            <b>let</b> badge = vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges, i);
+            <b>if</b> (string::as_bytes(&badge.<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>) == string::as_bytes(selected_id)) {
+                <b>return</b> option::some(*badge)
+            };
+            i = i + 1;
+        };
+    };
+    // If no badge is selected or selected badge not found, <b>return</b> the first badge
+    option::some(*vector::borrow(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges, 0))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_clear_selected_badge"></a>
+
+## Function `clear_selected_badge`
+
+Clear the selected badge (owner only)
+After clearing, the first badge will be displayed by default
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_clear_selected_badge">clear_selected_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_clear_selected_badge">clear_selected_badge</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    // Verify sender is the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    // Only clear <b>if</b> a badge is currently selected
+    <b>if</b> (option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id)) {
+        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id = option::none();
+        // Emit badge selected event with empty <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a> to indicate clearing
+        // Note: We'll <b>use</b> an empty string to indicate clearing
+        event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_BadgeSelectedEvent">BadgeSelectedEvent</a> {
+            profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
+            <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: string::utf8(b""), // Empty string indicates clearing
+            selected_by: sender,
+            selected_at: clock::timestamp_ms(clock),
+        });
+    };
 }
 </code></pre>
 
@@ -3888,7 +3578,12 @@ Internal function to calculate claimable amount
     // Convert back to total <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a> amount
     <b>let</b> total_claimable = ((wallet.total_amount <b>as</b> u128) * curved_progress) / (<a href="../social_contracts/profile.md#social_contracts_profile_CURVE_PRECISION">CURVE_PRECISION</a> <b>as</b> u128);
     // Subtract already claimed amount to get newly <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a> amount
-    <b>let</b> newly_claimable = (total_claimable <b>as</b> u64) - wallet.claimed_amount;
+    <b>let</b> total_claimable_u64 = total_claimable <b>as</b> u64;
+    <b>let</b> newly_claimable = <b>if</b> (total_claimable_u64 &gt;= wallet.claimed_amount) {
+        total_claimable_u64 - wallet.claimed_amount
+    } <b>else</b> {
+        0
+    };
     // Ensure we don't exceed the remaining balance
     <b>let</b> remaining_balance = balance::value(&wallet.balance);
     <b>if</b> (newly_claimable &gt; remaining_balance) {
@@ -3947,7 +3642,7 @@ Delete an empty vesting wallet
 Can only be called when the wallet balance is zero
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_vesting_wallet">delete_vesting_wallet</a>(wallet: <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_vesting_wallet">delete_vesting_wallet</a>(wallet: <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3956,10 +3651,12 @@ Can only be called when the wallet balance is zero
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_vesting_wallet">delete_vesting_wallet</a>(wallet: <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_vesting_wallet">delete_vesting_wallet</a>(wallet: <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, clock: &Clock, ctx: &<b>mut</b> TxContext) {
     <b>let</b> sender = tx_context::sender(ctx);
     // Verify sender is the wallet <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
     <b>assert</b>!(wallet.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_ENotVestingWalletOwner">ENotVestingWalletOwner</a>);
+    <b>let</b> wallet_id = object::uid_to_address(&wallet.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = wallet.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>;
     <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a> {
         <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
         balance,
@@ -3970,6 +3667,12 @@ Can only be called when the wallet balance is zero
         total_amount: _,
         curve_factor: _
     } = wallet;
+    // Emit wallet deleted event before deletion
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_VestingWalletDeletedEvent">VestingWalletDeletedEvent</a> {
+        wallet_id,
+        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
+        deleted_at: clock::timestamp_ms(clock),
+    });
     // Delete the wallet ID
     object::delete(<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
     // Destroy the empty balance
@@ -4163,7 +3866,7 @@ Get the curve factor of a vesting wallet
 Set paid messaging settings for a profile (owner only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_set_paid_messaging_settings">set_paid_messaging_settings</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, enabled: bool, min_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_set_paid_messaging_settings">set_paid_messaging_settings</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, enabled: bool, min_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4176,12 +3879,21 @@ Set paid messaging settings for a profile (owner only)
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
     enabled: bool,
     min_cost: Option&lt;u64&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> sender = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.paid_messaging_enabled = enabled;
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.min_message_cost = min_cost;
+    // Emit paid messaging settings updated event
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_PaidMessagingSettingsUpdatedEvent">PaidMessagingSettingsUpdatedEvent</a> {
+        profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
+        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: sender,
+        enabled,
+        min_cost,
+        updated_at: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 

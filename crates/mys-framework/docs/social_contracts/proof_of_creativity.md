@@ -489,6 +489,16 @@ Event emitted when oracle submits analysis results
 </dt>
 <dd>
 </dd>
+<dt>
+<code>reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -1068,11 +1078,29 @@ Dispute status constants
 
 
 
+<a name="social_contracts_proof_of_creativity_EInvalidEvidenceUrls"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidEvidenceUrls">EInvalidEvidenceUrls</a>: u64 = 20;
+</code></pre>
+
+
+
 <a name="social_contracts_proof_of_creativity_EInvalidMediaType"></a>
 
 
 
 <pre><code><b>const</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidMediaType">EInvalidMediaType</a>: u64 = 7;
+</code></pre>
+
+
+
+<a name="social_contracts_proof_of_creativity_EInvalidReasoning"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidReasoning">EInvalidReasoning</a>: u64 = 19;
 </code></pre>
 
 
@@ -1155,6 +1183,25 @@ Error codes
 
 
 <pre><code><b>const</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EWrongVersion">EWrongVersion</a>: u64 = 11;
+</code></pre>
+
+
+
+<a name="social_contracts_proof_of_creativity_MAX_EVIDENCE_URLS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>: u64 = 10;
+</code></pre>
+
+
+
+<a name="social_contracts_proof_of_creativity_MAX_REASONING_LENGTH"></a>
+
+Validation constants
+
+
+<pre><code><b>const</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>: u64 = 5000;
 </code></pre>
 
 
@@ -1341,9 +1388,10 @@ Update PoC configuration (admin only)
 SINGLE ENTRY POINT: Oracle analyzes content and updates post PoC status
 This is the ONLY function the PoC server needs to call
 Automatically updates token pool if it exists
+Reasoning and evidence URLs are optional for transparency and accountability
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_analyze_and_update_post">analyze_and_update_post</a>(config: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">social_contracts::proof_of_creativity::PoCConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCRegistry">social_contracts::proof_of_creativity::PoCRegistry</a>, token_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, media_type: u8, highest_similarity_score: u64, original_creator: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_analyze_and_update_post">analyze_and_update_post</a>(config: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">social_contracts::proof_of_creativity::PoCConfig</a>, registry: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCRegistry">social_contracts::proof_of_creativity::PoCRegistry</a>, token_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, media_type: u8, highest_similarity_score: u64, original_creator: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1360,6 +1408,8 @@ Automatically updates token pool if it exists
     media_type: u8,
     highest_similarity_score: u64,
     <b>mut</b> original_creator: Option&lt;<b>address</b>&gt;,
+    reasoning: Option&lt;String&gt;,
+    evidence_urls: Option&lt;vector&lt;String&gt;&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> caller = tx_context::sender(ctx);
@@ -1374,6 +1424,17 @@ Automatically updates token pool if it exists
         media_type == <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MEDIA_TYPE_AUDIO">MEDIA_TYPE_AUDIO</a>,
         <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidMediaType">EInvalidMediaType</a>
     );
+    // Validate reasoning <b>if</b> provided
+    <b>if</b> (option::is_some(&reasoning)) {
+        <b>let</b> reasoning_val = option::borrow(&reasoning);
+        <b>let</b> reasoning_len = string::length(reasoning_val);
+        <b>assert</b>!(reasoning_len &lt;= <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidReasoning">EInvalidReasoning</a>);
+    };
+    // Validate evidence URLs array <b>if</b> provided
+    <b>if</b> (option::is_some(&evidence_urls)) {
+        <b>let</b> urls = option::borrow(&evidence_urls);
+        <b>assert</b>!(vector::length(urls) &lt;= <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidEvidenceUrls">EInvalidEvidenceUrls</a>);
+    };
     // Get threshold <b>for</b> this media type
     <b>let</b> threshold = <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_get_threshold_for_media_type">get_threshold_for_media_type</a>(config, media_type);
     // Determine <b>if</b> similarity exceeds threshold and original creator exists
@@ -1431,7 +1492,7 @@ Automatically updates token pool if it exists
             timestamp,
         });
     };
-    // Emit analysis event
+    // Emit analysis event with reasoning and evidence URLs
     event::emit(<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_AnalysisSubmittedEvent">AnalysisSubmittedEvent</a> {
         post_id,
         media_type,
@@ -1439,6 +1500,8 @@ Automatically updates token pool if it exists
         highest_similarity_score,
         oracle_address: caller,
         timestamp,
+        reasoning,
+        evidence_urls,
     });
     // Automatically update token pool <b>if</b> it exists
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_update_token_pool_if_exists">update_token_pool_if_exists</a>(token_registry, <a href="../social_contracts/post.md#social_contracts_post">post</a>, ctx);

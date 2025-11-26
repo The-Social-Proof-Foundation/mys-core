@@ -20,6 +20,7 @@ Manages social media platforms and their timelines
 -  [Struct `UserJoinedPlatformEvent`](#social_contracts_platform_UserJoinedPlatformEvent)
 -  [Struct `UserLeftPlatformEvent`](#social_contracts_platform_UserLeftPlatformEvent)
 -  [Struct `TokenAirdropEvent`](#social_contracts_platform_TokenAirdropEvent)
+-  [Struct `TreasuryFundedEvent`](#social_contracts_platform_TreasuryFundedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_platform_bootstrap_init)
 -  [Function `create_platform`](#social_contracts_platform_create_platform)
@@ -738,6 +739,11 @@ Platform approval status changed event
 </dt>
 <dd>
 </dd>
+<dt>
+<code>reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -879,6 +885,53 @@ Event emitted when tokens are airdropped from the platform treasury
 
 </details>
 
+<a name="social_contracts_platform_TreasuryFundedEvent"></a>
+
+## Struct `TreasuryFundedEvent`
+
+Event emitted when tokens are added to platform treasury
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_TreasuryFundedEvent">TreasuryFundedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>platform_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>funded_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_balance: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -911,6 +964,33 @@ Event emitted when tokens are airdropped from the platform treasury
 
 
 
+<a name="social_contracts_platform_EBadgeDescriptionTooLong"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeDescriptionTooLong">EBadgeDescriptionTooLong</a>: u64 = 12;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_EBadgeImageUrlTooLong"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeImageUrlTooLong">EBadgeImageUrlTooLong</a>: u64 = 13;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_EBadgeNameTooLong"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeNameTooLong">EBadgeNameTooLong</a>: u64 = 11;
+</code></pre>
+
+
+
 <a name="social_contracts_platform_EEmptyRecipientsList"></a>
 
 
@@ -925,6 +1005,24 @@ Event emitted when tokens are airdropped from the platform treasury
 
 
 <pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EInsufficientTreasuryFunds">EInsufficientTreasuryFunds</a>: u64 = 8;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_EInvalidBadgeType"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EInvalidBadgeType">EInvalidBadgeType</a>: u64 = 10;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_EInvalidReasoning"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EInvalidReasoning">EInvalidReasoning</a>: u64 = 14;
 </code></pre>
 
 
@@ -989,6 +1087,44 @@ Error codes
 
 
 <pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_JOINED_PROFILES_FIELD">JOINED_PROFILES_FIELD</a>: vector&lt;u8&gt; = vector[106, 111, 105, 110, 101, 100, 95, 112, 114, 111, 102, 105, 108, 101, 115];
+</code></pre>
+
+
+
+<a name="social_contracts_platform_MAX_BADGE_DESCRIPTION_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_DESCRIPTION_LENGTH">MAX_BADGE_DESCRIPTION_LENGTH</a>: u64 = 500;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_MAX_BADGE_IMAGE_URL_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_IMAGE_URL_LENGTH">MAX_BADGE_IMAGE_URL_LENGTH</a>: u64 = 2048;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_MAX_BADGE_NAME_LENGTH"></a>
+
+Maximum lengths for badge fields
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_NAME_LENGTH">MAX_BADGE_NAME_LENGTH</a>: u64 = 100;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_MAX_REASONING_LENGTH"></a>
+
+Maximum length for approval reasoning
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>: u64 = 2000;
 </code></pre>
 
 
@@ -1284,8 +1420,8 @@ Create a new platform and transfer to developer
         // Store registry ID in the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
         <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a> = option::some(registry_id);
     };
-    // Transfer <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> to <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>
-    transfer::transfer(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>);
+    // Share <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>as</b> a shared object (publicly accessible)
+    transfer::share_object(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
 }
 </code></pre>
 
@@ -1485,6 +1621,8 @@ Add MYS tokens to platform treasury
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check version compatibility
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> or moderator
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
@@ -1493,6 +1631,16 @@ Add MYS tokens to platform treasury
     // Split coin and add to treasury
     <b>let</b> treasury_coin = coin::split(coin, amount, ctx);
     balance::join(&<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.treasury, coin::into_balance(treasury_coin));
+    // Emit treasury funded event
+    <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+    <b>let</b> new_balance = balance::value(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.treasury);
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_TreasuryFundedEvent">TreasuryFundedEvent</a> {
+        platform_id,
+        amount,
+        funded_by: caller,
+        new_balance,
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
+    });
 }
 </code></pre>
 
@@ -1521,6 +1669,8 @@ Add a moderator to a platform
     moderator_address: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check version compatibility
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> == caller, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
@@ -1564,6 +1714,8 @@ Remove a moderator from a platform
     moderator_address: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check version compatibility
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> == caller, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
@@ -1609,6 +1761,8 @@ Block a profile from the platform
     profile_id: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check version compatibility
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> or moderator
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
@@ -1657,6 +1811,8 @@ Unblock a profile from the platform
     profile_id: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check version compatibility
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> or moderator
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
@@ -1689,9 +1845,10 @@ Unblock a profile from the platform
 ## Function `toggle_platform_approval`
 
 Toggle platform approval status (requires PlatformAdminCap only)
+Optional reasoning can be provided to explain the decision
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_toggle_platform_approval">toggle_platform_approval</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, platform_id: <b>address</b>, _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_toggle_platform_approval">toggle_platform_approval</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, platform_id: <b>address</b>, _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1704,6 +1861,7 @@ Toggle platform approval status (requires PlatformAdminCap only)
     registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
     platform_id: <b>address</b>,
     _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a>,
+    reasoning: Option&lt;String&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check version compatibility
@@ -1711,16 +1869,22 @@ Toggle platform approval status (requires PlatformAdminCap only)
     // Admin capability verification is handled by type system
     // Verify the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> exists in the registry
     <b>assert</b>!(table::contains(&registry.platform_approvals, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    // Validate reasoning length <b>if</b> provided
+    <b>if</b> (option::is_some(&reasoning)) {
+        <b>let</b> reasoning_val = option::borrow(&reasoning);
+        <b>assert</b>!(string::length(reasoning_val) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EInvalidReasoning">EInvalidReasoning</a>);
+    };
     // Get current approval <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a> and toggle it
     <b>let</b> current_approval = *table::borrow(&registry.platform_approvals, platform_id);
     <b>let</b> new_approval = !current_approval;
     // Update the approval <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a> in the registry
     *table::borrow_mut(&<b>mut</b> registry.platform_approvals, platform_id) = new_approval;
-    // Emit approval <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a> changed event
+    // Emit approval <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a> changed event with reasoning
     event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_PlatformApprovalChangedEvent">PlatformApprovalChangedEvent</a> {
         platform_id,
         approved: new_approval,
         changed_by: tx_context::sender(ctx),
+        reasoning,
     });
 }
 </code></pre>
@@ -2715,7 +2879,7 @@ Assign a badge to a profile - can only be called by platform admin/moderator
 This is the primary entry point for badge assignment
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_badge">assign_badge</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_image_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_badge">assign_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_image_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2725,6 +2889,7 @@ This is the primary entry point for badge assignment
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_badge">assign_badge</a>(
+    platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">profile::Profile</a>,
     badge_name: String,
@@ -2733,15 +2898,28 @@ This is the primary entry point for badge assignment
     badge_type: u8,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check version compatibility
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> admin or moderator
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    // Get <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> ID
+    // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    // Validate badge type (1-100 <b>as</b> documented)
+    <b>assert</b>!(badge_type &gt;= 1 && badge_type &lt;= 100, <a href="../social_contracts/platform.md#social_contracts_platform_EInvalidBadgeType">EInvalidBadgeType</a>);
+    // Validate badge field lengths
+    <b>assert</b>!(string::length(&badge_name) &gt; 0 && string::length(&badge_name) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_NAME_LENGTH">MAX_BADGE_NAME_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeNameTooLong">EBadgeNameTooLong</a>);
+    <b>assert</b>!(string::length(&badge_description) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_DESCRIPTION_LENGTH">MAX_BADGE_DESCRIPTION_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeDescriptionTooLong">EBadgeDescriptionTooLong</a>);
+    <b>assert</b>!(string::length(&badge_image_url) &gt; 0 && string::length(&badge_image_url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_IMAGE_URL_LENGTH">MAX_BADGE_IMAGE_URL_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeImageUrlTooLong">EBadgeImageUrlTooLong</a>);
     // Get current time
     <b>let</b> now = tx_context::epoch(ctx);
-    // Create a unique badge ID
+    // Create a unique badge ID by including <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> ID to prevent collisions
     <b>let</b> <b>mut</b> badge_id = string::utf8(b"badge_");
+    // Convert <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> ID to hex string and append to ensure uniqueness
+    <b>let</b> platform_id_str = <a href="../mys/address.md#mys_address_to_string">mys::address::to_string</a>(platform_id);
+    string::append(&<b>mut</b> badge_id, platform_id_str);
+    string::append(&<b>mut</b> badge_id, string::utf8(b"_"));
     string::append(&<b>mut</b> badge_id, badge_name);
     // Add the badge directly to the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
     <a href="../social_contracts/profile.md#social_contracts_profile_add_badge_to_profile">profile::add_badge_to_profile</a>(
@@ -2770,7 +2948,7 @@ Revoke a badge from a profile - can only be called by platform admin/moderator
 This is the primary entry point for badge revocation
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_badge">revoke_badge</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_badge">revoke_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2780,16 +2958,20 @@ This is the primary entry point for badge revocation
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_badge">revoke_badge</a>(
+    platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">profile::Profile</a>,
     badge_id: String,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check version compatibility
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> admin or moderator
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    // Get <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> ID
+    // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
     <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
     // Get current time
     <b>let</b> now = tx_context::epoch(ctx);
     // Remove the badge directly from the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>

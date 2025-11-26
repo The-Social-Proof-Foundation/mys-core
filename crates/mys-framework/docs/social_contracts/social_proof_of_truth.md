@@ -17,6 +17,8 @@ pro-rata payouts from the total escrow pool.
 -  [Struct `SpotDaoRequiredEvent`](#social_contracts_social_proof_of_truth_SpotDaoRequiredEvent)
 -  [Struct `SpotPayoutEvent`](#social_contracts_social_proof_of_truth_SpotPayoutEvent)
 -  [Struct `SpotRefundEvent`](#social_contracts_social_proof_of_truth_SpotRefundEvent)
+-  [Struct `SpotConfigUpdatedEvent`](#social_contracts_social_proof_of_truth_SpotConfigUpdatedEvent)
+-  [Struct `SpotRecordCreatedEvent`](#social_contracts_social_proof_of_truth_SpotRecordCreatedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `get_status`](#social_contracts_social_proof_of_truth_get_status)
 -  [Function `get_total_yes_escrow`](#social_contracts_social_proof_of_truth_get_total_yes_escrow)
@@ -391,6 +393,16 @@ Events
 </dt>
 <dd>
 </dd>
+<dt>
+<code>reasoning: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>evidence_urls: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -419,6 +431,11 @@ Events
 </dd>
 <dt>
 <code>confidence_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reasoning: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
 </dd>
@@ -491,6 +508,128 @@ Events
 </dd>
 <dt>
 <code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_SpotConfigUpdatedEvent"></a>
+
+## Struct `SpotConfigUpdatedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfigUpdatedEvent">SpotConfigUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>enable_flag: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>confidence_threshold_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>resolution_window_epochs: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_resolution_window_epochs: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>payout_delay_epochs: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>fee_split_bps_platform: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>platform_treasury: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>chain_treasury: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>oracle_address: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_single_bet: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_SpotRecordCreatedEvent"></a>
+
+## Struct `SpotRecordCreatedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecordCreatedEvent">SpotRecordCreatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>record_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_epoch: u64</code>
 </dt>
 <dd>
 </dd>
@@ -596,6 +735,15 @@ Errors
 
 
 
+<a name="social_contracts_social_proof_of_truth_EInvalidReasoning"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>: u64 = 10;
+</code></pre>
+
+
+
 <a name="social_contracts_social_proof_of_truth_ENoBets"></a>
 
 
@@ -650,12 +798,40 @@ Errors
 
 
 
+<a name="social_contracts_social_proof_of_truth_MAX_EVIDENCE_URLS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>: u64 = 10;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_MAX_REASONING_LENGTH"></a>
+
+Validation constants
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>: u64 = 5000;
+</code></pre>
+
+
+
 <a name="social_contracts_social_proof_of_truth_MAX_U64"></a>
 
 Maximum u64 value for overflow protection
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_U64">MAX_U64</a>: u64 = 18446744073709551615;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_MIN_REASONING_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MIN_REASONING_LENGTH">MIN_REASONING_LENGTH</a>: u64 = 10;
 </code></pre>
 
 
@@ -869,7 +1045,7 @@ Status
 Update SPoT configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, confidence_threshold_bps: u64, resolution_window_epochs: u64, max_resolution_window_epochs: u64, payout_delay_epochs: u64, fee_bps: u64, fee_split_bps_platform: u64, platform_treasury: <b>address</b>, chain_treasury: <b>address</b>, oracle_address: <b>address</b>, max_single_bet: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, confidence_threshold_bps: u64, resolution_window_epochs: u64, max_resolution_window_epochs: u64, payout_delay_epochs: u64, fee_bps: u64, fee_split_bps_platform: u64, platform_treasury: <b>address</b>, chain_treasury: <b>address</b>, oracle_address: <b>address</b>, max_single_bet: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -892,7 +1068,7 @@ Update SPoT configuration (admin only)
     chain_treasury: <b>address</b>,
     oracle_address: <b>address</b>,
     max_single_bet: u64,
-    _ctx: &<b>mut</b> TxContext
+    ctx: &<b>mut</b> TxContext
 ) {
     // Basic bounds
     <b>assert</b>!(confidence_threshold_bps &lt;= 10000, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
@@ -908,6 +1084,22 @@ Update SPoT configuration (admin only)
     config.chain_treasury = chain_treasury;
     config.oracle_address = oracle_address;
     config.max_single_bet = max_single_bet;
+    // Emit config updated event
+    event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfigUpdatedEvent">SpotConfigUpdatedEvent</a> {
+        updated_by: tx_context::sender(ctx),
+        enable_flag,
+        confidence_threshold_bps,
+        resolution_window_epochs,
+        max_resolution_window_epochs,
+        payout_delay_epochs,
+        fee_bps,
+        fee_split_bps_platform,
+        platform_treasury,
+        chain_treasury,
+        oracle_address,
+        max_single_bet,
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
+    });
 }
 </code></pre>
 
@@ -949,7 +1141,16 @@ Update SPoT configuration (admin only)
         last_resolution_epoch: 0,
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
+    <b>let</b> record_id = object::uid_to_address(&record.id);
+    <b>let</b> created_epoch = record.created_epoch;
+    <b>let</b> post_id = record.post_id;
     transfer::share_object(record);
+    // Emit record created event
+    event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecordCreatedEvent">SpotRecordCreatedEvent</a> {
+        record_id,
+        post_id,
+        created_epoch,
+    });
 }
 </code></pre>
 
@@ -1030,9 +1231,10 @@ Place bet - all funds go to escrow
 ## Function `oracle_resolve`
 
 Oracle resolution (YES/NO, or too close → DAO_REQUIRED)
+Requires reasoning and at least one evidence URL for transparency and accountability
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_resolve">oracle_resolve</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, outcome_yes: bool, confidence_bps: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_oracle_resolve">oracle_resolve</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, outcome_yes: bool, confidence_bps: u64, reasoning: <a href="../std/string.md#std_string_String">std::string::String</a>, evidence_urls: vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1047,6 +1249,8 @@ Oracle resolution (YES/NO, or too close → DAO_REQUIRED)
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
     outcome_yes: bool,
     confidence_bps: u64,
+    reasoning: String,
+    evidence_urls: vector&lt;String&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(tx_context::sender(ctx) == spot_config.oracle_address, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ENotOracle">ENotOracle</a>);
@@ -1054,14 +1258,27 @@ Oracle resolution (YES/NO, or too close → DAO_REQUIRED)
     // Enforce resolution window
     <b>let</b> now = tx_context::epoch(ctx);
     <b>assert</b>!(now &gt;= record.created_epoch + spot_config.resolution_window_epochs, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>);
+    // Validate reasoning is required and within limits
+    <b>let</b> reasoning_len = string::length(&reasoning);
+    <b>assert</b>!(reasoning_len &gt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MIN_REASONING_LENGTH">MIN_REASONING_LENGTH</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
+    <b>assert</b>!(reasoning_len &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
+    // Validate evidence URLs - at least one required
+    <b>let</b> evidence_urls_len = vector::length(&evidence_urls);
+    <b>assert</b>!(evidence_urls_len &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>); // At least one evidence URL required
+    <b>assert</b>!(evidence_urls_len &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>if</b> (confidence_bps &lt; spot_config.confidence_threshold_bps) {
         record.status = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>;
-        event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotDaoRequiredEvent">SpotDaoRequiredEvent</a> { post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), confidence_bps });
+        event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotDaoRequiredEvent">SpotDaoRequiredEvent</a> {
+            post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+            confidence_bps,
+            reasoning,
+        });
         <b>return</b>
     };
     // Resolve outcome
     <b>let</b> outcome = <b>if</b> (outcome_yes) { <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_OUTCOME_YES">OUTCOME_YES</a> } <b>else</b> { <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_OUTCOME_NO">OUTCOME_NO</a> };
-    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config, record, <a href="../social_contracts/post.md#social_contracts_post">post</a>, outcome, ctx);
+    // Convert required vector to Option <b>for</b> internal function
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config, record, <a href="../social_contracts/post.md#social_contracts_post">post</a>, outcome, reasoning, option::some(evidence_urls), ctx);
 }
 </code></pre>
 
@@ -1074,9 +1291,10 @@ Oracle resolution (YES/NO, or too close → DAO_REQUIRED)
 ## Function `finalize_via_dao`
 
 DAO finalization (YES/NO/DRAW/UNAPPLICABLE)
+Reasoning is optional as it represents culmination of community discussion
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_via_dao">finalize_via_dao</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, outcome: u8, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_via_dao">finalize_via_dao</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, outcome: u8, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1090,11 +1308,30 @@ DAO finalization (YES/NO/DRAW/UNAPPLICABLE)
     record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
     outcome: u8,
+    <b>mut</b> reasoning: Option&lt;String&gt;,
+    evidence_urls: Option&lt;vector&lt;String&gt;&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
     // Allow when DAO_REQUIRED or still OPEN (off-chain DAO direct)
     <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a> || record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
-    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config, record, <a href="../social_contracts/post.md#social_contracts_post">post</a>, outcome, ctx);
+    // Validate reasoning <b>if</b> provided
+    <b>if</b> (option::is_some(&reasoning)) {
+        <b>let</b> reasoning_val = option::borrow(&reasoning);
+        <b>let</b> reasoning_len = string::length(reasoning_val);
+        <b>assert</b>!(reasoning_len &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidReasoning">EInvalidReasoning</a>);
+    };
+    // Validate evidence URLs <b>if</b> provided
+    <b>if</b> (option::is_some(&evidence_urls)) {
+        <b>let</b> urls = option::borrow(&evidence_urls);
+        <b>assert</b>!(vector::length(urls) &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    };
+    // Use provided reasoning or default <a href="../social_contracts/message.md#social_contracts_message">message</a> <b>if</b> not provided
+    <b>let</b> final_reasoning = <b>if</b> (option::is_some(&reasoning)) {
+        option::extract(&<b>mut</b> reasoning)
+    } <b>else</b> {
+        string::utf8(b"DAO resolution based on community discussion")
+    };
+    <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config, record, <a href="../social_contracts/post.md#social_contracts_post">post</a>, outcome, final_reasoning, evidence_urls, ctx);
 }
 </code></pre>
 
@@ -1157,7 +1394,7 @@ Refund all escrow if unresolved beyond max window
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, outcome: u8, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_finalize_resolution_and_payout">finalize_resolution_and_payout</a>(spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, outcome: u8, reasoning: <a href="../std/string.md#std_string_String">std::string::String</a>, evidence_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1171,6 +1408,8 @@ Refund all escrow if unresolved beyond max window
     record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
     outcome: u8,
+    reasoning: String,
+    evidence_urls: Option&lt;vector&lt;String&gt;&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a> || record.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_DAO_REQUIRED">STATUS_DAO_REQUIRED</a>, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>);
@@ -1194,7 +1433,20 @@ Refund all escrow if unresolved beyond max window
         record.status = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_RESOLVED">STATUS_RESOLVED</a>;
         record.outcome = option::some(outcome);
         record.last_resolution_epoch = tx_context::epoch(ctx);
-        event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotResolvedEvent">SpotResolvedEvent</a> { post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), outcome, total_escrow, fee_taken: 0 });
+        // Convert Option to vector <b>for</b> event (<b>use</b> empty vector <b>if</b> None)
+        <b>let</b> evidence_urls_vec = <b>if</b> (option::is_some(&evidence_urls)) {
+            *option::borrow(&evidence_urls)
+        } <b>else</b> {
+            vector::empty&lt;String&gt;()
+        };
+        event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotResolvedEvent">SpotResolvedEvent</a> {
+            post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+            outcome,
+            total_escrow,
+            fee_taken: 0,
+            reasoning,
+            evidence_urls: evidence_urls_vec,
+        });
         <b>return</b>
     };
     <b>let</b> (winning_total, is_yes_winning) = <b>if</b> (outcome == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_OUTCOME_YES">OUTCOME_YES</a>) { (total_yes, <b>true</b>) } <b>else</b> { (total_no, <b>false</b>) };
@@ -1229,7 +1481,20 @@ Refund all escrow if unresolved beyond max window
     record.status = <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_RESOLVED">STATUS_RESOLVED</a>;
     record.outcome = option::some(outcome);
     record.last_resolution_epoch = tx_context::epoch(ctx);
-    event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotResolvedEvent">SpotResolvedEvent</a> { post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), outcome, total_escrow, fee_taken: fee });
+    // Convert Option to vector <b>for</b> event (<b>use</b> empty vector <b>if</b> None)
+    <b>let</b> evidence_urls_vec = <b>if</b> (option::is_some(&evidence_urls)) {
+        *option::borrow(&evidence_urls)
+    } <b>else</b> {
+        vector::empty&lt;String&gt;()
+    };
+    event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotResolvedEvent">SpotResolvedEvent</a> {
+        post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
+        outcome,
+        total_escrow,
+        fee_taken: fee,
+        reasoning,
+        evidence_urls: evidence_urls_vec,
+    });
 }
 </code></pre>
 

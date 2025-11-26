@@ -332,6 +332,8 @@ This is an explicit operation to create a block list, even if not blocking anyon
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_create_block_list_for_sender">create_block_list_for_sender</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>, ctx: &<b>mut</b> TxContext) {
+    // Check <a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/block_list.md#social_contracts_block_list_EWrongVersion">EWrongVersion</a>);
     <b>let</b> sender = tx_context::sender(ctx);
     // Check <b>if</b> a block list already exists <b>for</b> the sender
     <b>if</b> (table::contains(&registry.wallet_block_lists, sender)) {
@@ -439,6 +441,8 @@ Uses the caller's wallet address as the blocker
     blocked_wallet_address: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/block_list.md#social_contracts_block_list_EWrongVersion">EWrongVersion</a>);
     // Get the sender <b>address</b> (wallet <b>address</b> of the blocker)
     <b>let</b> sender = tx_context::sender(ctx);
     // Cannot block self
@@ -514,6 +518,8 @@ Uses the caller's wallet address as the blocker
     blocked_wallet_address: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/block_list.md#social_contracts_block_list_EWrongVersion">EWrongVersion</a>);
     // Get the sender <b>address</b> (wallet <b>address</b> of the blocker)
     <b>let</b> sender = tx_context::sender(ctx);
     // Check <b>if</b> there's a block list <b>for</b> this wallet

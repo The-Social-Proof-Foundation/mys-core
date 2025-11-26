@@ -28,6 +28,8 @@ Features: idempotency, message ordering, replay protection, access control, rate
 -  [Struct `Moderation`](#social_contracts_message_Moderation)
 -  [Struct `Paused`](#social_contracts_message_Paused)
 -  [Struct `VersionSet`](#social_contracts_message_VersionSet)
+-  [Struct `RelayerUpdated`](#social_contracts_message_RelayerUpdated)
+-  [Struct `AdminTransferred`](#social_contracts_message_AdminTransferred)
 -  [Struct `RateLimitsSet`](#social_contracts_message_RateLimitsSet)
 -  [Struct `PaidMessageSent`](#social_contracts_message_PaidMessageSent)
 -  [Struct `PaidMessageReplied`](#social_contracts_message_PaidMessageReplied)
@@ -1041,6 +1043,78 @@ Features: idempotency, message ordering, replay protection, access control, rate
 
 </details>
 
+<a name="social_contracts_message_RelayerUpdated"></a>
+
+## Struct `RelayerUpdated`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/message.md#social_contracts_message_RelayerUpdated">RelayerUpdated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>old_relayer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_relayer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_message_AdminTransferred"></a>
+
+## Struct `AdminTransferred`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/message.md#social_contracts_message_AdminTransferred">AdminTransferred</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>old_admin: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_admin: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>transferred_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_message_RateLimitsSet"></a>
 
 ## Struct `RateLimitsSet`
@@ -1476,6 +1550,15 @@ Features: idempotency, message ordering, replay protection, access control, rate
 
 
 
+<a name="social_contracts_message_E_WRONG_VERSION"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/message.md#social_contracts_message_E_WRONG_VERSION">E_WRONG_VERSION</a>: u64 = 18;
+</code></pre>
+
+
+
 <a name="social_contracts_message_MIN_REPLY_CHARS"></a>
 
 
@@ -1634,7 +1717,14 @@ Update relayer address (admin only)
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(tx_context::sender(ctx) == registry.admin, <a href="../social_contracts/message.md#social_contracts_message_E_NOT_ADMIN">E_NOT_ADMIN</a>);
+    <b>let</b> old_relayer = registry.relayer;
     registry.relayer = new_relayer;
+    // Emit relayer updated event
+    event::emit(<a href="../social_contracts/message.md#social_contracts_message_RelayerUpdated">RelayerUpdated</a> {
+        old_relayer,
+        new_relayer,
+        updated_by: tx_context::sender(ctx),
+    });
 }
 </code></pre>
 
@@ -1725,8 +1815,17 @@ Transfer admin privileges (admin only)
     new_admin: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check version compatibility (<a href="../social_contracts/message.md#social_contracts_message_Registry">Registry</a> uses u32, <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> uses u64)
+    <b>assert</b>!((registry.version <b>as</b> u64) == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/message.md#social_contracts_message_E_WRONG_VERSION">E_WRONG_VERSION</a>);
     <b>assert</b>!(tx_context::sender(ctx) == registry.admin, <a href="../social_contracts/message.md#social_contracts_message_E_NOT_ADMIN">E_NOT_ADMIN</a>);
+    <b>let</b> old_admin = registry.admin;
     registry.admin = new_admin;
+    // Emit admin transferred event
+    event::emit(<a href="../social_contracts/message.md#social_contracts_message_AdminTransferred">AdminTransferred</a> {
+        old_admin,
+        new_admin,
+        transferred_by: tx_context::sender(ctx),
+    });
 }
 </code></pre>
 
@@ -1738,7 +1837,7 @@ Transfer admin privileges (admin only)
 
 ## Function `create_conversation`
 
-Create a new conversation (owned by creator)
+Create a new conversation (shared object, publicly accessible)
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_create_conversation">create_conversation</a>(registry: &<a href="../social_contracts/message.md#social_contracts_message_Registry">social_contracts::message::Registry</a>, kind: u8, <a href="../social_contracts/message.md#social_contracts_message_meta_hash">meta_hash</a>: vector&lt;u8&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
@@ -1791,7 +1890,7 @@ Create a new conversation (owned by creator)
         kind,
         creator: sender,
     });
-    transfer::transfer(conv, sender);
+    transfer::share_object(conv);
 }
 </code></pre>
 
@@ -2100,6 +2199,8 @@ Send a new message with rate limit enforcement
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(!registry.paused, <a href="../social_contracts/message.md#social_contracts_message_E_PAUSED">E_PAUSED</a>);
+    // Note: <a href="../social_contracts/message.md#social_contracts_message_Conversation">Conversation</a> doesn't have version field - this would require structural change
+    // For now, we rely on <a href="../social_contracts/message.md#social_contracts_message_Registry">Registry</a> version check which is checked at creation
     <b>let</b> sender = tx_context::sender(ctx);
     <b>assert</b>!(table::contains(&conv.members, sender), <a href="../social_contracts/message.md#social_contracts_message_E_NOT_MEMBER">E_NOT_MEMBER</a>);
     // Check dedupe
@@ -3036,8 +3137,12 @@ Reply to a paid message and trigger payment release if conditions are met
     <b>assert</b>!(sender == escrow.recipient, <a href="../social_contracts/message.md#social_contracts_message_E_FORBIDDEN">E_FORBIDDEN</a>);
     // Verify payment not already claimed
     <b>assert</b>!(!escrow.claimed, <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_ALREADY_CLAIMED">E_PAYMENT_ALREADY_CLAIMED</a>);
-    // Verify payment not expired
+    // Verify payment not expired (with underflow protection)
     <b>let</b> current_epoch = tx_context::epoch(ctx);
+    // Check <b>for</b> clock issues - <b>if</b> created_epoch is in the future, treat <b>as</b> expired
+    <b>if</b> (current_epoch &lt; escrow.created_epoch) {
+        <b>abort</b> <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_EXPIRED">E_PAYMENT_EXPIRED</a>
+    };
     <b>assert</b>!(current_epoch - escrow.created_epoch &lt;= <a href="../social_contracts/message.md#social_contracts_message_PAYMENT_EXPIRATION_EPOCHS">PAYMENT_EXPIRATION_EPOCHS</a>, <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_EXPIRED">E_PAYMENT_EXPIRED</a>);
     // Check dedupe
     <b>assert</b>!(!table::contains(&conv.used_dedupe, dedupe_key), <a href="../social_contracts/message.md#social_contracts_message_E_DEDUPE_USED">E_DEDUPE_USED</a>);
@@ -3120,9 +3225,9 @@ Claim payment from a replied paid message (internal helper)
     <b>let</b> escrow = table::borrow_mut(&<b>mut</b> conv.paid_msg_escrow, paid_msg_seq);
     <b>assert</b>!(!escrow.claimed, <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_ALREADY_CLAIMED">E_PAYMENT_ALREADY_CLAIMED</a>);
     <b>let</b> total_amount = escrow.amount;
-    // Calculate fees
-    <b>let</b> platform_fee = (total_amount * <a href="../social_contracts/message.md#social_contracts_message_PAID_MSG_PLATFORM_FEE_BPS">PAID_MSG_PLATFORM_FEE_BPS</a>) / 10000;
-    <b>let</b> treasury_fee = (total_amount * <a href="../social_contracts/message.md#social_contracts_message_PAID_MSG_TREASURY_FEE_BPS">PAID_MSG_TREASURY_FEE_BPS</a>) / 10000;
+    // Calculate fees with overflow protection using u128 intermediate values
+    <b>let</b> platform_fee = (((total_amount <b>as</b> u128) * (<a href="../social_contracts/message.md#social_contracts_message_PAID_MSG_PLATFORM_FEE_BPS">PAID_MSG_PLATFORM_FEE_BPS</a> <b>as</b> u128)) / 10000) <b>as</b> u64;
+    <b>let</b> treasury_fee = (((total_amount <b>as</b> u128) * (<a href="../social_contracts/message.md#social_contracts_message_PAID_MSG_TREASURY_FEE_BPS">PAID_MSG_TREASURY_FEE_BPS</a> <b>as</b> u128)) / 10000) <b>as</b> u64;
     <b>let</b> net_amount = total_amount - platform_fee - treasury_fee;
     // Split and distribute payments
     <b>let</b> <b>mut</b> escrow_coin = coin::from_balance(balance::withdraw_all(&<b>mut</b> escrow.escrowed_balance), ctx);
@@ -3188,9 +3293,14 @@ Refund an expired or unclaimed paid message payment
     <b>assert</b>!(sender == escrow.payer, <a href="../social_contracts/message.md#social_contracts_message_E_FORBIDDEN">E_FORBIDDEN</a>);
     // Verify not already claimed
     <b>assert</b>!(!escrow.claimed, <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_ALREADY_CLAIMED">E_PAYMENT_ALREADY_CLAIMED</a>);
-    // Verify payment is expired (&gt;= to include the expiration epoch)
+    // Verify payment is expired (&gt;= to include the expiration epoch) with underflow protection
     <b>let</b> current_epoch = tx_context::epoch(ctx);
-    <b>assert</b>!(current_epoch - escrow.created_epoch &gt;= <a href="../social_contracts/message.md#social_contracts_message_PAYMENT_EXPIRATION_EPOCHS">PAYMENT_EXPIRATION_EPOCHS</a>, <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_EXPIRED">E_PAYMENT_EXPIRED</a>);
+    // Check <b>for</b> clock issues - <b>if</b> created_epoch is in the future, allow refund
+    <b>if</b> (current_epoch &lt; escrow.created_epoch) {
+        // Clock issue - allow refund <b>as</b> a safety measure
+    } <b>else</b> {
+        <b>assert</b>!(current_epoch - escrow.created_epoch &gt;= <a href="../social_contracts/message.md#social_contracts_message_PAYMENT_EXPIRATION_EPOCHS">PAYMENT_EXPIRATION_EPOCHS</a>, <a href="../social_contracts/message.md#social_contracts_message_E_PAYMENT_EXPIRED">E_PAYMENT_EXPIRED</a>);
+    };
     <b>let</b> refund_amount = escrow.amount;
     // Refund the payment
     <b>let</b> refund_coin = coin::from_balance(balance::withdraw_all(&<b>mut</b> escrow.escrowed_balance), ctx);

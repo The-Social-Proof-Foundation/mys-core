@@ -25,9 +25,11 @@ platform, and ecosystem treasury.
 -  [Struct `ReservationCreatedEvent`](#social_contracts_social_proof_tokens_ReservationCreatedEvent)
 -  [Struct `ReservationWithdrawnEvent`](#social_contracts_social_proof_tokens_ReservationWithdrawnEvent)
 -  [Struct `ThresholdMetEvent`](#social_contracts_social_proof_tokens_ThresholdMetEvent)
+-  [Struct `ReservationPoolCreatedEvent`](#social_contracts_social_proof_tokens_ReservationPoolCreatedEvent)
 -  [Struct `ConfigUpdatedEvent`](#social_contracts_social_proof_tokens_ConfigUpdatedEvent)
 -  [Struct `TokensAddedEvent`](#social_contracts_social_proof_tokens_TokensAddedEvent)
 -  [Struct `EmergencyKillSwitchEvent`](#social_contracts_social_proof_tokens_EmergencyKillSwitchEvent)
+-  [Struct `PocRedirectionUpdatedEvent`](#social_contracts_social_proof_tokens_PocRedirectionUpdatedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_social_proof_tokens_bootstrap_init)
 -  [Function `update_social_proof_tokens_config`](#social_contracts_social_proof_tokens_update_social_proof_tokens_config)
@@ -1068,6 +1070,58 @@ Event emitted when reservation threshold is met for the first time
 
 </details>
 
+<a name="social_contracts_social_proof_tokens_ReservationPoolCreatedEvent"></a>
+
+## Struct `ReservationPoolCreatedEvent`
+
+Event emitted when a reservation pool is created
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolCreatedEvent">ReservationPoolCreatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>associated_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>token_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>required_threshold: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>pool_object_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_social_proof_tokens_ConfigUpdatedEvent"></a>
 
 ## Struct `ConfigUpdatedEvent`
@@ -1239,6 +1293,64 @@ Event emitted when emergency kill switch is toggled
 </dt>
 <dd>
  Reason for the action (optional)
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_PocRedirectionUpdatedEvent"></a>
+
+## Struct `PocRedirectionUpdatedEvent`
+
+Event emitted when PoC redirection data is updated for a token pool
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_PocRedirectionUpdatedEvent">PocRedirectionUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>pool_id: <b>address</b></code>
+</dt>
+<dd>
+ Token pool ID
+</dd>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+ Associated post ID
+</dd>
+<dt>
+<code>redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+ Address to redirect revenue to (None if cleared)
+</dd>
+<dt>
+<code>redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+ Percentage of revenue to redirect (None if cleared)
+</dd>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+ Who performed the update
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+ Timestamp of the update
 </dd>
 </dl>
 
@@ -1557,6 +1669,16 @@ Viral threshold not met
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EViralThresholdNotMet">EViralThresholdNotMet</a>: u64 = 13;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_EWrongVersion"></a>
+
+Wrong version - object version mismatch
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>: u64 = 23;
 </code></pre>
 
 
@@ -2153,6 +2275,16 @@ Create a new reservation pool for a post or profile
         reservations: table::new(ctx),
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
+    <b>let</b> pool_object_id = object::uid_to_address(&reservation_pool_object.id);
+    // Emit reservation pool created event
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolCreatedEvent">ReservationPoolCreatedEvent</a> {
+        associated_id,
+        token_type,
+        owner,
+        required_threshold,
+        pool_object_id,
+        created_at: now,
+    });
     transfer::share_object(reservation_pool_object);
 }
 </code></pre>
@@ -2355,6 +2487,8 @@ This function copies PoC data from a post into the corresponding token pool
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &Post,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check version compatibility
+    <b>assert</b>!(pool.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>);
     // Verify this is a <a href="../social_contracts/post.md#social_contracts_post">post</a> token pool
     <b>assert</b>!(pool.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTokenType">EInvalidTokenType</a>);
     // Verify the <a href="../social_contracts/post.md#social_contracts_post">post</a> matches the token pool
@@ -2364,16 +2498,27 @@ This function copies PoC data from a post into the corresponding token pool
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(caller == <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
     // Copy PoC data from <a href="../social_contracts/post.md#social_contracts_post">post</a> to pool
-    pool.poc_redirect_to = <b>if</b> (option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))) {
+    <b>let</b> redirect_to = <b>if</b> (option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))) {
         option::some(*option::borrow(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)))
     } <b>else</b> {
         option::none()
     };
-    pool.poc_redirect_percentage = <b>if</b> (option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">post::get_revenue_redirect_percentage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))) {
+    <b>let</b> redirect_percentage = <b>if</b> (option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">post::get_revenue_redirect_percentage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))) {
         option::some(*option::borrow(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_percentage">post::get_revenue_redirect_percentage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)))
     } <b>else</b> {
         option::none()
     };
+    pool.poc_redirect_to = redirect_to;
+    pool.poc_redirect_percentage = redirect_percentage;
+    // Emit PoC redirection updated event
+    event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_PocRedirectionUpdatedEvent">PocRedirectionUpdatedEvent</a> {
+        pool_id: object::uid_to_address(&pool.id),
+        post_id,
+        redirect_to,
+        redirect_percentage,
+        updated_by: caller,
+        timestamp: tx_context::epoch(ctx),
+    });
 }
 </code></pre>
 
@@ -2567,6 +2712,8 @@ This function handles buying tokens for first-time buyers of a specific token
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check version compatibility
+    <b>assert</b>!(pool.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>);
     // Check <b>if</b> trading is halted
     <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
@@ -2696,6 +2843,8 @@ This function allows users to add to their existing token holdings using MYS Coi
     social_token: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check version compatibility
+    <b>assert</b>!(pool.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>);
     // Check <b>if</b> trading is halted
     <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
@@ -2823,6 +2972,8 @@ Sell tokens back to the pool
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check version compatibility
+    <b>assert</b>!(pool.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>);
     // Check <b>if</b> trading is halted
     <b>assert</b>!(!config.trading_halted, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ETradingHalted">ETradingHalted</a>);
     <b>let</b> seller = tx_context::sender(ctx);

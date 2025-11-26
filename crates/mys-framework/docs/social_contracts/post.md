@@ -18,6 +18,9 @@ Implements features like comments, reposts, quotes, and predictions
 -  [Struct `PostAdminCap`](#social_contracts_post_PostAdminCap)
 -  [Struct `PostConfig`](#social_contracts_post_PostConfig)
 -  [Struct `PostParametersUpdatedEvent`](#social_contracts_post_PostParametersUpdatedEvent)
+-  [Struct `AutoPoolDisabledUpdatedEvent`](#social_contracts_post_AutoPoolDisabledUpdatedEvent)
+-  [Struct `PredictionsEnabledUpdatedEvent`](#social_contracts_post_PredictionsEnabledUpdatedEvent)
+-  [Struct `PredictionFeeUpdatedEvent`](#social_contracts_post_PredictionFeeUpdatedEvent)
 -  [Struct `PostCreatedEvent`](#social_contracts_post_PostCreatedEvent)
 -  [Struct `CommentCreatedEvent`](#social_contracts_post_CommentCreatedEvent)
 -  [Struct `RepostEvent`](#social_contracts_post_RepostEvent)
@@ -53,6 +56,7 @@ Implements features like comments, reposts, quotes, and predictions
 -  [Function `place_prediction_bet`](#social_contracts_post_place_prediction_bet)
 -  [Function `withdraw_prediction_bet`](#social_contracts_post_withdraw_prediction_bet)
 -  [Function `resolve_prediction`](#social_contracts_post_resolve_prediction)
+-  [Function `convert_urls_to_strings`](#social_contracts_post_convert_urls_to_strings)
 -  [Function `create_post_internal`](#social_contracts_post_create_post_internal)
 -  [Function `create_post`](#social_contracts_post_create_post)
 -  [Function `create_comment`](#social_contracts_post_create_comment)
@@ -1009,6 +1013,127 @@ Event emitted when post parameters are updated
 
 </details>
 
+<a name="social_contracts_post_AutoPoolDisabledUpdatedEvent"></a>
+
+## Struct `AutoPoolDisabledUpdatedEvent`
+
+Event emitted when auto pool disabled flag is updated
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_AutoPoolDisabledUpdatedEvent">AutoPoolDisabledUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>disabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PredictionsEnabledUpdatedEvent"></a>
+
+## Struct `PredictionsEnabledUpdatedEvent`
+
+Event emitted when predictions enabled flag is updated
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PredictionsEnabledUpdatedEvent">PredictionsEnabledUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PredictionFeeUpdatedEvent"></a>
+
+## Struct `PredictionFeeUpdatedEvent`
+
+Event emitted when prediction fee is updated
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PredictionFeeUpdatedEvent">PredictionFeeUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>treasury: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_post_PostCreatedEvent"></a>
 
 ## Struct `PostCreatedEvent`
@@ -1058,6 +1183,46 @@ Post created event
 </dd>
 <dt>
 <code>mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>poc_badge_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>disable_auto_pool: bool</code>
 </dt>
 <dd>
 </dd>
@@ -2795,6 +2960,13 @@ Owner-only: set per-post opt-out flag
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(caller == <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.disable_auto_pool = disabled;
+    // Emit event <b>for</b> auto pool disabled flag update
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_AutoPoolDisabledUpdatedEvent">AutoPoolDisabledUpdatedEvent</a> {
+        post_id: object::uid_to_address(&<a href="../social_contracts/post.md#social_contracts_post">post</a>.id),
+        owner: caller,
+        disabled,
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
+    });
 }
 </code></pre>
 
@@ -2852,7 +3024,7 @@ Bootstrap initialization function - creates the post configuration
 Enable or disable prediction functionality (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_predictions_enabled">set_predictions_enabled</a>(_: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">social_contracts::post::PostAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, enabled: bool, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_predictions_enabled">set_predictions_enabled</a>(_: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">social_contracts::post::PostAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, enabled: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2865,11 +3037,17 @@ Enable or disable prediction functionality (admin only)
     _: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">PostAdminCap</a>,
     config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     enabled: bool,
-    _ctx: &<b>mut</b> TxContext
+    ctx: &<b>mut</b> TxContext
 ) {
     // Admin capability verification is handled by type system
     // Update configuration
     config.predictions_enabled = enabled;
+    // Emit event <b>for</b> predictions enabled flag update
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PredictionsEnabledUpdatedEvent">PredictionsEnabledUpdatedEvent</a> {
+        updated_by: tx_context::sender(ctx),
+        enabled,
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
+    });
 }
 </code></pre>
 
@@ -2884,7 +3062,7 @@ Enable or disable prediction functionality (admin only)
 Set prediction fee (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_prediction_fee">set_prediction_fee</a>(_: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">social_contracts::post::PostAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, fee_bps: u64, treasury: <b>address</b>, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_prediction_fee">set_prediction_fee</a>(_: &<a href="../social_contracts/post.md#social_contracts_post_PostAdminCap">social_contracts::post::PostAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, fee_bps: u64, treasury: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2898,7 +3076,7 @@ Set prediction fee (admin only)
     config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
     fee_bps: u64,
     treasury: <b>address</b>,
-    _ctx: &<b>mut</b> TxContext
+    ctx: &<b>mut</b> TxContext
 ) {
     // Admin capability verification is handled by type system
     // Ensure fee is reasonable (max 25%)
@@ -2906,6 +3084,13 @@ Set prediction fee (admin only)
     // Update configuration
     config.prediction_fee_bps = fee_bps;
     config.prediction_treasury = treasury;
+    // Emit event <b>for</b> prediction fee update
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PredictionFeeUpdatedEvent">PredictionFeeUpdatedEvent</a> {
+        updated_by: tx_context::sender(ctx),
+        fee_bps,
+        treasury,
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
+    });
 }
 </code></pre>
 
@@ -3051,6 +3236,8 @@ Create a new prediction post
     } <b>else</b> {
         <b>true</b> // Default to allowing tips
     };
+    // Convert media URLs to strings <b>for</b> event (before moving media_option)
+    <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&media_option);
     // Create the <a href="../social_contracts/post.md#social_contracts_post">post</a> with prediction type
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
         owner,
@@ -3071,6 +3258,7 @@ Create a new prediction post
         option::none(), // revenue_redirect_percentage
         option::none(), // mydata_id
         option::none(), // promotion_id
+        <b>true</b>, // disable_auto_pool - default to disabling auto pool
         ctx
     );
     // Create prediction options
@@ -3126,6 +3314,14 @@ Create a new prediction post
         post_type: string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_PREDICTION">POST_TYPE_PREDICTION</a>),
         parent_post_id: option::none(),
         mentions,
+        media_urls: media_urls_for_event,
+        metadata_json,
+        mydata_id: option::none(),
+        promotion_id: option::none(),
+        poc_badge_id: option::none(),
+        revenue_redirect_to: option::none(),
+        revenue_redirect_percentage: option::none(),
+        disable_auto_pool: <b>true</b>,
     });
     // Share prediction data
     transfer::share_object(prediction_data);
@@ -3304,14 +3500,16 @@ Withdraw a prediction bet with adjusted returns based on current odds
     };
     // Ensure there's enough balance in the repayment coin
     <b>assert</b>!(coin::value(repayment_coin) &gt;= withdrawal_amount, <a href="../social_contracts/post.md#social_contracts_post_EInvalidTipAmount">EInvalidTipAmount</a>);
-    // Update prediction data
+    // Update prediction data with underflow protection
     // 1. Decrease the total bet amount
+    <b>assert</b>!(prediction_data.total_bet_amount &gt;= user_bet_amount, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
     prediction_data.total_bet_amount = prediction_data.total_bet_amount - user_bet_amount;
     // 2. Decrease the option's total bet amount
     option_index = 0;
     <b>while</b> (option_index &lt; options_len) {
         <b>let</b> option = vector::borrow_mut(&<b>mut</b> prediction_data.options, option_index);
         <b>if</b> (option.id == user_option_id) {
+            <b>assert</b>!(option.total_bet &gt;= user_bet_amount, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
             option.total_bet = option.total_bet - user_bet_amount;
             <b>break</b>
         };
@@ -3486,6 +3684,45 @@ Resolve a prediction (admin only) and distribute winnings
 
 </details>
 
+<a name="social_contracts_post_convert_urls_to_strings"></a>
+
+## Function `convert_urls_to_strings`
+
+Convert Option<vector<Url>> to Option<vector<String>> for events
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(media_option: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;&gt;): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(media_option: &Option&lt;vector&lt;Url&gt;&gt;): Option&lt;vector&lt;String&gt;&gt; {
+    <b>if</b> (option::is_some(media_option)) {
+        <b>let</b> urls = option::borrow(media_option);
+        <b>let</b> <b>mut</b> url_strings = vector::empty&lt;String&gt;();
+        <b>let</b> len = vector::length(urls);
+        <b>let</b> <b>mut</b> i = 0;
+        <b>while</b> (i &lt; len) {
+            <b>let</b> url = vector::borrow(urls, i);
+            <b>let</b> url_string = string::from_ascii(url::inner_url(url));
+            vector::push_back(&<b>mut</b> url_strings, url_string);
+            i = i + 1;
+        };
+        option::some(url_strings)
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_post_create_post_internal"></a>
 
 ## Function `create_post_internal`
@@ -3493,7 +3730,7 @@ Resolve a prediction (admin only) and distribute winnings
 Internal function to create a post and return its ID
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, allow_comments: bool, allow_reactions: bool, allow_reposts: bool, allow_quotes: bool, allow_tips: bool, poc_badge_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>&gt;, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <b>address</b>
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, allow_comments: bool, allow_reactions: bool, allow_reposts: bool, allow_quotes: bool, allow_tips: bool, poc_badge_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>&gt;, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, disable_auto_pool: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <b>address</b>
 </code></pre>
 
 
@@ -3521,6 +3758,7 @@ Internal function to create a post and return its ID
     revenue_redirect_percentage: Option&lt;u64&gt;,
     mydata_id: Option&lt;<b>address</b>&gt;,
     promotion_id: Option&lt;<b>address</b>&gt;,
+    disable_auto_pool: bool,
     ctx: &<b>mut</b> TxContext
 ): <b>address</b> {
     <b>let</b> <a href="../social_contracts/post.md#social_contracts_post">post</a> = <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a> {
@@ -3551,7 +3789,7 @@ Internal function to create a post and return its ID
         revenue_redirect_percentage,
         mydata_id,
         promotion_id,
-        disable_auto_pool: <b>false</b>,
+        disable_auto_pool,
         <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     // Get <a href="../social_contracts/post.md#social_contracts_post">post</a> ID before sharing
@@ -3671,6 +3909,8 @@ Create a new post with interaction permissions
     } <b>else</b> {
         <b>true</b> // Default to allowing tips
     };
+    // Convert media URLs to strings <b>for</b> event (before moving media_option)
+    <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&media_option);
     // Create and share the <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
         owner,
@@ -3691,6 +3931,7 @@ Create a new post with interaction permissions
         option::none(), // revenue_redirect_percentage
         option::none(), // mydata_id
         option::none(), // promotion_id
+        <b>true</b>, // disable_auto_pool - default to disabling auto pool
         ctx
     );
     // Emit <a href="../social_contracts/post.md#social_contracts_post">post</a> created event
@@ -3702,6 +3943,14 @@ Create a new post with interaction permissions
         post_type: string::utf8(<a href="../social_contracts/post.md#social_contracts_post_POST_TYPE_STANDARD">POST_TYPE_STANDARD</a>),
         parent_post_id: option::none(),
         mentions,
+        media_urls: media_urls_for_event,
+        metadata_json,
+        mydata_id: option::none(),
+        promotion_id: option::none(),
+        poc_badge_id: option::none(),
+        revenue_redirect_to: option::none(),
+        revenue_redirect_percentage: option::none(),
+        disable_auto_pool: <b>true</b>, // disable_auto_pool value used in <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>
     });
 }
 </code></pre>
@@ -3847,7 +4096,7 @@ If content is provided, it's treated as a quote repost
 If content is empty/none, it's treated as a standard repost
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_repost">create_repost</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, content: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, allow_comments: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reactions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reposts: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_quotes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_tips: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_repost">create_repost</a>(registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, config: &<a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, original_post: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, content: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, media_urls: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, allow_comments: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reactions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_reposts: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_quotes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, allow_tips: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, disable_auto_pool: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;bool&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3872,6 +4121,7 @@ If content is empty/none, it's treated as a standard repost
     allow_reposts: Option&lt;bool&gt;,
     allow_quotes: Option&lt;bool&gt;,
     allow_tips: Option&lt;bool&gt;,
+    disable_auto_pool: Option&lt;bool&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> owner = tx_context::sender(ctx);
@@ -3998,6 +4248,14 @@ If content is empty/none, it's treated as a standard repost
     } <b>else</b> {
         <b>true</b> // Default to allowing tips
     };
+    // Set default <b>for</b> disable_auto_pool
+    <b>let</b> final_disable_auto_pool = <b>if</b> (option::is_some(&disable_auto_pool)) {
+        *option::borrow(&disable_auto_pool)
+    } <b>else</b> {
+        <b>true</b> // Default to disabling auto pool - users must opt-in
+    };
+    // Convert media URLs to strings <b>for</b> event (before moving media_option)
+    <b>let</b> media_urls_for_event = <a href="../social_contracts/post.md#social_contracts_post_convert_urls_to_strings">convert_urls_to_strings</a>(&media_option);
     // Create and share the repost <a href="../social_contracts/post.md#social_contracts_post">post</a>
     <b>let</b> repost_post_id = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
         owner,
@@ -4018,6 +4276,7 @@ If content is empty/none, it's treated as a standard repost
         option::none(), // revenue_redirect_percentage
         option::none(), // No MyData <b>for</b> reposts
         option::none(), // promotion_id
+        final_disable_auto_pool,
         ctx
     );
     // Emit <a href="../social_contracts/post.md#social_contracts_post">post</a> created event <b>for</b> the repost
@@ -4029,6 +4288,14 @@ If content is empty/none, it's treated as a standard repost
         post_type,
         parent_post_id: option::some(original_post_id),
         mentions,
+        media_urls: media_urls_for_event,
+        metadata_json,
+        mydata_id: option::none(),
+        promotion_id: option::none(),
+        poc_badge_id: option::none(),
+        revenue_redirect_to: option::none(),
+        revenue_redirect_percentage: option::none(),
+        disable_auto_pool: final_disable_auto_pool, // disable_auto_pool value used in <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>
     });
 }
 </code></pre>
@@ -4224,7 +4491,8 @@ If the user already has the exact same reaction, it will be removed (toggle beha
             } <b>else</b> {
                 *table::borrow_mut(&<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_counts, reaction) = count - 1;
             };
-            // Decrement <a href="../social_contracts/post.md#social_contracts_post">post</a> reaction count
+            // Decrement <a href="../social_contracts/post.md#social_contracts_post">post</a> reaction count with underflow protection
+            <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_count &gt; 0, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
             <a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_count = <a href="../social_contracts/post.md#social_contracts_post">post</a>.reaction_count - 1;
             // Emit remove reaction event
             event::emit(<a href="../social_contracts/post.md#social_contracts_post_RemoveReactionEvent">RemoveReactionEvent</a> {
@@ -4710,6 +4978,8 @@ Transfer post ownership to another user (by post owner)
     registry: &UsernameRegistry,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/post.md#social_contracts_post_version">version</a> compatibility
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
     <b>let</b> current_owner = tx_context::sender(ctx);
     // Verify current owner is authorized
     <b>assert</b>!(current_owner == <a href="../social_contracts/post.md#social_contracts_post">post</a>.owner, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorizedTransfer">EUnauthorizedTransfer</a>);
@@ -4759,6 +5029,8 @@ Admin function to transfer post ownership (requires PostAdminCap)
     _ctx: &<b>mut</b> TxContext
 ) {
     // Admin capability verification is handled by type system
+    // Check <a href="../social_contracts/post.md#social_contracts_post_version">version</a> compatibility
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
     // Look up the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID <b>for</b> the new owner (<b>for</b> reference, not ownership)
     <b>let</b> <b>mut</b> profile_id_option = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">social_contracts::profile::lookup_profile_by_owner</a>(registry, new_owner);
     <b>assert</b>!(option::is_some(&profile_id_option), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
@@ -4788,7 +5060,7 @@ Admin function to transfer post ownership (requires PostAdminCap)
 Moderate a post (remove/restore from platform)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_moderate_post">moderate_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, remove: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_moderate_post">moderate_post</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, remove: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4800,12 +5072,19 @@ Moderate a post (remove/restore from platform)
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_moderate_post">moderate_post</a>(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">platform::PlatformRegistry</a>,
     remove: bool,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/post.md#social_contracts_post_version">version</a> compatibility
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_platform_version">platform::platform_version</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>) == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> developer or moderator
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">platform::is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
+    <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
     // Update <a href="../social_contracts/post.md#social_contracts_post">post</a> status
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.removed_from_platform = remove;
     // Emit moderation event
@@ -4829,7 +5108,7 @@ Moderate a post (remove/restore from platform)
 Moderate a comment (remove/restore from platform)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_moderate_comment">moderate_comment</a>(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, remove: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_moderate_comment">moderate_comment</a>(comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">social_contracts::post::Comment</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, remove: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -4841,12 +5120,19 @@ Moderate a comment (remove/restore from platform)
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_moderate_comment">moderate_comment</a>(
     comment: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Comment">Comment</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">platform::PlatformRegistry</a>,
     remove: bool,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/post.md#social_contracts_post_version">version</a> compatibility
+    <b>assert</b>!(comment.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_platform_version">platform::platform_version</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>) == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> developer or moderator
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">platform::is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
+    <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
     // Update comment status
     comment.removed_from_platform = remove;
     // Emit moderation event
@@ -5140,7 +5426,8 @@ If the user already has the exact same reaction, it will be removed (toggle beha
             } <b>else</b> {
                 *table::borrow_mut(&<b>mut</b> comment.reaction_counts, reaction) = count - 1;
             };
-            // Decrement comment reaction count
+            // Decrement comment reaction count with underflow protection
+            <b>assert</b>!(comment.reaction_count &gt; 0, <a href="../social_contracts/post.md#social_contracts_post_EOverflow">EOverflow</a>);
             comment.reaction_count = comment.reaction_count - 1;
             // Emit remove reaction event
             event::emit(<a href="../social_contracts/post.md#social_contracts_post_RemoveReactionEvent">RemoveReactionEvent</a> {
@@ -6070,6 +6357,7 @@ Create a promoted post with MYS tokens for viewer payments
         option::none(), // revenue_redirect_percentage
         mydata_id,
         option::some(promotion_id),
+        <b>true</b>, // disable_auto_pool - default to disabling auto pool
         ctx
     );
     // Update promotion data with <a href="../social_contracts/post.md#social_contracts_post">post</a> ID
@@ -6358,7 +6646,7 @@ Get the promotion ID from a post
 Set moderation status for a post (platform devs/mods only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_moderation_status">set_moderation_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, status: u8, reason: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_moderation_status">set_moderation_status</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, status: u8, reason: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6370,13 +6658,20 @@ Set moderation status for a post (platform devs/mods only)
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_set_moderation_status">set_moderation_status</a>(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">platform::PlatformRegistry</a>,
     status: u8, // <a href="../social_contracts/post.md#social_contracts_post_MODERATION_APPROVED">MODERATION_APPROVED</a> or <a href="../social_contracts/post.md#social_contracts_post_MODERATION_FLAGGED">MODERATION_FLAGGED</a>
     reason: Option&lt;String&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/post.md#social_contracts_post_version">version</a> compatibility
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_platform_version">platform::platform_version</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>) == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> developer or moderator
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_developer_or_moderator">platform::is_developer_or_moderator</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
+    // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
+    <b>let</b> platform_id = object::uid_to_address(<a href="../social_contracts/platform.md#social_contracts_platform_id">platform::id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>));
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
     // Validate status
     <b>assert</b>!(status == <a href="../social_contracts/post.md#social_contracts_post_MODERATION_APPROVED">MODERATION_APPROVED</a> || status == <a href="../social_contracts/post.md#social_contracts_post_MODERATION_FLAGGED">MODERATION_FLAGGED</a>, <a href="../social_contracts/post.md#social_contracts_post_EUnauthorized">EUnauthorized</a>);
     // Update <a href="../social_contracts/post.md#social_contracts_post">post</a> status based on moderation decision

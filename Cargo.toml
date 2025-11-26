@@ -312,7 +312,8 @@ bimap = "0.6.2"
 bincode = "1.3.3"
 bip32 = "0.4.0"
 byteorder = "1.4.3"
-bytes = { version = "1.5.0", features = ["serde"] }
+# Pin to 1.10.1 - axum-server git version not compatible with 1.11.0+
+bytes = { version = "=1.10.1", features = ["serde"] }
 cached = "0.43.0"
 camino = "1.1.1"
 cfg-if = "1.0.0"
@@ -369,8 +370,15 @@ hex-literal = "0.3.4"
 http = "1"
 http-body = "1"
 humantime = "2.1.0"
-hyper = "1"
-hyper-util = "0.1.6"
+# Pin home to prevent upgrade to 0.5.12 which incorrectly requires Rust 1.88
+# Must use "=0.5.11" (exact version) to prevent cargo update from upgrading
+# Transitive deps: kube-client (mysop-cli), toolchain_find (test-fuzz)
+# Remove this once home 0.5.13+ is released with fixed rust-version metadata
+home = "=0.5.11"
+# Pin to 1.7.0 - axum-server git version not compatible with 1.8.0+
+hyper = "=1.7.0"
+# Pin to 0.1.17 - axum-server git version not compatible with 0.1.18+
+hyper-util = "=0.1.17"
 hyper-rustls = { version = "0.27", default-features = false, features = [
     "webpki-roots",
     "http1",

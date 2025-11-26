@@ -4822,6 +4822,15 @@ ProfileSubscriptionCancelledEvent
 ProfileSubscriptionUpdatedEvent
 	public struct
 	0x50c1::subscription
+ProfileSubscriptionServiceCreatedEvent
+	public struct
+	0x50c1::subscription
+RenewalBalanceFundedEvent
+	public struct
+	0x50c1::subscription
+ProfileSubscriptionServiceDeactivatedEvent
+	public struct
+	0x50c1::subscription
 create_profile_service
 	public fun
 	0x50c1::subscription
@@ -4894,6 +4903,9 @@ BadgeAssignedEvent
 BadgeRevokedEvent
 	public struct
 	0x50c1::profile
+BadgeSelectedEvent
+	public struct
+	0x50c1::profile
 ProfileCreatedEvent
 	public struct
 	0x50c1::profile
@@ -4919,6 +4931,12 @@ TokensVestedEvent
 	public struct
 	0x50c1::profile
 TokensClaimedEvent
+	public struct
+	0x50c1::profile
+VestingWalletDeletedEvent
+	public struct
+	0x50c1::profile
+PaidMessagingSettingsUpdatedEvent
 	public struct
 	0x50c1::profile
 bootstrap_init
@@ -4975,52 +4993,16 @@ lookup_profile_by_username
 lookup_profile_by_owner
 	public fun
 	0x50c1::profile
-is_authorized_service
-	public fun
-	0x50c1::profile
-authorize_service
-	public entry fun
-	0x50c1::profile
-revoke_authorization
-	public entry fun
-	0x50c1::profile
 get_id_address
 	public fun
 	0x50c1::profile
 get_owner
 	public fun
 	0x50c1::profile
-get_followers_count
-	public fun
-	0x50c1::profile
-get_post_count
-	public fun
-	0x50c1::profile
 get_tips_received
 	public fun
 	0x50c1::profile
-increment_followers_count
-	public fun
-	0x50c1::profile
-decrement_followers_count
-	public fun
-	0x50c1::profile
-increment_post_count
-	public fun
-	0x50c1::profile
-decrement_post_count
-	public fun
-	0x50c1::profile
 add_tips_received
-	public fun
-	0x50c1::profile
-get_following_count
-	public fun
-	0x50c1::profile
-increment_following_count
-	public fun
-	0x50c1::profile
-decrement_following_count
 	public fun
 	0x50c1::profile
 create_subscription_service
@@ -5028,24 +5010,6 @@ create_subscription_service
 	0x50c1::profile
 has_valid_subscription
 	public fun
-	0x50c1::profile
-attach_mydata
-	public entry fun
-	0x50c1::profile
-has_mydata_attached
-	public fun
-	0x50c1::profile
-detach_mydata
-	public entry fun
-	0x50c1::profile
-get_attached_mydata
-	public fun
-	0x50c1::profile
-batch_attach_mydata
-	public entry fun
-	0x50c1::profile
-batch_detach_mydata
-	public entry fun
 	0x50c1::profile
 create_offer
 	public entry fun
@@ -5098,8 +5062,23 @@ get_badge
 get_platform_badges
 	public fun
 	0x50c1::profile
+badge_id
+	public fun
+	0x50c1::profile
 badge_count
 	public fun
+	0x50c1::profile
+set_selected_badge
+	public entry fun
+	0x50c1::profile
+get_selected_badge_id
+	public fun
+	0x50c1::profile
+get_display_badge
+	public fun
+	0x50c1::profile
+clear_selected_badge
+	public entry fun
 	0x50c1::profile
 vest_myso
 	public entry fun
@@ -5213,6 +5192,9 @@ VoteDecryptionFailedEvent
 	public struct
 	0x50c1::governance
 ProposalRescindedEvent
+	public struct
+	0x50c1::governance
+GovernanceParametersUpdatedEvent
 	public struct
 	0x50c1::governance
 bootstrap_init
@@ -5363,6 +5345,9 @@ UserLeftPlatformEvent
 	public struct
 	0x50c1::platform
 TokenAirdropEvent
+	public struct
+	0x50c1::platform
+TreasuryFundedEvent
 	public struct
 	0x50c1::platform
 bootstrap_init
@@ -5551,6 +5536,15 @@ PostConfig
 PostParametersUpdatedEvent
 	public struct
 	0x50c1::post
+AutoPoolDisabledUpdatedEvent
+	public struct
+	0x50c1::post
+PredictionsEnabledUpdatedEvent
+	public struct
+	0x50c1::post
+PredictionFeeUpdatedEvent
+	public struct
+	0x50c1::post
 PostCreatedEvent
 	public struct
 	0x50c1::post
@@ -5652,6 +5646,9 @@ withdraw_prediction_bet
 	0x50c1::post
 resolve_prediction
 	public entry fun
+	0x50c1::post
+convert_urls_to_strings
+	fun
 	0x50c1::post
 create_post_internal
 	fun
@@ -5878,6 +5875,9 @@ ReservationWithdrawnEvent
 ThresholdMetEvent
 	public struct
 	0x50c1::social_proof_tokens
+ReservationPoolCreatedEvent
+	public struct
+	0x50c1::social_proof_tokens
 ConfigUpdatedEvent
 	public struct
 	0x50c1::social_proof_tokens
@@ -5885,6 +5885,9 @@ TokensAddedEvent
 	public struct
 	0x50c1::social_proof_tokens
 EmergencyKillSwitchEvent
+	public struct
+	0x50c1::social_proof_tokens
+PocRedirectionUpdatedEvent
 	public struct
 	0x50c1::social_proof_tokens
 bootstrap_init
@@ -6184,6 +6187,12 @@ PurchaseEvent
 AccessGrantedEvent
 	public struct
 	0x50c1::mydata
+MyDataRegisteredEvent
+	public struct
+	0x50c1::mydata
+MyDataUnregisteredEvent
+	public struct
+	0x50c1::mydata
 bootstrap_init
 	public(package) fun
 	0x50c1::mydata
@@ -6382,6 +6391,12 @@ Paused
 VersionSet
 	public struct
 	0x50c1::message
+RelayerUpdated
+	public struct
+	0x50c1::message
+AdminTransferred
+	public struct
+	0x50c1::message
 RateLimitsSet
 	public struct
 	0x50c1::message
@@ -6545,6 +6560,12 @@ SpotPayoutEvent
 	public struct
 	0x50c1::social_proof_of_truth
 SpotRefundEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotConfigUpdatedEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotRecordCreatedEvent
 	public struct
 	0x50c1::social_proof_of_truth
 get_status

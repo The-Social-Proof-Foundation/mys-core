@@ -93,7 +93,7 @@ title: Module `myusd::myusd`
         <a href="../myusd/myusd.md#myusd_myusd_DECIMAL">DECIMAL</a>,
         b"myUSD",
         b"MyUSD",
-        b"MySocial official USD stablecoin",
+        b"The official MySocial USD stablecoin.",
         <a href="../std/option.md#std_option_none">std::option::none</a>(),
         ctx
     );

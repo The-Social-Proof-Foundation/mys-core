@@ -12,6 +12,8 @@ Can be attached to posts (gated content) or profiles (data monetization)
 -  [Struct `MyDataCreatedEvent`](#social_contracts_mydata_MyDataCreatedEvent)
 -  [Struct `PurchaseEvent`](#social_contracts_mydata_PurchaseEvent)
 -  [Struct `AccessGrantedEvent`](#social_contracts_mydata_AccessGrantedEvent)
+-  [Struct `MyDataRegisteredEvent`](#social_contracts_mydata_MyDataRegisteredEvent)
+-  [Struct `MyDataUnregisteredEvent`](#social_contracts_mydata_MyDataUnregisteredEvent)
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_mydata_bootstrap_init)
 -  [Function `create`](#social_contracts_mydata_create)
@@ -431,6 +433,78 @@ Registry for tracking MyData ownership
 
 </details>
 
+<a name="social_contracts_mydata_MyDataRegisteredEvent"></a>
+
+## Struct `MyDataRegisteredEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegisteredEvent">MyDataRegisteredEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>ip_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>registered_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_MyDataUnregisteredEvent"></a>
+
+## Struct `MyDataUnregisteredEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataUnregisteredEvent">MyDataUnregisteredEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>ip_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>unregistered_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -793,6 +867,8 @@ Purchase one-time access to MyData data
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
     // Check <b>if</b> one-time purchase is available
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_one_time_price">one_time_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
@@ -843,6 +919,8 @@ Purchase subscription access to MyData data
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>let</b> buyer = tx_context::sender(ctx);
     // Check <b>if</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> is available
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_subscription_price">subscription_price</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>);
@@ -918,6 +996,8 @@ Update pricing (owner only)
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
     // Validate new prices
     <b>if</b> (option::is_some(&new_one_time_price)) {
@@ -973,6 +1053,8 @@ Update MyData content and metadata (owner only)
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
     <b>if</b> (option::is_some(&new_encrypted_data)) {
         <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.encrypted_data = *option::borrow(&new_encrypted_data);
@@ -1090,6 +1172,8 @@ Grant free access (owner only) - useful for samples or promotions
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
     <b>assert</b>!(user != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_ESelfPurchase">ESelfPurchase</a>); // Owner doesn't need granted access
     <b>if</b> (access_type == 0) {
@@ -1793,7 +1877,7 @@ Check if a MyData is registered
 Register a MyData in the registry
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_register_in_registry">register_in_registry</a>(registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_register_in_registry">register_in_registry</a>(registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1805,12 +1889,21 @@ Register a MyData in the registry
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_register_in_registry">register_in_registry</a>(
     registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">MyDataRegistry</a>,
     <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
     <b>let</b> ip_id = object::uid_to_address(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id);
     <b>if</b> (!table::contains(&registry.ip_to_owner, ip_id)) {
         table::add(&<b>mut</b> registry.ip_to_owner, ip_id, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+        // Emit registration event
+        event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegisteredEvent">MyDataRegisteredEvent</a> {
+            ip_id,
+            <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>: <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
+            registered_at: clock::timestamp_ms(clock),
+        });
     };
 }
 </code></pre>
@@ -1826,7 +1919,7 @@ Register a MyData in the registry
 Remove a MyData from the registry
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_unregister_from_registry">unregister_from_registry</a>(registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, ip_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_unregister_from_registry">unregister_from_registry</a>(registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">social_contracts::mydata::MyDataRegistry</a>, ip_id: <b>address</b>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1838,12 +1931,21 @@ Remove a MyData from the registry
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_unregister_from_registry">unregister_from_registry</a>(
     registry: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">MyDataRegistry</a>,
     ip_id: <b>address</b>,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>if</b> (table::contains(&registry.ip_to_owner, ip_id)) {
         <b>let</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a> = *table::borrow(&registry.ip_to_owner, ip_id);
         <b>assert</b>!(tx_context::sender(ctx) == <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EUnauthorized">EUnauthorized</a>);
         table::remove(&<b>mut</b> registry.ip_to_owner, ip_id);
+        // Emit unregistration event
+        event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataUnregisteredEvent">MyDataUnregisteredEvent</a> {
+            ip_id,
+            <a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
+            unregistered_at: clock::timestamp_ms(clock),
+        });
     };
 }
 </code></pre>

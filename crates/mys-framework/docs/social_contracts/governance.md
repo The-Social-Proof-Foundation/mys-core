@@ -28,6 +28,7 @@ Implements proposal submission, voting, and execution processes
 -  [Struct `RewardsDistributedEvent`](#social_contracts_governance_RewardsDistributedEvent)
 -  [Struct `VoteDecryptionFailedEvent`](#social_contracts_governance_VoteDecryptionFailedEvent)
 -  [Struct `ProposalRescindedEvent`](#social_contracts_governance_ProposalRescindedEvent)
+-  [Struct `GovernanceParametersUpdatedEvent`](#social_contracts_governance_GovernanceParametersUpdatedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_governance_bootstrap_init)
 -  [Function `initialize_registry_tables`](#social_contracts_governance_initialize_registry_tables)
@@ -1172,6 +1173,83 @@ Event emitted when a proposal is rescinded by its submitter
 
 </details>
 
+<a name="social_contracts_governance_GovernanceParametersUpdatedEvent"></a>
+
+## Struct `GovernanceParametersUpdatedEvent`
+
+Event emitted when governance parameters are updated
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceParametersUpdatedEvent">GovernanceParametersUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>registry_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>delegate_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>delegate_term_epochs: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>proposal_submission_cost: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_on_chain_age_days: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_votes_per_user: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>quadratic_base_cost: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>voting_period_epochs: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>quorum_votes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -1654,6 +1732,8 @@ Can only be called by the governance admin
     quorum_votes: u64,
     _ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     // Admin capability verification is handled by type system
     // Ensure parameters are sensible
     <b>assert</b>!(delegate_count &gt; 1, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
@@ -1673,6 +1753,20 @@ Can only be called by the governance admin
     registry.quadratic_base_cost = quadratic_base_cost;
     registry.voting_period_epochs = voting_period_epochs;
     registry.quorum_votes = quorum_votes;
+    // Emit <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> parameters updated event
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceParametersUpdatedEvent">GovernanceParametersUpdatedEvent</a> {
+        registry_type: registry.registry_type,
+        updated_by: tx_context::sender(_ctx),
+        delegate_count,
+        delegate_term_epochs,
+        proposal_submission_cost,
+        min_on_chain_age_days,
+        max_votes_per_user,
+        quadratic_base_cost,
+        voting_period_epochs,
+        quorum_votes,
+        timestamp: tx_context::epoch_timestamp_ms(_ctx),
+    });
 }
 </code></pre>
 
@@ -1702,6 +1796,8 @@ Requires the caller to have a valid profile
     profile_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">profile::UsernameRegistry</a>,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> current_epoch = tx_context::epoch(ctx);
     // Check <b>if</b> already a delegate or nominee delegate
@@ -1761,6 +1857,8 @@ Users can change their vote at any time
     upvote: bool,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
     // Don't allow self-voting
     <b>assert</b>!(caller != target_address, <a href="../social_contracts/governance.md#social_contracts_governance_EUnauthorized">EUnauthorized</a>);
@@ -1784,10 +1882,12 @@ Users can change their vote at any time
             <b>if</b> (previous_vote == upvote) {
                 <b>return</b>
             };
-            // Different vote - remove previous vote
+            // Different vote - remove previous vote with underflow protection
             <b>if</b> (previous_vote) {
+                <b>assert</b>!(delegate.upvotes &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
                 delegate.upvotes = delegate.upvotes - 1;
             } <b>else</b> {
+                <b>assert</b>!(delegate.downvotes &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
                 delegate.downvotes = delegate.downvotes - 1;
             };
             // Add new vote
@@ -1831,10 +1931,12 @@ Users can change their vote at any time
             <b>if</b> (previous_vote == upvote) {
                 <b>return</b>
             };
-            // Different vote - remove previous vote
+            // Different vote - remove previous vote with underflow protection
             <b>if</b> (previous_vote) {
+                <b>assert</b>!(nominee.upvotes &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
                 nominee.upvotes = nominee.upvotes - 1;
             } <b>else</b> {
+                <b>assert</b>!(nominee.downvotes &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
                 nominee.downvotes = nominee.downvotes - 1;
             };
             // Add new vote
@@ -1899,6 +2001,8 @@ Updates delegate panel at the end of a delegate term cycle.
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> current_epoch = tx_context::epoch(ctx);
     <b>let</b> delegate_term_epochs = registry.delegate_term_epochs;
     <b>assert</b>!(delegate_term_epochs &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
@@ -2141,6 +2245,8 @@ Handles proposal types: ecosystem and proof of creativity
     coin: &<b>mut</b> Coin&lt;MYS&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     // Verify proposal type is valid
     <b>assert</b>!(proposal_type &lt;= <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
     // Verify registry type matches proposal type
@@ -2383,6 +2489,8 @@ Allow a proposal owner to rescind their proposal if it's still in the delegate r
     proposal_id: ID,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
     // Verify proposal exists and is in delegate review phase
@@ -2458,6 +2566,8 @@ Delegate votes on a proposal if it should move to community voting
     <b>mut</b> reason: Option&lt;String&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
     // Verify caller is a delegate
@@ -2673,6 +2783,8 @@ Users can cast multiple votes by paying a quadratically increasing cost
     coin: &<b>mut</b> Coin&lt;MYS&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
     // Also get the current epoch <b>for</b> timing checks
@@ -2816,6 +2928,8 @@ Finalize a proposal after the voting period ends
     proposal_id: ID,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> current_epoch = tx_context::epoch(ctx);
     <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
     // Verify proposal exists and is in community voting phase
@@ -2946,6 +3060,8 @@ Finalize a proposal with anonymous votes by decrypting them first
     public_keys: &vector&lt;PublicKey&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> current_epoch = tx_context::epoch(ctx);
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
     // First, collect all the decrypted votes
@@ -3017,21 +3133,23 @@ Finalize a proposal with anonymous votes by decrypting them first
     // Now apply all the valid votes
     {
         <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
-        // Process votes <b>for</b>
+        // Process votes <b>for</b> with overflow protection
         <b>let</b> <b>mut</b> i = 0;
         <b>let</b> len = vector::length(&votes_for);
         <b>while</b> (i &lt; len) {
             <b>let</b> addr = *vector::borrow(&votes_for, i);
+            <b>assert</b>!(proposal.community_votes_for &lt;= <a href="../social_contracts/governance.md#social_contracts_governance_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
             proposal.community_votes_for = proposal.community_votes_for + 1;
             <b>let</b> voted_for: &<b>mut</b> VecSet&lt;<b>address</b>&gt; = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTED_FOR_FIELD">VOTED_FOR_FIELD</a>);
             vec_set::insert(voted_for, addr);
             i = i + 1;
         };
-        // Process votes against
+        // Process votes against with overflow protection
         <b>let</b> <b>mut</b> i = 0;
         <b>let</b> len = vector::length(&votes_against);
         <b>while</b> (i &lt; len) {
             <b>let</b> addr = *vector::borrow(&votes_against, i);
+            <b>assert</b>!(proposal.community_votes_against &lt;= <a href="../social_contracts/governance.md#social_contracts_governance_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/governance.md#social_contracts_governance_EOverflow">EOverflow</a>);
             proposal.community_votes_against = proposal.community_votes_against + 1;
             <b>let</b> voted_against: &<b>mut</b> VecSet&lt;<b>address</b>&gt; = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTED_AGAINST_FIELD">VOTED_AGAINST_FIELD</a>);
             vec_set::insert(voted_against, addr);
@@ -3148,6 +3266,8 @@ Mark a proposal as implemented
     description: Option&lt;String&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
     <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
     // Verify proposal exists and is approved
@@ -3542,6 +3662,8 @@ If more than half of delegates reject, reject the proposal manually
     proposal_id: ID,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     // Verify caller is a delegate
     <b>let</b> caller = tx_context::sender(ctx);
     <b>assert</b>!(table::contains(&registry.delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_ENotDelegate">ENotDelegate</a>);

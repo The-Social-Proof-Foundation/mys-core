@@ -12,6 +12,9 @@ Handles subscription services for profiles & MyData
 -  [Struct `ProfileSubscriptionRenewedEvent`](#social_contracts_subscription_ProfileSubscriptionRenewedEvent)
 -  [Struct `ProfileSubscriptionCancelledEvent`](#social_contracts_subscription_ProfileSubscriptionCancelledEvent)
 -  [Struct `ProfileSubscriptionUpdatedEvent`](#social_contracts_subscription_ProfileSubscriptionUpdatedEvent)
+-  [Struct `ProfileSubscriptionServiceCreatedEvent`](#social_contracts_subscription_ProfileSubscriptionServiceCreatedEvent)
+-  [Struct `RenewalBalanceFundedEvent`](#social_contracts_subscription_RenewalBalanceFundedEvent)
+-  [Struct `ProfileSubscriptionServiceDeactivatedEvent`](#social_contracts_subscription_ProfileSubscriptionServiceDeactivatedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `create_profile_service`](#social_contracts_subscription_create_profile_service)
 -  [Function `create_profile_service_entry`](#social_contracts_subscription_create_profile_service_entry)
@@ -45,12 +48,14 @@ Handles subscription services for profiles & MyData
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
 <b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
+<b>use</b> <a href="../mys/package.md#mys_package">mys::package</a>;
 <b>use</b> <a href="../mys/table.md#mys_table">mys::table</a>;
 <b>use</b> <a href="../mys/transfer.md#mys_transfer">mys::transfer</a>;
 <b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
+<b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
@@ -359,6 +364,132 @@ Additional event for fee updates
 
 </details>
 
+<a name="social_contracts_subscription_ProfileSubscriptionServiceCreatedEvent"></a>
+
+## Struct `ProfileSubscriptionServiceCreatedEvent`
+
+Event emitted when a subscription service is created
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionServiceCreatedEvent">ProfileSubscriptionServiceCreatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>service_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>profile_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>monthly_fee: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_subscription_RenewalBalanceFundedEvent"></a>
+
+## Struct `RenewalBalanceFundedEvent`
+
+Event emitted when renewal balance is funded
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceFundedEvent">RenewalBalanceFundedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>subscription_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>subscriber: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>funded_amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_balance: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_subscription_ProfileSubscriptionServiceDeactivatedEvent"></a>
+
+## Struct `ProfileSubscriptionServiceDeactivatedEvent`
+
+Event emitted when a subscription service is deactivated
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionServiceDeactivatedEvent">ProfileSubscriptionServiceDeactivatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>service_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>profile_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>deactivated_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -383,6 +514,15 @@ Error codes
 
 
 
+<a name="social_contracts_subscription_EInvalidInput"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidInput">EInvalidInput</a>: u64 = 83;
+</code></pre>
+
+
+
 <a name="social_contracts_subscription_ENoAccess"></a>
 
 
@@ -401,11 +541,57 @@ Error codes
 
 
 
+<a name="social_contracts_subscription_EOverflow"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>: u64 = 82;
+</code></pre>
+
+
+
 <a name="social_contracts_subscription_ESubscriptionExpired"></a>
 
 
 
 <pre><code><b>const</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ESubscriptionExpired">ESubscriptionExpired</a>: u64 = 78;
+</code></pre>
+
+
+
+<a name="social_contracts_subscription_EWrongVersion"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_EWrongVersion">EWrongVersion</a>: u64 = 81;
+</code></pre>
+
+
+
+<a name="social_contracts_subscription_MAX_RENEWAL_MONTHS"></a>
+
+Constants for validation
+
+
+<pre><code><b>const</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_RENEWAL_MONTHS">MAX_RENEWAL_MONTHS</a>: u64 = 120;
+</code></pre>
+
+
+
+<a name="social_contracts_subscription_MAX_U64"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a>: u64 = 18446744073709551615;
+</code></pre>
+
+
+
+<a name="social_contracts_subscription_THIRTY_DAYS_MS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_THIRTY_DAYS_MS">THIRTY_DAYS_MS</a>: u64 = 2592000000;
 </code></pre>
 
 
@@ -431,13 +617,15 @@ Create a subscription service for a profile (called by profile owner)
     monthly_fee: u64,
     ctx: &<b>mut</b> TxContext
 ): <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a> {
+    // Validate monthly fee
+    <b>assert</b>!(monthly_fee &gt; 0, <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidFee">EInvalidFee</a>);
     <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a> {
         id: object::new(ctx),
         profile_owner,
         monthly_fee,
         active: <b>true</b>,
         subscriber_count: 0,
-        version: 1,
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     }
 }
 </code></pre>
@@ -453,7 +641,7 @@ Create a subscription service for a profile (called by profile owner)
 Entry function to create and share a profile subscription service
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_create_profile_service_entry">create_profile_service_entry</a>(monthly_fee: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_create_profile_service_entry">create_profile_service_entry</a>(monthly_fee: u64, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -464,14 +652,26 @@ Entry function to create and share a profile subscription service
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_create_profile_service_entry">create_profile_service_entry</a>(
     monthly_fee: u64,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    // Validate monthly fee
+    <b>assert</b>!(monthly_fee &gt; 0, <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidFee">EInvalidFee</a>);
+    <b>let</b> profile_owner = tx_context::sender(ctx);
     <b>let</b> service = <a href="../social_contracts/subscription.md#social_contracts_subscription_create_profile_service">create_profile_service</a>(
-        tx_context::sender(ctx),
+        profile_owner,
         monthly_fee,
         ctx
     );
+    <b>let</b> service_id = object::id(&service);
     transfer::share_object(service);
+    // Emit service created event
+    event::emit(<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionServiceCreatedEvent">ProfileSubscriptionServiceCreatedEvent</a> {
+        service_id,
+        profile_owner,
+        monthly_fee,
+        created_at: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 
@@ -503,11 +703,19 @@ Subscribe to a profile with optional auto-renewal
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check version compatibility
+    <b>assert</b>!(service.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/subscription.md#social_contracts_subscription_EWrongVersion">EWrongVersion</a>);
     <b>assert</b>!(service.active, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
+    // Validate renewal_months <b>if</b> auto-renew is enabled
+    <b>if</b> (auto_renew) {
+        <b>assert</b>!(renewal_months &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_RENEWAL_MONTHS">MAX_RENEWAL_MONTHS</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidInput">EInvalidInput</a>);
+    };
     <b>let</b> subscriber = tx_context::sender(ctx);
     <b>let</b> now = clock::timestamp_ms(clock);
     // Calculate required payment (1 month + renewal months <b>if</b> auto-renew)
     <b>let</b> months_to_pay = <b>if</b> (auto_renew) { 1 + renewal_months } <b>else</b> { 1 };
+    // Overflow protection <b>for</b> multiplication
+    <b>assert</b>!(months_to_pay &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a> / service.monthly_fee, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
     <b>let</b> total_required = service.monthly_fee * months_to_pay;
     <b>assert</b>!(coin::value(payment) &gt;= total_required, <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidFee">EInvalidFee</a>);
     // Take payment <b>for</b> first month
@@ -515,13 +723,17 @@ Subscribe to a profile with optional auto-renewal
     transfer::public_transfer(first_month_payment, service.profile_owner);
     // Take renewal payment <b>if</b> auto-renew enabled
     <b>let</b> renewal_balance = <b>if</b> (auto_renew && renewal_months &gt; 0) {
-        <b>let</b> renewal_payment = coin::split(payment, service.monthly_fee * renewal_months, ctx);
+        // Overflow protection <b>for</b> renewal payment calculation
+        <b>assert</b>!(renewal_months &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a> / service.monthly_fee, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
+        <b>let</b> renewal_amount = service.monthly_fee * renewal_months;
+        <b>let</b> renewal_payment = coin::split(payment, renewal_amount, ctx);
         coin::into_balance(renewal_payment)
     } <b>else</b> {
         balance::zero&lt;MYS&gt;()
     };
-    // Calculate expiration (30 days from now)
-    <b>let</b> expires_at = now + (30 * 24 * 60 * 60 * 1000); // 30 days in milliseconds
+    // Calculate expiration (30 days from now) with overflow protection
+    <b>assert</b>!(now &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a> - <a href="../social_contracts/subscription.md#social_contracts_subscription_THIRTY_DAYS_MS">THIRTY_DAYS_MS</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
+    <b>let</b> expires_at = now + <a href="../social_contracts/subscription.md#social_contracts_subscription_THIRTY_DAYS_MS">THIRTY_DAYS_MS</a>;
     <b>let</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> = <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a> {
         id: object::new(ctx),
         service_id: object::id(service),
@@ -532,6 +744,8 @@ Subscribe to a profile with optional auto-renewal
         renewal_balance,
         renewal_count: 0,
     };
+    // Overflow protection <b>for</b> subscriber count
+    <b>assert</b>!(service.subscriber_count &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
     service.subscriber_count = service.subscriber_count + 1;
     event::emit(<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionCreatedEvent">ProfileSubscriptionCreatedEvent</a> {
         service_id: object::id(service),
@@ -571,6 +785,8 @@ Manually renew a subscription
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check version compatibility
+    <b>assert</b>!(service.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/subscription.md#social_contracts_subscription_EWrongVersion">EWrongVersion</a>);
     <b>let</b> subscriber = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.subscriber == subscriber, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENotSubscriptionOwner">ENotSubscriptionOwner</a>);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.service_id == object::id(service), <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
@@ -578,13 +794,18 @@ Manually renew a subscription
     transfer::public_transfer(payment, service.profile_owner);
     // Extend expiration by 30 days
     <b>let</b> now = clock::timestamp_ms(clock);
-    <b>let</b> extension = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+    <b>let</b> extension = <a href="../social_contracts/subscription.md#social_contracts_subscription_THIRTY_DAYS_MS">THIRTY_DAYS_MS</a>;
     // If <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a> is expired, start from now, otherwise extend current expiration
+    // Overflow protection <b>for</b> timestamp addition
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.expires_at = <b>if</b> (now &gt; <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.expires_at) {
+        <b>assert</b>!(now &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a> - extension, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
         now + extension
     } <b>else</b> {
+        <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.expires_at &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a> - extension, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
         <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.expires_at + extension
     };
+    // Overflow protection <b>for</b> renewal count
+    <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_count &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_count = <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_count + 1;
     event::emit(<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionRenewedEvent">ProfileSubscriptionRenewedEvent</a> {
         subscription_id: object::id(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>),
@@ -623,6 +844,8 @@ Now includes protection against fee changes and service deactivation
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check version compatibility
+    <b>assert</b>!(service.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/subscription.md#social_contracts_subscription_EWrongVersion">EWrongVersion</a>);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.service_id == object::id(service), <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.auto_renew, <a href="../social_contracts/subscription.md#social_contracts_subscription_EAutoRenewalDisabled">EAutoRenewalDisabled</a>);
     // Check that the service is still active
@@ -650,8 +873,12 @@ Now includes protection against fee changes and service deactivation
     );
     transfer::public_transfer(renewal_payment, service.profile_owner);
     // Pre-calculate extension to avoid repeated calculations
-    <b>let</b> extension = 2_592_000_000; // 30 days in milliseconds (pre-calculated)
+    <b>let</b> extension = <a href="../social_contracts/subscription.md#social_contracts_subscription_THIRTY_DAYS_MS">THIRTY_DAYS_MS</a>;
+    // Overflow protection <b>for</b> timestamp addition
+    <b>assert</b>!(now &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a> - extension, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.expires_at = now + extension;
+    // Overflow protection <b>for</b> renewal count
+    <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_count &lt;= <a href="../social_contracts/subscription.md#social_contracts_subscription_MAX_U64">MAX_U64</a> - 1, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_count = <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_count + 1;
     event::emit(<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionRenewedEvent">ProfileSubscriptionRenewedEvent</a> {
         subscription_id: object::id(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>),
@@ -709,7 +936,7 @@ Now includes service activation check
 User funds their renewal balance for auto-renewal
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_fund_renewal_balance">fund_renewal_balance</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, payment: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_fund_renewal_balance">fund_renewal_balance</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, payment: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -721,11 +948,21 @@ User funds their renewal balance for auto-renewal
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_fund_renewal_balance">fund_renewal_balance</a>(
     <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
     payment: Coin&lt;MYS&gt;,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
     <b>let</b> subscriber = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.subscriber == subscriber, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENotSubscriptionOwner">ENotSubscriptionOwner</a>);
+    <b>let</b> funded_amount = coin::value(&payment);
     balance::join(&<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance, coin::into_balance(payment));
+    // Emit renewal balance funded event
+    event::emit(<a href="../social_contracts/subscription.md#social_contracts_subscription_RenewalBalanceFundedEvent">RenewalBalanceFundedEvent</a> {
+        subscription_id: object::id(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>),
+        subscriber,
+        funded_amount,
+        new_balance: balance::value(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance),
+        timestamp: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 
@@ -818,7 +1055,11 @@ Now emits event when fee changes
     new_fee: u64,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check version compatibility
+    <b>assert</b>!(service.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/subscription.md#social_contracts_subscription_EWrongVersion">EWrongVersion</a>);
     <b>assert</b>!(tx_context::sender(ctx) == service.profile_owner, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENotSubscriptionOwner">ENotSubscriptionOwner</a>);
+    // Validate new fee
+    <b>assert</b>!(new_fee &gt; 0, <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidFee">EInvalidFee</a>);
     <b>let</b> old_fee = service.monthly_fee;
     service.monthly_fee = new_fee;
     // Emit event about fee change
@@ -842,7 +1083,7 @@ Now emits event when fee changes
 Deactivate service (profile owner only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_deactivate_service">deactivate_service</a>(service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_deactivate_service">deactivate_service</a>(service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -853,10 +1094,19 @@ Deactivate service (profile owner only)
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_deactivate_service">deactivate_service</a>(
     service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
+    clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check version compatibility
+    <b>assert</b>!(service.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/subscription.md#social_contracts_subscription_EWrongVersion">EWrongVersion</a>);
     <b>assert</b>!(tx_context::sender(ctx) == service.profile_owner, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENotSubscriptionOwner">ENotSubscriptionOwner</a>);
     service.active = <b>false</b>;
+    // Emit service deactivated event
+    event::emit(<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionServiceDeactivatedEvent">ProfileSubscriptionServiceDeactivatedEvent</a> {
+        service_id: object::id(service),
+        profile_owner: service.profile_owner,
+        deactivated_at: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 
@@ -885,6 +1135,8 @@ Cancel subscription and get refund of unused renewal balance
     <b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
     ctx: &<b>mut</b> TxContext,
 ) {
+    // Check version compatibility
+    <b>assert</b>!(service.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/subscription.md#social_contracts_subscription_EWrongVersion">EWrongVersion</a>);
     <b>let</b> subscriber = tx_context::sender(ctx);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.subscriber == subscriber, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENotSubscriptionOwner">ENotSubscriptionOwner</a>);
     <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.service_id == object::id(service), <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
@@ -897,6 +1149,8 @@ Cancel subscription and get refund of unused renewal balance
         );
         transfer::public_transfer(refund, subscriber);
     };
+    // Underflow protection <b>for</b> subscriber count
+    <b>assert</b>!(service.subscriber_count &gt; 0, <a href="../social_contracts/subscription.md#social_contracts_subscription_EOverflow">EOverflow</a>);
     service.subscriber_count = service.subscriber_count - 1;
     event::emit(<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionCancelledEvent">ProfileSubscriptionCancelledEvent</a> {
         subscription_id: object::id(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>),
