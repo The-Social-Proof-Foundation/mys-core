@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::consistency::ConsistentIndexCursor;
+use crate::context_data::db_data_provider::PgManager;
 use crate::data::apys::calculate_apy;
 use crate::data::{DataLoader, Db};
 use crate::types::cursor::{JsonCursor, Page};
@@ -367,6 +368,12 @@ impl Validator {
     /// The APY of this validator in basis points.
     /// To get the APY in percentage, divide by 100.
     async fn apy(&self, ctx: &Context<'_>) -> Result<Option<u64>, Error> {
+        // Get the system state to access epoch_duration_ms
+        let system_state = ctx
+            .data_unchecked::<PgManager>()
+            .fetch_mys_system_state(Some(self.requested_for_epoch))
+            .await?;
+
         let DataLoader(loader) = ctx.data_unchecked();
         let (stake_subsidy_start_epoch, exchange_rates) = loader
             .load_one(self.requested_for_epoch)
@@ -381,7 +388,11 @@ impl Validator {
                 ))
             })?;
 
-        let avg_apy = Some(calculate_apy(stake_subsidy_start_epoch, rates));
+        let avg_apy = Some(calculate_apy(
+            stake_subsidy_start_epoch,
+            rates,
+            system_state.epoch_duration_ms,
+        ));
 
         Ok(avg_apy.map(|x| (x * 10000.0) as u64))
     }

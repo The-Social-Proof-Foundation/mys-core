@@ -270,6 +270,7 @@ impl GovernanceReadApiServer for GovernanceReadApi {
         let apys = calculate_apys(
             system_state_summary.stake_subsidy_start_epoch,
             exchange_rate_table,
+            system_state_summary.epoch_duration_ms,
         );
 
         Ok(ValidatorApys {
@@ -282,8 +283,17 @@ impl GovernanceReadApiServer for GovernanceReadApi {
 pub fn calculate_apys(
     stake_subsidy_start_epoch: u64,
     exchange_rate_table: Vec<ValidatorExchangeRates>,
+    epoch_duration_ms: u64,
 ) -> Vec<ValidatorApy> {
     let mut apys = vec![];
+
+    // Calculate epochs per year based on actual epoch duration
+    // 365 days * 24 hours * 60 minutes * 60 seconds * 1000 milliseconds = milliseconds per year
+    let epochs_per_year = if epoch_duration_ms > 0 {
+        (365_u64 * 24 * 60 * 60 * 1000) as f64 / epoch_duration_ms as f64
+    } else {
+        365.0 // fallback to 365 if epoch_duration_ms is 0 (shouldn't happen in practice)
+    };
 
     for rates in exchange_rate_table.into_iter().filter(|r| r.active) {
         // we start the apy calculation from the epoch when the stake subsidy starts
@@ -303,7 +313,7 @@ pub fn calculate_apys(
             let er_e_1 = exchange_rates.dropping_back(1);
             let apys = er_e
                 .zip(er_e_1)
-                .map(calculate_apy)
+                .map(|(rate_e, rate_e_1)| calculate_apy(rate_e, rate_e_1, epochs_per_year))
                 .filter(|apy| *apy > 0.0 && *apy < 0.1)
                 .take(30)
                 .collect::<Vec<_>>();
@@ -345,7 +355,8 @@ fn test_apys_calculation_filter_outliers() {
         })
         .collect();
 
-    let apys = calculate_apys(20, exchange_rates);
+    // Use default epoch duration of 24 hours (86400000 ms) for test
+    let apys = calculate_apys(20, exchange_rates, 86400000);
 
     for apy in apys {
         println!("{}: {}", address_map[&apy.address], apy.apy);
@@ -353,9 +364,14 @@ fn test_apys_calculation_filter_outliers() {
     }
 }
 
-// APY_e = (ER_e+1 / ER_e) ^ 365
-fn calculate_apy((rate_e, rate_e_1): (PoolTokenExchangeRate, PoolTokenExchangeRate)) -> f64 {
-    (rate_e.rate() / rate_e_1.rate()).powf(365.0) - 1.0
+// APY_e = (ER_e+1 / ER_e) ^ epochs_per_year - 1
+// This calculates the annualized return based on the epoch-to-epoch rate change
+fn calculate_apy(
+    rate_e: PoolTokenExchangeRate,
+    rate_e_1: PoolTokenExchangeRate,
+    epochs_per_year: f64,
+) -> f64 {
+    (rate_e.rate() / rate_e_1.rate()).powf(epochs_per_year) - 1.0
 }
 
 /// Cached exchange rates for validators for the given epoch, the cache size is 1, it will be cleared when the epoch changes.
