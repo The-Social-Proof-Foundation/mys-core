@@ -384,14 +384,13 @@ impl Validator {
             .map_err(|_| Error::Internal("Failed to fetch latest Mys system state".to_string()))?;
 
         // Calculate APY using the same approach as in system_state_summary.rs
-        let circulating_supply =
-            TOTAL_SUPPLY_MIST.saturating_sub(system_state.stake_subsidy_balance);
+        // Use total_stake instead of circulating_supply to show actual staking return
         let epochs_per_year = (365_u64 * 24 * 60 * 60 * 1000) / system_state.epoch_duration_ms;
         let yearly_subsidy = system_state
             .stake_subsidy_current_distribution_amount
             .saturating_mul(epochs_per_year);
-        let apy_bps = if circulating_supply > 0 {
-            yearly_subsidy.saturating_mul(10_000) / circulating_supply
+        let apy_bps = if system_state.total_stake > 0 {
+            yearly_subsidy.saturating_mul(10_000) / system_state.total_stake
         } else {
             0
         };

@@ -86,8 +86,10 @@ impl SystemStateSummary {
             .native
             .stake_subsidy_current_distribution_amount
             .saturating_mul(epochs_per_year);
-        let apy_bps = if circulating_supply > 0 {
-            yearly_subsidy.saturating_mul(10_000) / circulating_supply
+        // Calculate APY based on total staked amount (not circulating supply)
+        // This shows the actual return stakers get, which is what users care about
+        let apy_bps = if self.native.total_stake > 0 {
+            yearly_subsidy.saturating_mul(10_000) / self.native.total_stake
         } else {
             0
         };
