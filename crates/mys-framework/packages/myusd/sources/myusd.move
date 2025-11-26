@@ -15,7 +15,7 @@ module myusd::myusd {
             DECIMAL,
             b"myUSD",
             b"MyUSD",
-            b"MySocial official USD stablecoin",
+            b"The official MySocial USD stablecoin.",
             std::option::none(),
             ctx
         );
@@ -40,7 +40,7 @@ module myusd::myusd {
             DECIMAL,
             b"myUSD",
             b"MyUSD",
-            b"MySocial official USD stablecoin",
+            b"The official MySocial USD stablecoin.",
             std::option::none(),
             ctx
         );
