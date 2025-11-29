@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1761843600000 # 1761839924000
+  chain_start_timestamp_ms: 1764406800000 # 1764402584000
 
   # Protocol version
   protocol_version: 75  # Latest version
@@ -23,29 +23,29 @@ parameters:
   stake_subsidy_start_epoch: 0
 
   # Initial stake subsidy distribution amount per epoch (in MIST)
-  # Default: 538,626 MySo = 538,626,000,000,000 MIST
-  stake_subsidy_initial_distribution_amount: 538626000000000
+  # Default: 31,537 MySo = 31,537,208,455,986 MIST
+  stake_subsidy_initial_distribution_amount: 31537208455986
 
   # Number of epochs before decreasing the subsidy amount
   # Default: 15 epochs
-  stake_subsidy_period_length: 3
+  stake_subsidy_period_length: 30
 
   # Rate at which subsidy decreases at end of each period (in basis points)
-  # 200 basis points = 2.0%
-  stake_subsidy_decrease_rate: 200
+  # 40 basis points = 0.40%
+  stake_subsidy_decrease_rate: 40
 
 # Accounts to add tokens to
 accounts:
   # Faucet
-  - address: "0xa24dc4c212f0e4628357356faffd241ecbcf582e1c948e0162019f9672fa270f"
+  - address: "0x52bac68168d758a1177c4c780506e60b8af12c053316541855b156fcf0c6b441"
     gas_amounts:
       - 1000000000000000 # 1,000,000 MySo
   # Social Proof Foundation
-  - address: "0x8b30c4afb3eb597cbe434a584e2327670b0d1cc48863b27e0084a4f6dbd5eeda"
+  - address: "0x14c3080e1f3e12e0d9a51bfd13bb4e4cdbb02d4539928ae2fa54e5917b8ea925"
     gas_amounts:
-      - 696200000000000000 # 696,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators - 50 mill from staking subsidy)
+      - 596200000000000000 # 696,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators - 150 mill from staking subsidy)
   # Core Team
-  - address: "0xdae6fc8e00d4f22d8d7d85aeaff2aa608cee23e5e74555a45938db7277d428bd"
+  - address: "0xbd06a84576d91fc9dfd02b58dd09944ed004fdaa8b969d964456372a323c3a44"
     gas_amounts:
       - 249000000000000000 # 249,000,000 MySo (25% = 12.5% core + 12.5% marketing - 1 mill faucet)
 
