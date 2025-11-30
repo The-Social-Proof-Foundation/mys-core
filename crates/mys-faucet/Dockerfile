@@ -11,8 +11,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace
-COPY . .
+# Copy workspace root (Railway should use workspace root as build context)
+COPY Cargo.toml Cargo.lock ./
+COPY crates crates
+COPY external-crates external-crates
+COPY consensus consensus
+COPY mys-execution mys-execution
 
 # Build the faucet binaries
 RUN cargo build --release --bin mys-faucet --bin merge_coins
@@ -32,7 +36,7 @@ WORKDIR /app
 # Copy binaries and setup script
 COPY --from=builder /app/target/release/mys-faucet /app/bin/
 COPY --from=builder /app/target/release/merge_coins /app/bin/
-COPY setup-wallet.sh /app/bin/setup-wallet.sh
+COPY --from=builder /app/crates/mys-faucet/setup-wallet.sh /app/bin/setup-wallet.sh
 RUN chmod +x /app/bin/setup-wallet.sh
 
 # Use the setup script as entrypoint
