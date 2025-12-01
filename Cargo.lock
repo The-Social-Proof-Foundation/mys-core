@@ -9690,7 +9690,6 @@ dependencies = [
  "anyhow",
  "axum 0.7.9",
  "axum-extra",
- "axum-server",
  "bin-version",
  "bytes",
  "clap",

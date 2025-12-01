@@ -9,6 +9,8 @@ use mys_edge_proxy::handlers::{proxy_handler, AppState};
 use mys_edge_proxy::metrics::AppMetrics;
 use mysten_metrics::start_prometheus_server;
 use reqwest::Client;
+use std::net::SocketAddr;
+use tokio::net::TcpListener;
 use tracing::info;
 
 #[derive(Parser, Debug)]
@@ -56,8 +58,16 @@ async fn main() {
         .with_state(app_state);
 
     info!("Starting server on {}", config.listen_address);
-    axum_server::Server::bind(config.listen_address)
-        .serve(app.into_make_service())
+    let listener = TcpListener::bind(config.listen_address)
         .await
-        .unwrap();
+        .expect("Failed to bind to address");
+    let addr = listener.local_addr().expect("Failed to get local address");
+    info!("Server listening on {}", addr);
+    
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }
