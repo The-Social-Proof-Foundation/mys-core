@@ -34,6 +34,8 @@ pub async fn serve(c: ServerConfig) -> std::io::Result<()> {
     let handle = axum_server::Handle::new();
     // Spawn a task to gracefully shutdown server.
     tokio::spawn(shutdown_signal(c.ctx, handle.clone()));
+    
+    // axum-server 0.7 from_tcp accepts std::net::TcpListener
     axum_server::Server::from_tcp(c.listener)
         .handle(handle)
         .serve(c.router.into_make_service_with_connect_info::<SocketAddr>())
