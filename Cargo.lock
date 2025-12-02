@@ -200,9 +200,9 @@ dependencies = [
  "anemo",
  "anemo-build",
  "clap",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mysten-network",
  "rand 0.8.5",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
 ]
 
@@ -248,7 +248,7 @@ dependencies = [
  "tokio",
  "tower 0.4.13",
  "tracing",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -1196,7 +1196,7 @@ dependencies = [
  "http 0.2.12",
  "percent-encoding",
  "tracing",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -2249,9 +2249,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "bytes"
-version = "1.10.1"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
+checksum = "b35204fbdc0b3f4446b89fc1ac2cf84a8a68971995d0bf2e925ec7cd960f9cb3"
 dependencies = [
  "serde",
 ]
@@ -2425,9 +2425,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.47"
+version = "1.2.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd405d82c84ff7f35739f175f67d8b9fb7687a0e84ccdc78bd3568839827cf07"
+checksum = "c481bdbf0ed3b892f6f806287d72acd515b352a4ec27a208489b8c1bc839633a"
 dependencies = [
  "find-msvc-tools",
  "jobserver",
@@ -2786,22 +2786,10 @@ version = "0.1.0"
 dependencies = [
  "fastcrypto",
  "insta",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mysten-network",
  "rand 0.8.5",
  "serde",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
-]
-
-[[package]]
-name = "consensus-config"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "fastcrypto",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "rand 0.8.5",
- "serde",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
 ]
 
 [[package]]
@@ -2818,7 +2806,7 @@ dependencies = [
  "bcs",
  "bytes",
  "cfg-if",
- "consensus-config 0.1.0",
+ "consensus-config",
  "dashmap",
  "enum_dispatch",
  "fastcrypto",
@@ -2826,13 +2814,13 @@ dependencies = [
  "http 1.4.0",
  "itertools 0.13.0",
  "mockall",
- "mys-http 0.0.0",
- "mys-macros 0.7.0",
- "mys-protocol-config 0.1.0",
- "mys-tls 0.0.0",
- "mysten-common 0.1.0",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-http",
+ "mys-macros",
+ "mys-protocol-config",
+ "mys-tls",
+ "mysten-common",
+ "mysten-metrics",
+ "mysten-network",
  "nom",
  "parking_lot 0.12.5",
  "prometheus",
@@ -2842,10 +2830,10 @@ dependencies = [
  "rstest",
  "rustls 0.23.35",
  "serde",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "strum_macros 0.24.3",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
@@ -2857,7 +2845,7 @@ dependencies = [
  "tower 0.4.13",
  "tower-http 0.5.2",
  "tracing",
- "typed-store 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "typed-store",
 ]
 
 [[package]]
@@ -2866,24 +2854,24 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arc-swap",
- "consensus-config 0.1.0",
+ "consensus-config",
  "consensus-core",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
- "mys-protocol-config 0.1.0",
+ "mys-config",
+ "mys-macros",
+ "mys-protocol-config",
  "mys-simulator",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mysten-metrics",
+ "mysten-network",
  "parking_lot 0.12.5",
  "prometheus",
  "rand 0.8.5",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tokio-stream",
  "tokio-util 0.7.17",
  "tracing",
- "typed-store 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "typed-store",
 ]
 
 [[package]]
@@ -3706,7 +3694,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef552e6f588e446098f6ba40d89ac146c8c7b64aade83c051ee00bb5d2bc18d"
 dependencies = [
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -4414,14 +4402,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "enum-compat-util"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "serde_yaml 0.8.26",
-]
-
-[[package]]
 name = "enum_dispatch"
 version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4962,7 +4942,7 @@ dependencies = [
  "secp256k1",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "sha2 0.10.9",
  "sha3 0.10.8",
  "signature 2.2.0",
@@ -6692,9 +6672,9 @@ dependencies = [
 
 [[package]]
 name = "insta"
-version = "1.44.2"
+version = "1.44.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfd3461e1f00283105bdf97c3a1aca2b3f8456eb809a96938d2b190cd4dbc6d2"
+checksum = "b5c943d4415edd8153251b6f197de5eb1640e56d84e8d9159bea190421c73698"
 dependencies = [
  "console",
  "once_cell",
@@ -6930,9 +6910,9 @@ dependencies = [
 
 [[package]]
 name = "js-sys"
-version = "0.3.82"
+version = "0.3.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b011eec8cc36da2aab2d5cff675ec18454fad408585853910a202391cf9f8e65"
+checksum = "464a3709c7f55f1f721e5389aa6ea4e3bc6aba669353300af094b29ffbdde1d8"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
@@ -7428,9 +7408,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.177"
+version = "0.2.178"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2874a2af47a2325c2001a6e6fad9b16a53b802102b528163885171cf92b15976"
+checksum = "37c93d8daa9d8a012fd8ab92f088405fb202ea0b6ab73ee2482ae66af4f42091"
 
 [[package]]
 name = "libloading"
@@ -7542,11 +7522,11 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.28"
+version = "0.4.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
+checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 dependencies = [
- "serde",
+ "serde_core",
 ]
 
 [[package]]
@@ -7897,7 +7877,7 @@ dependencies = [
  "rustc_version",
  "smallvec",
  "tagptr",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -7910,34 +7890,20 @@ checksum = "1fafa6961cabd9c63bcd77a45d7e3b7f3b552b70417831fb0f56db717e72407e"
 name = "move-abstract-interpreter"
 version = "0.1.0"
 dependencies = [
- "move-binary-format 0.0.3",
- "move-bytecode-verifier-meter 0.1.0",
-]
-
-[[package]]
-name = "move-abstract-interpreter"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-bytecode-verifier-meter 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-bytecode-verifier-meter",
 ]
 
 [[package]]
 name = "move-abstract-interpreter-v2"
 version = "0.1.0"
 dependencies = [
- "move-binary-format 0.0.3",
+ "move-binary-format",
 ]
 
 [[package]]
 name = "move-abstract-stack"
 version = "0.0.1"
-
-[[package]]
-name = "move-abstract-stack"
-version = "0.0.1"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
 
 [[package]]
 name = "move-analyzer"
@@ -7954,12 +7920,12 @@ dependencies = [
  "json_comments",
  "lsp-server",
  "lsp-types",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
- "move-ir-types 0.1.0",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
+ "move-ir-types",
  "move-package",
- "move-symbol-pool 0.1.0",
+ "move-symbol-pool",
  "once_cell",
  "serde",
  "serde_json",
@@ -7974,23 +7940,9 @@ name = "move-binary-format"
 version = "0.0.3"
 dependencies = [
  "anyhow",
- "enum-compat-util 0.1.0",
- "move-core-types 0.0.4",
- "move-proc-macros 0.1.0",
- "ref-cast",
- "serde",
- "variant_count",
-]
-
-[[package]]
-name = "move-binary-format"
-version = "0.0.3"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "enum-compat-util 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-proc-macros 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "enum-compat-util",
+ "move-core-types",
+ "move-proc-macros",
  "ref-cast",
  "serde",
  "variant_count",
@@ -8001,37 +7953,16 @@ name = "move-borrow-graph"
 version = "0.0.1"
 
 [[package]]
-name = "move-borrow-graph"
-version = "0.0.1"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-
-[[package]]
 name = "move-bytecode-source-map"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "bcs",
- "move-binary-format 0.0.3",
- "move-command-line-common 0.1.0",
- "move-core-types 0.0.4",
- "move-ir-types 0.1.0",
- "move-symbol-pool 0.1.0",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "move-bytecode-source-map"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "bcs",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-command-line-common 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-ir-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-symbol-pool 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-command-line-common",
+ "move-core-types",
+ "move-ir-types",
+ "move-symbol-pool",
  "serde",
  "serde_json",
 ]
@@ -8042,21 +7973,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "indexmap 2.12.1",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
- "petgraph 0.5.1",
- "serde-reflection",
-]
-
-[[package]]
-name = "move-bytecode-utils"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "indexmap 2.12.1",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-core-types",
  "petgraph 0.5.1",
  "serde-reflection",
 ]
@@ -8065,28 +7983,13 @@ dependencies = [
 name = "move-bytecode-verifier"
 version = "0.1.0"
 dependencies = [
- "move-abstract-interpreter 0.1.0",
- "move-abstract-stack 0.0.1",
- "move-binary-format 0.0.3",
- "move-borrow-graph 0.0.1",
- "move-bytecode-verifier-meter 0.1.0",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
- "petgraph 0.5.1",
-]
-
-[[package]]
-name = "move-bytecode-verifier"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "move-abstract-interpreter 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-abstract-stack 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-borrow-graph 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-bytecode-verifier-meter 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-vm-config 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-abstract-interpreter",
+ "move-abstract-stack",
+ "move-binary-format",
+ "move-borrow-graph",
+ "move-bytecode-verifier-meter",
+ "move-core-types",
+ "move-vm-config",
  "petgraph 0.5.1",
 ]
 
@@ -8094,19 +7997,9 @@ dependencies = [
 name = "move-bytecode-verifier-meter"
 version = "0.1.0"
 dependencies = [
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
-]
-
-[[package]]
-name = "move-bytecode-verifier-meter"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-vm-config 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-core-types",
+ "move-vm-config",
 ]
 
 [[package]]
@@ -8114,12 +8007,12 @@ name = "move-bytecode-verifier-v0"
 version = "0.1.0"
 dependencies = [
  "move-abstract-interpreter-v2",
- "move-abstract-stack 0.0.1",
- "move-binary-format 0.0.3",
- "move-borrow-graph 0.0.1",
- "move-bytecode-verifier-meter 0.1.0",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
+ "move-abstract-stack",
+ "move-binary-format",
+ "move-borrow-graph",
+ "move-bytecode-verifier-meter",
+ "move-core-types",
+ "move-vm-config",
  "petgraph 0.5.1",
 ]
 
@@ -8128,12 +8021,12 @@ name = "move-bytecode-verifier-v1"
 version = "0.1.0"
 dependencies = [
  "move-abstract-interpreter-v2",
- "move-abstract-stack 0.0.1",
- "move-binary-format 0.0.3",
- "move-borrow-graph 0.0.1",
- "move-bytecode-verifier-meter 0.1.0",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
+ "move-abstract-stack",
+ "move-binary-format",
+ "move-borrow-graph",
+ "move-bytecode-verifier-meter",
+ "move-core-types",
+ "move-vm-config",
  "petgraph 0.5.1",
 ]
 
@@ -8142,12 +8035,12 @@ name = "move-bytecode-verifier-v2"
 version = "0.1.0"
 dependencies = [
  "move-abstract-interpreter-v2",
- "move-abstract-stack 0.0.1",
- "move-binary-format 0.0.3",
- "move-borrow-graph 0.0.1",
- "move-bytecode-verifier-meter 0.1.0",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
+ "move-abstract-stack",
+ "move-binary-format",
+ "move-borrow-graph",
+ "move-bytecode-verifier-meter",
+ "move-core-types",
+ "move-vm-config",
  "petgraph 0.5.1",
 ]
 
@@ -8158,9 +8051,9 @@ dependencies = [
  "anyhow",
  "clap",
  "crossterm 0.25.0",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
- "move-disassembler 0.1.0",
+ "move-binary-format",
+ "move-bytecode-source-map",
+ "move-disassembler",
  "regex",
  "tui",
 ]
@@ -8175,28 +8068,28 @@ dependencies = [
  "codespan-reporting",
  "colored",
  "difference",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
- "move-bytecode-utils 0.1.0",
- "move-bytecode-verifier 0.1.0",
+ "move-binary-format",
+ "move-bytecode-source-map",
+ "move-bytecode-utils",
+ "move-bytecode-verifier",
  "move-bytecode-viewer",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
- "move-coverage 0.1.0",
- "move-disassembler 0.1.0",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
+ "move-coverage",
+ "move-disassembler",
  "move-docgen",
- "move-ir-types 0.1.0",
+ "move-ir-types",
  "move-model-2",
  "move-package",
  "move-stdlib",
  "move-stdlib-natives",
- "move-symbol-pool 0.1.0",
+ "move-symbol-pool",
  "move-unit-test",
- "move-vm-profiler 0.1.0",
+ "move-vm-profiler",
  "move-vm-runtime",
- "move-vm-test-utils 0.1.0",
- "move-vm-types 0.1.0",
+ "move-vm-test-utils",
+ "move-vm-types",
  "serde_yaml 0.8.26",
  "tempfile",
  "toml_edit 0.14.4",
@@ -8213,28 +8106,8 @@ dependencies = [
  "dirs-next",
  "hex",
  "insta",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
- "once_cell",
- "serde",
- "sha2 0.9.9",
- "vfs",
- "walkdir",
-]
-
-[[package]]
-name = "move-command-line-common"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "bcs",
- "difference",
- "dirs-next",
- "hex",
- "insta",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-core-types",
  "once_cell",
  "serde",
  "sha2 0.9.9",
@@ -8254,51 +8127,16 @@ dependencies = [
  "hex",
  "insta",
  "lsp-types",
- "move-binary-format 0.0.3",
- "move-borrow-graph 0.0.1",
- "move-bytecode-source-map 0.1.0",
- "move-bytecode-verifier 0.1.0",
- "move-command-line-common 0.1.0",
- "move-core-types 0.0.4",
- "move-ir-to-bytecode 0.1.0",
- "move-ir-types 0.1.0",
- "move-proc-macros 0.1.0",
- "move-symbol-pool 0.1.0",
- "once_cell",
- "petgraph 0.5.1",
- "rayon",
- "regex",
- "serde",
- "serde_json",
- "similar",
- "stacker",
- "tempfile",
- "vfs",
-]
-
-[[package]]
-name = "move-compiler"
-version = "0.0.1"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "bcs",
- "clap",
- "codespan-reporting",
- "dunce",
- "hex",
- "insta",
- "lsp-types",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-borrow-graph 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-bytecode-source-map 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-bytecode-verifier 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-command-line-common 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-ir-to-bytecode 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-ir-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-proc-macros 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-symbol-pool 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-borrow-graph",
+ "move-bytecode-source-map",
+ "move-bytecode-verifier",
+ "move-command-line-common",
+ "move-core-types",
+ "move-ir-to-bytecode",
+ "move-ir-types",
+ "move-proc-macros",
+ "move-symbol-pool",
  "once_cell",
  "petgraph 0.5.1",
  "rayon",
@@ -8318,11 +8156,11 @@ dependencies = [
  "anyhow",
  "arbitrary",
  "bcs",
- "enum-compat-util 0.1.0",
+ "enum-compat-util",
  "ethnum",
  "hex",
  "leb128",
- "move-proc-macros 0.1.0",
+ "move-proc-macros",
  "num",
  "once_cell",
  "primitive-types 0.10.1",
@@ -8332,34 +8170,7 @@ dependencies = [
  "ref-cast",
  "serde",
  "serde_bytes",
- "serde_with 3.16.0",
- "thiserror 1.0.69",
- "uint",
-]
-
-[[package]]
-name = "move-core-types"
-version = "0.0.4"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "arbitrary",
- "bcs",
- "enum-compat-util 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "ethnum",
- "hex",
- "leb128",
- "move-proc-macros 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "num",
- "once_cell",
- "primitive-types 0.10.1",
- "proptest",
- "proptest-derive 0.3.0",
- "rand 0.8.5",
- "ref-cast",
- "serde",
- "serde_bytes",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "thiserror 1.0.69",
  "uint",
 ]
@@ -8374,33 +8185,12 @@ dependencies = [
  "codespan",
  "colored",
  "indexmap 2.12.1",
- "move-abstract-interpreter 0.1.0",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
- "move-command-line-common 0.1.0",
- "move-core-types 0.0.4",
- "move-ir-types 0.1.0",
- "petgraph 0.5.1",
- "serde",
-]
-
-[[package]]
-name = "move-coverage"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "bcs",
- "clap",
- "codespan",
- "colored",
- "indexmap 2.12.1",
- "move-abstract-interpreter 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-bytecode-source-map 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-command-line-common 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-ir-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-abstract-interpreter",
+ "move-binary-format",
+ "move-bytecode-source-map",
+ "move-command-line-common",
+ "move-core-types",
+ "move-ir-types",
  "petgraph 0.5.1",
  "serde",
 ]
@@ -8414,36 +8204,15 @@ dependencies = [
  "clap",
  "hex",
  "inline_colorization",
- "move-abstract-interpreter 0.1.0",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
- "move-coverage 0.1.0",
- "move-ir-types 0.1.0",
- "move-symbol-pool 0.1.0",
-]
-
-[[package]]
-name = "move-disassembler"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "bcs",
- "clap",
- "hex",
- "inline_colorization",
- "move-abstract-interpreter 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-bytecode-source-map 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-command-line-common 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-compiler 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-coverage 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-ir-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-symbol-pool 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-abstract-interpreter",
+ "move-binary-format",
+ "move-bytecode-source-map",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
+ "move-coverage",
+ "move-ir-types",
+ "move-symbol-pool",
 ]
 
 [[package]]
@@ -8456,12 +8225,12 @@ dependencies = [
  "codespan-reporting",
  "itertools 0.10.5",
  "log",
- "move-binary-format 0.0.3",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
- "move-ir-types 0.1.0",
+ "move-binary-format",
+ "move-compiler",
+ "move-core-types",
+ "move-ir-types",
  "move-model-2",
- "move-symbol-pool 0.1.0",
+ "move-symbol-pool",
  "num",
  "once_cell",
  "regex",
@@ -8475,13 +8244,13 @@ dependencies = [
  "anyhow",
  "bcs",
  "clap",
- "move-abstract-interpreter 0.1.0",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
- "move-bytecode-verifier 0.1.0",
- "move-command-line-common 0.1.0",
- "move-core-types 0.0.4",
- "move-ir-to-bytecode 0.1.0",
+ "move-abstract-interpreter",
+ "move-binary-format",
+ "move-bytecode-source-map",
+ "move-bytecode-verifier",
+ "move-command-line-common",
+ "move-core-types",
+ "move-ir-to-bytecode",
  "serde_json",
 ]
 
@@ -8492,31 +8261,13 @@ dependencies = [
  "anyhow",
  "codespan-reporting",
  "log",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
- "move-command-line-common 0.1.0",
- "move-core-types 0.0.4",
- "move-ir-to-bytecode-syntax 0.1.0",
- "move-ir-types 0.1.0",
- "move-symbol-pool 0.1.0",
- "ouroboros 0.17.2",
-]
-
-[[package]]
-name = "move-ir-to-bytecode"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "codespan-reporting",
- "log",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-bytecode-source-map 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-command-line-common 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-ir-to-bytecode-syntax 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-ir-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-symbol-pool 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-bytecode-source-map",
+ "move-command-line-common",
+ "move-core-types",
+ "move-ir-to-bytecode-syntax",
+ "move-ir-types",
+ "move-symbol-pool",
  "ouroboros 0.17.2",
 ]
 
@@ -8526,23 +8277,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "hex",
- "move-command-line-common 0.1.0",
- "move-core-types 0.0.4",
- "move-ir-types 0.1.0",
- "move-symbol-pool 0.1.0",
-]
-
-[[package]]
-name = "move-ir-to-bytecode-syntax"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "hex",
- "move-command-line-common 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-ir-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-symbol-pool 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-command-line-common",
+ "move-core-types",
+ "move-ir-types",
+ "move-symbol-pool",
 ]
 
 [[package]]
@@ -8550,22 +8288,9 @@ name = "move-ir-types"
 version = "0.1.0"
 dependencies = [
  "hex",
- "move-command-line-common 0.1.0",
- "move-core-types 0.0.4",
- "move-symbol-pool 0.1.0",
- "once_cell",
- "serde",
-]
-
-[[package]]
-name = "move-ir-types"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "hex",
- "move-command-line-common 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-symbol-pool 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-command-line-common",
+ "move-core-types",
+ "move-symbol-pool",
  "once_cell",
  "serde",
 ]
@@ -8579,14 +8304,14 @@ dependencies = [
  "codespan-reporting",
  "itertools 0.10.5",
  "log",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
- "move-disassembler 0.1.0",
- "move-ir-types 0.1.0",
- "move-symbol-pool 0.1.0",
+ "move-binary-format",
+ "move-bytecode-source-map",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
+ "move-disassembler",
+ "move-ir-types",
+ "move-symbol-pool",
  "num",
  "once_cell",
  "regex",
@@ -8601,14 +8326,14 @@ dependencies = [
  "bcs",
  "codespan",
  "codespan-reporting",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
- "move-disassembler 0.1.0",
- "move-ir-types 0.1.0",
- "move-symbol-pool 0.1.0",
+ "move-binary-format",
+ "move-bytecode-source-map",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
+ "move-disassembler",
+ "move-ir-types",
+ "move-symbol-pool",
  "num",
  "serde",
  "vfs",
@@ -8622,16 +8347,16 @@ dependencies = [
  "clap",
  "colored",
  "itertools 0.10.5",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
- "move-bytecode-utils 0.1.0",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
- "move-disassembler 0.1.0",
+ "move-binary-format",
+ "move-bytecode-source-map",
+ "move-bytecode-utils",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
+ "move-disassembler",
  "move-docgen",
  "move-model-2",
- "move-symbol-pool 0.1.0",
+ "move-symbol-pool",
  "named-lock",
  "once_cell",
  "petgraph 0.5.1",
@@ -8652,17 +8377,7 @@ dependencies = [
 name = "move-proc-macros"
 version = "0.1.0"
 dependencies = [
- "enum-compat-util 0.1.0",
- "quote 1.0.42",
- "syn 2.0.111",
-]
-
-[[package]]
-name = "move-proc-macros"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "enum-compat-util 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "enum-compat-util",
  "quote 1.0.42",
  "syn 2.0.111",
 ]
@@ -8674,9 +8389,9 @@ dependencies = [
  "anyhow",
  "hex",
  "log",
- "move-binary-format 0.0.3",
- "move-command-line-common 0.1.0",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-command-line-common",
+ "move-core-types",
  "move-docgen",
  "move-package",
  "move-stdlib-natives",
@@ -8690,10 +8405,10 @@ name = "move-stdlib-natives"
 version = "0.1.1"
 dependencies = [
  "hex",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-core-types",
  "move-vm-runtime",
- "move-vm-types 0.1.0",
+ "move-vm-types",
  "sha2 0.9.9",
  "sha3 0.9.1",
  "smallvec",
@@ -8704,10 +8419,10 @@ name = "move-stdlib-natives-v0"
 version = "0.1.1"
 dependencies = [
  "hex",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-core-types",
  "move-vm-runtime-v0",
- "move-vm-types 0.1.0",
+ "move-vm-types",
  "sha2 0.9.9",
  "sha3 0.9.1",
  "smallvec",
@@ -8718,10 +8433,10 @@ name = "move-stdlib-natives-v1"
 version = "0.1.1"
 dependencies = [
  "hex",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-core-types",
  "move-vm-runtime-v1",
- "move-vm-types 0.1.0",
+ "move-vm-types",
  "sha2 0.9.9",
  "sha3 0.9.1",
  "smallvec",
@@ -8732,10 +8447,10 @@ name = "move-stdlib-natives-v2"
 version = "0.1.1"
 dependencies = [
  "hex",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-core-types",
  "move-vm-runtime-v2",
- "move-vm-types 0.1.0",
+ "move-vm-types",
  "sha2 0.9.9",
  "sha3 0.9.1",
  "smallvec",
@@ -8751,21 +8466,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "move-symbol-pool"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "once_cell",
- "phf 0.11.3",
- "serde",
-]
-
-[[package]]
 name = "move-trace-format"
 version = "0.0.1"
 dependencies = [
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-core-types",
  "serde",
  "serde_json",
 ]
@@ -8777,22 +8482,22 @@ dependencies = [
  "anyhow",
  "async-trait",
  "clap",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
+ "move-binary-format",
+ "move-bytecode-source-map",
  "move-cli",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
- "move-disassembler 0.1.0",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
+ "move-disassembler",
  "move-ir-compiler",
- "move-ir-types 0.1.0",
+ "move-ir-types",
  "move-stdlib",
  "move-stdlib-natives",
- "move-symbol-pool 0.1.0",
- "move-vm-config 0.1.0",
+ "move-symbol-pool",
+ "move-vm-config",
  "move-vm-runtime",
- "move-vm-test-utils 0.1.0",
- "move-vm-types 0.1.0",
+ "move-vm-test-utils",
+ "move-vm-types",
  "once_cell",
  "rayon",
  "regex",
@@ -8811,21 +8516,21 @@ dependencies = [
  "codespan-reporting",
  "colored",
  "itertools 0.10.5",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
- "move-ir-types 0.1.0",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
+ "move-ir-types",
  "move-model",
  "move-stdlib",
  "move-stdlib-natives",
- "move-symbol-pool 0.1.0",
+ "move-symbol-pool",
  "move-trace-format",
- "move-vm-profiler 0.1.0",
+ "move-vm-profiler",
  "move-vm-runtime",
- "move-vm-test-utils 0.1.0",
- "move-vm-types 0.1.0",
+ "move-vm-test-utils",
+ "move-vm-types",
  "once_cell",
  "rand 0.8.5",
  "rayon",
@@ -8836,16 +8541,7 @@ dependencies = [
 name = "move-vm-config"
 version = "0.1.0"
 dependencies = [
- "move-binary-format 0.0.3",
- "once_cell",
-]
-
-[[package]]
-name = "move-vm-config"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
  "once_cell",
 ]
 
@@ -8853,19 +8549,7 @@ dependencies = [
 name = "move-vm-profiler"
 version = "0.1.0"
 dependencies = [
- "move-vm-config 0.1.0",
- "once_cell",
- "serde",
- "serde_json",
- "tracing",
-]
-
-[[package]]
-name = "move-vm-profiler"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "move-vm-config 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-vm-config",
  "once_cell",
  "serde",
  "serde_json",
@@ -8878,13 +8562,13 @@ version = "0.1.0"
 dependencies = [
  "better_any",
  "fail",
- "move-binary-format 0.0.3",
- "move-bytecode-verifier 0.1.0",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-bytecode-verifier",
+ "move-core-types",
  "move-trace-format",
- "move-vm-config 0.1.0",
- "move-vm-profiler 0.1.0",
- "move-vm-types 0.1.0",
+ "move-vm-config",
+ "move-vm-profiler",
+ "move-vm-types",
  "once_cell",
  "parking_lot 0.11.2",
  "smallvec",
@@ -8897,12 +8581,12 @@ version = "0.1.0"
 dependencies = [
  "better_any",
  "fail",
- "move-binary-format 0.0.3",
+ "move-binary-format",
  "move-bytecode-verifier-v0",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
- "move-vm-profiler 0.1.0",
- "move-vm-types 0.1.0",
+ "move-core-types",
+ "move-vm-config",
+ "move-vm-profiler",
+ "move-vm-types",
  "once_cell",
  "parking_lot 0.11.2",
  "smallvec",
@@ -8915,12 +8599,12 @@ version = "0.1.0"
 dependencies = [
  "better_any",
  "fail",
- "move-binary-format 0.0.3",
+ "move-binary-format",
  "move-bytecode-verifier-v1",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
- "move-vm-profiler 0.1.0",
- "move-vm-types 0.1.0",
+ "move-core-types",
+ "move-vm-config",
+ "move-vm-profiler",
+ "move-vm-types",
  "once_cell",
  "parking_lot 0.11.2",
  "smallvec",
@@ -8933,12 +8617,12 @@ version = "0.1.0"
 dependencies = [
  "better_any",
  "fail",
- "move-binary-format 0.0.3",
+ "move-binary-format",
  "move-bytecode-verifier-v2",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
- "move-vm-profiler 0.1.0",
- "move-vm-types 0.1.0",
+ "move-core-types",
+ "move-vm-config",
+ "move-vm-profiler",
+ "move-vm-types",
  "once_cell",
  "parking_lot 0.11.2",
  "smallvec",
@@ -8950,24 +8634,10 @@ name = "move-vm-test-utils"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
- "move-vm-profiler 0.1.0",
- "move-vm-types 0.1.0",
- "once_cell",
- "serde",
-]
-
-[[package]]
-name = "move-vm-test-utils"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-vm-profiler 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-vm-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-core-types",
+ "move-vm-profiler",
+ "move-vm-types",
  "once_cell",
  "serde",
 ]
@@ -8977,22 +8647,9 @@ name = "move-vm-types"
 version = "0.1.0"
 dependencies = [
  "bcs",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
- "move-vm-profiler 0.1.0",
- "serde",
- "smallvec",
-]
-
-[[package]]
-name = "move-vm-types"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "bcs",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-vm-profiler 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-core-types",
+ "move-vm-profiler",
  "serde",
  "smallvec",
 ]
@@ -9149,43 +8806,43 @@ dependencies = [
  "json_to_table",
  "miette",
  "move-analyzer",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
- "move-bytecode-verifier-meter 0.1.0",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
- "move-ir-types 0.1.0",
+ "move-binary-format",
+ "move-bytecode-source-map",
+ "move-bytecode-verifier-meter",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
+ "move-ir-types",
  "move-package",
- "move-vm-config 0.1.0",
- "move-vm-profiler 0.1.0",
+ "move-vm-config",
+ "move-vm-profiler",
  "msim",
  "mys-bridge",
  "mys-cluster-test",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-execution",
  "mys-faucet",
  "mys-framework-snapshot",
  "mys-genesis-builder",
  "mys-graphql-rpc",
  "mys-indexer",
- "mys-json 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
+ "mys-json",
+ "mys-json-rpc-types",
+ "mys-keys",
+ "mys-macros",
  "mys-move",
  "mys-move-build",
  "mys-package-management",
- "mys-protocol-config 0.1.0",
+ "mys-protocol-config",
  "mys-replay",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-sdk",
  "mys-simulator",
  "mys-source-validation",
  "mys-swarm",
  "mys-swarm-config",
  "mys-test-transaction-builder",
  "mys-transaction-builder 0.0.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "num-bigint 0.4.6",
  "prometheus",
  "rand 0.8.5",
@@ -9198,13 +8855,13 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml 0.8.26",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "shell-words",
  "shlex",
  "signature 1.6.4",
  "tabled",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "test-cluster",
  "thiserror 1.0.69",
@@ -9215,7 +8872,7 @@ dependencies = [
  "tracing",
  "unescape",
  "url",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -9225,23 +8882,23 @@ dependencies = [
  "anyhow",
  "bcs",
  "leb128",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-bytecode-verifier 0.1.0",
- "move-bytecode-verifier-meter 0.1.0",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-bytecode-verifier",
+ "move-bytecode-verifier-meter",
+ "move-core-types",
  "move-package",
  "move-trace-format",
- "move-vm-config 0.1.0",
- "move-vm-profiler 0.1.0",
+ "move-vm-config",
+ "move-vm-profiler",
  "move-vm-runtime",
- "move-vm-types 0.1.0",
- "mys-macros 0.7.0",
+ "move-vm-types",
+ "mys-macros",
  "mys-move-natives-latest",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-types",
  "mys-verifier-latest",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mysten-metrics",
  "parking_lot 0.12.5",
  "serde",
  "tracing",
@@ -9262,20 +8919,20 @@ dependencies = [
  "anyhow",
  "bcs",
  "leb128",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-bytecode-verifier-meter 0.1.0",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-bytecode-verifier-meter",
  "move-bytecode-verifier-v0",
- "move-core-types 0.0.4",
+ "move-core-types",
  "move-package",
- "move-vm-config 0.1.0",
- "move-vm-profiler 0.1.0",
+ "move-vm-config",
+ "move-vm-profiler",
  "move-vm-runtime-v0",
- "move-vm-types 0.1.0",
- "mys-macros 0.7.0",
+ "move-vm-types",
+ "mys-macros",
  "mys-move-natives-v0",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-types",
  "mys-verifier-v0",
  "once_cell",
  "parking_lot 0.12.5",
@@ -9290,20 +8947,20 @@ dependencies = [
  "anyhow",
  "bcs",
  "leb128",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-bytecode-verifier-meter 0.1.0",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-bytecode-verifier-meter",
  "move-bytecode-verifier-v1",
- "move-core-types 0.0.4",
+ "move-core-types",
  "move-package",
- "move-vm-config 0.1.0",
- "move-vm-profiler 0.1.0",
+ "move-vm-config",
+ "move-vm-profiler",
  "move-vm-runtime-v1",
- "move-vm-types 0.1.0",
- "mys-macros 0.7.0",
+ "move-vm-types",
+ "mys-macros",
  "mys-move-natives-v1",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-types",
  "mys-verifier-v1",
  "parking_lot 0.12.5",
  "serde",
@@ -9317,20 +8974,20 @@ dependencies = [
  "anyhow",
  "bcs",
  "leb128",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-bytecode-verifier-meter 0.1.0",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-bytecode-verifier-meter",
  "move-bytecode-verifier-v2",
- "move-core-types 0.0.4",
+ "move-core-types",
  "move-package",
- "move-vm-config 0.1.0",
- "move-vm-profiler 0.1.0",
+ "move-vm-config",
+ "move-vm-profiler",
  "move-vm-runtime-v2",
- "move-vm-types 0.1.0",
- "mys-macros 0.7.0",
+ "move-vm-types",
+ "mys-macros",
  "mys-move-natives-v2",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-types",
  "mys-verifier-v2",
  "parking_lot 0.12.5",
  "serde",
@@ -9355,19 +9012,19 @@ dependencies = [
  "eyre",
  "fastcrypto",
  "gcp-bigquery-client",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-core-types",
  "mys-analytics-indexer-derive",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-data-ingestion-core",
  "mys-indexer",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-package-resolver 0.1.0",
- "mys-rpc-api 0.1.0",
+ "mys-json-rpc-types",
+ "mys-package-resolver",
+ "mys-rpc-api",
  "mys-storage",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "mysten-service",
  "num_enum 0.6.1",
  "object_store",
@@ -9380,13 +9037,13 @@ dependencies = [
  "strum 0.24.1",
  "strum_macros 0.24.3",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
  "tracing",
- "typed-store 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "typed-store",
  "url",
 ]
 
@@ -9411,22 +9068,22 @@ dependencies = [
  "futures",
  "indicatif",
  "more-asserts",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-core-types",
  "move-package",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
+ "mys-config",
+ "mys-macros",
  "mys-simulator",
  "mys-storage",
  "mys-swarm-config",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "num_enum 0.6.1",
  "object_store",
  "prometheus",
  "rand 0.8.5",
  "serde",
  "serde_json",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tracing",
@@ -9437,8 +9094,8 @@ name = "mys-authority-aggregation"
 version = "0.1.0"
 dependencies = [
  "futures",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "tokio",
  "tracing",
 ]
@@ -9457,10 +9114,10 @@ dependencies = [
  "crossterm 0.25.0",
  "eyre",
  "futures",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-swarm-config",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "prettytable-rs",
  "prometheus-parse",
  "reqwest 0.12.24",
@@ -9488,24 +9145,24 @@ dependencies = [
  "hdrhistogram",
  "indicatif",
  "itertools 0.13.0",
- "move-core-types 0.0.4",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-core-types",
+ "mys-config",
  "mys-core",
  "mys-framework",
  "mys-framework-snapshot",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
+ "mys-json-rpc-types",
+ "mys-keys",
+ "mys-macros",
  "mys-network",
- "mys-protocol-config 0.1.0",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-sdk",
  "mys-simulator",
  "mys-storage",
  "mys-surfer",
  "mys-swarm-config",
  "mys-test-transaction-builder",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "prometheus",
  "rand 0.8.5",
  "regex",
@@ -9515,12 +9172,12 @@ dependencies = [
  "strum 0.24.1",
  "strum_macros 0.24.3",
  "sysinfo",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "test-cluster",
  "tokio",
  "tokio-util 0.7.17",
  "tracing",
- "typed-store 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "typed-store",
 ]
 
 [[package]]
@@ -9543,17 +9200,17 @@ dependencies = [
  "hex-literal 0.3.4",
  "lru 0.10.1",
  "maplit",
- "move-core-types 0.0.4",
+ "move-core-types",
  "mys-authority-aggregation",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json-rpc-api 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-keys",
+ "mys-sdk",
  "mys-test-transaction-builder",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-common 0.1.0",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-common",
+ "mysten-metrics",
  "num_enum 0.6.1",
  "once_cell",
  "prometheus",
@@ -9561,17 +9218,17 @@ dependencies = [
  "reqwest 0.12.24",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "serde_with 3.16.1",
+ "shared-crypto",
  "strum_macros 0.24.3",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "test-cluster",
  "tokio",
  "tokio-postgres",
  "tracing",
- "typed-store 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "typed-store",
  "url",
 ]
 
@@ -9584,19 +9241,19 @@ dependencies = [
  "ethers",
  "fastcrypto",
  "futures",
- "move-core-types 0.0.4",
+ "move-core-types",
  "mys-bridge",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
+ "mys-json-rpc-types",
+ "mys-keys",
+ "mys-sdk",
+ "mys-types",
  "reqwest 0.12.24",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "serde_with 3.16.1",
+ "shared-crypto",
+ "telemetry-subscribers",
  "tokio",
  "tracing",
 ]
@@ -9618,16 +9275,16 @@ dependencies = [
  "futures",
  "hex-literal 0.3.4",
  "mys-bridge",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-data-ingestion-core",
  "mys-indexer",
  "mys-indexer-builder",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-json-rpc-types",
  "mys-pg-db",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-sdk",
  "mys-test-transaction-builder",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "prometheus",
  "rayon",
  "serde",
@@ -9635,7 +9292,7 @@ dependencies = [
  "serde_yaml 0.8.26",
  "strum_macros 0.24.3",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "test-cluster",
  "tokio",
@@ -9653,34 +9310,34 @@ dependencies = [
  "fastcrypto",
  "futures",
  "jsonrpsee",
- "move-core-types 0.0.4",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-core-types",
+ "mys-config",
  "mys-core",
  "mys-faucet",
  "mys-graphql-rpc",
  "mys-indexer",
- "mys-json 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-json",
+ "mys-json-rpc-types",
+ "mys-keys",
  "mys-move-build",
  "mys-pg-db",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-sdk",
  "mys-swarm",
  "mys-swarm-config",
  "mys-test-transaction-builder",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "prometheus",
  "regex",
  "reqwest 0.12.24",
  "serde_json",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
+ "telemetry-subscribers",
  "tempfile",
  "test-cluster",
  "tokio",
  "tokio-util 0.7.17",
  "tracing",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -9691,56 +9348,26 @@ dependencies = [
  "anyhow",
  "bcs",
  "clap",
- "consensus-config 0.1.0",
+ "consensus-config",
  "csv",
  "dirs 4.0.0",
  "fastcrypto",
  "insta",
- "move-vm-config 0.1.0",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-protocol-config 0.1.0",
- "mys-rpc-api 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-common 0.1.0",
+ "move-vm-config",
+ "mys-keys",
+ "mys-protocol-config",
+ "mys-rpc-api",
+ "mys-types",
+ "mysten-common",
  "object_store",
  "once_cell",
  "prometheus",
  "rand 0.8.5",
  "reqwest 0.12.24",
  "serde",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
  "tempfile",
- "tracing",
-]
-
-[[package]]
-name = "mys-config"
-version = "0.0.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anemo",
- "anyhow",
- "bcs",
- "clap",
- "consensus-config 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "csv",
- "dirs 4.0.0",
- "fastcrypto",
- "move-vm-config 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-protocol-config 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-rpc-api 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-common 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "object_store",
- "once_cell",
- "prometheus",
- "rand 0.8.5",
- "reqwest 0.12.24",
- "serde",
- "serde_with 3.16.0",
- "serde_yaml 0.8.26",
  "tracing",
 ]
 
@@ -9757,7 +9384,7 @@ dependencies = [
  "bincode",
  "bytes",
  "clap",
- "consensus-config 0.1.0",
+ "consensus-config",
  "consensus-core",
  "count-min-sketch",
  "criterion",
@@ -9778,33 +9405,33 @@ dependencies = [
  "mockall",
  "moka",
  "more-asserts",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-core-types",
  "move-package",
- "move-symbol-pool 0.1.0",
+ "move-symbol-pool",
  "mys-archival",
  "mys-authority-aggregation",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-execution",
  "mys-framework",
  "mys-genesis-builder",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
+ "mys-json-rpc-types",
+ "mys-macros",
  "mys-move",
  "mys-move-build",
  "mys-network",
- "mys-protocol-config 0.1.0",
+ "mys-protocol-config",
  "mys-simulator",
  "mys-storage",
  "mys-swarm-config",
  "mys-test-transaction-builder",
- "mys-tls 0.0.0",
+ "mys-tls",
  "mys-transaction-checks",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-common 0.1.0",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-common",
+ "mysten-metrics",
+ "mysten-network",
  "nonempty 0.9.0",
  "num-bigint 0.4.6",
  "num_cpus",
@@ -9823,13 +9450,13 @@ dependencies = [
  "serde",
  "serde-reflection",
  "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "simple_moving_average",
  "static_assertions",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "test-fuzz",
  "thiserror 1.0.69",
@@ -9837,7 +9464,7 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "twox-hash 1.6.3",
- "typed-store 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "typed-store",
 ]
 
 [[package]]
@@ -9848,13 +9475,13 @@ dependencies = [
  "bcs",
  "insta",
  "move-cli",
- "move-disassembler 0.1.0",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-disassembler",
+ "mys-config",
+ "mys-json-rpc-types",
  "mys-move-build",
  "mys-swarm-config",
  "mys-test-transaction-builder",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "serde",
  "strum 0.24.1",
  "strum_macros 0.24.3",
@@ -9880,8 +9507,8 @@ dependencies = [
  "mys-data-ingestion-core",
  "mys-kvstore",
  "mys-storage",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "notify",
  "object_store",
  "prometheus",
@@ -9889,7 +9516,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml 0.8.26",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tracing",
@@ -9905,11 +9532,11 @@ dependencies = [
  "backoff",
  "bcs",
  "futures",
- "mys-protocol-config 0.1.0",
- "mys-rpc-api 0.1.0",
+ "mys-protocol-config",
+ "mys-rpc-api",
  "mys-storage",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "notify",
  "object_store",
  "prometheus",
@@ -9917,7 +9544,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tokio-stream",
@@ -9951,24 +9578,24 @@ dependencies = [
  "indexmap 2.12.1",
  "insta",
  "jsonrpsee",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-core-types",
  "move-package",
  "mys",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-core",
  "mys-framework",
  "mys-json-rpc",
- "mys-json-rpc-api 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-keys",
+ "mys-macros",
  "mys-move-build",
  "mys-network",
  "mys-node",
- "mys-protocol-config 0.1.0",
- "mys-rpc-api 0.1.0",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-rpc-api",
+ "mys-sdk",
  "mys-sdk-types",
  "mys-simulator",
  "mys-storage",
@@ -9977,8 +9604,8 @@ dependencies = [
  "mys-test-transaction-builder",
  "mys-tool",
  "mys-transaction-builder 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "p256",
  "passkey-authenticator",
  "passkey-client",
@@ -9990,8 +9617,8 @@ dependencies = [
  "reqwest 0.12.24",
  "serde",
  "serde_json",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
+ "telemetry-subscribers",
  "tempfile",
  "test-cluster",
  "tokio",
@@ -10012,15 +9639,15 @@ dependencies = [
  "bytes",
  "clap",
  "futures",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mysten-metrics",
  "prometheus",
  "rand 0.8.5",
  "reqwest 0.12.24",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
  "tracing",
  "url",
@@ -10034,28 +9661,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "mys-enum-compat-util"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "serde_yaml 0.8.26",
-]
-
-[[package]]
 name = "mys-execution"
 version = "0.1.0"
 dependencies = [
  "cargo_metadata 0.15.4",
- "move-abstract-interpreter 0.1.0",
+ "move-abstract-interpreter",
  "move-abstract-interpreter-v2",
- "move-binary-format 0.0.3",
- "move-bytecode-verifier 0.1.0",
- "move-bytecode-verifier-meter 0.1.0",
+ "move-binary-format",
+ "move-bytecode-verifier",
+ "move-bytecode-verifier-meter",
  "move-bytecode-verifier-v0",
  "move-bytecode-verifier-v1",
  "move-bytecode-verifier-v2",
  "move-trace-format",
- "move-vm-config 0.1.0",
+ "move-vm-config",
  "move-vm-runtime",
  "move-vm-runtime-v0",
  "move-vm-runtime-v1",
@@ -10068,8 +9687,8 @@ dependencies = [
  "mys-move-natives-v0",
  "mys-move-natives-v1",
  "mys-move-natives-v2",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-types",
  "mys-verifier-latest",
  "mys-verifier-v0",
  "mys-verifier-v1",
@@ -10106,13 +9725,13 @@ dependencies = [
  "http 1.4.0",
  "hyper 1.8.1",
  "hyper-util",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
+ "mys-json-rpc-types",
+ "mys-keys",
+ "mys-sdk",
+ "mys-types",
+ "mysten-metrics",
+ "mysten-network",
  "once_cell",
  "parking_lot 0.12.5",
  "prometheus",
@@ -10120,9 +9739,9 @@ dependencies = [
  "scopeguard",
  "serde",
  "serde_json",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "test-cluster",
  "thiserror 1.0.69",
@@ -10133,8 +9752,8 @@ dependencies = [
  "tower_governor",
  "tracing",
  "ttl_cache",
- "typed-store 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "uuid 1.18.1",
+ "typed-store",
+ "uuid 1.19.0",
  "wiremock",
 ]
 
@@ -10159,13 +9778,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bcs",
- "move-binary-format 0.0.3",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-compiler",
+ "move-core-types",
  "move-package",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-move-build",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "once_cell",
  "regex",
  "serde",
@@ -10183,8 +9802,8 @@ dependencies = [
  "move-package",
  "mys-framework",
  "mys-move-build",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-types",
  "serde",
  "serde_json",
  "tokio",
@@ -10195,18 +9814,18 @@ name = "mys-framework-tests"
 version = "0.1.0"
 dependencies = [
  "datatest-stable",
- "move-bytecode-verifier 0.1.0",
- "move-bytecode-verifier-meter 0.1.0",
+ "move-bytecode-verifier",
+ "move-bytecode-verifier-meter",
  "move-cli",
  "move-package",
  "move-unit-test",
  "mys-adapter-latest",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-framework",
  "mys-move",
  "mys-move-build",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-types",
  "mys-verifier-latest",
  "prometheus",
 ]
@@ -10220,21 +9839,21 @@ dependencies = [
  "camino",
  "fastcrypto",
  "insta",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-core-types",
+ "mys-config",
  "mys-execution",
  "mys-framework",
  "mys-framework-snapshot",
- "mys-protocol-config 0.1.0",
+ "mys-protocol-config",
  "mys-simulator",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "prometheus",
  "rand 0.8.5",
  "serde",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "tempfile",
  "tracing",
 ]
@@ -10250,7 +9869,7 @@ dependencies = [
  "mys-graphql-rpc",
  "mys-transactional-test-runner",
  "serde_json",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
 ]
 
@@ -10285,29 +9904,29 @@ dependencies = [
  "insta",
  "itertools 0.13.0",
  "lru 0.10.1",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-core-types 0.0.4",
- "move-disassembler 0.1.0",
- "move-ir-types 0.1.0",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-core-types",
+ "move-disassembler",
+ "move-ir-types",
  "mys-default-config",
  "mys-framework",
  "mys-graphql-rpc-client",
  "mys-graphql-rpc-headers",
  "mys-indexer",
  "mys-json-rpc",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-json-rpc-types",
  "mys-move-build",
- "mys-package-resolver 0.1.0",
+ "mys-package-resolver",
  "mys-pg-db",
- "mys-protocol-config 0.1.0",
- "mys-rpc-api 0.1.0",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-rpc-api",
+ "mys-sdk",
  "mys-swarm-config",
  "mys-test-transaction-builder",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
+ "mysten-network",
  "once_cell",
  "prometheus",
  "rand 0.8.5",
@@ -10315,13 +9934,13 @@ dependencies = [
  "reqwest 0.12.24",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "similar",
  "simulacrum",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "test-cluster",
  "thiserror 1.0.69",
@@ -10331,7 +9950,7 @@ dependencies = [
  "tower 0.4.13",
  "tower-http 0.5.2",
  "tracing",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -10376,26 +9995,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mys-http"
-version = "0.0.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "bytes",
- "http 1.4.0",
- "http-body 1.0.1",
- "http-body-util",
- "hyper 1.8.1",
- "hyper-util",
- "pin-project-lite",
- "socket2 0.5.10",
- "tokio",
- "tokio-rustls 0.26.4",
- "tokio-util 0.7.17",
- "tower 0.4.13",
- "tracing",
-]
-
-[[package]]
 name = "mys-indexer"
 version = "0.0.1"
 dependencies = [
@@ -10421,33 +10020,33 @@ dependencies = [
  "indicatif",
  "itertools 0.13.0",
  "jsonrpsee",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-core-types",
  "mys-archival",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-core",
  "mys-data-ingestion-core",
- "mys-json 0.0.0",
+ "mys-json",
  "mys-json-rpc",
- "mys-json-rpc-api 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-keys",
  "mys-move-build",
- "mys-open-rpc 0.0.1",
- "mys-package-resolver 0.1.0",
+ "mys-open-rpc",
+ "mys-package-resolver",
  "mys-pg-db",
- "mys-protocol-config 0.1.0",
- "mys-rpc-api 0.1.0",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-rpc-api",
+ "mys-sdk",
  "mys-snapshot",
  "mys-storage",
  "mys-swarm-config",
  "mys-synthetic-ingestion",
  "mys-test-transaction-builder",
  "mys-transaction-builder 0.0.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "ntest",
  "object_store",
  "prometheus",
@@ -10456,12 +10055,12 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "simulacrum",
  "strum 0.24.1",
  "strum_macros 0.24.3",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "test-cluster",
  "thiserror 1.0.69",
@@ -10494,13 +10093,13 @@ dependencies = [
  "mys-indexer-alt-metrics",
  "mys-indexer-alt-schema",
  "mys-pg-db",
- "mys-protocol-config 0.1.0",
+ "mys-protocol-config",
  "mys-synthetic-ingestion",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "prometheus",
  "rand 0.8.5",
  "serde",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tokio-util 0.7.17",
@@ -10527,7 +10126,7 @@ dependencies = [
  "prometheus",
  "reqwest 0.12.24",
  "serde_json",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
  "tokio-util 0.7.17",
  "url",
@@ -10552,12 +10151,12 @@ dependencies = [
  "mys-indexer-alt-metrics",
  "mys-pg-db",
  "mys-storage",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "prometheus",
  "rand 0.8.5",
  "reqwest 0.12.24",
  "serde",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
@@ -10583,25 +10182,25 @@ dependencies = [
  "fastcrypto",
  "futures",
  "jsonrpsee",
- "move-core-types 0.0.4",
+ "move-core-types",
  "mys-default-config",
  "mys-indexer-alt-metrics",
  "mys-indexer-alt-schema",
- "mys-json 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-open-rpc 0.0.1",
- "mys-open-rpc-macros 0.1.0",
- "mys-package-resolver 0.1.0",
+ "mys-json",
+ "mys-json-rpc-types",
+ "mys-open-rpc",
+ "mys-open-rpc-macros",
+ "mys-package-resolver",
  "mys-pg-db",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "pin-project-lite",
  "prometheus",
  "reqwest 0.12.24",
  "schemars 0.8.22",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "serde_with 3.16.1",
+ "telemetry-subscribers",
  "thiserror 1.0.69",
  "tokio",
  "tokio-util 0.7.17",
@@ -10637,7 +10236,7 @@ dependencies = [
  "futures",
  "indicatif",
  "mys-archival",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-core",
  "mys-field-count",
  "mys-indexer-alt-framework",
@@ -10645,10 +10244,10 @@ dependencies = [
  "mys-pg-db",
  "mys-snapshot",
  "mys-storage",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "object_store",
  "prometheus",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
  "tracing",
 ]
@@ -10662,8 +10261,8 @@ dependencies = [
  "diesel",
  "diesel_migrations",
  "mys-field-count",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-types",
  "serde",
 ]
 
@@ -10676,12 +10275,12 @@ dependencies = [
  "futures",
  "mys-data-ingestion-core",
  "mys-indexer-builder",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-sdk",
+ "mys-types",
+ "mysten-metrics",
  "prometheus",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
  "tracing",
 ]
@@ -10693,33 +10292,16 @@ dependencies = [
  "anyhow",
  "bcs",
  "fastcrypto",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-core-types",
  "mys-framework",
  "mys-move-build",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "schemars 0.8.22",
  "serde",
  "serde_json",
  "test-fuzz",
-]
-
-[[package]]
-name = "mys-json"
-version = "0.0.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "bcs",
- "fastcrypto",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-bytecode-utils 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "schemars 0.8.22",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -10747,39 +10329,39 @@ dependencies = [
  "itertools 0.13.0",
  "jsonrpsee",
  "mockall",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-core-types",
  "move-package",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-core",
- "mys-json 0.0.0",
- "mys-json-rpc-api 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
- "mys-open-rpc 0.0.1",
- "mys-open-rpc-macros 0.1.0",
- "mys-protocol-config 0.1.0",
+ "mys-json",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-macros",
+ "mys-open-rpc",
+ "mys-open-rpc-macros",
+ "mys-protocol-config",
  "mys-storage",
  "mys-transaction-builder 0.0.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "mysten-service",
  "once_cell",
  "prometheus",
  "serde",
  "serde_json",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "signature 1.6.4",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "thiserror 1.0.69",
  "tokio",
  "tokio-util 0.7.17",
  "tower 0.4.13",
  "tower-http 0.5.2",
  "tracing",
- "typed-store-error 0.4.0",
+ "typed-store-error",
 ]
 
 [[package]]
@@ -10789,32 +10371,12 @@ dependencies = [
  "anyhow",
  "fastcrypto",
  "jsonrpsee",
- "mys-json 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-open-rpc 0.0.1",
- "mys-open-rpc-macros 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "once_cell",
- "prometheus",
- "tap",
- "tracing",
-]
-
-[[package]]
-name = "mys-json-rpc-api"
-version = "0.0.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "fastcrypto",
- "jsonrpsee",
- "mys-json 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-open-rpc 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-open-rpc-macros 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-json",
+ "mys-json-rpc-types",
+ "mys-open-rpc",
+ "mys-open-rpc-macros",
+ "mys-types",
+ "mysten-metrics",
  "once_cell",
  "prometheus",
  "tap",
@@ -10830,30 +10392,30 @@ dependencies = [
  "bcs",
  "hyper 1.8.1",
  "jsonrpsee",
- "move-core-types 0.0.4",
+ "move-core-types",
  "move-package",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-core",
- "mys-json 0.0.0",
+ "mys-json",
  "mys-json-rpc",
- "mys-json-rpc-api 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-keys",
+ "mys-macros",
  "mys-move-build",
- "mys-open-rpc 0.0.1",
- "mys-open-rpc-macros 0.1.0",
- "mys-protocol-config 0.1.0",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-open-rpc",
+ "mys-open-rpc-macros",
+ "mys-protocol-config",
+ "mys-sdk",
  "mys-simulator",
  "mys-swarm-config",
  "mys-test-transaction-builder",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "prometheus",
  "rand 0.8.5",
  "reqwest 0.12.24",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
+ "telemetry-subscribers",
  "test-cluster",
  "tokio",
  "tracing",
@@ -10871,55 +10433,22 @@ dependencies = [
  "fastcrypto",
  "itertools 0.13.0",
  "json_to_table",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-core-types 0.0.4",
- "move-disassembler 0.1.0",
- "move-ir-types 0.1.0",
- "mys-enum-compat-util 0.1.0",
- "mys-json 0.0.0",
- "mys-macros 0.7.0",
- "mys-package-resolver 0.1.0",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-core-types",
+ "move-disassembler",
+ "move-ir-types",
+ "mys-enum-compat-util",
+ "mys-json",
+ "mys-macros",
+ "mys-package-resolver",
+ "mys-protocol-config",
+ "mys-types",
+ "mysten-metrics",
  "schemars 0.8.22",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
- "tabled",
- "tracing",
-]
-
-[[package]]
-name = "mys-json-rpc-types"
-version = "0.0.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "base64 0.21.7",
- "bcs",
- "colored",
- "enum_dispatch",
- "fastcrypto",
- "itertools 0.13.0",
- "json_to_table",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-bytecode-utils 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-disassembler 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-ir-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-enum-compat-util 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-package-resolver 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-protocol-config 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "schemars 0.8.22",
- "serde",
- "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "tabled",
  "tracing",
 ]
@@ -10931,34 +10460,15 @@ dependencies = [
  "anyhow",
  "bip32",
  "fastcrypto",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "rand 0.8.5",
  "regex",
  "serde",
  "serde_json",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "signature 1.6.4",
  "slip10_ed25519",
  "tempfile",
- "tiny-bip39",
-]
-
-[[package]]
-name = "mys-keys"
-version = "0.0.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "bip32",
- "fastcrypto",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "rand 0.8.5",
- "regex",
- "serde",
- "serde_json",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "signature 1.6.4",
- "slip10_ed25519",
  "tiny-bip39",
 ]
 
@@ -10973,12 +10483,12 @@ dependencies = [
  "gcp_auth",
  "http 1.4.0",
  "mys-data-ingestion-core",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "prometheus",
  "prost",
  "prost-types",
  "serde",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tonic",
@@ -10996,14 +10506,14 @@ dependencies = [
  "clap",
  "env_logger",
  "log",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-package-resolver 0.1.0",
- "mys-rpc-api 0.1.0",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-core-types",
+ "mys-config",
+ "mys-json-rpc-types",
+ "mys-package-resolver",
+ "mys-rpc-api",
+ "mys-sdk",
+ "mys-types",
  "object_store",
  "reqwest 0.12.24",
  "serde",
@@ -11018,18 +10528,7 @@ name = "mys-macros"
 version = "0.7.0"
 dependencies = [
  "futures",
- "mys-proc-macros 0.7.0",
- "once_cell",
- "tracing",
-]
-
-[[package]]
-name = "mys-macros"
-version = "0.7.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "futures",
- "mys-proc-macros 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-proc-macros",
  "once_cell",
  "tracing",
 ]
@@ -11050,7 +10549,7 @@ dependencies = [
  "serde",
  "serde_yaml 0.9.34+deprecated",
  "strum_macros 0.24.3",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
  "tracing",
 ]
@@ -11072,30 +10571,30 @@ dependencies = [
  "insta-cmd",
  "jemalloc-ctl",
  "jsonrpsee",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
+ "move-binary-format",
+ "move-bytecode-source-map",
  "move-cli",
- "move-compiler 0.0.1",
- "move-disassembler 0.1.0",
- "move-ir-types 0.1.0",
+ "move-compiler",
+ "move-disassembler",
+ "move-ir-types",
  "move-package",
  "move-unit-test",
  "move-vm-runtime",
  "mys-core",
- "mys-macros 0.7.0",
+ "mys-macros",
  "mys-move-build",
  "mys-move-natives-latest",
  "mys-node",
- "mys-protocol-config 0.1.0",
+ "mys-protocol-config",
  "mys-simulator",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "once_cell",
  "prometheus",
  "rand 0.8.5",
  "serde_json",
  "serde_yaml 0.8.26",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tracing",
@@ -11109,18 +10608,18 @@ dependencies = [
  "anyhow",
  "datatest-stable",
  "fastcrypto",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-bytecode-verifier 0.1.0",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
- "move-ir-types 0.1.0",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-bytecode-verifier",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
+ "move-ir-types",
  "move-package",
- "move-symbol-pool 0.1.0",
+ "move-symbol-pool",
  "mys-package-management",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-types",
  "mys-verifier-latest",
  "serde-reflection",
  "tempfile",
@@ -11146,13 +10645,13 @@ dependencies = [
  "fastcrypto-vdf",
  "fastcrypto-zkp",
  "indexmap 2.12.1",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-core-types",
  "move-stdlib-natives",
  "move-vm-runtime",
- "move-vm-types 0.1.0",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-vm-types",
+ "mys-protocol-config",
+ "mys-types",
  "rand 0.8.5",
  "smallvec",
  "tracing",
@@ -11167,13 +10666,13 @@ dependencies = [
  "fastcrypto",
  "fastcrypto-zkp",
  "linked-hash-map",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-core-types",
  "move-stdlib-natives-v0",
  "move-vm-runtime-v0",
- "move-vm-types 0.1.0",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-vm-types",
+ "mys-protocol-config",
+ "mys-types",
  "smallvec",
  "tracing",
 ]
@@ -11187,13 +10686,13 @@ dependencies = [
  "fastcrypto",
  "fastcrypto-zkp",
  "linked-hash-map",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-core-types",
  "move-stdlib-natives-v1",
  "move-vm-runtime-v1",
- "move-vm-types 0.1.0",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-vm-types",
+ "mys-protocol-config",
+ "mys-types",
  "smallvec",
  "tracing",
 ]
@@ -11207,13 +10706,13 @@ dependencies = [
  "fastcrypto",
  "fastcrypto-zkp",
  "indexmap 2.12.1",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-core-types",
  "move-stdlib-natives-v2",
  "move-vm-runtime-v2",
- "move-vm-types 0.1.0",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-vm-types",
+ "mys-protocol-config",
+ "mys-types",
  "smallvec",
  "tracing",
 ]
@@ -11229,7 +10728,7 @@ dependencies = [
  "mys-mvr-graphql-rpc",
  "mys-transactional-test-runner",
  "serde_json",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
 ]
 
@@ -11264,29 +10763,29 @@ dependencies = [
  "insta",
  "itertools 0.13.0",
  "lru 0.10.1",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-core-types 0.0.4",
- "move-disassembler 0.1.0",
- "move-ir-types 0.1.0",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-core-types",
+ "move-disassembler",
+ "move-ir-types",
  "mys-default-config",
  "mys-framework",
  "mys-graphql-rpc-client",
  "mys-graphql-rpc-headers",
  "mys-indexer",
  "mys-json-rpc",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-json-rpc-types",
  "mys-move-build",
- "mys-package-resolver 0.1.0",
+ "mys-package-resolver",
  "mys-pg-db",
- "mys-protocol-config 0.1.0",
- "mys-rpc-api 0.1.0",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-rpc-api",
+ "mys-sdk",
  "mys-swarm-config",
  "mys-test-transaction-builder",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
+ "mysten-network",
  "once_cell",
  "prometheus",
  "rand 0.8.5",
@@ -11294,13 +10793,13 @@ dependencies = [
  "reqwest 0.12.24",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "similar",
  "simulacrum",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "test-cluster",
  "thiserror 1.0.69",
@@ -11310,7 +10809,7 @@ dependencies = [
  "tower 0.4.13",
  "tower-http 0.5.2",
  "tracing",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -11331,20 +10830,20 @@ dependencies = [
  "futures",
  "governor",
  "mys-archival",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
+ "mys-config",
+ "mys-macros",
  "mys-storage",
  "mys-swarm-config",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-common 0.1.0",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-common",
+ "mysten-metrics",
+ "mysten-network",
  "prometheus",
  "rand 0.8.5",
  "serde",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tonic",
@@ -11371,37 +10870,37 @@ dependencies = [
  "fastcrypto-zkp",
  "futures",
  "humantime",
- "move-vm-profiler 0.1.0",
+ "move-vm-profiler",
  "mys-archival",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-core",
- "mys-http 0.0.0",
+ "mys-http",
  "mys-json-rpc",
- "mys-json-rpc-api 0.0.0",
- "mys-macros 0.7.0",
+ "mys-json-rpc-api",
+ "mys-macros",
  "mys-network",
- "mys-protocol-config 0.1.0",
- "mys-rpc-api 0.1.0",
+ "mys-protocol-config",
+ "mys-rpc-api",
  "mys-simulator",
  "mys-snapshot",
  "mys-storage",
  "mys-telemetry",
- "mys-tls 0.0.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-common 0.1.0",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-tls",
+ "mys-types",
+ "mysten-common",
+ "mysten-metrics",
+ "mysten-network",
  "mysten-service",
  "parking_lot 0.12.5",
  "prometheus",
  "reqwest 0.12.24",
  "serde",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
  "tower 0.4.13",
  "tracing",
- "typed-store 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "typed-store",
  "url",
 ]
 
@@ -11413,13 +10912,13 @@ dependencies = [
  "bcs",
  "clap",
  "fastcrypto",
- "move-core-types 0.0.4",
- "mys-json 0.0.0",
+ "move-core-types",
+ "mys-json",
  "mys-json-rpc",
- "mys-json-rpc-api 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-protocol-config",
+ "mys-types",
  "pretty_assertions",
  "rand 0.8.5",
  "schemars 0.8.22",
@@ -11430,33 +10929,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "mys-open-rpc"
-version = "0.0.1"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "bcs",
- "schemars 0.8.22",
- "serde",
- "serde_json",
- "versions",
-]
-
-[[package]]
 name = "mys-open-rpc-macros"
 version = "0.1.0"
-dependencies = [
- "derive-syn-parse",
- "itertools 0.13.0",
- "proc-macro2 1.0.103",
- "quote 1.0.42",
- "syn 1.0.109",
- "unescape",
-]
-
-[[package]]
-name = "mys-open-rpc-macros"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
 dependencies = [
  "derive-syn-parse",
  "itertools 0.13.0",
@@ -11476,22 +10950,22 @@ dependencies = [
  "clap",
  "dirs 4.0.0",
  "jsonpath_lib",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
+ "mys-json-rpc-types",
+ "mys-keys",
  "mys-move-build",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-sdk",
+ "mys-types",
+ "mysten-metrics",
  "once_cell",
  "prometheus",
  "rand 0.8.5",
  "reqwest 0.12.24",
  "serde",
  "serde_json",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
  "tracing",
 ]
@@ -11513,14 +10987,14 @@ dependencies = [
  "futures",
  "futures-util",
  "hex-literal 0.3.4",
- "mys-config 0.0.0",
+ "mys-config",
  "mys-data-ingestion-core",
  "mys-indexer-builder",
- "mys-json-rpc-types 0.0.0",
+ "mys-json-rpc-types",
  "mys-pg-db",
- "mys-sdk 0.0.1",
- "mys-types 0.1.0",
- "mysten-metrics 0.7.0",
+ "mys-sdk",
+ "mys-types",
+ "mysten-metrics",
  "prometheus",
  "rustls 0.23.35",
  "rustls-native-certs 0.8.2",
@@ -11528,7 +11002,7 @@ dependencies = [
  "serde_json",
  "serde_yaml 0.8.26",
  "tap",
- "telemetry-subscribers 0.2.0",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tokio-postgres",
@@ -11547,8 +11021,8 @@ dependencies = [
  "cynic",
  "cynic-codegen",
  "fastcrypto",
- "move-core-types 0.0.4",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-core-types",
+ "mys-types",
  "reqwest 0.12.24",
  "serde",
  "serde_json",
@@ -11560,12 +11034,12 @@ name = "mys-package-management"
 version = "0.0.1"
 dependencies = [
  "anyhow",
- "move-core-types 0.0.4",
+ "move-core-types",
  "move-package",
- "move-symbol-pool 0.1.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-symbol-pool",
+ "mys-json-rpc-types",
+ "mys-sdk",
+ "mys-types",
  "thiserror 1.0.69",
  "tracing",
 ]
@@ -11580,37 +11054,18 @@ dependencies = [
  "hyper 1.8.1",
  "insta",
  "lru 0.10.1",
- "move-binary-format 0.0.3",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
  "mys-move-build",
- "mys-rpc-api 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-rpc-api",
+ "mys-types",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
  "tokio",
  "tower 0.4.13",
-]
-
-[[package]]
-name = "mys-package-resolver"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "async-trait",
- "bcs",
- "eyre",
- "lru 0.10.1",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-command-line-common 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-rpc-api 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "serde",
- "thiserror 1.0.69",
- "tokio",
 ]
 
 [[package]]
@@ -11623,7 +11078,7 @@ dependencies = [
  "diesel",
  "diesel-async 0.5.2",
  "diesel_migrations",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tracing",
@@ -11642,7 +11097,7 @@ dependencies = [
  "graphql_client",
  "hex",
  "jsonpath_lib",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "prometheus",
  "reqwest 0.12.24",
  "rust_decimal",
@@ -11650,14 +11105,14 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "sled",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "thiserror 1.0.69",
  "tokio",
  "tokio-retry",
  "tower 0.4.13",
  "tower-http 0.5.2",
  "tracing",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -11665,19 +11120,7 @@ name = "mys-proc-macros"
 version = "0.7.0"
 dependencies = [
  "msim-macros",
- "mys-enum-compat-util 0.1.0",
- "proc-macro2 1.0.103",
- "quote 1.0.42",
- "syn 2.0.111",
-]
-
-[[package]]
-name = "mys-proc-macros"
-version = "0.7.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "msim-macros",
- "mys-enum-compat-util 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-enum-compat-util",
  "proc-macro2 1.0.103",
  "quote 1.0.42",
  "syn 2.0.111",
@@ -11689,44 +11132,18 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "insta",
- "move-vm-config 0.1.0",
- "mys-protocol-config-macros 0.1.0",
+ "move-vm-config",
+ "mys-protocol-config-macros",
  "schemars 0.8.22",
  "serde",
  "serde-env",
- "serde_with 3.16.0",
- "tracing",
-]
-
-[[package]]
-name = "mys-protocol-config"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "clap",
- "insta",
- "move-vm-config 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-protocol-config-macros 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "schemars 0.8.22",
- "serde",
- "serde-env",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "tracing",
 ]
 
 [[package]]
 name = "mys-protocol-config-macros"
 version = "0.1.0"
-dependencies = [
- "proc-macro2 1.0.103",
- "quote 1.0.42",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "mys-protocol-config-macros"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
 dependencies = [
  "proc-macro2 1.0.103",
  "quote 1.0.42",
@@ -11753,9 +11170,9 @@ dependencies = [
  "itertools 0.13.0",
  "mime",
  "multiaddr",
- "mys-tls 0.0.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-tls",
+ "mys-types",
+ "mysten-metrics",
  "once_cell",
  "prometheus",
  "prost",
@@ -11767,10 +11184,10 @@ dependencies = [
  "rustls-pemfile 2.2.0",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
  "snap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
  "tower 0.4.13",
  "tower-http 0.5.2",
@@ -11791,31 +11208,31 @@ dependencies = [
  "http 1.4.0",
  "jsonrpsee",
  "lru 0.10.1",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-core-types",
+ "move-vm-config",
+ "mys-config",
  "mys-core",
  "mys-execution",
  "mys-framework",
  "mys-json-rpc",
- "mys-json-rpc-api 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-protocol-config 0.1.0",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-protocol-config",
+ "mys-sdk",
  "mys-storage",
  "mys-transaction-checks",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "parking_lot 0.12.5",
  "prometheus",
  "rand 0.8.5",
  "regex",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "shellexpand",
  "similar",
  "tabled",
@@ -11842,33 +11259,33 @@ dependencies = [
  "hyper 1.8.1",
  "lru 0.10.1",
  "move-cli",
- "move-core-types 0.0.4",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-core-types",
+ "mys-config",
+ "mys-json-rpc-types",
+ "mys-keys",
  "mys-move-build",
  "mys-node",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-sdk",
  "mys-swarm-config",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "once_cell",
  "quick-js",
  "rand 0.8.5",
  "reqwest 0.12.24",
  "serde",
  "serde_json",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "signature 1.6.4",
  "strum 0.24.1",
  "strum_macros 0.24.3",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "test-cluster",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
- "typed-store 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "typed-store",
 ]
 
 [[package]]
@@ -11887,13 +11304,13 @@ dependencies = [
  "http 1.4.0",
  "itertools 0.13.0",
  "mime",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
- "mys-protocol-config 0.1.0",
+ "move-binary-format",
+ "move-core-types",
+ "mys-protocol-config",
  "mys-sdk-types",
  "mys-transaction-builder 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-network",
  "paste",
  "prometheus",
  "proptest",
@@ -11904,7 +11321,7 @@ dependencies = [
  "roaring",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "tap",
  "test-strategy",
  "thiserror 1.0.69",
@@ -11921,49 +11338,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mys-rpc-api"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "async-stream",
- "async-trait",
- "axum",
- "base64 0.21.7",
- "bcs",
- "bytes",
- "fastcrypto",
- "http 1.4.0",
- "itertools 0.13.0",
- "mime",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-protocol-config 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-sdk-types",
- "mys-transaction-builder 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "prometheus",
- "prost",
- "prost-types",
- "rand 0.8.5",
- "roaring",
- "serde",
- "serde_json",
- "serde_with 3.16.0",
- "tap",
- "thiserror 1.0.69",
- "tokio",
- "tokio-stream",
- "tonic",
- "tonic-health",
- "tonic-reflection",
- "tower 0.4.13",
- "tracing",
- "url",
-]
-
-[[package]]
 name = "mys-rpc-loadgen"
 version = "0.0.1"
 dependencies = [
@@ -11975,17 +11349,17 @@ dependencies = [
  "futures",
  "itertools 0.13.0",
  "mys-json-rpc",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-json-rpc-types",
+ "mys-keys",
+ "mys-sdk",
+ "mys-types",
  "serde",
  "serde_json",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "shellexpand",
  "strum 0.24.1",
  "strum_macros 0.24.3",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "test-cluster",
  "tokio",
  "tonic",
@@ -12008,56 +11382,23 @@ dependencies = [
  "futures",
  "futures-core",
  "jsonrpsee",
- "move-core-types 0.0.4",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json 0.0.0",
- "mys-json-rpc-api 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
+ "move-core-types",
+ "mys-config",
+ "mys-json",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-keys",
+ "mys-macros",
  "mys-transaction-builder 0.0.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "rand 0.8.5",
  "reqwest 0.12.24",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "serde_with 3.16.1",
+ "shared-crypto",
  "tempfile",
  "test-cluster",
- "thiserror 1.0.69",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "mys-sdk"
-version = "0.0.1"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "async-trait",
- "base64 0.21.7",
- "bcs",
- "clap",
- "colored",
- "fastcrypto",
- "futures",
- "futures-core",
- "jsonrpsee",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json-rpc-api 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-transaction-builder 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "reqwest 0.12.24",
- "serde",
- "serde_json",
- "serde_with 3.16.0",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
@@ -12079,7 +11420,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "test-strategy",
  "winnow 0.6.26",
 ]
@@ -12095,17 +11436,17 @@ dependencies = [
  "clap",
  "env_logger",
  "lexical-util",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mysten-metrics",
  "prometheus",
  "reqwest 0.12.24",
  "serde",
  "serde_json",
  "snowflake-api",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
  "tokio-cron-scheduler",
  "tracing",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -12121,11 +11462,11 @@ dependencies = [
  "msim",
  "mys-framework",
  "mys-move-build",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-network",
  "rand 0.8.5",
  "serde",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tower 0.4.13",
  "tracing",
@@ -12140,28 +11481,28 @@ dependencies = [
  "clap",
  "fs_extra",
  "futures",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-core-types",
  "move-package",
- "move-symbol-pool 0.1.0",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-symbol-pool",
+ "mys-config",
  "mys-core",
- "mys-macros 0.7.0",
+ "mys-macros",
  "mys-move-build",
- "mys-protocol-config 0.1.0",
+ "mys-protocol-config",
  "mys-simulator",
  "mys-storage",
  "mys-test-transaction-builder",
  "mys-transaction-checks",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "once_cell",
  "prometheus",
  "serde",
  "serde_json",
  "strum 0.24.1",
  "strum_macros 0.24.3",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
  "tracing",
 ]
@@ -12178,12 +11519,12 @@ dependencies = [
  "futures",
  "indicatif",
  "integer-encoding",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-core",
  "mys-indexer-alt-framework",
- "mys-protocol-config 0.1.0",
+ "mys-protocol-config",
  "mys-storage",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "num_enum 0.6.1",
  "object_store",
  "prometheus",
@@ -12214,10 +11555,10 @@ dependencies = [
  "hyper 1.8.1",
  "jsonrpsee",
  "mys-data-ingestion-core",
- "mys-json-rpc-api 0.0.0",
- "mys-json-rpc-types 0.0.0",
- "mys-sdk 0.0.1",
- "mys-types 0.1.0",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-sdk",
+ "mys-types",
  "once_cell",
  "prometheus",
  "reqwest 0.12.24",
@@ -12236,7 +11577,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing-test",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -12248,19 +11589,19 @@ dependencies = [
  "expect-test",
  "flate2",
  "futures",
- "move-binary-format 0.0.3",
- "move-bytecode-source-map 0.1.0",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-bytecode-source-map",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
  "move-package",
- "move-symbol-pool 0.1.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-symbol-pool",
+ "mys-json-rpc-types",
  "mys-move-build",
  "mys-package-management",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-sdk",
  "mys-test-transaction-builder",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "rand 0.8.5",
  "tar",
  "tempfile",
@@ -12283,21 +11624,21 @@ dependencies = [
  "fs_extra",
  "hyper 1.8.1",
  "jsonrpsee",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
+ "move-compiler",
+ "move-core-types",
  "move-package",
- "move-symbol-pool 0.1.0",
+ "move-symbol-pool",
  "mys",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-json-rpc-types",
  "mys-move",
  "mys-move-build",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-sdk",
  "mys-source-validation",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mysten-metrics",
  "prometheus",
  "reqwest 0.12.24",
  "serde",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "test-cluster",
  "tokio",
@@ -12333,17 +11674,17 @@ dependencies = [
  "itertools 0.13.0",
  "lru 0.10.1",
  "moka",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-core-types 0.0.4",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
- "mys-protocol-config 0.1.0",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-core-types",
+ "mys-config",
+ "mys-json-rpc-types",
+ "mys-macros",
+ "mys-protocol-config",
  "mys-simulator",
  "mys-test-transaction-builder",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "num_cpus",
  "num_enum 0.6.1",
  "object_store",
@@ -12356,11 +11697,11 @@ dependencies = [
  "serde",
  "serde_json",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tracing",
- "typed-store 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "typed-store",
  "url",
  "zstd 0.12.4",
 ]
@@ -12374,20 +11715,20 @@ dependencies = [
  "clap",
  "futures",
  "indexmap 2.12.1",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-core-types",
  "move-package",
  "mys-core",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
+ "mys-json-rpc-types",
+ "mys-macros",
  "mys-move-build",
- "mys-protocol-config 0.1.0",
+ "mys-protocol-config",
  "mys-simulator",
  "mys-swarm-config",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "prometheus",
  "rand 0.8.5",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "test-cluster",
  "tokio",
  "tracing",
@@ -12399,20 +11740,20 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "futures",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
+ "mys-config",
+ "mys-macros",
  "mys-node",
- "mys-protocol-config 0.1.0",
+ "mys-protocol-config",
  "mys-simulator",
  "mys-swarm-config",
- "mys-tls 0.0.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-tls",
+ "mys-types",
+ "mysten-metrics",
+ "mysten-network",
  "prometheus",
  "rand 0.8.5",
  "tap",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tonic-health",
@@ -12428,21 +11769,21 @@ dependencies = [
  "bcs",
  "fastcrypto",
  "insta",
- "move-bytecode-utils 0.1.0",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-bytecode-utils",
+ "mys-config",
  "mys-execution",
  "mys-genesis-builder",
- "mys-macros 0.7.0",
- "mys-protocol-config 0.1.0",
- "mys-rpc-api 0.1.0",
+ "mys-macros",
+ "mys-protocol-config",
+ "mys-rpc-api",
  "mys-simulator",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "prometheus",
  "rand 0.8.5",
  "serde",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "tempfile",
  "tracing",
 ]
@@ -12456,9 +11797,9 @@ dependencies = [
  "clap",
  "mys-storage",
  "mys-test-transaction-builder",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "simulacrum",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tracing",
@@ -12479,12 +11820,12 @@ name = "mys-test-transaction-builder"
 version = "0.1.0"
 dependencies = [
  "bcs",
- "move-core-types 0.0.4",
+ "move-core-types",
  "mys-genesis-builder",
  "mys-move-build",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-sdk",
+ "mys-types",
+ "shared-crypto",
 ]
 
 [[package]]
@@ -12514,27 +11855,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mys-tls"
-version = "0.0.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "arc-swap",
- "axum",
- "ed25519 1.5.3",
- "fastcrypto",
- "pkcs8 0.9.0",
- "rcgen",
- "reqwest 0.12.24",
- "rustls 0.23.35",
- "rustls-webpki 0.102.8",
- "tokio",
- "tokio-rustls 0.26.4",
- "tower-layer",
- "x509-parser",
-]
-
-[[package]]
 name = "mys-tool"
 version = "0.0.1"
 dependencies = [
@@ -12552,19 +11872,19 @@ dependencies = [
  "hex",
  "indicatif",
  "itertools 0.13.0",
- "move-core-types 0.0.4",
+ "move-core-types",
  "mys-archival",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-core",
  "mys-network",
  "mys-package-dump",
- "mys-protocol-config 0.1.0",
+ "mys-protocol-config",
  "mys-replay",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-sdk",
  "mys-snapshot",
  "mys-storage",
- "mys-tls 0.0.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-tls",
+ "mys-types",
  "num_cpus",
  "object_store",
  "prometheus",
@@ -12573,11 +11893,11 @@ dependencies = [
  "serde_json",
  "strum 0.24.1",
  "strum_macros 0.24.3",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tracing",
- "typed-store 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "typed-store",
 ]
 
 [[package]]
@@ -12588,29 +11908,12 @@ dependencies = [
  "async-trait",
  "bcs",
  "futures",
- "move-binary-format 0.0.3",
- "move-core-types 0.0.4",
- "mys-json 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
-]
-
-[[package]]
-name = "mys-transaction-builder"
-version = "0.0.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "async-trait",
- "bcs",
- "futures",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-protocol-config 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-core-types",
+ "mys-json",
+ "mys-json-rpc-types",
+ "mys-protocol-config",
+ "mys-types",
 ]
 
 [[package]]
@@ -12623,7 +11926,7 @@ dependencies = [
  "mys-sdk-types",
  "serde",
  "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "thiserror 2.0.17",
 ]
 
@@ -12632,11 +11935,11 @@ name = "mys-transaction-checks"
 version = "0.1.0"
 dependencies = [
  "fastcrypto-zkp",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-execution",
- "mys-macros 0.7.0",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-macros",
+ "mys-protocol-config",
+ "mys-types",
  "once_cell",
  "tracing",
 ]
@@ -12655,40 +11958,40 @@ dependencies = [
  "fastcrypto",
  "futures",
  "http 1.4.0",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
- "move-core-types 0.0.4",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-command-line-common",
+ "move-compiler",
+ "move-core-types",
  "move-stdlib",
- "move-symbol-pool 0.1.0",
+ "move-symbol-pool",
  "move-transactional-test-runner",
  "move-vm-runtime",
  "msim",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-config",
  "mys-core",
  "mys-framework",
  "mys-framework-snapshot",
  "mys-graphql-rpc",
  "mys-json-rpc",
- "mys-json-rpc-api 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-protocol-config 0.1.0",
- "mys-rpc-api 0.1.0",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-protocol-config",
+ "mys-rpc-api",
  "mys-storage",
  "mys-swarm-config",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "once_cell",
  "rand 0.8.5",
  "regex",
  "serde",
  "serde_json",
  "simulacrum",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tracing",
- "typed-store 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "typed-store",
 ]
 
 [[package]]
@@ -12704,7 +12007,7 @@ dependencies = [
  "byteorder",
  "chrono",
  "ciborium",
- "consensus-config 0.1.0",
+ "consensus-config",
  "coset",
  "criterion",
  "derive_more 1.0.0",
@@ -12718,19 +12021,19 @@ dependencies = [
  "indexmap 2.12.1",
  "itertools 0.13.0",
  "lru 0.10.1",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-command-line-common 0.1.0",
- "move-core-types 0.0.4",
- "move-vm-profiler 0.1.0",
- "move-vm-test-utils 0.1.0",
- "move-vm-types 0.1.0",
- "mys-enum-compat-util 0.1.0",
- "mys-macros 0.7.0",
- "mys-protocol-config 0.1.0",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-command-line-common",
+ "move-core-types",
+ "move-vm-profiler",
+ "move-vm-test-utils",
+ "move-vm-types",
+ "mys-enum-compat-util",
+ "mys-macros",
+ "mys-protocol-config",
  "mys-sdk-types",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mysten-metrics",
+ "mysten-network",
  "nonempty 0.9.0",
  "num-bigint 0.4.6",
  "num-traits",
@@ -12752,9 +12055,9 @@ dependencies = [
  "serde",
  "serde-name",
  "serde_json",
- "serde_with 3.16.0",
+ "serde_with 3.16.1",
  "serde_yaml 0.8.26",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "signature 1.6.4",
  "static_assertions",
  "strum 0.24.1",
@@ -12764,78 +12067,8 @@ dependencies = [
  "tokio",
  "tonic",
  "tracing",
- "typed-store-error 0.4.0",
+ "typed-store-error",
  "url",
- "x509-parser",
-]
-
-[[package]]
-name = "mys-types"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anemo",
- "anyhow",
- "async-trait",
- "bcs",
- "better_any",
- "bincode",
- "byteorder",
- "chrono",
- "ciborium",
- "consensus-config 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "derive_more 1.0.0",
- "enum_dispatch",
- "eyre",
- "fastcrypto",
- "fastcrypto-tbls",
- "fastcrypto-zkp",
- "im",
- "indexmap 2.12.1",
- "itertools 0.13.0",
- "lru 0.10.1",
- "move-binary-format 0.0.3 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-bytecode-utils 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-command-line-common 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-core-types 0.0.4 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-vm-profiler 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-vm-test-utils 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "move-vm-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-enum-compat-util 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-protocol-config 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-sdk-types",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-network 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "nonempty 0.9.0",
- "num-bigint 0.4.6",
- "num-traits",
- "num_enum 0.6.1",
- "once_cell",
- "p384",
- "parking_lot 0.12.5",
- "passkey-types",
- "prometheus",
- "proptest",
- "proptest-derive 0.5.1",
- "rand 0.8.5",
- "roaring",
- "rustls-pemfile 2.2.0",
- "schemars 0.8.22",
- "serde",
- "serde-name",
- "serde_json",
- "serde_with 3.16.0",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "signature 1.6.4",
- "static_assertions",
- "strum 0.24.1",
- "strum_macros 0.24.3",
- "tap",
- "thiserror 1.0.69",
- "tonic",
- "tracing",
- "typed-store-error 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
  "x509-parser",
 ]
 
@@ -12846,9 +12079,9 @@ dependencies = [
  "anyhow",
  "datatest-stable",
  "insta",
- "move-binary-format 0.0.3",
- "move-command-line-common 0.1.0",
- "move-compiler 0.0.1",
+ "move-binary-format",
+ "move-command-line-common",
+ "move-compiler",
  "move-package",
  "mys-move-build",
 ]
@@ -12857,16 +12090,16 @@ dependencies = [
 name = "mys-verifier-latest"
 version = "0.1.0"
 dependencies = [
- "move-abstract-interpreter 0.1.0",
- "move-abstract-stack 0.0.1",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-bytecode-verifier 0.1.0",
- "move-bytecode-verifier-meter 0.1.0",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-abstract-interpreter",
+ "move-abstract-stack",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-bytecode-verifier",
+ "move-bytecode-verifier-meter",
+ "move-core-types",
+ "move-vm-config",
+ "mys-protocol-config",
+ "mys-types",
 ]
 
 [[package]]
@@ -12881,44 +12114,44 @@ dependencies = [
 name = "mys-verifier-v0"
 version = "0.1.0"
 dependencies = [
- "move-abstract-stack 0.0.1",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-bytecode-verifier-meter 0.1.0",
+ "move-abstract-stack",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-bytecode-verifier-meter",
  "move-bytecode-verifier-v0",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-core-types",
+ "move-vm-config",
+ "mys-protocol-config",
+ "mys-types",
 ]
 
 [[package]]
 name = "mys-verifier-v1"
 version = "0.1.0"
 dependencies = [
- "move-abstract-stack 0.0.1",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-bytecode-verifier-meter 0.1.0",
+ "move-abstract-stack",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-bytecode-verifier-meter",
  "move-bytecode-verifier-v1",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-core-types",
+ "move-vm-config",
+ "mys-types",
 ]
 
 [[package]]
 name = "mys-verifier-v2"
 version = "0.1.0"
 dependencies = [
- "move-abstract-stack 0.0.1",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-bytecode-verifier-meter 0.1.0",
+ "move-abstract-stack",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-bytecode-verifier-meter",
  "move-bytecode-verifier-v2",
- "move-core-types 0.0.4",
- "move-vm-config 0.1.0",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-core-types",
+ "move-vm-config",
+ "mys-protocol-config",
+ "mys-types",
 ]
 
 [[package]]
@@ -12936,12 +12169,12 @@ dependencies = [
  "dotenvy",
  "futures",
  "futures-util",
- "move-core-types 0.0.4",
+ "move-core-types",
  "mys-data-ingestion-core",
  "mys-json-rpc",
  "mys-storage",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
+ "mysten-metrics",
  "mysten-service",
  "notify",
  "object_store",
@@ -12951,7 +12184,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml 0.8.26",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tempfile",
  "tokio",
  "tokio-postgres",
@@ -13014,28 +12247,9 @@ dependencies = [
  "anyhow",
  "fastcrypto",
  "futures",
- "mys-tls 0.0.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "parking_lot 0.12.5",
- "prometheus",
- "reqwest 0.12.24",
- "snap",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "mysten-common"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "fastcrypto",
- "futures",
- "mys-tls 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-tls",
+ "mys-types",
+ "mysten-metrics",
  "parking_lot 0.12.5",
  "prometheus",
  "reqwest 0.12.24",
@@ -13055,34 +12269,13 @@ dependencies = [
  "once_cell",
  "parking_lot 0.12.5",
  "prometheus",
- "prometheus-closure-metric 0.1.0",
+ "prometheus-closure-metric",
  "scopeguard",
  "simple-server-timing-header",
  "tap",
  "tokio",
  "tracing",
- "uuid 1.18.1",
-]
-
-[[package]]
-name = "mysten-metrics"
-version = "0.7.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "async-trait",
- "axum",
- "dashmap",
- "futures",
- "once_cell",
- "parking_lot 0.12.5",
- "prometheus",
- "prometheus-closure-metric 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "scopeguard",
- "simple-server-timing-header",
- "tap",
- "tokio",
- "tracing",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -13101,40 +12294,7 @@ dependencies = [
  "hyper-rustls 0.27.7",
  "hyper-util",
  "multiaddr",
- "mys-http 0.0.0",
- "once_cell",
- "pin-project-lite",
- "prometheus",
- "serde",
- "snap",
- "tokio",
- "tokio-rustls 0.26.4",
- "tokio-stream",
- "tonic",
- "tonic-health",
- "tower 0.4.13",
- "tower-http 0.5.2",
- "tracing",
-]
-
-[[package]]
-name = "mysten-network"
-version = "0.2.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anemo",
- "anemo-tower",
- "async-stream",
- "bcs",
- "bytes",
- "eyre",
- "futures",
- "http 1.4.0",
- "http-body 1.0.1",
- "hyper-rustls 0.27.7",
- "hyper-util",
- "multiaddr",
- "mys-http 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-http",
  "once_cell",
  "pin-project-lite",
  "prometheus",
@@ -13156,12 +12316,12 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "axum",
- "mysten-metrics 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mysten-metrics",
  "prometheus",
  "serde",
  "serde_json",
  "simple-server-timing-header",
- "telemetry-subscribers 0.2.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "telemetry-subscribers",
  "tokio",
  "tower 0.4.13",
  "tracing",
@@ -14909,16 +14069,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "prometheus-closure-metric"
-version = "0.1.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "anyhow",
- "prometheus",
- "protobuf",
-]
-
-[[package]]
 name = "prometheus-http-query"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15823,7 +14973,7 @@ dependencies = [
  "rkyv_derive",
  "seahash",
  "tinyvec",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -16309,9 +15459,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-pki-types"
-version = "1.13.0"
+version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94182ad936a0c91c324cd46c6511b9510ed16af436d7b5bab34beab0afd55f7a"
+checksum = "708c0f9d5f54ba0272468c1d306a52c495b31fa155e91bc25371e6df7996908c"
 dependencies = [
  "web-time",
  "zeroize",
@@ -16899,9 +16049,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "3.16.0"
+version = "3.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10574371d41b0d9b2cff89418eda27da52bcaff2cc8741db26382a77c29131f1"
+checksum = "4fa237f2807440d238e0364a218270b98f767a00d3dada77b1c53ae88940e2e7"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -16912,7 +16062,7 @@ dependencies = [
  "schemars 1.1.0",
  "serde_core",
  "serde_json",
- "serde_with_macros 3.16.0",
+ "serde_with_macros 3.16.1",
  "time",
 ]
 
@@ -16930,9 +16080,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with_macros"
-version = "3.16.0"
+version = "3.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08a72d8216842fdd57820dc78d840bef99248e35fb2554ff923319e60f2d686b"
+checksum = "52a8e3ca0ca629121f70ab50f95249e5a6f925cc0f6ffe8256c45b728875706c"
 dependencies = [
  "darling 0.21.3",
  "proc-macro2 1.0.103",
@@ -17055,18 +16205,6 @@ dependencies = [
 [[package]]
 name = "shared-crypto"
 version = "0.0.0"
-dependencies = [
- "bcs",
- "eyre",
- "fastcrypto",
- "serde",
- "serde_repr",
-]
-
-[[package]]
-name = "shared-crypto"
-version = "0.0.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
 dependencies = [
  "bcs",
  "eyre",
@@ -17200,24 +16338,24 @@ dependencies = [
  "bcs",
  "fastcrypto",
  "futures",
- "move-binary-format 0.0.3",
- "move-bytecode-utils 0.1.0",
- "move-core-types 0.0.4",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "move-bytecode-utils",
+ "move-core-types",
+ "mys-config",
  "mys-execution",
  "mys-framework",
  "mys-genesis-builder",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-protocol-config 0.1.0",
+ "mys-keys",
+ "mys-protocol-config",
  "mys-storage",
  "mys-swarm-config",
  "mys-transaction-checks",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "once_cell",
  "prometheus",
  "rand 0.8.5",
  "serde",
- "shared-crypto 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "shared-crypto",
  "tracing",
 ]
 
@@ -17326,7 +16464,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "url",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -17707,7 +16845,7 @@ dependencies = [
  "debugid",
  "memmap2",
  "stable_deref_trait",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -17931,33 +17069,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "telemetry-subscribers"
-version = "0.2.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "atomic_float",
- "bytes",
- "bytes-varint",
- "clap",
- "console-subscriber",
- "crossterm 0.25.0",
- "futures",
- "once_cell",
- "opentelemetry 0.27.1",
- "opentelemetry-otlp",
- "opentelemetry-proto",
- "opentelemetry_sdk",
- "prometheus",
- "prost",
- "tokio",
- "tonic",
- "tracing",
- "tracing-appender",
- "tracing-opentelemetry",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "tempfile"
 version = "3.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -18016,25 +17127,25 @@ dependencies = [
  "fastcrypto-zkp",
  "futures",
  "jsonrpsee",
- "move-binary-format 0.0.3",
- "mys-config 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "move-binary-format",
+ "mys-config",
  "mys-core",
  "mys-framework",
  "mys-indexer",
  "mys-json-rpc",
- "mys-json-rpc-api 0.0.0",
- "mys-json-rpc-types 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-keys 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "mys-macros 0.7.0",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-keys",
+ "mys-macros",
  "mys-node",
  "mys-pg-db",
- "mys-protocol-config 0.1.0",
- "mys-sdk 0.0.1 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-sdk",
  "mys-simulator",
  "mys-swarm",
  "mys-swarm-config",
  "mys-test-transaction-builder",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-types",
  "prometheus",
  "rand 0.8.5",
  "tempfile",
@@ -18102,9 +17213,9 @@ dependencies = [
 
 [[package]]
 name = "test-log"
-version = "0.2.18"
+version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e33b98a582ea0be1168eba097538ee8dd4bbe0f2b01b22ac92ea30054e5be7b"
+checksum = "37d53ac171c92a39e4769491c4b4dde7022c60042254b5fc044ae409d34a24d4"
 dependencies = [
  "env_logger",
  "test-log-macros",
@@ -18113,9 +17224,9 @@ dependencies = [
 
 [[package]]
 name = "test-log-macros"
-version = "0.2.18"
+version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "451b374529930d7601b1eef8d32bc79ae870b6079b069401709c2a8bf9e75f36"
+checksum = "be35209fd0781c5401458ab66e4f98accf63553e8fae7425503e92fdd319783b"
 dependencies = [
  "proc-macro2 1.0.103",
  "quote 1.0.42",
@@ -18361,7 +17472,7 @@ dependencies = [
  "num-traits",
  "tokio",
  "tracing",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -18888,7 +17999,7 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
- "uuid 1.18.1",
+ "uuid 1.19.0",
 ]
 
 [[package]]
@@ -18942,9 +18053,9 @@ dependencies = [
 
 [[package]]
 name = "tracing"
-version = "0.1.41"
+version = "0.1.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "784e0ac535deb450455cbfa28a6f0df145ea1bb7ae51b821cf5e7927fdcfbdd0"
+checksum = "2d15d90a0b5c19378952d479dc858407149d7bb45a14de0142f6c534b16fc647"
 dependencies = [
  "log",
  "pin-project-lite",
@@ -19046,9 +18157,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.3.20"
+version = "0.3.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2054a14f5307d601f88daf0553e1cbf472acc4f2c51afab632431cdcd72124d5"
+checksum = "2f30143827ddab0d256fd843b7a66d164e9f271cfa0dde49142c5ca0ca291f1e"
 dependencies = [
  "matchers",
  "nu-ansi-term 0.50.3",
@@ -19102,11 +18213,11 @@ dependencies = [
 name = "transaction-fuzzer"
 version = "0.1.0"
 dependencies = [
- "move-core-types 0.0.4",
+ "move-core-types",
  "mys-core",
  "mys-move-build",
- "mys-protocol-config 0.1.0",
- "mys-types 0.1.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
+ "mys-protocol-config",
+ "mys-types",
  "once_cell",
  "proptest",
  "proptest-derive 0.5.1",
@@ -19217,7 +18328,7 @@ dependencies = [
  "hdrhistogram",
  "itertools 0.13.0",
  "msim",
- "mys-macros 0.7.0",
+ "mys-macros",
  "once_cell",
  "ouroboros 0.17.2",
  "proc-macro2 1.0.103",
@@ -19233,56 +18344,15 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tracing",
- "typed-store-derive 0.3.0",
- "typed-store-error 0.4.0",
- "typed-store-workspace-hack 0.0.0",
+ "typed-store-derive",
+ "typed-store-error",
+ "typed-store-workspace-hack",
  "uint",
 ]
 
 [[package]]
-name = "typed-store"
-version = "0.4.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "async-trait",
- "bcs",
- "bincode",
- "collectable",
- "eyre",
- "fdlimit",
- "hdrhistogram",
- "itertools 0.13.0",
- "msim",
- "mys-macros 0.7.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "once_cell",
- "ouroboros 0.17.2",
- "prometheus",
- "rand 0.8.5",
- "rocksdb",
- "serde",
- "tap",
- "thiserror 1.0.69",
- "tokio",
- "tracing",
- "typed-store-derive 0.3.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "typed-store-error 0.4.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
- "typed-store-workspace-hack 0.0.0 (git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add)",
-]
-
-[[package]]
 name = "typed-store-derive"
 version = "0.3.0"
-dependencies = [
- "itertools 0.13.0",
- "proc-macro2 1.0.103",
- "quote 1.0.42",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "typed-store-derive"
-version = "0.3.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2 1.0.103",
@@ -19299,35 +18369,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "typed-store-error"
-version = "0.4.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
-dependencies = [
- "serde",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "typed-store-workspace-hack"
 version = "0.0.0"
-dependencies = [
- "cc",
- "lazy_static",
- "libc",
- "memchr",
- "nom",
- "proc-macro2 1.0.103",
- "quote 1.0.42",
- "regex",
- "regex-syntax 0.7.5",
- "syn 2.0.111",
- "zstd-sys",
-]
-
-[[package]]
-name = "typed-store-workspace-hack"
-version = "0.0.0"
-source = "git+https://github.com/The-Social-Proof-Foundation/mys-core.git?branch=custom-profile-contract-add#afbb12cac31200aac84207f5aa4d9f74d3b24e57"
 dependencies = [
  "cc",
  "lazy_static",
@@ -19573,9 +18616,9 @@ dependencies = [
 
 [[package]]
 name = "uuid"
-version = "1.18.1"
+version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f87b8aa10b915a06587d0dec516c282ff295b475d94abf425d62b57710070a2"
+checksum = "e2e054861b4bd027cd373e18e8d8d8e6548085000e41290d95ce0c373a654b4a"
 dependencies = [
  "getrandom 0.3.4",
  "js-sys",
@@ -19718,9 +18761,9 @@ checksum = "b8dad83b4f25e74f184f64c43b150b91efe7647395b42289f38e50566d82855b"
 
 [[package]]
 name = "wasm-bindgen"
-version = "0.2.105"
+version = "0.2.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da95793dfc411fbbd93f5be7715b0578ec61fe87cb1a42b12eb625caa5c5ea60"
+checksum = "0d759f433fa64a2d763d1340820e46e111a7a5ab75f993d1852d70b03dbb80fd"
 dependencies = [
  "cfg-if",
  "once_cell",
@@ -19731,9 +18774,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-futures"
-version = "0.4.55"
+version = "0.4.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "551f88106c6d5e7ccc7cd9a16f312dd3b5d36ea8b4954304657d5dfba115d4a0"
+checksum = "836d9622d604feee9e5de25ac10e3ea5f2d65b41eac0d9ce72eb5deae707ce7c"
 dependencies = [
  "cfg-if",
  "js-sys",
@@ -19744,9 +18787,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro"
-version = "0.2.105"
+version = "0.2.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04264334509e04a7bf8690f2384ef5265f05143a4bff3889ab7a3269adab59c2"
+checksum = "48cb0d2638f8baedbc542ed444afc0644a29166f1595371af4fecf8ce1e7eeb3"
 dependencies = [
  "quote 1.0.42",
  "wasm-bindgen-macro-support",
@@ -19754,9 +18797,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro-support"
-version = "0.2.105"
+version = "0.2.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "420bc339d9f322e562942d52e115d57e950d12d88983a14c79b86859ee6c7ebc"
+checksum = "cefb59d5cd5f92d9dcf80e4683949f15ca4b511f4ac0a6e14d4e1ac60c6ecd40"
 dependencies = [
  "bumpalo",
  "proc-macro2 1.0.103",
@@ -19767,9 +18810,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-shared"
-version = "0.2.105"
+version = "0.2.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76f218a38c84bcb33c25ec7059b07847d465ce0e0a76b995e134a45adcb6af76"
+checksum = "cbc538057e648b67f72a982e708d485b2efa771e1ac05fec311f9f63e5800db4"
 dependencies = [
  "unicode-ident",
 ]
@@ -19804,9 +18847,9 @@ dependencies = [
 
 [[package]]
 name = "web-sys"
-version = "0.3.82"
+version = "0.3.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a1f95c0d03a47f4ae1f7a64643a6bb97465d9b740f0fa8f90ea33915c99a9a1"
+checksum = "9b32828d774c412041098d182a8b38b16ea816958e07cf40eec2bc080ae137ac"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
@@ -20550,18 +19593,18 @@ dependencies = [
 
 [[package]]
 name = "zerocopy"
-version = "0.8.30"
+version = "0.8.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ea879c944afe8a2b25fef16bb4ba234f47c694565e97383b36f3a878219065c"
+checksum = "fd74ec98b9250adb3ca554bdde269adf631549f51d8a8f8f0a10b50f1cb298c3"
 dependencies = [
  "zerocopy-derive",
 ]
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.8.30"
+version = "0.8.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf955aa904d6040f70dc8e9384444cb1030aed272ba3cb09bbc4ab9e7c1f34f5"
+checksum = "d8a8d209fdf45cf5138cbb5a506f6b52522a25afccc534d1475dad8e31105c6a"
 dependencies = [
  "proc-macro2 1.0.103",
  "quote 1.0.42",

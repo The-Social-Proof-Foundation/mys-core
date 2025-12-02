@@ -38,7 +38,7 @@ version: "3"
 services:
   fullnode:
     container_name: fullnode
-    image: mysten/mys-node:${MYS_SHA:-latest}
+    image: socialproof/mys-node:${MYS_SHA:-latest}
     ports:
       - "8080:8080"
       - "8084:8084/udp"
