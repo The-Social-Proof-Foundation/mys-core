@@ -4,7 +4,6 @@ target/
 *.swp
 **/.terraform/
 **/*Dockerfile
-!crates/mys-faucet/Dockerfile
 *.md
 build/
 storage/
