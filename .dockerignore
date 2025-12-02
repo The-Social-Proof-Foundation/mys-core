@@ -4,6 +4,7 @@ target/
 *.swp
 **/.terraform/
 **/*Dockerfile
+!crates/**/Dockerfile
 *.md
 build/
 storage/
