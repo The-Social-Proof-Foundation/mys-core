@@ -630,13 +630,13 @@ mys-sdk-transaction-builder = { git = "https://github.com/The-Social-Proof-Found
 anemo-benchmark = { path = "crates/anemo-benchmark" }
 bin-version = { path = "crates/bin-version" }
 mysten-common = { path = "crates/mysten-common" }
-mysten-metrics = { path = "crates/mysten-metrics" }
-mysten-network = { path = "crates/mysten-network" }
+mysten-metrics = { git = "https://github.com/The-Social-Proof-Foundation/mys-core.git", branch = "custom-profile-contract-add" }
+mysten-network = { git = "https://github.com/The-Social-Proof-Foundation/mys-core.git", branch = "custom-profile-contract-add" }
 mysten-service = { path = "crates/mysten-service" }
 mysten-util-mem = { path = "crates/mysten-util-mem" }
 mysten-util-mem-derive = { path = "crates/mysten-util-mem-derive" }
 prometheus-closure-metric = { path = "crates/prometheus-closure-metric" }
-shared-crypto = { path = "crates/shared-crypto" }
+shared-crypto = { git = "https://github.com/The-Social-Proof-Foundation/mys-core.git", branch = "custom-profile-contract-add" }
 simulacrum = { path = "crates/simulacrum" }
 mys = { path = "crates/mys" }
 mys-adapter-transactional-tests = { path = "crates/mys-adapter-transactional-tests" }
@@ -647,7 +647,7 @@ mys-authority-aggregation = { path = "crates/mys-authority-aggregation" }
 mys-benchmark = { path = "crates/mys-benchmark" }
 mys-bridge = { path = "crates/mys-bridge" }
 mys-cluster-test = { path = "crates/mys-cluster-test" }
-mys-config = { path = "crates/mys-config" }
+mys-config = { git = "https://github.com/The-Social-Proof-Foundation/mys-core.git", branch = "custom-profile-contract-add" }
 mys-core = { path = "crates/mys-core" }
 mys-cost = { path = "crates/mys-cost" }
 mys-data-ingestion = { path = "crates/mys-data-ingestion" }
@@ -677,8 +677,8 @@ mys-indexer-builder = { path = "crates/mys-indexer-builder" }
 mys-json = { path = "crates/mys-json" }
 mys-json-rpc = { path = "crates/mys-json-rpc" }
 mys-json-rpc-api = { path = "crates/mys-json-rpc-api" }
-mys-json-rpc-types = { path = "crates/mys-json-rpc-types" }
-mys-keys = { path = "crates/mys-keys" }
+mys-json-rpc-types = { git = "https://github.com/The-Social-Proof-Foundation/mys-core.git", branch = "custom-profile-contract-add" }
+mys-keys = { git = "https://github.com/The-Social-Proof-Foundation/mys-core.git", branch = "custom-profile-contract-add" }
 mys-kvstore = {path = "crates/mys-kvstore"}
 mys-macros = { path = "crates/mys-macros" }
 mys-metric-checker = { path = "crates/mys-metric-checker" }
@@ -701,7 +701,7 @@ mys-proxy = { path = "crates/mys-proxy" }
 mys-replay = { path = "crates/mys-replay" }
 mys-rosetta = { path = "crates/mys-rosetta" }
 mys-rpc-loadgen = { path = "crates/mys-rpc-loadgen" }
-mys-sdk = { path = "crates/mys-sdk" }
+mys-sdk = { git = "https://github.com/The-Social-Proof-Foundation/mys-core.git", branch = "custom-profile-contract-add" }
 mys-simulator = { path = "crates/mys-simulator" }
 mys-snapshot = { path = "crates/mys-snapshot" }
 mys-social-indexer = { path = "crates/mys-social-indexer" }
@@ -721,13 +721,13 @@ mys-tool = { path = "crates/mys-tool" }
 mys-transaction-builder = { path = "crates/mys-transaction-builder" }
 mys-transaction-checks = { path = "crates/mys-transaction-checks" }
 mys-transactional-test-runner = { path = "crates/mys-transactional-test-runner" }
-mys-types = { path = "crates/mys-types" }
+mys-types = { git = "https://github.com/The-Social-Proof-Foundation/mys-core.git", branch = "custom-profile-contract-add" }
 mys-upgrade-compatibility-transactional-tests = { path = "crates/mys-upgrade-compatibility-transactional-tests" }
 mys-verifier-transactional-tests = { path = "crates/mys-verifier-transactional-tests" }
-telemetry-subscribers = { path = "crates/telemetry-subscribers" }
+telemetry-subscribers = { git = "https://github.com/The-Social-Proof-Foundation/mys-core.git", branch = "custom-profile-contract-add" }
 test-cluster = { path = "crates/test-cluster" }
 transaction-fuzzer = { path = "crates/transaction-fuzzer" }
-typed-store = { path = "crates/typed-store" }
+typed-store = { git = "https://github.com/The-Social-Proof-Foundation/mys-core.git", branch = "custom-profile-contract-add" }
 typed-store-error = { path = "crates/typed-store-error" }
 x = { path = "crates/x" }
 
