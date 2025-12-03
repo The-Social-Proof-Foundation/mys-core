@@ -3,4 +3,4 @@ builder = "dockerfile"
 dockerfilePath = "crates/mys-faucet/Dockerfile"
 
 [deploy]
-startCommand = "cargo build --release --bin mys-faucet"
+startCommand = "/app/bin/setup-wallet.sh"
