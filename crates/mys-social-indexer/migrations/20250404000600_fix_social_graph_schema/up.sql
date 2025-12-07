@@ -6,9 +6,18 @@ DROP COLUMN follower_id,
 DROP COLUMN following_id;
 
 -- Update the unique constraint to prevent duplicate relationships using addresses
-ALTER TABLE social_graph_relationships
-ADD CONSTRAINT social_graph_relationships_unique_relationship 
-UNIQUE (follower_address, following_address);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'social_graph_relationships_unique_relationship'
+        AND conrelid = 'social_graph_relationships'::regclass
+    ) THEN
+        ALTER TABLE social_graph_relationships
+        ADD CONSTRAINT social_graph_relationships_unique_relationship 
+        UNIQUE (follower_address, following_address);
+    END IF;
+END $$;
 
 -- Add indexes on addresses for fast lookups
 CREATE INDEX IF NOT EXISTS idx_social_graph_relationships_follower_address ON social_graph_relationships(follower_address);

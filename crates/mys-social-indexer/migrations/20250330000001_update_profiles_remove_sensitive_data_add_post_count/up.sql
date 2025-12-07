@@ -26,8 +26,17 @@ CREATE INDEX IF NOT EXISTS idx_profiles_owner_post_count ON profiles (owner_addr
 -- 3. VALIDATION AND CONSTRAINTS
 -- ============================================================================
 
--- Add constraint to ensure post_count is never negative
-ALTER TABLE profiles ADD CONSTRAINT chk_profiles_post_count_non_negative CHECK (post_count >= 0);
+-- Add constraint to ensure post_count is never negative (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'chk_profiles_post_count_non_negative'
+        AND conrelid = 'profiles'::regclass
+    ) THEN
+        ALTER TABLE profiles ADD CONSTRAINT chk_profiles_post_count_non_negative CHECK (post_count >= 0);
+    END IF;
+END $$;
 
 -- Comment the column for documentation
 COMMENT ON COLUMN profiles.post_count IS 'Number of top-level, non-deleted posts created by this profile. Updated synchronously with post creation/deletion events.'; 

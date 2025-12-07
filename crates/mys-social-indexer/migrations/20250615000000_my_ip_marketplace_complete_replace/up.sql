@@ -220,35 +220,106 @@ CREATE INDEX IF NOT EXISTS idx_my_ip_access_type_time ON my_ip_access_logs (acce
 -- ============================================================================
 
 -- Enable compression on hypertables with appropriate segment and order by settings
-ALTER TABLE my_ip_purchases SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'ip_id,purchase_type',
-    timescaledb.compress_orderby = 'time DESC'
-);
-
-ALTER TABLE my_ip_subscriptions SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'ip_id,subscriber',
-    timescaledb.compress_orderby = 'time DESC'
-);
-
-ALTER TABLE my_ip_revenue SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'ip_id,revenue_type',
-    timescaledb.compress_orderby = 'time DESC'
-);
-
-ALTER TABLE my_ip_access_logs SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'ip_id,access_type',
-    timescaledb.compress_orderby = 'time DESC'
-);
-
--- Add compression policies (compress after reasonable time periods)
-SELECT add_compression_policy('my_ip_purchases', INTERVAL '30 days');
-SELECT add_compression_policy('my_ip_subscriptions', INTERVAL '90 days');
-SELECT add_compression_policy('my_ip_revenue', INTERVAL '30 days');
-SELECT add_compression_policy('my_ip_access_logs', INTERVAL '7 days');
+DO $$
+BEGIN
+    -- Enable compression if not already enabled
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'my_ip_purchases'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress%'
+    ) THEN
+        ALTER TABLE my_ip_purchases SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'ip_id,purchase_type',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'my_ip_subscriptions'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress%'
+    ) THEN
+        ALTER TABLE my_ip_subscriptions SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'ip_id,subscriber',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'my_ip_revenue'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress%'
+    ) THEN
+        ALTER TABLE my_ip_revenue SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'ip_id,revenue_type',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'my_ip_access_logs'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress%'
+    ) THEN
+        ALTER TABLE my_ip_access_logs SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'ip_id,access_type',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+    
+    -- Add compression policies if they don't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'my_ip_purchases'
+    ) THEN
+        PERFORM add_compression_policy('my_ip_purchases', INTERVAL '30 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'my_ip_subscriptions'
+    ) THEN
+        PERFORM add_compression_policy('my_ip_subscriptions', INTERVAL '90 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'my_ip_revenue'
+    ) THEN
+        PERFORM add_compression_policy('my_ip_revenue', INTERVAL '30 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'my_ip_access_logs'
+    ) THEN
+        PERFORM add_compression_policy('my_ip_access_logs', INTERVAL '7 days');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 6. CREATE TIMESCALEDB CONTINUOUS AGGREGATES FOR ANALYTICS
@@ -318,7 +389,17 @@ SELECT add_continuous_aggregate_policy('my_ip_popular_data',
 -- ============================================================================
 
 -- Retention policy for access logs (keep for 6 months)
-SELECT add_retention_policy('my_ip_access_logs', INTERVAL '6 months');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_retention' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'my_ip_access_logs'
+    ) THEN
+        PERFORM add_retention_policy('my_ip_access_logs', INTERVAL '6 months');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 8. CREATE MARKETPLACE VIEWS FOR COMMON QUERIES

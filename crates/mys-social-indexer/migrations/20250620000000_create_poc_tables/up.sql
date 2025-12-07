@@ -87,8 +87,17 @@ SELECT create_hypertable('poc_badges', 'time',
     create_default_indexes => FALSE
 );
 
--- Add primary key that includes time
-ALTER TABLE poc_badges ADD PRIMARY KEY (badge_id, time);
+-- Add primary key that includes time (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conrelid = 'poc_badges'::regclass 
+        AND contype = 'p'
+    ) THEN
+        ALTER TABLE poc_badges ADD PRIMARY KEY (badge_id, time);
+    END IF;
+END $$;
 
 -- TimescaleDB-optimized indexes
 CREATE INDEX IF NOT EXISTS idx_poc_badges_time_post ON poc_badges (time DESC, post_id);
@@ -97,8 +106,28 @@ CREATE INDEX IF NOT EXISTS idx_poc_badges_issued_by_time ON poc_badges (issued_b
 CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_badges_badge_id ON poc_badges (badge_id, time);
 
 -- Enable compression
-ALTER TABLE poc_badges SET (timescaledb.compress = true);
-SELECT add_compression_policy('poc_badges', INTERVAL '30 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'poc_badges'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE poc_badges SET (timescaledb.compress = true);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'poc_badges'
+    ) THEN
+        PERFORM add_compression_policy('poc_badges', INTERVAL '30 days');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 4. CREATE POC REVENUE REDIRECTIONS TABLE (TIMESCALEDB HYPERTABLE)
@@ -140,8 +169,17 @@ SELECT create_hypertable('poc_revenue_redirections', 'time',
     create_default_indexes => FALSE
 );
 
--- Add primary key that includes time
-ALTER TABLE poc_revenue_redirections ADD PRIMARY KEY (redirection_id, time);
+-- Add primary key that includes time (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conrelid = 'poc_revenue_redirections'::regclass 
+        AND contype = 'p'
+    ) THEN
+        ALTER TABLE poc_revenue_redirections ADD PRIMARY KEY (redirection_id, time);
+    END IF;
+END $$;
 
 -- Optimized indexes for revenue tracking queries
 CREATE INDEX IF NOT EXISTS idx_poc_redirections_time_accused ON poc_revenue_redirections (time DESC, accused_post_id);
@@ -150,8 +188,28 @@ CREATE INDEX IF NOT EXISTS idx_poc_redirections_original_time ON poc_revenue_red
 CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_redirections_id ON poc_revenue_redirections (redirection_id, time);
 
 -- Enable compression
-ALTER TABLE poc_revenue_redirections SET (timescaledb.compress = true);
-SELECT add_compression_policy('poc_revenue_redirections', INTERVAL '90 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'poc_revenue_redirections'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE poc_revenue_redirections SET (timescaledb.compress = true);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'poc_revenue_redirections'
+    ) THEN
+        PERFORM add_compression_policy('poc_revenue_redirections', INTERVAL '90 days');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 5. CREATE POC ANALYSIS RESULTS TABLE (TIMESCALEDB HYPERTABLE)
@@ -193,7 +251,16 @@ SELECT create_hypertable('poc_analysis_results', 'time',
 );
 
 -- Add primary key that includes time (post_id + time for uniqueness)
-ALTER TABLE poc_analysis_results ADD PRIMARY KEY (post_id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conrelid = 'poc_analysis_results'::regclass 
+        AND contype = 'p'
+    ) THEN
+        ALTER TABLE poc_analysis_results ADD PRIMARY KEY (post_id, time);
+    END IF;
+END $$;
 
 -- Indexes for analysis lookup patterns
 CREATE INDEX IF NOT EXISTS idx_poc_analysis_time_post ON poc_analysis_results (time DESC, post_id);
@@ -201,8 +268,28 @@ CREATE INDEX IF NOT EXISTS idx_poc_analysis_oracle_time ON poc_analysis_results 
 CREATE INDEX IF NOT EXISTS idx_poc_analysis_creator_time ON poc_analysis_results (original_creator, time DESC) WHERE original_creator IS NOT NULL;
 
 -- Enable compression
-ALTER TABLE poc_analysis_results SET (timescaledb.compress = true);
-SELECT add_compression_policy('poc_analysis_results', INTERVAL '7 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'poc_analysis_results'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE poc_analysis_results SET (timescaledb.compress = true);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'poc_analysis_results'
+    ) THEN
+        PERFORM add_compression_policy('poc_analysis_results', INTERVAL '7 days');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 6. CREATE POC DISPUTES TABLE (TIMESCALEDB HYPERTABLE)
@@ -252,7 +339,16 @@ SELECT create_hypertable('poc_disputes', 'time',
 );
 
 -- Add primary key that includes time
-ALTER TABLE poc_disputes ADD PRIMARY KEY (dispute_id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conrelid = 'poc_disputes'::regclass 
+        AND contype = 'p'
+    ) THEN
+        ALTER TABLE poc_disputes ADD PRIMARY KEY (dispute_id, time);
+    END IF;
+END $$;
 
 -- Optimized indexes for dispute tracking
 CREATE INDEX IF NOT EXISTS idx_poc_disputes_time_status ON poc_disputes (time DESC, status);
@@ -261,8 +357,28 @@ CREATE INDEX IF NOT EXISTS idx_poc_disputes_post_time ON poc_disputes (post_id, 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_poc_disputes_id ON poc_disputes (dispute_id, time);
 
 -- Enable compression
-ALTER TABLE poc_disputes SET (timescaledb.compress = true);
-SELECT add_compression_policy('poc_disputes', INTERVAL '90 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'poc_disputes'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE poc_disputes SET (timescaledb.compress = true);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'poc_disputes'
+    ) THEN
+        PERFORM add_compression_policy('poc_disputes', INTERVAL '90 days');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 7. CREATE POC DISPUTE VOTES TABLE (TIMESCALEDB HYPERTABLE)
@@ -304,7 +420,16 @@ SELECT create_hypertable('poc_dispute_votes', 'time',
 );
 
 -- Add primary key that includes time
-ALTER TABLE poc_dispute_votes ADD PRIMARY KEY (dispute_id, voter, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conrelid = 'poc_dispute_votes'::regclass 
+        AND contype = 'p'
+    ) THEN
+        ALTER TABLE poc_dispute_votes ADD PRIMARY KEY (dispute_id, voter, time);
+    END IF;
+END $$;
 
 -- Composite unique constraint and indexes
 -- TimescaleDB requires unique indexes to include partitioning column (time)
@@ -313,8 +438,28 @@ CREATE INDEX IF NOT EXISTS idx_poc_votes_time_voter ON poc_dispute_votes (time D
 CREATE INDEX IF NOT EXISTS idx_poc_votes_dispute_time ON poc_dispute_votes (dispute_id, time DESC);
 
 -- Enable compression
-ALTER TABLE poc_dispute_votes SET (timescaledb.compress = true);
-SELECT add_compression_policy('poc_dispute_votes', INTERVAL '30 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'poc_dispute_votes'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE poc_dispute_votes SET (timescaledb.compress = true);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'poc_dispute_votes'
+    ) THEN
+        PERFORM add_compression_policy('poc_dispute_votes', INTERVAL '30 days');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 8. CREATE POC CONFIGURATION TABLE (REGULAR TABLE)
@@ -458,8 +603,26 @@ EXECUTE FUNCTION validate_poc_dispute_reference();
 -- ============================================================================
 
 -- Add retention policies for data cleanup as specified in plan
-SELECT add_retention_policy('poc_analysis_results', INTERVAL '1 year');
-SELECT add_retention_policy('poc_dispute_votes', INTERVAL '2 years');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_retention' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'poc_analysis_results'
+    ) THEN
+        PERFORM add_retention_policy('poc_analysis_results', INTERVAL '1 year');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_retention' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'poc_dispute_votes'
+    ) THEN
+        PERFORM add_retention_policy('poc_dispute_votes', INTERVAL '2 years');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 13. COMMENTS AND DOCUMENTATION

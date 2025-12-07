@@ -25,8 +25,17 @@ BEGIN
 END $$;
 
 -- Add new CHECK constraint allowing 'mydata' instead of 'my_ip'
-ALTER TABLE unified_revenue ADD CONSTRAINT unified_revenue_revenue_source_check 
-    CHECK (revenue_source IN ('subscription', 'mydata', 'spt', 'tips', 'posts'));
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'unified_revenue_revenue_source_check'
+        AND conrelid = 'unified_revenue'::regclass
+    ) THEN
+        ALTER TABLE unified_revenue ADD CONSTRAINT unified_revenue_revenue_source_check 
+            CHECK (revenue_source IN ('subscription', 'mydata', 'spt', 'tips', 'posts'));
+    END IF;
+END $$;
 
 -- Update any existing 'my_ip' values to 'mydata'
 UPDATE unified_revenue 

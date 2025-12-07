@@ -152,7 +152,17 @@ CREATE INDEX IF NOT EXISTS idx_subscription_access_content_time ON subscription_
 CREATE INDEX IF NOT EXISTS idx_subscription_access_subscriber_time ON subscription_access_logs (subscriber, time DESC);
 
 -- Add data retention policy for access logs (keep 90 days)
-SELECT add_retention_policy('subscription_access_logs', INTERVAL '90 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_retention' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'subscription_access_logs'
+    ) THEN
+        PERFORM add_retention_policy('subscription_access_logs', INTERVAL '90 days');
+    END IF;
+END $$;
 
 -- 6. TimescaleDB Continuous Aggregates for Analytics
 -- Daily subscription revenue aggregate
@@ -207,14 +217,70 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subscription_enabled BOOLEAN DEFAU
 
 -- Advanced TimescaleDB Features Implementation
 -- Enable compression on hypertables first, then add policies
-ALTER TABLE profile_subscriptions SET (timescaledb.compress = true);
-ALTER TABLE subscription_events SET (timescaledb.compress = true);
-ALTER TABLE subscription_revenue SET (timescaledb.compress = true);
-
--- Compression policies for older subscription data
-SELECT add_compression_policy('profile_subscriptions', INTERVAL '60 days');
-SELECT add_compression_policy('subscription_events', INTERVAL '30 days');
-SELECT add_compression_policy('subscription_revenue', INTERVAL '30 days');
+DO $$
+BEGIN
+    -- Enable compression if not already enabled
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'profile_subscriptions'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE profile_subscriptions SET (timescaledb.compress = true);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'subscription_events'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE subscription_events SET (timescaledb.compress = true);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'subscription_revenue'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE subscription_revenue SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Add compression policies if they don't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'profile_subscriptions'
+    ) THEN
+        PERFORM add_compression_policy('profile_subscriptions', INTERVAL '60 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'subscription_events'
+    ) THEN
+        PERFORM add_compression_policy('subscription_events', INTERVAL '30 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'subscription_revenue'
+    ) THEN
+        PERFORM add_compression_policy('subscription_revenue', INTERVAL '30 days');
+    END IF;
+END $$;
 
 -- Real-time subscription health monitoring
 CREATE MATERIALIZED VIEW subscription_health_metrics
@@ -257,13 +323,22 @@ SELECT add_continuous_aggregate_policy('subscription_churn_analysis',
     schedule_interval => INTERVAL '2 hours');
 
 -- Add foreign key constraints
-ALTER TABLE profile_subscriptions 
-ADD CONSTRAINT fk_profile_subscriptions_service_id 
-FOREIGN KEY (service_id) REFERENCES profile_subscription_services(service_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_profile_subscriptions_service_id'
+        AND conrelid = 'profile_subscriptions'::regclass
+    ) THEN
+        ALTER TABLE profile_subscriptions 
+        ADD CONSTRAINT fk_profile_subscriptions_service_id 
+        FOREIGN KEY (service_id) REFERENCES profile_subscription_services(service_id);
+    END IF;
+END $$;
 
 -- Additional indexes for performance
-CREATE INDEX idx_profile_subscriptions_service_id ON profile_subscriptions(service_id);
-CREATE INDEX idx_profile_subscriptions_subscriber ON profile_subscriptions(subscriber);
-CREATE INDEX idx_profile_subscriptions_expires_at ON profile_subscriptions(expires_at);
-CREATE INDEX idx_subscription_revenue_service_id ON subscription_revenue(service_id);
-CREATE INDEX idx_subscription_revenue_time ON subscription_revenue(time); 
+CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_service_id ON profile_subscriptions(service_id);
+CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_subscriber ON profile_subscriptions(subscriber);
+CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_expires_at ON profile_subscriptions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_subscription_revenue_service_id ON subscription_revenue(service_id);
+CREATE INDEX IF NOT EXISTS idx_subscription_revenue_time ON subscription_revenue(time); 
