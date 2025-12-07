@@ -87,13 +87,25 @@ where
 }
 
 /// Parse a JSON value into the specified event type
-/// This function is useful when dealing with already-extracted JSON data
+/// This function automatically handles nested structures (content.fields, fields, etc.)
+/// and attempts normalization before parsing
 pub fn parse_json_event<T>(value: &Value) -> Result<T>
 where
     T: DeserializeOwned,
 {
-    serde_json::from_value::<T>(value.clone())
-        .map_err(|e| anyhow!("Failed to parse JSON event: {}", e))
+    // First try to normalize the event data structure
+    let normalized = extract_event_fields(value)?;
+    
+    // Try deserializing with normalized data first
+    match serde_json::from_value::<T>(normalized.clone()) {
+        Ok(result) => Ok(result),
+        Err(_) => {
+            // If normalized data fails, try original value as fallback
+            // This maintains backward compatibility for events that don't need normalization
+            serde_json::from_value::<T>(value.clone())
+                .map_err(|e| anyhow!("Failed to parse JSON event: {}", e))
+        }
+    }
 }
 
 /// Extract fields from a JSON value in standard format
@@ -101,6 +113,13 @@ pub fn extract_event_fields(data: &Value) -> Result<Value> {
     // Try to get the fields directly
     if let Some(fields) = data.get("fields") {
         return Ok(fields.clone());
+    }
+
+    // Try content.fields structure (common in blockchain Move object events)
+    if let Some(content) = data.get("content") {
+        if let Some(fields) = content.get("fields") {
+            return Ok(fields.clone());
+        }
     }
 
     // If fields are not found, try to get the data directly

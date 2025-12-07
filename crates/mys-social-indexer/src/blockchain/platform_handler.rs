@@ -26,6 +26,34 @@ fn extract_string_field(data: &serde_json::Value, field_name: &str) -> String {
         }
     }
 
+    // Try content.fields.field_name structure (common in blockchain events)
+    if let Some(content) = data.get("content") {
+        if let Some(fields) = content.get("fields") {
+            if let Some(value) = fields.get(field_name) {
+                if let Some(s) = value.as_str() {
+                    return s.to_string();
+                }
+                // Try as number (for status)
+                if let Some(n) = value.as_u64() {
+                    return n.to_string();
+                }
+            }
+        }
+    }
+
+    // Try fields.field_name structure
+    if let Some(fields) = data.get("fields") {
+        if let Some(value) = fields.get(field_name) {
+            if let Some(s) = value.as_str() {
+                return s.to_string();
+            }
+            // Try as number (for status)
+            if let Some(n) = value.as_u64() {
+                return n.to_string();
+            }
+        }
+    }
+
     // Try nested fields
     if field_name.contains('.') {
         let parts: Vec<&str> = field_name.split('.').collect();
@@ -72,6 +100,32 @@ fn extract_string_array(data: &serde_json::Value, field_name: &str) -> Vec<Strin
         }
     }
 
+    // Try content.fields.field_name structure
+    if let Some(content) = data.get("content") {
+        if let Some(fields) = content.get("fields") {
+            if let Some(value) = fields.get(field_name) {
+                if let Some(arr) = value.as_array() {
+                    return arr
+                        .iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect();
+                }
+            }
+        }
+    }
+
+    // Try fields.field_name structure
+    if let Some(fields) = data.get("fields") {
+        if let Some(value) = fields.get(field_name) {
+            if let Some(arr) = value.as_array() {
+                return arr
+                    .iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect();
+            }
+        }
+    }
+
     // Try as a single string
     let single = extract_string_field(data, field_name);
     if !single.is_empty() {
@@ -86,6 +140,26 @@ fn extract_number_field(data: &serde_json::Value, field_name: &str) -> Option<u8
     if let Some(value) = data.get(field_name) {
         if let Some(n) = value.as_u64() {
             return Some(n as u8);
+        }
+    }
+
+    // Try content.fields.field_name structure
+    if let Some(content) = data.get("content") {
+        if let Some(fields) = content.get("fields") {
+            if let Some(value) = fields.get(field_name) {
+                if let Some(n) = value.as_u64() {
+                    return Some(n as u8);
+                }
+            }
+        }
+    }
+
+    // Try fields.field_name structure
+    if let Some(fields) = data.get("fields") {
+        if let Some(value) = fields.get(field_name) {
+            if let Some(n) = value.as_u64() {
+                return Some(n as u8);
+            }
         }
     }
 
@@ -127,6 +201,36 @@ fn extract_u64_optional_field(data: &serde_json::Value, field_name: &str) -> Opt
         if let Some(s) = value.as_str() {
             if let Ok(n) = s.parse::<u64>() {
                 return Some(n);
+            }
+        }
+    }
+
+    // Try content.fields.field_name structure
+    if let Some(content) = data.get("content") {
+        if let Some(fields) = content.get("fields") {
+            if let Some(value) = fields.get(field_name) {
+                if let Some(n) = value.as_u64() {
+                    return Some(n);
+                }
+                if let Some(s) = value.as_str() {
+                    if let Ok(n) = s.parse::<u64>() {
+                        return Some(n);
+                    }
+                }
+            }
+        }
+    }
+
+    // Try fields.field_name structure
+    if let Some(fields) = data.get("fields") {
+        if let Some(value) = fields.get(field_name) {
+            if let Some(n) = value.as_u64() {
+                return Some(n);
+            }
+            if let Some(s) = value.as_str() {
+                if let Ok(n) = s.parse::<u64>() {
+                    return Some(n);
+                }
             }
         }
     }
@@ -221,6 +325,36 @@ fn extract_bool_optional_field(data: &serde_json::Value, field_name: &str) -> Op
         if let Some(s) = value.as_str() {
             if let Ok(b) = s.parse::<bool>() {
                 return Some(b);
+            }
+        }
+    }
+
+    // Try content.fields.field_name structure
+    if let Some(content) = data.get("content") {
+        if let Some(fields) = content.get("fields") {
+            if let Some(value) = fields.get(field_name) {
+                if let Some(b) = value.as_bool() {
+                    return Some(b);
+                }
+                if let Some(s) = value.as_str() {
+                    if let Ok(b) = s.parse::<bool>() {
+                        return Some(b);
+                    }
+                }
+            }
+        }
+    }
+
+    // Try fields.field_name structure
+    if let Some(fields) = data.get("fields") {
+        if let Some(value) = fields.get(field_name) {
+            if let Some(b) = value.as_bool() {
+                return Some(b);
+            }
+            if let Some(s) = value.as_str() {
+                if let Ok(b) = s.parse::<bool>() {
+                    return Some(b);
+                }
             }
         }
     }
@@ -1622,9 +1756,22 @@ impl PlatformEventHandler {
                         serde_json::to_string_pretty(&event.data).unwrap_or_default()
                     );
 
-                    // First try normal deserialization
-                    match serde_json::from_value::<PlatformCreatedEvent>(event.data.clone()) {
+                    // First try to normalize the event data structure
+                    let normalized_data = match event_utils::extract_event_fields(&event.data) {
+                        Ok(fields) => {
+                            debug!("Extracted fields from event data");
+                            fields
+                        }
+                        Err(_) => {
+                            debug!("Could not extract fields, using raw event data");
+                            event.data.clone()
+                        }
+                    };
+
+                    // Try deserialization with normalized data first
+                    match serde_json::from_value::<PlatformCreatedEvent>(normalized_data.clone()) {
                         Ok(platform_event) => {
+                            info!("Successfully deserialized PlatformCreatedEvent");
                             self.process_platform_created_event(&platform_event, Some(&event))
                                 .await?;
                         }
@@ -1632,23 +1779,29 @@ impl PlatformEventHandler {
                             warn!("Failed to deserialize PlatformCreatedEvent normally: {}", e);
 
                             // Try to extract fields manually if normal deserialization fails
+                            // Use normalized_data if available, otherwise fall back to original
+                            let data_to_extract = if normalized_data != event.data {
+                                &normalized_data
+                            } else {
+                                &event.data
+                            };
                             let mut platform_event = PlatformCreatedEvent {
-                                platform_id: extract_string_field(&event.data, "platform_id"),
-                                name: extract_string_field(&event.data, "name"),
-                                tagline: extract_string_field(&event.data, "tagline"),
+                                platform_id: extract_string_field(data_to_extract, "platform_id"),
+                                name: extract_string_field(data_to_extract, "name"),
+                                tagline: extract_string_field(data_to_extract, "tagline"),
                                 description: {
                                     // Simple description extraction
-                                    let desc = extract_string_field(&event.data, "description");
+                                    let desc = extract_string_field(data_to_extract, "description");
                                     if !desc.is_empty() {
                                         Some(desc)
                                     } else {
                                         None
                                     }
                                 },
-                                developer: extract_string_field(&event.data, "developer"),
+                                developer: extract_string_field(data_to_extract, "developer"),
                                 logo: {
                                     // Simple logo extraction
-                                    let logo = extract_string_field(&event.data, "logo");
+                                    let logo = extract_string_field(data_to_extract, "logo");
                                     if !logo.is_empty() {
                                         Some(logo)
                                     } else {
@@ -1656,54 +1809,60 @@ impl PlatformEventHandler {
                                     }
                                 },
                                 terms_of_service: extract_string_field(
-                                    &event.data,
+                                    data_to_extract,
                                     "terms_of_service",
                                 ),
-                                privacy_policy: extract_string_field(&event.data, "privacy_policy"),
-                                platforms: extract_string_array(&event.data, "platforms"),
-                                links: extract_string_array(&event.data, "links"),
+                                privacy_policy: extract_string_field(data_to_extract, "privacy_policy"),
+                                platforms: extract_string_array(data_to_extract, "platforms"),
+                                links: extract_string_array(data_to_extract, "links"),
                                 status: PlatformStatus {
-                                    status: extract_number_field(&event.data, "status.status")
+                                    status: extract_number_field(data_to_extract, "status.status")
                                         .unwrap_or(0),
                                 },
-                                release_date: extract_string_field(&event.data, "release_date"),
+                                release_date: extract_string_field(data_to_extract, "release_date"),
                                 shutdown_date: {
-                                    let shutdown = extract_string_field(&event.data, "shutdown_date");
+                                    let shutdown = extract_string_field(data_to_extract, "shutdown_date");
                                     if !shutdown.is_empty() {
                                         Some(shutdown)
                                     } else {
                                         None
                                     }
                                 },
-                                wants_dao_governance: extract_bool_optional_field(&event.data, "wants_dao_governance"),
+                                wants_dao_governance: extract_bool_optional_field(data_to_extract, "wants_dao_governance"),
                                 governance_registry_id: {
-                                    let reg_id = extract_string_field(&event.data, "governance_registry_id");
+                                    let reg_id = extract_string_field(data_to_extract, "governance_registry_id");
                                     if !reg_id.is_empty() {
                                         Some(reg_id)
                                     } else {
                                         None
                                     }
                                 },
-                                delegate_count: extract_u64_optional_field(&event.data, "delegate_count"),
-                                delegate_term_epochs: extract_u64_optional_field(&event.data, "delegate_term_epochs"),
-                                max_votes_per_user: extract_u64_optional_field(&event.data, "max_votes_per_user"),
-                                min_on_chain_age_days: extract_u64_optional_field(&event.data, "min_on_chain_age_days"),
-                                proposal_submission_cost: extract_u64_optional_field(&event.data, "proposal_submission_cost"),
-                                quadratic_base_cost: extract_u64_optional_field(&event.data, "quadratic_base_cost"),
-                                quorum_votes: extract_u64_optional_field(&event.data, "quorum_votes"),
-                                voting_period_epochs: extract_u64_optional_field(&event.data, "voting_period_epochs"),
-                                treasury: extract_u64_optional_field(&event.data, "treasury"),
-                                version: extract_u64_optional_field(&event.data, "version"),
+                                delegate_count: extract_u64_optional_field(data_to_extract, "delegate_count"),
+                                delegate_term_epochs: extract_u64_optional_field(data_to_extract, "delegate_term_epochs"),
+                                max_votes_per_user: extract_u64_optional_field(data_to_extract, "max_votes_per_user"),
+                                min_on_chain_age_days: extract_u64_optional_field(data_to_extract, "min_on_chain_age_days"),
+                                proposal_submission_cost: extract_u64_optional_field(data_to_extract, "proposal_submission_cost"),
+                                quadratic_base_cost: extract_u64_optional_field(data_to_extract, "quadratic_base_cost"),
+                                quorum_votes: extract_u64_optional_field(data_to_extract, "quorum_votes"),
+                                voting_period_epochs: extract_u64_optional_field(data_to_extract, "voting_period_epochs"),
+                                treasury: extract_u64_optional_field(data_to_extract, "treasury"),
+                                version: extract_u64_optional_field(data_to_extract, "version"),
                             };
 
                             // If platform_id is empty, try other formats
                             if platform_event.platform_id.is_empty() {
-                                platform_event.platform_id = event
-                                    .data
+                                platform_event.platform_id = data_to_extract
                                     .get("platform_id")
                                     .and_then(|v| v.as_str())
                                     .map(String::from)
-                                    .unwrap_or_default();
+                                    .unwrap_or_else(|| {
+                                        // Try in original event.data as fallback
+                                        event.data
+                                            .get("platform_id")
+                                            .and_then(|v| v.as_str())
+                                            .map(String::from)
+                                            .unwrap_or_default()
+                                    });
                             }
 
                             info!("Manually extracted platform event: {:?}", platform_event);
@@ -1714,45 +1873,123 @@ impl PlatformEventHandler {
                 }
                 PlatformEventType::PlatformUpdated => {
                     info!("Processing PlatformUpdated event");
-                    let platform_event: PlatformUpdatedEvent =
-                        serde_json::from_value(event.data.clone())?;
-                    self.process_platform_updated_event(&platform_event, Some(&event))
-                        .await?;
+                    match event_utils::extract_event_fields(&event.data).and_then(|fields| {
+                        serde_json::from_value::<PlatformUpdatedEvent>(fields)
+                            .map_err(|e| anyhow!("Failed to deserialize PlatformUpdatedEvent: {}", e))
+                    }) {
+                        Ok(platform_event) => {
+                            self.process_platform_updated_event(&platform_event, Some(&event))
+                                .await?;
+                        }
+                        Err(e) => {
+                            error!("Failed to parse PlatformUpdatedEvent: {}", e);
+                            error!(
+                                "Event data: {}",
+                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                            );
+                            return Err(e);
+                        }
+                    }
                 }
                 PlatformEventType::ModeratorAdded => {
                     info!("Processing ModeratorAdded event");
-                    let platform_event: ModeratorAddedEvent =
-                        serde_json::from_value(event.data.clone())?;
-                    self.process_moderator_added_event(&platform_event, Some(&event))
-                        .await?;
+                    match event_utils::extract_event_fields(&event.data).and_then(|fields| {
+                        serde_json::from_value::<ModeratorAddedEvent>(fields)
+                            .map_err(|e| anyhow!("Failed to deserialize ModeratorAddedEvent: {}", e))
+                    }) {
+                        Ok(platform_event) => {
+                            self.process_moderator_added_event(&platform_event, Some(&event))
+                                .await?;
+                        }
+                        Err(e) => {
+                            error!("Failed to parse ModeratorAddedEvent: {}", e);
+                            error!(
+                                "Event data: {}",
+                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                            );
+                            return Err(e);
+                        }
+                    }
                 }
                 PlatformEventType::ModeratorRemoved => {
                     info!("Processing ModeratorRemoved event");
-                    let platform_event: ModeratorRemovedEvent =
-                        serde_json::from_value(event.data.clone())?;
-                    self.process_moderator_removed_event(&platform_event, Some(&event))
-                        .await?;
+                    match event_utils::extract_event_fields(&event.data).and_then(|fields| {
+                        serde_json::from_value::<ModeratorRemovedEvent>(fields)
+                            .map_err(|e| anyhow!("Failed to deserialize ModeratorRemovedEvent: {}", e))
+                    }) {
+                        Ok(platform_event) => {
+                            self.process_moderator_removed_event(&platform_event, Some(&event))
+                                .await?;
+                        }
+                        Err(e) => {
+                            error!("Failed to parse ModeratorRemovedEvent: {}", e);
+                            error!(
+                                "Event data: {}",
+                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                            );
+                            return Err(e);
+                        }
+                    }
                 }
                 PlatformEventType::ProfileBlocked => {
                     info!("Processing ProfileBlocked event");
-                    let platform_event: PlatformBlockedProfileEvent =
-                        serde_json::from_value(event.data.clone())?;
-                    self.process_profile_blocked_event(&platform_event, Some(&event))
-                        .await?;
+                    match event_utils::extract_event_fields(&event.data).and_then(|fields| {
+                        serde_json::from_value::<PlatformBlockedProfileEvent>(fields)
+                            .map_err(|e| anyhow!("Failed to deserialize PlatformBlockedProfileEvent: {}", e))
+                    }) {
+                        Ok(platform_event) => {
+                            self.process_profile_blocked_event(&platform_event, Some(&event))
+                                .await?;
+                        }
+                        Err(e) => {
+                            error!("Failed to parse PlatformBlockedProfileEvent: {}", e);
+                            error!(
+                                "Event data: {}",
+                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                            );
+                            return Err(e);
+                        }
+                    }
                 }
                 PlatformEventType::ProfileUnblocked => {
                     info!("Processing ProfileUnblocked event");
-                    let platform_event: PlatformUnblockedProfileEvent =
-                        serde_json::from_value(event.data.clone())?;
-                    self.process_profile_unblocked_event(&platform_event, Some(&event))
-                        .await?;
+                    match event_utils::extract_event_fields(&event.data).and_then(|fields| {
+                        serde_json::from_value::<PlatformUnblockedProfileEvent>(fields)
+                            .map_err(|e| anyhow!("Failed to deserialize PlatformUnblockedProfileEvent: {}", e))
+                    }) {
+                        Ok(platform_event) => {
+                            self.process_profile_unblocked_event(&platform_event, Some(&event))
+                                .await?;
+                        }
+                        Err(e) => {
+                            error!("Failed to parse PlatformUnblockedProfileEvent: {}", e);
+                            error!(
+                                "Event data: {}",
+                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                            );
+                            return Err(e);
+                        }
+                    }
                 }
                 PlatformEventType::PlatformApprovalChanged => {
                     info!("Processing PlatformApprovalChanged event");
-                    let platform_event: PlatformApprovalChangedEvent =
-                        serde_json::from_value(event.data.clone())?;
-                    self.process_platform_approval_changed_event(&platform_event, Some(&event))
-                        .await?;
+                    match event_utils::extract_event_fields(&event.data).and_then(|fields| {
+                        serde_json::from_value::<PlatformApprovalChangedEvent>(fields)
+                            .map_err(|e| anyhow!("Failed to deserialize PlatformApprovalChangedEvent: {}", e))
+                    }) {
+                        Ok(platform_event) => {
+                            self.process_platform_approval_changed_event(&platform_event, Some(&event))
+                                .await?;
+                        }
+                        Err(e) => {
+                            error!("Failed to parse PlatformApprovalChangedEvent: {}", e);
+                            error!(
+                                "Event data: {}",
+                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                            );
+                            return Err(e);
+                        }
+                    }
                 }
                 PlatformEventType::UserJoinedPlatform => {
                     info!("Processing UserJoinedPlatform event");
