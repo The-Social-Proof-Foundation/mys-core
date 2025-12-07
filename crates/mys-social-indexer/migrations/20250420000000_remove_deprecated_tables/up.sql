@@ -5,7 +5,7 @@ DROP TABLE IF EXISTS platforms_blocked;
 DROP TABLE IF EXISTS platform_relationships;
 
 -- Create profile_events table
-CREATE TABLE profile_events (
+CREATE TABLE IF NOT EXISTS profile_events (
     id SERIAL PRIMARY KEY,
     event_type TEXT NOT NULL,
     profile_id TEXT NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE profile_events (
 );
 
 -- Add indexes for profile_events table
-CREATE INDEX idx_profile_events_profile_id ON profile_events (profile_id);
-CREATE INDEX idx_profile_events_event_type ON profile_events (event_type);
-CREATE INDEX idx_profile_events_event_id ON profile_events (event_id);
-CREATE INDEX idx_profile_events_created_at ON profile_events (created_at);
+CREATE INDEX IF NOT EXISTS idx_profile_events_profile_id ON profile_events (profile_id);
+CREATE INDEX IF NOT EXISTS idx_profile_events_event_type ON profile_events (event_type);
+CREATE INDEX IF NOT EXISTS idx_profile_events_event_id ON profile_events (event_id);
+CREATE INDEX IF NOT EXISTS idx_profile_events_created_at ON profile_events (created_at);

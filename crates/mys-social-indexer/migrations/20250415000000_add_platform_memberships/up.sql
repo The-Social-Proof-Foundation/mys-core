@@ -1,5 +1,5 @@
 -- Create platform_memberships table
-CREATE TABLE platform_memberships (
+CREATE TABLE IF NOT EXISTS platform_memberships (
     id SERIAL PRIMARY KEY,
     platform_id TEXT NOT NULL,
     profile_id TEXT NOT NULL,
@@ -11,8 +11,8 @@ CREATE TABLE platform_memberships (
 );
 
 -- Create index for faster lookups
-CREATE INDEX idx_platform_memberships_platform_id ON platform_memberships (platform_id);
-CREATE INDEX idx_platform_memberships_profile_id ON platform_memberships (profile_id);
-CREATE INDEX idx_platform_memberships_role ON platform_memberships (role);
-CREATE INDEX idx_platform_memberships_joined_at ON platform_memberships (joined_at);
-CREATE INDEX idx_platform_memberships_left_at ON platform_memberships (left_at); 
+CREATE INDEX IF NOT EXISTS idx_platform_memberships_platform_id ON platform_memberships (platform_id);
+CREATE INDEX IF NOT EXISTS idx_platform_memberships_profile_id ON platform_memberships (profile_id);
+CREATE INDEX IF NOT EXISTS idx_platform_memberships_role ON platform_memberships (role);
+CREATE INDEX IF NOT EXISTS idx_platform_memberships_joined_at ON platform_memberships (joined_at);
+CREATE INDEX IF NOT EXISTS idx_platform_memberships_left_at ON platform_memberships (left_at); 

@@ -1,5 +1,5 @@
 -- Create platforms table
-CREATE TABLE platforms (
+CREATE TABLE IF NOT EXISTS platforms (
     id SERIAL PRIMARY KEY,
     platform_id TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
@@ -19,13 +19,13 @@ CREATE TABLE platforms (
 );
 
 -- Create index on platform_id
-CREATE INDEX idx_platforms_platform_id ON platforms(platform_id);
+CREATE INDEX IF NOT EXISTS idx_platforms_platform_id ON platforms(platform_id);
 
 -- Create index on name for quick lookups
-CREATE INDEX idx_platforms_name ON platforms(name);
+CREATE INDEX IF NOT EXISTS idx_platforms_name ON platforms(name);
 
 -- Create moderators table
-CREATE TABLE platform_moderators (
+CREATE TABLE IF NOT EXISTS platform_moderators (
     id SERIAL PRIMARY KEY,
     platform_id TEXT NOT NULL,
     moderator_address TEXT NOT NULL,
@@ -35,10 +35,10 @@ CREATE TABLE platform_moderators (
 );
 
 -- Create index on platform_id for moderators
-CREATE INDEX idx_platform_moderators_platform_id ON platform_moderators(platform_id);
+CREATE INDEX IF NOT EXISTS idx_platform_moderators_platform_id ON platform_moderators(platform_id);
 
 -- Create blocked profiles table
-CREATE TABLE platform_blocked_profiles (
+CREATE TABLE IF NOT EXISTS platform_blocked_profiles (
     id SERIAL PRIMARY KEY,
     platform_id TEXT NOT NULL,
     profile_id TEXT NOT NULL,
@@ -51,13 +51,13 @@ CREATE TABLE platform_blocked_profiles (
 );
 
 -- Create index on platform_id for blocked profiles
-CREATE INDEX idx_platform_blocked_profiles_platform_id ON platform_blocked_profiles(platform_id);
+CREATE INDEX IF NOT EXISTS idx_platform_blocked_profiles_platform_id ON platform_blocked_profiles(platform_id);
 
 -- Create index on profile_id for blocked profiles to quickly check if a profile is blocked
-CREATE INDEX idx_platform_blocked_profiles_profile_id ON platform_blocked_profiles(profile_id);
+CREATE INDEX IF NOT EXISTS idx_platform_blocked_profiles_profile_id ON platform_blocked_profiles(profile_id);
 
 -- Create a table for platform events
-CREATE TABLE platform_events (
+CREATE TABLE IF NOT EXISTS platform_events (
     id SERIAL PRIMARY KEY,
     event_type TEXT NOT NULL,
     platform_id TEXT NOT NULL,
@@ -67,4 +67,4 @@ CREATE TABLE platform_events (
 );
 
 -- Create index on platform_id for events
-CREATE INDEX idx_platform_events_platform_id ON platform_events(platform_id);
+CREATE INDEX IF NOT EXISTS idx_platform_events_platform_id ON platform_events(platform_id);

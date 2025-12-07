@@ -14,13 +14,13 @@ ALTER TABLE profiles DROP COLUMN IF EXISTS sensitive_data_updated_at;
 -- ============================================================================
 
 -- Add post_count field to track number of top-level, non-deleted posts per profile
-ALTER TABLE profiles ADD COLUMN post_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS post_count INTEGER NOT NULL DEFAULT 0;
 
 -- Add index on post_count for efficient sorting and filtering
-CREATE INDEX idx_profiles_post_count ON profiles (post_count DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_post_count ON profiles (post_count DESC);
 
 -- Add composite index for common queries (owner_address + post_count)
-CREATE INDEX idx_profiles_owner_post_count ON profiles (owner_address, post_count DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_owner_post_count ON profiles (owner_address, post_count DESC);
 
 -- ============================================================================
 -- 3. VALIDATION AND CONSTRAINTS

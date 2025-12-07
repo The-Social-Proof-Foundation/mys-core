@@ -11,8 +11,8 @@ ADD CONSTRAINT social_graph_relationships_unique_relationship
 UNIQUE (follower_address, following_address);
 
 -- Add indexes on addresses for fast lookups
-CREATE INDEX idx_social_graph_relationships_follower_address ON social_graph_relationships(follower_address);
-CREATE INDEX idx_social_graph_relationships_following_address ON social_graph_relationships(following_address);
+CREATE INDEX IF NOT EXISTS idx_social_graph_relationships_follower_address ON social_graph_relationships(follower_address);
+CREATE INDEX IF NOT EXISTS idx_social_graph_relationships_following_address ON social_graph_relationships(following_address);
 
 -- Similarly update the social_graph_events table to remove db IDs
 ALTER TABLE social_graph_events

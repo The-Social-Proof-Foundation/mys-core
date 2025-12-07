@@ -58,7 +58,7 @@ $$;
 -- ============================================================================
 
 -- Main data marketplace entries (Regular table - reference data)
-CREATE TABLE my_ip_data (
+CREATE TABLE IF NOT EXISTS my_ip_data (
     ip_id TEXT NOT NULL PRIMARY KEY,
     owner TEXT NOT NULL,
     media_type TEXT NOT NULL,
@@ -83,7 +83,7 @@ CREATE TABLE my_ip_data (
 );
 
 -- Purchase records (TimescaleDB hypertable - high volume)
-CREATE TABLE my_ip_purchases (
+CREATE TABLE IF NOT EXISTS my_ip_purchases (
     id SERIAL NOT NULL,
     ip_id TEXT NOT NULL,
     buyer TEXT NOT NULL,
@@ -96,10 +96,18 @@ CREATE TABLE my_ip_purchases (
 );
 
 -- Convert to TimescaleDB hypertable with 7-day chunks for high-volume purchase analytics
-SELECT create_hypertable('my_ip_purchases', 'time', chunk_time_interval => INTERVAL '7 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_schema = 'public' AND hypertable_name = 'my_ip_purchases'
+    ) THEN
+        PERFORM create_hypertable('my_ip_purchases'::regclass, 'time'::name, chunk_time_interval => INTERVAL '7 days');
+    END IF;
+END $$;
 
 -- Subscription records (TimescaleDB hypertable - moderate volume)
-CREATE TABLE my_ip_subscriptions (
+CREATE TABLE IF NOT EXISTS my_ip_subscriptions (
     id SERIAL NOT NULL,
     ip_id TEXT NOT NULL,
     subscriber TEXT NOT NULL,
@@ -112,10 +120,18 @@ CREATE TABLE my_ip_subscriptions (
 );
 
 -- Convert to TimescaleDB hypertable with 30-day chunks for subscription billing cycles
-SELECT create_hypertable('my_ip_subscriptions', 'time', chunk_time_interval => INTERVAL '30 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_schema = 'public' AND hypertable_name = 'my_ip_subscriptions'
+    ) THEN
+        PERFORM create_hypertable('my_ip_subscriptions'::regclass, 'time'::name, chunk_time_interval => INTERVAL '30 days');
+    END IF;
+END $$;
 
 -- Revenue tracking (TimescaleDB hypertable - high volume)
-CREATE TABLE my_ip_revenue (
+CREATE TABLE IF NOT EXISTS my_ip_revenue (
     id SERIAL NOT NULL,
     ip_id TEXT NOT NULL,
     from_address TEXT NOT NULL,
@@ -129,10 +145,18 @@ CREATE TABLE my_ip_revenue (
 );
 
 -- Convert to TimescaleDB hypertable with 7-day chunks for real-time revenue tracking
-SELECT create_hypertable('my_ip_revenue', 'time', chunk_time_interval => INTERVAL '7 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_schema = 'public' AND hypertable_name = 'my_ip_revenue'
+    ) THEN
+        PERFORM create_hypertable('my_ip_revenue'::regclass, 'time'::name, chunk_time_interval => INTERVAL '7 days');
+    END IF;
+END $$;
 
 -- Access logs for analytics (TimescaleDB hypertable - very high volume)
-CREATE TABLE my_ip_access_logs (
+CREATE TABLE IF NOT EXISTS my_ip_access_logs (
     id SERIAL NOT NULL,
     ip_id TEXT NOT NULL,
     user_address TEXT NOT NULL,
@@ -144,44 +168,52 @@ CREATE TABLE my_ip_access_logs (
 );
 
 -- Convert to TimescaleDB hypertable with 1-day chunks for short-term analytics
-SELECT create_hypertable('my_ip_access_logs', 'time', chunk_time_interval => INTERVAL '1 day');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_schema = 'public' AND hypertable_name = 'my_ip_access_logs'
+    ) THEN
+        PERFORM create_hypertable('my_ip_access_logs'::regclass, 'time'::name, chunk_time_interval => INTERVAL '1 day');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 4. CREATE OPTIMIZED INDEXES FOR MARKETPLACE QUERIES
 -- ============================================================================
 
 -- my_ip_data indexes (reference table)
-CREATE INDEX idx_my_ip_data_owner ON my_ip_data (owner);
-CREATE INDEX idx_my_ip_data_media_type ON my_ip_data (media_type);
-CREATE INDEX idx_my_ip_data_tags ON my_ip_data USING GIN (tags);
-CREATE INDEX idx_my_ip_data_platform_id ON my_ip_data (platform_id) WHERE platform_id IS NOT NULL;
-CREATE INDEX idx_my_ip_data_time ON my_ip_data (time DESC);
-CREATE INDEX idx_my_ip_data_pricing ON my_ip_data (one_time_price, subscription_price) WHERE one_time_price IS NOT NULL OR subscription_price IS NOT NULL;
-CREATE INDEX idx_my_ip_data_geographic ON my_ip_data (geographic_region) WHERE geographic_region IS NOT NULL;
-CREATE INDEX idx_my_ip_data_quality ON my_ip_data (data_quality) WHERE data_quality IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_my_ip_data_owner ON my_ip_data (owner);
+CREATE INDEX IF NOT EXISTS idx_my_ip_data_media_type ON my_ip_data (media_type);
+CREATE INDEX IF NOT EXISTS idx_my_ip_data_tags ON my_ip_data USING GIN (tags);
+CREATE INDEX IF NOT EXISTS idx_my_ip_data_platform_id ON my_ip_data (platform_id) WHERE platform_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_my_ip_data_time ON my_ip_data (time DESC);
+CREATE INDEX IF NOT EXISTS idx_my_ip_data_pricing ON my_ip_data (one_time_price, subscription_price) WHERE one_time_price IS NOT NULL OR subscription_price IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_my_ip_data_geographic ON my_ip_data (geographic_region) WHERE geographic_region IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_my_ip_data_quality ON my_ip_data (data_quality) WHERE data_quality IS NOT NULL;
 
 -- my_ip_purchases indexes (hypertable)
-CREATE INDEX idx_my_ip_purchases_time_ip ON my_ip_purchases (time DESC, ip_id);
-CREATE INDEX idx_my_ip_purchases_buyer_time ON my_ip_purchases (buyer, time DESC);
-CREATE INDEX idx_my_ip_purchases_type_time ON my_ip_purchases (purchase_type, time DESC);
-CREATE INDEX idx_my_ip_purchases_ip_time ON my_ip_purchases (ip_id, time DESC);
+CREATE INDEX IF NOT EXISTS idx_my_ip_purchases_time_ip ON my_ip_purchases (time DESC, ip_id);
+CREATE INDEX IF NOT EXISTS idx_my_ip_purchases_buyer_time ON my_ip_purchases (buyer, time DESC);
+CREATE INDEX IF NOT EXISTS idx_my_ip_purchases_type_time ON my_ip_purchases (purchase_type, time DESC);
+CREATE INDEX IF NOT EXISTS idx_my_ip_purchases_ip_time ON my_ip_purchases (ip_id, time DESC);
 
 -- my_ip_subscriptions indexes (hypertable)
-CREATE INDEX idx_my_ip_subscriptions_time_ip ON my_ip_subscriptions (time DESC, ip_id);
-CREATE INDEX idx_my_ip_subscriptions_subscriber_time ON my_ip_subscriptions (subscriber, time DESC);
-CREATE INDEX idx_my_ip_subscriptions_end_time ON my_ip_subscriptions (subscription_end, time DESC);
-CREATE INDEX idx_my_ip_subscriptions_ip_time ON my_ip_subscriptions (ip_id, time DESC);
+CREATE INDEX IF NOT EXISTS idx_my_ip_subscriptions_time_ip ON my_ip_subscriptions (time DESC, ip_id);
+CREATE INDEX IF NOT EXISTS idx_my_ip_subscriptions_subscriber_time ON my_ip_subscriptions (subscriber, time DESC);
+CREATE INDEX IF NOT EXISTS idx_my_ip_subscriptions_end_time ON my_ip_subscriptions (subscription_end, time DESC);
+CREATE INDEX IF NOT EXISTS idx_my_ip_subscriptions_ip_time ON my_ip_subscriptions (ip_id, time DESC);
 
 -- my_ip_revenue indexes (hypertable)
-CREATE INDEX idx_my_ip_revenue_time_ip ON my_ip_revenue (time DESC, ip_id);
-CREATE INDEX idx_my_ip_revenue_to_time ON my_ip_revenue (to_address, time DESC);
-CREATE INDEX idx_my_ip_revenue_type_time ON my_ip_revenue (revenue_type, time DESC);
-CREATE INDEX idx_my_ip_revenue_ip_time ON my_ip_revenue (ip_id, time DESC);
+CREATE INDEX IF NOT EXISTS idx_my_ip_revenue_time_ip ON my_ip_revenue (time DESC, ip_id);
+CREATE INDEX IF NOT EXISTS idx_my_ip_revenue_to_time ON my_ip_revenue (to_address, time DESC);
+CREATE INDEX IF NOT EXISTS idx_my_ip_revenue_type_time ON my_ip_revenue (revenue_type, time DESC);
+CREATE INDEX IF NOT EXISTS idx_my_ip_revenue_ip_time ON my_ip_revenue (ip_id, time DESC);
 
 -- my_ip_access_logs indexes (hypertable)
-CREATE INDEX idx_my_ip_access_time_ip ON my_ip_access_logs (time DESC, ip_id);
-CREATE INDEX idx_my_ip_access_user_time ON my_ip_access_logs (user_address, time DESC);
-CREATE INDEX idx_my_ip_access_type_time ON my_ip_access_logs (access_type, time DESC);
+CREATE INDEX IF NOT EXISTS idx_my_ip_access_time_ip ON my_ip_access_logs (time DESC, ip_id);
+CREATE INDEX IF NOT EXISTS idx_my_ip_access_user_time ON my_ip_access_logs (user_address, time DESC);
+CREATE INDEX IF NOT EXISTS idx_my_ip_access_type_time ON my_ip_access_logs (access_type, time DESC);
 
 -- ============================================================================
 -- 5. ENABLE TIMESCALEDB COMPRESSION POLICIES

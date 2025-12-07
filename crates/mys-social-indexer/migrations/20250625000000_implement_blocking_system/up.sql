@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS blocked_profiles CASCADE;
 DROP TABLE IF EXISTS blocked_events CASCADE;
 
 -- Create blocked_events table for comprehensive audit trail
-CREATE TABLE blocked_events (
+CREATE TABLE IF NOT EXISTS blocked_events (
     id SERIAL PRIMARY KEY,
     event_id TEXT UNIQUE,                    -- Blockchain event ID for deduplication
     event_type TEXT NOT NULL,                -- 'block' | 'unblock' | 'block_list_created'
@@ -20,7 +20,7 @@ CREATE TABLE blocked_events (
 );
 
 -- Create blocked_profiles table for current blocking state with rich profile data
-CREATE TABLE blocked_profiles (
+CREATE TABLE IF NOT EXISTS blocked_profiles (
     id SERIAL PRIMARY KEY,
     blocker_address TEXT NOT NULL,          -- Profile doing the blocking  
     blocked_address TEXT NOT NULL,          -- Profile being blocked
@@ -41,19 +41,19 @@ CREATE TABLE blocked_profiles (
 );
 
 -- Create indexes for blocked_events
-CREATE INDEX idx_blocked_events_blocker ON blocked_events(blocker_address);
-CREATE INDEX idx_blocked_events_blocked ON blocked_events(blocked_address);
-CREATE INDEX idx_blocked_events_type ON blocked_events(event_type);
-CREATE INDEX idx_blocked_events_created_at ON blocked_events(created_at);
-CREATE INDEX idx_blocked_events_event_id ON blocked_events(event_id);
+CREATE INDEX IF NOT EXISTS idx_blocked_events_blocker ON blocked_events(blocker_address);
+CREATE INDEX IF NOT EXISTS idx_blocked_events_blocked ON blocked_events(blocked_address);
+CREATE INDEX IF NOT EXISTS idx_blocked_events_type ON blocked_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_blocked_events_created_at ON blocked_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_blocked_events_event_id ON blocked_events(event_id);
 
 -- Create indexes for blocked_profiles
-CREATE INDEX idx_blocked_profiles_blocker ON blocked_profiles(blocker_address, last_blocked_at DESC);
-CREATE INDEX idx_blocked_profiles_blocked ON blocked_profiles(blocked_address);
-CREATE INDEX idx_blocked_profiles_pagination ON blocked_profiles(blocker_address, id);
-CREATE INDEX idx_blocked_profiles_block_list ON blocked_profiles(block_list_address);
-CREATE INDEX idx_blocked_profiles_username ON blocked_profiles(blocked_username);
-CREATE INDEX idx_blocked_profiles_profile_id ON blocked_profiles(blocked_profile_id);
+CREATE INDEX IF NOT EXISTS idx_blocked_profiles_blocker ON blocked_profiles(blocker_address, last_blocked_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blocked_profiles_blocked ON blocked_profiles(blocked_address);
+CREATE INDEX IF NOT EXISTS idx_blocked_profiles_pagination ON blocked_profiles(blocker_address, id);
+CREATE INDEX IF NOT EXISTS idx_blocked_profiles_block_list ON blocked_profiles(block_list_address);
+CREATE INDEX IF NOT EXISTS idx_blocked_profiles_username ON blocked_profiles(blocked_username);
+CREATE INDEX IF NOT EXISTS idx_blocked_profiles_profile_id ON blocked_profiles(blocked_profile_id);
 
 -- Add table comments
 COMMENT ON TABLE blocked_events IS 'Complete audit trail of all blocking/unblocking events from blockchain';

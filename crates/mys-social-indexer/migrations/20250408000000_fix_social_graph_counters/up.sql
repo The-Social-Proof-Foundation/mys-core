@@ -30,7 +30,7 @@ WHERE p.profile_id IS NOT NULL;
 
 -- Create an index on relationships to improve performance of count lookups
 DROP INDEX IF EXISTS idx_social_graph_relationships_pair;
-CREATE INDEX idx_social_graph_relationships_pair 
+CREATE INDEX IF NOT EXISTS idx_social_graph_relationships_pair 
 ON social_graph_relationships(follower_address, following_address);
 
 -- Add details to the unique constraint for clarity

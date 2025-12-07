@@ -9,17 +9,17 @@
 -- Add min_offer_amount field to track minimum offer amounts for profile sales
 -- NULL means no minimum offer amount is set (profile not explicitly for sale)
 -- BIGINT to match u64 from Move contract (up to 18 quintillion tokens)
-ALTER TABLE profiles ADD COLUMN min_offer_amount BIGINT NULL;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS min_offer_amount BIGINT NULL;
 
 -- ============================================================================
 -- 2. INDEXING FOR PERFORMANCE
 -- ============================================================================
 
 -- Add index for querying profiles by min_offer_amount (for marketplace views)
-CREATE INDEX idx_profiles_min_offer_amount ON profiles (min_offer_amount) WHERE min_offer_amount IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_profiles_min_offer_amount ON profiles (min_offer_amount) WHERE min_offer_amount IS NOT NULL;
 
 -- Add composite index for filtering profiles for sale by owner
-CREATE INDEX idx_profiles_owner_min_offer ON profiles (owner_address, min_offer_amount) WHERE min_offer_amount IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_profiles_owner_min_offer ON profiles (owner_address, min_offer_amount) WHERE min_offer_amount IS NOT NULL;
 
 -- ============================================================================
 -- 3. DOCUMENTATION

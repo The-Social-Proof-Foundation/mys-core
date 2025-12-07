@@ -7,7 +7,7 @@
 -- ============================================================================
 
 -- SPT Revenue Table (TimescaleDB hypertable for high-volume swap fee tracking)
-CREATE TABLE spt_revenue (
+CREATE TABLE IF NOT EXISTS spt_revenue (
     pool_id TEXT NOT NULL,
     transaction_type TEXT NOT NULL CHECK (transaction_type IN ('buy', 'sell')), 
     trader TEXT NOT NULL,
@@ -27,21 +27,29 @@ CREATE TABLE spt_revenue (
 );
 
 -- Convert to TimescaleDB hypertable with 1-hour chunks for real-time SPT analytics
-SELECT create_hypertable('spt_revenue', 'time', chunk_time_interval => INTERVAL '1 hour');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_schema = 'public' AND hypertable_name = 'spt_revenue'
+    ) THEN
+        PERFORM create_hypertable('spt_revenue'::regclass, 'time'::name, chunk_time_interval => INTERVAL '1 hour');
+    END IF;
+END $$;
 
 -- Optimized indexes for SPT revenue queries
-CREATE INDEX idx_spt_revenue_time_pool ON spt_revenue (time DESC, pool_id);
-CREATE INDEX idx_spt_revenue_creator_time ON spt_revenue (creator_address, time DESC);
-CREATE INDEX idx_spt_revenue_platform_time ON spt_revenue (platform_address, time DESC);
-CREATE INDEX idx_spt_revenue_type_time ON spt_revenue (transaction_type, time DESC);
-CREATE INDEX idx_spt_revenue_trader_time ON spt_revenue (trader, time DESC);
+CREATE INDEX IF NOT EXISTS idx_spt_revenue_time_pool ON spt_revenue (time DESC, pool_id);
+CREATE INDEX IF NOT EXISTS idx_spt_revenue_creator_time ON spt_revenue (creator_address, time DESC);
+CREATE INDEX IF NOT EXISTS idx_spt_revenue_platform_time ON spt_revenue (platform_address, time DESC);
+CREATE INDEX IF NOT EXISTS idx_spt_revenue_type_time ON spt_revenue (transaction_type, time DESC);
+CREATE INDEX IF NOT EXISTS idx_spt_revenue_trader_time ON spt_revenue (trader, time DESC);
 
 -- ============================================================================
 -- 2. UNIFIED REVENUE AGGREGATION TABLES
 -- ============================================================================
 
 -- Unified Revenue Summary (TimescaleDB hypertable for cross-platform analytics)
-CREATE TABLE unified_revenue (
+CREATE TABLE IF NOT EXISTS unified_revenue (
     revenue_source TEXT NOT NULL CHECK (revenue_source IN ('subscription', 'my_ip', 'spt', 'tips', 'posts')),
     revenue_type TEXT NOT NULL, 
     creator_address TEXT NOT NULL,
@@ -58,15 +66,23 @@ CREATE TABLE unified_revenue (
 );
 
 -- Convert to TimescaleDB hypertable with 1-hour chunks for unified analytics
-SELECT create_hypertable('unified_revenue', 'time', chunk_time_interval => INTERVAL '1 hour');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_schema = 'public' AND hypertable_name = 'unified_revenue'
+    ) THEN
+        PERFORM create_hypertable('unified_revenue'::regclass, 'time'::name, chunk_time_interval => INTERVAL '1 hour');
+    END IF;
+END $$;
 
 -- Comprehensive indexes for unified revenue queries
-CREATE INDEX idx_unified_revenue_time_source ON unified_revenue (time DESC, revenue_source);
-CREATE INDEX idx_unified_revenue_creator_time ON unified_revenue (creator_address, time DESC);
-CREATE INDEX idx_unified_revenue_platform_time ON unified_revenue (platform_address, time DESC) WHERE platform_address IS NOT NULL;
-CREATE INDEX idx_unified_revenue_source_type ON unified_revenue (revenue_source, revenue_type, time DESC);
-CREATE INDEX idx_unified_revenue_content ON unified_revenue (content_id, content_type, time DESC) WHERE content_id IS NOT NULL;
-CREATE INDEX idx_unified_revenue_payer_time ON unified_revenue (payer_address, time DESC);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_time_source ON unified_revenue (time DESC, revenue_source);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_creator_time ON unified_revenue (creator_address, time DESC);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_platform_time ON unified_revenue (platform_address, time DESC) WHERE platform_address IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_source_type ON unified_revenue (revenue_source, revenue_type, time DESC);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_content ON unified_revenue (content_id, content_type, time DESC) WHERE content_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_payer_time ON unified_revenue (payer_address, time DESC);
 
 -- ============================================================================
 -- 3. CONTINUOUS AGGREGATES REMOVED DUE TO CREATION ISSUES  
@@ -79,16 +95,69 @@ CREATE INDEX idx_unified_revenue_payer_time ON unified_revenue (payer_address, t
 -- ============================================================================
 
 -- Enable compression on hypertables first, then add policies
-ALTER TABLE spt_revenue SET (timescaledb.compress = true);
-ALTER TABLE unified_revenue SET (timescaledb.compress = true);
-
--- Compression policies for high-volume revenue data
-SELECT add_compression_policy('spt_revenue', INTERVAL '24 hours');
-SELECT add_compression_policy('unified_revenue', INTERVAL '24 hours');
-
--- Retention policies for high-volume data
-SELECT add_retention_policy('spt_revenue', INTERVAL '2 years');
-SELECT add_retention_policy('unified_revenue', INTERVAL '3 years');
+DO $$
+BEGIN
+    -- Set compression if not already enabled
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'spt_revenue'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE spt_revenue SET (timescaledb.compress = true);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'unified_revenue'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE unified_revenue SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Add compression policies if they don't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'spt_revenue'
+    ) THEN
+        PERFORM add_compression_policy('spt_revenue', INTERVAL '24 hours');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'unified_revenue'
+    ) THEN
+        PERFORM add_compression_policy('unified_revenue', INTERVAL '24 hours');
+    END IF;
+    
+    -- Add retention policies if they don't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_retention' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'spt_revenue'
+    ) THEN
+        PERFORM add_retention_policy('spt_revenue', INTERVAL '2 years');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_retention' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'unified_revenue'
+    ) THEN
+        PERFORM add_retention_policy('unified_revenue', INTERVAL '3 years');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 5. HELPER VIEWS FOR API OPTIMIZATION

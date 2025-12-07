@@ -3,7 +3,7 @@
 
 -- 1. Profile Subscription Services Table (Regular Table)
 -- Services don't change frequently, so regular table is sufficient
-CREATE TABLE profile_subscription_services (
+CREATE TABLE IF NOT EXISTS profile_subscription_services (
     service_id TEXT NOT NULL PRIMARY KEY,
     profile_owner TEXT NOT NULL,
     profile_id TEXT NOT NULL,
@@ -17,13 +17,13 @@ CREATE TABLE profile_subscription_services (
 );
 
 -- Optimized indexes for service lookups
-CREATE INDEX idx_profile_services_owner ON profile_subscription_services (profile_owner);
-CREATE INDEX idx_profile_services_profile ON profile_subscription_services (profile_id);
-CREATE INDEX idx_profile_services_active ON profile_subscription_services (active) WHERE active = true;
+CREATE INDEX IF NOT EXISTS idx_profile_services_owner ON profile_subscription_services (profile_owner);
+CREATE INDEX IF NOT EXISTS idx_profile_services_profile ON profile_subscription_services (profile_id);
+CREATE INDEX IF NOT EXISTS idx_profile_services_active ON profile_subscription_services (active) WHERE active = true;
 
 -- 2. Profile Subscriptions Table (TimescaleDB Hypertable)
 -- Individual subscription records with time partitioning for analytics
-CREATE TABLE profile_subscriptions (
+CREATE TABLE IF NOT EXISTS profile_subscriptions (
     subscription_id TEXT NOT NULL,
     service_id TEXT NOT NULL,
     subscriber TEXT NOT NULL,
@@ -40,18 +40,26 @@ CREATE TABLE profile_subscriptions (
 );
 
 -- Convert to TimescaleDB hypertable for subscription analytics
-SELECT create_hypertable('profile_subscriptions', 'time', chunk_time_interval => INTERVAL '14 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_schema = 'public' AND hypertable_name = 'profile_subscriptions'
+    ) THEN
+        PERFORM create_hypertable('profile_subscriptions'::regclass, 'time'::name, chunk_time_interval => INTERVAL '14 days');
+    END IF;
+END $$;
 
 -- Optimized indexes for subscription tracking
 -- TimescaleDB requires unique indexes to include partitioning column (time)
-CREATE UNIQUE INDEX idx_profile_subscriptions_id ON profile_subscriptions (subscription_id, time);
-CREATE INDEX idx_profile_subscriptions_time_service ON profile_subscriptions (time DESC, service_id);
-CREATE INDEX idx_profile_subscriptions_subscriber_time ON profile_subscriptions (subscriber, time DESC);
-CREATE INDEX idx_profile_subscriptions_expires ON profile_subscriptions (expires_at) WHERE cancelled_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_subscriptions_id ON profile_subscriptions (subscription_id, time);
+CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_time_service ON profile_subscriptions (time DESC, service_id);
+CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_subscriber_time ON profile_subscriptions (subscriber, time DESC);
+CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_expires ON profile_subscriptions (expires_at) WHERE cancelled_at IS NULL;
 
 -- 3. Subscription Events Table (TimescaleDB Hypertable)
 -- All subscription-related events for audit trail and compliance
-CREATE TABLE subscription_events (
+CREATE TABLE IF NOT EXISTS subscription_events (
     event_type TEXT NOT NULL,
     subscription_id TEXT,
     service_id TEXT,
@@ -65,16 +73,24 @@ CREATE TABLE subscription_events (
 );
 
 -- Convert to TimescaleDB hypertable for event analytics
-SELECT create_hypertable('subscription_events', 'time', chunk_time_interval => INTERVAL '7 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_schema = 'public' AND hypertable_name = 'subscription_events'
+    ) THEN
+        PERFORM create_hypertable('subscription_events'::regclass, 'time'::name, chunk_time_interval => INTERVAL '7 days');
+    END IF;
+END $$;
 
 -- Optimized indexes for event tracking
-CREATE INDEX idx_subscription_events_time_type ON subscription_events (time DESC, event_type);
-CREATE INDEX idx_subscription_events_subscription_time ON subscription_events (subscription_id, time DESC) WHERE subscription_id IS NOT NULL;
-CREATE INDEX idx_subscription_events_service_time ON subscription_events (service_id, time DESC) WHERE service_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_subscription_events_time_type ON subscription_events (time DESC, event_type);
+CREATE INDEX IF NOT EXISTS idx_subscription_events_subscription_time ON subscription_events (subscription_id, time DESC) WHERE subscription_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_subscription_events_service_time ON subscription_events (service_id, time DESC) WHERE service_id IS NOT NULL;
 
 -- 4. Subscription Revenue Table (TimescaleDB Hypertable)
 -- Revenue analytics for subscriptions with time partitioning
-CREATE TABLE subscription_revenue (
+CREATE TABLE IF NOT EXISTS subscription_revenue (
     service_id TEXT NOT NULL,
     subscription_id TEXT,
     from_address TEXT NOT NULL,
@@ -89,16 +105,24 @@ CREATE TABLE subscription_revenue (
 );
 
 -- Convert to TimescaleDB hypertable for revenue analytics
-SELECT create_hypertable('subscription_revenue', 'time', chunk_time_interval => INTERVAL '7 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_schema = 'public' AND hypertable_name = 'subscription_revenue'
+    ) THEN
+        PERFORM create_hypertable('subscription_revenue'::regclass, 'time'::name, chunk_time_interval => INTERVAL '7 days');
+    END IF;
+END $$;
 
 -- Optimized indexes for revenue queries
-CREATE INDEX idx_subscription_revenue_time_service ON subscription_revenue (time DESC, service_id);
-CREATE INDEX idx_subscription_revenue_to_time ON subscription_revenue (to_address, time DESC);
-CREATE INDEX idx_subscription_revenue_type_time ON subscription_revenue (revenue_type, time DESC);
+CREATE INDEX IF NOT EXISTS idx_subscription_revenue_time_service ON subscription_revenue (time DESC, service_id);
+CREATE INDEX IF NOT EXISTS idx_subscription_revenue_to_time ON subscription_revenue (to_address, time DESC);
+CREATE INDEX IF NOT EXISTS idx_subscription_revenue_type_time ON subscription_revenue (revenue_type, time DESC);
 
 -- 5. Subscription Access Logs Table (TimescaleDB Hypertable)
 -- Track content access for analytics with shorter retention
-CREATE TABLE subscription_access_logs (
+CREATE TABLE IF NOT EXISTS subscription_access_logs (
     subscription_id TEXT NOT NULL,
     subscriber TEXT NOT NULL,
     content_type TEXT NOT NULL, -- 'profile', 'post'
@@ -112,12 +136,20 @@ CREATE TABLE subscription_access_logs (
 );
 
 -- Convert to TimescaleDB hypertable with daily chunks for access logs
-SELECT create_hypertable('subscription_access_logs', 'time', chunk_time_interval => INTERVAL '1 day');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_schema = 'public' AND hypertable_name = 'subscription_access_logs'
+    ) THEN
+        PERFORM create_hypertable('subscription_access_logs'::regclass, 'time'::name, chunk_time_interval => INTERVAL '1 day');
+    END IF;
+END $$;
 
 -- Optimized indexes for access pattern analysis
-CREATE INDEX idx_subscription_access_time_sub ON subscription_access_logs (time DESC, subscription_id);
-CREATE INDEX idx_subscription_access_content_time ON subscription_access_logs (content_id, time DESC);
-CREATE INDEX idx_subscription_access_subscriber_time ON subscription_access_logs (subscriber, time DESC);
+CREATE INDEX IF NOT EXISTS idx_subscription_access_time_sub ON subscription_access_logs (time DESC, subscription_id);
+CREATE INDEX IF NOT EXISTS idx_subscription_access_content_time ON subscription_access_logs (content_id, time DESC);
+CREATE INDEX IF NOT EXISTS idx_subscription_access_subscriber_time ON subscription_access_logs (subscriber, time DESC);
 
 -- Add data retention policy for access logs (keep 90 days)
 SELECT add_retention_policy('subscription_access_logs', INTERVAL '90 days');
@@ -164,14 +196,14 @@ SELECT add_continuous_aggregate_policy('subscription_daily_metrics',
     schedule_interval => INTERVAL '1 hour');
 
 -- Schema Updates: Add subscription-related fields to posts table
-ALTER TABLE posts ADD COLUMN requires_subscription BOOLEAN DEFAULT false;
-ALTER TABLE posts ADD COLUMN subscription_service_id TEXT;
-ALTER TABLE posts ADD COLUMN subscription_price BIGINT;
-ALTER TABLE posts ADD COLUMN encrypted_content_hash TEXT;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS requires_subscription BOOLEAN DEFAULT false;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS subscription_service_id TEXT;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS subscription_price BIGINT;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS encrypted_content_hash TEXT;
 
 -- Schema Updates: Add subscription service reference to profiles table  
-ALTER TABLE profiles ADD COLUMN subscription_service_id TEXT;
-ALTER TABLE profiles ADD COLUMN subscription_enabled BOOLEAN DEFAULT false;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subscription_service_id TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subscription_enabled BOOLEAN DEFAULT false;
 
 -- Advanced TimescaleDB Features Implementation
 -- Enable compression on hypertables first, then add policies
