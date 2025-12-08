@@ -1,4 +1,3 @@
--- Your SQL goes here
 ALTER TABLE profiles
 ADD COLUMN IF NOT EXISTS block_list_address TEXT;
 

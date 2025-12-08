@@ -11,6 +11,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists, then create it (idempotent)
+DROP TRIGGER IF EXISTS no_delete_social_graph_events ON social_graph_events;
 CREATE TRIGGER no_delete_social_graph_events
 BEFORE DELETE ON social_graph_events
 FOR EACH ROW EXECUTE FUNCTION prevent_social_graph_events_deletion();
