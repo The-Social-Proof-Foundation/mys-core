@@ -168,8 +168,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    -- Check if the view already exists
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'social_graph_daily_stats') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'social_graph_daily_stats'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         -- Create the continuous aggregate if it doesn't exist
@@ -211,8 +214,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    -- Check if the view already exists
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'profile_daily_stats') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'profile_daily_stats'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         -- Create the continuous aggregate if it doesn't exist
@@ -254,8 +260,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    -- Check if the view already exists
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'platform_daily_stats') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'platform_daily_stats'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         -- Create the continuous aggregate if it doesn't exist
@@ -372,8 +381,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    -- Check if the view already exists
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'checkpoint_daily_stats') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'checkpoint_daily_stats'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         -- Create the continuous aggregate if it doesn't exist
