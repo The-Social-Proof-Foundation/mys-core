@@ -268,7 +268,7 @@ pub struct PlatformCreatedEvent {
     pub release_date: String,
     #[serde(default)]
     pub shutdown_date: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_bool_optional")]
     pub wants_dao_governance: Option<bool>,
     #[serde(default)]
     pub governance_registry_id: Option<String>,
@@ -446,6 +446,31 @@ where
             }
         }
         _ => current_time,
+    })
+}
+
+// Deserializer for boolean values that may come as strings, booleans, or numbers from blockchain
+fn deserialize_bool_optional<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::deserialize(deserializer).map(|opt_val: Option<serde_json::Value>| match opt_val {
+        Some(serde_json::Value::Bool(b)) => Some(b),
+        Some(serde_json::Value::String(s)) => {
+            match s.to_lowercase().as_str() {
+                "true" | "1" => Some(true),
+                "false" | "0" => Some(false),
+                _ => None,
+            }
+        }
+        Some(serde_json::Value::Number(n)) => {
+            if let Some(num) = n.as_u64() {
+                Some(num != 0)
+            } else {
+                None
+            }
+        }
+        _ => None,
     })
 }
 

@@ -97,6 +97,89 @@ impl PlatformEventHandler {
             .map_err(|e| anyhow!("Failed to get database connection: {}", e))
     }
 
+    /// Normalize DAO governance fields when wants_dao_governance is true
+    /// Ensures that DAO fields are properly set (not null) when the platform wants DAO governance
+    /// Also detects DAO platforms by checking for presence of DAO-related fields even if wants_dao_governance is None
+    fn normalize_dao_fields(event: &PlatformCreatedEvent) -> (
+        Option<bool>,
+        Option<String>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+    ) {
+        // Check if this is a DAO platform:
+        // 1. Explicitly set wants_dao_governance to true
+        // 2. Or has governance_registry_id set (indicates DAO setup)
+        // 3. Or has any DAO governance numeric fields set (indicates DAO configuration)
+        let explicit_dao = event.wants_dao_governance.unwrap_or(false);
+        let has_governance_registry = event.governance_registry_id.is_some();
+        let has_dao_fields = event.delegate_count.is_some()
+            || event.delegate_term_epochs.is_some()
+            || event.max_votes_per_user.is_some()
+            || event.min_on_chain_age_days.is_some()
+            || event.proposal_submission_cost.is_some()
+            || event.quadratic_base_cost.is_some()
+            || event.quorum_votes.is_some()
+            || event.voting_period_epochs.is_some();
+        
+        let is_dao = explicit_dao || has_governance_registry || has_dao_fields;
+        
+        if is_dao {
+            // If wants_dao_governance was None but we detected it's a DAO, set it to true
+            let wants_dao = if explicit_dao {
+                Some(true)
+            } else if event.wants_dao_governance.is_none() {
+                info!("Platform {} detected as DAO (has governance fields) but wants_dao_governance was None - setting to true", event.platform_id);
+                Some(true)
+            } else {
+                event.wants_dao_governance
+            };
+            
+            info!("Platform {} is a DAO - normalizing DAO governance fields", event.platform_id);
+            
+            // For DAO platforms, ensure numeric fields are properly set
+            // Use the values from the event if present, otherwise keep as None (don't force defaults)
+            // This preserves the actual values from the blockchain while ensuring proper typing
+            (
+                wants_dao,
+                event.governance_registry_id.clone(),
+                event.delegate_count.map(|v| v as i64),
+                event.delegate_term_epochs.map(|v| v as i64),
+                event.max_votes_per_user.map(|v| v as i64),
+                event.min_on_chain_age_days.map(|v| v as i64),
+                event.proposal_submission_cost.map(|v| v as i64),
+                event.quadratic_base_cost.map(|v| v as i64),
+                event.quorum_votes.map(|v| v as i64),
+                event.voting_period_epochs.map(|v| v as i64),
+                event.treasury.map(|v| v as i64),
+                event.version.map(|v| v as i64),
+            )
+        } else {
+            // For non-DAO platforms, keep the original values (which may be None)
+            (
+                event.wants_dao_governance,
+                event.governance_registry_id.clone(),
+                event.delegate_count.map(|v| v as i64),
+                event.delegate_term_epochs.map(|v| v as i64),
+                event.max_votes_per_user.map(|v| v as i64),
+                event.min_on_chain_age_days.map(|v| v as i64),
+                event.proposal_submission_cost.map(|v| v as i64),
+                event.quadratic_base_cost.map(|v| v as i64),
+                event.quorum_votes.map(|v| v as i64),
+                event.voting_period_epochs.map(|v| v as i64),
+                event.treasury.map(|v| v as i64),
+                event.version.map(|v| v as i64),
+            )
+        }
+    }
+
     /// Process a platform created event
     async fn process_platform_created_event(
         &self,
@@ -106,6 +189,22 @@ impl PlatformEventHandler {
         debug!("Processing platform created event");
 
         let mut conn = self.get_connection().await?;
+
+        // Normalize DAO fields if this is a DAO platform
+        let (
+            wants_dao_governance,
+            governance_registry_id,
+            delegate_count,
+            delegate_term_epochs,
+            max_votes_per_user,
+            min_on_chain_age_days,
+            proposal_submission_cost,
+            quadratic_base_cost,
+            quorum_votes,
+            voting_period_epochs,
+            treasury,
+            version,
+        ) = Self::normalize_dao_fields(event);
 
         // Start a transaction for atomicity
         conn.build_transaction()
@@ -171,18 +270,18 @@ impl PlatformEventHandler {
                             is_approved: None, // Don't change approval status on update
                             approval_changed_at: None, // Don't change approval timestamp
                             approved_by: None, // Don't change approver
-                            wants_dao_governance: event.wants_dao_governance,
-                            governance_registry_id: event.governance_registry_id.clone(),
-                            delegate_count: event.delegate_count.map(|v| v as i64),
-                            delegate_term_epochs: event.delegate_term_epochs.map(|v| v as i64),
-                            max_votes_per_user: event.max_votes_per_user.map(|v| v as i64),
-                            min_on_chain_age_days: event.min_on_chain_age_days.map(|v| v as i64),
-                            proposal_submission_cost: event.proposal_submission_cost.map(|v| v as i64),
-                            quadratic_base_cost: event.quadratic_base_cost.map(|v| v as i64),
-                            quorum_votes: event.quorum_votes.map(|v| v as i64),
-                            voting_period_epochs: event.voting_period_epochs.map(|v| v as i64),
-                            treasury: event.treasury.map(|v| v as i64),
-                            version: event.version.map(|v| v as i64),
+                            wants_dao_governance,
+                            governance_registry_id,
+                            delegate_count,
+                            delegate_term_epochs,
+                            max_votes_per_user,
+                            min_on_chain_age_days,
+                            proposal_submission_cost,
+                            quadratic_base_cost,
+                            quorum_votes,
+                            voting_period_epochs,
+                            treasury,
+                            version,
                         };
 
                         diesel::update(schema::platforms::table)
@@ -219,18 +318,18 @@ impl PlatformEventHandler {
                             is_approved: false, // New platforms are not approved by default
                             approval_changed_at: None, // No approval change yet
                             approved_by: None,  // No approver yet
-                            wants_dao_governance: event.wants_dao_governance,
-                            governance_registry_id: event.governance_registry_id.clone(),
-                            delegate_count: event.delegate_count.map(|v| v as i64),
-                            delegate_term_epochs: event.delegate_term_epochs.map(|v| v as i64),
-                            max_votes_per_user: event.max_votes_per_user.map(|v| v as i64),
-                            min_on_chain_age_days: event.min_on_chain_age_days.map(|v| v as i64),
-                            proposal_submission_cost: event.proposal_submission_cost.map(|v| v as i64),
-                            quadratic_base_cost: event.quadratic_base_cost.map(|v| v as i64),
-                            quorum_votes: event.quorum_votes.map(|v| v as i64),
-                            voting_period_epochs: event.voting_period_epochs.map(|v| v as i64),
-                            treasury: event.treasury.map(|v| v as i64),
-                            version: event.version.map(|v| v as i64),
+                            wants_dao_governance,
+                            governance_registry_id,
+                            delegate_count,
+                            delegate_term_epochs,
+                            max_votes_per_user,
+                            min_on_chain_age_days,
+                            proposal_submission_cost,
+                            quadratic_base_cost,
+                            quorum_votes,
+                            voting_period_epochs,
+                            treasury,
+                            version,
                         };
 
                         // Insert platform
