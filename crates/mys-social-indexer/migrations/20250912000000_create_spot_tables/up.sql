@@ -5,8 +5,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'timescaledb') THEN
         CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
     END IF;
-END
-$$;
+END $$;
 
 -- Core record per post
 CREATE TABLE IF NOT EXISTS spot_records (
@@ -42,6 +41,8 @@ CREATE TABLE IF NOT EXISTS spot_bets (
 );
 
 SELECT create_hypertable('spot_bets', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '7 days');
+-- Drop existing primary key if it exists (to handle cases where table was created with different PK)
+ALTER TABLE spot_bets DROP CONSTRAINT IF EXISTS spot_bets_pkey CASCADE;
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -66,6 +67,8 @@ CREATE TABLE IF NOT EXISTS spot_payouts (
     transaction_id TEXT NOT NULL
 );
 SELECT create_hypertable('spot_payouts', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '7 days');
+-- Drop existing primary key if it exists (to handle cases where table was created with different PK)
+ALTER TABLE spot_payouts DROP CONSTRAINT IF EXISTS spot_payouts_pkey CASCADE;
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -89,6 +92,8 @@ CREATE TABLE IF NOT EXISTS spot_refunds (
     transaction_id TEXT NOT NULL
 );
 SELECT create_hypertable('spot_refunds', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '7 days');
+-- Drop existing primary key if it exists (to handle cases where table was created with different PK)
+ALTER TABLE spot_refunds DROP CONSTRAINT IF EXISTS spot_refunds_pkey CASCADE;
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -113,6 +118,8 @@ CREATE TABLE IF NOT EXISTS spot_resolutions (
     transaction_id TEXT NOT NULL
 );
 SELECT create_hypertable('spot_resolutions', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '30 days');
+-- Drop existing primary key if it exists (to handle cases where table was created with different PK)
+ALTER TABLE spot_resolutions DROP CONSTRAINT IF EXISTS spot_resolutions_pkey CASCADE;
 DO $$
 BEGIN
     IF NOT EXISTS (

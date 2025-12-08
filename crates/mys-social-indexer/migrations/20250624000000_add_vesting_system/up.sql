@@ -100,8 +100,13 @@ END $$;
 -- 5. CREATE VESTING UTILITY FUNCTIONS
 -- ============================================================================
 
+-- Drop functions first to allow return type changes (if they exist)
+DROP FUNCTION IF EXISTS calculate_vesting_claimable(BIGINT, BIGINT, BIGINT, BIGINT, BIGINT, BIGINT) CASCADE;
+DROP FUNCTION IF EXISTS get_vesting_status(BIGINT, BIGINT, BIGINT) CASCADE;
+DROP FUNCTION IF EXISTS get_vesting_progress(BIGINT, BIGINT, BIGINT) CASCADE;
+
 -- Function to calculate claimable amount based on vesting curve
-CREATE OR REPLACE FUNCTION calculate_vesting_claimable(
+CREATE FUNCTION calculate_vesting_claimable(
     total_amount_param BIGINT,
     start_time_param BIGINT,
     duration_param BIGINT,
@@ -175,7 +180,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to get vesting status
-CREATE OR REPLACE FUNCTION get_vesting_status(
+CREATE FUNCTION get_vesting_status(
     start_time_param BIGINT,
     duration_param BIGINT,
     current_time_param BIGINT
@@ -193,7 +198,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to calculate vesting progress percentage
-CREATE OR REPLACE FUNCTION get_vesting_progress(
+CREATE FUNCTION get_vesting_progress(
     start_time_param BIGINT,
     duration_param BIGINT,
     current_time_param BIGINT
