@@ -22,6 +22,24 @@ SET row_security = off;
 
 CREATE EXTENSION IF NOT EXISTS timescaledb WITH SCHEMA public;
 
+-- Verify TimescaleDB extension was created successfully
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'
+    ) THEN
+        RAISE EXCEPTION 'TimescaleDB extension could not be created. Ensure TimescaleDB is installed on the PostgreSQL instance.';
+    END IF;
+    
+    -- Verify the continuous_agg_invalidation_trigger function exists
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_proc 
+        WHERE proname = 'continuous_agg_invalidation_trigger' 
+        AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = '_timescaledb_functions')
+    ) THEN
+        RAISE EXCEPTION 'TimescaleDB function continuous_agg_invalidation_trigger not found. TimescaleDB may not be properly installed or initialized.';
+    END IF;
+END $$;
 
 --
 -- Name: EXTENSION timescaledb; Type: COMMENT; Schema: -; Owner: -
@@ -12704,6 +12722,7 @@ CREATE TRIGGER no_delete_social_graph_events BEFORE DELETE ON _timescaledb_inter
 -- Name: _hyper_1_36_chunk ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON _timescaledb_internal._hyper_1_36_chunk;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_1_36_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('1');
 
 
@@ -12711,6 +12730,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: _hyper_1_40_chunk ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON _timescaledb_internal._hyper_1_40_chunk;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_1_40_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('1');
 
 
@@ -12718,6 +12738,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: _hyper_3_35_chunk ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON _timescaledb_internal._hyper_3_35_chunk;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_3_35_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('3');
 
 
@@ -12725,6 +12746,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: _hyper_5_38_chunk ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON _timescaledb_internal._hyper_5_38_chunk;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_5_38_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('5');
 
 
@@ -12732,6 +12754,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: _hyper_5_39_chunk ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON _timescaledb_internal._hyper_5_39_chunk;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_5_39_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('5');
 
 
@@ -13607,6 +13630,7 @@ CREATE TRIGGER set_transfer_time BEFORE INSERT ON public.posts_transfers FOR EAC
 -- Name: anonymous_votes ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.anonymous_votes;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.anonymous_votes FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('119');
 
 
@@ -13614,6 +13638,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: checkpoint_processing ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.checkpoint_processing;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.checkpoint_processing FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('10');
 
 
@@ -13621,6 +13646,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: community_votes ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.community_votes;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.community_votes FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('45');
 
 
@@ -13628,6 +13654,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: delegate_ratings ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.delegate_ratings;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.delegate_ratings FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('41');
 
 
@@ -13635,6 +13662,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: delegate_votes ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.delegate_votes;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.delegate_votes FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('43');
 
 
@@ -13642,6 +13670,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: mydata_access_logs ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.mydata_access_logs;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.mydata_access_logs FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('88');
 
 
@@ -13649,6 +13678,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: mydata_purchases ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.mydata_purchases;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.mydata_purchases FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('85');
 
 
@@ -13656,6 +13686,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: mydata_revenue ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.mydata_revenue;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.mydata_revenue FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('87');
 
 
@@ -13663,6 +13694,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: platform_events ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.platform_events;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.platform_events FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('5');
 
 
@@ -13670,6 +13702,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: poc_badges ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.poc_badges;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.poc_badges FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('96');
 
 
@@ -13677,6 +13710,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: profile_events ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.profile_events;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.profile_events FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('3');
 
 
@@ -13684,6 +13718,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: profile_subscriptions ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.profile_subscriptions;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.profile_subscriptions FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('108');
 
 
@@ -13691,6 +13726,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: promotion_views ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.promotion_views;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.promotion_views FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('77');
 
 
@@ -13698,6 +13734,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: reactions ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.reactions;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.reactions FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('17');
 
 
@@ -13705,6 +13742,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: reposts ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.reposts;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.reposts FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('19');
 
 
@@ -13712,6 +13750,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: reward_distributions ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.reward_distributions;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.reward_distributions FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('47');
 
 
@@ -13719,6 +13758,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: social_graph_events ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.social_graph_events;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.social_graph_events FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('1');
 
 
@@ -13726,6 +13766,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: spt_price_history ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.spt_price_history;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.spt_price_history FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('71');
 
 
@@ -13733,6 +13774,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: subscription_revenue ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.subscription_revenue;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.subscription_revenue FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('110');
 
 
@@ -13740,6 +13782,7 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 -- Name: tips ts_cagg_invalidation_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
+DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.tips;
 CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.tips FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('21');
 
 
