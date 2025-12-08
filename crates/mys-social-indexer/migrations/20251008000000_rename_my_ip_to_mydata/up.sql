@@ -24,14 +24,63 @@ DROP FUNCTION IF EXISTS get_data_pricing(TEXT) CASCADE;
 -- 2. RENAME TABLES
 -- ============================================================================
 
--- Rename main data table
-ALTER TABLE my_ip_data RENAME TO mydata_data;
+-- Rename main data table (idempotent - only rename if source exists and target doesn't)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'my_ip_data'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'mydata_data'
+    ) THEN
+        ALTER TABLE my_ip_data RENAME TO mydata_data;
+    END IF;
+END $$;
 
 -- Rename hypertables (TimescaleDB will maintain hypertable properties)
-ALTER TABLE my_ip_purchases RENAME TO mydata_purchases;
-ALTER TABLE my_ip_subscriptions RENAME TO mydata_subscriptions;
-ALTER TABLE my_ip_revenue RENAME TO mydata_revenue;
-ALTER TABLE my_ip_access_logs RENAME TO mydata_access_logs;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'my_ip_purchases'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'mydata_purchases'
+    ) THEN
+        ALTER TABLE my_ip_purchases RENAME TO mydata_purchases;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'my_ip_subscriptions'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'mydata_subscriptions'
+    ) THEN
+        ALTER TABLE my_ip_subscriptions RENAME TO mydata_subscriptions;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'my_ip_revenue'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'mydata_revenue'
+    ) THEN
+        ALTER TABLE my_ip_revenue RENAME TO mydata_revenue;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'my_ip_access_logs'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'mydata_access_logs'
+    ) THEN
+        ALTER TABLE my_ip_access_logs RENAME TO mydata_access_logs;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 3. RENAME COLUMNS (ip_id -> mydata_id)
