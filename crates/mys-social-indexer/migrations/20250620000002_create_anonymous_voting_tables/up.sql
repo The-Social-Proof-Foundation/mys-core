@@ -233,6 +233,8 @@ BEGIN
             start_offset => INTERVAL '3 days',
             end_offset => INTERVAL '1 hour',
             schedule_interval => INTERVAL '1 hour');
+    END IF;
+END $$;
 
 -- Note: Continuous aggregate will be populated by the refresh policy automatically
 -- Initial data will be available after the first scheduled refresh (1 hour interval)
