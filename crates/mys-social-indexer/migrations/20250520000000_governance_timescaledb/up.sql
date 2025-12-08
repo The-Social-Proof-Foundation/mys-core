@@ -699,7 +699,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'delegate_ratings_daily') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'delegate_ratings_daily'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         EXECUTE $sql$
@@ -730,7 +734,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'delegate_voting_hourly') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'delegate_voting_hourly'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         EXECUTE $sql$
@@ -760,7 +768,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'community_voting_hourly') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'community_voting_hourly'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         EXECUTE $sql$
@@ -790,7 +802,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'rewards_daily') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'rewards_daily'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         EXECUTE $sql$

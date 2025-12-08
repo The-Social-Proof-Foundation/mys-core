@@ -815,8 +815,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    -- Check if the view already exists
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'reactions_hourly') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'reactions_hourly'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         -- Create the continuous aggregate if it doesn't exist
@@ -859,8 +862,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    -- Check if the view already exists
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'reposts_hourly') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'reposts_hourly'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         -- Create the continuous aggregate if it doesn't exist
@@ -902,8 +908,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    -- Check if the view already exists
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'tips_hourly') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'tips_hourly'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         -- Create the continuous aggregate if it doesn't exist
@@ -947,8 +956,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    -- Check if the view already exists
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'post_stats_daily') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'post_stats_daily'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         -- Create the continuous aggregate if it doesn't exist

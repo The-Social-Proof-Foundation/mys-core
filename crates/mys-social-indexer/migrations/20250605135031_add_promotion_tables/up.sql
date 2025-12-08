@@ -362,8 +362,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    -- Check if the view already exists
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'promotion_views_hourly') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'promotion_views_hourly'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         -- Create the continuous aggregate if it doesn't exist
@@ -397,8 +400,11 @@ DO $$
 DECLARE
     view_exists BOOLEAN;
 BEGIN
-    -- Check if the view already exists
-    SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = 'promotion_spending_daily') INTO view_exists;
+    -- Check if the continuous aggregate already exists using TimescaleDB information schema
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'promotion_spending_daily'
+    ) INTO view_exists;
     
     IF NOT view_exists THEN
         -- Create the continuous aggregate if it doesn't exist

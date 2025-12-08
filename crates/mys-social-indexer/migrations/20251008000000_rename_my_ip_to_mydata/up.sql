@@ -209,7 +209,8 @@ END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM pg_matviews WHERE matviewname = 'mydata_daily_revenue'
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'mydata_daily_revenue'
     ) THEN
         CREATE MATERIALIZED VIEW mydata_daily_revenue
         WITH (timescaledb.continuous) AS
@@ -236,7 +237,8 @@ END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM pg_matviews WHERE matviewname = 'mydata_daily_access'
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'mydata_daily_access'
     ) THEN
         CREATE MATERIALIZED VIEW mydata_daily_access
         WITH (timescaledb.continuous) AS
@@ -262,7 +264,8 @@ END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM pg_matviews WHERE matviewname = 'mydata_popular_data'
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'mydata_popular_data'
     ) THEN
         CREATE MATERIALIZED VIEW mydata_popular_data
         WITH (timescaledb.continuous) AS
