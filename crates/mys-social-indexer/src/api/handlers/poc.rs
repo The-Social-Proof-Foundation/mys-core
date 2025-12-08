@@ -195,16 +195,31 @@ pub struct PocAnalytics {
 #[diesel(check_for_backend(Pg))]
 pub struct PocConfigInfo {
     #[diesel(sql_type = BigInt)]
-    pub min_stake_amount: i64,
+    pub image_threshold: i64,
 
     #[diesel(sql_type = BigInt)]
-    pub dispute_duration: i64,
+    pub video_threshold: i64,
 
     #[diesel(sql_type = BigInt)]
-    pub voting_duration: i64,
+    pub audio_threshold: i64,
 
-    #[diesel(sql_type = Float8)]
-    pub slash_percentage: f64,
+    #[diesel(sql_type = BigInt)]
+    pub revenue_redirect_percentage: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub dispute_cost: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub dispute_protocol_fee: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub min_vote_stake: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_vote_stake: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub voting_duration_epochs: i64,
 
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
@@ -614,7 +629,9 @@ pub async fn get_poc_configuration(State(pool): State<DbPool>) -> Response {
     };
 
     let query = "
-        SELECT min_stake_amount, dispute_duration, voting_duration, slash_percentage, updated_at
+        SELECT image_threshold, video_threshold, audio_threshold, revenue_redirect_percentage,
+               dispute_cost, dispute_protocol_fee, min_vote_stake, max_vote_stake,
+               voting_duration_epochs, updated_at
         FROM poc_configuration
         ORDER BY updated_at DESC
         LIMIT 1
