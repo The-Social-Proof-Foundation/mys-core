@@ -8417,8 +8417,17 @@ ALTER TABLE ONLY _timescaledb_internal._hyper_1_40_chunk
 -- Name: __diesel_schema_migrations __diesel_schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.__diesel_schema_migrations
-    ADD CONSTRAINT __diesel_schema_migrations_pkey PRIMARY KEY (version);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = '__diesel_schema_migrations_pkey' 
+        AND conrelid = 'public.__diesel_schema_migrations'::regclass
+    ) THEN
+        ALTER TABLE ONLY public.__diesel_schema_migrations
+            ADD CONSTRAINT __diesel_schema_migrations_pkey PRIMARY KEY (version);
+    END IF;
+END $$;
 
 
 --
