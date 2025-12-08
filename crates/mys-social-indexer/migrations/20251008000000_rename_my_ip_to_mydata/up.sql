@@ -158,38 +158,129 @@ END $$;
 -- 4. RENAME INDEXES
 -- ============================================================================
 
--- mydata_data indexes
-ALTER INDEX IF EXISTS idx_my_ip_data_owner RENAME TO idx_mydata_data_owner;
-ALTER INDEX IF EXISTS idx_my_ip_data_media_type RENAME TO idx_mydata_data_media_type;
-ALTER INDEX IF EXISTS idx_my_ip_data_tags RENAME TO idx_mydata_data_tags;
-ALTER INDEX IF EXISTS idx_my_ip_data_platform_id RENAME TO idx_mydata_data_platform_id;
-ALTER INDEX IF EXISTS idx_my_ip_data_time RENAME TO idx_mydata_data_time;
-ALTER INDEX IF EXISTS idx_my_ip_data_pricing RENAME TO idx_mydata_data_pricing;
-ALTER INDEX IF EXISTS idx_my_ip_data_geographic RENAME TO idx_mydata_data_geographic;
-ALTER INDEX IF EXISTS idx_my_ip_data_quality RENAME TO idx_mydata_data_quality;
-
--- mydata_purchases indexes
-ALTER INDEX IF EXISTS idx_my_ip_purchases_time_ip RENAME TO idx_mydata_purchases_time_mydata;
-ALTER INDEX IF EXISTS idx_my_ip_purchases_buyer_time RENAME TO idx_mydata_purchases_buyer_time;
-ALTER INDEX IF EXISTS idx_my_ip_purchases_type_time RENAME TO idx_mydata_purchases_type_time;
-ALTER INDEX IF EXISTS idx_my_ip_purchases_ip_time RENAME TO idx_mydata_purchases_mydata_time;
-
--- mydata_subscriptions indexes
-ALTER INDEX IF EXISTS idx_my_ip_subscriptions_time_ip RENAME TO idx_mydata_subscriptions_time_mydata;
-ALTER INDEX IF EXISTS idx_my_ip_subscriptions_subscriber_time RENAME TO idx_mydata_subscriptions_subscriber_time;
-ALTER INDEX IF EXISTS idx_my_ip_subscriptions_end_time RENAME TO idx_mydata_subscriptions_end_time;
-ALTER INDEX IF EXISTS idx_my_ip_subscriptions_ip_time RENAME TO idx_mydata_subscriptions_mydata_time;
-
--- mydata_revenue indexes
-ALTER INDEX IF EXISTS idx_my_ip_revenue_time_ip RENAME TO idx_mydata_revenue_time_mydata;
-ALTER INDEX IF EXISTS idx_my_ip_revenue_to_time RENAME TO idx_mydata_revenue_to_time;
-ALTER INDEX IF EXISTS idx_my_ip_revenue_type_time RENAME TO idx_mydata_revenue_type_time;
-ALTER INDEX IF EXISTS idx_my_ip_revenue_ip_time RENAME TO idx_mydata_revenue_mydata_time;
-
--- mydata_access_logs indexes
-ALTER INDEX IF EXISTS idx_my_ip_access_time_ip RENAME TO idx_mydata_access_time_mydata;
-ALTER INDEX IF EXISTS idx_my_ip_access_user_time RENAME TO idx_mydata_access_user_time;
-ALTER INDEX IF EXISTS idx_my_ip_access_type_time RENAME TO idx_mydata_access_type_time;
+-- Rename indexes (idempotent - only rename if source exists and target doesn't)
+DO $$
+BEGIN
+    -- mydata_data indexes
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_data_owner')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_data_owner') THEN
+        ALTER INDEX idx_my_ip_data_owner RENAME TO idx_mydata_data_owner;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_data_media_type')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_data_media_type') THEN
+        ALTER INDEX idx_my_ip_data_media_type RENAME TO idx_mydata_data_media_type;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_data_tags')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_data_tags') THEN
+        ALTER INDEX idx_my_ip_data_tags RENAME TO idx_mydata_data_tags;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_data_platform_id')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_data_platform_id') THEN
+        ALTER INDEX idx_my_ip_data_platform_id RENAME TO idx_mydata_data_platform_id;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_data_time')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_data_time') THEN
+        ALTER INDEX idx_my_ip_data_time RENAME TO idx_mydata_data_time;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_data_pricing')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_data_pricing') THEN
+        ALTER INDEX idx_my_ip_data_pricing RENAME TO idx_mydata_data_pricing;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_data_geographic')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_data_geographic') THEN
+        ALTER INDEX idx_my_ip_data_geographic RENAME TO idx_mydata_data_geographic;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_data_quality')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_data_quality') THEN
+        ALTER INDEX idx_my_ip_data_quality RENAME TO idx_mydata_data_quality;
+    END IF;
+    
+    -- mydata_purchases indexes
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_purchases_time_ip')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_purchases_time_mydata') THEN
+        ALTER INDEX idx_my_ip_purchases_time_ip RENAME TO idx_mydata_purchases_time_mydata;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_purchases_buyer_time')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_purchases_buyer_time') THEN
+        ALTER INDEX idx_my_ip_purchases_buyer_time RENAME TO idx_mydata_purchases_buyer_time;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_purchases_type_time')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_purchases_type_time') THEN
+        ALTER INDEX idx_my_ip_purchases_type_time RENAME TO idx_mydata_purchases_type_time;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_purchases_ip_time')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_purchases_mydata_time') THEN
+        ALTER INDEX idx_my_ip_purchases_ip_time RENAME TO idx_mydata_purchases_mydata_time;
+    END IF;
+    
+    -- mydata_subscriptions indexes
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_subscriptions_time_ip')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_subscriptions_time_mydata') THEN
+        ALTER INDEX idx_my_ip_subscriptions_time_ip RENAME TO idx_mydata_subscriptions_time_mydata;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_subscriptions_subscriber_time')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_subscriptions_subscriber_time') THEN
+        ALTER INDEX idx_my_ip_subscriptions_subscriber_time RENAME TO idx_mydata_subscriptions_subscriber_time;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_subscriptions_end_time')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_subscriptions_end_time') THEN
+        ALTER INDEX idx_my_ip_subscriptions_end_time RENAME TO idx_mydata_subscriptions_end_time;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_subscriptions_ip_time')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_subscriptions_mydata_time') THEN
+        ALTER INDEX idx_my_ip_subscriptions_ip_time RENAME TO idx_mydata_subscriptions_mydata_time;
+    END IF;
+    
+    -- mydata_revenue indexes
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_revenue_time_ip')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_revenue_time_mydata') THEN
+        ALTER INDEX idx_my_ip_revenue_time_ip RENAME TO idx_mydata_revenue_time_mydata;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_revenue_to_time')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_revenue_to_time') THEN
+        ALTER INDEX idx_my_ip_revenue_to_time RENAME TO idx_mydata_revenue_to_time;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_revenue_type_time')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_revenue_type_time') THEN
+        ALTER INDEX idx_my_ip_revenue_type_time RENAME TO idx_mydata_revenue_type_time;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_revenue_ip_time')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_revenue_mydata_time') THEN
+        ALTER INDEX idx_my_ip_revenue_ip_time RENAME TO idx_mydata_revenue_mydata_time;
+    END IF;
+    
+    -- mydata_access_logs indexes
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_access_time_ip')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_access_time_mydata') THEN
+        ALTER INDEX idx_my_ip_access_time_ip RENAME TO idx_mydata_access_time_mydata;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_access_user_time')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_access_user_time') THEN
+        ALTER INDEX idx_my_ip_access_user_time RENAME TO idx_mydata_access_user_time;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_my_ip_access_type_time')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_mydata_access_type_time') THEN
+        ALTER INDEX idx_my_ip_access_type_time RENAME TO idx_mydata_access_type_time;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 5. RENAME PRIMARY KEY CONSTRAINTS
