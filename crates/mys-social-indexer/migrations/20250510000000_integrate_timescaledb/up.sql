@@ -23,8 +23,16 @@ CREATE INDEX IF NOT EXISTS idx_social_graph_events_created_at ON social_graph_ev
 -- Step 2: Drop primary key constraint if it exists
 ALTER TABLE social_graph_events DROP CONSTRAINT IF EXISTS social_graph_events_pkey CASCADE;
 
--- Step 3: Add created_at to primary key
-ALTER TABLE social_graph_events ADD PRIMARY KEY (id, created_at);
+-- Step 3: Add created_at to primary key if it doesn't already exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'social_graph_events_pkey'
+    ) THEN
+        ALTER TABLE social_graph_events ADD PRIMARY KEY (id, created_at);
+    END IF;
+END $$;
 
 -- Step 4: Convert to hypertable
 SELECT create_hypertable('social_graph_events', 'created_at', if_not_exists => TRUE, 
@@ -50,8 +58,16 @@ CREATE INDEX IF NOT EXISTS idx_profile_events_created_at ON profile_events(creat
 -- Step 2: Drop primary key constraint if it exists
 ALTER TABLE profile_events DROP CONSTRAINT IF EXISTS profile_events_pkey CASCADE;
 
--- Step 3: Add created_at to primary key
-ALTER TABLE profile_events ADD PRIMARY KEY (id, created_at);
+-- Step 3: Add created_at to primary key if it doesn't already exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'profile_events_pkey'
+    ) THEN
+        ALTER TABLE profile_events ADD PRIMARY KEY (id, created_at);
+    END IF;
+END $$;
 
 -- Step 4: Convert to hypertable
 SELECT create_hypertable('profile_events', 'created_at', if_not_exists => TRUE,
@@ -77,8 +93,16 @@ CREATE INDEX IF NOT EXISTS idx_platform_events_created_at ON platform_events(cre
 -- Step 2: Drop primary key constraint if it exists
 ALTER TABLE platform_events DROP CONSTRAINT IF EXISTS platform_events_pkey CASCADE;
 
--- Step 3: Add created_at to primary key
-ALTER TABLE platform_events ADD PRIMARY KEY (id, created_at);
+-- Step 3: Add created_at to primary key if it doesn't already exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'platform_events_pkey'
+    ) THEN
+        ALTER TABLE platform_events ADD PRIMARY KEY (id, created_at);
+    END IF;
+END $$;
 
 -- Step 4: Convert to hypertable
 SELECT create_hypertable('platform_events', 'created_at', if_not_exists => TRUE,

@@ -147,82 +147,143 @@ ALTER INDEX IF EXISTS idx_my_ip_access_type_time RENAME TO idx_mydata_access_typ
 -- ============================================================================
 
 ALTER TABLE mydata_data DROP CONSTRAINT IF EXISTS my_ip_data_pkey;
-ALTER TABLE mydata_data ADD CONSTRAINT mydata_data_pkey PRIMARY KEY (mydata_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'mydata_data_pkey'
+    ) THEN
+        ALTER TABLE mydata_data ADD CONSTRAINT mydata_data_pkey PRIMARY KEY (mydata_id);
+    END IF;
+END $$;
 
 ALTER TABLE mydata_purchases DROP CONSTRAINT IF EXISTS pk_my_ip_purchases;
-ALTER TABLE mydata_purchases ADD CONSTRAINT pk_mydata_purchases PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'pk_mydata_purchases'
+    ) THEN
+        ALTER TABLE mydata_purchases ADD CONSTRAINT pk_mydata_purchases PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 ALTER TABLE mydata_subscriptions DROP CONSTRAINT IF EXISTS pk_my_ip_subscriptions;
-ALTER TABLE mydata_subscriptions ADD CONSTRAINT pk_mydata_subscriptions PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'pk_mydata_subscriptions'
+    ) THEN
+        ALTER TABLE mydata_subscriptions ADD CONSTRAINT pk_mydata_subscriptions PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 ALTER TABLE mydata_revenue DROP CONSTRAINT IF EXISTS pk_my_ip_revenue;
-ALTER TABLE mydata_revenue ADD CONSTRAINT pk_mydata_revenue PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'pk_mydata_revenue'
+    ) THEN
+        ALTER TABLE mydata_revenue ADD CONSTRAINT pk_mydata_revenue PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 ALTER TABLE mydata_access_logs DROP CONSTRAINT IF EXISTS pk_my_ip_access_logs;
-ALTER TABLE mydata_access_logs ADD CONSTRAINT pk_mydata_access_logs PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'pk_mydata_access_logs'
+    ) THEN
+        ALTER TABLE mydata_access_logs ADD CONSTRAINT pk_mydata_access_logs PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 6. RECREATE TIMESCALEDB CONTINUOUS AGGREGATES
 -- ============================================================================
 
 -- Daily revenue analytics aggregate
-CREATE MATERIALIZED VIEW mydata_daily_revenue
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 day', time) AS day,
-    mydata_id,
-    to_address AS creator,
-    revenue_type,
-    SUM(amount) AS daily_revenue,
-    COUNT(*) AS transaction_count
-FROM mydata_revenue
-GROUP BY time_bucket('1 day', time), mydata_id, to_address, revenue_type
-WITH NO DATA;
-
--- Enable automatic refresh for daily revenue
-SELECT add_continuous_aggregate_policy('mydata_daily_revenue',
-    start_offset => INTERVAL '3 days',
-    end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE matviewname = 'mydata_daily_revenue'
+    ) THEN
+        CREATE MATERIALIZED VIEW mydata_daily_revenue
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 day', time) AS day,
+            mydata_id,
+            to_address AS creator,
+            revenue_type,
+            SUM(amount) AS daily_revenue,
+            COUNT(*) AS transaction_count
+        FROM mydata_revenue
+        GROUP BY time_bucket('1 day', time), mydata_id, to_address, revenue_type
+        WITH NO DATA;
+        
+        -- Enable automatic refresh for daily revenue
+        PERFORM add_continuous_aggregate_policy('mydata_daily_revenue',
+            start_offset => INTERVAL '3 days',
+            end_offset => INTERVAL '1 hour',
+            schedule_interval => INTERVAL '1 hour');
+    END IF;
+END $$;
 
 -- Daily access statistics aggregate
-CREATE MATERIALIZED VIEW mydata_daily_access
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 day', time) AS day,
-    mydata_id,
-    access_type,
-    COUNT(DISTINCT user_address) AS unique_users,
-    COUNT(*) AS total_accesses
-FROM mydata_access_logs
-GROUP BY time_bucket('1 day', time), mydata_id, access_type
-WITH NO DATA;
-
--- Enable automatic refresh for daily access
-SELECT add_continuous_aggregate_policy('mydata_daily_access',
-    start_offset => INTERVAL '3 days',
-    end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE matviewname = 'mydata_daily_access'
+    ) THEN
+        CREATE MATERIALIZED VIEW mydata_daily_access
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 day', time) AS day,
+            mydata_id,
+            access_type,
+            COUNT(DISTINCT user_address) AS unique_users,
+            COUNT(*) AS total_accesses
+        FROM mydata_access_logs
+        GROUP BY time_bucket('1 day', time), mydata_id, access_type
+        WITH NO DATA;
+        
+        -- Enable automatic refresh for daily access
+        PERFORM add_continuous_aggregate_policy('mydata_daily_access',
+            start_offset => INTERVAL '3 days',
+            end_offset => INTERVAL '1 hour',
+            schedule_interval => INTERVAL '1 hour');
+    END IF;
+END $$;
 
 -- Popular data tracking aggregate (hourly for real-time popularity)
-CREATE MATERIALIZED VIEW mydata_popular_data
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 hour', time) AS hour,
-    mydata_id,
-    COUNT(DISTINCT buyer) AS unique_purchasers,
-    SUM(CASE WHEN purchase_type = 'one_time' THEN 1 ELSE 0 END) AS one_time_purchases,
-    SUM(CASE WHEN purchase_type = 'subscription' THEN 1 ELSE 0 END) AS subscriptions,
-    SUM(price) AS total_revenue
-FROM mydata_purchases
-GROUP BY time_bucket('1 hour', time), mydata_id
-WITH NO DATA;
-
--- Enable automatic refresh for popular data
-SELECT add_continuous_aggregate_policy('mydata_popular_data',
-    start_offset => INTERVAL '1 day',
-    end_offset => INTERVAL '15 minutes',
-    schedule_interval => INTERVAL '15 minutes');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE matviewname = 'mydata_popular_data'
+    ) THEN
+        CREATE MATERIALIZED VIEW mydata_popular_data
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 hour', time) AS hour,
+            mydata_id,
+            COUNT(DISTINCT buyer) AS unique_purchasers,
+            SUM(CASE WHEN purchase_type = 'one_time' THEN 1 ELSE 0 END) AS one_time_purchases,
+            SUM(CASE WHEN purchase_type = 'subscription' THEN 1 ELSE 0 END) AS subscriptions,
+            SUM(price) AS total_revenue
+        FROM mydata_purchases
+        GROUP BY time_bucket('1 hour', time), mydata_id
+        WITH NO DATA;
+        
+        -- Enable automatic refresh for popular data
+        PERFORM add_continuous_aggregate_policy('mydata_popular_data',
+            start_offset => INTERVAL '1 day',
+            end_offset => INTERVAL '15 minutes',
+            schedule_interval => INTERVAL '15 minutes');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 7. RECREATE VIEWS
