@@ -7,9 +7,25 @@
 -- Drop auction-related views that depend on auction tables
 DROP VIEW IF EXISTS popular_token_pools CASCADE;
 
--- Remove compression policies for auction tables
-SELECT remove_compression_policy('spt_auction_pools', if_exists => true);
-SELECT remove_compression_policy('spt_auction_contributions', if_exists => true);
+-- Remove compression policies for auction tables (only if tables exist)
+DO $$
+BEGIN
+    -- Remove compression policy for spt_auction_pools if it exists
+    IF EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_name = 'spt_auction_pools'
+    ) THEN
+        PERFORM remove_compression_policy('spt_auction_pools', if_exists => true);
+    END IF;
+    
+    -- Remove compression policy for spt_auction_contributions if it exists
+    IF EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_name = 'spt_auction_contributions'
+    ) THEN
+        PERFORM remove_compression_policy('spt_auction_contributions', if_exists => true);
+    END IF;
+END $$;
 
 -- Drop auction contributions table and indexes
 DROP INDEX IF EXISTS idx_spt_auction_contributions_auction_id;
@@ -166,7 +182,9 @@ CREATE INDEX IF NOT EXISTS idx_spt_exchange_config_updated_by ON spt_exchange_co
 -- ============================================================================
 
 -- Recreate popular token pools view without auction dependencies
-CREATE OR REPLACE VIEW popular_token_pools AS
+-- Drop first to handle any column name changes
+DROP VIEW IF EXISTS popular_token_pools CASCADE;
+CREATE VIEW popular_token_pools AS
 SELECT
     p.pool_id,
     p.token_type,

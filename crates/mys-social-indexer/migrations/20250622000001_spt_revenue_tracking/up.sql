@@ -163,9 +163,15 @@ END $$;
 -- 5. HELPER VIEWS FOR API OPTIMIZATION
 -- ============================================================================
 
+-- Drop existing views first to handle column name changes (my_ip -> mydata)
+-- This makes the migration idempotent even if views were updated by later migrations
+DROP VIEW IF EXISTS spt_creator_revenue_summary CASCADE;
+DROP VIEW IF EXISTS platform_revenue_summary CASCADE;
+DROP VIEW IF EXISTS revenue_dashboard_24h CASCADE;
+
 -- SPT Creator Revenue Summary (for leaderboards and profile pages)
 -- Uses direct query on unified_revenue since revenue_daily_creators was removed
-CREATE OR REPLACE VIEW spt_creator_revenue_summary AS
+CREATE VIEW spt_creator_revenue_summary AS
 SELECT 
     creator_address,
     SUM(amount) AS total_revenue,
@@ -185,7 +191,7 @@ ORDER BY total_revenue DESC;
 
 -- Platform Revenue Summary (for platform analytics) 
 -- Uses direct query on unified_revenue since revenue_monthly_platforms was removed
-CREATE OR REPLACE VIEW platform_revenue_summary AS
+CREATE VIEW platform_revenue_summary AS
 SELECT 
     platform_address,
     SUM(amount) AS total_revenue,
@@ -206,7 +212,7 @@ ORDER BY total_revenue DESC;
 
 -- Real-time Revenue Dashboard (last 24 hours)
 -- Uses direct query on unified_revenue since revenue_realtime_metrics was removed
-CREATE OR REPLACE VIEW revenue_dashboard_24h AS
+CREATE VIEW revenue_dashboard_24h AS
 SELECT 
     revenue_source,
     SUM(amount) AS total_revenue_24h,
