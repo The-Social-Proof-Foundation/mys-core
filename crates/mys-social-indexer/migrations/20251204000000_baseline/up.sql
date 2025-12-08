@@ -30,15 +30,6 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'TimescaleDB extension could not be created. Ensure TimescaleDB is installed on the PostgreSQL instance.';
     END IF;
-    
-    -- Verify the continuous_agg_invalidation_trigger function exists
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_proc 
-        WHERE proname = 'continuous_agg_invalidation_trigger' 
-        AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = '_timescaledb_functions')
-    ) THEN
-        RAISE EXCEPTION 'TimescaleDB function continuous_agg_invalidation_trigger not found. TimescaleDB may not be properly installed or initialized.';
-    END IF;
 END $$;
 
 --
@@ -1532,7 +1523,7 @@ COMMENT ON COLUMN public.poc_badges.media_type IS '1=image, 2=video, 3=audio';
 -- Name: _direct_view_106; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE VIEW _timescaledb_internal._direct_view_106 AS
+CREATE OR REPLACE VIEW _timescaledb_internal._direct_view_106 AS
  SELECT public.time_bucket('1 day'::interval, "time") AS day,
     count(*) FILTER (WHERE (NOT revoked)) AS badges_issued,
     0 AS redirections_created,
@@ -1546,7 +1537,7 @@ CREATE VIEW _timescaledb_internal._direct_view_106 AS
 -- Name: _direct_view_107; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE VIEW _timescaledb_internal._direct_view_107 AS
+CREATE OR REPLACE VIEW _timescaledb_internal._direct_view_107 AS
  SELECT public.time_bucket('01:00:00'::interval, "time") AS hour,
     count(*) FILTER (WHERE (NOT revoked)) AS badges_issued_hourly,
     count(*) AS total_badges
@@ -3525,7 +3516,7 @@ CREATE VIEW public.active_token_pools AS
 -- Name: anonymous_votes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.anonymous_votes_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.anonymous_votes_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -3606,7 +3597,7 @@ COMMENT ON COLUMN public.blocked_events.blocked_address IS 'NULL for block_list_
 -- Name: blocked_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.blocked_events_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.blocked_events_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -3708,7 +3699,7 @@ COMMENT ON COLUMN public.blocked_profiles.total_block_count IS 'Number of times 
 -- Name: blocked_profiles_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.blocked_profiles_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.blocked_profiles_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -3753,7 +3744,7 @@ UNION ALL
 -- Name: checkpoint_processing_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.checkpoint_processing_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.checkpoint_processing_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -3802,7 +3793,7 @@ CREATE TABLE IF NOT EXISTS public.comments (
 -- Name: community_votes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.community_votes_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.community_votes_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -3898,6 +3889,7 @@ CREATE TABLE IF NOT EXISTS public.my_ip_revenue (
 -- Name: daily_license_revenue; Type: MATERIALIZED VIEW; Schema: public; Owner: -
 --
 
+DROP MATERIALIZED VIEW IF EXISTS public.daily_license_revenue;
 CREATE MATERIALIZED VIEW public.daily_license_revenue AS
  SELECT public.time_bucket('1 day'::interval, "time") AS bucket,
     license_id,
@@ -4008,7 +4000,7 @@ UNION ALL
 -- Name: delegate_ratings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.delegate_ratings_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.delegate_ratings_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4028,7 +4020,7 @@ ALTER SEQUENCE public.delegate_ratings_id_seq OWNED BY public.delegate_ratings.i
 -- Name: delegate_votes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.delegate_votes_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.delegate_votes_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4079,7 +4071,7 @@ UNION ALL
 -- Name: delegates_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.delegates_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.delegates_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4120,7 +4112,7 @@ CREATE TABLE IF NOT EXISTS public.governance_registries (
 -- Name: governance_registries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.governance_registries_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.governance_registries_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4226,7 +4218,7 @@ CREATE TABLE IF NOT EXISTS public.indexer_checkpoint_state (
 -- Name: indexer_checkpoint_state_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.indexer_checkpoint_state_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.indexer_checkpoint_state_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4331,7 +4323,7 @@ CREATE VIEW public.latest_post_prediction_config AS
 -- Name: my_ip_access_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.my_ip_access_logs_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.my_ip_access_logs_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4367,7 +4359,7 @@ CREATE TABLE IF NOT EXISTS public.my_ip_events (
 -- Name: my_ip_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.my_ip_events_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.my_ip_events_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4406,7 +4398,7 @@ CREATE TABLE IF NOT EXISTS public.my_ip_grants (
 -- Name: my_ip_grants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.my_ip_grants_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.my_ip_grants_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4426,7 +4418,7 @@ ALTER SEQUENCE public.my_ip_grants_id_seq OWNED BY public.my_ip_grants.id;
 -- Name: my_ip_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.my_ip_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.my_ip_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4458,7 +4450,7 @@ CREATE TABLE IF NOT EXISTS public.my_ip_permissions (
 -- Name: my_ip_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.my_ip_permissions_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.my_ip_permissions_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4478,7 +4470,7 @@ ALTER SEQUENCE public.my_ip_permissions_id_seq OWNED BY public.my_ip_permissions
 -- Name: my_ip_purchases_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.my_ip_purchases_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.my_ip_purchases_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4498,7 +4490,7 @@ ALTER SEQUENCE public.my_ip_purchases_id_seq OWNED BY public.mydata_purchases.id
 -- Name: my_ip_revenue_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.my_ip_revenue_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.my_ip_revenue_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4518,7 +4510,7 @@ ALTER SEQUENCE public.my_ip_revenue_id_seq OWNED BY public.mydata_revenue.id;
 -- Name: my_ip_revenue_id_seq1; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.my_ip_revenue_id_seq1
+CREATE SEQUENCE IF NOT EXISTS public.my_ip_revenue_id_seq1
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4561,7 +4553,7 @@ COMMENT ON TABLE public.mydata_subscriptions IS 'Active subscription tracking wi
 -- Name: my_ip_subscriptions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.my_ip_subscriptions_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.my_ip_subscriptions_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4693,7 +4685,7 @@ COMMENT ON COLUMN public.mydata_registry.transaction_id IS 'Transaction ID from 
 -- Name: nominated_delegates_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.nominated_delegates_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.nominated_delegates_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4733,7 +4725,7 @@ COMMENT ON TABLE public.platform_blocked_profiles IS 'Records of profiles blocke
 -- Name: platform_blocked_profiles_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.platform_blocked_profiles_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.platform_blocked_profiles_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4806,7 +4798,7 @@ COMMENT ON COLUMN public.platform_delivery_config.apns_key_content IS 'Base64 en
 -- Name: platform_delivery_config_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.platform_delivery_config_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.platform_delivery_config_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -4825,7 +4817,7 @@ ALTER SEQUENCE public.platform_delivery_config_id_seq OWNED BY public.platform_d
 -- Name: platform_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.platform_events_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.platform_events_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4864,7 +4856,7 @@ COMMENT ON TABLE public.platform_memberships IS 'Records of profiles joined to p
 -- Name: platform_memberships_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.platform_memberships_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.platform_memberships_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4897,7 +4889,7 @@ CREATE TABLE IF NOT EXISTS public.platform_moderators (
 -- Name: platform_moderators_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.platform_moderators_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.platform_moderators_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5026,7 +5018,7 @@ CREATE TABLE IF NOT EXISTS public.platforms (
 -- Name: platforms_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.platforms_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.platforms_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5101,7 +5093,7 @@ COMMENT ON TABLE public.poc_configuration IS 'System-wide PoC configuration para
 -- Name: poc_configuration_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.poc_configuration_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.poc_configuration_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5393,7 +5385,7 @@ CREATE VIEW public.post_interactions AS
 -- Name: post_prediction_config_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.post_prediction_config_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.post_prediction_config_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5452,7 +5444,7 @@ CREATE TABLE IF NOT EXISTS public.posts_deletion_events (
 -- Name: posts_deletion_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.posts_deletion_events_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.posts_deletion_events_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5488,7 +5480,7 @@ CREATE TABLE IF NOT EXISTS public.posts_moderation_events (
 -- Name: posts_moderation_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.posts_moderation_events_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.posts_moderation_events_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5525,7 +5517,7 @@ CREATE TABLE IF NOT EXISTS public.posts_reports (
 -- Name: posts_reports_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.posts_reports_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.posts_reports_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5561,7 +5553,7 @@ CREATE TABLE IF NOT EXISTS public.posts_transfers (
 -- Name: posts_transfers_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.posts_transfers_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.posts_transfers_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5604,7 +5596,7 @@ CREATE TABLE IF NOT EXISTS public.profile_badges (
 -- Name: profile_badges_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.profile_badges_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.profile_badges_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5643,7 +5635,7 @@ UNION ALL
 -- Name: profile_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.profile_events_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.profile_events_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5681,7 +5673,7 @@ CREATE TABLE IF NOT EXISTS public.profile_offers (
 -- Name: profile_offers_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.profile_offers_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.profile_offers_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5719,7 +5711,7 @@ CREATE TABLE IF NOT EXISTS public.profile_sale_fees (
 -- Name: profile_sale_fees_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.profile_sale_fees_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.profile_sale_fees_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5855,7 +5847,7 @@ COMMENT ON TABLE public.profiles_blocked IS 'Records of profiles blocked by othe
 -- Name: profiles_blocked_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.profiles_blocked_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.profiles_blocked_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5875,7 +5867,7 @@ ALTER SEQUENCE public.profiles_blocked_id_seq OWNED BY public.profiles_blocked.i
 -- Name: profiles_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.profiles_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.profiles_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5915,7 +5907,7 @@ CREATE TABLE IF NOT EXISTS public.progress_store (
 -- Name: progress_store_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.progress_store_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.progress_store_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5935,7 +5927,7 @@ ALTER SEQUENCE public.progress_store_id_seq OWNED BY public.progress_store.id;
 -- Name: promoted_posts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.promoted_posts_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.promoted_posts_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -5972,7 +5964,7 @@ CREATE TABLE IF NOT EXISTS public.promotion_budget_events (
 -- Name: promotion_budget_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.promotion_budget_events_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.promotion_budget_events_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6082,7 +6074,7 @@ CREATE TABLE IF NOT EXISTS public.promotion_status_events (
 -- Name: promotion_status_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.promotion_status_events_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.promotion_status_events_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6129,7 +6121,7 @@ UNION ALL
 -- Name: promotion_views_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.promotion_views_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.promotion_views_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6196,7 +6188,7 @@ CREATE TABLE IF NOT EXISTS public.reaction_counts (
 -- Name: reaction_counts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.reaction_counts_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.reaction_counts_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6237,7 +6229,7 @@ UNION ALL
 -- Name: reactions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.reactions_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.reactions_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6279,7 +6271,7 @@ COMMENT ON TABLE public.relay_conversations IS 'Conversation metadata and last m
 -- Name: relay_conversations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.relay_conversations_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.relay_conversations_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -6322,7 +6314,7 @@ COMMENT ON TABLE public.relay_device_tokens IS 'Device tokens for push notificat
 -- Name: relay_device_tokens_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.relay_device_tokens_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.relay_device_tokens_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -6374,7 +6366,7 @@ COMMENT ON COLUMN public.relay_messages.content IS 'Encrypted message content (A
 -- Name: relay_messages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.relay_messages_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.relay_messages_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -6424,7 +6416,7 @@ COMMENT ON COLUMN public.relay_notifications.platform_id IS 'Platform ID for pla
 -- Name: relay_notifications_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.relay_notifications_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.relay_notifications_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -6468,7 +6460,7 @@ COMMENT ON TABLE public.relay_outbox IS 'Outbox table for CDC - indexer writes e
 -- Name: relay_outbox_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.relay_outbox_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.relay_outbox_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -6530,7 +6522,7 @@ COMMENT ON TABLE public.relay_ws_connections IS 'Active WebSocket connections tr
 -- Name: relay_ws_connections_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.relay_ws_connections_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.relay_ws_connections_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -6593,7 +6585,7 @@ COMMENT ON VIEW public.revenue_dashboard_24h IS 'Real-time dashboard metrics usi
 -- Name: reward_distributions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.reward_distributions_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.reward_distributions_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6653,7 +6645,7 @@ UNION ALL
 -- Name: social_graph_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.social_graph_events_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.social_graph_events_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6692,7 +6684,7 @@ COMMENT ON TABLE public.social_graph_relationships IS 'Tracks follow relationshi
 -- Name: social_graph_relationships_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.social_graph_relationships_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.social_graph_relationships_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6737,7 +6729,7 @@ CREATE TABLE IF NOT EXISTS public.social_proof_of_truth (
 -- Name: social_proof_of_truth_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.social_proof_of_truth_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.social_proof_of_truth_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6757,7 +6749,7 @@ ALTER SEQUENCE public.social_proof_of_truth_id_seq OWNED BY public.social_proof_
 -- Name: social_proof_token_pools_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.social_proof_token_pools_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.social_proof_token_pools_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6794,7 +6786,7 @@ CREATE TABLE IF NOT EXISTS public.spot_bets (
 -- Name: spot_bets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spot_bets_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spot_bets_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6838,7 +6830,7 @@ CREATE TABLE IF NOT EXISTS public.spot_config (
 -- Name: spot_config_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spot_config_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spot_config_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6872,7 +6864,7 @@ CREATE TABLE IF NOT EXISTS public.spot_events (
 -- Name: spot_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spot_events_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spot_events_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6907,7 +6899,7 @@ CREATE TABLE IF NOT EXISTS public.spot_payouts (
 -- Name: spot_payouts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spot_payouts_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spot_payouts_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6948,7 +6940,7 @@ CREATE TABLE IF NOT EXISTS public.spot_records (
 -- Name: spot_records_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spot_records_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spot_records_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -6983,7 +6975,7 @@ CREATE TABLE IF NOT EXISTS public.spot_refunds (
 -- Name: spot_refunds_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spot_refunds_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spot_refunds_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7021,7 +7013,7 @@ CREATE TABLE IF NOT EXISTS public.spot_resolutions (
 -- Name: spot_resolutions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spot_resolutions_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spot_resolutions_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7111,7 +7103,7 @@ CREATE TABLE IF NOT EXISTS public.spt_exchange_config (
 -- Name: spt_exchange_config_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spt_exchange_config_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spt_exchange_config_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7146,7 +7138,7 @@ CREATE TABLE IF NOT EXISTS public.spt_holdings (
 -- Name: spt_holdings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spt_holdings_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spt_holdings_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7181,7 +7173,7 @@ CREATE VIEW public.spt_price_daily AS
 -- Name: spt_price_history_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spt_price_history_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spt_price_history_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7216,7 +7208,7 @@ CREATE VIEW public.spt_price_hourly AS
 -- Name: spt_reservation_pools_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spt_reservation_pools_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spt_reservation_pools_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7236,7 +7228,7 @@ ALTER SEQUENCE public.spt_reservation_pools_id_seq OWNED BY public.spt_reservati
 -- Name: spt_reservations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spt_reservations_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spt_reservations_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7288,7 +7280,7 @@ COMMENT ON TABLE public.spt_revenue IS 'SPT swap fee revenue tracking with real-
 -- Name: spt_transactions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.spt_transactions_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.spt_transactions_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7420,7 +7412,7 @@ UNION ALL
 -- Name: tips_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.tips_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.tips_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7460,7 +7452,7 @@ CREATE TABLE IF NOT EXISTS public.token_exchange_config (
 -- Name: token_exchange_config_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.token_exchange_config_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.token_exchange_config_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7495,7 +7487,7 @@ CREATE TABLE IF NOT EXISTS public.token_exchange_events (
 -- Name: token_exchange_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.token_exchange_events_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.token_exchange_events_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7656,7 +7648,7 @@ CREATE TABLE IF NOT EXISTS public.vesting_events (
 -- Name: vesting_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.vesting_events_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.vesting_events_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7711,7 +7703,7 @@ CREATE TABLE IF NOT EXISTS public.vote_decryption_failures (
 -- Name: vote_decryption_failures_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.vote_decryption_failures_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.vote_decryption_failures_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7772,7 +7764,7 @@ CREATE TABLE IF NOT EXISTS public.watermarks (
 -- Name: watermarks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.watermarks_id_seq
+CREATE SEQUENCE IF NOT EXISTS public.watermarks_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -7792,6 +7784,7 @@ ALTER SEQUENCE public.watermarks_id_seq OWNED BY public.watermarks.id;
 -- Name: weekly_creator_revenue; Type: MATERIALIZED VIEW; Schema: public; Owner: -
 --
 
+DROP MATERIALIZED VIEW IF EXISTS public.weekly_creator_revenue;
 CREATE MATERIALIZED VIEW public.weekly_creator_revenue AS
  SELECT public.time_bucket('7 days'::interval, r."time") AS bucket,
     l.creator,
@@ -9299,602 +9292,602 @@ ALTER TABLE ONLY public.watermarks
 -- Name: _hyper_1_36_chunk_idx_social_graph_events_created_at; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_1_36_chunk_idx_social_graph_events_created_at ON _timescaledb_internal._hyper_1_36_chunk USING btree (created_at);
+CREATE INDEX IF NOT EXISTS _hyper_1_36_chunk_idx_social_graph_events_created_at ON _timescaledb_internal._hyper_1_36_chunk USING btree (created_at);
 
 
 --
 -- Name: _hyper_1_36_chunk_idx_social_graph_events_event_id; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_1_36_chunk_idx_social_graph_events_event_id ON _timescaledb_internal._hyper_1_36_chunk USING btree (event_id);
+CREATE INDEX IF NOT EXISTS _hyper_1_36_chunk_idx_social_graph_events_event_id ON _timescaledb_internal._hyper_1_36_chunk USING btree (event_id);
 
 
 --
 -- Name: _hyper_1_36_chunk_idx_social_graph_events_event_type; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_1_36_chunk_idx_social_graph_events_event_type ON _timescaledb_internal._hyper_1_36_chunk USING btree (event_type);
+CREATE INDEX IF NOT EXISTS _hyper_1_36_chunk_idx_social_graph_events_event_type ON _timescaledb_internal._hyper_1_36_chunk USING btree (event_type);
 
 
 --
 -- Name: _hyper_1_40_chunk_idx_social_graph_events_created_at; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_1_40_chunk_idx_social_graph_events_created_at ON _timescaledb_internal._hyper_1_40_chunk USING btree (created_at);
+CREATE INDEX IF NOT EXISTS _hyper_1_40_chunk_idx_social_graph_events_created_at ON _timescaledb_internal._hyper_1_40_chunk USING btree (created_at);
 
 
 --
 -- Name: _hyper_1_40_chunk_idx_social_graph_events_event_id; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_1_40_chunk_idx_social_graph_events_event_id ON _timescaledb_internal._hyper_1_40_chunk USING btree (event_id);
+CREATE INDEX IF NOT EXISTS _hyper_1_40_chunk_idx_social_graph_events_event_id ON _timescaledb_internal._hyper_1_40_chunk USING btree (event_id);
 
 
 --
 -- Name: _hyper_1_40_chunk_idx_social_graph_events_event_type; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_1_40_chunk_idx_social_graph_events_event_type ON _timescaledb_internal._hyper_1_40_chunk USING btree (event_type);
+CREATE INDEX IF NOT EXISTS _hyper_1_40_chunk_idx_social_graph_events_event_type ON _timescaledb_internal._hyper_1_40_chunk USING btree (event_type);
 
 
 --
 -- Name: _hyper_3_35_chunk_idx_profile_events_created_at; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_3_35_chunk_idx_profile_events_created_at ON _timescaledb_internal._hyper_3_35_chunk USING btree (created_at);
+CREATE INDEX IF NOT EXISTS _hyper_3_35_chunk_idx_profile_events_created_at ON _timescaledb_internal._hyper_3_35_chunk USING btree (created_at);
 
 
 --
 -- Name: _hyper_3_35_chunk_idx_profile_events_event_id; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_3_35_chunk_idx_profile_events_event_id ON _timescaledb_internal._hyper_3_35_chunk USING btree (event_id);
+CREATE INDEX IF NOT EXISTS _hyper_3_35_chunk_idx_profile_events_event_id ON _timescaledb_internal._hyper_3_35_chunk USING btree (event_id);
 
 
 --
 -- Name: _hyper_3_35_chunk_idx_profile_events_event_type; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_3_35_chunk_idx_profile_events_event_type ON _timescaledb_internal._hyper_3_35_chunk USING btree (event_type);
+CREATE INDEX IF NOT EXISTS _hyper_3_35_chunk_idx_profile_events_event_type ON _timescaledb_internal._hyper_3_35_chunk USING btree (event_type);
 
 
 --
 -- Name: _hyper_3_35_chunk_idx_profile_events_profile_id; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_3_35_chunk_idx_profile_events_profile_id ON _timescaledb_internal._hyper_3_35_chunk USING btree (profile_id);
+CREATE INDEX IF NOT EXISTS _hyper_3_35_chunk_idx_profile_events_profile_id ON _timescaledb_internal._hyper_3_35_chunk USING btree (profile_id);
 
 
 --
 -- Name: _hyper_5_38_chunk_idx_platform_events_created_at; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_5_38_chunk_idx_platform_events_created_at ON _timescaledb_internal._hyper_5_38_chunk USING btree (created_at);
+CREATE INDEX IF NOT EXISTS _hyper_5_38_chunk_idx_platform_events_created_at ON _timescaledb_internal._hyper_5_38_chunk USING btree (created_at);
 
 
 --
 -- Name: _hyper_5_38_chunk_idx_platform_events_platform_id; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_5_38_chunk_idx_platform_events_platform_id ON _timescaledb_internal._hyper_5_38_chunk USING btree (platform_id);
+CREATE INDEX IF NOT EXISTS _hyper_5_38_chunk_idx_platform_events_platform_id ON _timescaledb_internal._hyper_5_38_chunk USING btree (platform_id);
 
 
 --
 -- Name: _hyper_5_38_chunk_idx_platform_events_reasoning; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_5_38_chunk_idx_platform_events_reasoning ON _timescaledb_internal._hyper_5_38_chunk USING gin (to_tsvector('english'::regconfig, reasoning)) WHERE (reasoning IS NOT NULL);
+CREATE INDEX IF NOT EXISTS _hyper_5_38_chunk_idx_platform_events_reasoning ON _timescaledb_internal._hyper_5_38_chunk USING gin (to_tsvector('english'::regconfig, reasoning)) WHERE (reasoning IS NOT NULL);
 
 
 --
 -- Name: _hyper_5_39_chunk_idx_platform_events_created_at; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_5_39_chunk_idx_platform_events_created_at ON _timescaledb_internal._hyper_5_39_chunk USING btree (created_at);
+CREATE INDEX IF NOT EXISTS _hyper_5_39_chunk_idx_platform_events_created_at ON _timescaledb_internal._hyper_5_39_chunk USING btree (created_at);
 
 
 --
 -- Name: _hyper_5_39_chunk_idx_platform_events_platform_id; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_5_39_chunk_idx_platform_events_platform_id ON _timescaledb_internal._hyper_5_39_chunk USING btree (platform_id);
+CREATE INDEX IF NOT EXISTS _hyper_5_39_chunk_idx_platform_events_platform_id ON _timescaledb_internal._hyper_5_39_chunk USING btree (platform_id);
 
 
 --
 -- Name: _hyper_5_39_chunk_idx_platform_events_reasoning; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_5_39_chunk_idx_platform_events_reasoning ON _timescaledb_internal._hyper_5_39_chunk USING gin (to_tsvector('english'::regconfig, reasoning)) WHERE (reasoning IS NOT NULL);
+CREATE INDEX IF NOT EXISTS _hyper_5_39_chunk_idx_platform_events_reasoning ON _timescaledb_internal._hyper_5_39_chunk USING gin (to_tsvector('english'::regconfig, reasoning)) WHERE (reasoning IS NOT NULL);
 
 
 --
 -- Name: _hyper_7_4_chunk__materialized_hypertable_7_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_7_4_chunk__materialized_hypertable_7_day_idx ON _timescaledb_internal._hyper_7_4_chunk USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _hyper_7_4_chunk__materialized_hypertable_7_day_idx ON _timescaledb_internal._hyper_7_4_chunk USING btree (day DESC);
 
 
 --
 -- Name: _hyper_7_4_chunk__materialized_hypertable_7_event_type_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_7_4_chunk__materialized_hypertable_7_event_type_day_idx ON _timescaledb_internal._hyper_7_4_chunk USING btree (event_type, day DESC);
+CREATE INDEX IF NOT EXISTS _hyper_7_4_chunk__materialized_hypertable_7_event_type_day_idx ON _timescaledb_internal._hyper_7_4_chunk USING btree (event_type, day DESC);
 
 
 --
 -- Name: _hyper_7_7_chunk__materialized_hypertable_7_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_7_7_chunk__materialized_hypertable_7_day_idx ON _timescaledb_internal._hyper_7_7_chunk USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _hyper_7_7_chunk__materialized_hypertable_7_day_idx ON _timescaledb_internal._hyper_7_7_chunk USING btree (day DESC);
 
 
 --
 -- Name: _hyper_7_7_chunk__materialized_hypertable_7_event_type_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_7_7_chunk__materialized_hypertable_7_event_type_day_idx ON _timescaledb_internal._hyper_7_7_chunk USING btree (event_type, day DESC);
+CREATE INDEX IF NOT EXISTS _hyper_7_7_chunk__materialized_hypertable_7_event_type_day_idx ON _timescaledb_internal._hyper_7_7_chunk USING btree (event_type, day DESC);
 
 
 --
 -- Name: _hyper_8_12_chunk__materialized_hypertable_8_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_8_12_chunk__materialized_hypertable_8_day_idx ON _timescaledb_internal._hyper_8_12_chunk USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _hyper_8_12_chunk__materialized_hypertable_8_day_idx ON _timescaledb_internal._hyper_8_12_chunk USING btree (day DESC);
 
 
 --
 -- Name: _hyper_8_12_chunk__materialized_hypertable_8_event_type_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_8_12_chunk__materialized_hypertable_8_event_type_day_idx ON _timescaledb_internal._hyper_8_12_chunk USING btree (event_type, day DESC);
+CREATE INDEX IF NOT EXISTS _hyper_8_12_chunk__materialized_hypertable_8_event_type_day_idx ON _timescaledb_internal._hyper_8_12_chunk USING btree (event_type, day DESC);
 
 
 --
 -- Name: _hyper_9_8_chunk__materialized_hypertable_9_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_9_8_chunk__materialized_hypertable_9_day_idx ON _timescaledb_internal._hyper_9_8_chunk USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _hyper_9_8_chunk__materialized_hypertable_9_day_idx ON _timescaledb_internal._hyper_9_8_chunk USING btree (day DESC);
 
 
 --
 -- Name: _hyper_9_8_chunk__materialized_hypertable_9_event_type_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _hyper_9_8_chunk__materialized_hypertable_9_event_type_day_idx ON _timescaledb_internal._hyper_9_8_chunk USING btree (event_type, day DESC);
+CREATE INDEX IF NOT EXISTS _hyper_9_8_chunk__materialized_hypertable_9_event_type_day_idx ON _timescaledb_internal._hyper_9_8_chunk USING btree (event_type, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_106_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_106_day_idx ON _timescaledb_internal._materialized_hypertable_106 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_106_day_idx ON _timescaledb_internal._materialized_hypertable_106 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_107_hour_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_107_hour_idx ON _timescaledb_internal._materialized_hypertable_107 USING btree (hour DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_107_hour_idx ON _timescaledb_internal._materialized_hypertable_107 USING btree (hour DESC);
 
 
 --
 -- Name: _materialized_hypertable_112_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_112_day_idx ON _timescaledb_internal._materialized_hypertable_112 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_112_day_idx ON _timescaledb_internal._materialized_hypertable_112 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_112_profile_owner_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_112_profile_owner_day_idx ON _timescaledb_internal._materialized_hypertable_112 USING btree (profile_owner, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_112_profile_owner_day_idx ON _timescaledb_internal._materialized_hypertable_112 USING btree (profile_owner, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_112_revenue_type_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_112_revenue_type_day_idx ON _timescaledb_internal._materialized_hypertable_112 USING btree (revenue_type, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_112_revenue_type_day_idx ON _timescaledb_internal._materialized_hypertable_112 USING btree (revenue_type, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_112_service_id_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_112_service_id_day_idx ON _timescaledb_internal._materialized_hypertable_112 USING btree (service_id, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_112_service_id_day_idx ON _timescaledb_internal._materialized_hypertable_112 USING btree (service_id, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_113_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_113_day_idx ON _timescaledb_internal._materialized_hypertable_113 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_113_day_idx ON _timescaledb_internal._materialized_hypertable_113 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_113_service_id_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_113_service_id_day_idx ON _timescaledb_internal._materialized_hypertable_113 USING btree (service_id, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_113_service_id_day_idx ON _timescaledb_internal._materialized_hypertable_113 USING btree (service_id, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_117_hour_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_117_hour_idx ON _timescaledb_internal._materialized_hypertable_117 USING btree (hour DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_117_hour_idx ON _timescaledb_internal._materialized_hypertable_117 USING btree (hour DESC);
 
 
 --
 -- Name: _materialized_hypertable_117_service_id_hour_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_117_service_id_hour_idx ON _timescaledb_internal._materialized_hypertable_117 USING btree (service_id, hour DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_117_service_id_hour_idx ON _timescaledb_internal._materialized_hypertable_117 USING btree (service_id, hour DESC);
 
 
 --
 -- Name: _materialized_hypertable_118_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_118_day_idx ON _timescaledb_internal._materialized_hypertable_118 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_118_day_idx ON _timescaledb_internal._materialized_hypertable_118 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_118_service_id_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_118_service_id_day_idx ON _timescaledb_internal._materialized_hypertable_118 USING btree (service_id, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_118_service_id_day_idx ON _timescaledb_internal._materialized_hypertable_118 USING btree (service_id, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_123_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_123_day_idx ON _timescaledb_internal._materialized_hypertable_123 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_123_day_idx ON _timescaledb_internal._materialized_hypertable_123 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_123_proposal_id_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_123_proposal_id_day_idx ON _timescaledb_internal._materialized_hypertable_123 USING btree (proposal_id, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_123_proposal_id_day_idx ON _timescaledb_internal._materialized_hypertable_123 USING btree (proposal_id, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_12_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_12_day_idx ON _timescaledb_internal._materialized_hypertable_12 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_12_day_idx ON _timescaledb_internal._materialized_hypertable_12 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_141_creator_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_141_creator_day_idx ON _timescaledb_internal._materialized_hypertable_141 USING btree (creator, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_141_creator_day_idx ON _timescaledb_internal._materialized_hypertable_141 USING btree (creator, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_141_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_141_day_idx ON _timescaledb_internal._materialized_hypertable_141 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_141_day_idx ON _timescaledb_internal._materialized_hypertable_141 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_141_mydata_id_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_141_mydata_id_day_idx ON _timescaledb_internal._materialized_hypertable_141 USING btree (mydata_id, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_141_mydata_id_day_idx ON _timescaledb_internal._materialized_hypertable_141 USING btree (mydata_id, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_141_revenue_type_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_141_revenue_type_day_idx ON _timescaledb_internal._materialized_hypertable_141 USING btree (revenue_type, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_141_revenue_type_day_idx ON _timescaledb_internal._materialized_hypertable_141 USING btree (revenue_type, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_142_access_type_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_142_access_type_day_idx ON _timescaledb_internal._materialized_hypertable_142 USING btree (access_type, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_142_access_type_day_idx ON _timescaledb_internal._materialized_hypertable_142 USING btree (access_type, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_142_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_142_day_idx ON _timescaledb_internal._materialized_hypertable_142 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_142_day_idx ON _timescaledb_internal._materialized_hypertable_142 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_142_mydata_id_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_142_mydata_id_day_idx ON _timescaledb_internal._materialized_hypertable_142 USING btree (mydata_id, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_142_mydata_id_day_idx ON _timescaledb_internal._materialized_hypertable_142 USING btree (mydata_id, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_143_hour_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_143_hour_idx ON _timescaledb_internal._materialized_hypertable_143 USING btree (hour DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_143_hour_idx ON _timescaledb_internal._materialized_hypertable_143 USING btree (hour DESC);
 
 
 --
 -- Name: _materialized_hypertable_143_mydata_id_hour_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_143_mydata_id_hour_idx ON _timescaledb_internal._materialized_hypertable_143 USING btree (mydata_id, hour DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_143_mydata_id_hour_idx ON _timescaledb_internal._materialized_hypertable_143 USING btree (mydata_id, hour DESC);
 
 
 --
 -- Name: _materialized_hypertable_31_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_31_bucket_idx ON _timescaledb_internal._materialized_hypertable_31 USING btree (bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_31_bucket_idx ON _timescaledb_internal._materialized_hypertable_31 USING btree (bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_31_object_id_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_31_object_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_31 USING btree (object_id, bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_31_object_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_31 USING btree (object_id, bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_31_reaction_text_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_31_reaction_text_bucket_idx ON _timescaledb_internal._materialized_hypertable_31 USING btree (reaction_text, bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_31_reaction_text_bucket_idx ON _timescaledb_internal._materialized_hypertable_31 USING btree (reaction_text, bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_32_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_32_bucket_idx ON _timescaledb_internal._materialized_hypertable_32 USING btree (bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_32_bucket_idx ON _timescaledb_internal._materialized_hypertable_32 USING btree (bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_32_original_post_id_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_32_original_post_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_32 USING btree (original_post_id, bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_32_original_post_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_32 USING btree (original_post_id, bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_33_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_33_bucket_idx ON _timescaledb_internal._materialized_hypertable_33 USING btree (bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_33_bucket_idx ON _timescaledb_internal._materialized_hypertable_33 USING btree (bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_33_is_post_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_33_is_post_bucket_idx ON _timescaledb_internal._materialized_hypertable_33 USING btree (is_post, bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_33_is_post_bucket_idx ON _timescaledb_internal._materialized_hypertable_33 USING btree (is_post, bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_33_object_id_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_33_object_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_33 USING btree (object_id, bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_33_object_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_33 USING btree (object_id, bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_34_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_34_bucket_idx ON _timescaledb_internal._materialized_hypertable_34 USING btree (bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_34_bucket_idx ON _timescaledb_internal._materialized_hypertable_34 USING btree (bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_49_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_49_day_idx ON _timescaledb_internal._materialized_hypertable_49 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_49_day_idx ON _timescaledb_internal._materialized_hypertable_49 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_49_registry_type_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_49_registry_type_day_idx ON _timescaledb_internal._materialized_hypertable_49 USING btree (registry_type, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_49_registry_type_day_idx ON _timescaledb_internal._materialized_hypertable_49 USING btree (registry_type, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_49_target_address_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_49_target_address_day_idx ON _timescaledb_internal._materialized_hypertable_49 USING btree (target_address, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_49_target_address_day_idx ON _timescaledb_internal._materialized_hypertable_49 USING btree (target_address, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_50_hour_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_50_hour_idx ON _timescaledb_internal._materialized_hypertable_50 USING btree (hour DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_50_hour_idx ON _timescaledb_internal._materialized_hypertable_50 USING btree (hour DESC);
 
 
 --
 -- Name: _materialized_hypertable_50_proposal_id_hour_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_50_proposal_id_hour_idx ON _timescaledb_internal._materialized_hypertable_50 USING btree (proposal_id, hour DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_50_proposal_id_hour_idx ON _timescaledb_internal._materialized_hypertable_50 USING btree (proposal_id, hour DESC);
 
 
 --
 -- Name: _materialized_hypertable_51_hour_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_51_hour_idx ON _timescaledb_internal._materialized_hypertable_51 USING btree (hour DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_51_hour_idx ON _timescaledb_internal._materialized_hypertable_51 USING btree (hour DESC);
 
 
 --
 -- Name: _materialized_hypertable_51_proposal_id_hour_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_51_proposal_id_hour_idx ON _timescaledb_internal._materialized_hypertable_51 USING btree (proposal_id, hour DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_51_proposal_id_hour_idx ON _timescaledb_internal._materialized_hypertable_51 USING btree (proposal_id, hour DESC);
 
 
 --
 -- Name: _materialized_hypertable_52_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_52_day_idx ON _timescaledb_internal._materialized_hypertable_52 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_52_day_idx ON _timescaledb_internal._materialized_hypertable_52 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_52_distribution_type_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_52_distribution_type_day_idx ON _timescaledb_internal._materialized_hypertable_52 USING btree (distribution_type, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_52_distribution_type_day_idx ON _timescaledb_internal._materialized_hypertable_52 USING btree (distribution_type, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_73_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_73_bucket_idx ON _timescaledb_internal._materialized_hypertable_73 USING btree (bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_73_bucket_idx ON _timescaledb_internal._materialized_hypertable_73 USING btree (bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_73_pool_id_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_73_pool_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_73 USING btree (pool_id, bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_73_pool_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_73 USING btree (pool_id, bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_74_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_74_bucket_idx ON _timescaledb_internal._materialized_hypertable_74 USING btree (bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_74_bucket_idx ON _timescaledb_internal._materialized_hypertable_74 USING btree (bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_74_pool_id_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_74_pool_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_74 USING btree (pool_id, bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_74_pool_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_74 USING btree (pool_id, bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_7_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_7_day_idx ON _timescaledb_internal._materialized_hypertable_7 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_7_day_idx ON _timescaledb_internal._materialized_hypertable_7 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_7_event_type_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_7_event_type_day_idx ON _timescaledb_internal._materialized_hypertable_7 USING btree (event_type, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_7_event_type_day_idx ON _timescaledb_internal._materialized_hypertable_7 USING btree (event_type, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_83_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_83_bucket_idx ON _timescaledb_internal._materialized_hypertable_83 USING btree (bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_83_bucket_idx ON _timescaledb_internal._materialized_hypertable_83 USING btree (bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_83_platform_id_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_83_platform_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_83 USING btree (platform_id, bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_83_platform_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_83 USING btree (platform_id, bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_83_post_id_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_83_post_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_83 USING btree (post_id, bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_83_post_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_83 USING btree (post_id, bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_83_promotion_id_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_83_promotion_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_83 USING btree (promotion_id, bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_83_promotion_id_bucket_idx ON _timescaledb_internal._materialized_hypertable_83 USING btree (promotion_id, bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_84_bucket_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_84_bucket_idx ON _timescaledb_internal._materialized_hypertable_84 USING btree (bucket DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_84_bucket_idx ON _timescaledb_internal._materialized_hypertable_84 USING btree (bucket DESC);
 
 
 --
 -- Name: _materialized_hypertable_8_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_8_day_idx ON _timescaledb_internal._materialized_hypertable_8 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_8_day_idx ON _timescaledb_internal._materialized_hypertable_8 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_8_event_type_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_8_event_type_day_idx ON _timescaledb_internal._materialized_hypertable_8 USING btree (event_type, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_8_event_type_day_idx ON _timescaledb_internal._materialized_hypertable_8 USING btree (event_type, day DESC);
 
 
 --
 -- Name: _materialized_hypertable_9_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_9_day_idx ON _timescaledb_internal._materialized_hypertable_9 USING btree (day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_9_day_idx ON _timescaledb_internal._materialized_hypertable_9 USING btree (day DESC);
 
 
 --
 -- Name: _materialized_hypertable_9_event_type_day_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX _materialized_hypertable_9_event_type_day_idx ON _timescaledb_internal._materialized_hypertable_9 USING btree (event_type, day DESC);
+CREATE INDEX IF NOT EXISTS _materialized_hypertable_9_event_type_day_idx ON _timescaledb_internal._materialized_hypertable_9 USING btree (event_type, day DESC);
 
 
 --
 -- Name: compress_hyper_4_37_chunk_event_type__ts_meta_min_1__ts_met_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE INDEX compress_hyper_4_37_chunk_event_type__ts_meta_min_1__ts_met_idx ON _timescaledb_internal.compress_hyper_4_37_chunk USING btree (event_type, _ts_meta_min_1, _ts_meta_max_1, _ts_meta_min_2 DESC, _ts_meta_max_2 DESC, _ts_meta_min_3, _ts_meta_max_3, _ts_meta_min_4, _ts_meta_max_4);
+CREATE INDEX IF NOT EXISTS compress_hyper_4_37_chunk_event_type__ts_meta_min_1__ts_met_idx ON _timescaledb_internal.compress_hyper_4_37_chunk USING btree (event_type, _ts_meta_min_1, _ts_meta_max_1, _ts_meta_min_2 DESC, _ts_meta_max_2 DESC, _ts_meta_min_3, _ts_meta_max_3, _ts_meta_min_4, _ts_meta_max_4);
 
 
 --
 -- Name: idx_anonymous_votes_decrypted_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_anonymous_votes_decrypted_time ON public.anonymous_votes USING btree (decrypted, "time" DESC) WHERE (decrypted = true);
+CREATE INDEX IF NOT EXISTS idx_anonymous_votes_decrypted_time ON public.anonymous_votes USING btree (decrypted, "time" DESC) WHERE (decrypted = true);
 
 
 --
 -- Name: idx_anonymous_votes_proposal_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_anonymous_votes_proposal_time ON public.anonymous_votes USING btree (proposal_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_anonymous_votes_proposal_time ON public.anonymous_votes USING btree (proposal_id, "time" DESC);
 
 
 --
 -- Name: idx_anonymous_votes_status_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_anonymous_votes_status_time ON public.anonymous_votes USING btree (decryption_status, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_anonymous_votes_status_time ON public.anonymous_votes USING btree (decryption_status, "time" DESC);
 
 
 --
 -- Name: idx_anonymous_votes_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_anonymous_votes_transaction_id ON public.anonymous_votes USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_anonymous_votes_transaction_id ON public.anonymous_votes USING btree (transaction_id);
 
 
 --
@@ -9908,91 +9901,91 @@ CREATE UNIQUE INDEX idx_anonymous_votes_unique_vote ON public.anonymous_votes US
 -- Name: idx_anonymous_votes_voter_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_anonymous_votes_voter_time ON public.anonymous_votes USING btree (voter_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_anonymous_votes_voter_time ON public.anonymous_votes USING btree (voter_address, "time" DESC);
 
 
 --
 -- Name: idx_blocked_events_blocked; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_blocked_events_blocked ON public.blocked_events USING btree (blocked_address);
+CREATE INDEX IF NOT EXISTS idx_blocked_events_blocked ON public.blocked_events USING btree (blocked_address);
 
 
 --
 -- Name: idx_blocked_events_blocker; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_blocked_events_blocker ON public.blocked_events USING btree (blocker_address);
+CREATE INDEX IF NOT EXISTS idx_blocked_events_blocker ON public.blocked_events USING btree (blocker_address);
 
 
 --
 -- Name: idx_blocked_events_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_blocked_events_created_at ON public.blocked_events USING btree (created_at);
+CREATE INDEX IF NOT EXISTS idx_blocked_events_created_at ON public.blocked_events USING btree (created_at);
 
 
 --
 -- Name: idx_blocked_events_event_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_blocked_events_event_id ON public.blocked_events USING btree (event_id);
+CREATE INDEX IF NOT EXISTS idx_blocked_events_event_id ON public.blocked_events USING btree (event_id);
 
 
 --
 -- Name: idx_blocked_events_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_blocked_events_type ON public.blocked_events USING btree (event_type);
+CREATE INDEX IF NOT EXISTS idx_blocked_events_type ON public.blocked_events USING btree (event_type);
 
 
 --
 -- Name: idx_blocked_profiles_block_list; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_blocked_profiles_block_list ON public.blocked_profiles USING btree (block_list_address);
+CREATE INDEX IF NOT EXISTS idx_blocked_profiles_block_list ON public.blocked_profiles USING btree (block_list_address);
 
 
 --
 -- Name: idx_blocked_profiles_blocked; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_blocked_profiles_blocked ON public.blocked_profiles USING btree (blocked_address);
+CREATE INDEX IF NOT EXISTS idx_blocked_profiles_blocked ON public.blocked_profiles USING btree (blocked_address);
 
 
 --
 -- Name: idx_blocked_profiles_blocker; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_blocked_profiles_blocker ON public.blocked_profiles USING btree (blocker_address, last_blocked_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blocked_profiles_blocker ON public.blocked_profiles USING btree (blocker_address, last_blocked_at DESC);
 
 
 --
 -- Name: idx_blocked_profiles_pagination; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_blocked_profiles_pagination ON public.blocked_profiles USING btree (blocker_address, id);
+CREATE INDEX IF NOT EXISTS idx_blocked_profiles_pagination ON public.blocked_profiles USING btree (blocker_address, id);
 
 
 --
 -- Name: idx_blocked_profiles_profile_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_blocked_profiles_profile_id ON public.blocked_profiles USING btree (blocked_profile_id);
+CREATE INDEX IF NOT EXISTS idx_blocked_profiles_profile_id ON public.blocked_profiles USING btree (blocked_profile_id);
 
 
 --
 -- Name: idx_blocked_profiles_username; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_blocked_profiles_username ON public.blocked_profiles USING btree (blocked_username);
+CREATE INDEX IF NOT EXISTS idx_blocked_profiles_username ON public.blocked_profiles USING btree (blocked_username);
 
 
 --
 -- Name: idx_checkpoint_processing_start_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_checkpoint_processing_start_time ON public.checkpoint_processing USING btree (processing_start_time);
+CREATE INDEX IF NOT EXISTS idx_checkpoint_processing_start_time ON public.checkpoint_processing USING btree (processing_start_time);
 
 
 --
@@ -10006,63 +9999,63 @@ CREATE UNIQUE INDEX idx_comments_comment_id_time ON public.comments USING btree 
 -- Name: idx_comments_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_comments_created_at ON public.comments USING btree (created_at);
+CREATE INDEX IF NOT EXISTS idx_comments_created_at ON public.comments USING btree (created_at);
 
 
 --
 -- Name: idx_comments_deleted_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_comments_deleted_at ON public.comments USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_comments_deleted_at ON public.comments USING btree (deleted_at);
 
 
 --
 -- Name: idx_comments_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_comments_owner ON public.comments USING btree (owner, "time");
+CREATE INDEX IF NOT EXISTS idx_comments_owner ON public.comments USING btree (owner, "time");
 
 
 --
 -- Name: idx_comments_parent_comment_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_comments_parent_comment_id ON public.comments USING btree (parent_comment_id, "time");
+CREATE INDEX IF NOT EXISTS idx_comments_parent_comment_id ON public.comments USING btree (parent_comment_id, "time");
 
 
 --
 -- Name: idx_comments_post_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_comments_post_id ON public.comments USING btree (post_id, "time");
+CREATE INDEX IF NOT EXISTS idx_comments_post_id ON public.comments USING btree (post_id, "time");
 
 
 --
 -- Name: idx_comments_profile_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_comments_profile_id ON public.comments USING btree (profile_id, "time");
+CREATE INDEX IF NOT EXISTS idx_comments_profile_id ON public.comments USING btree (profile_id, "time");
 
 
 --
 -- Name: idx_comments_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_comments_transaction_id ON public.comments USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_comments_transaction_id ON public.comments USING btree (transaction_id);
 
 
 --
 -- Name: idx_community_votes_approve; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_community_votes_approve ON public.community_votes USING btree (approve, "time");
+CREATE INDEX IF NOT EXISTS idx_community_votes_approve ON public.community_votes USING btree (approve, "time");
 
 
 --
 -- Name: idx_community_votes_proposal_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_community_votes_proposal_id ON public.community_votes USING btree (proposal_id, "time");
+CREATE INDEX IF NOT EXISTS idx_community_votes_proposal_id ON public.community_votes USING btree (proposal_id, "time");
 
 
 --
@@ -10076,77 +10069,77 @@ CREATE UNIQUE INDEX idx_community_votes_proposal_voter_time ON public.community_
 -- Name: idx_community_votes_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_community_votes_transaction_id ON public.community_votes USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_community_votes_transaction_id ON public.community_votes USING btree (transaction_id);
 
 
 --
 -- Name: idx_community_votes_vote_weight; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_community_votes_vote_weight ON public.community_votes USING btree (vote_weight, "time");
+CREATE INDEX IF NOT EXISTS idx_community_votes_vote_weight ON public.community_votes USING btree (vote_weight, "time");
 
 
 --
 -- Name: idx_community_votes_voter_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_community_votes_voter_address ON public.community_votes USING btree (voter_address, "time");
+CREATE INDEX IF NOT EXISTS idx_community_votes_voter_address ON public.community_votes USING btree (voter_address, "time");
 
 
 --
 -- Name: idx_daily_license_revenue_bucket; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_daily_license_revenue_bucket ON public.daily_license_revenue USING btree (bucket);
+CREATE INDEX IF NOT EXISTS idx_daily_license_revenue_bucket ON public.daily_license_revenue USING btree (bucket);
 
 
 --
 -- Name: idx_daily_license_revenue_license_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_daily_license_revenue_license_id ON public.daily_license_revenue USING btree (license_id);
+CREATE INDEX IF NOT EXISTS idx_daily_license_revenue_license_id ON public.daily_license_revenue USING btree (license_id);
 
 
 --
 -- Name: idx_decryption_failures_proposal_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_decryption_failures_proposal_time ON public.vote_decryption_failures USING btree (proposal_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_decryption_failures_proposal_time ON public.vote_decryption_failures USING btree (proposal_id, "time" DESC);
 
 
 --
 -- Name: idx_decryption_failures_reason_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_decryption_failures_reason_time ON public.vote_decryption_failures USING btree (failure_reason, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_decryption_failures_reason_time ON public.vote_decryption_failures USING btree (failure_reason, "time" DESC);
 
 
 --
 -- Name: idx_decryption_failures_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_decryption_failures_transaction_id ON public.vote_decryption_failures USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_decryption_failures_transaction_id ON public.vote_decryption_failures USING btree (transaction_id);
 
 
 --
 -- Name: idx_decryption_failures_voter_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_decryption_failures_voter_time ON public.vote_decryption_failures USING btree (voter_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_decryption_failures_voter_time ON public.vote_decryption_failures USING btree (voter_address, "time" DESC);
 
 
 --
 -- Name: idx_delegate_votes_approve; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_delegate_votes_approve ON public.delegate_votes USING btree (approve, "time");
+CREATE INDEX IF NOT EXISTS idx_delegate_votes_approve ON public.delegate_votes USING btree (approve, "time");
 
 
 --
 -- Name: idx_delegate_votes_delegate_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_delegate_votes_delegate_address ON public.delegate_votes USING btree (delegate_address, "time");
+CREATE INDEX IF NOT EXISTS idx_delegate_votes_delegate_address ON public.delegate_votes USING btree (delegate_address, "time");
 
 
 --
@@ -10160,21 +10153,21 @@ CREATE UNIQUE INDEX idx_delegate_votes_proposal_delegate_time ON public.delegate
 -- Name: idx_delegate_votes_proposal_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_delegate_votes_proposal_id ON public.delegate_votes USING btree (proposal_id, "time");
+CREATE INDEX IF NOT EXISTS idx_delegate_votes_proposal_id ON public.delegate_votes USING btree (proposal_id, "time");
 
 
 --
 -- Name: idx_delegate_votes_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_delegate_votes_transaction_id ON public.delegate_votes USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_delegate_votes_transaction_id ON public.delegate_votes USING btree (transaction_id);
 
 
 --
 -- Name: idx_delegates_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_delegates_address ON public.delegates USING btree (address, "time");
+CREATE INDEX IF NOT EXISTS idx_delegates_address ON public.delegates USING btree (address, "time");
 
 
 --
@@ -10188,63 +10181,63 @@ CREATE UNIQUE INDEX idx_delegates_address_type_time ON public.delegates USING bt
 -- Name: idx_delegates_is_active; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_delegates_is_active ON public.delegates USING btree (is_active, "time");
+CREATE INDEX IF NOT EXISTS idx_delegates_is_active ON public.delegates USING btree (is_active, "time");
 
 
 --
 -- Name: idx_delegates_profile_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_delegates_profile_id ON public.delegates USING btree (profile_id, "time");
+CREATE INDEX IF NOT EXISTS idx_delegates_profile_id ON public.delegates USING btree (profile_id, "time");
 
 
 --
 -- Name: idx_delegates_registry_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_delegates_registry_type ON public.delegates USING btree (registry_type, "time");
+CREATE INDEX IF NOT EXISTS idx_delegates_registry_type ON public.delegates USING btree (registry_type, "time");
 
 
 --
 -- Name: idx_delegates_term_end; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_delegates_term_end ON public.delegates USING btree (term_end, "time");
+CREATE INDEX IF NOT EXISTS idx_delegates_term_end ON public.delegates USING btree (term_end, "time");
 
 
 --
 -- Name: idx_delegates_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_delegates_transaction_id ON public.delegates USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_delegates_transaction_id ON public.delegates USING btree (transaction_id);
 
 
 --
 -- Name: idx_deletion_object_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_deletion_object_id ON public.posts_deletion_events USING btree (object_id, "time");
+CREATE INDEX IF NOT EXISTS idx_deletion_object_id ON public.posts_deletion_events USING btree (object_id, "time");
 
 
 --
 -- Name: idx_deletion_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_deletion_owner ON public.posts_deletion_events USING btree (owner, "time");
+CREATE INDEX IF NOT EXISTS idx_deletion_owner ON public.posts_deletion_events USING btree (owner, "time");
 
 
 --
 -- Name: idx_deletion_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_deletion_transaction_id ON public.posts_deletion_events USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_deletion_transaction_id ON public.posts_deletion_events USING btree (transaction_id);
 
 
 --
 -- Name: idx_governance_registries_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_governance_registries_transaction_id ON public.governance_registries USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_governance_registries_transaction_id ON public.governance_registries USING btree (transaction_id);
 
 
 --
@@ -10258,371 +10251,371 @@ CREATE UNIQUE INDEX idx_governance_registries_type ON public.governance_registri
 -- Name: idx_governance_registries_updated_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_governance_registries_updated_at ON public.governance_registries USING btree (updated_at);
+CREATE INDEX IF NOT EXISTS idx_governance_registries_updated_at ON public.governance_registries USING btree (updated_at);
 
 
 --
 -- Name: idx_indexer_progress_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_indexer_progress_id ON public.indexer_progress USING btree (id);
+CREATE INDEX IF NOT EXISTS idx_indexer_progress_id ON public.indexer_progress USING btree (id);
 
 
 --
 -- Name: idx_moderation_moderated_by; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_moderation_moderated_by ON public.posts_moderation_events USING btree (moderated_by, "time");
+CREATE INDEX IF NOT EXISTS idx_moderation_moderated_by ON public.posts_moderation_events USING btree (moderated_by, "time");
 
 
 --
 -- Name: idx_moderation_object_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_moderation_object_id ON public.posts_moderation_events USING btree (object_id, "time");
+CREATE INDEX IF NOT EXISTS idx_moderation_object_id ON public.posts_moderation_events USING btree (object_id, "time");
 
 
 --
 -- Name: idx_moderation_platform_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_moderation_platform_id ON public.posts_moderation_events USING btree (platform_id, "time");
+CREATE INDEX IF NOT EXISTS idx_moderation_platform_id ON public.posts_moderation_events USING btree (platform_id, "time");
 
 
 --
 -- Name: idx_moderation_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_moderation_transaction_id ON public.posts_moderation_events USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_moderation_transaction_id ON public.posts_moderation_events USING btree (transaction_id);
 
 
 --
 -- Name: idx_my_ip_creation_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_creation_time ON public.my_ip USING btree (creation_time);
+CREATE INDEX IF NOT EXISTS idx_my_ip_creation_time ON public.my_ip USING btree (creation_time);
 
 
 --
 -- Name: idx_my_ip_creator; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_creator ON public.my_ip USING btree (creator);
+CREATE INDEX IF NOT EXISTS idx_my_ip_creator ON public.my_ip USING btree (creator);
 
 
 --
 -- Name: idx_my_ip_events_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_events_created_at ON public.my_ip_events USING btree (created_at);
+CREATE INDEX IF NOT EXISTS idx_my_ip_events_created_at ON public.my_ip_events USING btree (created_at);
 
 
 --
 -- Name: idx_my_ip_events_created_by; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_events_created_by ON public.my_ip_events USING btree (created_by);
+CREATE INDEX IF NOT EXISTS idx_my_ip_events_created_by ON public.my_ip_events USING btree (created_by);
 
 
 --
 -- Name: idx_my_ip_events_event_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_events_event_type ON public.my_ip_events USING btree (event_type);
+CREATE INDEX IF NOT EXISTS idx_my_ip_events_event_type ON public.my_ip_events USING btree (event_type);
 
 
 --
 -- Name: idx_my_ip_events_license_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_events_license_id ON public.my_ip_events USING btree (license_id);
+CREATE INDEX IF NOT EXISTS idx_my_ip_events_license_id ON public.my_ip_events USING btree (license_id);
 
 
 --
 -- Name: idx_my_ip_grants_grant_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_grants_grant_time ON public.my_ip_grants USING btree (grant_time);
+CREATE INDEX IF NOT EXISTS idx_my_ip_grants_grant_time ON public.my_ip_grants USING btree (grant_time);
 
 
 --
 -- Name: idx_my_ip_grants_grantee; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_grants_grantee ON public.my_ip_grants USING btree (grantee);
+CREATE INDEX IF NOT EXISTS idx_my_ip_grants_grantee ON public.my_ip_grants USING btree (grantee);
 
 
 --
 -- Name: idx_my_ip_grants_grantor; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_grants_grantor ON public.my_ip_grants USING btree (grantor);
+CREATE INDEX IF NOT EXISTS idx_my_ip_grants_grantor ON public.my_ip_grants USING btree (grantor);
 
 
 --
 -- Name: idx_my_ip_grants_license_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_grants_license_id ON public.my_ip_grants USING btree (license_id);
+CREATE INDEX IF NOT EXISTS idx_my_ip_grants_license_id ON public.my_ip_grants USING btree (license_id);
 
 
 --
 -- Name: idx_my_ip_license_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_license_id ON public.my_ip USING btree (license_id);
+CREATE INDEX IF NOT EXISTS idx_my_ip_license_id ON public.my_ip USING btree (license_id);
 
 
 --
 -- Name: idx_my_ip_license_state; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_license_state ON public.my_ip USING btree (license_state);
+CREATE INDEX IF NOT EXISTS idx_my_ip_license_state ON public.my_ip USING btree (license_state);
 
 
 --
 -- Name: idx_my_ip_license_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_license_type ON public.my_ip USING btree (license_type);
+CREATE INDEX IF NOT EXISTS idx_my_ip_license_type ON public.my_ip USING btree (license_type);
 
 
 --
 -- Name: idx_my_ip_revenue_from_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_revenue_from_address ON public.my_ip_revenue USING btree (from_address);
+CREATE INDEX IF NOT EXISTS idx_my_ip_revenue_from_address ON public.my_ip_revenue USING btree (from_address);
 
 
 --
 -- Name: idx_my_ip_revenue_license_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_revenue_license_id ON public.my_ip_revenue USING btree (license_id);
+CREATE INDEX IF NOT EXISTS idx_my_ip_revenue_license_id ON public.my_ip_revenue USING btree (license_id);
 
 
 --
 -- Name: idx_my_ip_revenue_post_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_revenue_post_id ON public.my_ip_revenue USING btree (post_id);
+CREATE INDEX IF NOT EXISTS idx_my_ip_revenue_post_id ON public.my_ip_revenue USING btree (post_id);
 
 
 --
 -- Name: idx_my_ip_revenue_recipient; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_revenue_recipient ON public.my_ip USING btree (revenue_recipient);
+CREATE INDEX IF NOT EXISTS idx_my_ip_revenue_recipient ON public.my_ip USING btree (revenue_recipient);
 
 
 --
 -- Name: idx_my_ip_revenue_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_revenue_time ON public.my_ip_revenue USING btree (revenue_time);
+CREATE INDEX IF NOT EXISTS idx_my_ip_revenue_time ON public.my_ip_revenue USING btree (revenue_time);
 
 
 --
 -- Name: idx_my_ip_revenue_to_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_my_ip_revenue_to_address ON public.my_ip_revenue USING btree (to_address);
+CREATE INDEX IF NOT EXISTS idx_my_ip_revenue_to_address ON public.my_ip_revenue USING btree (to_address);
 
 
 --
 -- Name: idx_mydata_access_time_mydata; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_access_time_mydata ON public.mydata_access_logs USING btree ("time" DESC, mydata_id);
+CREATE INDEX IF NOT EXISTS idx_mydata_access_time_mydata ON public.mydata_access_logs USING btree ("time" DESC, mydata_id);
 
 
 --
 -- Name: idx_mydata_access_type_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_access_type_time ON public.mydata_access_logs USING btree (access_type, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_access_type_time ON public.mydata_access_logs USING btree (access_type, "time" DESC);
 
 
 --
 -- Name: idx_mydata_access_user_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_access_user_time ON public.mydata_access_logs USING btree (user_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_access_user_time ON public.mydata_access_logs USING btree (user_address, "time" DESC);
 
 
 --
 -- Name: idx_mydata_data_geographic; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_data_geographic ON public.mydata_data USING btree (geographic_region) WHERE (geographic_region IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_mydata_data_geographic ON public.mydata_data USING btree (geographic_region) WHERE (geographic_region IS NOT NULL);
 
 
 --
 -- Name: idx_mydata_data_media_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_data_media_type ON public.mydata_data USING btree (media_type);
+CREATE INDEX IF NOT EXISTS idx_mydata_data_media_type ON public.mydata_data USING btree (media_type);
 
 
 --
 -- Name: idx_mydata_data_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_data_owner ON public.mydata_data USING btree (owner);
+CREATE INDEX IF NOT EXISTS idx_mydata_data_owner ON public.mydata_data USING btree (owner);
 
 
 --
 -- Name: idx_mydata_data_platform_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_data_platform_id ON public.mydata_data USING btree (platform_id) WHERE (platform_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_mydata_data_platform_id ON public.mydata_data USING btree (platform_id) WHERE (platform_id IS NOT NULL);
 
 
 --
 -- Name: idx_mydata_data_pricing; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_data_pricing ON public.mydata_data USING btree (one_time_price, subscription_price) WHERE ((one_time_price IS NOT NULL) OR (subscription_price IS NOT NULL));
+CREATE INDEX IF NOT EXISTS idx_mydata_data_pricing ON public.mydata_data USING btree (one_time_price, subscription_price) WHERE ((one_time_price IS NOT NULL) OR (subscription_price IS NOT NULL));
 
 
 --
 -- Name: idx_mydata_data_quality; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_data_quality ON public.mydata_data USING btree (data_quality) WHERE (data_quality IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_mydata_data_quality ON public.mydata_data USING btree (data_quality) WHERE (data_quality IS NOT NULL);
 
 
 --
 -- Name: idx_mydata_data_tags; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_data_tags ON public.mydata_data USING gin (tags);
+CREATE INDEX IF NOT EXISTS idx_mydata_data_tags ON public.mydata_data USING gin (tags);
 
 
 --
 -- Name: idx_mydata_data_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_data_time ON public.mydata_data USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_data_time ON public.mydata_data USING btree ("time" DESC);
 
 
 --
 -- Name: idx_mydata_purchases_buyer_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_purchases_buyer_time ON public.mydata_purchases USING btree (buyer, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_purchases_buyer_time ON public.mydata_purchases USING btree (buyer, "time" DESC);
 
 
 --
 -- Name: idx_mydata_purchases_mydata_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_purchases_mydata_time ON public.mydata_purchases USING btree (mydata_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_purchases_mydata_time ON public.mydata_purchases USING btree (mydata_id, "time" DESC);
 
 
 --
 -- Name: idx_mydata_purchases_time_mydata; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_purchases_time_mydata ON public.mydata_purchases USING btree ("time" DESC, mydata_id);
+CREATE INDEX IF NOT EXISTS idx_mydata_purchases_time_mydata ON public.mydata_purchases USING btree ("time" DESC, mydata_id);
 
 
 --
 -- Name: idx_mydata_purchases_type_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_purchases_type_time ON public.mydata_purchases USING btree (purchase_type, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_purchases_type_time ON public.mydata_purchases USING btree (purchase_type, "time" DESC);
 
 
 --
 -- Name: idx_mydata_registry_active; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_registry_active ON public.mydata_registry USING btree (is_active) WHERE (is_active = true);
+CREATE INDEX IF NOT EXISTS idx_mydata_registry_active ON public.mydata_registry USING btree (is_active) WHERE (is_active = true);
 
 
 --
 -- Name: idx_mydata_registry_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_registry_owner ON public.mydata_registry USING btree (owner);
+CREATE INDEX IF NOT EXISTS idx_mydata_registry_owner ON public.mydata_registry USING btree (owner);
 
 
 --
 -- Name: idx_mydata_registry_registered_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_registry_registered_at ON public.mydata_registry USING btree (registered_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_registry_registered_at ON public.mydata_registry USING btree (registered_at DESC);
 
 
 --
 -- Name: idx_mydata_registry_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_registry_transaction_id ON public.mydata_registry USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_mydata_registry_transaction_id ON public.mydata_registry USING btree (transaction_id);
 
 
 --
 -- Name: idx_mydata_revenue_mydata_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_revenue_mydata_time ON public.mydata_revenue USING btree (mydata_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_revenue_mydata_time ON public.mydata_revenue USING btree (mydata_id, "time" DESC);
 
 
 --
 -- Name: idx_mydata_revenue_time_mydata; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_revenue_time_mydata ON public.mydata_revenue USING btree ("time" DESC, mydata_id);
+CREATE INDEX IF NOT EXISTS idx_mydata_revenue_time_mydata ON public.mydata_revenue USING btree ("time" DESC, mydata_id);
 
 
 --
 -- Name: idx_mydata_revenue_to_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_revenue_to_time ON public.mydata_revenue USING btree (to_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_revenue_to_time ON public.mydata_revenue USING btree (to_address, "time" DESC);
 
 
 --
 -- Name: idx_mydata_revenue_type_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_revenue_type_time ON public.mydata_revenue USING btree (revenue_type, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_revenue_type_time ON public.mydata_revenue USING btree (revenue_type, "time" DESC);
 
 
 --
 -- Name: idx_mydata_subscriptions_end_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_subscriptions_end_time ON public.mydata_subscriptions USING btree (subscription_end, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_subscriptions_end_time ON public.mydata_subscriptions USING btree (subscription_end, "time" DESC);
 
 
 --
 -- Name: idx_mydata_subscriptions_mydata_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_subscriptions_mydata_time ON public.mydata_subscriptions USING btree (mydata_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_subscriptions_mydata_time ON public.mydata_subscriptions USING btree (mydata_id, "time" DESC);
 
 
 --
 -- Name: idx_mydata_subscriptions_subscriber_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_subscriptions_subscriber_time ON public.mydata_subscriptions USING btree (subscriber, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_mydata_subscriptions_subscriber_time ON public.mydata_subscriptions USING btree (subscriber, "time" DESC);
 
 
 --
 -- Name: idx_mydata_subscriptions_time_mydata; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_mydata_subscriptions_time_mydata ON public.mydata_subscriptions USING btree ("time" DESC, mydata_id);
+CREATE INDEX IF NOT EXISTS idx_mydata_subscriptions_time_mydata ON public.mydata_subscriptions USING btree ("time" DESC, mydata_id);
 
 
 --
 -- Name: idx_nominees_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_nominees_address ON public.nominated_delegates USING btree (address, "time");
+CREATE INDEX IF NOT EXISTS idx_nominees_address ON public.nominated_delegates USING btree (address, "time");
 
 
 --
@@ -10636,147 +10629,147 @@ CREATE UNIQUE INDEX idx_nominees_address_type_time ON public.nominated_delegates
 -- Name: idx_nominees_profile_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_nominees_profile_id ON public.nominated_delegates USING btree (profile_id, "time");
+CREATE INDEX IF NOT EXISTS idx_nominees_profile_id ON public.nominated_delegates USING btree (profile_id, "time");
 
 
 --
 -- Name: idx_nominees_registry_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_nominees_registry_type ON public.nominated_delegates USING btree (registry_type, "time");
+CREATE INDEX IF NOT EXISTS idx_nominees_registry_type ON public.nominated_delegates USING btree (registry_type, "time");
 
 
 --
 -- Name: idx_nominees_scheduled_term; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_nominees_scheduled_term ON public.nominated_delegates USING btree (scheduled_term_start_epoch, "time");
+CREATE INDEX IF NOT EXISTS idx_nominees_scheduled_term ON public.nominated_delegates USING btree (scheduled_term_start_epoch, "time");
 
 
 --
 -- Name: idx_nominees_status; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_nominees_status ON public.nominated_delegates USING btree (status, "time");
+CREATE INDEX IF NOT EXISTS idx_nominees_status ON public.nominated_delegates USING btree (status, "time");
 
 
 --
 -- Name: idx_nominees_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_nominees_transaction_id ON public.nominated_delegates USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_nominees_transaction_id ON public.nominated_delegates USING btree (transaction_id);
 
 
 --
 -- Name: idx_platform_blocked_profiles_platform_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_platform_blocked_profiles_platform_id ON public.platform_blocked_profiles USING btree (platform_id);
+CREATE INDEX IF NOT EXISTS idx_platform_blocked_profiles_platform_id ON public.platform_blocked_profiles USING btree (platform_id);
 
 
 --
 -- Name: idx_platform_blocked_profiles_profile_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_platform_blocked_profiles_profile_id ON public.platform_blocked_profiles USING btree (profile_id);
+CREATE INDEX IF NOT EXISTS idx_platform_blocked_profiles_profile_id ON public.platform_blocked_profiles USING btree (profile_id);
 
 
 --
 -- Name: idx_platform_delivery_config_platform_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_platform_delivery_config_platform_id ON public.platform_delivery_config USING btree (platform_id);
+CREATE INDEX IF NOT EXISTS idx_platform_delivery_config_platform_id ON public.platform_delivery_config USING btree (platform_id);
 
 
 --
 -- Name: idx_platform_events_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_platform_events_created_at ON public.platform_events USING btree (created_at);
+CREATE INDEX IF NOT EXISTS idx_platform_events_created_at ON public.platform_events USING btree (created_at);
 
 
 --
 -- Name: idx_platform_events_platform_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_platform_events_platform_id ON public.platform_events USING btree (platform_id);
+CREATE INDEX IF NOT EXISTS idx_platform_events_platform_id ON public.platform_events USING btree (platform_id);
 
 
 --
 -- Name: idx_platform_events_reasoning; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_platform_events_reasoning ON public.platform_events USING gin (to_tsvector('english'::regconfig, reasoning)) WHERE (reasoning IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_platform_events_reasoning ON public.platform_events USING gin (to_tsvector('english'::regconfig, reasoning)) WHERE (reasoning IS NOT NULL);
 
 
 --
 -- Name: idx_platform_memberships_joined_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_platform_memberships_joined_at ON public.platform_memberships USING btree (joined_at);
+CREATE INDEX IF NOT EXISTS idx_platform_memberships_joined_at ON public.platform_memberships USING btree (joined_at);
 
 
 --
 -- Name: idx_platform_memberships_platform_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_platform_memberships_platform_id ON public.platform_memberships USING btree (platform_id);
+CREATE INDEX IF NOT EXISTS idx_platform_memberships_platform_id ON public.platform_memberships USING btree (platform_id);
 
 
 --
 -- Name: idx_platform_memberships_profile_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_platform_memberships_profile_id ON public.platform_memberships USING btree (profile_id);
+CREATE INDEX IF NOT EXISTS idx_platform_memberships_profile_id ON public.platform_memberships USING btree (profile_id);
 
 
 --
 -- Name: idx_platform_moderators_platform_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_platform_moderators_platform_id ON public.platform_moderators USING btree (platform_id);
+CREATE INDEX IF NOT EXISTS idx_platform_moderators_platform_id ON public.platform_moderators USING btree (platform_id);
 
 
 --
 -- Name: idx_platforms_name; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_platforms_name ON public.platforms USING btree (name);
+CREATE INDEX IF NOT EXISTS idx_platforms_name ON public.platforms USING btree (name);
 
 
 --
 -- Name: idx_platforms_platform_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_platforms_platform_id ON public.platforms USING btree (platform_id);
+CREATE INDEX IF NOT EXISTS idx_platforms_platform_id ON public.platforms USING btree (platform_id);
 
 
 --
 -- Name: idx_poc_analysis_creator_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_analysis_creator_time ON public.poc_analysis_results USING btree (original_creator, "time" DESC) WHERE (original_creator IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_poc_analysis_creator_time ON public.poc_analysis_results USING btree (original_creator, "time" DESC) WHERE (original_creator IS NOT NULL);
 
 
 --
 -- Name: idx_poc_analysis_oracle_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_analysis_oracle_time ON public.poc_analysis_results USING btree (oracle_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_poc_analysis_oracle_time ON public.poc_analysis_results USING btree (oracle_address, "time" DESC);
 
 
 --
 -- Name: idx_poc_analysis_reasoning; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_analysis_reasoning ON public.poc_analysis_results USING gin (to_tsvector('english'::regconfig, reasoning)) WHERE (reasoning IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_poc_analysis_reasoning ON public.poc_analysis_results USING gin (to_tsvector('english'::regconfig, reasoning)) WHERE (reasoning IS NOT NULL);
 
 
 --
 -- Name: idx_poc_analysis_time_post; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_analysis_time_post ON public.poc_analysis_results USING btree ("time" DESC, post_id);
+CREATE INDEX IF NOT EXISTS idx_poc_analysis_time_post ON public.poc_analysis_results USING btree ("time" DESC, post_id);
 
 
 --
@@ -10790,21 +10783,21 @@ CREATE UNIQUE INDEX idx_poc_badges_badge_id ON public.poc_badges USING btree (ba
 -- Name: idx_poc_badges_issued_by_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_badges_issued_by_time ON public.poc_badges USING btree (issued_by, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_poc_badges_issued_by_time ON public.poc_badges USING btree (issued_by, "time" DESC);
 
 
 --
 -- Name: idx_poc_badges_time_post; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_badges_time_post ON public.poc_badges USING btree ("time" DESC, post_id);
+CREATE INDEX IF NOT EXISTS idx_poc_badges_time_post ON public.poc_badges USING btree ("time" DESC, post_id);
 
 
 --
 -- Name: idx_poc_config_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_config_time ON public.poc_configuration USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS idx_poc_config_time ON public.poc_configuration USING btree ("time" DESC);
 
 
 --
@@ -10818,14 +10811,14 @@ CREATE UNIQUE INDEX idx_poc_disputes_id ON public.poc_disputes USING btree (disp
 -- Name: idx_poc_disputes_post_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_disputes_post_time ON public.poc_disputes USING btree (post_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_poc_disputes_post_time ON public.poc_disputes USING btree (post_id, "time" DESC);
 
 
 --
 -- Name: idx_poc_disputes_time_status; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_disputes_time_status ON public.poc_disputes USING btree ("time" DESC, status);
+CREATE INDEX IF NOT EXISTS idx_poc_disputes_time_status ON public.poc_disputes USING btree ("time" DESC, status);
 
 
 --
@@ -10839,21 +10832,21 @@ CREATE UNIQUE INDEX idx_poc_redirections_id ON public.poc_revenue_redirections U
 -- Name: idx_poc_redirections_original_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_redirections_original_time ON public.poc_revenue_redirections USING btree (original_post_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_poc_redirections_original_time ON public.poc_revenue_redirections USING btree (original_post_id, "time" DESC);
 
 
 --
 -- Name: idx_poc_redirections_time_accused; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_redirections_time_accused ON public.poc_revenue_redirections USING btree ("time" DESC, accused_post_id);
+CREATE INDEX IF NOT EXISTS idx_poc_redirections_time_accused ON public.poc_revenue_redirections USING btree ("time" DESC, accused_post_id);
 
 
 --
 -- Name: idx_poc_votes_dispute_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_votes_dispute_time ON public.poc_dispute_votes USING btree (dispute_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_poc_votes_dispute_time ON public.poc_dispute_votes USING btree (dispute_id, "time" DESC);
 
 
 --
@@ -10867,14 +10860,14 @@ CREATE UNIQUE INDEX idx_poc_votes_dispute_voter ON public.poc_dispute_votes USIN
 -- Name: idx_poc_votes_time_voter; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_poc_votes_time_voter ON public.poc_dispute_votes USING btree ("time" DESC, voter);
+CREATE INDEX IF NOT EXISTS idx_poc_votes_time_voter ON public.poc_dispute_votes USING btree ("time" DESC, voter);
 
 
 --
 -- Name: idx_post_prediction_config_predictions_enabled; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_post_prediction_config_predictions_enabled ON public.post_prediction_config USING btree (predictions_enabled, "time");
+CREATE INDEX IF NOT EXISTS idx_post_prediction_config_predictions_enabled ON public.post_prediction_config USING btree (predictions_enabled, "time");
 
 
 --
@@ -10888,56 +10881,56 @@ CREATE UNIQUE INDEX idx_post_prediction_config_time ON public.post_prediction_co
 -- Name: idx_post_prediction_config_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_post_prediction_config_transaction_id ON public.post_prediction_config USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_post_prediction_config_transaction_id ON public.post_prediction_config USING btree (transaction_id);
 
 
 --
 -- Name: idx_post_prediction_config_updated_by; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_post_prediction_config_updated_by ON public.post_prediction_config USING btree (updated_by, "time");
+CREATE INDEX IF NOT EXISTS idx_post_prediction_config_updated_by ON public.post_prediction_config USING btree (updated_by, "time");
 
 
 --
 -- Name: idx_posts_auto_pool_disabled; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_posts_auto_pool_disabled ON public.posts USING btree (auto_pool_disabled, "time") WHERE (auto_pool_disabled = true);
+CREATE INDEX IF NOT EXISTS idx_posts_auto_pool_disabled ON public.posts USING btree (auto_pool_disabled, "time") WHERE (auto_pool_disabled = true);
 
 
 --
 -- Name: idx_posts_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_posts_created_at ON public.posts USING btree (created_at);
+CREATE INDEX IF NOT EXISTS idx_posts_created_at ON public.posts USING btree (created_at);
 
 
 --
 -- Name: idx_posts_deleted_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_posts_deleted_at ON public.posts USING btree (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_posts_deleted_at ON public.posts USING btree (deleted_at);
 
 
 --
 -- Name: idx_posts_my_ip_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_posts_my_ip_id ON public.posts USING btree (my_ip_id);
+CREATE INDEX IF NOT EXISTS idx_posts_my_ip_id ON public.posts USING btree (my_ip_id);
 
 
 --
 -- Name: idx_posts_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_posts_owner ON public.posts USING btree (owner, "time");
+CREATE INDEX IF NOT EXISTS idx_posts_owner ON public.posts USING btree (owner, "time");
 
 
 --
 -- Name: idx_posts_poc_badge_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_posts_poc_badge_id ON public.posts USING btree (poc_badge_id, "time") WHERE (poc_badge_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_posts_poc_badge_id ON public.posts USING btree (poc_badge_id, "time") WHERE (poc_badge_id IS NOT NULL);
 
 
 --
@@ -10951,70 +10944,70 @@ CREATE UNIQUE INDEX idx_posts_post_id_time ON public.posts USING btree (post_id,
 -- Name: idx_posts_post_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_posts_post_type ON public.posts USING btree (post_type, "time");
+CREATE INDEX IF NOT EXISTS idx_posts_post_type ON public.posts USING btree (post_type, "time");
 
 
 --
 -- Name: idx_posts_profile_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_posts_profile_id ON public.posts USING btree (profile_id, "time");
+CREATE INDEX IF NOT EXISTS idx_posts_profile_id ON public.posts USING btree (profile_id, "time");
 
 
 --
 -- Name: idx_posts_promotion_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_posts_promotion_id ON public.posts USING btree (promotion_id, "time");
+CREATE INDEX IF NOT EXISTS idx_posts_promotion_id ON public.posts USING btree (promotion_id, "time");
 
 
 --
 -- Name: idx_posts_revenue_recipient; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_posts_revenue_recipient ON public.posts USING btree (revenue_recipient);
+CREATE INDEX IF NOT EXISTS idx_posts_revenue_recipient ON public.posts USING btree (revenue_recipient);
 
 
 --
 -- Name: idx_posts_revenue_redirect_to; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_posts_revenue_redirect_to ON public.posts USING btree (revenue_redirect_to, "time") WHERE (revenue_redirect_to IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_posts_revenue_redirect_to ON public.posts USING btree (revenue_redirect_to, "time") WHERE (revenue_redirect_to IS NOT NULL);
 
 
 --
 -- Name: idx_posts_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_posts_transaction_id ON public.posts USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_posts_transaction_id ON public.posts USING btree (transaction_id);
 
 
 --
 -- Name: idx_profile_badges_active; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_badges_active ON public.profile_badges USING btree (profile_id, badge_id, "time" DESC) WHERE (revoked = false);
+CREATE INDEX IF NOT EXISTS idx_profile_badges_active ON public.profile_badges USING btree (profile_id, badge_id, "time" DESC) WHERE (revoked = false);
 
 
 --
 -- Name: idx_profile_badges_badge_id_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_badges_badge_id_time ON public.profile_badges USING btree (badge_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_profile_badges_badge_id_time ON public.profile_badges USING btree (badge_id, "time" DESC);
 
 
 --
 -- Name: idx_profile_badges_platform_id_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_badges_platform_id_time ON public.profile_badges USING btree (platform_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_profile_badges_platform_id_time ON public.profile_badges USING btree (platform_id, "time" DESC);
 
 
 --
 -- Name: idx_profile_badges_profile_id_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_badges_profile_id_time ON public.profile_badges USING btree (profile_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_profile_badges_profile_id_time ON public.profile_badges USING btree (profile_id, "time" DESC);
 
 
 --
@@ -11028,42 +11021,42 @@ CREATE UNIQUE INDEX idx_profile_badges_unique ON public.profile_badges USING btr
 -- Name: idx_profile_events_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_events_created_at ON public.profile_events USING btree (created_at);
+CREATE INDEX IF NOT EXISTS idx_profile_events_created_at ON public.profile_events USING btree (created_at);
 
 
 --
 -- Name: idx_profile_events_event_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_events_event_id ON public.profile_events USING btree (event_id);
+CREATE INDEX IF NOT EXISTS idx_profile_events_event_id ON public.profile_events USING btree (event_id);
 
 
 --
 -- Name: idx_profile_events_event_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_events_event_type ON public.profile_events USING btree (event_type);
+CREATE INDEX IF NOT EXISTS idx_profile_events_event_type ON public.profile_events USING btree (event_type);
 
 
 --
 -- Name: idx_profile_events_profile_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_events_profile_id ON public.profile_events USING btree (profile_id);
+CREATE INDEX IF NOT EXISTS idx_profile_events_profile_id ON public.profile_events USING btree (profile_id);
 
 
 --
 -- Name: idx_profile_offers_offeror_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_offers_offeror_time ON public.profile_offers USING btree (offeror_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_profile_offers_offeror_time ON public.profile_offers USING btree (offeror_address, "time" DESC);
 
 
 --
 -- Name: idx_profile_offers_profile_id_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_offers_profile_id_time ON public.profile_offers USING btree (profile_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_profile_offers_profile_id_time ON public.profile_offers USING btree (profile_id, "time" DESC);
 
 
 --
@@ -11077,70 +11070,70 @@ CREATE UNIQUE INDEX idx_profile_offers_profile_offeror_unique ON public.profile_
 -- Name: idx_profile_offers_status_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_offers_status_time ON public.profile_offers USING btree (status, "time" DESC) WHERE (status = 'pending'::text);
+CREATE INDEX IF NOT EXISTS idx_profile_offers_status_time ON public.profile_offers USING btree (status, "time" DESC) WHERE (status = 'pending'::text);
 
 
 --
 -- Name: idx_profile_sale_fees_fee_recipient_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_sale_fees_fee_recipient_time ON public.profile_sale_fees USING btree (fee_recipient_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_profile_sale_fees_fee_recipient_time ON public.profile_sale_fees USING btree (fee_recipient_address, "time" DESC);
 
 
 --
 -- Name: idx_profile_sale_fees_offeror_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_sale_fees_offeror_time ON public.profile_sale_fees USING btree (offeror_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_profile_sale_fees_offeror_time ON public.profile_sale_fees USING btree (offeror_address, "time" DESC);
 
 
 --
 -- Name: idx_profile_sale_fees_previous_owner_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_sale_fees_previous_owner_time ON public.profile_sale_fees USING btree (previous_owner_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_profile_sale_fees_previous_owner_time ON public.profile_sale_fees USING btree (previous_owner_address, "time" DESC);
 
 
 --
 -- Name: idx_profile_sale_fees_profile_id_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_sale_fees_profile_id_time ON public.profile_sale_fees USING btree (profile_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_profile_sale_fees_profile_id_time ON public.profile_sale_fees USING btree (profile_id, "time" DESC);
 
 
 --
 -- Name: idx_profile_services_active; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_services_active ON public.profile_subscription_services USING btree (active) WHERE (active = true);
+CREATE INDEX IF NOT EXISTS idx_profile_services_active ON public.profile_subscription_services USING btree (active) WHERE (active = true);
 
 
 --
 -- Name: idx_profile_services_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_services_owner ON public.profile_subscription_services USING btree (profile_owner);
+CREATE INDEX IF NOT EXISTS idx_profile_services_owner ON public.profile_subscription_services USING btree (profile_owner);
 
 
 --
 -- Name: idx_profile_services_profile; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_services_profile ON public.profile_subscription_services USING btree (profile_id);
+CREATE INDEX IF NOT EXISTS idx_profile_services_profile ON public.profile_subscription_services USING btree (profile_id);
 
 
 --
 -- Name: idx_profile_subscriptions_expires; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_subscriptions_expires ON public.profile_subscriptions USING btree (expires_at) WHERE (cancelled_at IS NULL);
+CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_expires ON public.profile_subscriptions USING btree (expires_at) WHERE (cancelled_at IS NULL);
 
 
 --
 -- Name: idx_profile_subscriptions_expires_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_subscriptions_expires_at ON public.profile_subscriptions USING btree (expires_at);
+CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_expires_at ON public.profile_subscriptions USING btree (expires_at);
 
 
 --
@@ -11154,77 +11147,77 @@ CREATE UNIQUE INDEX idx_profile_subscriptions_id ON public.profile_subscriptions
 -- Name: idx_profile_subscriptions_service_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_subscriptions_service_id ON public.profile_subscriptions USING btree (service_id);
+CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_service_id ON public.profile_subscriptions USING btree (service_id);
 
 
 --
 -- Name: idx_profile_subscriptions_subscriber; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_subscriptions_subscriber ON public.profile_subscriptions USING btree (subscriber);
+CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_subscriber ON public.profile_subscriptions USING btree (subscriber);
 
 
 --
 -- Name: idx_profile_subscriptions_subscriber_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_subscriptions_subscriber_time ON public.profile_subscriptions USING btree (subscriber, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_subscriber_time ON public.profile_subscriptions USING btree (subscriber, "time" DESC);
 
 
 --
 -- Name: idx_profile_subscriptions_time_service; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profile_subscriptions_time_service ON public.profile_subscriptions USING btree ("time" DESC, service_id);
+CREATE INDEX IF NOT EXISTS idx_profile_subscriptions_time_service ON public.profile_subscriptions USING btree ("time" DESC, service_id);
 
 
 --
 -- Name: idx_profiles_block_list_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_block_list_address ON public.profiles USING btree (block_list_address);
+CREATE INDEX IF NOT EXISTS idx_profiles_block_list_address ON public.profiles USING btree (block_list_address);
 
 
 --
 -- Name: idx_profiles_blocked_blocked_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_blocked_blocked_address ON public.profiles_blocked USING btree (blocked_address);
+CREATE INDEX IF NOT EXISTS idx_profiles_blocked_blocked_address ON public.profiles_blocked USING btree (blocked_address);
 
 
 --
 -- Name: idx_profiles_blocked_blocker_wallet_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_blocked_blocker_wallet_address ON public.profiles_blocked USING btree (blocker_wallet_address);
+CREATE INDEX IF NOT EXISTS idx_profiles_blocked_blocker_wallet_address ON public.profiles_blocked USING btree (blocker_wallet_address);
 
 
 --
 -- Name: idx_profiles_followers_count; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_followers_count ON public.profiles USING btree (followers_count);
+CREATE INDEX IF NOT EXISTS idx_profiles_followers_count ON public.profiles USING btree (followers_count);
 
 
 --
 -- Name: idx_profiles_following_count; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_following_count ON public.profiles USING btree (following_count);
+CREATE INDEX IF NOT EXISTS idx_profiles_following_count ON public.profiles USING btree (following_count);
 
 
 --
 -- Name: idx_profiles_instagram_username; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_instagram_username ON public.profiles USING btree (instagram_username) WHERE (instagram_username IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_profiles_instagram_username ON public.profiles USING btree (instagram_username) WHERE (instagram_username IS NOT NULL);
 
 
 --
 -- Name: idx_profiles_min_offer_amount; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_min_offer_amount ON public.profiles USING btree (min_offer_amount) WHERE (min_offer_amount IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_profiles_min_offer_amount ON public.profiles USING btree (min_offer_amount) WHERE (min_offer_amount IS NOT NULL);
 
 
 --
@@ -11238,56 +11231,56 @@ CREATE UNIQUE INDEX idx_profiles_owner_address ON public.profiles USING btree (o
 -- Name: idx_profiles_owner_min_offer; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_owner_min_offer ON public.profiles USING btree (owner_address, min_offer_amount) WHERE (min_offer_amount IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_profiles_owner_min_offer ON public.profiles USING btree (owner_address, min_offer_amount) WHERE (min_offer_amount IS NOT NULL);
 
 
 --
 -- Name: idx_profiles_owner_post_count; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_owner_post_count ON public.profiles USING btree (owner_address, post_count DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_owner_post_count ON public.profiles USING btree (owner_address, post_count DESC);
 
 
 --
 -- Name: idx_profiles_paid_messaging_enabled; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_paid_messaging_enabled ON public.profiles USING btree (paid_messaging_enabled);
+CREATE INDEX IF NOT EXISTS idx_profiles_paid_messaging_enabled ON public.profiles USING btree (paid_messaging_enabled);
 
 
 --
 -- Name: idx_profiles_post_count; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_post_count ON public.profiles USING btree (post_count DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_post_count ON public.profiles USING btree (post_count DESC);
 
 
 --
 -- Name: idx_profiles_profile_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_profile_id ON public.profiles USING btree (profile_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_profile_id ON public.profiles USING btree (profile_id);
 
 
 --
 -- Name: idx_profiles_reservation_pool_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_reservation_pool_address ON public.profiles USING btree (reservation_pool_address) WHERE (reservation_pool_address IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_profiles_reservation_pool_address ON public.profiles USING btree (reservation_pool_address) WHERE (reservation_pool_address IS NOT NULL);
 
 
 --
 -- Name: idx_profiles_selected_badge_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_selected_badge_id ON public.profiles USING btree (selected_badge_id) WHERE (selected_badge_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_profiles_selected_badge_id ON public.profiles USING btree (selected_badge_id) WHERE (selected_badge_id IS NOT NULL);
 
 
 --
 -- Name: idx_profiles_social_proof_token_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_profiles_social_proof_token_address ON public.profiles USING btree (social_proof_token_address) WHERE (social_proof_token_address IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_profiles_social_proof_token_address ON public.profiles USING btree (social_proof_token_address) WHERE (social_proof_token_address IS NOT NULL);
 
 
 --
@@ -11301,21 +11294,21 @@ CREATE UNIQUE INDEX idx_profiles_username ON public.profiles USING btree (userna
 -- Name: idx_progress_store_checkpoint; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_progress_store_checkpoint ON public.progress_store USING btree (last_processed_checkpoint);
+CREATE INDEX IF NOT EXISTS idx_progress_store_checkpoint ON public.progress_store USING btree (last_processed_checkpoint);
 
 
 --
 -- Name: idx_progress_store_errors; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_progress_store_errors ON public.progress_store USING btree (error_count, last_error_at) WHERE (error_count > 0);
+CREATE INDEX IF NOT EXISTS idx_progress_store_errors ON public.progress_store USING btree (error_count, last_error_at) WHERE (error_count > 0);
 
 
 --
 -- Name: idx_progress_store_state; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_progress_store_state ON public.progress_store USING btree (processing_state);
+CREATE INDEX IF NOT EXISTS idx_progress_store_state ON public.progress_store USING btree (processing_state);
 
 
 --
@@ -11329,28 +11322,28 @@ CREATE UNIQUE INDEX idx_progress_store_worker_module ON public.progress_store US
 -- Name: idx_promoted_posts_active; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promoted_posts_active ON public.promoted_posts USING btree (active, "time");
+CREATE INDEX IF NOT EXISTS idx_promoted_posts_active ON public.promoted_posts USING btree (active, "time");
 
 
 --
 -- Name: idx_promoted_posts_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promoted_posts_owner ON public.promoted_posts USING btree (owner, "time");
+CREATE INDEX IF NOT EXISTS idx_promoted_posts_owner ON public.promoted_posts USING btree (owner, "time");
 
 
 --
 -- Name: idx_promoted_posts_post_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promoted_posts_post_id ON public.promoted_posts USING btree (post_id, "time");
+CREATE INDEX IF NOT EXISTS idx_promoted_posts_post_id ON public.promoted_posts USING btree (post_id, "time");
 
 
 --
 -- Name: idx_promoted_posts_profile_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promoted_posts_profile_id ON public.promoted_posts USING btree (profile_id, "time");
+CREATE INDEX IF NOT EXISTS idx_promoted_posts_profile_id ON public.promoted_posts USING btree (profile_id, "time");
 
 
 --
@@ -11364,84 +11357,84 @@ CREATE UNIQUE INDEX idx_promoted_posts_promotion_id_time ON public.promoted_post
 -- Name: idx_promoted_posts_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promoted_posts_transaction_id ON public.promoted_posts USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_promoted_posts_transaction_id ON public.promoted_posts USING btree (transaction_id);
 
 
 --
 -- Name: idx_promotion_budget_events_event_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_budget_events_event_type ON public.promotion_budget_events USING btree (event_type, "time");
+CREATE INDEX IF NOT EXISTS idx_promotion_budget_events_event_type ON public.promotion_budget_events USING btree (event_type, "time");
 
 
 --
 -- Name: idx_promotion_budget_events_post_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_budget_events_post_id ON public.promotion_budget_events USING btree (post_id, "time");
+CREATE INDEX IF NOT EXISTS idx_promotion_budget_events_post_id ON public.promotion_budget_events USING btree (post_id, "time");
 
 
 --
 -- Name: idx_promotion_budget_events_promotion_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_budget_events_promotion_id ON public.promotion_budget_events USING btree (promotion_id, "time");
+CREATE INDEX IF NOT EXISTS idx_promotion_budget_events_promotion_id ON public.promotion_budget_events USING btree (promotion_id, "time");
 
 
 --
 -- Name: idx_promotion_budget_events_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_budget_events_transaction_id ON public.promotion_budget_events USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_promotion_budget_events_transaction_id ON public.promotion_budget_events USING btree (transaction_id);
 
 
 --
 -- Name: idx_promotion_status_events_event_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_status_events_event_type ON public.promotion_status_events USING btree (event_type, "time");
+CREATE INDEX IF NOT EXISTS idx_promotion_status_events_event_type ON public.promotion_status_events USING btree (event_type, "time");
 
 
 --
 -- Name: idx_promotion_status_events_post_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_status_events_post_id ON public.promotion_status_events USING btree (post_id, "time");
+CREATE INDEX IF NOT EXISTS idx_promotion_status_events_post_id ON public.promotion_status_events USING btree (post_id, "time");
 
 
 --
 -- Name: idx_promotion_status_events_promotion_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_status_events_promotion_id ON public.promotion_status_events USING btree (promotion_id, "time");
+CREATE INDEX IF NOT EXISTS idx_promotion_status_events_promotion_id ON public.promotion_status_events USING btree (promotion_id, "time");
 
 
 --
 -- Name: idx_promotion_status_events_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_status_events_transaction_id ON public.promotion_status_events USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_promotion_status_events_transaction_id ON public.promotion_status_events USING btree (transaction_id);
 
 
 --
 -- Name: idx_promotion_status_events_triggered_by; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_status_events_triggered_by ON public.promotion_status_events USING btree (triggered_by, "time");
+CREATE INDEX IF NOT EXISTS idx_promotion_status_events_triggered_by ON public.promotion_status_events USING btree (triggered_by, "time");
 
 
 --
 -- Name: idx_promotion_views_platform_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_views_platform_id ON public.promotion_views USING btree (platform_id, "time");
+CREATE INDEX IF NOT EXISTS idx_promotion_views_platform_id ON public.promotion_views USING btree (platform_id, "time");
 
 
 --
 -- Name: idx_promotion_views_post_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_views_post_id ON public.promotion_views USING btree (post_id, "time");
+CREATE INDEX IF NOT EXISTS idx_promotion_views_post_id ON public.promotion_views USING btree (post_id, "time");
 
 
 --
@@ -11455,91 +11448,91 @@ CREATE UNIQUE INDEX idx_promotion_views_post_viewer_time ON public.promotion_vie
 -- Name: idx_promotion_views_promotion_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_views_promotion_id ON public.promotion_views USING btree (promotion_id, "time");
+CREATE INDEX IF NOT EXISTS idx_promotion_views_promotion_id ON public.promotion_views USING btree (promotion_id, "time");
 
 
 --
 -- Name: idx_promotion_views_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_views_transaction_id ON public.promotion_views USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_promotion_views_transaction_id ON public.promotion_views USING btree (transaction_id);
 
 
 --
 -- Name: idx_promotion_views_viewer; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_promotion_views_viewer ON public.promotion_views USING btree (viewer, "time");
+CREATE INDEX IF NOT EXISTS idx_promotion_views_viewer ON public.promotion_views USING btree (viewer, "time");
 
 
 --
 -- Name: idx_proposals_anonymous_votes; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_proposals_anonymous_votes ON public.proposals USING btree (anonymous_votes_for, anonymous_votes_against, "time");
+CREATE INDEX IF NOT EXISTS idx_proposals_anonymous_votes ON public.proposals USING btree (anonymous_votes_for, anonymous_votes_against, "time");
 
 
 --
 -- Name: idx_proposals_pending_decryption; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_proposals_pending_decryption ON public.proposals USING btree (pending_anonymous_decryption, "time") WHERE (pending_anonymous_decryption = true);
+CREATE INDEX IF NOT EXISTS idx_proposals_pending_decryption ON public.proposals USING btree (pending_anonymous_decryption, "time") WHERE (pending_anonymous_decryption = true);
 
 
 --
 -- Name: idx_proposals_proposal_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_proposals_proposal_type ON public.proposals USING btree (proposal_type, "time");
+CREATE INDEX IF NOT EXISTS idx_proposals_proposal_type ON public.proposals USING btree (proposal_type, "time");
 
 
 --
 -- Name: idx_proposals_reference_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_proposals_reference_id ON public.proposals USING btree (reference_id, "time") WHERE (reference_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_proposals_reference_id ON public.proposals USING btree (reference_id, "time") WHERE (reference_id IS NOT NULL);
 
 
 --
 -- Name: idx_proposals_status; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_proposals_status ON public.proposals USING btree (status, "time");
+CREATE INDEX IF NOT EXISTS idx_proposals_status ON public.proposals USING btree (status, "time");
 
 
 --
 -- Name: idx_proposals_submitter; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_proposals_submitter ON public.proposals USING btree (submitter, "time");
+CREATE INDEX IF NOT EXISTS idx_proposals_submitter ON public.proposals USING btree (submitter, "time");
 
 
 --
 -- Name: idx_proposals_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_proposals_transaction_id ON public.proposals USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_proposals_transaction_id ON public.proposals USING btree (transaction_id);
 
 
 --
 -- Name: idx_proposals_voting_end_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_proposals_voting_end_time ON public.proposals USING btree (voting_end_time, "time") WHERE (voting_end_time IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_proposals_voting_end_time ON public.proposals USING btree (voting_end_time, "time") WHERE (voting_end_time IS NOT NULL);
 
 
 --
 -- Name: idx_ratings_registry_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_ratings_registry_type ON public.delegate_ratings USING btree (registry_type, "time");
+CREATE INDEX IF NOT EXISTS idx_ratings_registry_type ON public.delegate_ratings USING btree (registry_type, "time");
 
 
 --
 -- Name: idx_ratings_target_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_ratings_target_address ON public.delegate_ratings USING btree (target_address, "time");
+CREATE INDEX IF NOT EXISTS idx_ratings_target_address ON public.delegate_ratings USING btree (target_address, "time");
 
 
 --
@@ -11553,21 +11546,21 @@ CREATE UNIQUE INDEX idx_ratings_target_voter_registry_time ON public.delegate_ra
 -- Name: idx_ratings_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_ratings_transaction_id ON public.delegate_ratings USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_ratings_transaction_id ON public.delegate_ratings USING btree (transaction_id);
 
 
 --
 -- Name: idx_ratings_voter_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_ratings_voter_address ON public.delegate_ratings USING btree (voter_address, "time");
+CREATE INDEX IF NOT EXISTS idx_ratings_voter_address ON public.delegate_ratings USING btree (voter_address, "time");
 
 
 --
 -- Name: idx_reaction_counts_object_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reaction_counts_object_id ON public.reaction_counts USING btree (object_id);
+CREATE INDEX IF NOT EXISTS idx_reaction_counts_object_id ON public.reaction_counts USING btree (object_id);
 
 
 --
@@ -11581,14 +11574,14 @@ CREATE UNIQUE INDEX idx_reaction_counts_object_reaction ON public.reaction_count
 -- Name: idx_reaction_counts_reaction_text; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reaction_counts_reaction_text ON public.reaction_counts USING btree (reaction_text);
+CREATE INDEX IF NOT EXISTS idx_reaction_counts_reaction_text ON public.reaction_counts USING btree (reaction_text);
 
 
 --
 -- Name: idx_reactions_object_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reactions_object_id ON public.reactions USING btree (object_id, "time");
+CREATE INDEX IF NOT EXISTS idx_reactions_object_id ON public.reactions USING btree (object_id, "time");
 
 
 --
@@ -11602,182 +11595,182 @@ CREATE UNIQUE INDEX idx_reactions_object_user_time ON public.reactions USING btr
 -- Name: idx_reactions_reaction_text; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reactions_reaction_text ON public.reactions USING btree (reaction_text);
+CREATE INDEX IF NOT EXISTS idx_reactions_reaction_text ON public.reactions USING btree (reaction_text);
 
 
 --
 -- Name: idx_reactions_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reactions_transaction_id ON public.reactions USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_reactions_transaction_id ON public.reactions USING btree (transaction_id);
 
 
 --
 -- Name: idx_reactions_user_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reactions_user_address ON public.reactions USING btree (user_address, "time");
+CREATE INDEX IF NOT EXISTS idx_reactions_user_address ON public.reactions USING btree (user_address, "time");
 
 
 --
 -- Name: idx_relay_conversations_participant1; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_conversations_participant1 ON public.relay_conversations USING btree (participant1_address, last_message_at DESC);
+CREATE INDEX IF NOT EXISTS idx_relay_conversations_participant1 ON public.relay_conversations USING btree (participant1_address, last_message_at DESC);
 
 
 --
 -- Name: idx_relay_conversations_participant2; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_conversations_participant2 ON public.relay_conversations USING btree (participant2_address, last_message_at DESC);
+CREATE INDEX IF NOT EXISTS idx_relay_conversations_participant2 ON public.relay_conversations USING btree (participant2_address, last_message_at DESC);
 
 
 --
 -- Name: idx_relay_device_tokens_platform; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_device_tokens_platform ON public.relay_device_tokens USING btree (platform);
+CREATE INDEX IF NOT EXISTS idx_relay_device_tokens_platform ON public.relay_device_tokens USING btree (platform);
 
 
 --
 -- Name: idx_relay_device_tokens_user; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_device_tokens_user ON public.relay_device_tokens USING btree (user_address);
+CREATE INDEX IF NOT EXISTS idx_relay_device_tokens_user ON public.relay_device_tokens USING btree (user_address);
 
 
 --
 -- Name: idx_relay_messages_conversation; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_messages_conversation ON public.relay_messages USING btree (conversation_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_relay_messages_conversation ON public.relay_messages USING btree (conversation_id, created_at DESC);
 
 
 --
 -- Name: idx_relay_messages_recipient; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_messages_recipient ON public.relay_messages USING btree (recipient_address, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_relay_messages_recipient ON public.relay_messages USING btree (recipient_address, created_at DESC);
 
 
 --
 -- Name: idx_relay_messages_sender; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_messages_sender ON public.relay_messages USING btree (sender_address, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_relay_messages_sender ON public.relay_messages USING btree (sender_address, created_at DESC);
 
 
 --
 -- Name: idx_relay_notifications_user_all; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_notifications_user_all ON public.relay_notifications USING btree (user_address, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_relay_notifications_user_all ON public.relay_notifications USING btree (user_address, created_at DESC);
 
 
 --
 -- Name: idx_relay_notifications_user_platform; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_notifications_user_platform ON public.relay_notifications USING btree (user_address, platform_id, created_at DESC) WHERE (read_at IS NULL);
+CREATE INDEX IF NOT EXISTS idx_relay_notifications_user_platform ON public.relay_notifications USING btree (user_address, platform_id, created_at DESC) WHERE (read_at IS NULL);
 
 
 --
 -- Name: idx_relay_notifications_user_platform_all; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_notifications_user_platform_all ON public.relay_notifications USING btree (user_address, platform_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_relay_notifications_user_platform_all ON public.relay_notifications USING btree (user_address, platform_id, created_at DESC);
 
 
 --
 -- Name: idx_relay_notifications_user_unread; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_notifications_user_unread ON public.relay_notifications USING btree (user_address, created_at DESC) WHERE (read_at IS NULL);
+CREATE INDEX IF NOT EXISTS idx_relay_notifications_user_unread ON public.relay_notifications USING btree (user_address, created_at DESC) WHERE (read_at IS NULL);
 
 
 --
 -- Name: idx_relay_outbox_event_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_outbox_event_id ON public.relay_outbox USING btree (event_id) WHERE (event_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_relay_outbox_event_id ON public.relay_outbox USING btree (event_id) WHERE (event_id IS NOT NULL);
 
 
 --
 -- Name: idx_relay_outbox_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_outbox_transaction_id ON public.relay_outbox USING btree (transaction_id) WHERE (transaction_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_relay_outbox_transaction_id ON public.relay_outbox USING btree (transaction_id) WHERE (transaction_id IS NOT NULL);
 
 
 --
 -- Name: idx_relay_outbox_unprocessed; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_outbox_unprocessed ON public.relay_outbox USING btree (created_at) WHERE (processed_at IS NULL);
+CREATE INDEX IF NOT EXISTS idx_relay_outbox_unprocessed ON public.relay_outbox USING btree (created_at) WHERE (processed_at IS NULL);
 
 
 --
 -- Name: idx_relay_ws_connections_heartbeat; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_ws_connections_heartbeat ON public.relay_ws_connections USING btree (last_heartbeat_at) WHERE (disconnected_at IS NULL);
+CREATE INDEX IF NOT EXISTS idx_relay_ws_connections_heartbeat ON public.relay_ws_connections USING btree (last_heartbeat_at) WHERE (disconnected_at IS NULL);
 
 
 --
 -- Name: idx_relay_ws_connections_user_active; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_relay_ws_connections_user_active ON public.relay_ws_connections USING btree (user_address, connected_at DESC) WHERE (disconnected_at IS NULL);
+CREATE INDEX IF NOT EXISTS idx_relay_ws_connections_user_active ON public.relay_ws_connections USING btree (user_address, connected_at DESC) WHERE (disconnected_at IS NULL);
 
 
 --
 -- Name: idx_reports_object_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reports_object_id ON public.posts_reports USING btree (object_id, "time");
+CREATE INDEX IF NOT EXISTS idx_reports_object_id ON public.posts_reports USING btree (object_id, "time");
 
 
 --
 -- Name: idx_reports_reporter; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reports_reporter ON public.posts_reports USING btree (reporter, "time");
+CREATE INDEX IF NOT EXISTS idx_reports_reporter ON public.posts_reports USING btree (reporter, "time");
 
 
 --
 -- Name: idx_reports_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reports_transaction_id ON public.posts_reports USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_reports_transaction_id ON public.posts_reports USING btree (transaction_id);
 
 
 --
 -- Name: idx_reposts_original_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reposts_original_id ON public.reposts USING btree (original_id, "time");
+CREATE INDEX IF NOT EXISTS idx_reposts_original_id ON public.reposts USING btree (original_id, "time");
 
 
 --
 -- Name: idx_reposts_original_post_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reposts_original_post_id ON public.reposts USING btree (original_post_id, "time");
+CREATE INDEX IF NOT EXISTS idx_reposts_original_post_id ON public.reposts USING btree (original_post_id, "time");
 
 
 --
 -- Name: idx_reposts_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reposts_owner ON public.reposts USING btree (owner, "time");
+CREATE INDEX IF NOT EXISTS idx_reposts_owner ON public.reposts USING btree (owner, "time");
 
 
 --
 -- Name: idx_reposts_profile_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reposts_profile_id ON public.reposts USING btree (profile_id, "time");
+CREATE INDEX IF NOT EXISTS idx_reposts_profile_id ON public.reposts USING btree (profile_id, "time");
 
 
 --
@@ -11791,133 +11784,133 @@ CREATE UNIQUE INDEX idx_reposts_repost_id_time ON public.reposts USING btree (re
 -- Name: idx_reposts_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reposts_transaction_id ON public.reposts USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_reposts_transaction_id ON public.reposts USING btree (transaction_id);
 
 
 --
 -- Name: idx_reward_amount; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reward_amount ON public.reward_distributions USING btree (amount, "time");
+CREATE INDEX IF NOT EXISTS idx_reward_amount ON public.reward_distributions USING btree (amount, "time");
 
 
 --
 -- Name: idx_reward_distribution_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reward_distribution_type ON public.reward_distributions USING btree (distribution_type, "time");
+CREATE INDEX IF NOT EXISTS idx_reward_distribution_type ON public.reward_distributions USING btree (distribution_type, "time");
 
 
 --
 -- Name: idx_reward_proposal_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reward_proposal_id ON public.reward_distributions USING btree (proposal_id, "time");
+CREATE INDEX IF NOT EXISTS idx_reward_proposal_id ON public.reward_distributions USING btree (proposal_id, "time");
 
 
 --
 -- Name: idx_reward_recipient_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reward_recipient_address ON public.reward_distributions USING btree (recipient_address, "time");
+CREATE INDEX IF NOT EXISTS idx_reward_recipient_address ON public.reward_distributions USING btree (recipient_address, "time");
 
 
 --
 -- Name: idx_reward_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_reward_transaction_id ON public.reward_distributions USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_reward_transaction_id ON public.reward_distributions USING btree (transaction_id);
 
 
 --
 -- Name: idx_social_graph_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_social_graph_created_at ON public.social_graph_relationships USING btree (created_at);
+CREATE INDEX IF NOT EXISTS idx_social_graph_created_at ON public.social_graph_relationships USING btree (created_at);
 
 
 --
 -- Name: idx_social_graph_events_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_social_graph_events_created_at ON public.social_graph_events USING btree (created_at);
+CREATE INDEX IF NOT EXISTS idx_social_graph_events_created_at ON public.social_graph_events USING btree (created_at);
 
 
 --
 -- Name: idx_social_graph_events_event_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_social_graph_events_event_id ON public.social_graph_events USING btree (event_id);
+CREATE INDEX IF NOT EXISTS idx_social_graph_events_event_id ON public.social_graph_events USING btree (event_id);
 
 
 --
 -- Name: idx_social_graph_events_event_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_social_graph_events_event_type ON public.social_graph_events USING btree (event_type);
+CREATE INDEX IF NOT EXISTS idx_social_graph_events_event_type ON public.social_graph_events USING btree (event_type);
 
 
 --
 -- Name: idx_social_graph_follower_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_social_graph_follower_address ON public.social_graph_relationships USING btree (follower_address);
+CREATE INDEX IF NOT EXISTS idx_social_graph_follower_address ON public.social_graph_relationships USING btree (follower_address);
 
 
 --
 -- Name: idx_social_graph_following_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_social_graph_following_address ON public.social_graph_relationships USING btree (following_address);
+CREATE INDEX IF NOT EXISTS idx_social_graph_following_address ON public.social_graph_relationships USING btree (following_address);
 
 
 --
 -- Name: idx_social_graph_relationships_follower_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_social_graph_relationships_follower_address ON public.social_graph_relationships USING btree (follower_address);
+CREATE INDEX IF NOT EXISTS idx_social_graph_relationships_follower_address ON public.social_graph_relationships USING btree (follower_address);
 
 
 --
 -- Name: idx_social_graph_relationships_following_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_social_graph_relationships_following_address ON public.social_graph_relationships USING btree (following_address);
+CREATE INDEX IF NOT EXISTS idx_social_graph_relationships_following_address ON public.social_graph_relationships USING btree (following_address);
 
 
 --
 -- Name: idx_social_graph_relationships_pair; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_social_graph_relationships_pair ON public.social_graph_relationships USING btree (follower_address, following_address);
+CREATE INDEX IF NOT EXISTS idx_social_graph_relationships_pair ON public.social_graph_relationships USING btree (follower_address, following_address);
 
 
 --
 -- Name: idx_spot_bets_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_bets_created_at ON public.spot_bets USING btree (timestamp_epoch);
+CREATE INDEX IF NOT EXISTS idx_spot_bets_created_at ON public.spot_bets USING btree (timestamp_epoch);
 
 
 --
 -- Name: idx_spot_bets_post_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_bets_post_id ON public.spot_bets USING btree (post_id, "time");
+CREATE INDEX IF NOT EXISTS idx_spot_bets_post_id ON public.spot_bets USING btree (post_id, "time");
 
 
 --
 -- Name: idx_spot_bets_user; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_bets_user ON public.spot_bets USING btree (user_address, "time");
+CREATE INDEX IF NOT EXISTS idx_spot_bets_user ON public.spot_bets USING btree (user_address, "time");
 
 
 --
 -- Name: idx_spot_config_enable_flag; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_config_enable_flag ON public.spot_config USING btree (enable_flag, "time");
+CREATE INDEX IF NOT EXISTS idx_spot_config_enable_flag ON public.spot_config USING btree (enable_flag, "time");
 
 
 --
@@ -11931,581 +11924,581 @@ CREATE UNIQUE INDEX idx_spot_config_time ON public.spot_config USING btree ("tim
 -- Name: idx_spot_config_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_config_transaction_id ON public.spot_config USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_spot_config_transaction_id ON public.spot_config USING btree (transaction_id);
 
 
 --
 -- Name: idx_spot_config_updated_by; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_config_updated_by ON public.spot_config USING btree (updated_by, "time");
+CREATE INDEX IF NOT EXISTS idx_spot_config_updated_by ON public.spot_config USING btree (updated_by, "time");
 
 
 --
 -- Name: idx_spot_events_post; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_events_post ON public.spot_events USING btree (post_id);
+CREATE INDEX IF NOT EXISTS idx_spot_events_post ON public.spot_events USING btree (post_id);
 
 
 --
 -- Name: idx_spot_events_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_events_type ON public.spot_events USING btree (event_type);
+CREATE INDEX IF NOT EXISTS idx_spot_events_type ON public.spot_events USING btree (event_type);
 
 
 --
 -- Name: idx_spot_payouts_post_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_payouts_post_id ON public.spot_payouts USING btree (post_id, "time");
+CREATE INDEX IF NOT EXISTS idx_spot_payouts_post_id ON public.spot_payouts USING btree (post_id, "time");
 
 
 --
 -- Name: idx_spot_payouts_user; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_payouts_user ON public.spot_payouts USING btree (user_address, "time");
+CREATE INDEX IF NOT EXISTS idx_spot_payouts_user ON public.spot_payouts USING btree (user_address, "time");
 
 
 --
 -- Name: idx_spot_records_post_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_records_post_id ON public.spot_records USING btree (post_id);
+CREATE INDEX IF NOT EXISTS idx_spot_records_post_id ON public.spot_records USING btree (post_id);
 
 
 --
 -- Name: idx_spot_records_status; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_records_status ON public.spot_records USING btree (status);
+CREATE INDEX IF NOT EXISTS idx_spot_records_status ON public.spot_records USING btree (status);
 
 
 --
 -- Name: idx_spot_refunds_post_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_refunds_post_id ON public.spot_refunds USING btree (post_id, "time");
+CREATE INDEX IF NOT EXISTS idx_spot_refunds_post_id ON public.spot_refunds USING btree (post_id, "time");
 
 
 --
 -- Name: idx_spot_refunds_user; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_refunds_user ON public.spot_refunds USING btree (user_address, "time");
+CREATE INDEX IF NOT EXISTS idx_spot_refunds_user ON public.spot_refunds USING btree (user_address, "time");
 
 
 --
 -- Name: idx_spot_resolutions_post_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_resolutions_post_id ON public.spot_resolutions USING btree (post_id, "time");
+CREATE INDEX IF NOT EXISTS idx_spot_resolutions_post_id ON public.spot_resolutions USING btree (post_id, "time");
 
 
 --
 -- Name: idx_spot_resolutions_reasoning; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_resolutions_reasoning ON public.spot_resolutions USING gin (to_tsvector('english'::regconfig, reasoning)) WHERE (reasoning <> ''::text);
+CREATE INDEX IF NOT EXISTS idx_spot_resolutions_reasoning ON public.spot_resolutions USING gin (to_tsvector('english'::regconfig, reasoning)) WHERE (reasoning <> ''::text);
 
 
 --
 -- Name: idx_spot_unified_post; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_unified_post ON public.social_proof_of_truth USING btree (post_id, "time");
+CREATE INDEX IF NOT EXISTS idx_spot_unified_post ON public.social_proof_of_truth USING btree (post_id, "time");
 
 
 --
 -- Name: idx_spot_unified_tx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_unified_tx ON public.social_proof_of_truth USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_spot_unified_tx ON public.social_proof_of_truth USING btree (transaction_id);
 
 
 --
 -- Name: idx_spot_unified_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_unified_type ON public.social_proof_of_truth USING btree (event_type, "time");
+CREATE INDEX IF NOT EXISTS idx_spot_unified_type ON public.social_proof_of_truth USING btree (event_type, "time");
 
 
 --
 -- Name: idx_spot_unified_user; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spot_unified_user ON public.social_proof_of_truth USING btree (user_address, "time");
+CREATE INDEX IF NOT EXISTS idx_spot_unified_user ON public.social_proof_of_truth USING btree (user_address, "time");
 
 
 --
 -- Name: idx_spt_exchange_config_updated_by; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_exchange_config_updated_by ON public.spt_exchange_config USING btree (updated_by);
+CREATE INDEX IF NOT EXISTS idx_spt_exchange_config_updated_by ON public.spt_exchange_config USING btree (updated_by);
 
 
 --
 -- Name: idx_spt_holdings_holder_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_holdings_holder_address ON public.spt_holdings USING btree (holder_address);
+CREATE INDEX IF NOT EXISTS idx_spt_holdings_holder_address ON public.spt_holdings USING btree (holder_address);
 
 
 --
 -- Name: idx_spt_holdings_pool_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_holdings_pool_id ON public.spt_holdings USING btree (pool_id);
+CREATE INDEX IF NOT EXISTS idx_spt_holdings_pool_id ON public.spt_holdings USING btree (pool_id);
 
 
 --
 -- Name: idx_spt_pools_associated_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_pools_associated_id ON public.social_proof_token_pools USING btree (associated_id);
+CREATE INDEX IF NOT EXISTS idx_spt_pools_associated_id ON public.social_proof_token_pools USING btree (associated_id);
 
 
 --
 -- Name: idx_spt_pools_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_pools_owner ON public.social_proof_token_pools USING btree (owner);
+CREATE INDEX IF NOT EXISTS idx_spt_pools_owner ON public.social_proof_token_pools USING btree (owner);
 
 
 --
 -- Name: idx_spt_pools_pool_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_pools_pool_id ON public.social_proof_token_pools USING btree (pool_id);
+CREATE INDEX IF NOT EXISTS idx_spt_pools_pool_id ON public.social_proof_token_pools USING btree (pool_id);
 
 
 --
 -- Name: idx_spt_pools_token_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_pools_token_type ON public.social_proof_token_pools USING btree (token_type);
+CREATE INDEX IF NOT EXISTS idx_spt_pools_token_type ON public.social_proof_token_pools USING btree (token_type);
 
 
 --
 -- Name: idx_spt_price_history_pool_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_price_history_pool_id ON public.spt_price_history USING btree (pool_id);
+CREATE INDEX IF NOT EXISTS idx_spt_price_history_pool_id ON public.spt_price_history USING btree (pool_id);
 
 
 --
 -- Name: idx_spt_reservation_pools_associated_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_reservation_pools_associated_id ON public.spt_reservation_pools USING btree (associated_id);
+CREATE INDEX IF NOT EXISTS idx_spt_reservation_pools_associated_id ON public.spt_reservation_pools USING btree (associated_id);
 
 
 --
 -- Name: idx_spt_reservation_pools_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_reservation_pools_owner ON public.spt_reservation_pools USING btree (owner);
+CREATE INDEX IF NOT EXISTS idx_spt_reservation_pools_owner ON public.spt_reservation_pools USING btree (owner);
 
 
 --
 -- Name: idx_spt_reservation_pools_pool_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_reservation_pools_pool_id ON public.spt_reservation_pools USING btree (pool_id);
+CREATE INDEX IF NOT EXISTS idx_spt_reservation_pools_pool_id ON public.spt_reservation_pools USING btree (pool_id);
 
 
 --
 -- Name: idx_spt_reservation_pools_status; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_reservation_pools_status ON public.spt_reservation_pools USING btree (status);
+CREATE INDEX IF NOT EXISTS idx_spt_reservation_pools_status ON public.spt_reservation_pools USING btree (status);
 
 
 --
 -- Name: idx_spt_reservation_pools_token_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_reservation_pools_token_type ON public.spt_reservation_pools USING btree (token_type);
+CREATE INDEX IF NOT EXISTS idx_spt_reservation_pools_token_type ON public.spt_reservation_pools USING btree (token_type);
 
 
 --
 -- Name: idx_spt_reservations_pool_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_reservations_pool_id ON public.spt_reservations USING btree (pool_id);
+CREATE INDEX IF NOT EXISTS idx_spt_reservations_pool_id ON public.spt_reservations USING btree (pool_id);
 
 
 --
 -- Name: idx_spt_reservations_reservatior_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_reservations_reservatior_address ON public.spt_reservations USING btree (reservatior_address);
+CREATE INDEX IF NOT EXISTS idx_spt_reservations_reservatior_address ON public.spt_reservations USING btree (reservatior_address);
 
 
 --
 -- Name: idx_spt_revenue_creator_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_revenue_creator_time ON public.spt_revenue USING btree (creator_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_spt_revenue_creator_time ON public.spt_revenue USING btree (creator_address, "time" DESC);
 
 
 --
 -- Name: idx_spt_revenue_platform_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_revenue_platform_time ON public.spt_revenue USING btree (platform_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_spt_revenue_platform_time ON public.spt_revenue USING btree (platform_address, "time" DESC);
 
 
 --
 -- Name: idx_spt_revenue_pool_time_fees; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_revenue_pool_time_fees ON public.spt_revenue USING btree (pool_id, "time" DESC, total_fee DESC);
+CREATE INDEX IF NOT EXISTS idx_spt_revenue_pool_time_fees ON public.spt_revenue USING btree (pool_id, "time" DESC, total_fee DESC);
 
 
 --
 -- Name: idx_spt_revenue_time_pool; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_revenue_time_pool ON public.spt_revenue USING btree ("time" DESC, pool_id);
+CREATE INDEX IF NOT EXISTS idx_spt_revenue_time_pool ON public.spt_revenue USING btree ("time" DESC, pool_id);
 
 
 --
 -- Name: idx_spt_revenue_trader_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_revenue_trader_time ON public.spt_revenue USING btree (trader, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_spt_revenue_trader_time ON public.spt_revenue USING btree (trader, "time" DESC);
 
 
 --
 -- Name: idx_spt_revenue_type_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_revenue_type_time ON public.spt_revenue USING btree (transaction_type, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_spt_revenue_type_time ON public.spt_revenue USING btree (transaction_type, "time" DESC);
 
 
 --
 -- Name: idx_spt_transactions_pool_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_transactions_pool_id ON public.spt_transactions USING btree (pool_id);
+CREATE INDEX IF NOT EXISTS idx_spt_transactions_pool_id ON public.spt_transactions USING btree (pool_id);
 
 
 --
 -- Name: idx_spt_transactions_sender; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_transactions_sender ON public.spt_transactions USING btree (sender);
+CREATE INDEX IF NOT EXISTS idx_spt_transactions_sender ON public.spt_transactions USING btree (sender);
 
 
 --
 -- Name: idx_spt_transactions_transaction_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_spt_transactions_transaction_type ON public.spt_transactions USING btree (transaction_type);
+CREATE INDEX IF NOT EXISTS idx_spt_transactions_transaction_type ON public.spt_transactions USING btree (transaction_type);
 
 
 --
 -- Name: idx_subscription_access_content_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_subscription_access_content_time ON public.subscription_access_logs USING btree (content_id, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_subscription_access_content_time ON public.subscription_access_logs USING btree (content_id, "time" DESC);
 
 
 --
 -- Name: idx_subscription_access_subscriber_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_subscription_access_subscriber_time ON public.subscription_access_logs USING btree (subscriber, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_subscription_access_subscriber_time ON public.subscription_access_logs USING btree (subscriber, "time" DESC);
 
 
 --
 -- Name: idx_subscription_access_time_sub; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_subscription_access_time_sub ON public.subscription_access_logs USING btree ("time" DESC, subscription_id);
+CREATE INDEX IF NOT EXISTS idx_subscription_access_time_sub ON public.subscription_access_logs USING btree ("time" DESC, subscription_id);
 
 
 --
 -- Name: idx_subscription_events_service_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_subscription_events_service_time ON public.subscription_events USING btree (service_id, "time" DESC) WHERE (service_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_subscription_events_service_time ON public.subscription_events USING btree (service_id, "time" DESC) WHERE (service_id IS NOT NULL);
 
 
 --
 -- Name: idx_subscription_events_subscription_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_subscription_events_subscription_time ON public.subscription_events USING btree (subscription_id, "time" DESC) WHERE (subscription_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_subscription_events_subscription_time ON public.subscription_events USING btree (subscription_id, "time" DESC) WHERE (subscription_id IS NOT NULL);
 
 
 --
 -- Name: idx_subscription_events_time_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_subscription_events_time_type ON public.subscription_events USING btree ("time" DESC, event_type);
+CREATE INDEX IF NOT EXISTS idx_subscription_events_time_type ON public.subscription_events USING btree ("time" DESC, event_type);
 
 
 --
 -- Name: idx_subscription_revenue_service_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_subscription_revenue_service_id ON public.subscription_revenue USING btree (service_id);
+CREATE INDEX IF NOT EXISTS idx_subscription_revenue_service_id ON public.subscription_revenue USING btree (service_id);
 
 
 --
 -- Name: idx_subscription_revenue_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_subscription_revenue_time ON public.subscription_revenue USING btree ("time");
+CREATE INDEX IF NOT EXISTS idx_subscription_revenue_time ON public.subscription_revenue USING btree ("time");
 
 
 --
 -- Name: idx_subscription_revenue_time_service; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_subscription_revenue_time_service ON public.subscription_revenue USING btree ("time" DESC, service_id);
+CREATE INDEX IF NOT EXISTS idx_subscription_revenue_time_service ON public.subscription_revenue USING btree ("time" DESC, service_id);
 
 
 --
 -- Name: idx_subscription_revenue_to_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_subscription_revenue_to_time ON public.subscription_revenue USING btree (to_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_subscription_revenue_to_time ON public.subscription_revenue USING btree (to_address, "time" DESC);
 
 
 --
 -- Name: idx_subscription_revenue_type_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_subscription_revenue_type_time ON public.subscription_revenue USING btree (revenue_type, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_subscription_revenue_type_time ON public.subscription_revenue USING btree (revenue_type, "time" DESC);
 
 
 --
 -- Name: idx_tips_object_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_tips_object_id ON public.tips USING btree (object_id, "time");
+CREATE INDEX IF NOT EXISTS idx_tips_object_id ON public.tips USING btree (object_id, "time");
 
 
 --
 -- Name: idx_tips_recipient; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_tips_recipient ON public.tips USING btree (recipient, "time");
+CREATE INDEX IF NOT EXISTS idx_tips_recipient ON public.tips USING btree (recipient, "time");
 
 
 --
 -- Name: idx_tips_tipper; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_tips_tipper ON public.tips USING btree (tipper, "time");
+CREATE INDEX IF NOT EXISTS idx_tips_tipper ON public.tips USING btree (tipper, "time");
 
 
 --
 -- Name: idx_tips_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_tips_transaction_id ON public.tips USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_tips_transaction_id ON public.tips USING btree (transaction_id);
 
 
 --
 -- Name: idx_token_exchange_config_trading_halted; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_token_exchange_config_trading_halted ON public.token_exchange_config USING btree (trading_halted);
+CREATE INDEX IF NOT EXISTS idx_token_exchange_config_trading_halted ON public.token_exchange_config USING btree (trading_halted);
 
 
 --
 -- Name: idx_token_exchange_config_updated_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_token_exchange_config_updated_at ON public.token_exchange_config USING btree (updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_token_exchange_config_updated_at ON public.token_exchange_config USING btree (updated_at DESC);
 
 
 --
 -- Name: idx_token_exchange_events_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_token_exchange_events_created_at ON public.token_exchange_events USING btree (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_token_exchange_events_created_at ON public.token_exchange_events USING btree (created_at DESC);
 
 
 --
 -- Name: idx_token_exchange_events_event_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_token_exchange_events_event_id ON public.token_exchange_events USING btree (event_id);
+CREATE INDEX IF NOT EXISTS idx_token_exchange_events_event_id ON public.token_exchange_events USING btree (event_id);
 
 
 --
 -- Name: idx_token_exchange_events_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_token_exchange_events_type ON public.token_exchange_events USING btree (event_type);
+CREATE INDEX IF NOT EXISTS idx_token_exchange_events_type ON public.token_exchange_events USING btree (event_type);
 
 
 --
 -- Name: idx_transfers_new_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_transfers_new_owner ON public.posts_transfers USING btree (new_owner, "time");
+CREATE INDEX IF NOT EXISTS idx_transfers_new_owner ON public.posts_transfers USING btree (new_owner, "time");
 
 
 --
 -- Name: idx_transfers_object_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_transfers_object_id ON public.posts_transfers USING btree (object_id, "time");
+CREATE INDEX IF NOT EXISTS idx_transfers_object_id ON public.posts_transfers USING btree (object_id, "time");
 
 
 --
 -- Name: idx_transfers_previous_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_transfers_previous_owner ON public.posts_transfers USING btree (previous_owner, "time");
+CREATE INDEX IF NOT EXISTS idx_transfers_previous_owner ON public.posts_transfers USING btree (previous_owner, "time");
 
 
 --
 -- Name: idx_transfers_transaction_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_transfers_transaction_id ON public.posts_transfers USING btree (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_transfers_transaction_id ON public.posts_transfers USING btree (transaction_id);
 
 
 --
 -- Name: idx_unified_revenue_content; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_unified_revenue_content ON public.unified_revenue USING btree (content_id, content_type, "time" DESC) WHERE (content_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_content ON public.unified_revenue USING btree (content_id, content_type, "time" DESC) WHERE (content_id IS NOT NULL);
 
 
 --
 -- Name: idx_unified_revenue_creator_source_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_unified_revenue_creator_source_time ON public.unified_revenue USING btree (creator_address, revenue_source, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_creator_source_time ON public.unified_revenue USING btree (creator_address, revenue_source, "time" DESC);
 
 
 --
 -- Name: idx_unified_revenue_creator_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_unified_revenue_creator_time ON public.unified_revenue USING btree (creator_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_creator_time ON public.unified_revenue USING btree (creator_address, "time" DESC);
 
 
 --
 -- Name: idx_unified_revenue_payer_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_unified_revenue_payer_time ON public.unified_revenue USING btree (payer_address, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_payer_time ON public.unified_revenue USING btree (payer_address, "time" DESC);
 
 
 --
 -- Name: idx_unified_revenue_platform_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_unified_revenue_platform_time ON public.unified_revenue USING btree (platform_address, "time" DESC) WHERE (platform_address IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_platform_time ON public.unified_revenue USING btree (platform_address, "time" DESC) WHERE (platform_address IS NOT NULL);
 
 
 --
 -- Name: idx_unified_revenue_source_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_unified_revenue_source_type ON public.unified_revenue USING btree (revenue_source, revenue_type, "time" DESC);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_source_type ON public.unified_revenue USING btree (revenue_source, revenue_type, "time" DESC);
 
 
 --
 -- Name: idx_unified_revenue_time_amount; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_unified_revenue_time_amount ON public.unified_revenue USING btree ("time" DESC, amount DESC);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_time_amount ON public.unified_revenue USING btree ("time" DESC, amount DESC);
 
 
 --
 -- Name: idx_unified_revenue_time_source; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_unified_revenue_time_source ON public.unified_revenue USING btree ("time" DESC, revenue_source);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_time_source ON public.unified_revenue USING btree ("time" DESC, revenue_source);
 
 
 --
 -- Name: idx_unique_license_id_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_unique_license_id_time ON public.my_ip USING btree (license_id, "time");
+CREATE INDEX IF NOT EXISTS idx_unique_license_id_time ON public.my_ip USING btree (license_id, "time");
 
 
 --
 -- Name: idx_vesting_events_event_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_vesting_events_event_time ON public.vesting_events USING btree (event_time);
+CREATE INDEX IF NOT EXISTS idx_vesting_events_event_time ON public.vesting_events USING btree (event_time);
 
 
 --
 -- Name: idx_vesting_events_event_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_vesting_events_event_type ON public.vesting_events USING btree (event_type);
+CREATE INDEX IF NOT EXISTS idx_vesting_events_event_type ON public.vesting_events USING btree (event_type);
 
 
 --
 -- Name: idx_vesting_events_owner_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_vesting_events_owner_address ON public.vesting_events USING btree (owner_address);
+CREATE INDEX IF NOT EXISTS idx_vesting_events_owner_address ON public.vesting_events USING btree (owner_address);
 
 
 --
 -- Name: idx_vesting_events_wallet_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_vesting_events_wallet_id ON public.vesting_events USING btree (wallet_id);
+CREATE INDEX IF NOT EXISTS idx_vesting_events_wallet_id ON public.vesting_events USING btree (wallet_id);
 
 
 --
 -- Name: idx_vesting_wallets_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_vesting_wallets_created_at ON public.vesting_wallets USING btree (created_at);
+CREATE INDEX IF NOT EXISTS idx_vesting_wallets_created_at ON public.vesting_wallets USING btree (created_at);
 
 
 --
 -- Name: idx_vesting_wallets_curve_factor; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_vesting_wallets_curve_factor ON public.vesting_wallets USING btree (curve_factor);
+CREATE INDEX IF NOT EXISTS idx_vesting_wallets_curve_factor ON public.vesting_wallets USING btree (curve_factor);
 
 
 --
 -- Name: idx_vesting_wallets_owner_address; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_vesting_wallets_owner_address ON public.vesting_wallets USING btree (owner_address);
+CREATE INDEX IF NOT EXISTS idx_vesting_wallets_owner_address ON public.vesting_wallets USING btree (owner_address);
 
 
 --
 -- Name: idx_vesting_wallets_start_time; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_vesting_wallets_start_time ON public.vesting_wallets USING btree (start_time);
+CREATE INDEX IF NOT EXISTS idx_vesting_wallets_start_time ON public.vesting_wallets USING btree (start_time);
 
 
 --
 -- Name: idx_watermarks_checkpoint; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_watermarks_checkpoint ON public.watermarks USING btree (checkpoint_sequence);
+CREATE INDEX IF NOT EXISTS idx_watermarks_checkpoint ON public.watermarks USING btree (checkpoint_sequence);
 
 
 --
 -- Name: idx_watermarks_timestamp; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_watermarks_timestamp ON public.watermarks USING btree (watermark_timestamp);
+CREATE INDEX IF NOT EXISTS idx_watermarks_timestamp ON public.watermarks USING btree (watermark_timestamp);
 
 
 --
@@ -12519,189 +12512,189 @@ CREATE UNIQUE INDEX idx_watermarks_worker_stream ON public.watermarks USING btre
 -- Name: idx_weekly_creator_revenue_bucket; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_weekly_creator_revenue_bucket ON public.weekly_creator_revenue USING btree (bucket);
+CREATE INDEX IF NOT EXISTS idx_weekly_creator_revenue_bucket ON public.weekly_creator_revenue USING btree (bucket);
 
 
 --
 -- Name: idx_weekly_creator_revenue_creator; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_weekly_creator_revenue_creator ON public.weekly_creator_revenue USING btree (creator);
+CREATE INDEX IF NOT EXISTS idx_weekly_creator_revenue_creator ON public.weekly_creator_revenue USING btree (creator);
 
 
 --
 -- Name: my_ip_access_logs_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX my_ip_access_logs_time_idx ON public.mydata_access_logs USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS my_ip_access_logs_time_idx ON public.mydata_access_logs USING btree ("time" DESC);
 
 
 --
 -- Name: my_ip_events_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX my_ip_events_time_idx ON public.my_ip_events USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS my_ip_events_time_idx ON public.my_ip_events USING btree ("time" DESC);
 
 
 --
 -- Name: my_ip_grants_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX my_ip_grants_time_idx ON public.my_ip_grants USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS my_ip_grants_time_idx ON public.my_ip_grants USING btree ("time" DESC);
 
 
 --
 -- Name: my_ip_purchases_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX my_ip_purchases_time_idx ON public.mydata_purchases USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS my_ip_purchases_time_idx ON public.mydata_purchases USING btree ("time" DESC);
 
 
 --
 -- Name: my_ip_revenue_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX my_ip_revenue_time_idx ON public.mydata_revenue USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS my_ip_revenue_time_idx ON public.mydata_revenue USING btree ("time" DESC);
 
 
 --
 -- Name: my_ip_revenue_time_idx1; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX my_ip_revenue_time_idx1 ON public.my_ip_revenue USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS my_ip_revenue_time_idx1 ON public.my_ip_revenue USING btree ("time" DESC);
 
 
 --
 -- Name: my_ip_subscriptions_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX my_ip_subscriptions_time_idx ON public.mydata_subscriptions USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS my_ip_subscriptions_time_idx ON public.mydata_subscriptions USING btree ("time" DESC);
 
 
 --
 -- Name: my_ip_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX my_ip_time_idx ON public.my_ip USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS my_ip_time_idx ON public.my_ip USING btree ("time" DESC);
 
 
 --
 -- Name: profile_badges_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX profile_badges_time_idx ON public.profile_badges USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS profile_badges_time_idx ON public.profile_badges USING btree ("time" DESC);
 
 
 --
 -- Name: profile_offers_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX profile_offers_time_idx ON public.profile_offers USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS profile_offers_time_idx ON public.profile_offers USING btree ("time" DESC);
 
 
 --
 -- Name: profile_sale_fees_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX profile_sale_fees_time_idx ON public.profile_sale_fees USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS profile_sale_fees_time_idx ON public.profile_sale_fees USING btree ("time" DESC);
 
 
 --
 -- Name: profile_subscriptions_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX profile_subscriptions_time_idx ON public.profile_subscriptions USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS profile_subscriptions_time_idx ON public.profile_subscriptions USING btree ("time" DESC);
 
 
 --
 -- Name: social_proof_token_pools_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX social_proof_token_pools_time_idx ON public.social_proof_token_pools USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS social_proof_token_pools_time_idx ON public.social_proof_token_pools USING btree ("time" DESC);
 
 
 --
 -- Name: spt_exchange_config_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX spt_exchange_config_time_idx ON public.spt_exchange_config USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS spt_exchange_config_time_idx ON public.spt_exchange_config USING btree ("time" DESC);
 
 
 --
 -- Name: spt_holdings_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX spt_holdings_time_idx ON public.spt_holdings USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS spt_holdings_time_idx ON public.spt_holdings USING btree ("time" DESC);
 
 
 --
 -- Name: spt_price_history_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX spt_price_history_time_idx ON public.spt_price_history USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS spt_price_history_time_idx ON public.spt_price_history USING btree ("time" DESC);
 
 
 --
 -- Name: spt_reservation_pools_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX spt_reservation_pools_time_idx ON public.spt_reservation_pools USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS spt_reservation_pools_time_idx ON public.spt_reservation_pools USING btree ("time" DESC);
 
 
 --
 -- Name: spt_reservations_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX spt_reservations_time_idx ON public.spt_reservations USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS spt_reservations_time_idx ON public.spt_reservations USING btree ("time" DESC);
 
 
 --
 -- Name: spt_revenue_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX spt_revenue_time_idx ON public.spt_revenue USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS spt_revenue_time_idx ON public.spt_revenue USING btree ("time" DESC);
 
 
 --
 -- Name: spt_transactions_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX spt_transactions_time_idx ON public.spt_transactions USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS spt_transactions_time_idx ON public.spt_transactions USING btree ("time" DESC);
 
 
 --
 -- Name: subscription_access_logs_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX subscription_access_logs_time_idx ON public.subscription_access_logs USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS subscription_access_logs_time_idx ON public.subscription_access_logs USING btree ("time" DESC);
 
 
 --
 -- Name: subscription_events_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX subscription_events_time_idx ON public.subscription_events USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS subscription_events_time_idx ON public.subscription_events USING btree ("time" DESC);
 
 
 --
 -- Name: subscription_revenue_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX subscription_revenue_time_idx ON public.subscription_revenue USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS subscription_revenue_time_idx ON public.subscription_revenue USING btree ("time" DESC);
 
 
 --
 -- Name: unified_revenue_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX unified_revenue_time_idx ON public.unified_revenue USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS unified_revenue_time_idx ON public.unified_revenue USING btree ("time" DESC);
 
 
 --
 -- Name: vesting_events_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX vesting_events_time_idx ON public.vesting_events USING btree ("time" DESC);
+CREATE INDEX IF NOT EXISTS vesting_events_time_idx ON public.vesting_events USING btree ("time" DESC);
 
 
 --
@@ -12723,7 +12716,12 @@ CREATE TRIGGER no_delete_social_graph_events BEFORE DELETE ON _timescaledb_inter
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON _timescaledb_internal._hyper_1_36_chunk;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_1_36_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('1');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_1_36_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('1');
+    END IF;
+END $$;
 
 
 --
@@ -12731,7 +12729,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON _timescaledb_internal._hyper_1_40_chunk;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_1_40_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('1');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_1_40_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('1');
+    END IF;
+END $$;
 
 
 --
@@ -12739,7 +12742,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON _timescaledb_internal._hyper_3_35_chunk;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_3_35_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('3');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_3_35_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('3');
+    END IF;
+END $$;
 
 
 --
@@ -12747,7 +12755,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON _timescaledb_internal._hyper_5_38_chunk;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_5_38_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('5');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_5_38_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('5');
+    END IF;
+END $$;
 
 
 --
@@ -12755,399 +12768,740 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON _timescaledb_internal._hyper_5_39_chunk;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_5_39_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('5');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON _timescaledb_internal._hyper_5_39_chunk FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('5');
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_101 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_101 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_101;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_101 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_103 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_103 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_103;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_103 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_105 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_105 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_105;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_105 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_11 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_11 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_11;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_11 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_114 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_114 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_114;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_114 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_115 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_115 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_115;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_115 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_116 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_116 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_116;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_116 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_120 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_120 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_120;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_120 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_122 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_122 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_122;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_122 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_126 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_126 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_126;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_126 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_127 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_127 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_127;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_127 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_129 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_129 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_129;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_129 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_131 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_131 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_131;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_131 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_133 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_133 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_133;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_133 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_135 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_135 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_135;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_135 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_14 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_14 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_14;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_14 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_145 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_145 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_145;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_145 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_147 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_147 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_147;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_147 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_149 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_149 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_149;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_149 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_151 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_151 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_151;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_151 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_154 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_154 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_154;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_154 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_156 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_156 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_156;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_156 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_158 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_158 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_158;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_158 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_16 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_16 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_16;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_16 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_160 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_160 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_160;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_160 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_18 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_18 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_18;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_18 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_2 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_2 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_2;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_2 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_20 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_20 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_20;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_20 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_22 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_22 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_22;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_22 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_24 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_24 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_24;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_24 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_26 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_26 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_26;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_26 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_28 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_28 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_28;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_28 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_30 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_30 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_30;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_30 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_36 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_36 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_36;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_36 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_38 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_38 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_38;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_38 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_4 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_4 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_4;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_4 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_40 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_40 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_40;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_40 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_42 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_42 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_42;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_42 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_44 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_44 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_44;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_44 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_46 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_46 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_46;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_46 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_48 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_48 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_48;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_48 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_6 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_6 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_6;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_6 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_62 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_62 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_62;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_62 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_64 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_64 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_64;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_64 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_66 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_66 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_66;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_66 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_72 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_72 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_72;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_72 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_76 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_76 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_76;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_76 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_78 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_78 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_78;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_78 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_80 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_80 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_80;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_80 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_82 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_82 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_82;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_82 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_89 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_89 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_89;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_89 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_90 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_90 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_90;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_90 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_91 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_91 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_91;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_91 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_92 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_92 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_92;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_92 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_97 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_97 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_97;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_97 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
 -- Name: _compressed_hypertable_99 ts_insert_blocker; Type: TRIGGER; Schema: _timescaledb_internal; Owner: -
 --
 
-CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_99 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+DROP TRIGGER IF EXISTS ts_insert_blocker ON _timescaledb_internal._compressed_hypertable_99;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'insert_blocker') THEN
+        CREATE TRIGGER ts_insert_blocker BEFORE INSERT ON _timescaledb_internal._compressed_hypertable_99 FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
+    END IF;
+END $$;
 
 
 --
@@ -13631,7 +13985,12 @@ CREATE TRIGGER set_transfer_time BEFORE INSERT ON public.posts_transfers FOR EAC
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.anonymous_votes;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.anonymous_votes FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('119');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.anonymous_votes FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('119');
+    END IF;
+END $$;
 
 
 --
@@ -13639,7 +13998,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.checkpoint_processing;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.checkpoint_processing FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('10');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.checkpoint_processing FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('10');
+    END IF;
+END $$;
 
 
 --
@@ -13647,7 +14011,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.community_votes;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.community_votes FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('45');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.community_votes FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('45');
+    END IF;
+END $$;
 
 
 --
@@ -13655,7 +14024,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.delegate_ratings;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.delegate_ratings FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('41');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.delegate_ratings FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('41');
+    END IF;
+END $$;
 
 
 --
@@ -13663,7 +14037,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.delegate_votes;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.delegate_votes FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('43');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.delegate_votes FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('43');
+    END IF;
+END $$;
 
 
 --
@@ -13671,7 +14050,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.mydata_access_logs;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.mydata_access_logs FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('88');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.mydata_access_logs FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('88');
+    END IF;
+END $$;
 
 
 --
@@ -13679,7 +14063,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.mydata_purchases;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.mydata_purchases FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('85');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.mydata_purchases FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('85');
+    END IF;
+END $$;
 
 
 --
@@ -13687,7 +14076,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.mydata_revenue;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.mydata_revenue FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('87');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.mydata_revenue FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('87');
+    END IF;
+END $$;
 
 
 --
@@ -13695,7 +14089,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.platform_events;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.platform_events FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('5');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.platform_events FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('5');
+    END IF;
+END $$;
 
 
 --
@@ -13703,7 +14102,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.poc_badges;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.poc_badges FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('96');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.poc_badges FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('96');
+    END IF;
+END $$;
 
 
 --
@@ -13711,7 +14115,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.profile_events;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.profile_events FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('3');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.profile_events FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('3');
+    END IF;
+END $$;
 
 
 --
@@ -13719,7 +14128,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.profile_subscriptions;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.profile_subscriptions FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('108');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.profile_subscriptions FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('108');
+    END IF;
+END $$;
 
 
 --
@@ -13727,7 +14141,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.promotion_views;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.promotion_views FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('77');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.promotion_views FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('77');
+    END IF;
+END $$;
 
 
 --
@@ -13735,7 +14154,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.reactions;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.reactions FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('17');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.reactions FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('17');
+    END IF;
+END $$;
 
 
 --
@@ -13743,7 +14167,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.reposts;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.reposts FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('19');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.reposts FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('19');
+    END IF;
+END $$;
 
 
 --
@@ -13751,7 +14180,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.reward_distributions;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.reward_distributions FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('47');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.reward_distributions FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('47');
+    END IF;
+END $$;
 
 
 --
@@ -13759,7 +14193,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.social_graph_events;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.social_graph_events FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('1');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.social_graph_events FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('1');
+    END IF;
+END $$;
 
 
 --
@@ -13767,7 +14206,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.spt_price_history;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.spt_price_history FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('71');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.spt_price_history FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('71');
+    END IF;
+END $$;
 
 
 --
@@ -13775,7 +14219,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.subscription_revenue;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.subscription_revenue FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('110');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.subscription_revenue FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('110');
+    END IF;
+END $$;
 
 
 --
@@ -13783,7 +14232,12 @@ CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON 
 --
 
 DROP TRIGGER IF EXISTS ts_cagg_invalidation_trigger ON public.tips;
-CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.tips FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('21');
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '_timescaledb_functions' AND p.proname = 'continuous_agg_invalidation_trigger') THEN
+        CREATE TRIGGER ts_cagg_invalidation_trigger AFTER INSERT OR DELETE OR UPDATE ON public.tips FOR EACH ROW EXECUTE FUNCTION _timescaledb_functions.continuous_agg_invalidation_trigger('21');
+    END IF;
+END $$;
 
 
 --
