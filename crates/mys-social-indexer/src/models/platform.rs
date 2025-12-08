@@ -251,6 +251,7 @@ impl PlatformWithDetails {
 /// Events from platform.move
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlatformCreatedEvent {
+    #[serde(default, deserialize_with = "crate::events::event_utils::deserialize_platform_id")]
     pub platform_id: String,
     pub name: String,
     pub tagline: String,
@@ -422,6 +423,7 @@ pub struct PlatformUpdatedEvent {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlatformStatus {
+    #[serde(deserialize_with = "crate::events::event_utils::deserialize_status_field")]
     pub status: u8,
 }
 
