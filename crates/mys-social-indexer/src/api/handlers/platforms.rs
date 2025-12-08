@@ -15,9 +15,9 @@ use tracing::{debug, error};
 
 use crate::db::DbPool;
 use crate::models::platform::{
-    Platform, PlatformWithDetails,
+    Platform, PlatformEvent, PlatformWithDetails,
 };
-use crate::schema::{platform_blocked_profiles, platform_memberships, platform_moderators, platforms, profiles};
+use crate::schema::{platform_blocked_profiles, platform_events, platform_memberships, platform_moderators, platforms, profiles};
 use serde::Serialize;
 
 #[derive(Debug, Deserialize)]
@@ -26,6 +26,14 @@ pub struct PlatformQuery {
     pub offset: Option<i64>,
     pub page: Option<i64>,
     pub search: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PlatformEventsQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+    pub event_type: Option<String>,
 }
 
 /// Get a list of all platforms with pagination
@@ -1554,6 +1562,107 @@ pub async fn get_profile_platforms(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Failed to fetch profile platforms: {}", e)
+                })),
+            )
+        }
+    }
+}
+
+/// Get platform events for a specific platform with pagination and optional event type filtering
+pub async fn get_platform_events(
+    State(db_pool): State<DbPool>,
+    Path(platform_id): Path<String>,
+    Query(query): Query<PlatformEventsQuery>,
+) -> impl IntoResponse {
+    let limit = query.limit.unwrap_or(50);
+    let offset = query.offset.unwrap_or(0);
+    let page = query.page.unwrap_or(1);
+
+    // If page is provided, calculate the offset
+    let offset = if page > 1 { (page - 1) * limit } else { offset };
+
+    debug!(
+        "Getting platform events for platform_id: {} with limit: {}, offset: {}, event_type: {:?}",
+        platform_id, limit, offset, query.event_type
+    );
+
+    let mut conn = match db_pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("Database connection error: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database error: {}", e)
+                })),
+            );
+        }
+    };
+
+    // Build the base query for filtering
+    let mut count_query = platform_events::table
+        .filter(platform_events::platform_id.eq(&platform_id))
+        .into_boxed();
+
+    let mut events_query = platform_events::table
+        .filter(platform_events::platform_id.eq(&platform_id))
+        .order_by(platform_events::created_at.desc())
+        .into_boxed();
+
+    // Apply event_type filter if provided
+    if let Some(ref event_type) = query.event_type {
+        count_query = count_query.filter(platform_events::event_type.eq(event_type));
+        events_query = events_query.filter(platform_events::event_type.eq(event_type));
+    }
+
+    // Get the total count for pagination info (before applying limit/offset)
+    let total_count = match count_query
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+    {
+        Ok(count) => count,
+        Err(e) => {
+            error!("Error counting platform events: {}", e);
+            0
+        }
+    };
+
+    let total_pages = if total_count > 0 {
+        ((total_count as f64) / (limit as f64)).ceil() as i64
+    } else {
+        0
+    };
+
+    // Apply pagination
+    let events_result = events_query
+        .limit(limit)
+        .offset(offset)
+        .load::<PlatformEvent>(&mut conn)
+        .await;
+
+    match events_result {
+        Ok(events) => {
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "events": events,
+                    "pagination": {
+                        "total": total_count,
+                        "limit": limit,
+                        "offset": offset,
+                        "page": page,
+                        "total_pages": total_pages
+                    }
+                })),
+            )
+        }
+        Err(e) => {
+            error!("Error loading platform events: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Failed to fetch platform events: {}", e)
                 })),
             )
         }

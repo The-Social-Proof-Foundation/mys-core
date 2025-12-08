@@ -282,7 +282,10 @@ GET /search?query=social&page=2&limit=50
 - **GET /platforms/:id/members** - Get platform members with profile information
   - Query: `limit` (optional), `offset` (optional), `page` (optional), `search` (optional - searches usernames and wallet addresses)
 - **GET /platforms/:id/membership/:profile_id** - Check if a profile is a member of a platform
-  - Accepts wallet addresses (0x...), profile IDs, or usernames for `profile_id` 
+  - Accepts wallet addresses (0x...), profile IDs, or usernames for `profile_id`
+- **GET /platforms/:id/events** - Get platform events with pagination and optional event type filtering
+  - Query: `limit` (optional, default: 50), `offset` (optional, default: 0), `page` (optional, default: 1), `event_type` (optional - filter by specific event type)
+  - Returns: JSON object with `events` array and `pagination` object containing `total`, `limit`, `offset`, `page`, and `total_pages` 
 
 ### Post API
 - **GET /posts** - List posts
