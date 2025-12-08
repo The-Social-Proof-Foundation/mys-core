@@ -34,7 +34,7 @@ COMMENT ON EXTENSION timescaledb IS 'Enables scalable inserts and complex querie
 -- Name: calculate_vesting_claimable(bigint, bigint, bigint, bigint, bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.calculate_vesting_claimable(total_amount_param bigint, start_time_param bigint, duration_param bigint, curve_factor_param bigint, claimed_amount_param bigint, current_time_param bigint) RETURNS bigint
+CREATE OR REPLACE FUNCTION public.calculate_vesting_claimable(total_amount_param bigint, start_time_param bigint, duration_param bigint, curve_factor_param bigint, claimed_amount_param bigint, current_time_param bigint) RETURNS bigint
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -106,7 +106,7 @@ $$;
 -- Name: diesel_manage_updated_at(regclass); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.diesel_manage_updated_at(_tbl regclass) RETURNS void
+CREATE OR REPLACE FUNCTION public.diesel_manage_updated_at(_tbl regclass) RETURNS void
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -120,7 +120,7 @@ $$;
 -- Name: diesel_set_updated_at(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.diesel_set_updated_at() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.diesel_set_updated_at() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -139,7 +139,7 @@ $$;
 -- Name: get_current_exchange_config(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_current_exchange_config() RETURNS TABLE(post_threshold bigint, profile_threshold bigint, max_individual_reservation_bps bigint, trading_halted boolean)
+CREATE OR REPLACE FUNCTION public.get_current_exchange_config() RETURNS TABLE(post_threshold bigint, profile_threshold bigint, max_individual_reservation_bps bigint, trading_halted boolean)
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -160,7 +160,7 @@ $$;
 -- Name: get_data_pricing(character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_data_pricing(p_ip_id character varying) RETURNS TABLE(ip_id character varying, one_time_price bigint, subscription_price bigint, subscription_duration_days bigint, total_purchasers bigint, total_subscribers bigint, total_revenue bigint)
+CREATE OR REPLACE FUNCTION public.get_data_pricing(p_ip_id character varying) RETURNS TABLE(ip_id character varying, one_time_price bigint, subscription_price bigint, subscription_duration_days bigint, total_purchasers bigint, total_subscribers bigint, total_revenue bigint)
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -199,7 +199,7 @@ $$;
 -- Name: get_mydata_pricing(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_mydata_pricing(p_mydata_id text) RETURNS TABLE(mydata_id text, one_time_price bigint, subscription_price bigint, subscription_duration_days bigint, total_purchasers bigint, total_subscribers bigint, total_revenue bigint)
+CREATE OR REPLACE FUNCTION public.get_mydata_pricing(p_mydata_id text) RETURNS TABLE(mydata_id text, one_time_price bigint, subscription_price bigint, subscription_duration_days bigint, total_purchasers bigint, total_subscribers bigint, total_revenue bigint)
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -238,7 +238,7 @@ $$;
 -- Name: get_vesting_progress(bigint, bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_vesting_progress(start_time_param bigint, duration_param bigint, current_time_param bigint) RETURNS double precision
+CREATE OR REPLACE FUNCTION public.get_vesting_progress(start_time_param bigint, duration_param bigint, current_time_param bigint) RETURNS double precision
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -263,7 +263,7 @@ $$;
 -- Name: get_vesting_status(bigint, bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_vesting_status(start_time_param bigint, duration_param bigint, current_time_param bigint) RETURNS character varying
+CREATE OR REPLACE FUNCTION public.get_vesting_status(start_time_param bigint, duration_param bigint, current_time_param bigint) RETURNS character varying
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -282,7 +282,7 @@ $$;
 -- Name: is_reservation_threshold_met(character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.is_reservation_threshold_met(pool_id_param character varying) RETURNS boolean
+CREATE OR REPLACE FUNCTION public.is_reservation_threshold_met(pool_id_param character varying) RETURNS boolean
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -303,7 +303,7 @@ $$;
 -- Name: prevent_social_graph_events_deletion(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.prevent_social_graph_events_deletion() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.prevent_social_graph_events_deletion() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -316,7 +316,7 @@ $$;
 -- Name: refresh_license_materialized_views(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.refresh_license_materialized_views() RETURNS void
+CREATE OR REPLACE FUNCTION public.refresh_license_materialized_views() RETURNS void
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -330,7 +330,7 @@ $$;
 -- Name: refresh_spt_price_daily(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.refresh_spt_price_daily() RETURNS void
+CREATE OR REPLACE FUNCTION public.refresh_spt_price_daily() RETURNS void
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -343,7 +343,7 @@ $$;
 -- Name: refresh_spt_price_hourly(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.refresh_spt_price_hourly() RETURNS void
+CREATE OR REPLACE FUNCTION public.refresh_spt_price_hourly() RETURNS void
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -356,7 +356,7 @@ $$;
 -- Name: update_anonymous_vote_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_anonymous_vote_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_anonymous_vote_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -370,7 +370,7 @@ $$;
 -- Name: update_comment_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_comment_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_comment_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -384,7 +384,7 @@ $$;
 -- Name: update_community_vote_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_community_vote_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_community_vote_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -398,7 +398,7 @@ $$;
 -- Name: update_decryption_failure_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_decryption_failure_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_decryption_failure_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -412,7 +412,7 @@ $$;
 -- Name: update_delegate_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_delegate_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_delegate_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -426,7 +426,7 @@ $$;
 -- Name: update_delegate_vote_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_delegate_vote_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_delegate_vote_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -440,7 +440,7 @@ $$;
 -- Name: update_deletion_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_deletion_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_deletion_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -454,7 +454,7 @@ $$;
 -- Name: update_distribution_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_distribution_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_distribution_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -468,7 +468,7 @@ $$;
 -- Name: update_moderation_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_moderation_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_moderation_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -482,7 +482,7 @@ $$;
 -- Name: update_nominee_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_nominee_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_nominee_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -496,7 +496,7 @@ $$;
 -- Name: update_poc_analysis_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_poc_analysis_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_poc_analysis_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -510,7 +510,7 @@ $$;
 -- Name: update_poc_badge_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_poc_badge_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_poc_badge_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -524,7 +524,7 @@ $$;
 -- Name: update_poc_dispute_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_poc_dispute_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_poc_dispute_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -538,7 +538,7 @@ $$;
 -- Name: update_poc_redirection_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_poc_redirection_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_poc_redirection_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -552,7 +552,7 @@ $$;
 -- Name: update_poc_vote_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_poc_vote_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_poc_vote_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -566,7 +566,7 @@ $$;
 -- Name: update_post_prediction_config_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_post_prediction_config_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_post_prediction_config_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -580,7 +580,7 @@ $$;
 -- Name: update_post_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_post_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_post_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -594,7 +594,7 @@ $$;
 -- Name: update_promoted_post_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_promoted_post_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_promoted_post_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -608,7 +608,7 @@ $$;
 -- Name: update_promotion_budget_event_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_promotion_budget_event_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_promotion_budget_event_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -622,7 +622,7 @@ $$;
 -- Name: update_promotion_status_event_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_promotion_status_event_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_promotion_status_event_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -636,7 +636,7 @@ $$;
 -- Name: update_promotion_view_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_promotion_view_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_promotion_view_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -650,7 +650,7 @@ $$;
 -- Name: update_proposal_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_proposal_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_proposal_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -664,7 +664,7 @@ $$;
 -- Name: update_rating_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_rating_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_rating_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -678,7 +678,7 @@ $$;
 -- Name: update_reaction_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_reaction_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_reaction_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -692,7 +692,7 @@ $$;
 -- Name: update_registry_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_registry_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_registry_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -706,7 +706,7 @@ $$;
 -- Name: update_report_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_report_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_report_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -720,7 +720,7 @@ $$;
 -- Name: update_repost_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_repost_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_repost_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -734,7 +734,7 @@ $$;
 -- Name: update_spot_config_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_spot_config_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_spot_config_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -748,7 +748,7 @@ $$;
 -- Name: update_tip_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_tip_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_tip_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -762,7 +762,7 @@ $$;
 -- Name: update_transfer_time(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.update_transfer_time() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_transfer_time() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -776,7 +776,7 @@ $$;
 -- Name: user_has_access(character varying, character varying, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.user_has_access(p_ip_id character varying, p_user_address character varying, p_current_time bigint DEFAULT EXTRACT(epoch FROM now())) RETURNS boolean
+CREATE OR REPLACE FUNCTION public.user_has_access(p_ip_id character varying, p_user_address character varying, p_current_time bigint DEFAULT EXTRACT(epoch FROM now())) RETURNS boolean
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -820,7 +820,7 @@ $$;
 -- Name: user_has_mydata_access(text, text, bigint); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.user_has_mydata_access(p_mydata_id text, p_user_address text, p_current_time bigint DEFAULT EXTRACT(epoch FROM now())) RETURNS boolean
+CREATE OR REPLACE FUNCTION public.user_has_mydata_access(p_mydata_id text, p_user_address text, p_current_time bigint DEFAULT EXTRACT(epoch FROM now())) RETURNS boolean
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -864,7 +864,7 @@ $$;
 -- Name: validate_anonymous_vote_proposal(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.validate_anonymous_vote_proposal() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.validate_anonymous_vote_proposal() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -880,7 +880,7 @@ $$;
 -- Name: validate_poc_dispute_reference(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.validate_poc_dispute_reference() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.validate_poc_dispute_reference() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -896,7 +896,7 @@ $$;
 -- Name: validate_poc_original_post_reference(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.validate_poc_original_post_reference() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.validate_poc_original_post_reference() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -912,7 +912,7 @@ $$;
 -- Name: validate_poc_post_reference(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.validate_poc_post_reference() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.validate_poc_post_reference() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -928,7 +928,7 @@ $$;
 -- Name: validate_post_reference(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.validate_post_reference() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.validate_post_reference() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -944,7 +944,7 @@ $$;
 -- Name: validate_proposal_community_vote(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.validate_proposal_community_vote() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.validate_proposal_community_vote() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -960,7 +960,7 @@ $$;
 -- Name: validate_proposal_delegate_vote(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.validate_proposal_delegate_vote() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.validate_proposal_delegate_vote() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -976,7 +976,7 @@ $$;
 -- Name: validate_proposal_reward(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.validate_proposal_reward() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.validate_proposal_reward() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -992,7 +992,7 @@ $$;
 -- Name: verify_follow_counts(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.verify_follow_counts() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.verify_follow_counts() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
