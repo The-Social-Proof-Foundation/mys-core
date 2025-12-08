@@ -64,8 +64,8 @@ impl ProfileEventType {
             s if s.contains("::UserLeftPlatformEvent") || s.contains("::PlatformLeftEvent") => {
                 Some(Self::PlatformLeft)
             }
-            s if s.contains("::TokensVestedEvent") => Some(Self::TokensVested),
-            s if s.contains("::TokensClaimedEvent") => Some(Self::TokensClaimed),
+            s if s.contains("::TokensVestedEvent") || s.contains("::vest_myso") => Some(Self::TokensVested),
+            s if s.contains("::TokensClaimedEvent") || s.contains("::claim_vested_tokens") => Some(Self::TokensClaimed),
             s if s.contains("::ProfileOfferCreatedEvent") => Some(Self::ProfileOfferCreated),
             s if s.contains("::ProfileOfferAcceptedEvent") => Some(Self::ProfileOfferAccepted),
             s if s.contains("::ProfileOfferRejectedEvent") => Some(Self::ProfileOfferRejected),

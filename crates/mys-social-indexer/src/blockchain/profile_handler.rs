@@ -1292,9 +1292,12 @@ impl ProfileEventListener {
                     }
                 }
                 // Handle tokens vested event
-                else if event.event_type.ends_with("::TokensVestedEvent") {
+                // Support both ::TokensVestedEvent and ::vest_myso event types
+                else if event.event_type.ends_with("::TokensVestedEvent") 
+                    || event.event_type.ends_with("::vest_myso") {
                     info!(
-                        "Tokens vested event detected with data: {}",
+                        "Tokens vested event detected (type: {}) with data: {}",
+                        event.event_type,
                         serde_json::to_string_pretty(&event.data).unwrap_or_default()
                     );
 
@@ -1323,9 +1326,12 @@ impl ProfileEventListener {
                     }
                 }
                 // Handle tokens claimed event
-                else if event.event_type.ends_with("::TokensClaimedEvent") {
+                // Support both ::TokensClaimedEvent and ::claim_vested_tokens event types
+                else if event.event_type.ends_with("::TokensClaimedEvent") 
+                    || event.event_type.ends_with("::claim_vested_tokens") {
                     info!(
-                        "Tokens claimed event detected with data: {}",
+                        "Tokens claimed event detected (type: {}) with data: {}",
+                        event.event_type,
                         serde_json::to_string_pretty(&event.data).unwrap_or_default()
                     );
 
