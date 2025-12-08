@@ -41,6 +41,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_promoted_post_time ON promoted_posts;
 CREATE TRIGGER set_promoted_post_time 
 BEFORE INSERT ON promoted_posts
 FOR EACH ROW
@@ -52,7 +53,15 @@ SELECT create_hypertable('promoted_posts', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Now add primary key that includes time
-ALTER TABLE promoted_posts ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'promoted_posts_pkey'
+    ) THEN
+        ALTER TABLE promoted_posts ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Create unique constraint for promotion_id that includes time
 CREATE UNIQUE INDEX IF NOT EXISTS idx_promoted_posts_promotion_id_time 
@@ -66,7 +75,19 @@ CREATE INDEX IF NOT EXISTS idx_promoted_posts_active ON promoted_posts(active, t
 CREATE INDEX IF NOT EXISTS idx_promoted_posts_transaction_id ON promoted_posts(transaction_id);
 
 -- Enable compression on promoted_posts table
-ALTER TABLE promoted_posts SET (timescaledb.compress = true);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'promoted_posts'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE promoted_posts SET (timescaledb.compress = true);
+    END IF;
+END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -106,6 +127,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_promotion_view_time ON promotion_views;
 CREATE TRIGGER set_promotion_view_time 
 BEFORE INSERT ON promotion_views
 FOR EACH ROW
@@ -117,7 +139,15 @@ SELECT create_hypertable('promotion_views', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 week');
 
 -- Now add primary key that includes time
-ALTER TABLE promotion_views ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'promotion_views_pkey'
+    ) THEN
+        ALTER TABLE promotion_views ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Create unique constraint to prevent duplicate views by same user
 CREATE UNIQUE INDEX IF NOT EXISTS idx_promotion_views_post_viewer_time 
@@ -131,7 +161,19 @@ CREATE INDEX IF NOT EXISTS idx_promotion_views_platform_id ON promotion_views(pl
 CREATE INDEX IF NOT EXISTS idx_promotion_views_transaction_id ON promotion_views(transaction_id);
 
 -- Enable compression on promotion_views table
-ALTER TABLE promotion_views SET (timescaledb.compress = true);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'promotion_views'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE promotion_views SET (timescaledb.compress = true);
+    END IF;
+END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -171,6 +213,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_promotion_status_event_time ON promotion_status_events;
 CREATE TRIGGER set_promotion_status_event_time 
 BEFORE INSERT ON promotion_status_events
 FOR EACH ROW
@@ -182,7 +225,15 @@ SELECT create_hypertable('promotion_status_events', 'time', if_not_exists => TRU
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Now add primary key that includes time
-ALTER TABLE promotion_status_events ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'promotion_status_events_pkey'
+    ) THEN
+        ALTER TABLE promotion_status_events ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Add indexes
 CREATE INDEX IF NOT EXISTS idx_promotion_status_events_post_id ON promotion_status_events(post_id, time);
@@ -192,7 +243,19 @@ CREATE INDEX IF NOT EXISTS idx_promotion_status_events_triggered_by ON promotion
 CREATE INDEX IF NOT EXISTS idx_promotion_status_events_transaction_id ON promotion_status_events(transaction_id);
 
 -- Enable compression on promotion_status_events table
-ALTER TABLE promotion_status_events SET (timescaledb.compress = true);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'promotion_status_events'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE promotion_status_events SET (timescaledb.compress = true);
+    END IF;
+END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -231,6 +294,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_promotion_budget_event_time ON promotion_budget_events;
 CREATE TRIGGER set_promotion_budget_event_time 
 BEFORE INSERT ON promotion_budget_events
 FOR EACH ROW
@@ -242,7 +306,15 @@ SELECT create_hypertable('promotion_budget_events', 'time', if_not_exists => TRU
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Now add primary key that includes time
-ALTER TABLE promotion_budget_events ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'promotion_budget_events_pkey'
+    ) THEN
+        ALTER TABLE promotion_budget_events ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Add indexes
 CREATE INDEX IF NOT EXISTS idx_promotion_budget_events_promotion_id ON promotion_budget_events(promotion_id, time);
@@ -251,7 +323,19 @@ CREATE INDEX IF NOT EXISTS idx_promotion_budget_events_event_type ON promotion_b
 CREATE INDEX IF NOT EXISTS idx_promotion_budget_events_transaction_id ON promotion_budget_events(transaction_id);
 
 -- Enable compression on promotion_budget_events table
-ALTER TABLE promotion_budget_events SET (timescaledb.compress = true);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'promotion_budget_events'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE promotion_budget_events SET (timescaledb.compress = true);
+    END IF;
+END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (

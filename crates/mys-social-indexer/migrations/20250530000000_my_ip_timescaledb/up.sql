@@ -248,12 +248,13 @@ GROUP BY
 ORDER BY 
     post_count DESC, total_reactions DESC;
 
--- Drop the materialized views if they exist, then recreate them
-DROP MATERIALIZED VIEW IF EXISTS daily_license_revenue;
-DROP MATERIALIZED VIEW IF EXISTS weekly_creator_revenue;
-
 -- Materialized view for daily revenue by license
-CREATE MATERIALIZED VIEW daily_license_revenue AS
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE matviewname = 'daily_license_revenue'
+    ) THEN
+        CREATE MATERIALIZED VIEW daily_license_revenue AS
 SELECT
     time_bucket('1 day', time) AS bucket,
     license_id,
@@ -265,12 +266,19 @@ FROM
 GROUP BY 
     bucket, license_id, revenue_type;
 
--- Create index on the materialized view
-CREATE INDEX idx_daily_license_revenue_bucket ON daily_license_revenue(bucket);
-CREATE INDEX idx_daily_license_revenue_license_id ON daily_license_revenue(license_id);
+        -- Create index on the materialized view
+        CREATE INDEX IF NOT EXISTS idx_daily_license_revenue_bucket ON daily_license_revenue(bucket);
+        CREATE INDEX IF NOT EXISTS idx_daily_license_revenue_license_id ON daily_license_revenue(license_id);
+    END IF;
+END $$;
 
 -- Materialized view for weekly revenue by creator
-CREATE MATERIALIZED VIEW weekly_creator_revenue AS
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE matviewname = 'weekly_creator_revenue'
+    ) THEN
+        CREATE MATERIALIZED VIEW weekly_creator_revenue AS
 SELECT
     time_bucket('1 week', r.time) AS bucket,
     l.creator,
@@ -283,9 +291,11 @@ JOIN
 GROUP BY 
     bucket, l.creator;
 
--- Create index on the materialized view
-CREATE INDEX idx_weekly_creator_revenue_bucket ON weekly_creator_revenue(bucket);
-CREATE INDEX idx_weekly_creator_revenue_creator ON weekly_creator_revenue(creator);
+        -- Create index on the materialized view
+        CREATE INDEX IF NOT EXISTS idx_weekly_creator_revenue_bucket ON weekly_creator_revenue(bucket);
+        CREATE INDEX IF NOT EXISTS idx_weekly_creator_revenue_creator ON weekly_creator_revenue(creator);
+    END IF;
+END $$;
 
 -- Create or replace the refresh function
 CREATE OR REPLACE FUNCTION refresh_license_materialized_views()
@@ -301,18 +311,54 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 
 -- Add compression policies to compress chunks after 7 days
-SELECT add_compression_policy('my_ip', INTERVAL '7 days');
-SELECT add_compression_policy('my_ip_events', INTERVAL '7 days');
-SELECT add_compression_policy('my_ip_grants', INTERVAL '7 days');
-SELECT add_compression_policy('my_ip_revenue', INTERVAL '7 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.compression_settings
+        WHERE hypertable_name = 'my_ip'
+    ) THEN
+        PERFORM add_compression_policy('my_ip', INTERVAL '7 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.compression_settings
+        WHERE hypertable_name = 'my_ip_events'
+    ) THEN
+        PERFORM add_compression_policy('my_ip_events', INTERVAL '7 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.compression_settings
+        WHERE hypertable_name = 'my_ip_grants'
+    ) THEN
+        PERFORM add_compression_policy('my_ip_grants', INTERVAL '7 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.compression_settings
+        WHERE hypertable_name = 'my_ip_revenue'
+    ) THEN
+        PERFORM add_compression_policy('my_ip_revenue', INTERVAL '7 days');
+    END IF;
+END $$;
 
 -- Create a scheduled job to refresh materialized views daily
 DO $$
+DECLARE
+    job_exists BOOLEAN;
 BEGIN
-    -- Create a job that runs at midnight every day
-    PERFORM add_job(
-        'refresh_license_materialized_views',
-        '24 hours',
-        initial_start => now()
-    );
+    -- Check if job already exists
+    SELECT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs 
+        WHERE proc_name = 'refresh_license_materialized_views'
+    ) INTO job_exists;
+    
+    IF NOT job_exists THEN
+        -- Create a job that runs at midnight every day
+        PERFORM add_job(
+            'refresh_license_materialized_views',
+            '24 hours',
+            initial_start => now()
+        );
+    END IF;
 END $$; 

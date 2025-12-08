@@ -30,6 +30,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_post_prediction_config_time ON post_prediction_config;
 CREATE TRIGGER set_post_prediction_config_time 
 BEFORE INSERT ON post_prediction_config
 FOR EACH ROW
@@ -41,7 +42,15 @@ SELECT create_hypertable('post_prediction_config', 'time', if_not_exists => TRUE
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Now add primary key that includes time
-ALTER TABLE post_prediction_config ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'post_prediction_config_pkey'
+    ) THEN
+        ALTER TABLE post_prediction_config ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Create unique constraint for latest config (one row per time)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_post_prediction_config_time 
@@ -53,12 +62,26 @@ CREATE INDEX IF NOT EXISTS idx_post_prediction_config_predictions_enabled ON pos
 CREATE INDEX IF NOT EXISTS idx_post_prediction_config_transaction_id ON post_prediction_config(transaction_id);
 
 -- Enable compression on post_prediction_config table
-ALTER TABLE post_prediction_config SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'post_prediction_config'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'post_prediction_config'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE post_prediction_config SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'post_prediction_config'
     ) THEN
         PERFORM add_compression_policy('post_prediction_config', INTERVAL '90 days');
     END IF;

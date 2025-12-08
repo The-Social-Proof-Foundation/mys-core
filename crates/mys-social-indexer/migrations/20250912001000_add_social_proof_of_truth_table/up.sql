@@ -29,7 +29,15 @@ CREATE TABLE IF NOT EXISTS social_proof_of_truth (
 );
 
 SELECT create_hypertable('social_proof_of_truth', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '30 days');
-ALTER TABLE social_proof_of_truth ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'social_proof_of_truth_pkey'
+    ) THEN
+        ALTER TABLE social_proof_of_truth ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_spot_unified_type ON social_proof_of_truth(event_type, time);
 CREATE INDEX IF NOT EXISTS idx_spot_unified_post ON social_proof_of_truth(post_id, time);

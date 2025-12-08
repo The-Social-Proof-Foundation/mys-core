@@ -52,6 +52,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_post_time ON posts;
 CREATE TRIGGER set_post_time 
 BEFORE INSERT ON posts
 FOR EACH ROW
@@ -63,7 +64,15 @@ SELECT create_hypertable('posts', 'time', if_not_exists => TRUE,
                          chunk_time_interval => INTERVAL '1 month');
 
 -- Now add primary key that includes time
-ALTER TABLE posts ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'posts_pkey'
+    ) THEN
+        ALTER TABLE posts ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Make post_id unique but include time column to satisfy TimescaleDB partitioning
 CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_post_id_time ON posts(post_id, time);
@@ -125,6 +134,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_comment_time ON comments;
 CREATE TRIGGER set_comment_time 
 BEFORE INSERT ON comments
 FOR EACH ROW
@@ -136,7 +146,15 @@ SELECT create_hypertable('comments', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Now add primary key that includes time
-ALTER TABLE comments ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'comments_pkey'
+    ) THEN
+        ALTER TABLE comments ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Make comment_id unique but include time column to satisfy TimescaleDB partitioning
 CREATE UNIQUE INDEX IF NOT EXISTS idx_comments_comment_id_time ON comments(comment_id, time);
@@ -153,6 +171,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS check_post_reference ON comments;
 CREATE TRIGGER check_post_reference
 BEFORE INSERT OR UPDATE ON comments
 FOR EACH ROW
@@ -206,6 +225,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_reaction_time ON reactions;
 CREATE TRIGGER set_reaction_time 
 BEFORE INSERT ON reactions
 FOR EACH ROW
@@ -217,7 +237,15 @@ SELECT create_hypertable('reactions', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 week');
 
 -- Now add primary key that includes time
-ALTER TABLE reactions ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'reactions_pkey'
+    ) THEN
+        ALTER TABLE reactions ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Create unique constraint that includes time
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reactions_object_user_time 
@@ -283,6 +311,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_repost_time ON reposts;
 CREATE TRIGGER set_repost_time 
 BEFORE INSERT ON reposts
 FOR EACH ROW
@@ -294,7 +323,15 @@ SELECT create_hypertable('reposts', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 week');
 
 -- Now add primary key that includes time
-ALTER TABLE reposts ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'reposts_pkey'
+    ) THEN
+        ALTER TABLE reposts ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Create unique constraint for repost_id that includes time
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reposts_repost_id_time 
@@ -344,6 +381,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_tip_time ON tips;
 CREATE TRIGGER set_tip_time 
 BEFORE INSERT ON tips
 FOR EACH ROW
@@ -355,7 +393,15 @@ SELECT create_hypertable('tips', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 week');
 
 -- Now add primary key that includes time
-ALTER TABLE tips ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'tips_pkey'
+    ) THEN
+        ALTER TABLE tips ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Add regular indexes
 CREATE INDEX IF NOT EXISTS idx_tips_tipper ON tips(tipper, time);
@@ -403,6 +449,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_report_time ON posts_reports;
 CREATE TRIGGER set_report_time 
 BEFORE INSERT ON posts_reports
 FOR EACH ROW
@@ -414,7 +461,15 @@ SELECT create_hypertable('posts_reports', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Now add primary key that includes time
-ALTER TABLE posts_reports ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'posts_reports_pkey'
+    ) THEN
+        ALTER TABLE posts_reports ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Add regular indexes
 CREATE INDEX IF NOT EXISTS idx_reports_object_id ON posts_reports(object_id, time);
@@ -457,6 +512,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_transfer_time ON posts_transfers;
 CREATE TRIGGER set_transfer_time 
 BEFORE INSERT ON posts_transfers
 FOR EACH ROW
@@ -468,7 +524,15 @@ SELECT create_hypertable('posts_transfers', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Now add primary key that includes time
-ALTER TABLE posts_transfers ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'posts_transfers_pkey'
+    ) THEN
+        ALTER TABLE posts_transfers ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Add regular indexes
 CREATE INDEX IF NOT EXISTS idx_transfers_object_id ON posts_transfers(object_id, time);
@@ -512,6 +576,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_moderation_time ON posts_moderation_events;
 CREATE TRIGGER set_moderation_time 
 BEFORE INSERT ON posts_moderation_events
 FOR EACH ROW
@@ -523,7 +588,15 @@ SELECT create_hypertable('posts_moderation_events', 'time', if_not_exists => TRU
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Now add primary key that includes time
-ALTER TABLE posts_moderation_events ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'posts_moderation_events_pkey'
+    ) THEN
+        ALTER TABLE posts_moderation_events ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Add regular indexes
 CREATE INDEX IF NOT EXISTS idx_moderation_object_id ON posts_moderation_events(object_id, time);
@@ -569,7 +642,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER set_deletion_time 
+DROP TRIGGER IF EXISTS set_deletion_time ON posts_deletion_events;
+CREATE TRIGGER set_deletion_time
 BEFORE INSERT ON posts_deletion_events
 FOR EACH ROW
 EXECUTE FUNCTION update_deletion_time();
@@ -580,7 +654,15 @@ SELECT create_hypertable('posts_deletion_events', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Now add primary key that includes time
-ALTER TABLE posts_deletion_events ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'posts_deletion_events_pkey'
+    ) THEN
+        ALTER TABLE posts_deletion_events ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Add regular indexes
 CREATE INDEX IF NOT EXISTS idx_deletion_object_id ON posts_deletion_events(object_id, time);

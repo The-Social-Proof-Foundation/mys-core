@@ -41,6 +41,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_registry_time ON governance_registries;
 CREATE TRIGGER set_registry_time 
 BEFORE INSERT OR UPDATE ON governance_registries
 FOR EACH ROW
@@ -86,6 +87,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_delegate_time ON delegates;
 CREATE TRIGGER set_delegate_time 
 BEFORE INSERT OR UPDATE ON delegates
 FOR EACH ROW
@@ -97,7 +99,15 @@ SELECT create_hypertable('delegates', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Add primary key including time
-ALTER TABLE delegates ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'delegates_pkey'
+    ) THEN
+        ALTER TABLE delegates ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Create constraint for uniqueness within time chunk
 CREATE UNIQUE INDEX IF NOT EXISTS idx_delegates_address_type_time ON delegates(address, registry_type, time);
@@ -146,6 +156,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_nominee_time ON nominated_delegates;
 CREATE TRIGGER set_nominee_time 
 BEFORE INSERT OR UPDATE ON nominated_delegates
 FOR EACH ROW
@@ -157,7 +168,15 @@ SELECT create_hypertable('nominated_delegates', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Add primary key including time
-ALTER TABLE nominated_delegates ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'nominated_delegates_pkey'
+    ) THEN
+        ALTER TABLE nominated_delegates ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Create constraint for uniqueness within time chunk
 CREATE UNIQUE INDEX IF NOT EXISTS idx_nominees_address_type_time ON nominated_delegates(address, registry_type, time);
@@ -216,6 +235,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_proposal_time ON proposals;
 CREATE TRIGGER set_proposal_time 
 BEFORE INSERT OR UPDATE ON proposals
 FOR EACH ROW
@@ -227,7 +247,15 @@ SELECT create_hypertable('proposals', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Add primary key including time
-ALTER TABLE proposals ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'proposals_pkey'
+    ) THEN
+        ALTER TABLE proposals ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Add other indexes
 CREATE INDEX IF NOT EXISTS idx_proposals_proposal_type ON proposals(proposal_type, time);
@@ -276,6 +304,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_rating_time ON delegate_ratings;
 CREATE TRIGGER set_rating_time 
 BEFORE INSERT OR UPDATE ON delegate_ratings
 FOR EACH ROW
@@ -287,7 +316,15 @@ SELECT create_hypertable('delegate_ratings', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 week');
 
 -- Add primary key including time
-ALTER TABLE delegate_ratings ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'delegate_ratings_pkey'
+    ) THEN
+        ALTER TABLE delegate_ratings ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Create unique constraint that includes time
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ratings_target_voter_registry_time 
@@ -332,6 +369,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_delegate_vote_time ON delegate_votes;
 CREATE TRIGGER set_delegate_vote_time 
 BEFORE INSERT OR UPDATE ON delegate_votes
 FOR EACH ROW
@@ -343,7 +381,15 @@ SELECT create_hypertable('delegate_votes', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 week');
 
 -- Add primary key
-ALTER TABLE delegate_votes ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'delegate_votes_pkey'
+    ) THEN
+        ALTER TABLE delegate_votes ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Create unique constraint with time
 CREATE UNIQUE INDEX IF NOT EXISTS idx_delegate_votes_proposal_delegate_time 
@@ -360,6 +406,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS check_proposal_delegate_vote ON delegate_votes;
 CREATE TRIGGER check_proposal_delegate_vote
 BEFORE INSERT OR UPDATE ON delegate_votes
 FOR EACH ROW
@@ -405,6 +452,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_community_vote_time ON community_votes;
 CREATE TRIGGER set_community_vote_time 
 BEFORE INSERT OR UPDATE ON community_votes
 FOR EACH ROW
@@ -416,7 +464,15 @@ SELECT create_hypertable('community_votes', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 week');
 
 -- Add primary key
-ALTER TABLE community_votes ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'community_votes_pkey'
+    ) THEN
+        ALTER TABLE community_votes ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Create unique constraint with time
 CREATE UNIQUE INDEX IF NOT EXISTS idx_community_votes_proposal_voter_time 
@@ -433,6 +489,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS check_proposal_community_vote ON community_votes;
 CREATE TRIGGER check_proposal_community_vote
 BEFORE INSERT OR UPDATE ON community_votes
 FOR EACH ROW
@@ -478,6 +535,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_distribution_time ON reward_distributions;
 CREATE TRIGGER set_distribution_time 
 BEFORE INSERT OR UPDATE ON reward_distributions
 FOR EACH ROW
@@ -489,7 +547,15 @@ SELECT create_hypertable('reward_distributions', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Add primary key
-ALTER TABLE reward_distributions ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'reward_distributions_pkey'
+    ) THEN
+        ALTER TABLE reward_distributions ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Add validation trigger for proposal_id reference
 CREATE OR REPLACE FUNCTION validate_proposal_reward()
@@ -502,6 +568,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS check_proposal_reward ON reward_distributions;
 CREATE TRIGGER check_proposal_reward
 BEFORE INSERT OR UPDATE ON reward_distributions
 FOR EACH ROW

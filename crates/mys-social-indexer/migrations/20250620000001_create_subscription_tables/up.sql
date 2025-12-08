@@ -166,8 +166,13 @@ END $$;
 
 -- 6. TimescaleDB Continuous Aggregates for Analytics
 -- Daily subscription revenue aggregate
-CREATE MATERIALIZED VIEW subscription_daily_revenue
-WITH (timescaledb.continuous) AS
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE matviewname = 'subscription_daily_revenue'
+    ) THEN
+        CREATE MATERIALIZED VIEW subscription_daily_revenue
+        WITH (timescaledb.continuous) AS
 SELECT 
     time_bucket('1 day', time) AS day,
     service_id,
@@ -179,15 +184,22 @@ FROM subscription_revenue
 GROUP BY time_bucket('1 day', time), service_id, to_address, revenue_type
 WITH NO DATA;
 
--- Enable automatic refresh (window: 3 days - 1 hour = ~71 hours, chunk: 7 days = 168 hours)
--- Fix: Make refresh window larger than chunk interval
-SELECT add_continuous_aggregate_policy('subscription_daily_revenue',
-    start_offset => INTERVAL '8 days',
-    end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour');
+        -- Enable automatic refresh (window: 3 days - 1 hour = ~71 hours, chunk: 7 days = 168 hours)
+        -- Fix: Make refresh window larger than chunk interval
+        PERFORM add_continuous_aggregate_policy('subscription_daily_revenue',
+            start_offset => INTERVAL '8 days',
+            end_offset => INTERVAL '1 hour',
+            schedule_interval => INTERVAL '1 hour');
+    END IF;
+END $$;
 
 -- Daily subscription metrics aggregate
-CREATE MATERIALIZED VIEW subscription_daily_metrics
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE matviewname = 'subscription_daily_metrics'
+    ) THEN
+        CREATE MATERIALIZED VIEW subscription_daily_metrics
 WITH (timescaledb.continuous) AS
 SELECT 
     time_bucket('1 day', time) AS day,
@@ -199,11 +211,13 @@ FROM profile_subscriptions
 GROUP BY time_bucket('1 day', time), service_id
 WITH NO DATA;
 
--- Enable automatic refresh (window must be > 14 days for profile_subscriptions chunk interval)
-SELECT add_continuous_aggregate_policy('subscription_daily_metrics',
-    start_offset => INTERVAL '15 days',
-    end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour');
+        -- Enable automatic refresh (window must be > 14 days for profile_subscriptions chunk interval)
+        PERFORM add_continuous_aggregate_policy('subscription_daily_metrics',
+            start_offset => INTERVAL '15 days',
+            end_offset => INTERVAL '1 hour',
+            schedule_interval => INTERVAL '1 hour');
+    END IF;
+END $$;
 
 -- Schema Updates: Add subscription-related fields to posts table
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS requires_subscription BOOLEAN DEFAULT false;
@@ -283,44 +297,58 @@ BEGIN
 END $$;
 
 -- Real-time subscription health monitoring
-CREATE MATERIALIZED VIEW subscription_health_metrics
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 hour', time) AS hour,
-    service_id,
-    COUNT(*) FILTER (WHERE cancelled_at IS NULL) AS active_subscriptions,
-    COUNT(*) FILTER (WHERE cancelled_at IS NOT NULL) AS cancelled_subscriptions,
-    AVG(renewal_count) AS avg_renewal_count,
-    SUM(renewal_balance) AS total_renewal_balance
-FROM profile_subscriptions
-GROUP BY time_bucket('1 hour', time), service_id
-WITH NO DATA;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE matviewname = 'subscription_health_metrics'
+    ) THEN
+        CREATE MATERIALIZED VIEW subscription_health_metrics
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 hour', time) AS hour,
+            service_id,
+            COUNT(*) FILTER (WHERE cancelled_at IS NULL) AS active_subscriptions,
+            COUNT(*) FILTER (WHERE cancelled_at IS NOT NULL) AS cancelled_subscriptions,
+            AVG(renewal_count) AS avg_renewal_count,
+            SUM(renewal_balance) AS total_renewal_balance
+        FROM profile_subscriptions
+        GROUP BY time_bucket('1 hour', time), service_id
+        WITH NO DATA;
 
--- Enable automatic refresh for health metrics (window must be > 14 days for profile_subscriptions)
-SELECT add_continuous_aggregate_policy('subscription_health_metrics',
-    start_offset => INTERVAL '15 days',
-    end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour');
+        -- Enable automatic refresh for health metrics (window must be > 14 days for profile_subscriptions)
+        PERFORM add_continuous_aggregate_policy('subscription_health_metrics',
+            start_offset => INTERVAL '15 days',
+            end_offset => INTERVAL '1 hour',
+            schedule_interval => INTERVAL '1 hour');
+    END IF;
+END $$;
 
 -- Churn analysis aggregate
-CREATE MATERIALIZED VIEW subscription_churn_analysis
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 day', time) AS day,
-    service_id,
-    COUNT(*) FILTER (WHERE cancelled_at BETWEEN extract(epoch from time_bucket('1 day', time)) 
-                     AND extract(epoch from time_bucket('1 day', time)) + 86400) AS daily_churn,
-    COUNT(*) FILTER (WHERE created_at BETWEEN extract(epoch from time_bucket('1 day', time)) 
-                     AND extract(epoch from time_bucket('1 day', time)) + 86400) AS daily_new_subs
-FROM profile_subscriptions
-GROUP BY time_bucket('1 day', time), service_id
-WITH NO DATA;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE matviewname = 'subscription_churn_analysis'
+    ) THEN
+        CREATE MATERIALIZED VIEW subscription_churn_analysis
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 day', time) AS day,
+            service_id,
+            COUNT(*) FILTER (WHERE cancelled_at BETWEEN extract(epoch from time_bucket('1 day', time)) 
+                             AND extract(epoch from time_bucket('1 day', time)) + 86400) AS daily_churn,
+            COUNT(*) FILTER (WHERE created_at BETWEEN extract(epoch from time_bucket('1 day', time)) 
+                             AND extract(epoch from time_bucket('1 day', time)) + 86400) AS daily_new_subs
+        FROM profile_subscriptions
+        GROUP BY time_bucket('1 day', time), service_id
+        WITH NO DATA;
 
--- Enable automatic refresh for churn analysis (window must be > 14 days for profile_subscriptions)
-SELECT add_continuous_aggregate_policy('subscription_churn_analysis',
-    start_offset => INTERVAL '15 days',
-    end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '2 hours');
+        -- Enable automatic refresh for churn analysis (window must be > 14 days for profile_subscriptions)
+        PERFORM add_continuous_aggregate_policy('subscription_churn_analysis',
+            start_offset => INTERVAL '15 days',
+            end_offset => INTERVAL '1 hour',
+            schedule_interval => INTERVAL '2 hours');
+    END IF;
+END $$;
 
 -- Add foreign key constraints
 DO $$

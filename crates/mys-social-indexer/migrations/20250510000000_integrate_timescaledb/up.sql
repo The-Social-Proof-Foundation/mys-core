@@ -39,13 +39,26 @@ SELECT create_hypertable('social_graph_events', 'created_at', if_not_exists => T
                          migrate_data => TRUE, chunk_time_interval => INTERVAL '1 week');
 
 -- Step 5: Add compression policy (compress chunks older than 7 days)
-ALTER TABLE social_graph_events SET (timescaledb.compress = true);
--- First check if a compression policy already exists
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'social_graph_events'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'social_graph_events'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE social_graph_events SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'social_graph_events'
     ) THEN
         PERFORM add_compression_policy('social_graph_events', INTERVAL '7 days');
     END IF;
@@ -74,13 +87,26 @@ SELECT create_hypertable('profile_events', 'created_at', if_not_exists => TRUE,
                          migrate_data => TRUE, chunk_time_interval => INTERVAL '1 week');
 
 -- Step 5: Add compression policy (compress chunks older than 14 days)
-ALTER TABLE profile_events SET (timescaledb.compress = true);
--- First check if a compression policy already exists
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'profile_events'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'profile_events'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE profile_events SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'profile_events'
     ) THEN
         PERFORM add_compression_policy('profile_events', INTERVAL '14 days');
     END IF;
@@ -109,13 +135,26 @@ SELECT create_hypertable('platform_events', 'created_at', if_not_exists => TRUE,
                          migrate_data => TRUE, chunk_time_interval => INTERVAL '1 week');
 
 -- Step 5: Add compression policy (compress chunks older than 14 days)
-ALTER TABLE platform_events SET (timescaledb.compress = true);
--- First check if a compression policy already exists
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'platform_events'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'platform_events'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE platform_events SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'platform_events'
     ) THEN
         PERFORM add_compression_policy('platform_events', INTERVAL '14 days');
     END IF;
@@ -305,13 +344,24 @@ BEGIN
     PERFORM create_hypertable('checkpoint_processing', 'processing_start_time', 
                                if_not_exists => TRUE);
     
-    -- Always make sure compression is enabled
-    ALTER TABLE checkpoint_processing SET (timescaledb.compress = true);
-    
-    -- Check if compression policy exists
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'checkpoint_processing'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'checkpoint_processing'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE checkpoint_processing SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'checkpoint_processing'
     ) THEN
         PERFORM add_compression_policy('checkpoint_processing', INTERVAL '30 days');
     END IF;

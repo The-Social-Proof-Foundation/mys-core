@@ -45,11 +45,23 @@ CREATE TABLE IF NOT EXISTS vesting_events (
 SELECT create_hypertable('vesting_events', 'time', if_not_exists => TRUE, migrate_data => TRUE);
 
 -- Enable compression on vesting events table
-ALTER TABLE vesting_events SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'wallet_id,owner_address,event_type',
-    timescaledb.compress_orderby = 'time DESC'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'vesting_events'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE vesting_events SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'wallet_id,owner_address,event_type',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 3. CREATE INDEXES
@@ -72,7 +84,17 @@ CREATE INDEX IF NOT EXISTS idx_vesting_events_event_time ON vesting_events(event
 -- ============================================================================
 
 -- Add compression policy to compress chunks after 7 days
-SELECT add_compression_policy('vesting_events', INTERVAL '7 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'vesting_events'
+    ) THEN
+        PERFORM add_compression_policy('vesting_events', INTERVAL '7 days');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 5. CREATE VESTING UTILITY FUNCTIONS

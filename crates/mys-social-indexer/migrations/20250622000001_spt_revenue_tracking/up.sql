@@ -225,9 +225,9 @@ ORDER BY total_revenue_24h DESC;
 -- ============================================================================
 
 -- Composite indexes for common query patterns
-CREATE INDEX idx_unified_revenue_creator_source_time ON unified_revenue (creator_address, revenue_source, time DESC);
-CREATE INDEX idx_unified_revenue_time_amount ON unified_revenue (time DESC, amount DESC);
-CREATE INDEX idx_spt_revenue_pool_time_fees ON spt_revenue (pool_id, time DESC, total_fee DESC);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_creator_source_time ON unified_revenue (creator_address, revenue_source, time DESC);
+CREATE INDEX IF NOT EXISTS idx_unified_revenue_time_amount ON unified_revenue (time DESC, amount DESC);
+CREATE INDEX IF NOT EXISTS idx_spt_revenue_pool_time_fees ON spt_revenue (pool_id, time DESC, total_fee DESC);
 
 -- ============================================================================
 -- 7. TABLE COMMENTS FOR DOCUMENTATION

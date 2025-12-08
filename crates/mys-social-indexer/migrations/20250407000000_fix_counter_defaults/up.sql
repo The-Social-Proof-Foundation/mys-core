@@ -9,13 +9,26 @@ SET following_count = 0
 WHERE following_count IS NULL;
 
 -- Change the column constraint to ensure it's always NOT NULL with default 0
-ALTER TABLE profiles 
-ALTER COLUMN followers_count SET DEFAULT 0,
-ALTER COLUMN followers_count SET NOT NULL;
-
-ALTER TABLE profiles 
-ALTER COLUMN following_count SET DEFAULT 0,
-ALTER COLUMN following_count SET NOT NULL;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' AND column_name = 'followers_count'
+    ) THEN
+        ALTER TABLE profiles 
+        ALTER COLUMN followers_count SET DEFAULT 0,
+        ALTER COLUMN followers_count SET NOT NULL;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' AND column_name = 'following_count'
+    ) THEN
+        ALTER TABLE profiles 
+        ALTER COLUMN following_count SET DEFAULT 0,
+        ALTER COLUMN following_count SET NOT NULL;
+    END IF;
+END $$;
 
 -- Validate the follower/following counts against actual relationships
 UPDATE profiles p

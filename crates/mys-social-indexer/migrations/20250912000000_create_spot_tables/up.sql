@@ -42,7 +42,15 @@ CREATE TABLE IF NOT EXISTS spot_bets (
 );
 
 SELECT create_hypertable('spot_bets', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '7 days');
-ALTER TABLE spot_bets ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'spot_bets_pkey'
+    ) THEN
+        ALTER TABLE spot_bets ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_spot_bets_post_id ON spot_bets(post_id, time);
 CREATE INDEX IF NOT EXISTS idx_spot_bets_user ON spot_bets(user_address, time);
 CREATE INDEX IF NOT EXISTS idx_spot_bets_created_at ON spot_bets(timestamp_epoch);
@@ -58,7 +66,15 @@ CREATE TABLE IF NOT EXISTS spot_payouts (
     transaction_id TEXT NOT NULL
 );
 SELECT create_hypertable('spot_payouts', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '7 days');
-ALTER TABLE spot_payouts ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'spot_payouts_pkey'
+    ) THEN
+        ALTER TABLE spot_payouts ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_spot_payouts_post_id ON spot_payouts(post_id, time);
 CREATE INDEX IF NOT EXISTS idx_spot_payouts_user ON spot_payouts(user_address, time);
 
@@ -73,7 +89,15 @@ CREATE TABLE IF NOT EXISTS spot_refunds (
     transaction_id TEXT NOT NULL
 );
 SELECT create_hypertable('spot_refunds', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '7 days');
-ALTER TABLE spot_refunds ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'spot_refunds_pkey'
+    ) THEN
+        ALTER TABLE spot_refunds ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_spot_refunds_post_id ON spot_refunds(post_id, time);
 CREATE INDEX IF NOT EXISTS idx_spot_refunds_user ON spot_refunds(user_address, time);
 
@@ -89,7 +113,15 @@ CREATE TABLE IF NOT EXISTS spot_resolutions (
     transaction_id TEXT NOT NULL
 );
 SELECT create_hypertable('spot_resolutions', 'time', if_not_exists => TRUE, create_default_indexes => FALSE, chunk_time_interval => INTERVAL '30 days');
-ALTER TABLE spot_resolutions ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'spot_resolutions_pkey'
+    ) THEN
+        ALTER TABLE spot_resolutions ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_spot_resolutions_post_id ON spot_resolutions(post_id, time);
 
 -- Event audit log

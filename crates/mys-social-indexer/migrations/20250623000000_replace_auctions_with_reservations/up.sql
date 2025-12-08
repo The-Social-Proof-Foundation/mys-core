@@ -47,11 +47,23 @@ CREATE TABLE IF NOT EXISTS spt_reservation_pools (
 SELECT create_hypertable('spt_reservation_pools', 'time', if_not_exists => TRUE, migrate_data => TRUE);
 
 -- Enable compression on reservation pools table
-ALTER TABLE spt_reservation_pools SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'pool_id,associated_id,owner',
-    timescaledb.compress_orderby = 'time DESC'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'spt_reservation_pools'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE spt_reservation_pools SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'pool_id,associated_id,owner',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+END $$;
 
 -- Individual Reservations table with time dimension
 CREATE TABLE IF NOT EXISTS spt_reservations (
@@ -69,11 +81,23 @@ CREATE TABLE IF NOT EXISTS spt_reservations (
 SELECT create_hypertable('spt_reservations', 'time', if_not_exists => TRUE, migrate_data => TRUE);
 
 -- Enable compression on reservations table
-ALTER TABLE spt_reservations SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'pool_id,reservatior_address',
-    timescaledb.compress_orderby = 'time DESC'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'spt_reservations'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE spt_reservations SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'pool_id,reservatior_address',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+END $$;
 
 -- Exchange Configuration table to track thresholds and settings
 CREATE TABLE IF NOT EXISTS spt_exchange_config (
@@ -101,11 +125,23 @@ CREATE TABLE IF NOT EXISTS spt_exchange_config (
 SELECT create_hypertable('spt_exchange_config', 'time', if_not_exists => TRUE, migrate_data => TRUE);
 
 -- Enable compression on config table
-ALTER TABLE spt_exchange_config SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'updated_by',
-    timescaledb.compress_orderby = 'time DESC'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'spt_exchange_config'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE spt_exchange_config SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'updated_by',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 3. CREATE INDEXES

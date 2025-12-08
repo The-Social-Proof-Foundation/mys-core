@@ -48,6 +48,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_anonymous_vote_time ON anonymous_votes;
 CREATE TRIGGER set_anonymous_vote_time 
 BEFORE INSERT OR UPDATE ON anonymous_votes
 FOR EACH ROW
@@ -59,7 +60,15 @@ SELECT create_hypertable('anonymous_votes', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 day');
 
 -- Add primary key including time
-ALTER TABLE anonymous_votes ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'anonymous_votes_pkey'
+    ) THEN
+        ALTER TABLE anonymous_votes ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Create unique constraint to prevent double voting
 CREATE UNIQUE INDEX IF NOT EXISTS idx_anonymous_votes_unique_vote 
@@ -84,14 +93,35 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS check_anonymous_vote_proposal ON anonymous_votes;
 CREATE TRIGGER check_anonymous_vote_proposal
 BEFORE INSERT OR UPDATE ON anonymous_votes
 FOR EACH ROW
 EXECUTE FUNCTION validate_anonymous_vote_proposal();
 
 -- Enable compression on anonymous_votes table for historical data
-ALTER TABLE anonymous_votes SET (timescaledb.compress = true);
-SELECT add_compression_policy('anonymous_votes', INTERVAL '30 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'anonymous_votes'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE anonymous_votes SET (timescaledb.compress = true);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'anonymous_votes'
+    ) THEN
+        PERFORM add_compression_policy('anonymous_votes', INTERVAL '30 days');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 3. CREATE VOTE DECRYPTION FAILURES TABLE
@@ -118,6 +148,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_decryption_failure_time ON vote_decryption_failures;
 CREATE TRIGGER set_decryption_failure_time 
 BEFORE INSERT OR UPDATE ON vote_decryption_failures
 FOR EACH ROW
@@ -129,7 +160,15 @@ SELECT create_hypertable('vote_decryption_failures', 'time', if_not_exists => TR
                           chunk_time_interval => INTERVAL '30 days');
 
 -- Add primary key including time
-ALTER TABLE vote_decryption_failures ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'vote_decryption_failures_pkey'
+    ) THEN
+        ALTER TABLE vote_decryption_failures ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Add indexes
 CREATE INDEX IF NOT EXISTS idx_decryption_failures_proposal_time ON vote_decryption_failures(proposal_id, time DESC);
@@ -138,8 +177,28 @@ CREATE INDEX IF NOT EXISTS idx_decryption_failures_reason_time ON vote_decryptio
 CREATE INDEX IF NOT EXISTS idx_decryption_failures_transaction_id ON vote_decryption_failures(transaction_id);
 
 -- Enable compression on failures table for historical data
-ALTER TABLE vote_decryption_failures SET (timescaledb.compress = true);
-SELECT add_compression_policy('vote_decryption_failures', INTERVAL '90 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'vote_decryption_failures'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE vote_decryption_failures SET (timescaledb.compress = true);
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'vote_decryption_failures'
+    ) THEN
+        PERFORM add_compression_policy('vote_decryption_failures', INTERVAL '90 days');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 4. CREATE CONTINUOUS AGGREGATES FOR ANALYTICS
@@ -147,8 +206,13 @@ SELECT add_compression_policy('vote_decryption_failures', INTERVAL '90 days');
 
 -- Pre-computed analytics for anonymous voting patterns
 -- Create continuous aggregate without initial data to avoid transaction block issues
-CREATE MATERIALIZED VIEW IF NOT EXISTS anonymous_voting_daily_stats
-WITH (timescaledb.continuous) AS
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE matviewname = 'anonymous_voting_daily_stats'
+    ) THEN
+        CREATE MATERIALIZED VIEW anonymous_voting_daily_stats
+        WITH (timescaledb.continuous) AS
 SELECT
     time_bucket('1 day', time) AS day,
     proposal_id,
@@ -195,7 +259,27 @@ END $$;
 -- ============================================================================
 
 -- Keep raw anonymous votes for 2 years
-SELECT add_retention_policy('anonymous_votes', INTERVAL '2 years');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_retention' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'anonymous_votes'
+    ) THEN
+        PERFORM add_retention_policy('anonymous_votes', INTERVAL '2 years');
+    END IF;
+END $$;
 
 -- Keep decryption failures for 1 year
-SELECT add_retention_policy('vote_decryption_failures', INTERVAL '1 year'); 
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_retention' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'vote_decryption_failures'
+    ) THEN
+        PERFORM add_retention_policy('vote_decryption_failures', INTERVAL '1 year');
+    END IF;
+END $$; 

@@ -38,6 +38,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_spot_config_time ON spot_config;
 CREATE TRIGGER set_spot_config_time 
 BEFORE INSERT ON spot_config
 FOR EACH ROW
@@ -49,7 +50,15 @@ SELECT create_hypertable('spot_config', 'time', if_not_exists => TRUE,
                           chunk_time_interval => INTERVAL '1 month');
 
 -- Now add primary key that includes time
-ALTER TABLE spot_config ADD PRIMARY KEY (id, time);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'spot_config_pkey'
+    ) THEN
+        ALTER TABLE spot_config ADD PRIMARY KEY (id, time);
+    END IF;
+END $$;
 
 -- Create unique constraint for latest config (one row per time)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_spot_config_time 

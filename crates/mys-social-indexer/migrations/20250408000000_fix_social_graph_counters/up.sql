@@ -2,13 +2,26 @@
 -- in the profiles table are correctly updated from relationships
 
 -- First ensure columns have proper defaults
-ALTER TABLE profiles 
-ALTER COLUMN followers_count SET DEFAULT 0,
-ALTER COLUMN followers_count SET NOT NULL;
-
-ALTER TABLE profiles 
-ALTER COLUMN following_count SET DEFAULT 0,
-ALTER COLUMN following_count SET NOT NULL;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' AND column_name = 'followers_count'
+    ) THEN
+        ALTER TABLE profiles 
+        ALTER COLUMN followers_count SET DEFAULT 0,
+        ALTER COLUMN followers_count SET NOT NULL;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' AND column_name = 'following_count'
+    ) THEN
+        ALTER TABLE profiles 
+        ALTER COLUMN following_count SET DEFAULT 0,
+        ALTER COLUMN following_count SET NOT NULL;
+    END IF;
+END $$;
 
 -- Ensure profile_id is indexed for faster lookups
 CREATE INDEX IF NOT EXISTS idx_profiles_profile_id ON profiles(profile_id);
@@ -34,6 +47,15 @@ CREATE INDEX IF NOT EXISTS idx_social_graph_relationships_pair
 ON social_graph_relationships(follower_address, following_address);
 
 -- Add details to the unique constraint for clarity
-COMMENT ON CONSTRAINT social_graph_relationships_unique_relationship 
-ON social_graph_relationships 
-IS 'Ensures follower can only follow an account once';
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'social_graph_relationships_unique_relationship'
+        AND conrelid = 'social_graph_relationships'::regclass
+    ) THEN
+        COMMENT ON CONSTRAINT social_graph_relationships_unique_relationship 
+        ON social_graph_relationships 
+        IS 'Ensures follower can only follow an account once';
+    END IF;
+END $$;

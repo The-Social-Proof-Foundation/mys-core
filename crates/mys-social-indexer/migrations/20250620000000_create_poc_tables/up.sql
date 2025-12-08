@@ -75,6 +75,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_poc_badge_time ON poc_badges;
 CREATE TRIGGER set_poc_badge_time 
 BEFORE INSERT ON poc_badges
 FOR EACH ROW
@@ -157,6 +158,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_poc_redirection_time ON poc_revenue_redirections;
 CREATE TRIGGER set_poc_redirection_time 
 BEFORE INSERT ON poc_revenue_redirections
 FOR EACH ROW
@@ -238,6 +240,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_poc_analysis_time ON poc_analysis_results;
 CREATE TRIGGER set_poc_analysis_time 
 BEFORE INSERT ON poc_analysis_results
 FOR EACH ROW
@@ -326,6 +329,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_poc_dispute_time ON poc_disputes;
 CREATE TRIGGER set_poc_dispute_time 
 BEFORE INSERT ON poc_disputes
 FOR EACH ROW
@@ -407,6 +411,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_poc_vote_time ON poc_dispute_votes;
 CREATE TRIGGER set_poc_vote_time 
 BEFORE INSERT ON poc_dispute_votes
 FOR EACH ROW
@@ -546,21 +551,25 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Apply to PoC tables that reference posts
+DROP TRIGGER IF EXISTS check_poc_badge_post_reference ON poc_badges;
 CREATE TRIGGER check_poc_badge_post_reference
 BEFORE INSERT OR UPDATE ON poc_badges
 FOR EACH ROW
 EXECUTE FUNCTION validate_poc_post_reference();
 
+DROP TRIGGER IF EXISTS check_poc_redirection_accused_post_reference ON poc_revenue_redirections;
 CREATE TRIGGER check_poc_redirection_accused_post_reference
 BEFORE INSERT OR UPDATE ON poc_revenue_redirections
 FOR EACH ROW
 EXECUTE FUNCTION validate_poc_post_reference();
 
+DROP TRIGGER IF EXISTS check_poc_analysis_post_reference ON poc_analysis_results;
 CREATE TRIGGER check_poc_analysis_post_reference
 BEFORE INSERT OR UPDATE ON poc_analysis_results
 FOR EACH ROW
 EXECUTE FUNCTION validate_poc_post_reference();
 
+DROP TRIGGER IF EXISTS check_poc_dispute_post_reference ON poc_disputes;
 CREATE TRIGGER check_poc_dispute_post_reference
 BEFORE INSERT OR UPDATE ON poc_disputes
 FOR EACH ROW
@@ -577,6 +586,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS check_poc_redirection_original_post_reference ON poc_revenue_redirections;
 CREATE TRIGGER check_poc_redirection_original_post_reference
 BEFORE INSERT OR UPDATE ON poc_revenue_redirections
 FOR EACH ROW
@@ -593,6 +603,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS check_poc_vote_dispute_reference ON poc_dispute_votes;
 CREATE TRIGGER check_poc_vote_dispute_reference
 BEFORE INSERT OR UPDATE ON poc_dispute_votes
 FOR EACH ROW

@@ -27,11 +27,23 @@ CREATE TABLE IF NOT EXISTS social_proof_token_pools (
 SELECT create_hypertable('social_proof_token_pools', 'time', if_not_exists => TRUE, migrate_data => TRUE);
 
 -- Enable compression on token pools table
-ALTER TABLE social_proof_token_pools SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'pool_id,owner,associated_id',
-    timescaledb.compress_orderby = 'time DESC'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'social_proof_token_pools'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE social_proof_token_pools SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'pool_id,owner,associated_id',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+END $$;
 
 -- Token Holdings table with time dimension
 CREATE TABLE IF NOT EXISTS spt_holdings (
@@ -49,11 +61,23 @@ CREATE TABLE IF NOT EXISTS spt_holdings (
 SELECT create_hypertable('spt_holdings', 'time', if_not_exists => TRUE, migrate_data => TRUE);
 
 -- Enable compression on holdings table
-ALTER TABLE spt_holdings SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'pool_id,holder_address',
-    timescaledb.compress_orderby = 'time DESC'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'spt_holdings'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE spt_holdings SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'pool_id,holder_address',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+END $$;
 
 -- Token Transactions table with time dimension
 CREATE TABLE IF NOT EXISTS spt_transactions (
@@ -78,11 +102,23 @@ CREATE TABLE IF NOT EXISTS spt_transactions (
 SELECT create_hypertable('spt_transactions', 'time', if_not_exists => TRUE, migrate_data => TRUE);
 
 -- Enable compression on transactions table
-ALTER TABLE spt_transactions SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'pool_id,transaction_type,sender',
-    timescaledb.compress_orderby = 'time DESC'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'spt_transactions'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE spt_transactions SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'pool_id,transaction_type,sender',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+END $$;
 
 -- Token Auction Pools table with time dimension
 CREATE TABLE IF NOT EXISTS spt_auction_pools (
@@ -106,11 +142,23 @@ CREATE TABLE IF NOT EXISTS spt_auction_pools (
 SELECT create_hypertable('spt_auction_pools', 'time', if_not_exists => TRUE, migrate_data => TRUE);
 
 -- Enable compression on auction pools table
-ALTER TABLE spt_auction_pools SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'auction_id,associated_id,owner',
-    timescaledb.compress_orderby = 'time DESC'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'spt_auction_pools'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE spt_auction_pools SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'auction_id,associated_id,owner',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+END $$;
 
 -- Auction Contributions table with time dimension
 CREATE TABLE IF NOT EXISTS spt_auction_contributions (
@@ -128,11 +176,23 @@ CREATE TABLE IF NOT EXISTS spt_auction_contributions (
 SELECT create_hypertable('spt_auction_contributions', 'time', if_not_exists => TRUE, migrate_data => TRUE);
 
 -- Enable compression on auction contributions table
-ALTER TABLE spt_auction_contributions SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'auction_id,contributor_address',
-    timescaledb.compress_orderby = 'time DESC'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'spt_auction_contributions'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE spt_auction_contributions SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'auction_id,contributor_address',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+END $$;
 
 -- Token Price History table with time dimension
 CREATE TABLE IF NOT EXISTS spt_price_history (
@@ -149,11 +209,23 @@ CREATE TABLE IF NOT EXISTS spt_price_history (
 SELECT create_hypertable('spt_price_history', 'time', if_not_exists => TRUE, chunk_time_interval => INTERVAL '1 day');
 
 -- Enable compression on price history table
-ALTER TABLE spt_price_history SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'pool_id',
-    timescaledb.compress_orderby = 'time DESC'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'spt_price_history'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE spt_price_history SET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby = 'pool_id',
+            timescaledb.compress_orderby = 'time DESC'
+        );
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 2. CREATE INDEXES
@@ -269,12 +341,62 @@ ORDER BY
 -- ============================================================================
 
 -- Add compression policies to compress chunks after 7 days
-SELECT add_compression_policy('social_proof_token_pools', INTERVAL '7 days');
-SELECT add_compression_policy('spt_holdings', INTERVAL '7 days');
-SELECT add_compression_policy('spt_transactions', INTERVAL '7 days');
-SELECT add_compression_policy('spt_auction_pools', INTERVAL '7 days');
-SELECT add_compression_policy('spt_auction_contributions', INTERVAL '7 days');
-SELECT add_compression_policy('spt_price_history', INTERVAL '7 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'social_proof_token_pools'
+    ) THEN
+        PERFORM add_compression_policy('social_proof_token_pools', INTERVAL '7 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'spt_holdings'
+    ) THEN
+        PERFORM add_compression_policy('spt_holdings', INTERVAL '7 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'spt_transactions'
+    ) THEN
+        PERFORM add_compression_policy('spt_transactions', INTERVAL '7 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'spt_auction_pools'
+    ) THEN
+        PERFORM add_compression_policy('spt_auction_pools', INTERVAL '7 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'spt_auction_contributions'
+    ) THEN
+        PERFORM add_compression_policy('spt_auction_contributions', INTERVAL '7 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'spt_price_history'
+    ) THEN
+        PERFORM add_compression_policy('spt_price_history', INTERVAL '7 days');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 5. CREATE REFRESH FUNCTIONS AND POLICIES FOR MATERIALIZED VIEWS
@@ -300,16 +422,26 @@ $$ LANGUAGE plpgsql;
 DO $$
 BEGIN
     -- Create a job to refresh hourly price view every hour
-    PERFORM add_job(
-        'refresh_spt_price_hourly',
-        '1 hour',
-        initial_start => now()
-    );
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'refresh_spt_price_hourly'
+    ) THEN
+        PERFORM add_job(
+            'refresh_spt_price_hourly',
+            '1 hour',
+            initial_start => now()
+        );
+    END IF;
     
     -- Create a job to refresh daily price view every day
-    PERFORM add_job(
-        'refresh_spt_price_daily',
-        '1 day',
-        initial_start => now()
-    );
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'refresh_spt_price_daily'
+    ) THEN
+        PERFORM add_job(
+            'refresh_spt_price_daily',
+            '1 day',
+            initial_start => now()
+        );
+    END IF;
 END $$; 
