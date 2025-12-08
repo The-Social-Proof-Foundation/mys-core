@@ -264,34 +264,62 @@ CREATE INDEX IF NOT EXISTS idx_spt_price_history_pool_id ON spt_price_history(po
 -- ============================================================================
 
 -- Create hourly price aggregation view
-CREATE MATERIALIZED VIEW IF NOT EXISTS spt_price_hourly
-WITH (timescaledb.continuous) AS
-SELECT 
-    pool_id,
-    time_bucket('1 hour', time) AS bucket,
-    FIRST(price, time) AS open,
-    MAX(price) AS high,
-    MIN(price) AS low,
-    LAST(price, time) AS close,
-    LAST(circulating_supply, time) AS circulating_supply
-FROM spt_price_history
-GROUP BY pool_id, bucket
-WITH NO DATA;
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'spt_price_hourly'
+    ) INTO view_exists;
+    
+    IF NOT view_exists THEN
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW spt_price_hourly
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            pool_id,
+            time_bucket('1 hour', time) AS bucket,
+            FIRST(price, time) AS open,
+            MAX(price) AS high,
+            MIN(price) AS low,
+            LAST(price, time) AS close,
+            LAST(circulating_supply, time) AS circulating_supply
+        FROM spt_price_history
+        GROUP BY pool_id, bucket
+        WITH NO DATA
+        $sql$;
+    END IF;
+END $$;
 
 -- Create daily price aggregation view
-CREATE MATERIALIZED VIEW IF NOT EXISTS spt_price_daily
-WITH (timescaledb.continuous) AS
-SELECT 
-    pool_id,
-    time_bucket('1 day', time) AS bucket,
-    FIRST(price, time) AS open,
-    MAX(price) AS high,
-    MIN(price) AS low,
-    LAST(price, time) AS close,
-    LAST(circulating_supply, time) AS circulating_supply
-FROM spt_price_history
-GROUP BY pool_id, bucket
-WITH NO DATA;
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'spt_price_daily'
+    ) INTO view_exists;
+    
+    IF NOT view_exists THEN
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW spt_price_daily
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            pool_id,
+            time_bucket('1 day', time) AS bucket,
+            FIRST(price, time) AS open,
+            MAX(price) AS high,
+            MIN(price) AS low,
+            LAST(price, time) AS close,
+            LAST(circulating_supply, time) AS circulating_supply
+        FROM spt_price_history
+        GROUP BY pool_id, bucket
+        WITH NO DATA
+        $sql$;
+    END IF;
+END $$;
 
 -- Create view for active token pools with their current price
 CREATE OR REPLACE VIEW active_token_pools AS

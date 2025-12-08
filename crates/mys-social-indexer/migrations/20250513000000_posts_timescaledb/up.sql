@@ -86,12 +86,26 @@ CREATE INDEX IF NOT EXISTS idx_posts_transaction_id ON posts(transaction_id);
 CREATE INDEX IF NOT EXISTS idx_posts_deleted_at ON posts(deleted_at);
 
 -- Enable compression on posts table
-ALTER TABLE posts SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'posts'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'posts'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE posts SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'posts'
     ) THEN
         PERFORM add_compression_policy('posts', INTERVAL '90 days');
     END IF;
@@ -187,12 +201,26 @@ CREATE INDEX IF NOT EXISTS idx_comments_transaction_id ON comments(transaction_i
 CREATE INDEX IF NOT EXISTS idx_comments_deleted_at ON comments(deleted_at);
 
 -- Enable compression on comments table
-ALTER TABLE comments SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'comments'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'comments'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE comments SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'comments'
     ) THEN
         PERFORM add_compression_policy('comments', INTERVAL '90 days');
     END IF;
@@ -258,12 +286,26 @@ CREATE INDEX IF NOT EXISTS idx_reactions_reaction_text ON reactions(reaction_tex
 CREATE INDEX IF NOT EXISTS idx_reactions_transaction_id ON reactions(transaction_id);
 
 -- Enable compression policy for reactions
-ALTER TABLE reactions SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'reactions'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'reactions'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE reactions SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'reactions'
     ) THEN
         PERFORM add_compression_policy('reactions', INTERVAL '30 days');
     END IF;
@@ -345,12 +387,26 @@ CREATE INDEX IF NOT EXISTS idx_reposts_profile_id ON reposts(profile_id, time);
 CREATE INDEX IF NOT EXISTS idx_reposts_transaction_id ON reposts(transaction_id);
 
 -- Enable compression policy for reposts
-ALTER TABLE reposts SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'reposts'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'reposts'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE reposts SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'reposts'
     ) THEN
         PERFORM add_compression_policy('reposts', INTERVAL '30 days');
     END IF;
@@ -410,12 +466,26 @@ CREATE INDEX IF NOT EXISTS idx_tips_object_id ON tips(object_id, time);
 CREATE INDEX IF NOT EXISTS idx_tips_transaction_id ON tips(transaction_id);
 
 -- Enable compression policy for tips
-ALTER TABLE tips SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'tips'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'tips'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE tips SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'tips'
     ) THEN
         PERFORM add_compression_policy('tips', INTERVAL '30 days');
     END IF;
@@ -477,12 +547,26 @@ CREATE INDEX IF NOT EXISTS idx_reports_reporter ON posts_reports(reporter, time)
 CREATE INDEX IF NOT EXISTS idx_reports_transaction_id ON posts_reports(transaction_id);
 
 -- Enable compression policy for reports
-ALTER TABLE posts_reports SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'posts_reports'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'posts_reports'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE posts_reports SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'posts_reports'
     ) THEN
         PERFORM add_compression_policy('posts_reports', INTERVAL '90 days');
     END IF;
@@ -541,12 +625,26 @@ CREATE INDEX IF NOT EXISTS idx_transfers_new_owner ON posts_transfers(new_owner,
 CREATE INDEX IF NOT EXISTS idx_transfers_transaction_id ON posts_transfers(transaction_id);
 
 -- Enable compression policy for transfers
-ALTER TABLE posts_transfers SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'posts_transfers'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'posts_transfers'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE posts_transfers SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'posts_transfers'
     ) THEN
         PERFORM add_compression_policy('posts_transfers', INTERVAL '90 days');
     END IF;
@@ -605,12 +703,26 @@ CREATE INDEX IF NOT EXISTS idx_moderation_moderated_by ON posts_moderation_event
 CREATE INDEX IF NOT EXISTS idx_moderation_transaction_id ON posts_moderation_events(transaction_id);
 
 -- Enable compression policy for moderation events
-ALTER TABLE posts_moderation_events SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'posts_moderation_events'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'posts_moderation_events'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE posts_moderation_events SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'posts_moderation_events'
     ) THEN
         PERFORM add_compression_policy('posts_moderation_events', INTERVAL '90 days');
     END IF;
@@ -670,12 +782,26 @@ CREATE INDEX IF NOT EXISTS idx_deletion_owner ON posts_deletion_events(owner, ti
 CREATE INDEX IF NOT EXISTS idx_deletion_transaction_id ON posts_deletion_events(transaction_id);
 
 -- Enable compression policy for deletion events
-ALTER TABLE posts_deletion_events SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'posts_deletion_events'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'posts_deletion_events'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE posts_deletion_events SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'posts_deletion_events'
     ) THEN
         PERFORM add_compression_policy('posts_deletion_events', INTERVAL '90 days');
     END IF;

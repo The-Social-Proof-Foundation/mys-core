@@ -121,12 +121,26 @@ CREATE INDEX IF NOT EXISTS idx_delegates_is_active ON delegates(is_active, time)
 CREATE INDEX IF NOT EXISTS idx_delegates_transaction_id ON delegates(transaction_id);
 
 -- Enable compression on delegates table for historical data
-ALTER TABLE delegates SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'delegates'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'delegates'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE delegates SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'delegates'
     ) THEN
         PERFORM add_compression_policy('delegates', INTERVAL '90 days');
     END IF;
@@ -190,12 +204,26 @@ CREATE INDEX IF NOT EXISTS idx_nominees_scheduled_term ON nominated_delegates(sc
 CREATE INDEX IF NOT EXISTS idx_nominees_transaction_id ON nominated_delegates(transaction_id);
 
 -- Enable compression on nominated_delegates table for historical data
-ALTER TABLE nominated_delegates SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'nominated_delegates'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'nominated_delegates'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE nominated_delegates SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'nominated_delegates'
     ) THEN
         PERFORM add_compression_policy('nominated_delegates', INTERVAL '90 days');
     END IF;
@@ -268,12 +296,26 @@ CREATE INDEX IF NOT EXISTS idx_proposals_voting_end_time ON proposals(voting_end
 CREATE INDEX IF NOT EXISTS idx_proposals_transaction_id ON proposals(transaction_id);
 
 -- Enable compression on proposals table for historical data
-ALTER TABLE proposals SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'proposals'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'proposals'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE proposals SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'proposals'
     ) THEN
         PERFORM add_compression_policy('proposals', INTERVAL '180 days');
     END IF;
@@ -337,12 +379,26 @@ CREATE INDEX IF NOT EXISTS idx_ratings_registry_type ON delegate_ratings(registr
 CREATE INDEX IF NOT EXISTS idx_ratings_transaction_id ON delegate_ratings(transaction_id);
 
 -- Enable compression policy
-ALTER TABLE delegate_ratings SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'delegate_ratings'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'delegate_ratings'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE delegate_ratings SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'delegate_ratings'
     ) THEN
         PERFORM add_compression_policy('delegate_ratings', INTERVAL '30 days');
     END IF;
@@ -419,12 +475,26 @@ CREATE INDEX IF NOT EXISTS idx_delegate_votes_approve ON delegate_votes(approve,
 CREATE INDEX IF NOT EXISTS idx_delegate_votes_transaction_id ON delegate_votes(transaction_id);
 
 -- Enable compression policy
-ALTER TABLE delegate_votes SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'delegate_votes'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'delegate_votes'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE delegate_votes SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'delegate_votes'
     ) THEN
         PERFORM add_compression_policy('delegate_votes', INTERVAL '30 days');
     END IF;
@@ -503,12 +573,26 @@ CREATE INDEX IF NOT EXISTS idx_community_votes_vote_weight ON community_votes(vo
 CREATE INDEX IF NOT EXISTS idx_community_votes_transaction_id ON community_votes(transaction_id);
 
 -- Enable compression policy
-ALTER TABLE community_votes SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'community_votes'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'community_votes'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE community_votes SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'community_votes'
     ) THEN
         PERFORM add_compression_policy('community_votes', INTERVAL '30 days');
     END IF;
@@ -582,12 +666,26 @@ CREATE INDEX IF NOT EXISTS idx_reward_distribution_type ON reward_distributions(
 CREATE INDEX IF NOT EXISTS idx_reward_transaction_id ON reward_distributions(transaction_id);
 
 -- Enable compression policy
-ALTER TABLE reward_distributions SET (timescaledb.compress = true);
 DO $$
 BEGIN
+    -- Enable compression if not already enabled
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'reward_distributions'
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' 
+        AND c.relname = 'reward_distributions'
+        AND c.reloptions IS NOT NULL
+        AND array_to_string(c.reloptions, ',') LIKE '%compress=true%'
+    ) THEN
+        ALTER TABLE reward_distributions SET (timescaledb.compress = true);
+    END IF;
+    
+    -- Check if a compression policy job already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'reward_distributions'
     ) THEN
         PERFORM add_compression_policy('reward_distributions', INTERVAL '90 days');
     END IF;

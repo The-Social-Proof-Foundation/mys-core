@@ -326,63 +326,102 @@ END $$;
 -- ============================================================================
 
 -- Daily revenue analytics aggregate
-CREATE MATERIALIZED VIEW my_ip_daily_revenue
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 day', time) AS day,
-    ip_id,
-    to_address AS creator,
-    revenue_type,
-    SUM(amount) AS daily_revenue,
-    COUNT(*) AS transaction_count
-FROM my_ip_revenue
-GROUP BY time_bucket('1 day', time), ip_id, to_address, revenue_type
-WITH NO DATA;
-
--- Enable automatic refresh for daily revenue
-SELECT add_continuous_aggregate_policy('my_ip_daily_revenue',
-    start_offset => INTERVAL '3 days',
-    end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour');
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'my_ip_daily_revenue'
+    ) INTO view_exists;
+    
+    IF NOT view_exists THEN
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW my_ip_daily_revenue
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 day', time) AS day,
+            ip_id,
+            to_address AS creator,
+            revenue_type,
+            SUM(amount) AS daily_revenue,
+            COUNT(*) AS transaction_count
+        FROM my_ip_revenue
+        GROUP BY time_bucket('1 day', time), ip_id, to_address, revenue_type
+        WITH NO DATA
+        $sql$;
+        
+        PERFORM add_continuous_aggregate_policy('my_ip_daily_revenue',
+            start_offset => INTERVAL '3 days',
+            end_offset => INTERVAL '1 hour',
+            schedule_interval => INTERVAL '1 hour');
+    END IF;
+END $$;
 
 -- Daily access statistics aggregate
-CREATE MATERIALIZED VIEW my_ip_daily_access
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 day', time) AS day,
-    ip_id,
-    access_type,
-    COUNT(DISTINCT user_address) AS unique_users,
-    COUNT(*) AS total_accesses
-FROM my_ip_access_logs
-GROUP BY time_bucket('1 day', time), ip_id, access_type
-WITH NO DATA;
-
--- Enable automatic refresh for daily access
-SELECT add_continuous_aggregate_policy('my_ip_daily_access',
-    start_offset => INTERVAL '3 days',
-    end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour');
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'my_ip_daily_access'
+    ) INTO view_exists;
+    
+    IF NOT view_exists THEN
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW my_ip_daily_access
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 day', time) AS day,
+            ip_id,
+            access_type,
+            COUNT(DISTINCT user_address) AS unique_users,
+            COUNT(*) AS total_accesses
+        FROM my_ip_access_logs
+        GROUP BY time_bucket('1 day', time), ip_id, access_type
+        WITH NO DATA
+        $sql$;
+        
+        PERFORM add_continuous_aggregate_policy('my_ip_daily_access',
+            start_offset => INTERVAL '3 days',
+            end_offset => INTERVAL '1 hour',
+            schedule_interval => INTERVAL '1 hour');
+    END IF;
+END $$;
 
 -- Popular data tracking aggregate (hourly for real-time popularity)
-CREATE MATERIALIZED VIEW my_ip_popular_data
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 hour', time) AS hour,
-    ip_id,
-    COUNT(DISTINCT buyer) AS unique_purchasers,
-    SUM(CASE WHEN purchase_type = 'one_time' THEN 1 ELSE 0 END) AS one_time_purchases,
-    SUM(CASE WHEN purchase_type = 'subscription' THEN 1 ELSE 0 END) AS subscriptions,
-    SUM(price) AS total_revenue
-FROM my_ip_purchases
-GROUP BY time_bucket('1 hour', time), ip_id
-WITH NO DATA;
-
--- Enable automatic refresh for popular data
-SELECT add_continuous_aggregate_policy('my_ip_popular_data',
-    start_offset => INTERVAL '1 day',
-    end_offset => INTERVAL '15 minutes',
-    schedule_interval => INTERVAL '15 minutes');
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'my_ip_popular_data'
+    ) INTO view_exists;
+    
+    IF NOT view_exists THEN
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW my_ip_popular_data
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 hour', time) AS hour,
+            ip_id,
+            COUNT(DISTINCT buyer) AS unique_purchasers,
+            SUM(CASE WHEN purchase_type = 'one_time' THEN 1 ELSE 0 END) AS one_time_purchases,
+            SUM(CASE WHEN purchase_type = 'subscription' THEN 1 ELSE 0 END) AS subscriptions,
+            SUM(price) AS total_revenue
+        FROM my_ip_purchases
+        GROUP BY time_bucket('1 hour', time), ip_id
+        WITH NO DATA
+        $sql$;
+        
+        PERFORM add_continuous_aggregate_policy('my_ip_popular_data',
+            start_offset => INTERVAL '1 day',
+            end_offset => INTERVAL '15 minutes',
+            schedule_interval => INTERVAL '15 minutes');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 7. CREATE DATA LIFECYCLE MANAGEMENT POLICIES

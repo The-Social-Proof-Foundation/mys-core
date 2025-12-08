@@ -266,9 +266,35 @@ ORDER BY
 -- ============================================================================
 
 -- Add compression policies to compress chunks after 7 days
-SELECT add_compression_policy('spt_reservation_pools', INTERVAL '7 days');
-SELECT add_compression_policy('spt_reservations', INTERVAL '7 days');
-SELECT add_compression_policy('spt_exchange_config', INTERVAL '7 days');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'spt_reservation_pools'
+    ) THEN
+        PERFORM add_compression_policy('spt_reservation_pools', INTERVAL '7 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'spt_reservations'
+    ) THEN
+        PERFORM add_compression_policy('spt_reservations', INTERVAL '7 days');
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'spt_exchange_config'
+    ) THEN
+        PERFORM add_compression_policy('spt_exchange_config', INTERVAL '7 days');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 6. CREATE FUNCTIONS FOR RESERVATION POOL MANAGEMENT

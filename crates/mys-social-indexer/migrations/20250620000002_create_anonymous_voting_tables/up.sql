@@ -209,28 +209,30 @@ END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM pg_matviews WHERE matviewname = 'anonymous_voting_daily_stats'
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'anonymous_voting_daily_stats'
     ) THEN
+        EXECUTE $sql$
         CREATE MATERIALIZED VIEW anonymous_voting_daily_stats
         WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 day', time) AS day,
-    proposal_id,
-    COUNT(*) as total_anonymous_votes,
-    COUNT(*) FILTER (WHERE decrypted = true) as successfully_decrypted,
-    COUNT(*) FILTER (WHERE decryption_status = 2) as failed_decryptions,
-    COUNT(*) FILTER (WHERE decrypted_vote = 1) as anonymous_votes_for,
-    COUNT(*) FILTER (WHERE decrypted_vote = 0) as anonymous_votes_against,
-    COUNT(*) FILTER (WHERE decryption_status = 0) as pending_decryption
-FROM anonymous_votes
-GROUP BY day, proposal_id
-WITH NO DATA;
-
--- Refresh policy for real-time analytics
-SELECT add_continuous_aggregate_policy('anonymous_voting_daily_stats',
-    start_offset => INTERVAL '3 days',
-    end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour');
+        SELECT
+            time_bucket('1 day', time) AS day,
+            proposal_id,
+            COUNT(*) as total_anonymous_votes,
+            COUNT(*) FILTER (WHERE decrypted = true) as successfully_decrypted,
+            COUNT(*) FILTER (WHERE decryption_status = 2) as failed_decryptions,
+            COUNT(*) FILTER (WHERE decrypted_vote = 1) as anonymous_votes_for,
+            COUNT(*) FILTER (WHERE decrypted_vote = 0) as anonymous_votes_against,
+            COUNT(*) FILTER (WHERE decryption_status = 0) as pending_decryption
+        FROM anonymous_votes
+        GROUP BY day, proposal_id
+        WITH NO DATA
+        $sql$;
+        
+        PERFORM add_continuous_aggregate_policy('anonymous_voting_daily_stats',
+            start_offset => INTERVAL '3 days',
+            end_offset => INTERVAL '1 hour',
+            schedule_interval => INTERVAL '1 hour');
 
 -- Note: Continuous aggregate will be populated by the refresh policy automatically
 -- Initial data will be available after the first scheduled refresh (1 hour interval)

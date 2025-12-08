@@ -91,8 +91,10 @@ END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'promoted_posts'
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'promoted_posts'
     ) THEN
         PERFORM add_compression_policy('promoted_posts', INTERVAL '90 days');
     END IF;
@@ -177,8 +179,10 @@ END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'promotion_views'
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'promotion_views'
     ) THEN
         PERFORM add_compression_policy('promotion_views', INTERVAL '30 days');
     END IF;
@@ -259,8 +263,10 @@ END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'promotion_status_events'
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'promotion_status_events'
     ) THEN
         PERFORM add_compression_policy('promotion_status_events', INTERVAL '90 days');
     END IF;
@@ -339,8 +345,10 @@ END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'promotion_budget_events'
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'promotion_budget_events'
     ) THEN
         PERFORM add_compression_policy('promotion_budget_events', INTERVAL '90 days');
     END IF;

@@ -494,46 +494,70 @@ CREATE INDEX IF NOT EXISTS idx_poc_config_time ON poc_configuration (time DESC);
 -- 9. CREATE POC DAILY STATISTICS (TIMESCALEDB CONTINUOUS AGGREGATE)
 -- ============================================================================
 -- Use TimescaleDB continuous aggregates for efficient daily statistics
-CREATE MATERIALIZED VIEW IF NOT EXISTS poc_daily_stats
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 day', time) AS day,
-    COUNT(*) FILTER (WHERE NOT revoked) AS badges_issued,
-    0 AS redirections_created, -- Will be updated by separate query
-    0 AS disputes_submitted, -- Will be updated by separate query
-    0 AS votes_cast -- Will be updated by separate query
-FROM poc_badges
-GROUP BY time_bucket('1 day', time)
-WITH NO DATA;
-
--- Enable automatic refresh of continuous aggregate
-SELECT add_continuous_aggregate_policy('poc_daily_stats',
-    start_offset => INTERVAL '3 days',
-    end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour'
-);
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'poc_daily_stats'
+    ) INTO view_exists;
+    
+    IF NOT view_exists THEN
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW poc_daily_stats
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 day', time) AS day,
+            COUNT(*) FILTER (WHERE NOT revoked) AS badges_issued,
+            0 AS redirections_created, -- Will be updated by separate query
+            0 AS disputes_submitted, -- Will be updated by separate query
+            0 AS votes_cast -- Will be updated by separate query
+        FROM poc_badges
+        GROUP BY time_bucket('1 day', time)
+        WITH NO DATA
+        $sql$;
+        
+        PERFORM add_continuous_aggregate_policy('poc_daily_stats',
+            start_offset => INTERVAL '3 days',
+            end_offset => INTERVAL '1 hour',
+            schedule_interval => INTERVAL '1 hour');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 10. CREATE ADDITIONAL CONTINUOUS AGGREGATES FOR ANALYTICS
 -- ============================================================================
 
 -- Create hourly PoC stats for real-time monitoring (badges only)
-CREATE MATERIALIZED VIEW IF NOT EXISTS poc_hourly_stats
-WITH (timescaledb.continuous) AS
-SELECT 
-    time_bucket('1 hour', time) AS hour,
-    COUNT(*) FILTER (WHERE NOT revoked) AS badges_issued_hourly,
-    COUNT(*) AS total_badges
-FROM poc_badges
-GROUP BY time_bucket('1 hour', time)
-WITH NO DATA;
-
--- Enable automatic refresh
-SELECT add_continuous_aggregate_policy('poc_hourly_stats',
-    start_offset => INTERVAL '1 day',
-    end_offset => INTERVAL '1 hour', 
-    schedule_interval => INTERVAL '15 minutes'
-);
+DO $$
+DECLARE
+    view_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM timescaledb_information.continuous_aggregates 
+        WHERE view_name = 'poc_hourly_stats'
+    ) INTO view_exists;
+    
+    IF NOT view_exists THEN
+        EXECUTE $sql$
+        CREATE MATERIALIZED VIEW poc_hourly_stats
+        WITH (timescaledb.continuous) AS
+        SELECT 
+            time_bucket('1 hour', time) AS hour,
+            COUNT(*) FILTER (WHERE NOT revoked) AS badges_issued_hourly,
+            COUNT(*) AS total_badges
+        FROM poc_badges
+        GROUP BY time_bucket('1 hour', time)
+        WITH NO DATA
+        $sql$;
+        
+        PERFORM add_continuous_aggregate_policy('poc_hourly_stats',
+            start_offset => INTERVAL '1 day',
+            end_offset => INTERVAL '1 hour', 
+            schedule_interval => INTERVAL '15 minutes');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 11. ADD REFERENTIAL INTEGRITY TRIGGERS

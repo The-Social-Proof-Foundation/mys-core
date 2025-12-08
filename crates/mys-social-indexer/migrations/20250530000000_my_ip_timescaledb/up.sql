@@ -314,29 +314,37 @@ $$ LANGUAGE plpgsql;
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'my_ip'
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'my_ip'
     ) THEN
         PERFORM add_compression_policy('my_ip', INTERVAL '7 days');
     END IF;
     
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'my_ip_events'
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'my_ip_events'
     ) THEN
         PERFORM add_compression_policy('my_ip_events', INTERVAL '7 days');
     END IF;
     
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'my_ip_grants'
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'my_ip_grants'
     ) THEN
         PERFORM add_compression_policy('my_ip_grants', INTERVAL '7 days');
     END IF;
     
     IF NOT EXISTS (
-        SELECT 1 FROM timescaledb_information.compression_settings
-        WHERE hypertable_name = 'my_ip_revenue'
+        SELECT 1 FROM timescaledb_information.jobs
+        WHERE proc_name = 'policy_compression' 
+        AND hypertable_schema = 'public' 
+        AND hypertable_name = 'my_ip_revenue'
     ) THEN
         PERFORM add_compression_policy('my_ip_revenue', INTERVAL '7 days');
     END IF;
