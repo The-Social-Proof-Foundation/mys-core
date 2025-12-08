@@ -284,7 +284,15 @@ impl PlatformEventHandler {
         let mut conn = self.get_connection().await?;
 
         // Extract timestamp from blockchain event before moving into closure
-        let event_timestamp_ms = blockchain_event.map(|e| e.timestamp_ms);
+        // Filter out 0 timestamps (invalid/unset) - use None instead so we can fallback to current time
+        let event_timestamp_ms = blockchain_event.and_then(|e| {
+            if e.timestamp_ms > 0 {
+                Some(e.timestamp_ms)
+            } else {
+                debug!("blockchain_event.timestamp_ms is 0, will use fallback");
+                None
+            }
+        });
 
         // Start a transaction for atomicity
         conn.build_transaction()
@@ -326,20 +334,30 @@ impl PlatformEventHandler {
                         > 0;
 
                     if platform_exists {
-                        // Use blockchain event timestamp if available, otherwise use current time
-                        // The event.updated_at field is not a real timestamp but an epoch/sequence number
+                        // Use blockchain event timestamp if available, otherwise try event.updated_at,
+                        // otherwise use current time
+                        // Note: event.updated_at may be an epoch/sequence number, not a timestamp,
+                        // so we prefer blockchain_event.timestamp_ms when available
+                        debug!("PlatformUpdated - event_timestamp_ms: {:?}, event.updated_at: {} (ms)", event_timestamp_ms, event.updated_at);
                         let updated_at = if let Some(timestamp_ms) = event_timestamp_ms {
-                            // Convert milliseconds to seconds for from_timestamp
-                            chrono::DateTime::from_timestamp(
-                                (timestamp_ms / 1000) as i64,
-                                0,
-                            )
-                            .unwrap_or_else(|| chrono::Utc::now())
-                            .naive_utc()
+                            // Use blockchain event timestamp (already in milliseconds)
+                            // Helper function validates timestamp and handles 0/invalid values
+                            crate::models::platform::milliseconds_to_naive_datetime(timestamp_ms)
                         } else {
-                            // Fallback to current time if no blockchain event timestamp
-                            chrono::Utc::now().naive_utc()
+                            // Fallback: try event.updated_at if it looks like a reasonable timestamp
+                            // (check if it's within a reasonable range - between 2020 and 2100)
+                            let min_timestamp_ms = 1577836800000u64; // 2020-01-01
+                            let max_timestamp_ms = 4102444800000u64; // 2100-01-01
+                            if event.updated_at >= min_timestamp_ms && event.updated_at <= max_timestamp_ms {
+                                // Looks like a valid timestamp, use it
+                                crate::models::platform::milliseconds_to_naive_datetime(event.updated_at)
+                            } else {
+                                // Doesn't look like a timestamp, use current time
+                                debug!("event.updated_at {} is not in valid range, using current time", event.updated_at);
+                                chrono::Utc::now().naive_utc()
+                            }
                         };
+                        debug!("Converted updated_at: {:?}", updated_at);
 
                         // Update existing platform
                         let platform_update = UpdatePlatform {
@@ -410,16 +428,19 @@ impl PlatformEventHandler {
                                 .unwrap_or_else(|| chrono::Utc::now())
                                 .naive_utc(),
                             updated_at: {
-                                // Use blockchain event timestamp if available, otherwise use current time
+                                // Use blockchain event timestamp if available, otherwise try event.updated_at,
+                                // otherwise use current time
                                 if let Some(timestamp_ms) = event_timestamp_ms {
-                                    chrono::DateTime::from_timestamp(
-                                        (timestamp_ms / 1000) as i64,
-                                        0,
-                                    )
-                                    .unwrap_or_else(|| chrono::Utc::now())
-                                    .naive_utc()
+                                    crate::models::platform::milliseconds_to_naive_datetime(timestamp_ms)
                                 } else {
-                                    chrono::Utc::now().naive_utc()
+                                    // Check if event.updated_at looks like a valid timestamp
+                                    let min_timestamp_ms = 1577836800000u64; // 2020-01-01
+                                    let max_timestamp_ms = 4102444800000u64; // 2100-01-01
+                                    if event.updated_at >= min_timestamp_ms && event.updated_at <= max_timestamp_ms {
+                                        crate::models::platform::milliseconds_to_naive_datetime(event.updated_at)
+                                    } else {
+                                        chrono::Utc::now().naive_utc()
+                                    }
                                 }
                             },
                             is_approved: false, // New platforms are not approved by default
@@ -942,10 +963,11 @@ impl PlatformEventHandler {
 
                     if platform_exists {
                         // Get timestamp from event
-                        let approval_changed_at =
-                            chrono::DateTime::from_timestamp(event.changed_at as i64, 0)
-                                .unwrap_or_else(|| chrono::Utc::now())
-                                .naive_utc();
+                        // event.changed_at is in milliseconds (from deserialize_timestamp_optional)
+                        // Use helper function for consistent conversion (validates and handles 0/invalid timestamps)
+                        debug!("PlatformApprovalChanged event.changed_at: {} (ms)", event.changed_at);
+                        let approval_changed_at = crate::models::platform::milliseconds_to_naive_datetime(event.changed_at);
+                        debug!("Converted approval_changed_at: {:?}", approval_changed_at);
 
                         // Update platform approval status
                         let platform_update = UpdatePlatform {
@@ -1017,7 +1039,15 @@ impl PlatformEventHandler {
 
         // Extract timestamp from blockchain event before moving into closure
         // The event.timestamp field is not a real timestamp but an epoch/sequence number
-        let event_timestamp_ms = blockchain_event.map(|e| e.timestamp_ms);
+        // Filter out 0 timestamps (invalid/unset) - use None instead so we can fallback to current time
+        let event_timestamp_ms = blockchain_event.and_then(|e| {
+            if e.timestamp_ms > 0 {
+                Some(e.timestamp_ms)
+            } else {
+                debug!("blockchain_event.timestamp_ms is 0, will use fallback");
+                None
+            }
+        });
 
         // Start a transaction for atomicity
         conn.build_transaction()
@@ -1096,10 +1126,25 @@ impl PlatformEventHandler {
                         > 0;
 
                     if !membership_exists {
-                        // Use current time for joined_at, matching platform creation style
-                        let joined_at = chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
-                            .unwrap_or_else(|| chrono::Utc::now())
-                            .naive_utc();
+                        // Use blockchain event timestamp if available, otherwise try event.timestamp,
+                        // otherwise use current time
+                        // Note: event.timestamp may be an epoch/sequence number, not a timestamp,
+                        // so we prefer blockchain_event.timestamp_ms when available
+                        let joined_at = if let Some(timestamp_ms) = event_timestamp_ms {
+                            crate::models::platform::milliseconds_to_naive_datetime(timestamp_ms)
+                        } else {
+                            // Check if event.timestamp looks like a valid timestamp
+                            let min_timestamp_ms = 1577836800000u64; // 2020-01-01
+                            let max_timestamp_ms = 4102444800000u64; // 2100-01-01
+                            if event.timestamp >= min_timestamp_ms && event.timestamp <= max_timestamp_ms {
+                                crate::models::platform::milliseconds_to_naive_datetime(event.timestamp)
+                            } else {
+                                // Doesn't look like a timestamp, use current time
+                                chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                                    .unwrap_or_else(|| chrono::Utc::now())
+                                    .naive_utc()
+                            }
+                        };
 
                         // Create new membership
                         let new_membership = NewPlatformMembership {
@@ -1200,7 +1245,15 @@ impl PlatformEventHandler {
 
         // Extract timestamp from blockchain event before moving into closure
         // The event.timestamp field is not a real timestamp but an epoch/sequence number
-        let event_timestamp_ms = blockchain_event.map(|e| e.timestamp_ms);
+        // Filter out 0 timestamps (invalid/unset) - use None instead so we can fallback to current time
+        let event_timestamp_ms = blockchain_event.and_then(|e| {
+            if e.timestamp_ms > 0 {
+                Some(e.timestamp_ms)
+            } else {
+                debug!("blockchain_event.timestamp_ms is 0, will use fallback");
+                None
+            }
+        });
 
         // Start a transaction for atomicity
         conn.build_transaction()

@@ -307,7 +307,36 @@ pub struct PlatformApprovalChangedEvent {
     pub reasoning: Option<String>,
 }
 
+// Helper function to convert milliseconds timestamp to NaiveDateTime
+// All timestamp deserializers return milliseconds, so this ensures consistent conversion
+// Validates that timestamp is not 0 (epoch) and is within reasonable range (2020-2100)
+pub fn milliseconds_to_naive_datetime(ms: u64) -> chrono::NaiveDateTime {
+    // Validate timestamp is not 0 and is within reasonable range
+    let min_timestamp_ms = 1577836800000u64; // 2020-01-01 00:00:00 UTC
+    let max_timestamp_ms = 4102444800000u64; // 2100-01-01 00:00:00 UTC
+    
+    if ms == 0 || ms < min_timestamp_ms || ms > max_timestamp_ms {
+        // Invalid timestamp, use current time
+        tracing::warn!(
+            "Invalid timestamp {} (epoch: {}, min: {}, max: {}), using current time",
+            ms,
+            ms == 0,
+            ms < min_timestamp_ms,
+            ms > max_timestamp_ms
+        );
+        chrono::Utc::now().naive_utc()
+    } else {
+        chrono::DateTime::from_timestamp((ms / 1000) as i64, ((ms % 1000) * 1_000_000) as u32)
+            .unwrap_or_else(|| {
+                tracing::warn!("Failed to convert timestamp {} to NaiveDateTime, using current time", ms);
+                chrono::Utc::now()
+            })
+            .naive_utc()
+    }
+}
+
 // Standard deserializer for timestamps that accepts both string and number formats
+// Returns milliseconds (consistent with blockchain timestamp format)
 // Falls back to current time if parsing fails
 fn deserialize_timestamp<'de, D>(deserializer: D) -> Result<u64, D::Error>
 where
@@ -319,13 +348,14 @@ where
         type Value = u64;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("a number or string representing a timestamp")
+            formatter.write_str("a number or string representing a timestamp in milliseconds")
         }
 
         fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
         where
             E: serde::de::Error,
         {
+            // Assume value is already in milliseconds
             Ok(value)
         }
 
@@ -375,6 +405,8 @@ where
 }
 
 // Version that handles missing fields or null values
+// Returns milliseconds (consistent with blockchain timestamp format)
+// Treats 0 as invalid (missing) and returns current time instead
 fn deserialize_timestamp_optional<'de, D>(deserializer: D) -> Result<u64, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -386,8 +418,33 @@ where
         .as_millis() as u64;
 
     Option::deserialize(deserializer).map(|opt_val: Option<serde_json::Value>| match opt_val {
-        Some(serde_json::Value::Number(n)) => n.as_u64().unwrap_or(current_time),
-        Some(serde_json::Value::String(s)) => s.parse::<u64>().unwrap_or(current_time),
+        Some(serde_json::Value::Number(n)) => {
+            if let Some(val) = n.as_u64() {
+                // Treat 0 as invalid/missing, use current time instead
+                if val == 0 {
+                    tracing::warn!("Received timestamp value 0, treating as missing and using current time");
+                    current_time
+                } else {
+                    val
+                }
+            } else {
+                current_time
+            }
+        }
+        Some(serde_json::Value::String(s)) => {
+            match s.parse::<u64>() {
+                Ok(val) => {
+                    // Treat 0 as invalid/missing, use current time instead
+                    if val == 0 {
+                        tracing::warn!("Received timestamp string '0', treating as missing and using current time");
+                        current_time
+                    } else {
+                        val
+                    }
+                }
+                Err(_) => current_time,
+            }
+        }
         _ => current_time,
     })
 }
