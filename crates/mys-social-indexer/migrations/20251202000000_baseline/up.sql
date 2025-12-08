@@ -2,8 +2,6 @@
 -- PostgreSQL database dump
 --
 
-\restrict nZcKfNjtNQJFYI5GISfPrE33XOgqIyhUC4tq7NmdMb43jR3V5BXzZ5dY32mmchP
-
 -- Dumped from database version 16.10
 -- Dumped by pg_dump version 16.11 (Homebrew)
 
