@@ -1483,7 +1483,7 @@ CREATE TABLE _timescaledb_internal._compressed_hypertable_99 (
 -- Name: poc_badges; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.poc_badges (
+CREATE TABLE IF NOT EXISTS public.poc_badges (
     badge_id character varying NOT NULL,
     post_id character varying NOT NULL,
     media_type smallint NOT NULL,
@@ -1540,7 +1540,7 @@ CREATE VIEW _timescaledb_internal._direct_view_107 AS
 -- Name: subscription_revenue; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.subscription_revenue (
+CREATE TABLE IF NOT EXISTS public.subscription_revenue (
     service_id character varying NOT NULL,
     subscription_id character varying,
     from_address character varying NOT NULL,
@@ -1574,7 +1574,7 @@ CREATE VIEW _timescaledb_internal._direct_view_112 AS
 -- Name: profile_subscriptions; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.profile_subscriptions (
+CREATE TABLE IF NOT EXISTS public.profile_subscriptions (
     subscription_id character varying NOT NULL,
     service_id character varying NOT NULL,
     subscriber character varying NOT NULL,
@@ -1637,7 +1637,7 @@ CREATE VIEW _timescaledb_internal._direct_view_118 AS
 -- Name: checkpoint_processing; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.checkpoint_processing (
+CREATE TABLE IF NOT EXISTS public.checkpoint_processing (
     id integer NOT NULL,
     checkpoint_number bigint NOT NULL,
     processing_start_time timestamp without time zone DEFAULT now() NOT NULL,
@@ -1675,7 +1675,7 @@ CREATE VIEW _timescaledb_internal._direct_view_12 AS
 -- Name: anonymous_votes; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.anonymous_votes (
+CREATE TABLE IF NOT EXISTS public.anonymous_votes (
     id integer NOT NULL,
     proposal_id character varying NOT NULL,
     voter_address character varying NOT NULL,
@@ -1714,7 +1714,7 @@ CREATE VIEW _timescaledb_internal._direct_view_123 AS
 -- Name: mydata_revenue; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.mydata_revenue (
+CREATE TABLE IF NOT EXISTS public.mydata_revenue (
     id integer NOT NULL,
     mydata_id character varying NOT NULL,
     from_address character varying NOT NULL,
@@ -1754,7 +1754,7 @@ CREATE VIEW _timescaledb_internal._direct_view_141 AS
 -- Name: mydata_access_logs; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.mydata_access_logs (
+CREATE TABLE IF NOT EXISTS public.mydata_access_logs (
     id integer NOT NULL,
     mydata_id character varying NOT NULL,
     user_address character varying NOT NULL,
@@ -1791,7 +1791,7 @@ CREATE VIEW _timescaledb_internal._direct_view_142 AS
 -- Name: mydata_purchases; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.mydata_purchases (
+CREATE TABLE IF NOT EXISTS public.mydata_purchases (
     id integer NOT NULL,
     mydata_id character varying NOT NULL,
     buyer character varying NOT NULL,
@@ -1838,7 +1838,7 @@ CREATE VIEW _timescaledb_internal._direct_view_143 AS
 -- Name: reactions; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.reactions (
+CREATE TABLE IF NOT EXISTS public.reactions (
     id integer NOT NULL,
     object_id character varying NOT NULL,
     user_address character varying NOT NULL,
@@ -1867,7 +1867,7 @@ CREATE VIEW _timescaledb_internal._direct_view_31 AS
 -- Name: reposts; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.reposts (
+CREATE TABLE IF NOT EXISTS public.reposts (
     id character varying NOT NULL,
     repost_id character varying NOT NULL,
     original_id character varying NOT NULL,
@@ -1897,7 +1897,7 @@ CREATE VIEW _timescaledb_internal._direct_view_32 AS
 -- Name: tips; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.tips (
+CREATE TABLE IF NOT EXISTS public.tips (
     id integer NOT NULL,
     tipper character varying NOT NULL,
     recipient character varying NOT NULL,
@@ -1942,7 +1942,7 @@ CREATE VIEW _timescaledb_internal._direct_view_34 AS
 -- Name: delegate_ratings; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.delegate_ratings (
+CREATE TABLE IF NOT EXISTS public.delegate_ratings (
     id integer NOT NULL,
     target_address character varying NOT NULL,
     voter_address character varying NOT NULL,
@@ -1982,7 +1982,7 @@ CREATE VIEW _timescaledb_internal._direct_view_49 AS
 -- Name: delegate_votes; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.delegate_votes (
+CREATE TABLE IF NOT EXISTS public.delegate_votes (
     id integer NOT NULL,
     proposal_id character varying NOT NULL,
     delegate_address character varying NOT NULL,
@@ -2020,7 +2020,7 @@ CREATE VIEW _timescaledb_internal._direct_view_50 AS
 -- Name: community_votes; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.community_votes (
+CREATE TABLE IF NOT EXISTS public.community_votes (
     id integer NOT NULL,
     proposal_id character varying NOT NULL,
     voter_address character varying NOT NULL,
@@ -2059,7 +2059,7 @@ CREATE VIEW _timescaledb_internal._direct_view_51 AS
 -- Name: reward_distributions; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.reward_distributions (
+CREATE TABLE IF NOT EXISTS public.reward_distributions (
     id integer NOT NULL,
     proposal_id character varying NOT NULL,
     recipient_address character varying NOT NULL,
@@ -2088,7 +2088,7 @@ CREATE VIEW _timescaledb_internal._direct_view_52 AS
 -- Name: social_graph_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.social_graph_events (
+CREATE TABLE IF NOT EXISTS public.social_graph_events (
     id integer NOT NULL,
     event_type character varying NOT NULL,
     follower_address character varying NOT NULL,
@@ -2129,7 +2129,7 @@ CREATE VIEW _timescaledb_internal._direct_view_7 AS
 -- Name: spt_price_history; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spt_price_history (
+CREATE TABLE IF NOT EXISTS public.spt_price_history (
     id integer NOT NULL,
     pool_id character varying NOT NULL,
     price bigint NOT NULL,
@@ -2175,7 +2175,7 @@ CREATE VIEW _timescaledb_internal._direct_view_74 AS
 -- Name: profile_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.profile_events (
+CREATE TABLE IF NOT EXISTS public.profile_events (
     id integer NOT NULL,
     event_type character varying NOT NULL,
     profile_id character varying NOT NULL,
@@ -2202,7 +2202,7 @@ CREATE VIEW _timescaledb_internal._direct_view_8 AS
 -- Name: promotion_views; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.promotion_views (
+CREATE TABLE IF NOT EXISTS public.promotion_views (
     id integer NOT NULL,
     post_id character varying NOT NULL,
     promotion_id character varying NOT NULL,
@@ -2250,7 +2250,7 @@ CREATE VIEW _timescaledb_internal._direct_view_84 AS
 -- Name: platform_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.platform_events (
+CREATE TABLE IF NOT EXISTS public.platform_events (
     id integer NOT NULL,
     event_type character varying NOT NULL,
     platform_id character varying NOT NULL,
@@ -3153,7 +3153,7 @@ ALTER TABLE ONLY _timescaledb_internal.compress_hyper_4_37_chunk ALTER COLUMN up
 -- Name: __diesel_schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.__diesel_schema_migrations (
+CREATE TABLE IF NOT EXISTS public.__diesel_schema_migrations (
     version character varying(50) NOT NULL,
     run_on timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -3163,7 +3163,7 @@ CREATE TABLE public.__diesel_schema_migrations (
 -- Name: my_ip; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.my_ip (
+CREATE TABLE IF NOT EXISTS public.my_ip (
     id integer NOT NULL,
     license_id text NOT NULL,
     name text NOT NULL,
@@ -3226,7 +3226,7 @@ CREATE VIEW public.active_licenses AS
 -- Name: mydata_data; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.mydata_data (
+CREATE TABLE IF NOT EXISTS public.mydata_data (
     mydata_id character varying NOT NULL,
     owner character varying NOT NULL,
     media_type character varying NOT NULL,
@@ -3303,7 +3303,7 @@ CREATE VIEW public.active_mydata AS
 -- Name: posts; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.posts (
+CREATE TABLE IF NOT EXISTS public.posts (
     id character varying NOT NULL,
     post_id character varying NOT NULL,
     owner character varying NOT NULL,
@@ -3351,7 +3351,7 @@ COMMENT ON COLUMN public.posts.auto_pool_disabled IS 'Whether auto pool creation
 -- Name: promoted_posts; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.promoted_posts (
+CREATE TABLE IF NOT EXISTS public.promoted_posts (
     id integer NOT NULL,
     promotion_id character varying NOT NULL,
     post_id character varying NOT NULL,
@@ -3401,7 +3401,7 @@ CREATE VIEW public.active_promoted_posts AS
 -- Name: spt_reservation_pools; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spt_reservation_pools (
+CREATE TABLE IF NOT EXISTS public.spt_reservation_pools (
     id integer NOT NULL,
     pool_id character varying NOT NULL,
     associated_id character varying NOT NULL,
@@ -3420,7 +3420,7 @@ CREATE TABLE public.spt_reservation_pools (
 -- Name: spt_reservations; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spt_reservations (
+CREATE TABLE IF NOT EXISTS public.spt_reservations (
     id integer NOT NULL,
     pool_id character varying NOT NULL,
     reservatior_address character varying NOT NULL,
@@ -3460,7 +3460,7 @@ CREATE VIEW public.active_reservation_pools AS
 -- Name: social_proof_token_pools; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.social_proof_token_pools (
+CREATE TABLE IF NOT EXISTS public.social_proof_token_pools (
     id integer NOT NULL,
     pool_id character varying NOT NULL,
     token_type smallint NOT NULL,
@@ -3543,7 +3543,7 @@ CREATE VIEW public.anonymous_voting_daily_stats AS
 -- Name: blocked_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.blocked_events (
+CREATE TABLE IF NOT EXISTS public.blocked_events (
     id integer NOT NULL,
     event_id character varying,
     event_type character varying NOT NULL,
@@ -3608,7 +3608,7 @@ ALTER SEQUENCE public.blocked_events_id_seq OWNED BY public.blocked_events.id;
 -- Name: blocked_profiles; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.blocked_profiles (
+CREATE TABLE IF NOT EXISTS public.blocked_profiles (
     id integer NOT NULL,
     blocker_address character varying NOT NULL,
     blocked_address character varying NOT NULL,
@@ -3755,7 +3755,7 @@ ALTER SEQUENCE public.checkpoint_processing_id_seq OWNED BY public.checkpoint_pr
 -- Name: comments; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.comments (
+CREATE TABLE IF NOT EXISTS public.comments (
     id character varying NOT NULL,
     comment_id character varying NOT NULL,
     post_id character varying NOT NULL,
@@ -3835,7 +3835,7 @@ UNION ALL
 -- Name: continuous_aggregate_refresh_status; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.continuous_aggregate_refresh_status (
+CREATE TABLE IF NOT EXISTS public.continuous_aggregate_refresh_status (
     view_name text NOT NULL,
     last_manual_refresh timestamp without time zone DEFAULT now(),
     notes text
@@ -3862,7 +3862,7 @@ CREATE VIEW public.creator_mydata_revenue_summary AS
 -- Name: my_ip_revenue; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.my_ip_revenue (
+CREATE TABLE IF NOT EXISTS public.my_ip_revenue (
     id integer NOT NULL,
     license_id text NOT NULL,
     post_id text,
@@ -3895,7 +3895,7 @@ CREATE MATERIALIZED VIEW public.daily_license_revenue AS
 -- Name: delegates; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.delegates (
+CREATE TABLE IF NOT EXISTS public.delegates (
     id integer NOT NULL,
     address character varying NOT NULL,
     profile_id character varying NOT NULL,
@@ -4081,7 +4081,7 @@ ALTER SEQUENCE public.delegates_id_seq OWNED BY public.delegates.id;
 -- Name: governance_registries; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.governance_registries (
+CREATE TABLE IF NOT EXISTS public.governance_registries (
     id integer NOT NULL,
     registry_type smallint NOT NULL,
     delegate_count bigint NOT NULL,
@@ -4122,7 +4122,7 @@ ALTER SEQUENCE public.governance_registries_id_seq OWNED BY public.governance_re
 -- Name: nominated_delegates; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.nominated_delegates (
+CREATE TABLE IF NOT EXISTS public.nominated_delegates (
     id integer NOT NULL,
     address character varying NOT NULL,
     profile_id character varying NOT NULL,
@@ -4141,7 +4141,7 @@ CREATE TABLE public.nominated_delegates (
 -- Name: proposals; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.proposals (
+CREATE TABLE IF NOT EXISTS public.proposals (
     id character varying NOT NULL,
     title character varying NOT NULL,
     description text NOT NULL,
@@ -4197,7 +4197,7 @@ CREATE VIEW public.governance_stats AS
 -- Name: indexer_checkpoint_state; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.indexer_checkpoint_state (
+CREATE TABLE IF NOT EXISTS public.indexer_checkpoint_state (
     id integer NOT NULL,
     last_processed_checkpoint bigint NOT NULL,
     last_processed_timestamp timestamp without time zone DEFAULT now() NOT NULL
@@ -4228,7 +4228,7 @@ ALTER SEQUENCE public.indexer_checkpoint_state_id_seq OWNED BY public.indexer_ch
 -- Name: indexer_progress; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.indexer_progress (
+CREATE TABLE IF NOT EXISTS public.indexer_progress (
     id text NOT NULL,
     last_checkpoint_processed bigint DEFAULT 0 NOT NULL,
     last_processed_at timestamp without time zone DEFAULT now() NOT NULL
@@ -4239,7 +4239,7 @@ CREATE TABLE public.indexer_progress (
 -- Name: post_prediction_config; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.post_prediction_config (
+CREATE TABLE IF NOT EXISTS public.post_prediction_config (
     id integer NOT NULL,
     updated_by text NOT NULL,
     predictions_enabled boolean DEFAULT true NOT NULL,
@@ -4333,7 +4333,7 @@ ALTER SEQUENCE public.my_ip_access_logs_id_seq OWNED BY public.mydata_access_log
 -- Name: my_ip_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.my_ip_events (
+CREATE TABLE IF NOT EXISTS public.my_ip_events (
     id integer NOT NULL,
     event_type text NOT NULL,
     license_id text NOT NULL,
@@ -4369,7 +4369,7 @@ ALTER SEQUENCE public.my_ip_events_id_seq OWNED BY public.my_ip_events.id;
 -- Name: my_ip_grants; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.my_ip_grants (
+CREATE TABLE IF NOT EXISTS public.my_ip_grants (
     id integer NOT NULL,
     license_id text NOT NULL,
     grantor text NOT NULL,
@@ -4428,7 +4428,7 @@ ALTER SEQUENCE public.my_ip_id_seq OWNED BY public.my_ip.id;
 -- Name: my_ip_permissions; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.my_ip_permissions (
+CREATE TABLE IF NOT EXISTS public.my_ip_permissions (
     id integer NOT NULL,
     permission_name text NOT NULL,
     bit_position integer NOT NULL,
@@ -4520,7 +4520,7 @@ ALTER SEQUENCE public.my_ip_revenue_id_seq1 OWNED BY public.my_ip_revenue.id;
 -- Name: mydata_subscriptions; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.mydata_subscriptions (
+CREATE TABLE IF NOT EXISTS public.mydata_subscriptions (
     id integer NOT NULL,
     mydata_id character varying NOT NULL,
     subscriber character varying NOT NULL,
@@ -4604,7 +4604,7 @@ CREATE VIEW public.mydata_popular_data AS
 -- Name: mydata_registry; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.mydata_registry (
+CREATE TABLE IF NOT EXISTS public.mydata_registry (
     ip_id text NOT NULL,
     owner text NOT NULL,
     registered_at bigint NOT NULL,
@@ -4695,7 +4695,7 @@ ALTER SEQUENCE public.nominated_delegates_id_seq OWNED BY public.nominated_deleg
 -- Name: platform_blocked_profiles; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.platform_blocked_profiles (
+CREATE TABLE IF NOT EXISTS public.platform_blocked_profiles (
     id integer NOT NULL,
     platform_id character varying NOT NULL,
     profile_id character varying NOT NULL,
@@ -4754,7 +4754,7 @@ UNION ALL
 -- Name: platform_delivery_config; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.platform_delivery_config (
+CREATE TABLE IF NOT EXISTS public.platform_delivery_config (
     id bigint NOT NULL,
     platform_id text NOT NULL,
     apns_bundle_id text,
@@ -4827,7 +4827,7 @@ ALTER SEQUENCE public.platform_events_id_seq OWNED BY public.platform_events.id;
 -- Name: platform_memberships; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.platform_memberships (
+CREATE TABLE IF NOT EXISTS public.platform_memberships (
     id integer NOT NULL,
     platform_id character varying NOT NULL,
     profile_id character varying NOT NULL,
@@ -4866,7 +4866,7 @@ ALTER SEQUENCE public.platform_memberships_id_seq OWNED BY public.platform_membe
 -- Name: platform_moderators; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.platform_moderators (
+CREATE TABLE IF NOT EXISTS public.platform_moderators (
     id integer NOT NULL,
     platform_id character varying NOT NULL,
     moderator_address character varying NOT NULL,
@@ -4899,7 +4899,7 @@ ALTER SEQUENCE public.platform_moderators_id_seq OWNED BY public.platform_modera
 -- Name: unified_revenue; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.unified_revenue (
+CREATE TABLE IF NOT EXISTS public.unified_revenue (
     revenue_source character varying NOT NULL,
     revenue_type character varying NOT NULL,
     creator_address character varying NOT NULL,
@@ -4969,7 +4969,7 @@ COMMENT ON VIEW public.platform_revenue_summary IS 'Platform revenue analytics u
 -- Name: platforms; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.platforms (
+CREATE TABLE IF NOT EXISTS public.platforms (
     id integer NOT NULL,
     platform_id character varying NOT NULL,
     name character varying NOT NULL,
@@ -5028,7 +5028,7 @@ ALTER SEQUENCE public.platforms_id_seq OWNED BY public.platforms.id;
 -- Name: poc_analysis_results; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.poc_analysis_results (
+CREATE TABLE IF NOT EXISTS public.poc_analysis_results (
     post_id character varying NOT NULL,
     media_type smallint NOT NULL,
     similarity_detected boolean NOT NULL,
@@ -5054,7 +5054,7 @@ COMMENT ON TABLE public.poc_analysis_results IS 'Oracle analysis results for con
 -- Name: poc_configuration; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.poc_configuration (
+CREATE TABLE IF NOT EXISTS public.poc_configuration (
     id integer NOT NULL,
     image_threshold bigint NOT NULL,
     video_threshold bigint NOT NULL,
@@ -5116,7 +5116,7 @@ CREATE VIEW public.poc_daily_stats AS
 -- Name: poc_dispute_votes; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.poc_dispute_votes (
+CREATE TABLE IF NOT EXISTS public.poc_dispute_votes (
     dispute_id character varying NOT NULL,
     voter character varying NOT NULL,
     vote_choice smallint NOT NULL,
@@ -5147,7 +5147,7 @@ COMMENT ON COLUMN public.poc_dispute_votes.vote_choice IS '1=uphold, 2=overturn'
 -- Name: poc_disputes; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.poc_disputes (
+CREATE TABLE IF NOT EXISTS public.poc_disputes (
     dispute_id character varying NOT NULL,
     post_id character varying NOT NULL,
     disputer character varying NOT NULL,
@@ -5204,7 +5204,7 @@ CREATE VIEW public.poc_hourly_stats AS
 -- Name: poc_revenue_redirections; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.poc_revenue_redirections (
+CREATE TABLE IF NOT EXISTS public.poc_revenue_redirections (
     redirection_id character varying NOT NULL,
     accused_post_id character varying NOT NULL,
     original_post_id character varying NOT NULL,
@@ -5291,7 +5291,7 @@ CREATE VIEW public.popular_posts AS
 -- Name: spt_transactions; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spt_transactions (
+CREATE TABLE IF NOT EXISTS public.spt_transactions (
     id integer NOT NULL,
     pool_id character varying NOT NULL,
     transaction_type character varying NOT NULL,
@@ -5416,7 +5416,7 @@ UNION ALL
 -- Name: posts_deletion_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.posts_deletion_events (
+CREATE TABLE IF NOT EXISTS public.posts_deletion_events (
     id integer NOT NULL,
     object_id character varying NOT NULL,
     owner character varying NOT NULL,
@@ -5454,7 +5454,7 @@ ALTER SEQUENCE public.posts_deletion_events_id_seq OWNED BY public.posts_deletio
 -- Name: posts_moderation_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.posts_moderation_events (
+CREATE TABLE IF NOT EXISTS public.posts_moderation_events (
     id integer NOT NULL,
     object_id character varying NOT NULL,
     platform_id character varying NOT NULL,
@@ -5490,7 +5490,7 @@ ALTER SEQUENCE public.posts_moderation_events_id_seq OWNED BY public.posts_moder
 -- Name: posts_reports; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.posts_reports (
+CREATE TABLE IF NOT EXISTS public.posts_reports (
     id integer NOT NULL,
     object_id character varying NOT NULL,
     is_comment boolean NOT NULL,
@@ -5527,7 +5527,7 @@ ALTER SEQUENCE public.posts_reports_id_seq OWNED BY public.posts_reports.id;
 -- Name: posts_transfers; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.posts_transfers (
+CREATE TABLE IF NOT EXISTS public.posts_transfers (
     id integer NOT NULL,
     object_id character varying NOT NULL,
     previous_owner character varying NOT NULL,
@@ -5563,7 +5563,7 @@ ALTER SEQUENCE public.posts_transfers_id_seq OWNED BY public.posts_transfers.id;
 -- Name: profile_badges; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.profile_badges (
+CREATE TABLE IF NOT EXISTS public.profile_badges (
     id integer NOT NULL,
     profile_id text NOT NULL,
     badge_id text NOT NULL,
@@ -5645,7 +5645,7 @@ ALTER SEQUENCE public.profile_events_id_seq OWNED BY public.profile_events.id;
 -- Name: profile_offers; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.profile_offers (
+CREATE TABLE IF NOT EXISTS public.profile_offers (
     id integer NOT NULL,
     profile_id text NOT NULL,
     offeror_address text NOT NULL,
@@ -5683,7 +5683,7 @@ ALTER SEQUENCE public.profile_offers_id_seq OWNED BY public.profile_offers.id;
 -- Name: profile_sale_fees; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.profile_sale_fees (
+CREATE TABLE IF NOT EXISTS public.profile_sale_fees (
     id integer NOT NULL,
     profile_id text NOT NULL,
     offeror_address text NOT NULL,
@@ -5721,7 +5721,7 @@ ALTER SEQUENCE public.profile_sale_fees_id_seq OWNED BY public.profile_sale_fees
 -- Name: profile_subscription_services; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.profile_subscription_services (
+CREATE TABLE IF NOT EXISTS public.profile_subscription_services (
     service_id character varying NOT NULL,
     profile_owner character varying NOT NULL,
     profile_id character varying NOT NULL,
@@ -5739,7 +5739,7 @@ CREATE TABLE public.profile_subscription_services (
 -- Name: profiles; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
     id integer NOT NULL,
     owner_address character varying(255) NOT NULL,
     username character varying(100) NOT NULL,
@@ -5818,7 +5818,7 @@ COMMENT ON COLUMN public.profiles.selected_badge_id IS 'The badge_id of the curr
 -- Name: profiles_blocked; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.profiles_blocked (
+CREATE TABLE IF NOT EXISTS public.profiles_blocked (
     id integer NOT NULL,
     blocker_wallet_address text NOT NULL,
     blocked_address text NOT NULL,
@@ -5877,7 +5877,7 @@ ALTER SEQUENCE public.profiles_id_seq OWNED BY public.profiles.id;
 -- Name: progress_store; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.progress_store (
+CREATE TABLE IF NOT EXISTS public.progress_store (
     id integer NOT NULL,
     worker_id character varying NOT NULL,
     module_name character varying NOT NULL,
@@ -5937,7 +5937,7 @@ ALTER SEQUENCE public.promoted_posts_id_seq OWNED BY public.promoted_posts.id;
 -- Name: promotion_budget_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.promotion_budget_events (
+CREATE TABLE IF NOT EXISTS public.promotion_budget_events (
     id integer NOT NULL,
     promotion_id character varying NOT NULL,
     post_id character varying NOT NULL,
@@ -6046,7 +6046,7 @@ UNION ALL
 -- Name: promotion_status_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.promotion_status_events (
+CREATE TABLE IF NOT EXISTS public.promotion_status_events (
     id integer NOT NULL,
     post_id character varying NOT NULL,
     promotion_id character varying NOT NULL,
@@ -6166,7 +6166,7 @@ CREATE VIEW public.proposal_voting_status AS
 -- Name: reaction_counts; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.reaction_counts (
+CREATE TABLE IF NOT EXISTS public.reaction_counts (
     id integer NOT NULL,
     object_id character varying NOT NULL,
     reaction_text character varying NOT NULL,
@@ -6239,7 +6239,7 @@ ALTER SEQUENCE public.reactions_id_seq OWNED BY public.reactions.id;
 -- Name: relay_conversations; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.relay_conversations (
+CREATE TABLE IF NOT EXISTS public.relay_conversations (
     id bigint NOT NULL,
     conversation_id text NOT NULL,
     participant1_address text NOT NULL,
@@ -6280,7 +6280,7 @@ ALTER SEQUENCE public.relay_conversations_id_seq OWNED BY public.relay_conversat
 -- Name: relay_device_tokens; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.relay_device_tokens (
+CREATE TABLE IF NOT EXISTS public.relay_device_tokens (
     id bigint NOT NULL,
     user_address text NOT NULL,
     device_token text NOT NULL,
@@ -6323,7 +6323,7 @@ ALTER SEQUENCE public.relay_device_tokens_id_seq OWNED BY public.relay_device_to
 -- Name: relay_messages; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.relay_messages (
+CREATE TABLE IF NOT EXISTS public.relay_messages (
     id bigint NOT NULL,
     conversation_id text NOT NULL,
     sender_address text NOT NULL,
@@ -6375,7 +6375,7 @@ ALTER SEQUENCE public.relay_messages_id_seq OWNED BY public.relay_messages.id;
 -- Name: relay_notifications; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.relay_notifications (
+CREATE TABLE IF NOT EXISTS public.relay_notifications (
     id bigint NOT NULL,
     user_address text NOT NULL,
     notification_type text NOT NULL,
@@ -6425,7 +6425,7 @@ ALTER SEQUENCE public.relay_notifications_id_seq OWNED BY public.relay_notificat
 -- Name: relay_outbox; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.relay_outbox (
+CREATE TABLE IF NOT EXISTS public.relay_outbox (
     id bigint NOT NULL,
     event_type text NOT NULL,
     event_data jsonb NOT NULL,
@@ -6469,7 +6469,7 @@ ALTER SEQUENCE public.relay_outbox_id_seq OWNED BY public.relay_outbox.id;
 -- Name: relay_user_preferences; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.relay_user_preferences (
+CREATE TABLE IF NOT EXISTS public.relay_user_preferences (
     user_address text NOT NULL,
     push_enabled boolean DEFAULT true NOT NULL,
     email_enabled boolean DEFAULT true NOT NULL,
@@ -6491,7 +6491,7 @@ COMMENT ON TABLE public.relay_user_preferences IS 'User notification and communi
 -- Name: relay_ws_connections; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.relay_ws_connections (
+CREATE TABLE IF NOT EXISTS public.relay_ws_connections (
     id bigint NOT NULL,
     user_address text NOT NULL,
     connection_id text NOT NULL,
@@ -6655,7 +6655,7 @@ ALTER SEQUENCE public.social_graph_events_id_seq OWNED BY public.social_graph_ev
 -- Name: social_graph_relationships; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.social_graph_relationships (
+CREATE TABLE IF NOT EXISTS public.social_graph_relationships (
     id integer NOT NULL,
     follower_address character varying NOT NULL,
     following_address character varying NOT NULL,
@@ -6694,7 +6694,7 @@ ALTER SEQUENCE public.social_graph_relationships_id_seq OWNED BY public.social_g
 -- Name: social_proof_of_truth; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.social_proof_of_truth (
+CREATE TABLE IF NOT EXISTS public.social_proof_of_truth (
     id integer NOT NULL,
     event_type character varying NOT NULL,
     post_id character varying NOT NULL,
@@ -6759,7 +6759,7 @@ ALTER SEQUENCE public.social_proof_token_pools_id_seq OWNED BY public.social_pro
 -- Name: spot_bets; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spot_bets (
+CREATE TABLE IF NOT EXISTS public.spot_bets (
     id integer NOT NULL,
     post_id character varying NOT NULL,
     user_address character varying NOT NULL,
@@ -6796,7 +6796,7 @@ ALTER SEQUENCE public.spot_bets_id_seq OWNED BY public.spot_bets.id;
 -- Name: spot_config; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spot_config (
+CREATE TABLE IF NOT EXISTS public.spot_config (
     id integer NOT NULL,
     updated_by text NOT NULL,
     enable_flag boolean DEFAULT true NOT NULL,
@@ -6840,7 +6840,7 @@ ALTER SEQUENCE public.spot_config_id_seq OWNED BY public.spot_config.id;
 -- Name: spot_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spot_events (
+CREATE TABLE IF NOT EXISTS public.spot_events (
     id integer NOT NULL,
     event_type character varying NOT NULL,
     post_id character varying NOT NULL,
@@ -6874,7 +6874,7 @@ ALTER SEQUENCE public.spot_events_id_seq OWNED BY public.spot_events.id;
 -- Name: spot_payouts; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spot_payouts (
+CREATE TABLE IF NOT EXISTS public.spot_payouts (
     id integer NOT NULL,
     post_id character varying NOT NULL,
     user_address character varying NOT NULL,
@@ -6909,7 +6909,7 @@ ALTER SEQUENCE public.spot_payouts_id_seq OWNED BY public.spot_payouts.id;
 -- Name: spot_records; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spot_records (
+CREATE TABLE IF NOT EXISTS public.spot_records (
     id integer NOT NULL,
     post_id character varying NOT NULL,
     status smallint NOT NULL,
@@ -6950,7 +6950,7 @@ ALTER SEQUENCE public.spot_records_id_seq OWNED BY public.spot_records.id;
 -- Name: spot_refunds; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spot_refunds (
+CREATE TABLE IF NOT EXISTS public.spot_refunds (
     id integer NOT NULL,
     post_id character varying NOT NULL,
     user_address character varying NOT NULL,
@@ -6985,7 +6985,7 @@ ALTER SEQUENCE public.spot_refunds_id_seq OWNED BY public.spot_refunds.id;
 -- Name: spot_resolutions; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spot_resolutions (
+CREATE TABLE IF NOT EXISTS public.spot_resolutions (
     id integer NOT NULL,
     post_id character varying NOT NULL,
     outcome smallint NOT NULL,
@@ -7068,7 +7068,7 @@ COMMENT ON VIEW public.spt_creator_revenue_summary IS 'Creator revenue leaderboa
 -- Name: spt_exchange_config; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spt_exchange_config (
+CREATE TABLE IF NOT EXISTS public.spt_exchange_config (
     id integer NOT NULL,
     updated_by character varying NOT NULL,
     post_threshold bigint NOT NULL,
@@ -7113,7 +7113,7 @@ ALTER SEQUENCE public.spt_exchange_config_id_seq OWNED BY public.spt_exchange_co
 -- Name: spt_holdings; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spt_holdings (
+CREATE TABLE IF NOT EXISTS public.spt_holdings (
     id integer NOT NULL,
     pool_id character varying NOT NULL,
     holder_address character varying NOT NULL,
@@ -7238,7 +7238,7 @@ ALTER SEQUENCE public.spt_reservations_id_seq OWNED BY public.spt_reservations.i
 -- Name: spt_revenue; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.spt_revenue (
+CREATE TABLE IF NOT EXISTS public.spt_revenue (
     pool_id character varying NOT NULL,
     transaction_type character varying NOT NULL,
     trader character varying NOT NULL,
@@ -7290,7 +7290,7 @@ ALTER SEQUENCE public.spt_transactions_id_seq OWNED BY public.spt_transactions.i
 -- Name: subscription_access_logs; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.subscription_access_logs (
+CREATE TABLE IF NOT EXISTS public.subscription_access_logs (
     subscription_id character varying NOT NULL,
     subscriber character varying NOT NULL,
     content_type character varying NOT NULL,
@@ -7347,7 +7347,7 @@ CREATE VIEW public.subscription_daily_revenue AS
 -- Name: subscription_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.subscription_events (
+CREATE TABLE IF NOT EXISTS public.subscription_events (
     event_type character varying NOT NULL,
     subscription_id character varying,
     service_id character varying,
@@ -7422,7 +7422,7 @@ ALTER SEQUENCE public.tips_id_seq OWNED BY public.tips.id;
 -- Name: token_exchange_config; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.token_exchange_config (
+CREATE TABLE IF NOT EXISTS public.token_exchange_config (
     id integer NOT NULL,
     trading_halted boolean DEFAULT false NOT NULL,
     admin_address character varying NOT NULL,
@@ -7462,7 +7462,7 @@ ALTER SEQUENCE public.token_exchange_config_id_seq OWNED BY public.token_exchang
 -- Name: token_exchange_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.token_exchange_events (
+CREATE TABLE IF NOT EXISTS public.token_exchange_events (
     id integer NOT NULL,
     event_type character varying NOT NULL,
     event_data jsonb DEFAULT '{}'::jsonb NOT NULL,
@@ -7618,7 +7618,7 @@ CREATE VIEW public.user_reservation_holdings AS
 -- Name: vesting_events; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.vesting_events (
+CREATE TABLE IF NOT EXISTS public.vesting_events (
     id integer NOT NULL,
     wallet_id character varying NOT NULL,
     event_type character varying NOT NULL,
@@ -7658,7 +7658,7 @@ ALTER SEQUENCE public.vesting_events_id_seq OWNED BY public.vesting_events.id;
 -- Name: vesting_wallets; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.vesting_wallets (
+CREATE TABLE IF NOT EXISTS public.vesting_wallets (
     wallet_id character varying NOT NULL,
     owner_address character varying NOT NULL,
     total_amount bigint NOT NULL,
@@ -7677,7 +7677,7 @@ CREATE TABLE public.vesting_wallets (
 -- Name: vote_decryption_failures; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.vote_decryption_failures (
+CREATE TABLE IF NOT EXISTS public.vote_decryption_failures (
     id integer NOT NULL,
     proposal_id character varying NOT NULL,
     voter_address character varying NOT NULL,
@@ -7739,7 +7739,7 @@ UNION ALL
 -- Name: watermarks; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.watermarks (
+CREATE TABLE IF NOT EXISTS public.watermarks (
     id integer NOT NULL,
     worker_id character varying NOT NULL,
     stream_name character varying NOT NULL,
