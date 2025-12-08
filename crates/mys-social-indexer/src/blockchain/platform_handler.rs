@@ -131,6 +131,11 @@ impl PlatformEventHandler {
         
         let is_dao = explicit_dao || has_governance_registry || has_dao_fields;
         
+        debug!(
+            "DAO detection for platform {}: explicit_dao={}, has_governance_registry={}, has_dao_fields={}, is_dao={}, wants_dao_governance={:?}",
+            event.platform_id, explicit_dao, has_governance_registry, has_dao_fields, is_dao, event.wants_dao_governance
+        );
+        
         if is_dao {
             // If wants_dao_governance was None but we detected it's a DAO, set it to true
             let wants_dao = if explicit_dao {
@@ -186,7 +191,9 @@ impl PlatformEventHandler {
         event: &PlatformCreatedEvent,
         blockchain_event: Option<&BlockchainEvent>,
     ) -> Result<()> {
-        debug!("Processing platform created event");
+        debug!("Processing platform created event for platform_id: {}", event.platform_id);
+        info!("Raw event values - wants_dao_governance: {:?}, governance_registry_id: {:?}, delegate_count: {:?}", 
+            event.wants_dao_governance, event.governance_registry_id, event.delegate_count);
 
         let mut conn = self.get_connection().await?;
 
@@ -205,6 +212,9 @@ impl PlatformEventHandler {
             treasury,
             version,
         ) = Self::normalize_dao_fields(event);
+        
+        info!("Normalized DAO fields - wants_dao_governance: {:?}, governance_registry_id: {:?}, delegate_count: {:?}", 
+            wants_dao_governance, governance_registry_id, delegate_count);
 
         // Start a transaction for atomicity
         conn.build_transaction()
@@ -1593,10 +1603,25 @@ impl PlatformEventHandler {
                 PlatformEventType::PlatformCreated => {
                     info!("Processing PlatformCreated event");
                     // Log complete event data for debugging
-                    debug!(
-                        "PlatformCreated event data: {}",
+                    info!(
+                        "PlatformCreated event data (raw): {}",
                         serde_json::to_string_pretty(&event.data).unwrap_or_default()
                     );
+                    
+                    // Check if content.fields exists and log it
+                    if let Some(content) = event.data.get("content") {
+                        if let Some(fields) = content.get("fields") {
+                            info!(
+                                "PlatformCreated event content.fields: {}",
+                                serde_json::to_string_pretty(fields).unwrap_or_default()
+                            );
+                        }
+                    } else if let Some(fields) = event.data.get("fields") {
+                        info!(
+                            "PlatformCreated event fields (direct): {}",
+                            serde_json::to_string_pretty(fields).unwrap_or_default()
+                        );
+                    }
 
                     // Use MoveObjectFields wrapper to handle nested content.fields structure
                     match serde_json::from_value::<event_utils::MoveObjectFields<PlatformCreatedEvent>>(event.data.clone()) {
@@ -1619,6 +1644,17 @@ impl PlatformEventHandler {
                             }
                             
                             info!("Successfully deserialized PlatformCreatedEvent using MoveObjectFields");
+                            info!("Deserialized event - wants_dao_governance: {:?}, governance_registry_id: {:?}, delegate_count: {:?}, delegate_term_epochs: {:?}, max_votes_per_user: {:?}, quorum_votes: {:?}", 
+                                platform_event.wants_dao_governance, 
+                                platform_event.governance_registry_id,
+                                platform_event.delegate_count,
+                                platform_event.delegate_term_epochs,
+                                platform_event.max_votes_per_user,
+                                platform_event.quorum_votes);
+                            
+                            // Log the full event data to see what fields are actually present
+                            debug!("Full deserialized PlatformCreatedEvent: {:?}", platform_event);
+                            
                             self.process_platform_created_event(&platform_event, Some(&event))
                                 .await?;
                         }
