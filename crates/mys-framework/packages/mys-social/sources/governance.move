@@ -1182,17 +1182,6 @@ module social_contracts::governance {
         let delegate_rejection_count = proposal.delegate_rejection_count;
         let total_delegates = table::length(&registry.delegates);
         
-        // Emit event - restore the original reason for event emission
-        let reason_for_event = reason;
-        
-        event::emit(DelegateVoteEvent {
-            proposal_id,
-            delegate_address: caller,
-            approve,
-            vote_time: current_time,
-            reason: reason_for_event,
-        });
-       
         // If more than half of delegates approve, move to community voting
         if (delegate_approval_count > total_delegates / 2) {
             move_to_community_voting_by_id(registry, proposal_id, ctx);
@@ -1201,6 +1190,16 @@ module social_contracts::governance {
         else if (delegate_rejection_count > total_delegates / 2) {
             reject_proposal_by_id(registry, proposal_id, current_time, ctx);
         };
+
+        // Emit event after potential state transitions so the event reflects a stable outcome path
+        let reason_for_event = reason;
+        event::emit(DelegateVoteEvent {
+            proposal_id,
+            delegate_address: caller,
+            approve,
+            vote_time: current_time,
+            reason: reason_for_event,
+        });
     }
 
     /// Move a proposal to community voting phase

@@ -1652,7 +1652,7 @@ impl PlatformEventHandler {
                                 platform_event.max_votes_per_user,
                                 platform_event.quorum_votes);
                             
-                            // Log the full event data to see what fields are actually present
+                            // Log the full event data for debugging
                             debug!("Full deserialized PlatformCreatedEvent: {:?}", platform_event);
                             
                             self.process_platform_created_event(&platform_event, Some(&event))

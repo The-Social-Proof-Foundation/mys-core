@@ -149,6 +149,16 @@ module social_contracts::platform {
         links: vector<String>,
         status: PlatformStatus,
         release_date: String,
+        wants_dao_governance: bool,
+        governance_registry_id: Option<ID>,
+        delegate_count: Option<u64>,
+        delegate_term_epochs: Option<u64>,
+        proposal_submission_cost: Option<u64>,
+        min_on_chain_age_days: Option<u64>,
+        max_votes_per_user: Option<u64>,
+        quadratic_base_cost: Option<u64>,
+        voting_period_epochs: Option<u64>,
+        quorum_votes: Option<u64>,
     }
 
     /// Platform updated event
@@ -361,24 +371,9 @@ module social_contracts::platform {
         // Add to platform approvals (starts as not approved)
         table::add(&mut registry.platform_approvals, platform_id, false);
         
-        // Emit platform created event
-        event::emit(PlatformCreatedEvent {
-            platform_id,
-            name: platform.name,
-            tagline: platform.tagline,
-            description: platform.description,
-            developer,
-            logo: platform.logo,
-            terms_of_service: platform.terms_of_service,
-            privacy_policy: platform.privacy_policy,
-            platforms: platform.platforms,
-            links: platform.links,
-            status: platform.status,
-            release_date: platform.release_date,
-        });
-        
-        // If platform wants DAO governance, create governance registry immediately
-        if (wants_dao_governance) {
+        // If platform wants DAO governance, create governance registry immediately so it can
+        // be reflected in the creation event payload.
+        if (platform.wants_dao_governance) {
             // Use default values if options are None
             let delegate_count = if (option::is_some(&platform.delegate_count)) {
                 *option::borrow(&platform.delegate_count)
@@ -444,6 +439,32 @@ module social_contracts::platform {
             // Store registry ID in the platform
             platform.governance_registry_id = option::some(registry_id);
         };
+        
+        // Emit platform created event (after governance registry creation so DAO fields are populated)
+        event::emit(PlatformCreatedEvent {
+            platform_id,
+            name: platform.name,
+            tagline: platform.tagline,
+            description: platform.description,
+            developer,
+            logo: platform.logo,
+            terms_of_service: platform.terms_of_service,
+            privacy_policy: platform.privacy_policy,
+            platforms: platform.platforms,
+            links: platform.links,
+            status: platform.status,
+            release_date: platform.release_date,
+            wants_dao_governance: platform.wants_dao_governance,
+            governance_registry_id: platform.governance_registry_id,
+            delegate_count: platform.delegate_count,
+            delegate_term_epochs: platform.delegate_term_epochs,
+            proposal_submission_cost: platform.proposal_submission_cost,
+            min_on_chain_age_days: platform.min_on_chain_age_days,
+            max_votes_per_user: platform.max_votes_per_user,
+            quadratic_base_cost: platform.quadratic_base_cost,
+            voting_period_epochs: platform.voting_period_epochs,
+            quorum_votes: platform.quorum_votes,
+        });
         
         // Share platform as a shared object (publicly accessible)
         transfer::share_object(platform);

@@ -268,9 +268,9 @@ pub struct PlatformCreatedEvent {
     pub release_date: String,
     #[serde(default)]
     pub shutdown_date: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_bool_to_option")]
     pub wants_dao_governance: Option<bool>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_string_to_option")]
     pub governance_registry_id: Option<String>,
     #[serde(default, deserialize_with = "deserialize_u64_optional")]
     pub delegate_count: Option<u64>,
@@ -450,6 +450,53 @@ where
 }
 
 
+// Deserializer for boolean values that may come as bool or Option<bool> from blockchain
+// Handles both direct bool values (from Move contract) and Option<bool> (for backward compatibility)
+// Move contract emits wants_dao_governance as a direct bool, but we store it as Option<bool>
+fn deserialize_bool_to_option<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    // First try to deserialize as a generic Value to handle both bool and Option<bool>
+    let value = serde_json::Value::deserialize(deserializer)?;
+    
+    match value {
+        serde_json::Value::Bool(b) => Ok(Some(b)),
+        serde_json::Value::Null => Ok(None),
+        _ => {
+            // Try to deserialize as Option<bool> for backward compatibility
+            if let Ok(opt_bool) = serde_json::from_value::<Option<bool>>(value.clone()) {
+                Ok(opt_bool)
+            } else {
+                tracing::warn!("Unexpected value type for wants_dao_governance: {:?}, treating as None", value);
+                Ok(None)
+            }
+        }
+    }
+}
+
+// Deserializer for string values that may come as String or Option<String> from blockchain
+// Handles both direct string values (from Move contract) and Option<String> (for backward compatibility)
+fn deserialize_string_to_option<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::deserialize(deserializer).map(|opt_val: Option<serde_json::Value>| match opt_val {
+        Some(serde_json::Value::String(s)) => Some(s),
+        Some(serde_json::Value::Null) => None,
+        Some(v) => {
+            // Try to convert to string
+            if let Some(s) = v.as_str() {
+                Some(s.to_string())
+            } else {
+                tracing::warn!("Unexpected value type for governance_registry_id: {:?}, treating as None", v);
+                None
+            }
+        }
+        None => None,
+    })
+}
+
 // Deserializer for u64 values that may come as strings or numbers from blockchain
 fn deserialize_u64_optional<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
 where
@@ -458,6 +505,7 @@ where
     Option::deserialize(deserializer).map(|opt_val: Option<serde_json::Value>| match opt_val {
         Some(serde_json::Value::Number(n)) => n.as_u64(),
         Some(serde_json::Value::String(s)) => s.parse::<u64>().ok(),
+        Some(serde_json::Value::Null) => None,
         _ => None,
     })
 }
