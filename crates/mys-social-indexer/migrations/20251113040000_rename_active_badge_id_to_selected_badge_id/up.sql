@@ -6,8 +6,21 @@
 -- 1. RENAME COLUMN
 -- ============================================================================
 
--- Rename the column from active_badge_id to selected_badge_id
-ALTER TABLE profiles RENAME COLUMN active_badge_id TO selected_badge_id;
+-- Rename the column from active_badge_id to selected_badge_id (only if active_badge_id exists and selected_badge_id doesn't)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' 
+        AND column_name = 'active_badge_id'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' 
+        AND column_name = 'selected_badge_id'
+    ) THEN
+        ALTER TABLE profiles RENAME COLUMN active_badge_id TO selected_badge_id;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 2. UPDATE INDEX

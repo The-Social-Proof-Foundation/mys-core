@@ -51,5 +51,18 @@ DROP TABLE IF EXISTS profile_private_fields;
 ALTER TABLE profiles DROP COLUMN IF EXISTS has_private_data;
 
 -- Rename private_data_updated_at to sensitive_data_updated_at for clarity
-ALTER TABLE profiles 
-  RENAME COLUMN private_data_updated_at TO sensitive_data_updated_at;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' 
+        AND column_name = 'private_data_updated_at'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' 
+        AND column_name = 'sensitive_data_updated_at'
+    ) THEN
+        ALTER TABLE profiles 
+        RENAME COLUMN private_data_updated_at TO sensitive_data_updated_at;
+    END IF;
+END $$;

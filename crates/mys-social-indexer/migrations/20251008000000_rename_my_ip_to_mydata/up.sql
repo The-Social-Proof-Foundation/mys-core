@@ -38,13 +38,72 @@ ALTER TABLE my_ip_access_logs RENAME TO mydata_access_logs;
 -- ============================================================================
 
 -- Rename primary key column in main table
-ALTER TABLE mydata_data RENAME COLUMN ip_id TO mydata_id;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'mydata_data' 
+        AND column_name = 'ip_id'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'mydata_data' 
+        AND column_name = 'mydata_id'
+    ) THEN
+        ALTER TABLE mydata_data RENAME COLUMN ip_id TO mydata_id;
+    END IF;
+END $$;
 
 -- Rename foreign key columns in related tables
-ALTER TABLE mydata_purchases RENAME COLUMN ip_id TO mydata_id;
-ALTER TABLE mydata_subscriptions RENAME COLUMN ip_id TO mydata_id;
-ALTER TABLE mydata_revenue RENAME COLUMN ip_id TO mydata_id;
-ALTER TABLE mydata_access_logs RENAME COLUMN ip_id TO mydata_id;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'mydata_purchases' 
+        AND column_name = 'ip_id'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'mydata_purchases' 
+        AND column_name = 'mydata_id'
+    ) THEN
+        ALTER TABLE mydata_purchases RENAME COLUMN ip_id TO mydata_id;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'mydata_subscriptions' 
+        AND column_name = 'ip_id'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'mydata_subscriptions' 
+        AND column_name = 'mydata_id'
+    ) THEN
+        ALTER TABLE mydata_subscriptions RENAME COLUMN ip_id TO mydata_id;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'mydata_revenue' 
+        AND column_name = 'ip_id'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'mydata_revenue' 
+        AND column_name = 'mydata_id'
+    ) THEN
+        ALTER TABLE mydata_revenue RENAME COLUMN ip_id TO mydata_id;
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'mydata_access_logs' 
+        AND column_name = 'ip_id'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'mydata_access_logs' 
+        AND column_name = 'mydata_id'
+    ) THEN
+        ALTER TABLE mydata_access_logs RENAME COLUMN ip_id TO mydata_id;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 4. RENAME INDEXES
