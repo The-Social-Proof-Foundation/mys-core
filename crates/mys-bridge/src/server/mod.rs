@@ -94,6 +94,7 @@ pub fn run_server(
     let socket_address = *socket_address;
     tokio::spawn(async move {
         let listener = tokio::net::TcpListener::bind(socket_address).await.unwrap();
+        info!("Bridge server listening on {}", socket_address);
         axum::serve(
             listener,
             make_router(Arc::new(handler), metrics, metadata).into_make_service(),
