@@ -24,7 +24,7 @@ COPY crates/mys-bridge/bridge-config-validator-3.yaml /app/bridge-config-validat
 RUN cargo build --release --bin mys-bridge
 
 # Expose ports
-EXPOSE 8080 9090
+EXPOSE 8080 8081 8082 9090 9091 9092
 
 # Default command - Railway will override this via railway.toml
 CMD ["sleep", "infinity"] 
