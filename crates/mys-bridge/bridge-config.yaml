@@ -24,7 +24,7 @@ eth:
   eth-rpc-url: "https://base-sepolia.g.alchemy.com/v2/dP5ANdv4tQc7ldy_stPvRTQWtO0J3KS5"
   eth-bridge-proxy-address: "0xb6868bE0717482c435cf8F2C20c425Cbae09a9cE"
   eth-bridge-chain-id: 12
-  eth-contracts-start-block-fallback: 32324000
+  eth-contracts-start-block-fallback: 34770000  
 
 metrics:
   push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics" 
