@@ -1,5 +1,5 @@
-server-listen-port: 8082
-metrics-port: 9092
+server-listen-port: 8080
+metrics-port: 9090
 bridge-authority-key-path: /tmp/bridge_key
 run-client: false
 approved-governance-actions:

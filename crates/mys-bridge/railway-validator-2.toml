@@ -9,7 +9,7 @@ healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 
 [deploy.envVars]
-PORT = "8081"
+PORT = "8080"
 
 [variables]
 BRIDGE_AUTHORITY_KEY = ""
@@ -21,8 +21,8 @@ RUST_LOG = "info,mys_bridge=debug"
 # DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 
 # Bridge Node Configuration
-BRIDGE_NODE_PORT = "8081"
-BRIDGE_METRICS_PORT = "9091"
+BRIDGE_NODE_PORT = "8080"
+BRIDGE_METRICS_PORT = "9090"
 
 # Contract Addresses (Base Sepolia)
 BRIDGE_COMMITTEE_ADDRESS = "0x5e99C070846e53286A9d719cf469CE71E20D2B69"
@@ -40,7 +40,7 @@ TARGET_CHAIN_ID = "2"   # Mys Network
 # Monitoring and Logging
 LOG_LEVEL = "info"
 METRICS_ENABLED = "true"
-PROMETHEUS_PORT = "9091"
+PROMETHEUS_PORT = "9090"
 
 # Performance Settings
 SYNC_BATCH_SIZE = "100"
