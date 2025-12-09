@@ -40,6 +40,7 @@ pub(crate) mod mock_handler;
 pub const APPLICATION_JSON: &str = "application/json";
 
 pub const PING_PATH: &str = "/ping";
+pub const HEALTH_PATH: &str = "/health";
 pub const METRICS_KEY_PATH: &str = "/metrics_pub_key";
 
 // Important: for BridgeActions, the paths need to match the ones in bridge_client.rs
@@ -110,6 +111,7 @@ pub(crate) fn make_router(
 ) -> Router {
     Router::new()
         .route("/", get(health_check))
+        .route(HEALTH_PATH, get(health_check))
         .route(PING_PATH, get(ping))
         .route(METRICS_KEY_PATH, get(metrics_key_fetch))
         .route(ETH_TO_MYS_TX_PATH, get(handle_eth_tx_hash))
