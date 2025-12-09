@@ -44,8 +44,6 @@ pub mod e2e_tests;
 #[macro_export]
 macro_rules! retry_with_max_elapsed_time {
     ($func:expr, $max_elapsed_time:expr) => {{
-        use crate::error::BridgeError;
-        
         // Standard backoff: 0.4s, 0.8s, 1.6s, 3.2s, 6.4s, 12.8s, 25.6s, max 120s
         let backoff = backoff::ExponentialBackoff {
             initial_interval: Duration::from_millis(400),
@@ -60,21 +58,10 @@ macro_rules! retry_with_max_elapsed_time {
             let fut = async {
                 let result = $func.await;
                 match result {
-                    Ok(_) => {
-                        return Ok(result);
-                    }
+                    Ok(_) => Ok(result),
                     Err(e) => {
-                        // Check if this is a rate limit error
-                        if matches!(e, BridgeError::RateLimitError(_)) {
-                            tracing::warn!("Rate limit error detected, adding extra delay before retry: {:?}", e);
-                            // For rate limit errors, add a longer delay before retrying
-                            // This helps avoid hammering the API when we're rate limited
-                            tokio::time::sleep(Duration::from_secs(10)).await;
-                            return Err(backoff::Error::transient(e));
-                        } else {
-                            tracing::debug!("Retrying due to error: {:?}", e);
-                            return Err(backoff::Error::transient(e));
-                        }
+                        tracing::debug!("Retrying due to error: {:?}", e);
+                        Err(backoff::Error::transient(e))
                     }
                 }
             };

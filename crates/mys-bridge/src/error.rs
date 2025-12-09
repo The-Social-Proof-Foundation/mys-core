@@ -68,8 +68,6 @@ pub enum BridgeError {
     StorageError(String),
     // Rest API Error
     RestAPIError(String),
-    // Rate limit error (HTTP 429)
-    RateLimitError(String),
     // Uncategorized error
     Generic(String),
 }

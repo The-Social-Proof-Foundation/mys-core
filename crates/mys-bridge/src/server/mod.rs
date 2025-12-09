@@ -150,18 +150,7 @@ where
     E: Into<anyhow::Error>,
 {
     fn from(err: E) -> Self {
-        let err_str = err.into().to_string();
-        // Detect rate limit errors (HTTP 429) from Alchemy and other providers
-        if err_str.contains("code: 429") 
-            || err_str.contains("429")
-            || err_str.contains("exceeded its compute units")
-            || err_str.contains("rate limit")
-            || err_str.contains("Rate limit")
-            || err_str.to_lowercase().contains("too many requests") {
-            Self::RateLimitError(err_str)
-        } else {
-            Self::Generic(err_str)
-        }
+        Self::Generic(err.into().to_string())
     }
 }
 
