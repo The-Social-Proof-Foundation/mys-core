@@ -36,7 +36,7 @@ scrape_configs:
   - job_name: 'bridge-system'
     static_configs:
       - targets: ['bridge-node:8080']
-    metrics_path: '/health'
+    metrics_path: '/ping'
     scrape_interval: 30s
     metric_relabel_configs:
       - source_labels: [__name__]
