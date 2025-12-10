@@ -228,15 +228,19 @@ async fn handle_update_committee_blocklist_action(
                 err
             ))
         })?;
-        let members_to_update = keys
-            .split(',')
-            .map(|s| {
-                let bytes = Hex::decode(s).map_err(|e| anyhow::anyhow!("{:?}", e))?;
-                BridgeAuthorityPublicKeyBytes::from_bytes(&bytes)
-                    .map_err(|e| anyhow::anyhow!("{:?}", e))
-            })
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| BridgeError::InvalidBridgeClientRequest(format!("{:?}", e)))?;
+        let members_to_update = if keys == "none" {
+            vec![]
+        } else {
+            keys.split(',')
+                .filter(|s| !s.is_empty())
+                .map(|s| {
+                    let bytes = Hex::decode(s).map_err(|e| anyhow::anyhow!("{:?}", e))?;
+                    BridgeAuthorityPublicKeyBytes::from_bytes(&bytes)
+                        .map_err(|e| anyhow::anyhow!("{:?}", e))
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| BridgeError::InvalidBridgeClientRequest(format!("{:?}", e)))?
+        };
         let action = BridgeAction::BlocklistCommitteeAction(BlocklistCommitteeAction {
             chain_id,
             nonce,

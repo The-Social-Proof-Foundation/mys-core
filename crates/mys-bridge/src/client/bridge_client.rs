@@ -66,12 +66,15 @@ impl BridgeClient {
                 let chain_id = (a.chain_id as u8).to_string();
                 let nonce = a.nonce.to_string();
                 let type_ = (a.blocklist_type as u8).to_string();
-                let keys = a
-                    .members_to_update
-                    .iter()
-                    .map(|k| Hex::encode(k.as_bytes()))
-                    .collect::<Vec<_>>()
-                    .join(",");
+                let keys = if a.members_to_update.is_empty() {
+                    "none".to_string()
+                } else {
+                    a.members_to_update
+                        .iter()
+                        .map(|k| Hex::encode(k.as_bytes()))
+                        .collect::<Vec<_>>()
+                        .join(",")
+                };
                 format!("sign/update_committee_blocklist/{chain_id}/{nonce}/{type_}/{keys}")
             }
             BridgeAction::EmergencyAction(a) => {
