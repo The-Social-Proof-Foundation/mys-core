@@ -28,4 +28,3 @@ EXPOSE 8080 9090
 
 # Default command - Railway will override this via railway.toml
 CMD ["sleep", "infinity"] 
-
