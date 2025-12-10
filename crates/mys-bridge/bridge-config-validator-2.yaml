@@ -15,6 +15,15 @@ approved-governance-actions:
             name: "MYS"
             type_params: []
       token_prices: [47000]
+
+  - AddTokensOnEvmAction
+  - MysToEthBridgeAction
+  - EthToMysBridgeAction
+  - BlocklistCommitteeAction
+  - EmergencyAction
+  - LimitUpdateAction
+  - AssetPriceUpdateAction
+  - EvmContractUpgradeAction
 db-path: /app/bridge_db_2
 
 mys:

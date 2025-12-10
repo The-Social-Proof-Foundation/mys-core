@@ -16,6 +16,15 @@ approved-governance-actions:
             type_params: []
       token_prices: [47000]
 
+  - AddTokensOnEvmAction
+  - MysToEthBridgeAction
+  - EthToMysBridgeAction
+  - BlocklistCommitteeAction
+  - EmergencyAction
+  - LimitUpdateAction
+  - AssetPriceUpdateAction
+  - EvmContractUpgradeAction
+
 mys:
   mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
   mys-bridge-chain-id: 2
