@@ -24,7 +24,6 @@ approved-governance-actions:
   - LimitUpdateAction
   - AssetPriceUpdateAction
   - EvmContractUpgradeAction
-db-path: /app/bridge_db_2
 
 mys:
   mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
