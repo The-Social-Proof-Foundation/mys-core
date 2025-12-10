@@ -16,14 +16,47 @@ approved-governance-actions:
             type_params: []
       token_prices: [47000]
 
-  - AddTokensOnEvmAction
-  - MysToEthBridgeAction
-  - EthToMysBridgeAction
-  - BlocklistCommitteeAction
-  - EmergencyAction
-  - LimitUpdateAction
-  - AssetPriceUpdateAction
-  - EvmContractUpgradeAction
+  # Note: Update these placeholder values with actual proposal values when governance proposals are created.
+  # The system matches by exact hash, so placeholder values won't match real proposals until updated.
+  
+  - AddTokensOnEvmAction:
+      nonce: 0  # Update with actual nonce when proposal is created
+      chain_id: EthSepolia
+      native: false
+      token_ids: []  # Update with actual token IDs (e.g., [1, 2, 3] for BTC, ETH, USDC)
+      token_addresses: []  # Example: ["0xf460B38F9e601035f775a30f488d3c6083B5FA5F", "0xe391A503082eeaC9ef5BA6CD45ce2A36F9518BE9", "0x3bA552477E94016cE26339939FC2c778ab7e8846"] for BTC, ETH, USDC
+      token_mys_decimals: []  # Update with decimals (e.g., [8, 18, 6] for BTC, ETH, USDC)
+      token_prices: []  # Update with prices in USD cents (4 decimal places: 1 USD = 10000)
+  
+  - BlocklistCommitteeAction:
+      nonce: 0  # Update with actual nonce when proposal is created
+      chain_id: EthSepolia
+      blocklist_type: Blocklist  # or Unblocklist
+      members_to_update: []  # Update with actual public key bytes when proposal is created
+  
+  - EmergencyAction:
+      nonce: 0  # Update with actual nonce when proposal is created
+      chain_id: EthSepolia
+      action_type: Pause  # or Unpause
+  
+  - LimitUpdateAction:
+      nonce: 0  # Update with actual nonce when proposal is created
+      chain_id: EthSepolia
+      sending_chain_id: MysCustom
+      new_usd_limit: 0  # Update with actual limit (in USD cents, 4 decimal places: 1 USD = 10000)
+  
+  - AssetPriceUpdateAction:
+      nonce: 0  # Update with actual nonce when proposal is created
+      chain_id: EthSepolia
+      token_id: 0  # Update with actual token ID when proposal is created
+      new_usd_price: 0  # Update with actual price (in USD cents, 4 decimal places: 1 USD = 10000)
+  
+  - EvmContractUpgradeAction:
+      nonce: 0  # Update with actual nonce when proposal is created
+      chain_id: EthSepolia
+      proxy_address: "0xb6868bE0717482c435cf8F2C20c425Cbae09a9cE"  # MysBridge proxy address
+      new_impl_address: "0x0000000000000000000000000000000000000000"  # Update with actual implementation address when proposal is created
+      call_data: []  # Update with actual call data bytes when proposal is created
 db-path: /app/bridge_db
 
 mys:
