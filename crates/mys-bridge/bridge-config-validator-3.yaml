@@ -66,7 +66,7 @@ eth:
   eth-rpc-url: "${ETH_RPC_URL}"
   eth-bridge-proxy-address: "${ETH_BRIDGE_PROXY_ADDRESS}"
   eth-bridge-chain-id: 12
-  eth-contracts-start-block-fallback: 34770000
+  eth-contracts-start-block-fallback: 34790000
 
 metrics:
   push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics"
