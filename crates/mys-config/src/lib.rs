@@ -9,6 +9,7 @@ use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::trace;
+use regex::Regex;
 
 pub mod certificate_deny_config;
 pub mod genesis;
@@ -87,6 +88,29 @@ fn multiaddr_to_filename(address: Multiaddr) -> Option<String> {
     None
 }
 
+/// Substitute environment variables in the format ${VAR_NAME} or $VAR_NAME
+fn substitute_env_vars(content: &str) -> Result<String> {
+    // Match ${VAR_NAME} or $VAR_NAME patterns
+    let re = Regex::new(r"\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)").map_err(|e| {
+        anyhow::anyhow!("Failed to compile regex for env var substitution: {}", e)
+    })?;
+    
+    let result = re.replace_all(content, |caps: &regex::Captures| {
+        let var_name = caps.get(1)
+            .or_else(|| caps.get(2))
+            .map(|m| m.as_str())
+            .expect("Regex should always match at least one group");
+        
+        std::env::var(var_name).unwrap_or_else(|_| {
+            // If env var is not set, keep the original placeholder
+            // This allows for optional env vars or defaults in the YAML
+            caps.get(0).unwrap().as_str().to_string()
+        })
+    });
+    
+    Ok(result.to_string())
+}
+
 pub trait Config
 where
     Self: DeserializeOwned + Serialize,
@@ -101,9 +125,13 @@ where
     fn load<P: AsRef<Path>>(path: P) -> Result<Self, anyhow::Error> {
         let path = path.as_ref();
         trace!("Reading config from {}", path.display());
-        let reader = fs::File::open(path)
+        let content = fs::read_to_string(path)
             .with_context(|| format!("Unable to load config from {}", path.display()))?;
-        Ok(serde_yaml::from_reader(reader)?)
+        
+        // Substitute environment variables in the format ${VAR_NAME} or $VAR_NAME
+        let substituted = substitute_env_vars(&content)?;
+        
+        Ok(serde_yaml::from_str(&substituted)?)
     }
 
     fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), anyhow::Error> {

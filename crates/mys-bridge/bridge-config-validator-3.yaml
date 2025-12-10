@@ -1,6 +1,6 @@
 server-listen-port: 8080
 metrics-port: 9090
-bridge-authority-key-path: /tmp/bridge_key
+bridge-authority-key-path: /tmp/bridge_key_validator_3
 run-client: false
 approved-governance-actions:
   - AddTokensOnMysAction:
@@ -15,14 +15,15 @@ approved-governance-actions:
             name: "MYS"
             type_params: []
       token_prices: [47000]
+db-path: /app/bridge_db_3
 
 mys:
   mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
   mys-bridge-chain-id: 2
 
 eth:
-  eth-rpc-url: "https://base-sepolia.g.alchemy.com/v2/dP5ANdv4tQc7ldy_stPvRTQWtO0J3KS5"
-  eth-bridge-proxy-address: "0xb6868bE0717482c435cf8F2C20c425Cbae09a9cE"
+  eth-rpc-url: "${ETH_RPC_URL}"
+  eth-bridge-proxy-address: "${ETH_BRIDGE_PROXY_ADDRESS}"
   eth-bridge-chain-id: 12
   eth-contracts-start-block-fallback: 34770000
 

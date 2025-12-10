@@ -9363,6 +9363,7 @@ dependencies = [
  "once_cell",
  "prometheus",
  "rand 0.8.5",
+ "regex",
  "reqwest 0.12.24",
  "serde",
  "serde_with 3.16.1",

@@ -40,6 +40,9 @@ bridge/evm/cache
 bridge/evm/dependencies
 bridge/evm/out
 bridge/evm/.env
+# Bridge config files (may contain sensitive data)
+crates/mys-bridge/bridge-config.yaml
+crates/mys-bridge/bridge-config-validator-*.yaml
 
 # Thumbnails
 ._*

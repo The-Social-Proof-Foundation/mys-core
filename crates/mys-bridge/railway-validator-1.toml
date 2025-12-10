@@ -3,7 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "crates/mys-bridge/Dockerfile"
 
 [deploy]
-startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key && cargo run --release --bin mys-bridge -- --config-path /app/bridge-config-validator-1.yaml'"
+startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key_validator_1 && cargo run --release --bin mys-bridge -- --config-path /app/bridge-config-validator-1.yaml'"
 healthcheckPath = "/ping"
 healthcheckTimeout = 300
 
@@ -11,6 +11,8 @@ healthcheckTimeout = 300
 PORT = "8080"
 
 [variables]
+# Required: Bridge authority private key (Secp256k1) for this validator
+# Must be set in Railway environment variables - do not commit to Git
 BRIDGE_AUTHORITY_KEY = ""
 
 # Optional: Logging configuration
@@ -19,10 +21,15 @@ RUST_LOG = "info,mys_bridge=debug"
 # Database Configuration (needed for BridgeClient)
 DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 
-# The following variables are set in the static config file but can be overridden:
-# MYS_RPC_URL = "https://fullnode.testnet.mysocial.network:9000"
-# ETH_RPC_URL = "https://base-sepolia.g.alchemy.com/v2/dP5ANdv4tQc7ldy_stPvRTQWtO0J3KS5"
-# BRIDGE_CONTRACT_ADDRESS = "0xb6868bE0717482c435cf8F2C20c425Cbae09a9cE"
+# Required: Bridge configuration environment variables
+# These are substituted into bridge-config-validator-1.yaml at runtime
+# ETH_RPC_URL must be set (contains API keys - do not commit to Git)
+ETH_RPC_URL = ""
+# ETH_BRIDGE_PROXY_ADDRESS must be set
+ETH_BRIDGE_PROXY_ADDRESS = "0xb6868bE0717482c435cf8F2C20c425Cbae09a9cE"
+
+# Optional: Override other config values
+# MYS_RPC_URL = "http://fullnode.testnet.mysocial.network:8082"
 
 # Bridge Node Configuration
 BRIDGE_NODE_PORT = "8080"
