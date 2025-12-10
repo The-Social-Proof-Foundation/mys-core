@@ -20,13 +20,13 @@ approved-governance-actions:
   # The system matches by exact hash, so placeholder values won't match real proposals until updated.
   
   - AddTokensOnEvmAction:
-      nonce: 0  # Update with actual nonce when proposal is created
-      chain_id: EthSepolia
-      native: false
-      token_ids: []  # Update with actual token IDs (e.g., [1, 2, 3] for BTC, ETH, USDC)
-      token_addresses: []  # Example: ["0xf460B38F9e601035f775a30f488d3c6083B5FA5F", "0xe391A503082eeaC9ef5BA6CD45ce2A36F9518BE9", "0x3bA552477E94016cE26339939FC2c778ab7e8846"] for BTC, ETH, USDC
-      token_mys_decimals: []  # Update with decimals (e.g., [8, 18, 6] for BTC, ETH, USDC)
-      token_prices: []  # Update with prices in USD cents (4 decimal places: 1 USD = 10000)
+      nonce: 1
+      chain_id: EthCustom
+      native: true
+      token_ids: [0]
+      token_addresses: ["0xb6868be0717482c435cf8f2c20c425cbae09a9ce"]
+      token_mys_decimals: [9]
+      token_prices: [47000]
   
   - BlocklistCommitteeAction:
       nonce: 0  # Update with actual nonce when proposal is created
