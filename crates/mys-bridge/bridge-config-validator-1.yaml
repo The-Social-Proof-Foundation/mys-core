@@ -29,31 +29,31 @@ approved-governance-actions:
       token_prices: [47000]
   
   - BlocklistCommitteeAction:
-      nonce: 0  # Update with actual nonce when proposal is created
-      chain_id: EthSepolia
-      blocklist_type: Blocklist  # or Unblocklist
-      members_to_update: []  # Update with actual public key bytes when proposal is created
+      nonce: 0
+      chain_id: EthCustom
+      blocklist_type: Unblocklist
+      members_to_update: []
   
   - EmergencyAction:
       nonce: 0  # Update with actual nonce when proposal is created
-      chain_id: EthSepolia
+      chain_id: EthCustom
       action_type: Pause  # or Unpause
   
   - LimitUpdateAction:
       nonce: 0  # Update with actual nonce when proposal is created
-      chain_id: EthSepolia
+      chain_id: EthCustom
       sending_chain_id: MysCustom
       new_usd_limit: 0  # Update with actual limit (in USD cents, 4 decimal places: 1 USD = 10000)
   
   - AssetPriceUpdateAction:
       nonce: 0  # Update with actual nonce when proposal is created
-      chain_id: EthSepolia
+      chain_id: EthCustom
       token_id: 0  # Update with actual token ID when proposal is created
       new_usd_price: 0  # Update with actual price (in USD cents, 4 decimal places: 1 USD = 10000)
   
   - EvmContractUpgradeAction:
       nonce: 0  # Update with actual nonce when proposal is created
-      chain_id: EthSepolia
+      chain_id: EthCustom
       proxy_address: "0xb6868bE0717482c435cf8F2C20c425Cbae09a9cE"  # MysBridge proxy address
       new_impl_address: "0x0000000000000000000000000000000000000000"  # Update with actual implementation address when proposal is created
       call_data: []  # Update with actual call data bytes when proposal is created

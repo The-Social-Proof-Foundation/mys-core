@@ -29,10 +29,10 @@ approved-governance-actions:
       token_prices: [47000]
   
   - BlocklistCommitteeAction:
-      nonce: 0  # Update with actual nonce when proposal is created
+      nonce: 0
       chain_id: EthCustom
-      blocklist_type: Blocklist  # or Unblocklist
-      members_to_update: []  # Update with actual public key bytes when proposal is created
+      blocklist_type: Unblocklist
+      members_to_update: []
   
   - EmergencyAction:
       nonce: 0  # Update with actual nonce when proposal is created
