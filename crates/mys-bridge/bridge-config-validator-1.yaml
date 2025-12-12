@@ -54,7 +54,7 @@ approved-governance-actions:
   - EvmContractUpgradeAction:
       nonce: 0  # Update with actual nonce when proposal is created
       chain_id: EthCustom
-      proxy_address: "0x7F98B51517Af3D393e5C554d80CC1e2bCFA016d5"  # MysBridge proxy address
+      proxy_address: "0x42c69700027E1C7F9Af981FB5B39BAb824560225"  # MysBridge proxy address
       new_impl_address: "0x0000000000000000000000000000000000000000"  # Update with actual implementation address when proposal is created
       call_data: []  # Update with actual call data bytes when proposal is created
 db-path: /app/bridge_db

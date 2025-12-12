@@ -19,6 +19,6 @@ mys_bridge_genesis_checkpoint: 0
 # Ethereum bridge genesis block
 eth_bridge_genesis_block: 34790000
 # Ethereum to MySocial bridge contract address
-eth_mys_bridge_contract_address: 0x7F98B51517Af3D393e5C554d80CC1e2bCFA016d5
+eth_mys_bridge_contract_address: 0x42c69700027E1C7F9Af981FB5B39BAb824560225
 # Client metric port
 metric_port: 9090
