@@ -20,11 +20,11 @@ approved-governance-actions:
   # The system matches by exact hash, so placeholder values won't match real proposals until updated.
   
   - AddTokensOnEvmAction:
-      nonce: 1
+      nonce: 0
       chain_id: EthCustom
       native: true
       token_ids: [0]
-      token_addresses: ["0xb6868be0717482c435cf8f2c20c425cbae09a9ce"]
+      token_addresses: ["0x7F98B51517Af3D393e5C554d80CC1e2bCFA016d5"]
       token_mys_decimals: [9]
       token_prices: [47000]
   
@@ -54,7 +54,7 @@ approved-governance-actions:
   - EvmContractUpgradeAction:
       nonce: 0  # Update with actual nonce when proposal is created
       chain_id: EthCustom
-      proxy_address: "0xb6868bE0717482c435cf8F2C20c425Cbae09a9cE"  # MysBridge proxy address
+      proxy_address: "0x7F98B51517Af3D393e5C554d80CC1e2bCFA016d5"  # MysBridge proxy address
       new_impl_address: "0x0000000000000000000000000000000000000000"  # Update with actual implementation address when proposal is created
       call_data: []  # Update with actual call data bytes when proposal is created
 db-path: /app/bridge_db

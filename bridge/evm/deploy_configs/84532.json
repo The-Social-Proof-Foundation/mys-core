@@ -6,9 +6,9 @@
     3333
   ],
   "committeeMembers": [
-    "0x6d884bacbb313a48a1720f7acd48d5e5f0d3fdbd",
-    "0xe17347b1b2a57acfd6433535a1da3cb257f9d7e6",
-    "0xc14984b8058d84ab35ad5624a5c32ccd926c4b2d"
+    "0xcc2405f926026fedb82500a0cad37ec78b0d8cbd",
+    "0xd0cf08821b6f3e7e750a9142e466d766f59cdd87",
+    "0xef95efdabcd0d13e1a437038bd15f417e45bf97b"
   ],
   "minCommitteeStakeRequired": 5001,
   "sourceChainId": 12,
