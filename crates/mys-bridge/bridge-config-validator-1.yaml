@@ -24,7 +24,7 @@ approved-governance-actions:
       chain_id: EthCustom
       native: true
       token_ids: [0]
-      token_addresses: ["0x7F98B51517Af3D393e5C554d80CC1e2bCFA016d5"]
+      token_addresses: ["0x477AB37965612E84b81be54002e6529Af832bdbF"]
       token_mys_decimals: [9]
       token_prices: [47000]
   
