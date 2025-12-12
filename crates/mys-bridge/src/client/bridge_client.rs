@@ -69,12 +69,18 @@ impl BridgeClient {
                 let keys = if a.members_to_update.is_empty() {
                     "none".to_string()
                 } else {
-                    a.members_to_update
+                    let encoded: Vec<String> = a.members_to_update
                         .iter()
                         .map(|k| Hex::encode(k.as_bytes()))
-                        .collect::<Vec<_>>()
-                        .join(",")
+                        .collect();
+                    if encoded.is_empty() {
+                        "none".to_string()
+                    } else {
+                        encoded.join(",")
+                    }
                 };
+                // Ensure keys is never empty - defensive check
+                let keys = if keys.is_empty() { "none".to_string() } else { keys };
                 format!("sign/update_committee_blocklist/{chain_id}/{nonce}/{type_}/{keys}")
             }
             BridgeAction::EmergencyAction(a) => {
@@ -198,11 +204,16 @@ impl BridgeClient {
             return Err(BridgeError::InvalidAuthorityUrl(self.authority.clone()));
         }
         // Unwrap safe: checked `self.base_url.is_none()` above
-        let url = self
-            .base_url
-            .clone()
-            .unwrap()
-            .join(&Self::bridge_action_to_path(&action))?;
+        let path = Self::bridge_action_to_path(&action);
+        let base_url = self.base_url.clone().unwrap();
+        let url = base_url.join(&path)?;
+        tracing::debug!(
+            "Requesting signature from {}: path={}, base_url={}, full_url={}",
+            self.authority.concise(),
+            path,
+            base_url,
+            url
+        );
         let resp = self
             .inner
             .get(url)
