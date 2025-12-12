@@ -13,7 +13,6 @@ use fastcrypto::traits::ToFromBytes;
 use mys_types::base_types::ConciseableName;
 use std::str::FromStr;
 use std::sync::Arc;
-use tracing::debug;
 use url::Url;
 
 // Note: `base_url` is `Option<Url>` because `quorum_map_then_reduce_with_timeout_and_prefs`
