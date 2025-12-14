@@ -143,6 +143,27 @@ contract MySocialTokenBridgeAdapter is IMySocialTokenBridgeAdapter, Ownable, Ree
         return address(_mySocialToken);
     }
 
+    /// @notice Returns the number of decimals the token uses
+    /// @dev Required for IERC20Metadata compatibility
+    /// @return The number of decimals (delegates to underlying MySocialToken)
+    function decimals() external view returns (uint8) {
+        return _mySocialToken.decimals();
+    }
+
+    /// @notice Returns the name of the token
+    /// @dev Required for IERC20Metadata compatibility
+    /// @return The token name (delegates to underlying MySocialToken)
+    function name() external view returns (string memory) {
+        return _mySocialToken.name();
+    }
+
+    /// @notice Returns the symbol of the token
+    /// @dev Required for IERC20Metadata compatibility
+    /// @return The token symbol (delegates to underlying MySocialToken)
+    function symbol() external view returns (string memory) {
+        return _mySocialToken.symbol();
+    }
+
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /// @notice Removes a bridge address from the authorized bridges list

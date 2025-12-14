@@ -24,7 +24,7 @@ approved-governance-actions:
       chain_id: EthCustom
       native: true
       token_ids: [0]
-      token_addresses: ["0xFdD6013Bf2757018D8c087244f03e5a521B2d3B7"]
+      token_addresses: ["0x947c9A4f87E195Bb62620d03714b0720ff9e983b"]
       token_mys_decimals: [9]
       token_prices: [47000]
   
@@ -54,7 +54,7 @@ approved-governance-actions:
   - EvmContractUpgradeAction:
       nonce: 0  # Update with actual nonce when proposal is created
       chain_id: EthCustom
-      proxy_address: "0x42c69700027E1C7F9Af981FB5B39BAb824560225"  # MysBridge proxy address
+      proxy_address: "0xA18D9Dc3ef3A23A53C3F3Ce643f1c0b935772F0A"  # MysBridge proxy address (UPDATED Dec 14)
       new_impl_address: "0x0000000000000000000000000000000000000000"  # Update with actual implementation address when proposal is created
       call_data: []  # Update with actual call data bytes when proposal is created
 
