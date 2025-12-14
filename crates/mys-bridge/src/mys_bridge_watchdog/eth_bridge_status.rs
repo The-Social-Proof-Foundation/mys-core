@@ -45,7 +45,7 @@ impl Observable for EthBridgeStatus {
         match status {
             Ok(status) => {
                 self.metric.set(status as i64);
-                info!("Eth Bridge Status: {:?}", status);
+                info!("Eth Bridge is paused: {:?}", status);
             }
             Err(e) => {
                 error!("Error getting eth bridge status: {:?}", e);
