@@ -13,7 +13,7 @@ db_url: postgresql://postgres:ETTZFVeKtrUyuVDlYKzGQqYCjINNjbWH@postgres-6eso.rai
 # Path to the checkpoints (optional)
 # checkpoints_path: <path>
 # Number of concurrent operations
-concurrency: 1
+concurrency: 100
 # MySocial bridge genesis checkpoint for testnet (updated for new bridge deployment)
 mys_bridge_genesis_checkpoint: 5600000
 # Ethereum bridge genesis block (updated for new bridge deployment Dec 14)
