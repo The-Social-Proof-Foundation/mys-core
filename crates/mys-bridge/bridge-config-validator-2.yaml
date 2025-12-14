@@ -24,7 +24,7 @@ approved-governance-actions:
       chain_id: EthCustom
       native: true
       token_ids: [0]
-      token_addresses: ["0xFdD6013Bf2757018D8c087244f03e5a521B2d3B7"]
+      token_addresses: ["0x4ED82eaB5B438Da090Ef78A6805bD713FD6395BC"]
       token_mys_decimals: [9]
       token_prices: [47000]
   
@@ -66,7 +66,7 @@ eth:
   eth-rpc-url: "${ETH_RPC_URL}"
   eth-bridge-proxy-address: "${ETH_BRIDGE_PROXY_ADDRESS}"
   eth-bridge-chain-id: 12
-  eth-contracts-start-block-fallback: 34790000
+  eth-contracts-start-block-fallback: 34940000
 
 metrics:
   push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics"

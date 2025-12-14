@@ -24,7 +24,7 @@ approved-governance-actions:
       chain_id: EthCustom
       native: true
       token_ids: [0]
-      token_addresses: ["0xFdD6013Bf2757018D8c087244f03e5a521B2d3B7"]
+      token_addresses: ["0x4ED82eaB5B438Da090Ef78A6805bD713FD6395BC"]
       token_mys_decimals: [9]
       token_prices: [47000]
   
@@ -54,7 +54,7 @@ approved-governance-actions:
   - EvmContractUpgradeAction:
       nonce: 0  # Update with actual nonce when proposal is created
       chain_id: EthCustom
-      proxy_address: "0x42c69700027E1C7F9Af981FB5B39BAb824560225"  # MysBridge proxy address
+      proxy_address: "0x02D265E77590025660a4eff50E7227136762b0d2"  # MysBridge proxy address (UPDATED)
       new_impl_address: "0x0000000000000000000000000000000000000000"  # Update with actual implementation address when proposal is created
       call_data: []  # Update with actual call data bytes when proposal is created
 db-path: /app/bridge_db
@@ -67,7 +67,7 @@ eth:
   eth-rpc-url: "${ETH_RPC_URL}"
   eth-bridge-proxy-address: "${ETH_BRIDGE_PROXY_ADDRESS}"
   eth-bridge-chain-id: 12
-  eth-contracts-start-block-fallback: 34790000
+  eth-contracts-start-block-fallback: 34940000
 
 metrics:
   push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics"
