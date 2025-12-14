@@ -9237,6 +9237,7 @@ name = "mys-bridge-cli"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "base64 0.21.7",
  "clap",
  "ethers",
  "fastcrypto",

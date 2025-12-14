@@ -31,3 +31,4 @@ serde_json.workspace = true
 telemetry-subscribers.workspace = true
 reqwest.workspace = true
 futures.workspace = true
+base64.workspace = true
