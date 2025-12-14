@@ -4,13 +4,13 @@
 # Bridge nodes to monitor
 bridge_nodes:
   - name: "validator-1"
-    url: "https://bridge-validator-1.testnet.mysocial.network"
+    url: "http://yamanote.proxy.rlwy.net:47836"
     expected_status: 200
   - name: "validator-2"
-    url: "https://bridge-validator-2.testnet.mysocial.network"
+    url: "http://interchange.proxy.rlwy.net:43720"
     expected_status: 200
   - name: "validator-3"
-    url: "https://bridge-validator-3.testnet.mysocial.network"
+    url: "http://gondola.proxy.rlwy.net:18706"
     expected_status: 200
 
 # Mys network configuration
@@ -21,8 +21,8 @@ mys:
 # Ethereum network configuration
 eth:
   rpc_url: "https://base-sepolia.g.alchemy.com/v2/dP5ANdv4tQc7ldy_stPvRTQWtO0J3KS5"
-  bridge_proxy_address: "0x3b80bb0443D731ee5176ec89568fDFe8eB0aAFdd"
-  vault_address: "0xD52A3F301406cAE19A36B7808a816691216E1356"
+  bridge_proxy_address: "0x02D265E77590025660a4eff50E7227136762b0d2"
+  vault_address: "0xaF12A0Af2A325518cc8655a787aab6DC34EFc95E"
   bridge_chain_id: 12
 
 # Monitoring intervals (in seconds)

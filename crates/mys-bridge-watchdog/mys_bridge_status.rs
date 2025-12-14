@@ -35,7 +35,7 @@ impl Observable for MysBridgeStatus {
         match status {
             Ok(status) => {
                 self.metric.set(status as i64);
-                info!("Mys Bridge Status: {:?}", status);
+                info!("Mys Bridge is paused: {:?}", status);
             }
             Err(e) => {
                 error!("Error getting mys bridge status: {:?}", e);
