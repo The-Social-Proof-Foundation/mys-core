@@ -57,7 +57,7 @@ approved-governance-actions:
       proxy_address: "0x02D265E77590025660a4eff50E7227136762b0d2"  # MysBridge proxy address (UPDATED)
       new_impl_address: "0x0000000000000000000000000000000000000000"  # Update with actual implementation address when proposal is created
       call_data: []  # Update with actual call data bytes when proposal is created
-db-path: /app/bridge_db
+db-path: /data/bridge_db
 
 mys:
   mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
