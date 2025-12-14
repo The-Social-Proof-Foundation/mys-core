@@ -14,10 +14,10 @@ db_url: postgresql://postgres:ETTZFVeKtrUyuVDlYKzGQqYCjINNjbWH@postgres-6eso.rai
 # checkpoints_path: <path>
 # Number of concurrent operations
 concurrency: 1
-# MySocial bridge genesis checkpoint for testnet
-mys_bridge_genesis_checkpoint: 5633034
-# Ethereum bridge genesis block
-eth_bridge_genesis_block: 34790000
+# MySocial bridge genesis checkpoint for testnet (updated for new bridge deployment)
+mys_bridge_genesis_checkpoint: 5600000
+# Ethereum bridge genesis block (updated for new bridge deployment Dec 14)
+eth_bridge_genesis_block: 34966000
 # Ethereum to MySocial bridge contract address
 eth_mys_bridge_contract_address: 0xA18D9Dc3ef3A23A53C3F3Ce643f1c0b935772F0A
 # Client metric port
