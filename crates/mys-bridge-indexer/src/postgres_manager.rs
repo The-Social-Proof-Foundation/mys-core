@@ -33,7 +33,7 @@ pub async fn get_connection_pool(database_url: String) -> PgPool {
         .expect("Could not build Postgres DB connection pool")
 }
 
-// TODO: add retry logic
+// TODO: add retry logic.
 pub async fn write(pool: &PgPool, token_txns: Vec<ProcessedTxnData>) -> Result<(), anyhow::Error> {
     if token_txns.is_empty() {
         return Ok(());
