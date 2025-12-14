@@ -63,8 +63,8 @@ mys:
   mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
   mys-bridge-chain-id: 2
   mys-bridge-module-last-processed-event-id-override:
-    tx-digest: "2XMEo7Y4rtbGQi1RPgBfEN3LVPCErLFVsJYJm6vp29ma"
-    event-seq: "0"
+    txDigest: "2XMEo7Y4rtbGQi1RPgBfEN3LVPCErLFVsJYJm6vp29ma"
+    eventSeq: 0
 
 eth:
   eth-rpc-url: "${ETH_RPC_URL}"
