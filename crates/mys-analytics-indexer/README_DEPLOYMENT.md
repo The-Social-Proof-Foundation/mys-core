@@ -8,7 +8,7 @@ The MySocial Analytics Indexer processes blockchain checkpoint data and exports 
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  Checkpoint     │────▶│  Analytics       │────▶│  Data Outputs   │
+│  Checkpoint     │─-─▶│  Analytics       │───▶│  Data Outputs   │
 │  Source         │    │  Indexer         │    │  (GCS/BQ/SF)    │
 │  (MySocial)     │    │                  │    │                 │
 └─────────────────┘    └──────────────────┘    └─────────────────┘

@@ -231,6 +231,10 @@ pub fn get_bridge(object_store: &dyn ObjectStore) -> Result<Bridge, MysError> {
     }
 }
 
+fn default_vecmap() -> VecMap<Vec<u8>, u8> {
+    VecMap { contents: vec![] }
+}
+
 /// Rust version of the Move bridge::BridgeInner type.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BridgeInnerV1 {
@@ -243,6 +247,17 @@ pub struct BridgeInnerV1 {
     pub bridge_records: LinkedTable<MoveTypeBridgeMessageKey>,
     pub limiter: MoveTypeBridgeTransferLimiter,
     pub frozen: bool,
+    // EVM deposit relayer mint-and-transfer fields (added for relayer functionality)
+    #[serde(default)]
+    pub relayer: Option<MysAddress>,
+    #[serde(default)]
+    pub relayer_paused: bool,
+    #[serde(default)]
+    pub relayer_max_per_tx: u64,
+    #[serde(default)]
+    pub used_deposit_hashes: crate::collection_types::Table,
+    #[serde(default = "default_vecmap")]
+    pub asset_id_to_token_id: VecMap<Vec<u8>, u8>,
 }
 
 impl BridgeTrait for BridgeInnerV1 {

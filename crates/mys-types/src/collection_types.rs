@@ -8,7 +8,7 @@ use crate::base_types::ObjectID;
 use crate::id::UID;
 
 /// Rust version of the Move mys::vec_map::VecMap type
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Default)]
 pub struct VecMap<K, V> {
     pub contents: Vec<Entry<K, V>>,
 }

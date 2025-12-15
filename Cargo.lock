@@ -9301,6 +9301,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "mys-bridge-relayer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bcs",
+ "bigdecimal",
+ "bin-version",
+ "bip32",
+ "clap",
+ "diesel",
+ "diesel-async 0.5.2",
+ "diesel_migrations",
+ "ethers",
+ "fastcrypto",
+ "futures",
+ "hex",
+ "hex-literal 0.3.4",
+ "move-core-types",
+ "mys-bridge",
+ "mys-config",
+ "mys-json-rpc-api",
+ "mys-json-rpc-types",
+ "mys-keys",
+ "mys-pg-db",
+ "mys-sdk",
+ "mys-types",
+ "mysten-metrics",
+ "once_cell",
+ "prometheus",
+ "serde",
+ "serde_json",
+ "serde_yaml 0.8.26",
+ "shared-crypto",
+ "tap",
+ "telemetry-subscribers",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "mys-cluster-test"
 version = "0.0.1"
 dependencies = [

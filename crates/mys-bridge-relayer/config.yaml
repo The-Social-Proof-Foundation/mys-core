@@ -1,0 +1,6 @@
+# mys-bridge-relayer config
+# NOTE: keep secrets out of this file; prefer env vars.
+
+# db-url: defaults to $DB_URL
+# metric-port: defaults to $METRIC_PORT, else Railway $PORT, else 8080
+

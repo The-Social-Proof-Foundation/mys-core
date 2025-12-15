@@ -92,6 +92,7 @@ members = [
     "crates/mys-bridge",
     "crates/mys-bridge-cli",
     "crates/mys-bridge-indexer",
+    "crates/mys-bridge-relayer",
     "crates/mys-cluster-test",
     "crates/mys-config",
     "crates/mys-core",

@@ -25,6 +25,8 @@ use bridge::bridge::{
 };
 use bridge::bridge_env::{
     btc_id,
+    bridge_ref_mut,
+    clock_and_ctx,
     create_bridge,
     create_bridge_default,
     create_env,
@@ -743,4 +745,159 @@ fun change_url_bad_sender() {
         .bridge_ref_mut()
         .update_node_url(b"<url_here>", env.scenario().ctx());
     abort 0
+}
+
+#[test]
+fun test_relayer_mint_idempotency() {
+    // Use create_bridge_default which sets up everything including treasury with tokens
+    let mut env = create_env(chain_ids::mys_testnet());
+    env.create_bridge_default();
+    let relayer_addr = @0xABCD;
+    let user_addr = @0x1234;
+    let asset_id = vector[
+        0u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+    ];
+    let deposit_hash = vector[
+        100u8, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115,
+        116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131
+    ];
+
+    // Setup: set relayer, max per tx, and asset mapping for ETH (token_id 2)
+    env.scenario().next_tx(@0x0);
+    {
+        let mut bridge = env.bridge(@0x0);
+        bridge_ref_mut(&mut bridge).set_relayer(relayer_addr, env.ctx());
+        bridge_ref_mut(&mut bridge).set_relayer_max_per_tx(1_000_000_000, env.ctx());
+        bridge_ref_mut(&mut bridge).set_asset_mapping(asset_id, eth_id(), env.ctx());
+        bridge.return_bridge();
+    };
+
+    // First mint should succeed
+    {
+        let mut bridge = env.bridge(relayer_addr);
+        let (clock, ctx) = clock_and_ctx(&mut env);
+        bridge_ref_mut(&mut bridge).relayer_mint_and_transfer<ETH>(
+            asset_id,
+            deposit_hash,
+            1000,
+            user_addr,
+            chain_ids::eth_sepolia(),
+            clock,
+            ctx
+        );
+        bridge.return_bridge();
+    };
+
+    abort TEST_DONE
+}
+
+#[test]
+#[expected_failure(abort_code = bridge::bridge::EDepositHashUsed)]
+fun test_relayer_mint_idempotency_expected() {
+    // Use create_bridge_default which sets up everything including treasury with tokens
+    let mut env = create_env(chain_ids::mys_testnet());
+    env.create_bridge_default();
+    let relayer_addr = @0xABCD;
+    let user_addr = @0x1234;
+    let asset_id = vector[
+        0u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+    ];
+    let deposit_hash = vector[
+        100u8, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115,
+        116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131
+    ];
+
+    // Setup: set relayer, max per tx, and asset mapping for ETH (token_id 2)
+    env.scenario().next_tx(@0x0);
+    {
+        let mut bridge = env.bridge(@0x0);
+        bridge_ref_mut(&mut bridge).set_relayer(relayer_addr, env.ctx());
+        bridge_ref_mut(&mut bridge).set_relayer_max_per_tx(1_000_000_000, env.ctx());
+        bridge_ref_mut(&mut bridge).set_asset_mapping(asset_id, eth_id(), env.ctx());
+        bridge.return_bridge();
+    };
+
+    // First mint should succeed
+    {
+        let mut bridge = env.bridge(relayer_addr);
+        let (clock, ctx) = clock_and_ctx(&mut env);
+        bridge_ref_mut(&mut bridge).relayer_mint_and_transfer<ETH>(
+            asset_id,
+            deposit_hash,
+            1000,
+            user_addr,
+            chain_ids::eth_sepolia(),
+            clock,
+            ctx
+        );
+        bridge.return_bridge();
+    };
+
+    // Second mint with same deposit_hash should abort (idempotency)
+    {
+        let mut bridge = env.bridge(relayer_addr);
+        let (clock, ctx) = clock_and_ctx(&mut env);
+        // This should abort with EDepositHashUsed
+        bridge_ref_mut(&mut bridge).relayer_mint_and_transfer<ETH>(
+            asset_id,
+            deposit_hash,
+            1000,
+            user_addr,
+            chain_ids::eth_sepolia(),
+            clock,
+            ctx
+        );
+        bridge.return_bridge();
+    };
+
+    abort TEST_DONE
+}
+
+#[test]
+#[expected_failure(abort_code = bridge::bridge::EAssetIdMismatch)]
+fun test_relayer_mint_asset_id_mismatch() {
+    // Use create_bridge_default which sets up everything including treasury with tokens
+    let mut env = create_env(chain_ids::mys_testnet());
+    env.create_bridge_default();
+    let relayer_addr = @0xABCD;
+    let user_addr = @0x1234;
+    let asset_id = vector[
+        0u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+    ];
+    let deposit_hash = vector[
+        100u8, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115,
+        116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131
+    ];
+
+    // Setup: set relayer, max per tx, and map asset_id to BTC (token_id 1)
+    env.scenario().next_tx(@0x0);
+    {
+        let mut bridge = env.bridge(@0x0);
+        bridge_ref_mut(&mut bridge).set_relayer(relayer_addr, env.ctx());
+        bridge_ref_mut(&mut bridge).set_relayer_max_per_tx(1_000_000_000, env.ctx());
+        bridge_ref_mut(&mut bridge).set_asset_mapping(asset_id, btc_id(), env.ctx());
+        bridge.return_bridge();
+    };
+
+    // Try to mint ETH (token_id 2) with asset_id mapped to BTC (token_id 1)
+    // Should abort with EAssetIdMismatch
+    {
+        let mut bridge = env.bridge(relayer_addr);
+        let (clock, ctx) = clock_and_ctx(&mut env);
+        bridge_ref_mut(&mut bridge).relayer_mint_and_transfer<ETH>(
+            asset_id,
+            deposit_hash,
+            1000,
+            user_addr,
+            chain_ids::eth_sepolia(),
+            clock,
+            ctx
+        );
+        bridge.return_bridge();
+    };
+
+    abort TEST_DONE
 }

@@ -372,7 +372,7 @@ module bridge::bridge_env {
     }
 
     // Register 4 tokens with the Bridge: ETH, BTC, USDT, USDC.
-    fun register_default_tokens(env: &mut BridgeEnv, sender: address) {
+    public fun register_default_tokens(env: &mut BridgeEnv, sender: address) {
         env.scenario.next_tx(sender);
         let mut bridge = env.scenario.take_shared<Bridge>();
 
@@ -1134,6 +1134,15 @@ module bridge::bridge_env {
 
     public fun scenario(env: &mut BridgeEnv): &mut Scenario {
         &mut env.scenario
+    }
+
+    public fun clock_ref(env: &BridgeEnv): &Clock {
+        &env.clock
+    }
+
+    // Helper to get both clock and ctx references
+    public fun clock_and_ctx(env: &mut BridgeEnv): (&Clock, &mut TxContext) {
+        (&env.clock, env.scenario.ctx())
     }
 
     public fun chain_id(env: &mut BridgeEnv): u8 {

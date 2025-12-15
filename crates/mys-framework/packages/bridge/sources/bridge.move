@@ -9,6 +9,7 @@ module bridge::bridge {
     use mys::event::emit;
     use mys::linked_table::{Self, LinkedTable};
     use mys::package::UpgradeCap;
+    use mys::table::{Self, Table};
     use mys::vec_map::{Self, VecMap};
     use mys::versioned::{Self, Versioned};
     use mys_system::mys_system::MysSystemState;
@@ -57,6 +58,12 @@ module bridge::bridge {
         token_transfer_records: LinkedTable<BridgeMessageKey, BridgeRecord>,
         limiter: TransferLimiter,
         paused: bool,
+        // EVM deposit relayer mint-and-transfer fields
+        relayer: Option<address>,
+        relayer_paused: bool,
+        relayer_max_per_tx: u64,
+        used_deposit_hashes: Table<vector<u8>, bool>,
+        asset_id_to_token_id: VecMap<vector<u8>, u8>,
     }
 
     public struct TokenDepositedEvent has copy, drop {
@@ -99,6 +106,17 @@ module bridge::bridge {
     const EMustBeTokenMessage: u64 = 17;
     const EInvalidEvmAddress: u64 = 18;
     const ETokenValueIsZero: u64 = 19;
+    // EVM deposit relayer mint errors
+    const ENotRelayer: u64 = 20;
+    const ERelayerUnavailable: u64 = 21;
+    const EBadLength: u64 = 22;
+    const EDepositHashUsed: u64 = 23;
+    const EAmountZero: u64 = 24;
+    const EMaxPerTx: u64 = 25;
+    const EAssetIdMismatch: u64 = 26;
+    const EAssetNotMapped: u64 = 27;
+    const EInvalidRecipient: u64 = 28;
+    const EInvalidSourceChain: u64 = 29;
 
     const CURRENT_VERSION: u64 = 1;
 
@@ -122,6 +140,15 @@ module bridge::bridge {
         message_key: BridgeMessageKey,
     }
 
+    public struct DepositMintedEvent has copy, drop {
+        deposit_hash: vector<u8>,
+        asset_id: vector<u8>,
+        token_id: u8,
+        amount: u64,
+        recipient: address,
+        source_chain: u8,
+    }
+
     //////////////////////////////////////////////////////
     // Internal initialization functions
     //
@@ -140,6 +167,11 @@ module bridge::bridge {
             token_transfer_records: linked_table::new(ctx),
             limiter: limiter::new(),
             paused: false,
+            relayer: option::none(),
+            relayer_paused: false,
+            relayer_max_per_tx: 0, // Admin must set explicitly
+            used_deposit_hashes: table::new(ctx),
+            asset_id_to_token_id: vec_map::empty(),
         };
         let bridge = Bridge {
             id,
@@ -455,6 +487,165 @@ module bridge::bridge {
         } else {
             token.destroy_none();
         };
+    }
+
+    /// Admin-only: set the relayer address (who can call relayer_mint_and_transfer).
+    /// Must be called by @0x0 (system address) or committee governance.
+    /// To remove/disable relayer, use clear_relayer().
+    public entry fun set_relayer(
+        bridge: &mut Bridge,
+        new_relayer: address,
+        ctx: &TxContext,
+    ) {
+        assert!(ctx.sender() == @0x0, ENotSystemAddress);
+        assert!(new_relayer != @0x0, EInvalidRecipient);
+        let inner = load_inner_mut(bridge);
+        inner.relayer = option::some(new_relayer);
+    }
+
+    /// Admin-only: clear/remove the relayer address (disables relayer_mint_and_transfer).
+    /// Must be called by @0x0 (system address) or committee governance.
+    public entry fun clear_relayer(
+        bridge: &mut Bridge,
+        ctx: &TxContext,
+    ) {
+        assert!(ctx.sender() == @0x0, ENotSystemAddress);
+        let inner = load_inner_mut(bridge);
+        inner.relayer = option::none();
+    }
+
+    /// Admin-only: pause/unpause relayer minting.
+    public entry fun set_relayer_paused(
+        bridge: &mut Bridge,
+        paused: bool,
+        ctx: &TxContext,
+    ) {
+        assert!(ctx.sender() == @0x0, ENotSystemAddress);
+        let inner = load_inner_mut(bridge);
+        inner.relayer_paused = paused;
+    }
+
+    /// Admin-only: set max per-tx limit for relayer mints.
+    public entry fun set_relayer_max_per_tx(
+        bridge: &mut Bridge,
+        max_per_tx: u64,
+        ctx: &TxContext,
+    ) {
+        assert!(ctx.sender() == @0x0, ENotSystemAddress);
+        let inner = load_inner_mut(bridge);
+        inner.relayer_max_per_tx = max_per_tx;
+    }
+
+    /// Admin-only: map asset_id (bytes32) to canonical token_id (u8).
+    /// This creates the allowlist binding for relayer_mint_and_transfer.
+    public entry fun set_asset_mapping(
+        bridge: &mut Bridge,
+        asset_id: vector<u8>,
+        token_id: u8,
+        ctx: &TxContext,
+    ) {
+        assert!(ctx.sender() == @0x0, ENotSystemAddress);
+        assert!(asset_id.length() == 32, EBadLength);
+        let inner = load_inner_mut(bridge);
+        if (inner.asset_id_to_token_id.contains(&asset_id)) {
+            *inner.asset_id_to_token_id.get_mut(&asset_id) = token_id;
+        } else {
+            inner.asset_id_to_token_id.insert(asset_id, token_id);
+        }
+    }
+
+    /// Relayer-only entry: mint canonical bridge token and transfer to user for EVM deposit.
+    /// This path reuses BridgeTreasury minting + limiter checks with deposit_hash idempotency.
+    public entry fun relayer_mint_and_transfer<T>(
+        bridge: &mut Bridge,
+        asset_id: vector<u8>,
+        deposit_hash: vector<u8>,
+        amount: u64,
+        recipient: address,
+        source_chain: u8,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let inner = load_inner_mut(bridge);
+        
+        // Relayer auth
+        assert!(inner.relayer.is_some(), ENotRelayer);
+        assert!(ctx.sender() == *inner.relayer.borrow(), ENotRelayer);
+        
+        // Paused checks
+        assert!(!inner.paused, EBridgeUnavailable);
+        assert!(!inner.relayer_paused, ERelayerUnavailable);
+        
+        // Input validation
+        assert!(asset_id.length() == 32, EBadLength);
+        assert!(deposit_hash.length() == 32, EBadLength);
+        assert!(amount > 0, EAmountZero);
+        assert!(amount <= inner.relayer_max_per_tx, EMaxPerTx);
+        assert!(recipient != @0x0, EInvalidRecipient);
+        assert!(source_chain != inner.chain_id, EInvalidSourceChain);
+        // Validate source_chain is a known chain ID (will abort if invalid)
+        chain_ids::assert_valid_chain_id(source_chain);
+        
+        // Create copies of vectors for idempotency check and event emission
+        // (table operations consume keys, so we need copies)
+        let mut deposit_hash_for_check = vector::empty<u8>();
+        let mut i = 0;
+        while (i < deposit_hash.length()) {
+            deposit_hash_for_check.push_back(*vector::borrow(&deposit_hash, i));
+            i = i + 1;
+        };
+        let mut deposit_hash_for_event = vector::empty<u8>();
+        i = 0;
+        while (i < deposit_hash.length()) {
+            deposit_hash_for_event.push_back(*vector::borrow(&deposit_hash, i));
+            i = i + 1;
+        };
+        let mut asset_id_copy = vector::empty<u8>();
+        i = 0;
+        while (i < asset_id.length()) {
+            asset_id_copy.push_back(*vector::borrow(&asset_id, i));
+            i = i + 1;
+        };
+        
+        // Idempotency check (contains consumes the key)
+        assert!(
+            !inner.used_deposit_hashes.contains(deposit_hash_for_check),
+            EDepositHashUsed
+        );
+        
+        // Asset allowlist: asset_id must map to the token_id of T
+        let expected_token_id_opt = inner.asset_id_to_token_id.try_get(&asset_id);
+        assert!(expected_token_id_opt.is_some(), EAssetNotMapped);
+        let expected_token_id = expected_token_id_opt.destroy_some();
+        let actual_token_id = treasury::token_id<T>(&inner.treasury);
+        assert!(expected_token_id == actual_token_id, EAssetIdMismatch);
+        
+        // Limiter: reuse existing 24h notional limit enforcement
+        let route = chain_ids::get_route(source_chain, inner.chain_id);
+        let within_limit = inner.limiter.check_and_record_sending_transfer<T>(
+            &inner.treasury,
+            clock,
+            route,
+            amount,
+        );
+        assert!(within_limit, ETokenAlreadyClaimedOrHitLimit);
+        
+        // Record deposit_hash (consumes deposit_hash)
+        inner.used_deposit_hashes.add(deposit_hash, true);
+        
+        // Mint from canonical treasury and transfer to user
+        let c: Coin<T> = inner.treasury.mint<T>(amount, ctx);
+        transfer::public_transfer(c, recipient);
+        
+        // Emit event (use copies)
+        emit(DepositMintedEvent {
+            deposit_hash: deposit_hash_for_event,
+            asset_id: asset_id_copy,
+            token_id: actual_token_id,
+            amount,
+            recipient,
+            source_chain,
+        });
     }
 
     public fun execute_system_message(
@@ -801,6 +992,22 @@ module bridge::bridge {
         option::some(to_parsed_token_transfer_message(message))
     }
 
+    /// View function: get token_id for a given asset_id.
+    /// Returns Option<u8> - Some(token_id) if asset_id is mapped, None otherwise.
+    /// Used by relayer to determine which coin type to mint.
+    public fun get_token_id_for_asset_id(
+        bridge: &Bridge,
+        asset_id: vector<u8>,
+    ): Option<u8> {
+        assert!(asset_id.length() == 32, EBadLength);
+        let inner = load_inner(bridge);
+        if (inner.asset_id_to_token_id.contains(&asset_id)) {
+            option::some(*inner.asset_id_to_token_id.borrow(&asset_id))
+        } else {
+            option::none()
+        }
+    }
+
     //////////////////////////////////////////////////////
     // Test functions
     //
@@ -823,6 +1030,11 @@ module bridge::bridge {
             token_transfer_records: linked_table::new(ctx),
             limiter: limiter::new(),
             paused: false,
+            relayer: option::none(),
+            relayer_paused: false,
+            relayer_max_per_tx: 0,
+            used_deposit_hashes: table::new(ctx),
+            asset_id_to_token_id: vec_map::empty(),
         };
         let mut bridge = Bridge {
             id,

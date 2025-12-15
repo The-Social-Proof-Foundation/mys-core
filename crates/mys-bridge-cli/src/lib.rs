@@ -134,6 +134,23 @@ pub enum BridgeCommand {
         #[clap(subcommand)]
         cmd: BridgeClientCommands,
     },
+    /// Manage the `bridge::bridge_credit` wrapped-asset minting registry.
+    ///
+    /// This is the lightweight “bridge credit” minting module used by the EVM deposit relayer.
+    #[clap(name = "relayer-admin")]
+    RelayerAdmin {
+        /// Path of BridgeCliConfig (provides Mys RPC + signing key + gas selection).
+        #[clap(long = "config-path")]
+        config_path: PathBuf,
+        /// Shared `bridge::bridge::Bridge` object id.
+        #[clap(long = "bridge-id")]
+        bridge_id: ObjectID,
+        #[clap(subcommand)]
+        cmd: RelayerAdminCommands,
+        /// If true, only build the transaction and print it; do not execute.
+        #[clap(long = "dry-run", default_value = "false")]
+        dry_run: bool,
+    },
 }
 
 #[derive(Parser)]
@@ -560,6 +577,59 @@ pub enum BridgeClientCommands {
         #[clap(long, default_value_t = true, action = clap::ArgAction::Set)]
         dry_run: bool,
     },
+}
+
+#[derive(Parser)]
+#[clap(rename_all = "kebab-case")]
+pub enum RelayerAdminCommands {
+    /// Compute canonical bytes32 `asset_id` for relayer deposit tracking.
+    ///
+    /// Definition: `keccak256(chain_id || asset_kind || token_address_or_zero)`.
+    #[clap(name = "compute-asset-id")]
+    ComputeAssetId {
+        #[clap(long = "chain")]
+        chain: String,
+        #[clap(long = "kind")]
+        kind: AssetKind,
+        /// Required when `kind=erc20`.
+        #[clap(long = "token-address")]
+        token_address: Option<EthAddress>,
+    },
+    /// Set the relayer address (admin-only).
+    #[clap(name = "set-relayer")]
+    SetRelayer {
+        #[clap(long = "new-relayer")]
+        new_relayer: MysAddress,
+    },
+    /// Pause/unpause relayer minting (admin-only).
+    #[clap(name = "set-relayer-paused")]
+    SetRelayerPaused {
+        #[clap(long = "paused")]
+        paused: bool,
+    },
+    /// Set max per-tx limit for relayer mints (admin-only).
+    #[clap(name = "set-relayer-max-per-tx")]
+    SetRelayerMaxPerTx {
+        #[clap(long = "max-per-tx")]
+        max_per_tx: u64,
+    },
+    /// Map asset_id (bytes32) to canonical token_id (u8) for allowlist (admin-only).
+    ///
+    /// `asset-id-hex` must be 32 bytes (64 hex chars, optionally `0x`-prefixed).
+    #[clap(name = "set-asset-mapping")]
+    SetAssetMapping {
+        #[clap(long = "asset-id-hex")]
+        asset_id_hex: String,
+        #[clap(long = "token-id")]
+        token_id: u8,
+    },
+}
+
+#[derive(ValueEnum, Clone, Debug, PartialEq, Eq)]
+#[clap(rename_all = "kebab-case")]
+pub enum AssetKind {
+    Native,
+    Erc20,
 }
 
 impl BridgeClientCommands {

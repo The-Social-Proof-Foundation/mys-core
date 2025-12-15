@@ -6,6 +6,7 @@ use clap::*;
 use ethers::providers::Middleware;
 use ethers::types::Address as EthAddress;
 use fastcrypto::encoding::{Encoding, Hex};
+use fastcrypto::hash::{HashFunction, Keccak256};
 use mys_bridge::client::bridge_authority_aggregator::BridgeAuthorityAggregator;
 use mys_bridge::crypto::{BridgeAuthorityPublicKey, BridgeAuthorityPublicKeyBytes};
 use mys_bridge::eth_transaction_builder::build_eth_transaction;
@@ -23,16 +24,21 @@ use mys_bridge_cli::{
     LoadedBridgeCliConfig, Network, SEPOLIA_BRIDGE_PROXY_ADDR,
 };
 use mys_config::Config;
+use mys_json_rpc_types::{MysObjectDataOptions, MysTransactionBlockResponseOptions};
 use mys_sdk::MysClient as MysSdkClient;
 use mys_sdk::MysClientBuilder;
-use mys_types::base_types::MysAddress;
-use mys_types::bridge::BridgeChainId;
-use mys_types::bridge::{MoveTypeCommitteeMember, MoveTypeCommitteeMemberRegistration};
+use mys_types::base_types::{MysAddress, ObjectID};
+use mys_types::bridge::{BridgeChainId, BRIDGE_MODULE_NAME, MoveTypeCommitteeMember, MoveTypeCommitteeMemberRegistration};
 use mys_types::committee::TOTAL_VOTING_POWER;
 use mys_types::crypto::AuthorityPublicKeyBytes;
 use mys_types::crypto::Signature;
 use mys_types::crypto::ToFromBytes;
-use mys_types::transaction::Transaction;
+use mys_types::object::Owner as MysOwner;
+use mys_types::quorum_driver_types::ExecuteTransactionRequestType;
+use mys_types::parse_mys_type_tag;
+use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
+use mys_types::transaction::{CallArg, ObjectArg, Transaction, TransactionData};
+use mys_types::{TypeTag, BRIDGE_PACKAGE_ID};
 use shared_crypto::intent::Intent;
 use shared_crypto::intent::IntentMessage;
 use std::collections::BTreeMap;
@@ -41,6 +47,42 @@ use std::str::from_utf8;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
+
+fn bytes32_from_hex(s: &str) -> anyhow::Result<Vec<u8>> {
+    let s = s.strip_prefix("0x").unwrap_or(s);
+    let bytes = Hex::decode(s)?;
+    anyhow::ensure!(bytes.len() == 32, "expected 32-byte hex, got {} bytes", bytes.len());
+    Ok(bytes)
+}
+
+async fn shared_object_arg(
+    client: &MysSdkClient,
+    id: ObjectID,
+    mutable: bool,
+) -> anyhow::Result<ObjectArg> {
+    let resp = client
+        .read_api()
+        .get_object_with_options(id, MysObjectDataOptions::new().with_owner())
+        .await?;
+    let data = resp
+        .data
+        .ok_or_else(|| anyhow::anyhow!("object {id} not found"))?;
+    let owner = data
+        .owner
+        .ok_or_else(|| anyhow::anyhow!("object {id} missing owner field"))?;
+    match owner {
+        MysOwner::Shared {
+            initial_shared_version,
+        } => Ok(ObjectArg::SharedObject {
+            id,
+            initial_shared_version,
+            mutable,
+        }),
+        other => Err(anyhow::anyhow!(
+            "object {id} is not shared (owner={other:?})"
+        )),
+    }
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -278,6 +320,142 @@ async fn main() -> anyhow::Result<()> {
                 },
             };
             println!("{}", serde_json::to_string_pretty(&print).unwrap());
+            return Ok(());
+        }
+
+        BridgeCommand::RelayerAdmin {
+            config_path,
+            bridge_id,
+            cmd,
+            dry_run,
+        } => {
+            use mys_bridge_cli::{RelayerAdminCommands, AssetKind};
+
+            // ComputeAssetId is standalone (no Mys tx)
+            if let RelayerAdminCommands::ComputeAssetId { chain, kind, token_address } = &cmd {
+                let mut preimage = Vec::new();
+                preimage.extend_from_slice(chain.as_bytes());
+                match kind {
+                    AssetKind::Native => {
+                        preimage.extend_from_slice(b"native");
+                        preimage.extend_from_slice(&[0u8; 20]);
+                    }
+                    AssetKind::Erc20 => {
+                        preimage.extend_from_slice(b"erc20");
+                        let addr = token_address.as_ref().ok_or_else(|| {
+                            anyhow::anyhow!("--token-address is required when --kind=erc20")
+                        })?;
+                        preimage.extend_from_slice(addr.as_bytes());
+                    }
+                }
+                let digest = Keccak256::digest(&preimage).digest;
+                println!("0x{}", Hex::encode(digest));
+                return Ok(());
+            }
+
+            // All other commands require MySo transaction
+            let config = BridgeCliConfig::load(config_path).expect("Couldn't load BridgeCliConfig");
+            let config = LoadedBridgeCliConfig::load(config).await?;
+
+            let (mys_key, mys_address, gas_object_ref) = config
+                .get_mys_account_info()
+                .await
+                .expect("Failed to get MySo account info");
+
+            let mys_sdk_client = MysClientBuilder::default()
+                .build(config.mys_rpc_url.clone())
+                .await?;
+            let rgp = mys_sdk_client
+                .governance_api()
+                .get_reference_gas_price()
+                .await?;
+
+            let bridge_arg = shared_object_arg(&mys_sdk_client, bridge_id, true).await?;
+
+            let mut builder = ProgrammableTransactionBuilder::new();
+            let arg_bridge = builder.obj(bridge_arg).unwrap();
+
+            match cmd {
+                RelayerAdminCommands::ComputeAssetId { .. } => unreachable!(),
+                RelayerAdminCommands::SetRelayer { new_relayer } => {
+                    let arg_new_relayer = builder.pure(new_relayer).unwrap();
+                    builder.programmable_move_call(
+                        BRIDGE_PACKAGE_ID,
+                        BRIDGE_MODULE_NAME.to_owned(),
+                        move_core_types::identifier::Identifier::new("set_relayer")?,
+                        vec![],
+                        vec![arg_bridge, arg_new_relayer],
+                    );
+                }
+                RelayerAdminCommands::SetRelayerPaused { paused } => {
+                    let arg_paused = builder.pure(paused).unwrap();
+                    builder.programmable_move_call(
+                        BRIDGE_PACKAGE_ID,
+                        BRIDGE_MODULE_NAME.to_owned(),
+                        move_core_types::identifier::Identifier::new("set_relayer_paused")?,
+                        vec![],
+                        vec![arg_bridge, arg_paused],
+                    );
+                }
+                RelayerAdminCommands::SetRelayerMaxPerTx { max_per_tx } => {
+                    let arg_max_per_tx = builder.pure(max_per_tx).unwrap();
+                    builder.programmable_move_call(
+                        BRIDGE_PACKAGE_ID,
+                        BRIDGE_MODULE_NAME.to_owned(),
+                        move_core_types::identifier::Identifier::new("set_relayer_max_per_tx")?,
+                        vec![],
+                        vec![arg_bridge, arg_max_per_tx],
+                    );
+                }
+                RelayerAdminCommands::SetAssetMapping { asset_id_hex, token_id } => {
+                    let asset_id = bytes32_from_hex(&asset_id_hex)?;
+                    let arg_asset_id = builder.pure(asset_id).unwrap();
+                    let arg_token_id = builder.pure(token_id).unwrap();
+                    builder.programmable_move_call(
+                        BRIDGE_PACKAGE_ID,
+                        BRIDGE_MODULE_NAME.to_owned(),
+                        move_core_types::identifier::Identifier::new("set_asset_mapping")?,
+                        vec![],
+                        vec![arg_bridge, arg_asset_id, arg_token_id],
+                    );
+                }
+            }
+
+            let pt = builder.finish();
+            let tx_data = TransactionData::new_programmable(
+                mys_address,
+                vec![gas_object_ref],
+                pt,
+                500_000_000,
+                rgp,
+            );
+
+            if dry_run {
+                println!("Dry-run: built transaction data: {:?}", tx_data);
+                return Ok(());
+            }
+
+            let mys_sig = Signature::new_secure(
+                &IntentMessage::new(Intent::mys_transaction(), tx_data.clone()),
+                &mys_key,
+            );
+            let signed_tx = Transaction::from_data(tx_data, vec![mys_sig]);
+            let resp = mys_sdk_client
+                .quorum_driver_api()
+                .execute_transaction_block(
+                    signed_tx,
+                    MysTransactionBlockResponseOptions::new()
+                        .with_effects()
+                        .with_events(),
+                    Some(ExecuteTransactionRequestType::WaitForLocalExecution),
+                )
+                .await?;
+
+            if resp.status_ok().unwrap_or(false) {
+                println!("Relayer-admin tx succeeded: {:?}", resp.digest);
+            } else {
+                println!("Relayer-admin tx failed: {:?}", resp);
+            }
             return Ok(());
         }
 

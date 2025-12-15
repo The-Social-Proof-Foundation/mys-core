@@ -1,0 +1,49 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "crates/mys-bridge-relayer/Dockerfile"
+
+[deploy]
+startCommand = "mys-bridge-relayer --config-path /mys/config.yaml"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[variables]
+# Postgres (Railway plugin)
+DB_URL = "${{Postgres.DATABASE_URL}}"
+
+# Logging
+RUST_LOG = "info,mys_bridge_relayer=debug"
+
+# Metrics
+# NOTE: by default the relayer binds metrics to Railway's $PORT.
+# If you want a separate port locally, set METRIC_PORT.
+
+# MySo Configuration
+# MySo RPC URL for querying chain state and submitting transactions
+MYS_RPC_URL = "http://fullnode.testnet.mysocial.network:8082"
+
+# Bridge shared object ID (constant: 0x9)
+# BRIDGE_OBJECT_ID is hardcoded in config defaults, but can be overridden
+
+# Relayer Key
+# Path to relayer's MySo key file (for signing mint transactions)
+# RELAYER_KEY_PATH = "/path/to/relayer.key"
+
+# HD Wallet xpub (Base58 encoded)
+# Must be derived at m/54'/6976'/0' (last hardened node)
+# XPUB = "xpub..."
+
+# EVM Chain Configuration
+# Configure via config.yaml or environment variables
+# For each chain, set:
+# - EVM_CHAIN_<NAME>_CHAIN_ID=<chain_id>
+# - EVM_CHAIN_<NAME>_RPC_URL=<rpc_url>
+# - EVM_CHAIN_<NAME>_GENESIS_BLOCK=<block_number>
+# Example:
+# EVM_CHAIN_BASE_SEPOLIA_CHAIN_ID=84532
+# EVM_CHAIN_BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+# EVM_CHAIN_BASE_SEPOLIA_GENESIS_BLOCK=0
+
+# Operation Mode
+# Set OBSERVE_ONLY=true to scan and store deposits only (disable minting)
+OBSERVE_ONLY = "false"
