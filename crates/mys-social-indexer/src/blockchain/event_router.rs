@@ -34,9 +34,14 @@ impl EventPattern {
             EventPattern::Module { package, module } => {
                 // Handle both full and short package address formats
                 let package_matches = if package.len() > 10 && package.starts_with("0x") {
-                    // Full format: extract last 4 characters after 0x
+                    // Full format: extract last 4 hex characters (e.g., "0x...50c1" -> "0x50c1")
+                    // Package format is "0x" + 64 hex chars, so last 4 chars are at index (len - 4)
                     let short_package = format!("0x{}", &package[package.len() - 4..]);
-                    event_type.starts_with(&short_package) || event_type.starts_with(package)
+                    // Also try matching with just the last 4 hex digits without 0x prefix
+                    let short_package_no_prefix = &package[package.len() - 4..];
+                    event_type.starts_with(&short_package) 
+                        || event_type.starts_with(package)
+                        || event_type.starts_with(short_package_no_prefix)
                 } else {
                     // Short format or other format
                     event_type.starts_with(package)
@@ -139,6 +144,30 @@ impl EventRouter {
             let matches = registration.patterns.iter().any(|pattern| {
                 let result = pattern.matches(&event.event_type);
 
+                // Enhanced logging for ReservationPoolCreatedEvent specifically
+                if event.event_type.contains("ReservationPoolCreatedEvent") {
+                    info!(
+                        "🔍 RESERVATION POOL EVENT PATTERN CHECK: event='{}', handler='{}', pattern={:?}, matches={}",
+                        event.event_type, handler_name, pattern, result
+                    );
+
+                    if let EventPattern::Module { package, module } = pattern {
+                        let short_package = if package.len() > 10 && package.starts_with("0x") {
+                            format!("0x{}", &package[package.len() - 4..])
+                        } else {
+                            package.clone()
+                        };
+                        info!(
+                            "🔍 MODULE PATTERN DETAILS: full_package='{}', short_package='{}', module='{}', event_starts_with_short={}, event_contains_module={}",
+                            package,
+                            short_package,
+                            module,
+                            event.event_type.starts_with(&short_package),
+                            event.event_type.contains(&format!("::{module}::"))
+                        );
+                    }
+                }
+
                 // Enhanced logging for profile events
                 if event.event_type.contains("::profile::") {
                     info!(
@@ -176,12 +205,27 @@ impl EventRouter {
                 // Get handler stats
                 let handler_stats = self.metrics.handler_stats.get_mut(handler_name).unwrap();
 
+                // Enhanced logging for ReservationPoolCreatedEvent routing
+                if event.event_type.contains("ReservationPoolCreatedEvent") {
+                    info!(
+                        "✅ ROUTING ReservationPoolCreatedEvent to handler '{}'",
+                        handler_name
+                    );
+                }
+
                 // Try to send the event
                 match registration.sender.try_send(event.clone()) {
                     Ok(_) => {
                         handler_stats.events_sent += 1;
                         routed_count += 1;
-                        debug!("Successfully routed event to handler '{}'", handler_name);
+                        if event.event_type.contains("ReservationPoolCreatedEvent") {
+                            info!(
+                                "✅ Successfully sent ReservationPoolCreatedEvent to handler '{}'",
+                                handler_name
+                            );
+                        } else {
+                            debug!("Successfully routed event to handler '{}'", handler_name);
+                        }
                     }
                     Err(mpsc::error::TrySendError::Full(_)) => {
                         handler_stats.queue_full_drops += 1;

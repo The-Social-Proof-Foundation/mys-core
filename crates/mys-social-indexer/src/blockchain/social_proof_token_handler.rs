@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use crate::blockchain::handler_trait::{
     BaseHandler, BlockchainEventHandler, HandlerHealth, HandlerStats,
@@ -19,7 +19,7 @@ use crate::events::social_proof_token_events::{
     PostPoolAutoInitializedEvent, ReservationPoolCreatedEvent, SocialProofBuyEvent,
     SocialProofInitPoolEvent, SocialProofReservationCreatedEvent, SocialProofReservationWithdrawnEvent,
     SocialProofSellEvent, SocialProofThresholdMetEvent, TokenBoughtEvent, TokenSoldEvent,
-    TokensAddedEvent, TokenPoolCreatedEvent,
+    TokensAddedEvent,
 };
 use crate::models::indexer::NewIndexerProgress;
 use crate::models::social_proof_token::{
@@ -487,26 +487,38 @@ impl SocialProofTokenHandler {
         let timestamp = (event.timestamp_ms / 1000) as i64;
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
 
-        // 1. Create individual reservation record
+        // 1. Look up reservation pool by associated_id to get the actual pool_id (pool_object_id)
+        // Look up pool by associated_id (since pool_id is now the pool_object_id from blockchain)
+        let existing_pool = schema::spt_reservation_pools::table
+            .filter(schema::spt_reservation_pools::associated_id.eq(&reservation_event.associated_id))
+            .order_by(schema::spt_reservation_pools::time.desc())
+            .first::<SptReservationPool>(&mut conn)
+            .await
+            .optional()?;
+
+        let pool_id = if let Some(ref existing) = existing_pool {
+            existing.pool_id.clone()
+        } else {
+            // If pool doesn't exist yet, we can't create it here - it should be created by ReservationPoolCreatedEvent
+            // But for backward compatibility, we'll create it with a placeholder pool_id
+            // This shouldn't happen in normal flow
+            warn!(
+                "Reservation pool not found for associated_id {}, creating placeholder",
+                reservation_event.associated_id
+            );
+            format!("reservation_pool_{}", reservation_event.associated_id)
+        };
+
+        // 2. Create individual reservation record with the correct pool_id
         let mut reservation_record =
             reservation_event.into_reservation_model(timestamp, event.tx_digest.clone())?;
+        reservation_record.pool_id = pool_id.clone(); // Use the actual pool_id from the database
         reservation_record.time = datetime;
 
         diesel::insert_into(schema::spt_reservations::table)
             .values(&reservation_record)
             .execute(&mut conn)
             .await?;
-
-        // 2. Create or update reservation pool record
-        let pool_id = format!("reservation_pool_{}", reservation_event.associated_id);
-
-        // Check if reservation pool already exists
-        let existing_pool = schema::spt_reservation_pools::table
-            .filter(schema::spt_reservation_pools::pool_id.eq(&pool_id))
-            .order_by(schema::spt_reservation_pools::time.desc())
-            .first::<SptReservationPool>(&mut conn)
-            .await
-            .optional()?;
 
         if let Some(existing) = existing_pool {
             // Update existing pool
@@ -646,26 +658,35 @@ impl SocialProofTokenHandler {
         let timestamp = (event.timestamp_ms / 1000) as i64;
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
 
-        // 1. Record the withdrawal as a new reservation entry with withdrawn amount
+        // 1. Look up reservation pool by associated_id to get the actual pool_id (pool_object_id)
+        let existing_pool = schema::spt_reservation_pools::table
+            .filter(schema::spt_reservation_pools::associated_id.eq(&withdrawal_event.associated_id))
+            .order_by(schema::spt_reservation_pools::time.desc())
+            .first::<SptReservationPool>(&mut conn)
+            .await
+            .optional()?;
+
+        let pool_id = if let Some(ref existing) = existing_pool {
+            existing.pool_id.clone()
+        } else {
+            // If pool doesn't exist, create placeholder (shouldn't happen in normal flow)
+            warn!(
+                "Reservation pool not found for associated_id {} during withdrawal, creating placeholder",
+                withdrawal_event.associated_id
+            );
+            format!("reservation_pool_{}", withdrawal_event.associated_id)
+        };
+
+        // 2. Record the withdrawal as a new reservation entry with the correct pool_id
         let mut withdrawal_record =
             withdrawal_event.into_reservation_model(timestamp, event.tx_digest.clone())?;
+        withdrawal_record.pool_id = pool_id.clone(); // Use the actual pool_id from the database
         withdrawal_record.time = datetime;
 
         diesel::insert_into(schema::spt_reservations::table)
             .values(&withdrawal_record)
             .execute(&mut conn)
             .await?;
-
-        // 2. Update the reservation pool to reflect the new total_reserved amount
-        let pool_id = format!("reservation_pool_{}", withdrawal_event.associated_id);
-
-        // Check if reservation pool exists
-        let existing_pool = schema::spt_reservation_pools::table
-            .filter(schema::spt_reservation_pools::pool_id.eq(&pool_id))
-            .order_by(schema::spt_reservation_pools::time.desc())
-            .first::<SptReservationPool>(&mut conn)
-            .await
-            .optional()?;
 
         if let Some(existing) = existing_pool {
             // Create updated pool record with new total_reserved amount
@@ -749,9 +770,19 @@ impl SocialProofTokenHandler {
 
     /// Process reservation pool created events
     async fn process_reservation_pool_created_event(&mut self, event: &BlockchainEvent) -> Result<()> {
+        info!(
+            "Processing SPT reservation pool created event: {} (type: {})",
+            event.event_id, event.event_type
+        );
+
         let fields = Self::extract_event_fields(&event.data)?;
         let pool_event = serde_json::from_value::<ReservationPoolCreatedEvent>(fields)
             .map_err(|e| anyhow!("Failed to parse ReservationPoolCreatedEvent: {}", e))?;
+
+        info!(
+            "Parsed ReservationPoolCreatedEvent: associated_id={}, token_type={}, owner={}, pool_object_id={}",
+            pool_event.associated_id, pool_event.token_type, pool_event.owner, pool_event.pool_object_id
+        );
 
         let mut conn = self.base.get_connection().await?;
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
@@ -765,22 +796,55 @@ impl SocialProofTokenHandler {
         diesel::insert_into(schema::spt_reservation_pools::table)
             .values(&reservation_pool)
             .execute(&mut conn)
-            .await?;
+            .await
+            .map_err(|e| anyhow!("Failed to insert reservation pool into database: {}", e))?;
+
+        info!(
+            "Successfully inserted reservation pool: pool_id={}, associated_id={}",
+            reservation_pool.pool_id, reservation_pool.associated_id
+        );
 
         // Update profile with reservation pool address if this is a profile token
+        // Note: This is non-blocking - if profile doesn't exist, we still succeed
         if pool_event.token_type == 1 {
             // 1 = Profile token type
-            diesel::update(schema::profiles::table)
+            match diesel::update(schema::profiles::table)
                 .filter(schema::profiles::owner_address.eq(&pool_event.owner))
                 .set((
                     schema::profiles::reservation_pool_address.eq(&pool_event.pool_object_id),
                     schema::profiles::updated_at.eq(chrono::Utc::now().naive_utc()),
                 ))
                 .execute(&mut conn)
-                .await?;
+                .await
+            {
+                Ok(rows_updated) => {
+                    if rows_updated > 0 {
+                        info!(
+                            "Updated {} profile(s) with reservation pool address: {}",
+                            rows_updated, pool_event.pool_object_id
+                        );
+                    } else {
+                        warn!(
+                            "No profile found for owner {} to update with reservation pool address",
+                            pool_event.owner
+                        );
+                    }
+                }
+                Err(e) => {
+                    warn!(
+                        "Failed to update profile {} with reservation pool address {}: {}",
+                        pool_event.owner, pool_event.pool_object_id, e
+                    );
+                    // Don't fail the whole operation if profile update fails
+                }
+            }
         }
 
         self.update_progress().await?;
+        info!(
+            "Successfully processed reservation pool created event: {}",
+            event.event_id
+        );
         Ok(())
     }
 
@@ -797,9 +861,26 @@ impl SocialProofTokenHandler {
         let timestamp = (event.timestamp_ms / 1000) as i64;
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
 
+        // Look up the existing pool to get the actual pool_id (pool_object_id)
+        let existing_pool = schema::spt_reservation_pools::table
+            .filter(schema::spt_reservation_pools::associated_id.eq(&threshold_event.associated_id))
+            .order_by(schema::spt_reservation_pools::time.desc())
+            .first::<SptReservationPool>(&mut conn)
+            .await
+            .optional()?;
+
+        let pool_id = existing_pool
+            .as_ref()
+            .map(|p| p.pool_id.clone())
+            .ok_or_else(|| anyhow!(
+                "Reservation pool not found for associated_id {} when processing threshold met event",
+                threshold_event.associated_id
+            ))?;
+
         // Update reservation pool status to threshold_met
         let mut reservation_pool =
             threshold_event.into_reservation_pool_model(timestamp, event.tx_digest.clone())?;
+        reservation_pool.pool_id = pool_id; // Use the actual pool_id from the database
         reservation_pool.time = datetime;
 
         diesel::insert_into(schema::spt_reservation_pools::table)
@@ -1134,6 +1215,20 @@ impl BlockchainEventHandler for SocialProofTokenHandler {
     async fn process_event(&mut self, event: BlockchainEvent) -> Result<()> {
         let event_type = &event.event_type;
 
+        // Debug logging for ReservationPoolCreatedEvent specifically
+        if event_type.contains("ReservationPoolCreatedEvent") {
+            info!(
+                "🔍 SPT Handler received ReservationPoolCreatedEvent: event_type={}, event_id={}",
+                event_type, event.event_id
+            );
+            info!(
+                "🔍 Pattern check: contains('::social_proof_tokens::')={}, ends_with('ReservationPoolCreatedEvent')={}, ends_with('::ReservationPoolCreatedEvent')={}",
+                event_type.contains("::social_proof_tokens::"),
+                event_type.ends_with("ReservationPoolCreatedEvent"),
+                event_type.ends_with("::ReservationPoolCreatedEvent")
+            );
+        }
+
         // Route to appropriate handler based on event type
         let result = match event_type {
             // Legacy event names (for backward compatibility)
@@ -1206,7 +1301,10 @@ impl BlockchainEventHandler for SocialProofTokenHandler {
                 self.process_emergency_kill_switch_event(&event).await
             }
             _ => {
-                warn!("Received unhandled SPT event type: {} (event_id: {})", event_type, event.event_id);
+                // Only warn if it's a social_proof_tokens event we don't handle
+                if event_type.contains("::social_proof_tokens::") || event_type.contains("::social_proof_token::") {
+                    warn!("Received unhandled SPT event type: {} (event_id: {})", event_type, event.event_id);
+                }
                 return Ok(());
             }
         };
@@ -1220,6 +1318,10 @@ impl BlockchainEventHandler for SocialProofTokenHandler {
                 }
             }
             Err(e) => {
+                error!(
+                    "❌ SPT Handler failed to process event {} (type: {}): {}",
+                    event.event_id, event.event_type, e
+                );
                 self.base.update_stats_failure(format!(
                     "Failed to process event {}: {}",
                     event.event_id, e

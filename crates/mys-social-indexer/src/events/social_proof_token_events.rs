@@ -476,7 +476,8 @@ impl ReservationPoolCreatedEvent {
             _ => return Err(anyhow!("Invalid token type: {}", self.token_type)),
         };
 
-        let pool_id = format!("reservation_pool_{}", self.associated_id);
+        // Use pool_object_id directly as pool_id (the actual pool address from blockchain)
+        let pool_id = self.pool_object_id.clone();
 
         Ok(NewSptReservationPool {
             pool_id,
@@ -710,16 +711,26 @@ pub struct ConfigUpdatedEvent {
     pub updated_by: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub total_fee_bps: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub creator_fee_bps: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub platform_fee_bps: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub treasury_fee_bps: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub base_price: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quadratic_coefficient: u64,
     pub ecosystem_treasury: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_hold_percent_bps: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub post_threshold: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub profile_threshold: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_individual_reservation_bps: u64,
 }
 
@@ -731,61 +742,41 @@ impl TryFrom<Value> for ConfigUpdatedEvent {
             .as_object()
             .ok_or_else(|| anyhow!("Expected object"))?;
 
+        // Helper to parse u64 from string or number
+        let parse_u64 = |key: &str| -> Result<u64> {
+            obj.get(key)
+                .and_then(|v| {
+                    if let Some(s) = v.as_str() {
+                        s.parse::<u64>().ok()
+                    } else {
+                        v.as_u64()
+                    }
+                })
+                .ok_or_else(|| anyhow!("Missing or invalid {}", key))
+        };
+
         Ok(Self {
             updated_by: obj
                 .get("updated_by")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid updated_by"))?
                 .to_string(),
-            timestamp: obj
-                .get("timestamp")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid timestamp"))?,
-            total_fee_bps: obj
-                .get("total_fee_bps")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid total_fee_bps"))?,
-            creator_fee_bps: obj
-                .get("creator_fee_bps")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid creator_fee_bps"))?,
-            platform_fee_bps: obj
-                .get("platform_fee_bps")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid platform_fee_bps"))?,
-            treasury_fee_bps: obj
-                .get("treasury_fee_bps")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid treasury_fee_bps"))?,
-            base_price: obj
-                .get("base_price")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid base_price"))?,
-            quadratic_coefficient: obj
-                .get("quadratic_coefficient")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid quadratic_coefficient"))?,
+            timestamp: parse_u64("timestamp")?,
+            total_fee_bps: parse_u64("total_fee_bps")?,
+            creator_fee_bps: parse_u64("creator_fee_bps")?,
+            platform_fee_bps: parse_u64("platform_fee_bps")?,
+            treasury_fee_bps: parse_u64("treasury_fee_bps")?,
+            base_price: parse_u64("base_price")?,
+            quadratic_coefficient: parse_u64("quadratic_coefficient")?,
             ecosystem_treasury: obj
                 .get("ecosystem_treasury")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid ecosystem_treasury"))?
                 .to_string(),
-            max_hold_percent_bps: obj
-                .get("max_hold_percent_bps")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid max_hold_percent_bps"))?,
-            post_threshold: obj
-                .get("post_threshold")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid post_threshold"))?,
-            profile_threshold: obj
-                .get("profile_threshold")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid profile_threshold"))?,
-            max_individual_reservation_bps: obj
-                .get("max_individual_reservation_bps")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid max_individual_reservation_bps"))?,
+            max_hold_percent_bps: parse_u64("max_hold_percent_bps")?,
+            post_threshold: parse_u64("post_threshold")?,
+            profile_threshold: parse_u64("profile_threshold")?,
+            max_individual_reservation_bps: parse_u64("max_individual_reservation_bps")?,
         })
     }
 }
