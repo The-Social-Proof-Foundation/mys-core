@@ -846,16 +846,25 @@ pub async fn get_spt_reservation_pool_by_id(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
+    // Handle both old format (reservation_pool_0x...) and new format (0x...)
+    // Also support lookup by associated_id (profile_0x... or post_0x...)
+    let pool_id = if id.starts_with("reservation_pool_") {
+        id.strip_prefix("reservation_pool_").unwrap().to_string()
+    } else {
+        id.clone()
+    };
+
+    // Try to find by pool_id first, then by associated_id if not found
     let result = diesel::sql_query(
         r#"
         SELECT *
         FROM spt_reservation_pools
-        WHERE pool_id = $1
+        WHERE pool_id = $1 OR associated_id = $1
         ORDER BY time DESC
         LIMIT 1
         "#,
     )
-    .bind::<diesel::sql_types::Text, _>(id)
+    .bind::<diesel::sql_types::Text, _>(pool_id)
     .get_result::<SptReservationPool>(&mut conn)
     .await
     .optional()
@@ -888,14 +897,52 @@ pub async fn get_spt_reservations_by_pool(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
+    // Handle both old format (reservation_pool_0x...) and new format (0x...)
+    // Also support lookup by associated_id - need to resolve to actual pool_id
+    let pool_id = if id.starts_with("reservation_pool_") {
+        id.strip_prefix("reservation_pool_").unwrap().to_string()
+    } else {
+        id.clone()
+    };
+
+    // If it looks like an associated_id (profile_0x... or post_0x...), look up the pool first
+    let actual_pool_id = if pool_id.starts_with("profile_") || pool_id.starts_with("post_") {
+        // Look up the pool by associated_id to get the actual pool_id
+        let pool_result = diesel::sql_query(
+            r#"
+            SELECT pool_id
+            FROM spt_reservation_pools
+            WHERE associated_id = $1
+            ORDER BY time DESC
+            LIMIT 1
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(pool_id.clone())
+        .get_result::<(String,)>(&mut conn)
+        .await
+        .optional()
+        .map_err(|e| {
+            error!("Database error looking up pool: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        match pool_result {
+            Some((pid,)) => pid,
+            None => return Err(StatusCode::NOT_FOUND),
+        }
+    } else {
+        pool_id
+    };
+
     // Get reservations - latest per reserver
+    // Note: Column name is reservatior_address (typo in migration) not reserver_address
     let reservations = diesel::sql_query(
         r#"
         WITH latest_reservations AS (
-            SELECT DISTINCT ON (reserver_address) *
+            SELECT DISTINCT ON (reservatior_address) *
             FROM spt_reservations
             WHERE pool_id = $1
-            ORDER BY reserver_address, time DESC
+            ORDER BY reservatior_address, time DESC
         )
         SELECT *
         FROM latest_reservations
@@ -904,7 +951,7 @@ pub async fn get_spt_reservations_by_pool(
         LIMIT $2 OFFSET $3
         "#,
     )
-    .bind::<diesel::sql_types::Text, _>(id.clone())
+    .bind::<diesel::sql_types::Text, _>(actual_pool_id.clone())
     .bind::<diesel::sql_types::BigInt, _>(limit)
     .bind::<diesel::sql_types::BigInt, _>(offset)
     .load::<SptReservation>(&mut conn)
@@ -915,20 +962,21 @@ pub async fn get_spt_reservations_by_pool(
     })?;
 
     // Count total for pagination
+    // Note: Column name is reservatior_address (typo in migration) not reserver_address
     let total_count = diesel::sql_query(
         r#"
         WITH latest_reservations AS (
-            SELECT DISTINCT ON (reserver_address) *
+            SELECT DISTINCT ON (reservatior_address) *
             FROM spt_reservations
             WHERE pool_id = $1
-            ORDER BY reserver_address, time DESC
+            ORDER BY reservatior_address, time DESC
         )
         SELECT COUNT(*) as count
         FROM latest_reservations
         WHERE amount > 0
         "#,
     )
-    .bind::<diesel::sql_types::Text, _>(id)
+    .bind::<diesel::sql_types::Text, _>(actual_pool_id)
     .get_result::<CountResult>(&mut conn)
     .await
     .map_err(|e| {
