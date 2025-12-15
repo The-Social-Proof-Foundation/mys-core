@@ -788,7 +788,7 @@ pub async fn get_spt_reservation_pools(
         SELECT *
         FROM latest_reservation_pools
         WHERE status = 'active' OR status = 'threshold_met'
-        ORDER BY total_reservationd DESC
+        ORDER BY total_reserved DESC
         LIMIT $1 OFFSET $2
         "#,
     )
@@ -888,14 +888,14 @@ pub async fn get_spt_reservations_by_pool(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    // Get reservations - latest per reservatior
+    // Get reservations - latest per reserver
     let reservations = diesel::sql_query(
         r#"
         WITH latest_reservations AS (
-            SELECT DISTINCT ON (reservatior_address) *
+            SELECT DISTINCT ON (reserver_address) *
             FROM spt_reservations
             WHERE pool_id = $1
-            ORDER BY reservatior_address, time DESC
+            ORDER BY reserver_address, time DESC
         )
         SELECT *
         FROM latest_reservations
@@ -918,10 +918,10 @@ pub async fn get_spt_reservations_by_pool(
     let total_count = diesel::sql_query(
         r#"
         WITH latest_reservations AS (
-            SELECT DISTINCT ON (reservatior_address) *
+            SELECT DISTINCT ON (reserver_address) *
             FROM spt_reservations
             WHERE pool_id = $1
-            ORDER BY reservatior_address, time DESC
+            ORDER BY reserver_address, time DESC
         )
         SELECT COUNT(*) as count
         FROM latest_reservations

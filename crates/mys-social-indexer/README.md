@@ -404,9 +404,9 @@ Vesting wallet endpoints return wallets with the following additional fields:
 - **GET /social-proof-token/pools/:id/liquidity-profile** - Show transaction volume, frequency and depth to assess token liquidity
 
 #### Staking System
-- **GET /social-proof-token/reservaton-pools** - List active reservaton pools supporting posts/profiles
-- **GET /social-proof-token/reservaton-pools/:id** - Get reservaton pool details by pool ID
-- **GET /social-proof-token/reservaton-pools/:id/reservatons** - Get individual reservatons for a pool
+- **GET /social-proof-token/reservation-pools** - List active reservation pools supporting posts/profiles
+- **GET /social-proof-token/reservation-pools/:id** - Get reservation pool details by pool ID
+- **GET /social-proof-token/reservation-pools/:id/reservations** - Get individual reservations for a pool
 
 #### Configuration
 - **GET /social-proof-token/configuration** - Get current social proof tokens exchange configuration (thresholds, fees, trading status, etc.)
