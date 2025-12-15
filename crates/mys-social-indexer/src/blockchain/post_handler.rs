@@ -1343,32 +1343,73 @@ impl PostEventHandler {
             .unwrap_or_else(|| chrono::Utc::now());
 
         // Get the latest prediction config to preserve fee_bps and treasury
-        let latest_config = schema::post_prediction_config::table
+        let latest_prediction_config = schema::post_prediction_config::table
             .order_by(schema::post_prediction_config::time.desc())
             .first::<crate::models::post::PostPredictionConfig>(&mut conn)
             .await
             .optional()?;
 
         // Use existing fee_bps and treasury if available, otherwise use defaults
-        let fee_bps = latest_config.as_ref().map(|c| c.fee_bps).unwrap_or(0);
-        let treasury = latest_config
+        let fee_bps = latest_prediction_config.as_ref().map(|c| c.fee_bps).unwrap_or(0);
+        let treasury = latest_prediction_config
             .as_ref()
             .map(|c| c.treasury.clone())
             .unwrap_or_else(|| "".to_string());
 
-        // Insert new prediction config record
-        let new_config = crate::models::post::NewPostPredictionConfig {
+        // Insert new prediction config record (for backward compatibility)
+        let new_prediction_config = crate::models::post::NewPostPredictionConfig {
             updated_by: event.updated_by.clone(),
             predictions_enabled: event.enabled,
             fee_bps,
-            treasury,
+            treasury: treasury.clone(),
             updated_at: event.timestamp as i64,
             time: datetime,
             transaction_id: tx_id.to_string(),
         };
 
         diesel::insert_into(schema::post_prediction_config::table)
-            .values(&new_config)
+            .values(&new_prediction_config)
+            .execute(&mut conn)
+            .await?;
+
+        // Also store in unified post_config table
+        let latest_post_config = schema::post_config::table
+            .order_by(schema::post_config::time.desc())
+            .first::<crate::models::post::PostConfig>(&mut conn)
+            .await
+            .optional()?;
+
+        // Use existing post config fields if available, otherwise use defaults
+        let max_content_length = latest_post_config.as_ref().map(|c| c.max_content_length).unwrap_or(0);
+        let max_media_urls = latest_post_config.as_ref().map(|c| c.max_media_urls).unwrap_or(0);
+        let max_mentions = latest_post_config.as_ref().map(|c| c.max_mentions).unwrap_or(0);
+        let max_metadata_size = latest_post_config.as_ref().map(|c| c.max_metadata_size).unwrap_or(0);
+        let max_description_length = latest_post_config.as_ref().map(|c| c.max_description_length).unwrap_or(0);
+        let max_reaction_length = latest_post_config.as_ref().map(|c| c.max_reaction_length).unwrap_or(0);
+        let commenter_tip_percentage = latest_post_config.as_ref().map(|c| c.commenter_tip_percentage).unwrap_or(0);
+        let repost_tip_percentage = latest_post_config.as_ref().map(|c| c.repost_tip_percentage).unwrap_or(0);
+        let max_prediction_options = latest_post_config.as_ref().map(|c| c.max_prediction_options).unwrap_or(0);
+
+        let new_post_config = crate::models::post::NewPostConfig {
+            updated_by: event.updated_by.clone(),
+            predictions_enabled: event.enabled,
+            prediction_fee_bps: fee_bps,
+            prediction_treasury: treasury,
+            max_content_length,
+            max_media_urls,
+            max_mentions,
+            max_metadata_size,
+            max_description_length,
+            max_reaction_length,
+            commenter_tip_percentage,
+            repost_tip_percentage,
+            max_prediction_options,
+            updated_at: event.timestamp as i64,
+            transaction_id: tx_id.to_string(),
+        };
+
+        diesel::insert_into(schema::post_config::table)
+            .values(&new_post_config)
             .execute(&mut conn)
             .await?;
 
@@ -1389,20 +1430,20 @@ impl PostEventHandler {
             .unwrap_or_else(|| chrono::Utc::now());
 
         // Get the latest prediction config to preserve predictions_enabled
-        let latest_config = schema::post_prediction_config::table
+        let latest_prediction_config = schema::post_prediction_config::table
             .order_by(schema::post_prediction_config::time.desc())
             .first::<crate::models::post::PostPredictionConfig>(&mut conn)
             .await
             .optional()?;
 
         // Use existing predictions_enabled if available, otherwise default to true
-        let predictions_enabled = latest_config
+        let predictions_enabled = latest_prediction_config
             .as_ref()
             .map(|c| c.predictions_enabled)
             .unwrap_or(true);
 
-        // Insert new prediction config record
-        let new_config = crate::models::post::NewPostPredictionConfig {
+        // Insert new prediction config record (for backward compatibility)
+        let new_prediction_config = crate::models::post::NewPostPredictionConfig {
             updated_by: event.updated_by.clone(),
             predictions_enabled,
             fee_bps: event.fee_bps as i64,
@@ -1413,7 +1454,48 @@ impl PostEventHandler {
         };
 
         diesel::insert_into(schema::post_prediction_config::table)
-            .values(&new_config)
+            .values(&new_prediction_config)
+            .execute(&mut conn)
+            .await?;
+
+        // Also store in unified post_config table
+        let latest_post_config = schema::post_config::table
+            .order_by(schema::post_config::time.desc())
+            .first::<crate::models::post::PostConfig>(&mut conn)
+            .await
+            .optional()?;
+
+        // Use existing post config fields if available, otherwise use defaults
+        let max_content_length = latest_post_config.as_ref().map(|c| c.max_content_length).unwrap_or(0);
+        let max_media_urls = latest_post_config.as_ref().map(|c| c.max_media_urls).unwrap_or(0);
+        let max_mentions = latest_post_config.as_ref().map(|c| c.max_mentions).unwrap_or(0);
+        let max_metadata_size = latest_post_config.as_ref().map(|c| c.max_metadata_size).unwrap_or(0);
+        let max_description_length = latest_post_config.as_ref().map(|c| c.max_description_length).unwrap_or(0);
+        let max_reaction_length = latest_post_config.as_ref().map(|c| c.max_reaction_length).unwrap_or(0);
+        let commenter_tip_percentage = latest_post_config.as_ref().map(|c| c.commenter_tip_percentage).unwrap_or(0);
+        let repost_tip_percentage = latest_post_config.as_ref().map(|c| c.repost_tip_percentage).unwrap_or(0);
+        let max_prediction_options = latest_post_config.as_ref().map(|c| c.max_prediction_options).unwrap_or(0);
+
+        let new_post_config = crate::models::post::NewPostConfig {
+            updated_by: event.updated_by.clone(),
+            predictions_enabled,
+            prediction_fee_bps: event.fee_bps as i64,
+            prediction_treasury: event.treasury.clone(),
+            max_content_length,
+            max_media_urls,
+            max_mentions,
+            max_metadata_size,
+            max_description_length,
+            max_reaction_length,
+            commenter_tip_percentage,
+            repost_tip_percentage,
+            max_prediction_options,
+            updated_at: event.timestamp as i64,
+            transaction_id: tx_id.to_string(),
+        };
+
+        diesel::insert_into(schema::post_config::table)
+            .values(&new_post_config)
             .execute(&mut conn)
             .await?;
 
@@ -2448,21 +2530,60 @@ async fn handle_prediction_bet_withdrawn(
 
 /// Handle post parameters updated event
 async fn handle_post_parameters_updated(
-    _db: &Arc<Database>,
+    db: &Arc<Database>,
     event: &MysEvent,
-    _transaction_id: &str,
+    transaction_id: &str,
 ) -> Result<()> {
     info!("Processing PostParametersUpdatedEvent");
 
     let parsed_event = parse_event::<PostParametersUpdatedEvent>(event)
         .map_err(|e| anyhow!("Failed to parse PostParametersUpdatedEvent: {}", e))?;
 
+    let mut conn = db.get_connection().await?;
+
+    // Get the latest config to preserve prediction-related fields
+    let latest_config = schema::post_config::table
+        .order_by(schema::post_config::time.desc())
+        .first::<crate::models::post::PostConfig>(&mut conn)
+        .await
+        .optional()?;
+
+    // Use existing prediction fields if available, otherwise use defaults
+    let predictions_enabled = latest_config.as_ref().map(|c| c.predictions_enabled).unwrap_or(true);
+    let prediction_fee_bps = latest_config.as_ref().map(|c| c.prediction_fee_bps).unwrap_or(0);
+    let prediction_treasury = latest_config
+        .as_ref()
+        .map(|c| c.prediction_treasury.clone())
+        .unwrap_or_else(|| "".to_string());
+
+    // Insert new config record with updated parameters
+    let new_config = crate::models::post::NewPostConfig {
+        updated_by: parsed_event.updated_by.clone(),
+        predictions_enabled,
+        prediction_fee_bps,
+        prediction_treasury,
+        max_content_length: parsed_event.max_content_length as i64,
+        max_media_urls: parsed_event.max_media_urls as i64,
+        max_mentions: parsed_event.max_mentions as i64,
+        max_metadata_size: parsed_event.max_metadata_size as i64,
+        max_description_length: parsed_event.max_description_length as i64,
+        max_reaction_length: parsed_event.max_reaction_length as i64,
+        commenter_tip_percentage: parsed_event.commenter_tip_percentage as i64,
+        repost_tip_percentage: parsed_event.repost_tip_percentage as i64,
+        max_prediction_options: parsed_event.max_prediction_options as i64,
+        updated_at: parsed_event.timestamp as i64,
+        transaction_id: transaction_id.to_string(),
+    };
+
+    diesel::insert_into(schema::post_config::table)
+        .values(&new_config)
+        .execute(&mut conn)
+        .await?;
+
     info!(
         "Post parameters updated by: {}, max_content_length={}, max_media_urls={}",
         parsed_event.updated_by, parsed_event.max_content_length, parsed_event.max_media_urls
     );
 
-    // Log configuration changes for audit purposes
-    // Future: Could store in a post_config_history table
     Ok(())
 }

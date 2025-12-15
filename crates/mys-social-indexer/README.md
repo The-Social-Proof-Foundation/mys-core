@@ -294,6 +294,7 @@ GET /search?query=social&page=2&limit=50
 - **GET /posts/:id/reactions** - Get reactions for a post
 - **GET /posts/:id/reposts** - Get reposts of a post
 - **GET /posts/trending** - Get trending posts
+- **GET /posts/configurations** - Get current post configuration (PostAdminCap settings: prediction settings, content limits, tip percentages, etc.)
 
 ### Post Promotion API
 - **GET /promotions** - List promoted posts with optional filtering

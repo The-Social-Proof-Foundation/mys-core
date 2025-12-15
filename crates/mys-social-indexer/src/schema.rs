@@ -1282,6 +1282,29 @@ table! {
     }
 }
 
+// Define post_config table
+table! {
+    post_config (id, time) {
+        id -> Int4,
+        updated_by -> Varchar,
+        predictions_enabled -> Bool,
+        prediction_fee_bps -> Int8,
+        prediction_treasury -> Varchar,
+        max_content_length -> Int8,
+        max_media_urls -> Int8,
+        max_mentions -> Int8,
+        max_metadata_size -> Int8,
+        max_description_length -> Int8,
+        max_reaction_length -> Int8,
+        commenter_tip_percentage -> Int8,
+        repost_tip_percentage -> Int8,
+        max_prediction_options -> Int8,
+        updated_at -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
 // ===========================================================================
 // SOCIAL PROOF OF TRUTH (SPoT) TABLES
 // ===========================================================================

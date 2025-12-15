@@ -9,7 +9,7 @@ use diesel_async::RunQueryDsl;
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 use crate::blockchain::listener::BlockchainEvent;
 use crate::db::{Database, DbConnection};

@@ -630,3 +630,48 @@ pub struct NewPostPredictionConfig {
     pub time: DateTime<Utc>,
     pub transaction_id: String,
 }
+
+/// Post config model for database (comprehensive PostConfig settings)
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, QueryableByName)]
+#[diesel(table_name = crate::schema::post_config)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct PostConfig {
+    pub id: i32,
+    pub updated_by: String,
+    pub predictions_enabled: bool,
+    pub prediction_fee_bps: i64,
+    pub prediction_treasury: String,
+    pub max_content_length: i64,
+    pub max_media_urls: i64,
+    pub max_mentions: i64,
+    pub max_metadata_size: i64,
+    pub max_description_length: i64,
+    pub max_reaction_length: i64,
+    pub commenter_tip_percentage: i64,
+    pub repost_tip_percentage: i64,
+    pub max_prediction_options: i64,
+    pub updated_at: i64,
+    pub time: DateTime<Utc>,
+    pub transaction_id: String,
+}
+
+/// New post config model for insertion
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = crate::schema::post_config)]
+pub struct NewPostConfig {
+    pub updated_by: String,
+    pub predictions_enabled: bool,
+    pub prediction_fee_bps: i64,
+    pub prediction_treasury: String,
+    pub max_content_length: i64,
+    pub max_media_urls: i64,
+    pub max_mentions: i64,
+    pub max_metadata_size: i64,
+    pub max_description_length: i64,
+    pub max_reaction_length: i64,
+    pub commenter_tip_percentage: i64,
+    pub repost_tip_percentage: i64,
+    pub max_prediction_options: i64,
+    pub updated_at: i64,
+    pub transaction_id: String,
+}

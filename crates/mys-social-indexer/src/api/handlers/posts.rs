@@ -1321,3 +1321,139 @@ pub async fn get_promotion_spending_trends(
             .into_response(),
     }
 }
+
+/// Post Configuration response structure
+#[derive(Debug, Clone, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PostConfigInfo {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+
+    #[diesel(sql_type = Bool)]
+    pub predictions_enabled: bool,
+
+    #[diesel(sql_type = BigInt)]
+    pub prediction_fee_bps: i64,
+
+    #[diesel(sql_type = Text)]
+    pub prediction_treasury: String,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_content_length: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_media_urls: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_mentions: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_metadata_size: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_description_length: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_reaction_length: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub commenter_tip_percentage: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub repost_tip_percentage: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_prediction_options: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// Get current post configuration (PostAdminCap settings)
+pub async fn get_post_configuration(State(pool): State<DbPool>) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("Database connection error: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database connection error: {}", e)
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    let query = "
+        SELECT 
+            updated_by,
+            predictions_enabled,
+            prediction_fee_bps,
+            prediction_treasury,
+            max_content_length,
+            max_media_urls,
+            max_mentions,
+            max_metadata_size,
+            max_description_length,
+            max_reaction_length,
+            commenter_tip_percentage,
+            repost_tip_percentage,
+            max_prediction_options,
+            updated_at,
+            time,
+            transaction_id
+        FROM post_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .load::<PostConfigInfo>(&mut conn)
+        .await;
+
+    match result {
+        Ok(configs) => {
+            if !configs.is_empty() {
+                Json(&configs[0]).into_response()
+            } else {
+                // Return default configuration if none exists
+                let default_config = PostConfigInfo {
+                    updated_by: "".to_string(),
+                    predictions_enabled: true,
+                    prediction_fee_bps: 0,
+                    prediction_treasury: "".to_string(),
+                    max_content_length: 0,
+                    max_media_urls: 0,
+                    max_mentions: 0,
+                    max_metadata_size: 0,
+                    max_description_length: 0,
+                    max_reaction_length: 0,
+                    commenter_tip_percentage: 0,
+                    repost_tip_percentage: 0,
+                    max_prediction_options: 0,
+                    updated_at: 0,
+                    time: chrono::Utc::now(),
+                    transaction_id: "".to_string(),
+                };
+                Json(default_config).into_response()
+            }
+        }
+        Err(e) => {
+            error!("Database error getting post configuration: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database error: {}", e)
+                })),
+            )
+                .into_response()
+        }
+    }
+}

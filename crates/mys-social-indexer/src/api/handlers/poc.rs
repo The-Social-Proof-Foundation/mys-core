@@ -191,7 +191,7 @@ pub struct PocAnalytics {
 }
 
 // PoC Configuration response structure
-#[derive(Debug, Serialize, QueryableByName)]
+#[derive(Debug, Clone, Serialize, QueryableByName)]
 #[diesel(check_for_backend(Pg))]
 pub struct PocConfigInfo {
     #[diesel(sql_type = BigInt)]
@@ -638,13 +638,29 @@ pub async fn get_poc_configuration(State(pool): State<DbPool>) -> Response {
     ";
 
     let result = diesel::sql_query(query)
-        .get_result::<PocConfigInfo>(&mut conn)
+        .load::<PocConfigInfo>(&mut conn)
         .await;
 
     match result {
-        Ok(config) => Json(config).into_response(),
-        Err(diesel::result::Error::NotFound) => {
-            (StatusCode::NOT_FOUND, "PoC configuration not found").into_response()
+        Ok(configs) => {
+            if !configs.is_empty() {
+                Json(&configs[0]).into_response()
+            } else {
+                // Return default configuration if none exists
+                let default_config = PocConfigInfo {
+                    image_threshold: 0,
+                    video_threshold: 0,
+                    audio_threshold: 0,
+                    revenue_redirect_percentage: 0,
+                    dispute_cost: 0,
+                    dispute_protocol_fee: 0,
+                    min_vote_stake: 0,
+                    max_vote_stake: 0,
+                    voting_duration_epochs: 0,
+                    updated_at: 0,
+                };
+                Json(default_config).into_response()
+            }
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,

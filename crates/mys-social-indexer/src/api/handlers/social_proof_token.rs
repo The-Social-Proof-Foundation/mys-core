@@ -908,6 +908,13 @@ pub async fn get_spt_reservations_by_pool(
     // If it looks like an associated_id (profile_0x... or post_0x...), look up the pool first
     let actual_pool_id = if pool_id.starts_with("profile_") || pool_id.starts_with("post_") {
         // Look up the pool by associated_id to get the actual pool_id
+        #[derive(Debug, QueryableByName)]
+        #[diesel(check_for_backend(diesel::pg::Pg))]
+        struct PoolIdResult {
+            #[diesel(sql_type = diesel::sql_types::Text)]
+            pool_id: String,
+        }
+
         let pool_result = diesel::sql_query(
             r#"
             SELECT pool_id
@@ -918,7 +925,7 @@ pub async fn get_spt_reservations_by_pool(
             "#,
         )
         .bind::<diesel::sql_types::Text, _>(pool_id.clone())
-        .get_result::<(String,)>(&mut conn)
+        .get_result::<PoolIdResult>(&mut conn)
         .await
         .optional()
         .map_err(|e| {
@@ -927,7 +934,7 @@ pub async fn get_spt_reservations_by_pool(
         })?;
 
         match pool_result {
-            Some((pid,)) => pid,
+            Some(result) => result.pool_id,
             None => return Err(StatusCode::NOT_FOUND),
         }
     } else {

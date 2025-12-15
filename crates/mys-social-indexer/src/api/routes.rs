@@ -29,7 +29,7 @@ use crate::api::handlers::platforms::{
     get_platform_members, get_platform_moderators, get_platforms, get_profile_platforms,
 };
 use crate::api::handlers::posts::{
-    get_post_by_id, get_post_comments, get_post_promotion, get_post_reactions, get_post_reposts,
+    get_post_by_id, get_post_comments, get_post_configuration, get_post_promotion, get_post_reactions, get_post_reposts,
     get_profile_posts, get_promoted_posts, get_promotion_hourly_stats,
     get_promotion_spending_trends, get_promotion_stats, get_promotion_time_analytics,
     get_promotion_views, get_top_performing_promotions, get_trending_posts, list_posts,
@@ -148,6 +148,7 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/posts/:id/reactions", get(get_post_reactions))
         .route("/posts/:id/reposts", get(get_post_reposts))
         .route("/posts/trending", get(get_trending_posts))
+        .route("/posts/configurations", get(get_post_configuration))
         // Promotion endpoints
         .route("/promotions", get(get_promoted_posts))
         .route("/posts/:id/promotion", get(get_post_promotion))
