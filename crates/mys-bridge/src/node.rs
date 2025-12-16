@@ -409,7 +409,7 @@ async fn start_client_components(
                 };
                 info!("Using BridgeConfig contract at {}", eth_bridge_config_address);
                 
-                // 6. Query supported tokens (unless provided in config)
+                // 6. Query supported tokens (unless provided in config).
                 let supported_tokens = if !deposit_cfg.supported_tokens.is_empty() {
                     info!("Using {} tokens from configuration", deposit_cfg.supported_tokens.len());
                     deposit_cfg.supported_tokens.clone()
