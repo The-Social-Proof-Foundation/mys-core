@@ -31,6 +31,7 @@ use std::sync::Arc;
 use std::{net::SocketAddr, str::FromStr};
 use tracing::{info, instrument};
 
+pub mod deposit_api;
 pub mod governance_verifier;
 pub mod handler;
 
@@ -90,6 +91,7 @@ pub fn run_server(
     handler: BridgeRequestHandler,
     metrics: Arc<BridgeMetrics>,
     metadata: Arc<BridgeNodePublicMetadata>,
+    deposit_state: Option<Arc<deposit_api::DepositApiState>>,
 ) -> tokio::task::JoinHandle<()> {
     let socket_address = *socket_address;
     tokio::spawn(async move {
@@ -97,7 +99,7 @@ pub fn run_server(
         info!("Bridge server listening on {}", socket_address);
         axum::serve(
             listener,
-            make_router(Arc::new(handler), metrics, metadata).into_make_service(),
+            make_router(Arc::new(handler), metrics, metadata, deposit_state).into_make_service(),
         )
         .await
         .unwrap();
@@ -108,8 +110,9 @@ pub(crate) fn make_router(
     handler: Arc<impl BridgeRequestHandlerTrait + Sync + Send + 'static>,
     metrics: Arc<BridgeMetrics>,
     metadata: Arc<BridgeNodePublicMetadata>,
+    deposit_state: Option<Arc<deposit_api::DepositApiState>>,
 ) -> Router {
-    Router::new()
+    let mut router = Router::new()
         .route("/", get(ping))
         .route(PING_PATH, get(ping))
         .route(METRICS_KEY_PATH, get(metrics_key_fetch))
@@ -132,7 +135,37 @@ pub(crate) fn make_router(
         )
         .route(ADD_TOKENS_ON_MYS_PATH, get(handle_add_tokens_on_mys))
         .route(ADD_TOKENS_ON_EVM_PATH, get(handle_add_tokens_on_evm))
-        .with_state((handler, metrics, metadata))
+        .with_state((handler, metrics, metadata));
+    
+    // Merge deposit API routes if deposit system is configured
+    if let Some(state) = deposit_state {
+        info!("Adding deposit API routes to server");
+        router = router.merge(make_deposit_router(state));
+    }
+    
+    router
+}
+
+/// Create a separate router for deposit API routes (if deposit manager is configured)
+pub fn make_deposit_router(
+    deposit_state: Arc<deposit_api::DepositApiState>,
+) -> Router {
+    use axum::routing::post;
+
+    Router::new()
+        .route(
+            "/api/v1/deposit-address/generate",
+            post(deposit_api::generate_deposit_address),
+        )
+        .route(
+            "/api/v1/deposit-address/link",
+            post(deposit_api::link_addresses),
+        )
+        .route(
+            "/api/v1/deposit-address/:address",
+            get(deposit_api::query_deposit_addresses),
+        )
+        .with_state(deposit_state)
 }
 
 impl axum::response::IntoResponse for BridgeError {

@@ -4,6 +4,7 @@
 
 use crate::config::WatchdogConfig;
 use crate::crypto::BridgeAuthorityPublicKeyBytes;
+use crate::error::BridgeResult;
 use crate::metered_eth_provider::MeteredEthHttpProvier;
 use crate::mys_bridge_watchdog::eth_bridge_status::EthBridgeStatus;
 use crate::mys_bridge_watchdog::eth_vault_balance::{EthereumVaultBalance, VaultAsset};
@@ -49,7 +50,7 @@ use std::{
     time::Duration,
 };
 use tokio::task::JoinHandle;
-use tracing::info;
+use tracing::{error, info, warn};
 
 pub async fn run_bridge_node(
     config: BridgeNodeConfig,
@@ -148,6 +149,7 @@ pub async fn run_bridge_node(
         ),
         metrics,
         Arc::new(metadata),
+        None, // Deposit API state will be wired in Phase 6
     ))
 }
 
@@ -300,6 +302,28 @@ async fn start_client_components(
     );
 
     let mys_token_type_tags = Arc::new(ArcSwap::from(Arc::new(mys_token_type_tags)));
+    
+    // Extract secp256k1 key for deposit system BEFORE moving client_config.key
+    let bridge_authority_key_secp_opt = match &client_config.key {
+        mys_types::crypto::MysKeyPair::Secp256k1(k) => {
+            use fastcrypto::traits::ToFromBytes;
+            // Create TWO copies - one for DepositAddressManager, one for ETH wallet
+            let bytes = k.as_bytes();
+            let key1 = fastcrypto::secp256k1::Secp256k1KeyPair::from_bytes(&bytes).ok();
+            let key2 = fastcrypto::secp256k1::Secp256k1KeyPair::from_bytes(&bytes).ok();
+            match (key1, key2) {
+                (Some(k1), Some(k2)) => Some((k1, k2)),
+                _ => None,
+            }
+        }
+        _ => None,
+    };
+    
+    // Clone values needed for deposit system BEFORE they're moved
+    let mys_client_for_deposits = mys_client.clone();
+    let key_copy_for_deposits = client_config.key.copy();
+    
+    // Use relay config from client_config
     let bridge_action_executor = BridgeActionExecutor::new(
         mys_client.clone(),
         bridge_auth_agg.clone(),
@@ -310,6 +334,7 @@ async fn start_client_components(
         mys_token_type_tags.clone(),
         bridge_pause_rx,
         metrics.clone(),
+        client_config.relay_config,
     )
     .await;
 
@@ -335,7 +360,182 @@ async fn start_client_components(
     );
 
     all_handles.extend(orchestrator.run(bridge_action_executor).await);
+
+    // Initialize deposit system if configured and key is available
+    if let Some(deposit_cfg) = &client_config.deposit_config {
+        if deposit_cfg.enabled {
+            if let Some((key_for_manager, key_for_wallet)) = bridge_authority_key_secp_opt {
+                info!("Initializing deposit system (enabled in configuration)");
+                
+                // 1. Create DepositAddressManager
+                let deposit_address_manager = Arc::new(crate::deposit_addresses::DepositAddressManager::new(
+                    key_for_manager,
+                    store.clone(),
+                ));
+                info!("Created DepositAddressManager");
+                
+                // 2. Get EVM provider and chain ID from client config
+                let eth_provider = client_config.eth_client.provider();
+                let eth_chain_id = client_config.eth_client.get_chain_id().await
+                    .map_err(|e| anyhow::anyhow!("Failed to get ETH chain ID: {:?}", e))?;
+                info!("Retrieved EVM provider and chain ID: {}", eth_chain_id);
+                
+                // 3. Create ETH wallet for gas funding (using the second copy of secp key)
+                let eth_wallet = crate::relay::secp256k1_to_eth_wallet(&key_for_wallet)
+                    .map_err(|e| anyhow::anyhow!("Failed to create ETH wallet from bridge key: {:?}", e))?;
+                info!("Created ETH wallet for gas funding");
+                
+                // 4. Create DepositGasManager (using cloned values)
+                let deposit_gas_manager = Arc::new(crate::deposit_gas_manager::DepositGasManager::new(
+                    key_copy_for_deposits,
+                    mys_client_for_deposits.clone(),
+                    Some(eth_wallet),
+                    Some(eth_provider.clone()),
+                    Some(eth_chain_id),
+                ));
+                info!("Created DepositGasManager");
+                
+                // 5. Get BridgeConfig address (index 3 as confirmed by user)
+                let eth_bridge_config_address = if client_config.eth_contracts.len() > 3 {
+                    client_config.eth_contracts[3]
+                } else {
+                    return Err(anyhow::anyhow!(
+                        "Not enough contracts in eth_contracts array. Expected at least 4 contracts: \
+                         [bridge_proxy, limiter, vault, config]. Found: {}",
+                        client_config.eth_contracts.len()
+                    ));
+                };
+                info!("Using BridgeConfig contract at {}", eth_bridge_config_address);
+                
+                // 6. Query supported tokens (unless provided in config)
+                let supported_tokens = if !deposit_cfg.supported_tokens.is_empty() {
+                    info!("Using {} tokens from configuration", deposit_cfg.supported_tokens.len());
+                    deposit_cfg.supported_tokens.clone()
+                } else {
+                    info!("Querying supported tokens from BridgeConfig contract");
+                    get_supported_token_addresses(eth_bridge_config_address, &eth_provider)
+                        .await
+                        .map_err(|e| anyhow::anyhow!("Failed to query supported tokens: {:?}", e))?
+                };
+                
+                if supported_tokens.is_empty() {
+                    warn!("No supported tokens configured - deposit monitoring will not start");
+                } else {
+                    info!("Deposit system will monitor {} token(s)", supported_tokens.len());
+                    
+                    // 7. Get MySocial bridge object (using our cloned client)
+                    let mys_bridge_object = mys_client_for_deposits
+                        .get_mutable_bridge_object_arg_must_succeed()
+                        .await;
+                    info!("Retrieved MySocial bridge object");
+                    
+                    // 8. Create DepositBridgeHandler
+                    let deposit_bridge_handler = Arc::new(crate::deposit_bridge::DepositBridgeHandler::new(
+                        store.clone(),
+                        deposit_address_manager.clone(),
+                        deposit_gas_manager,
+                        eth_provider.clone(),
+                        client_config.eth_contracts[0], // Bridge proxy address
+                        eth_bridge_config_address,
+                        eth_chain_id,
+                        mys_bridge_object,
+                    ));
+                    info!("Created DepositBridgeHandler");
+                    
+                    // 9. Create channel for deposit events
+                    let (evm_deposit_tx, evm_deposit_rx) = tokio::sync::mpsc::unbounded_channel();
+                    
+                    // 10. Create and start EVM deposit monitor
+                    let evm_monitor = crate::deposit_monitor::EvmDepositMonitor::new(
+                        eth_provider.clone(),
+                        store.clone(),
+                        eth_chain_id as u8,
+                        supported_tokens,
+                        deposit_cfg.poll_interval_secs,
+                        evm_deposit_tx,
+                    );
+                    
+                    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+                    all_handles.push(spawn_logged_monitored_task!(async move {
+                        if let Err(e) = evm_monitor.run(shutdown_rx).await {
+                            error!("EVM deposit monitor error: {:?}", e);
+                        }
+                    }));
+                    info!("Started EVM deposit monitor");
+                    
+                    // 11. Start deposit processor task
+                    all_handles.push(spawn_logged_monitored_task!(
+                        crate::deposit_handler::run_deposit_processor(evm_deposit_rx, deposit_bridge_handler)
+                    ));
+                    info!("Started deposit processor");
+                    
+                    // 12. Create DepositApiState for server
+                    let _deposit_api_state = Arc::new(crate::server::deposit_api::DepositApiState {
+                        address_manager: deposit_address_manager,
+                        storage: store.clone(),
+                    });
+                    
+                    // TODO: Pass _deposit_api_state to server
+                    // This requires modifying the server startup earlier in this function
+                    // The server is already started above (line ~140), so we can't pass state now
+                    // For full wiring, need to refactor server startup to happen after deposit init
+                    info!("Deposit API state created (server integration needs refactoring)");
+                    
+                    info!("Deposit system initialization complete - monitoring for deposits");
+                }
+            } else {
+                warn!("Deposit system enabled but bridge authority key is not secp256k1, skipping");
+            }
+        } else {
+            info!("Deposit system disabled in configuration");
+        }
+    } else {
+        info!("No deposit system configuration found");
+    }
+
     Ok(all_handles)
+}
+
+/// Query supported ERC20 token addresses from BridgeConfig contract
+/// Returns a list of non-zero token addresses
+async fn get_supported_token_addresses(
+    config_address: EthAddress,
+    provider: &Arc<Provider<MeteredEthHttpProvier>>,
+) -> BridgeResult<Vec<EthAddress>> {
+    use crate::abi::EthBridgeConfig;
+    
+    info!("Querying supported tokens from BridgeConfig at {}", config_address);
+    
+    let config = EthBridgeConfig::new(config_address, provider.clone());
+    let mut supported_tokens = Vec::new();
+    
+    // Query token IDs 0-20 (reasonable range for bridge tokens)
+    // Token ID 0 is typically native token (ETH/MYS)
+    // Token IDs 1+ are ERC20 tokens
+    for token_id in 1u8..=20 {
+        match config.token_address_of(token_id).call().await {
+            Ok(addr) if addr != EthAddress::zero() => {
+                info!("Found token ID {}: {}", token_id, addr);
+                supported_tokens.push(addr);
+            }
+            Ok(_) => {
+                // Zero address means token ID not configured
+                break;
+            }
+            Err(e) => {
+                warn!("Failed to query token ID {}: {:?}, stopping query", token_id, e);
+                break;
+            }
+        }
+    }
+    
+    if supported_tokens.is_empty() {
+        warn!("No supported ERC20 tokens found in BridgeConfig");
+    } else {
+        info!("Found {} supported ERC20 tokens", supported_tokens.len());
+    }
+    
+    Ok(supported_tokens)
 }
 
 fn get_mys_modules_to_watch(

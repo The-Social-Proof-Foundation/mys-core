@@ -532,11 +532,11 @@ module social_contracts::social_proof_tokens {
     // === Reservation Functions ===
 
     /// Reserve MYS tokens towards a post to support social proof token creation
+    /// Anyone can call this function - the post owner is stored in the reservation pool
     public entry fun reserve_towards_post(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
         reservation_pool_object: &mut ReservationPoolObject,
-        post: &Post,
         mut payment: Coin<MYS>,
         amount: u64,
         ctx: &mut TxContext
@@ -545,12 +545,12 @@ module social_contracts::social_proof_tokens {
         assert!(!config.trading_halted, ETradingHalted);
         
         let reserver = tx_context::sender(ctx);
-        let post_id = post::get_id_address(post);
-        let post_owner = post::get_post_owner(post);
+        // Get post ID and owner from reservation pool
+        let post_id = reservation_pool_object.info.associated_id;
+        let post_owner = reservation_pool_object.info.owner;
         let now = tx_context::epoch(ctx);
         
-        // Verify reservation pool matches the post
-        assert!(reservation_pool_object.info.associated_id == post_id, EInvalidID);
+        // Verify reservation pool is for a post
         assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
         
         // Ensure reserver has enough funds
@@ -639,11 +639,11 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Reserve MYS tokens towards a profile to support social proof token creation
+    /// Anyone can call this function - the profile owner is stored in the reservation pool
     public entry fun reserve_towards_profile(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
         reservation_pool_object: &mut ReservationPoolObject,
-        profile: &Profile,
         mut payment: Coin<MYS>,
         amount: u64,
         ctx: &mut TxContext
@@ -652,12 +652,12 @@ module social_contracts::social_proof_tokens {
         assert!(!config.trading_halted, ETradingHalted);
         
         let reserver = tx_context::sender(ctx);
-        let profile_id = profile::get_id_address(profile);
-        let profile_owner = profile::get_owner(profile);
+        // Get profile ID and owner from reservation pool
+        let profile_id = reservation_pool_object.info.associated_id;
+        let profile_owner = reservation_pool_object.info.owner;
         let now = tx_context::epoch(ctx);
         
-        // Verify reservation pool matches the profile
-        assert!(reservation_pool_object.info.associated_id == profile_id, EInvalidID);
+        // Verify reservation pool is for a profile
         assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE, EInvalidTokenType);
         
         // Ensure reserver has enough funds

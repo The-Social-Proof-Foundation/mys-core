@@ -68,5 +68,22 @@ eth:
   eth-bridge-chain-id: 12
   eth-contracts-start-block-fallback: 34940000
 
+deposits:
+  enabled: true
+  poll-interval-secs: 12 # Default: 12 (matches Ethereum block time)
+  auto-fund-gas: true
+
+relay:
+  enabled: true
+  max-retries: 3
+  retry-delay-seconds: 30
+  mys:
+    gas-budget: 100000000 # 0.1 MySo
+  evm:
+    enabled: true
+    max-gas-price-gwei: 10
+    gas-estimate-buffer-percent: 20
+    confirmation-blocks: 2
+
 metrics:
   push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics"

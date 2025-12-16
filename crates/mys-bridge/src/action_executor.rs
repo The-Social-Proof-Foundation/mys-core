@@ -82,6 +82,7 @@ pub struct BridgeActionExecutor<C> {
     mys_token_type_tags: Arc<ArcSwap<HashMap<u8, TypeTag>>>,
     bridge_pause_rx: tokio::sync::watch::Receiver<IsBridgePaused>,
     metrics: Arc<BridgeMetrics>,
+    relayer: Option<Arc<crate::relay::BridgeRelayer<C>>>,
 }
 
 impl<C> BridgeActionExecutorTrait for BridgeActionExecutor<C>
@@ -113,10 +114,35 @@ where
         mys_token_type_tags: Arc<ArcSwap<HashMap<u8, TypeTag>>>,
         bridge_pause_rx: tokio::sync::watch::Receiver<IsBridgePaused>,
         metrics: Arc<BridgeMetrics>,
+        relayer_config: Option<crate::relay::RelayConfig>,
     ) -> Self {
         let bridge_object_arg = mys_client
             .get_mutable_bridge_object_arg_must_succeed()
             .await;
+        
+        // Create relayer if config is provided
+        let relayer = if let Some(config) = relayer_config {
+            match crate::relay::BridgeRelayer::new(
+                mys_client.clone(),
+                store.clone(),
+                config,
+                key.copy(),
+                mys_address,
+                gas_object_id,
+                mys_token_type_tags.clone(),
+            )
+            .await
+            {
+                Ok(r) => Some(Arc::new(r)),
+                Err(e) => {
+                    error!("Failed to initialize BridgeRelayer: {:?}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        
         Self {
             mys_client,
             bridge_auth_agg,
@@ -128,6 +154,7 @@ where
             mys_token_type_tags,
             bridge_pause_rx,
             metrics,
+            relayer,
         }
     }
 
@@ -188,6 +215,7 @@ where
                 self.mys_token_type_tags,
                 self.bridge_pause_rx,
                 metrics,
+                self.relayer.clone(),
             )
         ));
         (tasks, sender, execution_tx)
@@ -412,6 +440,7 @@ where
         mys_token_type_tags: Arc<ArcSwap<HashMap<u8, TypeTag>>>,
         bridge_pause_rx: tokio::sync::watch::Receiver<IsBridgePaused>,
         metrics: Arc<BridgeMetrics>,
+        relayer: Option<Arc<crate::relay::BridgeRelayer<C>>>,
     ) {
         info!("Starting run_onchain_execution_loop");
         while let Some(certificate_wrapper) = execution_queue_receiver.recv().await {
@@ -436,6 +465,7 @@ where
                 &bridge_object_arg,
                 &mys_token_type_tags,
                 &metrics,
+                &relayer,
             )
             .await;
         }
@@ -456,6 +486,7 @@ where
         bridge_object_arg: &ObjectArg,
         mys_token_type_tags: &ArcSwap<HashMap<u8, TypeTag>>,
         metrics: &Arc<BridgeMetrics>,
+        relayer: &Option<Arc<crate::relay::BridgeRelayer<C>>>,
     ) {
         metrics
             .action_executor_execution_queue_received_actions
@@ -528,7 +559,7 @@ where
             .await
         {
             Ok(resp) => {
-                Self::handle_execution_effects(tx_digest, resp, store, action, metrics).await
+                Self::handle_execution_effects(tx_digest, resp, store, action, metrics, relayer).await
             }
 
             // If the transaction did not go through, retry up to a certain times.
@@ -574,6 +605,7 @@ where
         store: &Arc<BridgeOrchestratorTables>,
         action: &BridgeAction,
         metrics: &Arc<BridgeMetrics>,
+        relayer: &Option<Arc<crate::relay::BridgeRelayer<C>>>,
     ) {
         let effects = response
             .effects
@@ -621,6 +653,17 @@ where
                                 metrics.mys_eth_token_transfer_approved.inc();
                             }
                             _ => error!("Unexpected action type for approved event: {:?}", action),
+                        }
+                        
+                        // Trigger auto-relay for approved transfers
+                        if let Some(relayer) = relayer {
+                            let action_clone = action.clone();
+                            let relayer_clone = relayer.clone();
+                            tokio::spawn(async move {
+                                if let Err(e) = relayer_clone.handle_approved_transfer(&action_clone).await {
+                                    error!(?action_clone, ?e, "Auto-relay failed");
+                                }
+                            });
                         }
                     }
                 });
@@ -1559,6 +1602,7 @@ mod tests {
             mys_token_type_tags.clone(),
             bridge_pause_rx,
             metrics,
+            None, // No relay config for tests
         )
         .await;
 

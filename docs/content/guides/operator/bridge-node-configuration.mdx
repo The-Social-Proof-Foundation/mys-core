@@ -287,7 +287,7 @@ metrics:
     push-url: https://metrics-proxy.[testnet|mainnet].mysocial.network:8443/publish/metrics
 ```
 
-The proxy authenticates pushed metrics by using the metrics key pair. It is similar to `mys-node` pushing metrics with `NetworkKey`. Unlike `NetworkKey`, the Bridge Node metrics key is not recorded on chain and can be ephemeral. The metrics key is loaded from the `metrics-key-pair` field in `BridgeNodeConfig` if provided, otherwise a new key pair is generated on the fly. The proxy queries node public keys periodically by hitting the metrics public API key of each node.
+The proxy authenticates pushed metrics by using the metrics key pair. It is similar to `mys-node` pushing metrics with `NetworkKey`. Unlike `NetworkKey`, the Bridge Node metrics key is not recorded on chain and can be ephemeral.`BridgeNodeConfig` if provided, otherwise a new key pair is generated on the fly. The proxy queries node public keys periodically by hitting the metrics public API key of each node.
 
 When Bridge Node starts, it might log this line once:
 
