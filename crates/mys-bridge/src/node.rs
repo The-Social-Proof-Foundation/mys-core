@@ -27,7 +27,7 @@ use crate::{
     monitor::BridgeMonitor,
     mys_syncer::MysSyncer,
     orchestrator::BridgeOrchestrator,
-    server::{handler::BridgeRequestHandler, run_server, BridgeNodePublicMetadata},
+    server::{deposit_api, handler::BridgeRequestHandler, run_server, BridgeNodePublicMetadata},
     storage::BridgeOrchestratorTables,
 };
 use arc_swap::ArcSwap;
@@ -112,10 +112,11 @@ pub async fn run_bridge_node(
         .await?;
 
     // Start Client
+    let mut deposit_api_state: Option<Arc<deposit_api::DepositApiState>> = None;
     if let Some(client_config) = client_config {
         let committee_keys_to_names =
             Arc::new(get_validator_names_by_pub_keys(&committee, &mys_system).await);
-        let client_components = start_client_components(
+        let (client_components, deposit_state) = start_client_components(
             client_config,
             committee.clone(),
             committee_keys_to_names,
@@ -123,6 +124,7 @@ pub async fn run_bridge_node(
         )
         .await?;
         handles.extend(client_components);
+        deposit_api_state = deposit_state;
     }
 
     let committee_name_mapping = get_committee_voting_power_by_name(&committee, &mys_system).await;
@@ -133,7 +135,7 @@ pub async fn run_bridge_node(
             .set(voting_power as i64);
     }
 
-    // Start Server
+    // Start Server (after deposit system initialization so we can pass deposit_api_state)
     let socket_address = SocketAddr::new(
         IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
         server_config.server_listen_port,
@@ -149,7 +151,7 @@ pub async fn run_bridge_node(
         ),
         metrics,
         Arc::new(metadata),
-        None, // Deposit API state will be wired in Phase 6
+        deposit_api_state, // Now properly wired!
     ))
 }
 
@@ -241,7 +243,7 @@ async fn start_client_components(
     committee: Arc<BridgeCommittee>,
     committee_keys_to_names: Arc<BTreeMap<BridgeAuthorityPublicKeyBytes, String>>,
     metrics: Arc<BridgeMetrics>,
-) -> anyhow::Result<Vec<JoinHandle<()>>> {
+) -> anyhow::Result<(Vec<JoinHandle<()>>, Option<Arc<crate::server::deposit_api::DepositApiState>>)> {
     let store: std::sync::Arc<BridgeOrchestratorTables> =
         BridgeOrchestratorTables::new(&client_config.db_path.join("client"));
     let mys_modules_to_watch = get_mys_modules_to_watch(
@@ -362,7 +364,7 @@ async fn start_client_components(
     all_handles.extend(orchestrator.run(bridge_action_executor).await);
 
     // Initialize deposit system if configured and key is available
-    if let Some(deposit_cfg) = &client_config.deposit_config {
+    let deposit_api_state = if let Some(deposit_cfg) = &client_config.deposit_config {
         if deposit_cfg.enabled {
             if let Some((key_for_manager, key_for_wallet)) = bridge_authority_key_secp_opt {
                 info!("Initializing deposit system (enabled in configuration)");
@@ -420,6 +422,12 @@ async fn start_client_components(
                 
                 if supported_tokens.is_empty() {
                     warn!("No supported tokens configured - deposit monitoring will not start");
+                    // Still create API state even without monitoring - users can still generate addresses
+                    info!("Deposit API state created (monitoring disabled)");
+                    Some(Arc::new(crate::server::deposit_api::DepositApiState {
+                        address_manager: deposit_address_manager.clone(),
+                        storage: store.clone(),
+                    }))
                 } else {
                     info!("Deposit system will monitor {} token(s)", supported_tokens.len());
                     
@@ -469,31 +477,31 @@ async fn start_client_components(
                     ));
                     info!("Started deposit processor");
                     
-                    // 12. Create DepositApiState for server
-                    let _deposit_api_state = Arc::new(crate::server::deposit_api::DepositApiState {
+                    // Create DepositApiState for server
+                    info!("Deposit API state created - will be passed to server");
+                    Some(Arc::new(crate::server::deposit_api::DepositApiState {
                         address_manager: deposit_address_manager,
                         storage: store.clone(),
-                    });
-                    
-                    // TODO: Pass _deposit_api_state to server
-                    // This requires modifying the server startup earlier in this function
-                    // The server is already started above (line ~140), so we can't pass state now
-                    // For full wiring, need to refactor server startup to happen after deposit init
-                    info!("Deposit API state created (server integration needs refactoring)");
-                    
-                    info!("Deposit system initialization complete - monitoring for deposits");
+                    }))
                 }
             } else {
                 warn!("Deposit system enabled but bridge authority key is not secp256k1, skipping");
+                None
             }
         } else {
             info!("Deposit system disabled in configuration");
+            None
         }
     } else {
         info!("No deposit system configuration found");
+        None
+    };
+    
+    if deposit_api_state.is_some() {
+        info!("Deposit system initialization complete - monitoring for deposits");
     }
-
-    Ok(all_handles)
+    
+    Ok((all_handles, deposit_api_state))
 }
 
 /// Query supported ERC20 token addresses from BridgeConfig contract
