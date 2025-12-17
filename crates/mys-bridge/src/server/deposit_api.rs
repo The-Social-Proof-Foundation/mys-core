@@ -37,8 +37,8 @@ pub struct DepositApiState {
 #[serde(rename_all = "camelCase")]
 pub struct GenerateDepositRequest {
     pub auth_type: AuthType,
-    pub source_address: String,
-    pub signature: String,
+    pub source_address: Option<String>,
+    pub signature: Option<String>,
     pub message: MessagePayload,
 }
 
@@ -98,15 +98,17 @@ pub async fn generate_deposit_address(
 ) -> Result<Json<GenerateDepositResponse>, (StatusCode, String)> {
     info!(?req.auth_type, "Received deposit address generation request");
 
-    // Verify timestamp
-    if !verify_timestamp_recent(req.message.timestamp).map_err(to_status_error)? {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Timestamp too old or invalid".to_string(),
-        ));
+    // Verify timestamp only if signature is provided
+    if req.signature.is_some() {
+        if !verify_timestamp_recent(req.message.timestamp).map_err(to_status_error)? {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Timestamp too old or invalid".to_string(),
+            ));
+        }
     }
 
-    // Reconstruct and verify message
+    // Reconstruct message string (needed for signature verification if provided)
     let message_str = format!(
         "Generate deposit for {}:{} at {}",
         req.message.destination_chain, req.message.destination_address, req.message.timestamp
@@ -128,17 +130,31 @@ async fn generate_for_mys_user(
     req: GenerateDepositRequest,
     message_str: String,
 ) -> Result<Json<GenerateDepositResponse>, (StatusCode, String)> {
-    // Parse MySocial address
+    // Parse MySocial address (required for MySocial auth type)
+    let source_address = req.source_address.as_ref().ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            "source_address is required for MySocial auth type".to_string(),
+        )
+    })?;
+    
     let mys_address =
-        MysAddress::from_str(&req.source_address).map_err(|e| {
+        MysAddress::from_str(source_address).map_err(|e| {
             (
                 StatusCode::BAD_REQUEST,
                 format!("Invalid MySocial address: {:?}", e),
             )
         })?;
 
-    // Verify MySocial signature
-    verify_mys_signature(&message_str, &req.signature, &mys_address).map_err(to_status_error)?;
+    // Verify MySocial signature (required for MySocial auth type)
+    let signature = req.signature.as_ref().ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            "signature is required for MySocial auth type".to_string(),
+        )
+    })?;
+    
+    verify_mys_signature(&message_str, signature, &mys_address).map_err(to_status_error)?;
 
     // Parse destination EVM address
     let dest_eth_address = EthAddress::from_str(&req.message.destination_address).map_err(|e| {
@@ -205,30 +221,37 @@ async fn generate_for_mys_user(
     }))
 }
 
-/// Generate deposit address for EVM user (wants to bridge TO MySocial)
+/// Generate deposit address for MySocial user (wants to receive ETH)
 async fn generate_for_eth_user(
     state: Arc<DepositApiState>,
     req: GenerateDepositRequest,
     message_str: String,
 ) -> Result<Json<GenerateDepositResponse>, (StatusCode, String)> {
-    // Parse EVM address
-    let eth_address = EthAddress::from_str(&req.source_address).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            format!("Invalid Ethereum address: {:?}", e),
-        )
-    })?;
-
-    // Verify EIP-191 signature
-    verify_eth_signature(&message_str, &req.signature, &eth_address).map_err(to_status_error)?;
-
-    // Parse destination MySocial address
+    // Parse destination MySocial address (this is the user who will receive tokens)
     let dest_mys_address = MysAddress::from_str(&req.message.destination_address).map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
-            format!("Invalid destination address: {:?}", e),
+            format!("Invalid MySocial destination address: {:?}", e),
         )
     })?;
+
+    // Optional: Verify signature if provided (for spam protection)
+    if let (Some(source_address), Some(signature)) = (&req.source_address, &req.signature) {
+        // If signature is provided, verify it against the MySocial address
+        let mys_address = MysAddress::from_str(source_address).map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                format!("Invalid source MySocial address: {:?}", e),
+            )
+        })?;
+        
+        verify_mys_signature(&message_str, signature, &mys_address).map_err(to_status_error)?;
+        
+        info!(
+            ?mys_address,
+            "Verified signature for ETH deposit address generation"
+        );
+    }
 
     // Allocate HD wallet index for EVM chain
     let hd_index = state
@@ -265,14 +288,13 @@ async fn generate_for_eth_user(
 
     state
         .storage
-        .store_deposit_registration(DepositAddressKey::from_evm(eth_address), registration)
+        .store_deposit_registration(DepositAddressKey::from_mys(dest_mys_address), registration)
         .map_err(to_status_error)?;
 
     info!(
-        ?eth_address,
-        ?deposit_evm_address,
         ?dest_mys_address,
-        "Generated EVM deposit address for EVM user"
+        ?deposit_evm_address,
+        "Generated EVM deposit address for MySocial user"
     );
 
     let dest_chain = req.message.destination_chain.clone();
