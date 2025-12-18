@@ -15,8 +15,9 @@ use std::sync::Arc;
 use tracing::{error, info, warn};
 
 // Gas thresholds for EVM (in wei) - optimized for Base L2
-const MIN_EVM_GAS_BALANCE: u128 = 100_000_000_000_000; // 0.0001 ETH (~$0.30 at $3k ETH)
-const EVM_GAS_FUND_AMOUNT: u128 = 200_000_000_000_000; // 0.0002 ETH (~$0.60 at $3k ETH)
+// Base L2 contract calls cost ~0.0000000000012 ETH, using 100x buffer for safety
+const MIN_EVM_GAS_BALANCE: u128 = 500_000_000; // 0.0000000005 ETH (~$0.0015 at $3k ETH)
+const EVM_GAS_FUND_AMOUNT: u128 = 1_000_000_000; // 0.000000001 ETH (~$0.003 at $3k ETH)
 
 // Gas thresholds for MySocial (in MIST)
 // Will be used when MySocial gas funding is fully implemented
@@ -280,8 +281,8 @@ mod tests {
 
     #[test]
     fn test_gas_constants() {
-        assert_eq!(MIN_EVM_GAS_BALANCE, 100_000_000_000_000u128);
-        assert_eq!(EVM_GAS_FUND_AMOUNT, 200_000_000_000_000u128);
+        assert_eq!(MIN_EVM_GAS_BALANCE, 500_000_000u128);
+        assert_eq!(EVM_GAS_FUND_AMOUNT, 1_000_000_000u128);
         assert!(EVM_GAS_FUND_AMOUNT > MIN_EVM_GAS_BALANCE);
 
         assert_eq!(MIN_MYS_GAS_BALANCE, 10_000_000u64);
