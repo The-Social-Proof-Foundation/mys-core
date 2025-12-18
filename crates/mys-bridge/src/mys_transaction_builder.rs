@@ -97,6 +97,41 @@ pub fn build_mys_transaction(
     }
 }
 
+/// Map EVM token ID to MySocial token ID
+/// 
+/// **TEMPORARY WORKAROUND**: This function exists to handle a token ID mismatch issue
+/// where the same token has different IDs on EVM vs MySocial chains.
+/// 
+/// **WARNING**: This is a hardcoded workaround and should be removed once the token ID
+/// registration on MySocial is corrected. The proper solution is to ensure token IDs
+/// are consistent across chains, not to map them in code.
+/// 
+/// **TODO**: Remove this function and its usage once the MySocial bridge configuration
+/// is fixed to use consistent token IDs. This mapping should not be necessary in production.
+/// 
+/// # Arguments
+/// * `evm_token_id` - The token ID from the EVM bridge event
+/// 
+/// # Returns
+/// The corresponding MySocial token ID, or the same ID if no mapping exists
+fn map_evm_to_mys_token_id(evm_token_id: u8) -> u8 {
+    match evm_token_id {
+        // TEMPORARY: Token ID 5 on EVM incorrectly maps to token ID 0 on MySocial
+        // This is a workaround for a configuration mismatch on MySocial side
+        // TODO: Remove this mapping once MySocial token registration is corrected
+        5 => {
+            tracing::warn!(
+                evm_token_id = 5,
+                mys_token_id = 0,
+                "Applying temporary token ID mapping (5 -> 0). This is a workaround and should be removed."
+            );
+            0
+        },
+        // For other tokens, assume IDs match (no mapping needed)
+        _ => evm_token_id,
+    }
+}
+
 fn build_token_bridge_approve_transaction(
     client_address: MysAddress,
     gas_object_ref: &ObjectRef,
@@ -125,13 +160,17 @@ fn build_token_bridge_approve_transaction(
             }
             BridgeAction::EthToMysBridgeAction(a) => {
                 let bridge_event = a.eth_bridge_event;
+                // TEMPORARY WORKAROUND: Map EVM token ID to MySocial token ID
+                // This is needed due to a token ID mismatch between chains
+                // TODO: Remove this mapping once token IDs are consistent across chains
+                let mys_token_id = map_evm_to_mys_token_id(bridge_event.token_id);
                 (
                     bridge_event.eth_chain_id,
                     bridge_event.nonce,
                     bridge_event.eth_address.to_fixed_bytes().to_vec(),
                     bridge_event.mys_chain_id,
                     bridge_event.mys_address.to_vec(),
-                    bridge_event.token_id,
+                    mys_token_id, // Use mapped MySocial token ID (temporary workaround)
                     bridge_event.mys_adjusted_amount,
                 )
             }
@@ -196,14 +235,22 @@ fn build_token_bridge_approve_transaction(
     );
 
     if claim {
+        let type_tag = mys_token_type_tags
+            .get(&token_type)
+            .ok_or_else(|| {
+                let registered_ids: Vec<u8> = mys_token_type_tags.keys().copied().collect();
+                BridgeError::Generic(format!(
+                    "UnknownTokenId({}): Token ID {} is not registered on MySocial bridge. \
+                     Registered token IDs: {:?}. \
+                     This token must be registered on MySocial bridge's treasury before bridging can proceed.",
+                    token_type, token_type, registered_ids
+                ))
+            })?;
         builder.programmable_move_call(
             BRIDGE_PACKAGE_ID,
             mys_types::bridge::BRIDGE_MODULE_NAME.to_owned(),
             ident_str!("claim_and_transfer_token").to_owned(),
-            vec![mys_token_type_tags
-                .get(&token_type)
-                .ok_or(BridgeError::UnknownTokenId(token_type))?
-                .clone()],
+            vec![type_tag.clone()],
             vec![arg_bridge, arg_clock, source_chain, seq_num],
         );
     }
