@@ -68,35 +68,25 @@ impl EvmDepositMonitor {
         }
     }
 
-    /// Run the deposit monitor
-    pub async fn run(
-        self,
-        mut shutdown_rx: tokio::sync::watch::Receiver<bool>,
-    ) -> BridgeResult<()> {
+    /// Run the deposit monitor (follows BridgeWatchdog pattern)
+    pub async fn run(self) -> BridgeResult<()> {
         info!(
             chain_id = self.chain_id,
             "Starting EVM deposit monitor"
         );
 
+        let mut interval = tokio::time::interval(self.poll_interval);
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        
         let mut last_checked_block: Option<u64> = None;
 
         loop {
-            tokio::select! {
-                _ = shutdown_rx.changed() => {
-                    if *shutdown_rx.borrow() {
-                        info!("EVM deposit monitor shutting down");
-                        break;
-                    }
-                }
-                _ = tokio::time::sleep(self.poll_interval) => {
-                    if let Err(e) = self.check_for_deposits(&mut last_checked_block).await {
-                        error!(?e, "Error checking for EVM deposits");
-                    }
-                }
+            interval.tick().await;
+            
+            if let Err(e) = self.check_for_deposits(&mut last_checked_block).await {
+                error!(?e, "Error checking for EVM deposits");
             }
         }
-
-        Ok(())
     }
 
     async fn check_for_deposits(&self, last_checked_block: &mut Option<u64>) -> BridgeResult<()> {
