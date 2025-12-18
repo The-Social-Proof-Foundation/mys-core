@@ -214,7 +214,13 @@ where
                 continue;
             }
 
-            info!("Received {} Eth events", logs.len());
+            info!(
+                contract = ?contract,
+                end_block,
+                log_count = logs.len(),
+                "Received {} Eth events from contract",
+                logs.len()
+            );
             metrics
                 .eth_watcher_received_events
                 .inc_by(logs.len() as u64);
@@ -229,7 +235,14 @@ where
                 if opt_bridge_event.is_none() {
                     // TODO: we probably should not miss any events, log for now.
                     metrics.eth_watcher_unrecognized_events.inc();
-                    error!("Eth event not recognized: {:?}", log);
+                    error!(
+                        contract = ?contract,
+                        tx_hash = ?log.tx_hash,
+                        block_number = log.block_number,
+                        log_index = log.log_index_in_tx,
+                        topics = ?log.log.topics,
+                        "Eth event not recognized - may be from different contract or unsupported event type"
+                    );
                     continue;
                 }
                 // Unwrap safe: checked above

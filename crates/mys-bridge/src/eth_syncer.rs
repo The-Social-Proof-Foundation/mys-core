@@ -194,7 +194,15 @@ where
                     ?contract_address,
                     start_block,
                     end_block,
-                    "Observed {len} new Eth events",
+                    event_count = len,
+                    "Observed {len} new Eth events from contract"
+                );
+            } else {
+                tracing::debug!(
+                    ?contract_address,
+                    start_block,
+                    end_block,
+                    "No events found in block range"
                 );
             }
             metrics
