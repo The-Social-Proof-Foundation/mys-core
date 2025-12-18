@@ -16,10 +16,17 @@ use crate::storage::{BridgeOrchestratorTables, DepositAddressKey, DepositTxKey};
 use ethers::prelude::*;
 use ethers::types::Address as EthAddress;
 use move_core_types::ident_str;
-use mys_types::base_types::MysAddress;
-use mys_types::transaction::ObjectArg;
-use mys_types::{TypeTag, MYS_FRAMEWORK_ADDRESS};
+use move_core_types::language_storage::StructTag;
+use mys_json_rpc_types::MysObjectDataOptions;
+use mys_types::base_types::{MysAddress, ObjectID};
+use mys_types::bridge::BRIDGE_MODULE_NAME;
+use mys_types::crypto::Signature;
+use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
+use mys_types::transaction::{ObjectArg, Transaction, TransactionData};
+use mys_types::{BRIDGE_PACKAGE_ID, TypeTag, MYS_FRAMEWORK_ADDRESS};
+use shared_crypto::intent::{Intent, IntentMessage};
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 use tracing::{info, warn};
 
@@ -292,7 +299,7 @@ pub async fn handle_mys_deposit(
     gas_manager: &Arc<crate::deposit_gas_manager::DepositGasManager<mys_sdk::MysClient>>,
     mys_client: &Arc<crate::mys_client::MysBridgeClient>,
     _bridge_object: ObjectArg,
-    token_type_tags: &std::collections::HashMap<u8, mys_types::TypeTag>,
+    _token_type_tags: &std::collections::HashMap<u8, mys_types::TypeTag>,
 ) -> BridgeResult<mys_types::digests::TransactionDigest>
 {
     let deposit_key = DepositTxKey::from_mys(event.tx_digest, 2); // Chain ID 2 for MySocial
@@ -351,65 +358,227 @@ pub async fn handle_mys_deposit(
     // Build send_token transaction
     // send_token<T>(bridge, target_chain, target_address, token: Coin<T>)
 
-    // Get reference gas price (will be needed for transaction building)
-    let _rgp = mys_client.get_reference_gas_price_until_success().await;
+    // Get reference gas price
+    let rgp = mys_client.get_reference_gas_price_until_success().await;
 
-    // Parse the coin type from the event to get token ID
-    // For now, assume MYS token (ID 0) since that's most common
-    // Production enhancement: parse event.coin_type to determine actual token
-    let token_id = 0u8; // MYS
+    // Parse coin type from event
+    let coin_type = TypeTag::from_str(&event.coin_type).map_err(|e| {
+        BridgeError::Generic(format!("Failed to parse coin type '{}': {:?}", event.coin_type, e))
+    })?;
 
-    // Get type tag for the token (will be needed for transaction building)
-    let _type_tag = if token_id == 0 {
-        // MYS native token type
-        TypeTag::Struct(Box::new(move_core_types::language_storage::StructTag {
-            address: MYS_FRAMEWORK_ADDRESS.into(),
-            module: ident_str!("mys").to_owned(),
-            name: ident_str!("MYS").to_owned(),
-            type_params: vec![],
-        }))
+    // Check if this is native MYS token
+    let is_native_mys = if let TypeTag::Struct(s) = &coin_type {
+        s.address.to_hex_literal() == "0x2"
+            && s.module.as_str() == "mys"
+            && s.name.as_str() == "MYS"
     } else {
-        token_type_tags
-            .get(&token_id)
-            .ok_or(BridgeError::UnknownTokenId(token_id))?
-            .clone()
+        false
     };
 
-    // TODO: Complete MySocial coin querying and bridge transaction execution
-    // This requires:
-    // 1. Parsing coin type from event.coin_type
-    // 2. Querying coins at deposit_mys_address using mys_client.mys_client().coin_read_api()
-    // 3. Selecting appropriate coin (highest balance)
-    // 4. Building send_token<T> transaction with proper ObjectArgs
-    // 5. Getting gas coin for transaction
-    // 6. Signing with deposit_keypair
-    // 7. Executing transaction
-    // 8. Marking as processed using DepositTxKey::from_mys(event.tx_digest, recipient_info.source_chain)
-    //
-    // Framework is ready, but coin querying implementation needs careful testing
-    // to handle:
-    // - Different coin types (MYS, wrapped tokens, etc.)
-    // - Gas coin selection (must be different from bridge coin)
-    // - Transaction building with correct type parameters
-    // - Error handling for insufficient balance, gas, etc.
-
-    warn!(
+    info!(
         ?deposit_mys_address,
-        ?destination_eth_address,
-        coin_type = &event.coin_type,
+        ?coin_type,
+        is_native_mys,
         amount = event.amount,
-        "MySocial deposit detected - coin querying implementation needed for production"
+        "Querying coins for MySocial deposit"
     );
 
-    Err(BridgeError::Generic(format!(
-        "MySocial → EVM deposit bridging not yet fully implemented. \
-         Deposit detected: {} {} from {} to EVM address {:?}. \
-         Framework ready, needs coin query implementation.",
-        event.amount,
-        event.coin_type,
+    // Query coins at deposit address matching the coin type
+    let mys_sdk_client = mys_client.mys_client();
+    let coin_type_str = coin_type.to_string();
+    let coins = mys_sdk_client
+        .coin_read_api()
+        .get_all_coins(deposit_mys_address, Some(coin_type_str), None)
+        .await
+        .map_err(|e| {
+            BridgeError::Generic(format!(
+                "Failed to query coins at deposit address: {:?}",
+                e
+            ))
+        })?;
+
+    // Find coin matching the amount (or use first one if amount matches)
+    let coin_to_bridge = coins
+        .data
+        .iter()
+        .find(|coin| coin.balance >= event.amount)
+        .ok_or_else(|| {
+            BridgeError::Generic(format!(
+                "No coin found with sufficient balance. Required: {}, Available coins: {:?}",
+                event.amount,
+                coins.data.iter().map(|c| c.balance).collect::<Vec<_>>()
+            ))
+        })?;
+
+    info!(
+        coin_id = ?coin_to_bridge.coin_object_id,
+        coin_balance = coin_to_bridge.balance,
+        required_amount = event.amount,
+        "Found coin to bridge"
+    );
+
+    // Get coin object reference
+    let coin_obj = mys_sdk_client
+        .read_api()
+        .get_object_with_options(
+            coin_to_bridge.coin_object_id,
+            MysObjectDataOptions::default().with_owner().with_content(),
+        )
+        .await
+        .map_err(|e| {
+            BridgeError::Generic(format!(
+                "Failed to read coin object {}: {:?}",
+                coin_to_bridge.coin_object_id, e
+            ))
+        })?;
+
+    let coin_obj_ref = coin_obj
+        .data
+        .ok_or_else(|| {
+            BridgeError::Generic(format!(
+                "Coin object {} not found",
+                coin_to_bridge.coin_object_id
+            ))
+        })?
+        .object_ref();
+
+    // Get gas coin (must be different from bridge coin)
+    // Always use MYS for gas
+    let gas_coin_type_str = TypeTag::Struct(Box::new(StructTag {
+        address: MYS_FRAMEWORK_ADDRESS.into(),
+        module: ident_str!("mys").to_owned(),
+        name: ident_str!("MYS").to_owned(),
+        type_params: vec![],
+    }))
+    .to_string();
+
+    let gas_coins = mys_sdk_client
+        .coin_read_api()
+        .select_coins(
+            deposit_mys_address,
+            Some(gas_coin_type_str),
+            1_000_000_000, // 1 MIST minimum for gas
+            vec![coin_to_bridge.coin_object_id], // Exclude the bridge coin
+        )
+        .await
+        .map_err(|e| {
+            BridgeError::Generic(format!(
+                "Failed to select gas coin: {:?}",
+                e
+            ))
+        })?;
+
+    let gas_obj_ref = gas_coins
+        .first()
+        .ok_or_else(|| {
+            BridgeError::Generic(
+                "No gas coin available (must be different from bridge coin)".to_string(),
+            )
+        })?
+        .object_ref();
+
+    info!(
+        gas_coin_id = ?gas_obj_ref.0,
+        "Selected gas coin"
+    );
+
+    // Get bridge object
+    let bridge_object_arg = mys_client
+        .get_mutable_bridge_object_arg_must_succeed()
+        .await;
+
+    // Build transaction
+    let mut builder = ProgrammableTransactionBuilder::new();
+    let arg_target_chain = builder
+        .pure(recipient_info.destination_chain as u8)
+        .map_err(|e| BridgeError::Generic(format!("Failed to create target_chain argument: {:?}", e)))?;
+    let arg_target_address = builder
+        .pure(destination_eth_address.as_bytes())
+        .map_err(|e| BridgeError::Generic(format!("Failed to create target_address argument: {:?}", e)))?;
+    let arg_token = builder
+        .obj(ObjectArg::ImmOrOwnedObject(coin_obj_ref))
+        .map_err(|e| BridgeError::Generic(format!("Failed to create token argument: {:?}", e)))?;
+    let arg_bridge = builder
+        .obj(bridge_object_arg)
+        .map_err(|e| BridgeError::Generic(format!("Failed to create bridge argument: {:?}", e)))?;
+
+    // Call appropriate bridge function
+    if is_native_mys {
+        builder.programmable_move_call(
+            BRIDGE_PACKAGE_ID,
+            BRIDGE_MODULE_NAME.to_owned(),
+            ident_str!("send_mys_token").to_owned(),
+            vec![], // No type parameters for native MYS
+            vec![arg_bridge, arg_target_chain, arg_target_address, arg_token],
+        );
+    } else {
+        builder.programmable_move_call(
+            BRIDGE_PACKAGE_ID,
+            BRIDGE_MODULE_NAME.to_owned(),
+            ident_str!("send_token").to_owned(),
+            vec![coin_type],
+            vec![arg_bridge, arg_target_chain, arg_target_address, arg_token],
+        );
+    }
+
+    let pt = builder.finish();
+
+    // Create transaction data
+    let tx_data = TransactionData::new_programmable(
         deposit_mys_address,
-        destination_eth_address
-    )))
+        vec![gas_obj_ref],
+        pt,
+        500_000_000, // Gas budget
+        rgp,
+    );
+
+    // Sign transaction
+    let sig = Signature::new_secure(
+        &IntentMessage::new(Intent::mys_transaction(), &tx_data),
+        &deposit_keypair,
+    );
+
+    let signed_tx = Transaction::from_data(tx_data, vec![sig]);
+    let tx_digest = *signed_tx.digest();
+
+    info!(
+        ?tx_digest,
+        ?deposit_mys_address,
+        ?destination_eth_address,
+        "Executing MySocial → EVM bridge transaction"
+    );
+
+    // Execute transaction
+    let response = mys_sdk_client
+        .execute_transaction_block_with_effects(signed_tx)
+        .await
+        .map_err(|e| {
+            BridgeError::Generic(format!(
+                "Failed to execute bridge transaction: {:?}",
+                e
+            ))
+        })?;
+
+    if !response.status_ok().unwrap_or(false) {
+        return Err(BridgeError::Generic(format!(
+            "Bridge transaction failed: {:?}",
+            response
+        )));
+    }
+
+    // Mark as processed
+    storage.mark_deposit_processed(
+        deposit_key,
+        format!("{:?}", tx_digest),
+        event.amount.to_string(),
+    )?;
+
+    info!(
+        ?tx_digest,
+        "MySocial → EVM deposit bridged successfully"
+    );
+
+    Ok(tx_digest)
 }
 
 

@@ -194,7 +194,7 @@ pub struct DepositConfigFile {
 }
 
 fn default_deposit_poll_interval() -> u64 {
-    12 // 12 seconds, same as typical Ethereum block time
+    45
 }
 
 fn default_auto_fund_gas() -> bool {
@@ -398,9 +398,15 @@ impl BridgeNodeConfig {
                 None => Vec::new(), // Will be queried from BridgeConfig contract
             };
             
+            // Check for environment variable override
+            let poll_interval_secs = std::env::var("DEPOSIT_POLL_INTERVAL_SECS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .unwrap_or(deposit_cfg.poll_interval_secs);
+            
             DepositConfig {
                 enabled: deposit_cfg.enabled,
-                poll_interval_secs: deposit_cfg.poll_interval_secs,
+                poll_interval_secs,
                 auto_fund_gas: deposit_cfg.auto_fund_gas,
                 supported_tokens,
             }

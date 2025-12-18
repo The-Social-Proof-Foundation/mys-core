@@ -74,7 +74,7 @@ eth:
 
 deposits:
   enabled: true
-  poll-interval-secs: 12 # Default: 12 (matches Ethereum block time)
+  poll-interval-secs: 45 # Can be overridden via DEPOSIT_POLL_INTERVAL_SECS env var
   auto-fund-gas: true
 
 relay:

@@ -11,6 +11,7 @@ use crate::storage::BridgeOrchestratorTables;
 use ethers::prelude::*;
 use ethers::types::Address as EthAddress;
 use mys_types::base_types::MysAddress;
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};
@@ -126,42 +127,47 @@ impl EvmDepositMonitor {
             "Checking for EVM deposits"
         );
 
-        // Create filter for Transfer events to our deposit addresses
-        // Transfer(address indexed from, address indexed to, uint256 value)
         let transfer_event_sig = H256::from(ethers::core::utils::keccak256(
             "Transfer(address,address,uint256)",
         ));
 
+        let deposit_addresses_set: std::collections::HashSet<EthAddress> = deposit_addresses.iter().copied().collect();
+
         for token_addr in &self.supported_tokens {
-            // Build filter for each deposit address individually
-            for deposit_addr in &deposit_addresses {
-                let filter = Filter::new()
-                    .address(*token_addr)
-                    .from_block(start_block)
-                    .to_block(current_block)
-                    .topic0(transfer_event_sig)
-                    .topic2(H256::from(*deposit_addr));
+            let filter = Filter::new()
+                .address(*token_addr)
+                .from_block(start_block)
+                .to_block(current_block)
+                .topic0(transfer_event_sig);
 
-                // Get logs
-                let logs = self
-                    .provider
-                    .get_logs(&filter)
-                    .await
-                    .map_err(|e| BridgeError::Generic(format!("Failed to get logs: {:?}", e)))?;
+            let logs = self
+                .provider
+                .get_logs(&filter)
+                .await
+                .map_err(|e| BridgeError::Generic(format!("Failed to get logs: {:?}", e)))?;
 
-                if !logs.is_empty() {
-                    info!(
-                        token = ?token_addr,
-                        deposit_addr = ?deposit_addr,
-                        log_count = logs.len(),
-                        "Found {} deposit events",
-                        logs.len()
-                    );
+            let relevant_logs: Vec<_> = logs
+                .into_iter()
+                .filter(|log| {
+                    if log.topics.len() < 3 {
+                        return false;
+                    }
+                    let to_address = EthAddress::from(log.topics[2]);
+                    deposit_addresses_set.contains(&to_address)
+                })
+                .collect();
 
-                    for log in logs {
-                        if let Err(e) = self.process_deposit_log(log).await {
-                            error!(?e, "Failed to process deposit log");
-                        }
+            if !relevant_logs.is_empty() {
+                info!(
+                    token = ?token_addr,
+                    log_count = relevant_logs.len(),
+                    "Found {} deposit events",
+                    relevant_logs.len()
+                );
+
+                for log in relevant_logs {
+                    if let Err(e) = self.process_deposit_log(log).await {
+                        error!(?e, "Failed to process deposit log");
                     }
                 }
             }

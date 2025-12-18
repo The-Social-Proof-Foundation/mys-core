@@ -44,6 +44,6 @@ impl Observable for MysBridgeStatus {
     }
 
     fn interval(&self) -> Duration {
-        Duration::from_secs(10)
+        Duration::from_secs(60)
     }
 }
