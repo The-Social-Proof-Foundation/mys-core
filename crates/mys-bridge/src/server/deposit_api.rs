@@ -312,9 +312,9 @@ async fn generate_for_eth_user(
             
             return Ok(Json(GenerateDepositResponse {
                 deposit_chain: "base".to_string(),
-                deposit_address: existing_deposit_addr,
-                destination_chain: req.message.destination_chain,
-                destination_address: req.message.destination_address,
+                deposit_address: existing_deposit_addr.clone(),
+                destination_chain: req.message.destination_chain.clone(),
+                destination_address: req.message.destination_address.clone(),
                 instructions: format!(
                     "Send tokens to {} on Base chain, they will bridge to {} on MySocial",
                     existing_deposit_addr, dest_mys_address
