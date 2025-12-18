@@ -154,9 +154,33 @@ where
 
         let approve_call = token_contract.approve(self.eth_bridge_address, event.amount);
         
-        let pending_approval = approve_call.send().await.map_err(|e| {
-            BridgeError::Generic(format!("Failed to send token approval transaction: {:?}", e))
+        // Estimate gas for approval
+        let gas_estimate = approve_call.estimate_gas().await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to estimate gas for approval: {:?}", e))
         })?;
+        
+        // Add 20% buffer
+        let gas_limit = gas_estimate * 120 / 100;
+        
+        // Get current network gas price
+        let gas_price = self.eth_provider.get_gas_price().await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to get gas price: {:?}", e))
+        })?;
+        
+        info!(
+            ?gas_limit,
+            ?gas_price,
+            gas_price_gwei = gas_price.as_u64() / 1_000_000_000,
+            "Sending approval transaction with gas settings"
+        );
+        
+        let approve_call_with_gas = approve_call.gas(gas_limit).gas_price(gas_price);
+        let pending_approval = approve_call_with_gas
+            .send()
+            .await
+            .map_err(|e| {
+                BridgeError::Generic(format!("Failed to send token approval transaction: {:?}", e))
+            })?;
 
         let approval_tx_hash = pending_approval.tx_hash();
         info!(?approval_tx_hash, "Token approval transaction sent");
@@ -195,10 +219,34 @@ where
             destination_chain_id,
         );
 
-        // Send transaction
-        let pending_tx = call.send().await.map_err(|e| {
-            BridgeError::Generic(format!("Failed to send bridgeERC20 transaction: {:?}", e))
+        // Estimate gas for bridge call
+        let gas_estimate = call.estimate_gas().await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to estimate gas for bridgeERC20: {:?}", e))
         })?;
+        
+        // Add 20% buffer
+        let gas_limit = gas_estimate * 120 / 100;
+        
+        // Get current network gas price (may have changed since approval)
+        let gas_price = self.eth_provider.get_gas_price().await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to get gas price: {:?}", e))
+        })?;
+        
+        info!(
+            ?gas_limit,
+            ?gas_price,
+            gas_price_gwei = gas_price.as_u64() / 1_000_000_000,
+            "Sending bridgeERC20 transaction with gas settings"
+        );
+
+        // Send transaction with gas settings
+        let call_with_gas = call.gas(gas_limit).gas_price(gas_price);
+        let pending_tx = call_with_gas
+            .send()
+            .await
+            .map_err(|e| {
+                BridgeError::Generic(format!("Failed to send bridgeERC20 transaction: {:?}", e))
+            })?;
 
         let tx_hash = pending_tx.tx_hash();
         info!(?tx_hash, "Bridge transaction sent from deposit address");
