@@ -11,7 +11,6 @@ use crate::storage::BridgeOrchestratorTables;
 use ethers::prelude::*;
 use ethers::types::Address as EthAddress;
 use mys_types::base_types::MysAddress;
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};

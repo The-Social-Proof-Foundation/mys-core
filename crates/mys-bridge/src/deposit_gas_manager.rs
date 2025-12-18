@@ -15,9 +15,11 @@ use std::sync::Arc;
 use tracing::{error, info, warn};
 
 // Gas thresholds for EVM (in wei) - optimized for Base L2
-// Base L2 contract calls cost ~0.0000000000012 ETH, using 100x buffer for safety
-const MIN_EVM_GAS_BALANCE: u128 = 500_000_000; // 0.0000000005 ETH (~$0.0015 at $3k ETH)
-const EVM_GAS_FUND_AMOUNT: u128 = 1_000_000_000; // 0.000000001 ETH (~$0.003 at $3k ETH)
+// Base L2 transactions: approval (~50k gas) + bridge (~150k gas) = ~200k gas total
+// At ~0.1 gwei: 200k * 0.1 gwei = 0.00000002 ETH per transaction
+// Using 0.00001 ETH (10,000,000,000 wei) provides ~500x buffer for multiple transactions
+const MIN_EVM_GAS_BALANCE: u128 = 5_000_000_000; // 0.000000005 ETH (enough for 1 transaction)
+const EVM_GAS_FUND_AMOUNT: u128 = 10_000_000_000; // 0.00001 ETH (~$0.03 at $3k ETH, covers ~500 transactions)
 
 // Gas thresholds for MySocial (in MIST)
 // Will be used when MySocial gas funding is fully implemented

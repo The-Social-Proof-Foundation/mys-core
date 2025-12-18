@@ -18,7 +18,7 @@ use ethers::types::Address as EthAddress;
 use move_core_types::ident_str;
 use move_core_types::language_storage::StructTag;
 use mys_json_rpc_types::MysObjectDataOptions;
-use mys_types::base_types::{MysAddress, ObjectID};
+use mys_types::base_types::{MysAddress};
 use mys_types::bridge::BRIDGE_MODULE_NAME;
 use mys_types::crypto::Signature;
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
