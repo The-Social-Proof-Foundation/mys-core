@@ -16,10 +16,10 @@ use tracing::{error, info, warn};
 
 // Gas thresholds for EVM (in wei) - optimized for Base L2
 // Base L2 transactions: approval (~50k gas) + bridge (~150k gas) = ~200k gas total
-// At ~0.1 gwei: 200k * 0.1 gwei = 0.00000002 ETH per transaction
-// Using 0.00001 ETH (10,000,000,000 wei) provides ~500x buffer for multiple transactions
-const MIN_EVM_GAS_BALANCE: u128 = 5_000_000_000; // 0.000000005 ETH (enough for 1 transaction)
-const EVM_GAS_FUND_AMOUNT: u128 = 10_000_000_000; // 0.00001 ETH (~$0.03 at $3k ETH, covers ~500 transactions)
+// At ~0.1 gwei: 200k * 0.1 gwei = 0.00000002 ETH = 20,000 nano-ETH per transaction
+// Using 0.00005 ETH (50,000,000,000 wei) provides ~2.5x buffer for gas price spikes
+const MIN_EVM_GAS_BALANCE: u128 = 20_000_000_000; // 0.00002 ETH (enough for 1 transaction)
+const EVM_GAS_FUND_AMOUNT: u128 = 50_000_000_000; // 0.00005 ETH (~$0.15 at $3k ETH, covers 2-3 transactions with buffer)
 
 // Gas thresholds for MySocial (in MIST)
 // Will be used when MySocial gas funding is fully implemented
