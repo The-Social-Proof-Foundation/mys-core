@@ -5,7 +5,7 @@
 //! Auto-bridge execution for custodial deposits
 //! Handles deposits to our addresses and automatically calls bridge contracts
 
-use crate::abi::{EthBridgeConfig, EthMysBridge};
+use crate::abi::{EthBridgeConfig, EthMysBridge, EthERC20};
 use crate::deposit_addresses::DepositAddressManager;
 use crate::deposit_gas_manager::DepositGasManager;
 use crate::deposit_monitor::{EvmDepositEvent, MysDepositEvent};
@@ -129,7 +129,49 @@ where
             ));
         }
 
-        // Call bridgeERC20(tokenID, amount, recipientAddress, destinationChainID)
+        // STEP 1: Approve bridge contract to spend tokens
+        info!(
+            token_address = ?event.token_address,
+            bridge_address = ?self.eth_bridge_address,
+            amount = ?event.amount,
+            "Approving bridge contract to spend tokens"
+        );
+
+        let deposit_wallet_for_approval = self
+            .address_manager
+            .get_evm_wallet_for_index(recipient_info.hd_index)?
+            .with_chain_id(self.eth_chain_id);
+        
+        let signer_for_approval = SignerMiddleware::new(self.eth_provider.clone(), deposit_wallet_for_approval);
+        let token_contract = EthERC20::new(event.token_address, Arc::new(signer_for_approval));
+
+        let approve_call = token_contract.approve(self.eth_bridge_address, event.amount);
+        
+        let pending_approval = approve_call.send().await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to send token approval transaction: {:?}", e))
+        })?;
+
+        let approval_tx_hash = pending_approval.tx_hash();
+        info!(?approval_tx_hash, "Token approval transaction sent");
+
+        let approval_receipt = pending_approval.confirmations(1).await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to confirm token approval: {:?}", e))
+        })?;
+
+        if let Some(receipt) = approval_receipt {
+            if receipt.status != Some(1.into()) {
+                return Err(BridgeError::Generic(
+                    "Token approval transaction reverted".to_string(),
+                ));
+            }
+            info!(?approval_tx_hash, "Token approval confirmed");
+        } else {
+            return Err(BridgeError::Generic(
+                "Token approval receipt not available".to_string(),
+            ));
+        }
+
+        // STEP 2: Call bridgeERC20(tokenID, amount, recipientAddress, destinationChainID)
         let destination_chain_id = recipient_info.destination_chain;
 
         info!(
