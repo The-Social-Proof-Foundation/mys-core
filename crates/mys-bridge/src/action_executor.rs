@@ -659,11 +659,25 @@ where
                         if let Some(relayer) = relayer {
                             let action_clone = action.clone();
                             let relayer_clone = relayer.clone();
+                            info!(
+                                action = ?action_clone,
+                                "Spawning relay task for approved transfer"
+                            );
                             tokio::spawn(async move {
-                                if let Err(e) = relayer_clone.handle_approved_transfer(&action_clone).await {
-                                    error!(?action_clone, ?e, "Auto-relay failed");
+                                match relayer_clone.handle_approved_transfer(&action_clone).await {
+                                    Ok(()) => {
+                                        info!(?action_clone, "Auto-relay completed successfully");
+                                    }
+                                    Err(e) => {
+                                        error!(?action_clone, ?e, "Auto-relay failed");
+                                    }
                                 }
                             });
+                        } else {
+                            warn!(
+                                action = ?action,
+                                "Relayer not configured - approved transfer will not be auto-relayed"
+                            );
                         }
                     }
                 });

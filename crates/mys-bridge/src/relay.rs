@@ -9,6 +9,7 @@ use crate::error::{BridgeError, BridgeResult};
 use crate::mys_client::{MysClient, MysClientInner};
 use crate::storage::{BridgeOrchestratorTables, RelayKey, RelayResult};
 use crate::types::{BridgeAction, ParsedTokenTransferMessage};
+use mys_types::base_types::MysAddress;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
@@ -187,6 +188,7 @@ where
     /// This is called after TokenTransferApproved event is detected
     pub async fn handle_approved_transfer(&self, action: &BridgeAction) -> BridgeResult<()> {
         if !self.config.enabled {
+            warn!("Relay is disabled in configuration, skipping auto-relay");
             return Ok(());
         }
 
@@ -198,7 +200,12 @@ where
             return Ok(());
         }
 
-        info!(?relay_key, "Auto-relaying approved transfer");
+        info!(
+            ?relay_key,
+            mys_address = ?self.mys_address,
+            gas_object_id = ?self.gas_object_id,
+            "Auto-relaying approved transfer"
+        );
 
         match action {
             BridgeAction::EthToMysBridgeAction(eth_action) => {
@@ -280,6 +287,17 @@ where
             })?;
 
         let token_id = message.parsed_payload.token_type;
+        // For EVM → MySocial transfers, target_address is the MySocial recipient address
+        let recipient_address = MysAddress::from_bytes(&message.parsed_payload.target_address)
+            .map_err(|e| BridgeError::Generic(format!("Failed to parse recipient address: {:?}", e)))?;
+        
+        info!(
+            ?relay_key,
+            token_id,
+            recipient_address = ?recipient_address,
+            amount = message.parsed_payload.amount,
+            "Claiming tokens from treasury and transferring to recipient"
+        );
 
         // Get bridge object ref
         let bridge_object_arg = self
@@ -355,10 +373,36 @@ where
         let signed_tx = Transaction::from_data(tx_data, vec![sig]);
 
         // Execute transaction
+        info!(
+            ?relay_key,
+            mys_sender = ?self.mys_address,
+            recipient = ?recipient_address,
+            "Executing claim_and_transfer transaction on MySocial"
+        );
+        
         let response = self
             .mys_client
             .execute_transaction_block_with_effects(signed_tx)
             .await?;
+        
+        if !response.status_ok().unwrap_or(false) {
+            error!(
+                ?relay_key,
+                tx_digest = ?response.digest,
+                "Claim_and_transfer transaction failed"
+            );
+            return Err(BridgeError::Generic(format!(
+                "Transaction failed: {:?}",
+                response
+            )));
+        }
+        
+        info!(
+            ?relay_key,
+            tx_digest = ?response.digest,
+            recipient = ?recipient_address,
+            "Successfully claimed tokens from treasury and transferred to recipient"
+        );
         
         Ok(response.digest)
     }
