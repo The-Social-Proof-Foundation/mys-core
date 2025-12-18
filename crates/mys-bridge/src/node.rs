@@ -397,13 +397,13 @@ async fn start_client_components(
                 ));
                 info!("Created DepositGasManager");
                 
-                // 5. Get BridgeConfig address (index 3 as confirmed by user)
-                let eth_bridge_config_address = if client_config.eth_contracts.len() > 3 {
-                    client_config.eth_contracts[3]
+                // 5. Get BridgeConfig address (index 2: [bridge_proxy, committee, config, limiter, vault])
+                let eth_bridge_config_address = if client_config.eth_contracts.len() > 2 {
+                    client_config.eth_contracts[2]
                 } else {
                     return Err(anyhow::anyhow!(
-                        "Not enough contracts in eth_contracts array. Expected at least 4 contracts: \
-                         [bridge_proxy, limiter, vault, config]. Found: {}",
+                        "Not enough contracts in eth_contracts array. Expected at least 3 contracts: \
+                         [bridge_proxy, committee, config]. Found: {}",
                         client_config.eth_contracts.len()
                     ));
                 };
