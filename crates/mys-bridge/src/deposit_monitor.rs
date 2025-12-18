@@ -119,7 +119,12 @@ impl EvmDepositMonitor {
         let deposit_addresses = self.storage.get_all_evm_deposit_addresses();
 
         if deposit_addresses.is_empty() {
-            // No deposit addresses registered yet
+            // No deposit addresses registered yet - skip this poll cycle
+            info!(
+                start_block,
+                current_block,
+                "No deposit addresses registered yet, skipping poll cycle"
+            );
             *last_checked_block = Some(current_block);
             return Ok(());
         }

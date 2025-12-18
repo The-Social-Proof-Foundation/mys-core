@@ -164,7 +164,43 @@ async fn generate_for_mys_user(
         )
     })?;
 
-    // Allocate HD wallet index for MySocial chain
+    // Check if this MySocial address already has a deposit address
+    let existing_registrations = state
+        .storage
+        .get_deposit_registrations(&DepositAddressKey::from_mys(mys_address))
+        .map_err(to_status_error)?;
+    
+    if let Some(registrations) = existing_registrations {
+        if let Some(existing_reg) = registrations.first() {
+            // Return existing deposit address
+            let existing_deposit_addr = if existing_reg.deposit_address.len() == 32 {
+                MysAddress::from_bytes(&existing_reg.deposit_address)
+                    .map(|addr| format!("{}", addr))
+                    .unwrap_or_else(|_| format!("0x{}", fastcrypto::encoding::Hex::encode(&existing_reg.deposit_address)))
+            } else {
+                format!("0x{}", fastcrypto::encoding::Hex::encode(&existing_reg.deposit_address))
+            };
+            
+            info!(
+                ?mys_address,
+                existing_deposit = ?existing_deposit_addr,
+                "Returning existing MySocial deposit address for MySocial user"
+            );
+            
+            return Ok(Json(GenerateDepositResponse {
+                deposit_chain: "mysocial".to_string(),
+                deposit_address: existing_deposit_addr.clone(),
+                destination_chain: req.message.destination_chain.clone(),
+                destination_address: req.message.destination_address.clone(),
+                instructions: format!(
+                    "Send tokens to {} on MySocial chain, they will bridge to {} on {}",
+                    existing_deposit_addr, dest_eth_address, req.message.destination_chain
+                ),
+            }));
+        }
+    }
+
+    // No existing registration - allocate HD wallet index for MySocial chain
     let hd_index = state
         .address_manager
         .allocate_next_index(HD_COUNTER_MYS)
@@ -253,7 +289,41 @@ async fn generate_for_eth_user(
         );
     }
 
-    // Allocate HD wallet index for EVM chain
+    // Check if this MySocial address already has a deposit address
+    let existing_registrations = state
+        .storage
+        .get_deposit_registrations(&DepositAddressKey::from_mys(dest_mys_address))
+        .map_err(to_status_error)?;
+    
+    if let Some(registrations) = existing_registrations {
+        if let Some(existing_reg) = registrations.first() {
+            // Return existing deposit address
+            let existing_deposit_addr = if existing_reg.deposit_address.len() == 20 {
+                format!("{:?}", EthAddress::from_slice(&existing_reg.deposit_address))
+            } else {
+                format!("0x{}", fastcrypto::encoding::Hex::encode(&existing_reg.deposit_address))
+            };
+            
+            info!(
+                ?dest_mys_address,
+                existing_deposit = ?existing_deposit_addr,
+                "Returning existing EVM deposit address for MySocial user"
+            );
+            
+            return Ok(Json(GenerateDepositResponse {
+                deposit_chain: "base".to_string(),
+                deposit_address: existing_deposit_addr,
+                destination_chain: req.message.destination_chain,
+                destination_address: req.message.destination_address,
+                instructions: format!(
+                    "Send tokens to {} on Base chain, they will bridge to {} on MySocial",
+                    existing_deposit_addr, dest_mys_address
+                ),
+            }));
+        }
+    }
+
+    // No existing registration - allocate HD wallet index for EVM chain
     let hd_index = state
         .address_manager
         .allocate_next_index(HD_COUNTER_EVM)

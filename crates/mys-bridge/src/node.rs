@@ -463,7 +463,9 @@ async fn start_client_components(
                         evm_deposit_tx,
                     );
                     
-                    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+                    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+                    // Keep shutdown_tx alive - dropping it would immediately signal shutdown
+                    let _shutdown_guard = shutdown_tx;
                     all_handles.push(spawn_logged_monitored_task!(async move {
                         if let Err(e) = evm_monitor.run(shutdown_rx).await {
                             error!("EVM deposit monitor error: {:?}", e);
