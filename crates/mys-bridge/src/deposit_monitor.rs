@@ -42,7 +42,7 @@ pub struct MysDepositEvent {
 pub struct EvmDepositMonitor {
     provider: Arc<Provider<MeteredEthHttpProvier>>,
     storage: Arc<BridgeOrchestratorTables>,
-    chain_id: u8,
+    chain_id: u64,
     supported_tokens: Vec<EthAddress>,
     poll_interval: Duration,
     /// Channel to send detected deposit events for processing
@@ -53,7 +53,7 @@ impl EvmDepositMonitor {
     pub fn new(
         provider: Arc<Provider<MeteredEthHttpProvier>>,
         storage: Arc<BridgeOrchestratorTables>,
-        chain_id: u8,
+        chain_id: u64,
         supported_tokens: Vec<EthAddress>,
         poll_interval_secs: u64,
         deposit_tx: tokio::sync::mpsc::UnboundedSender<EvmDepositEvent>,

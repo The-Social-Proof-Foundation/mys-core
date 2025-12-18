@@ -457,7 +457,7 @@ async fn start_client_components(
                     let evm_monitor = crate::deposit_monitor::EvmDepositMonitor::new(
                         eth_provider.clone(),
                         store.clone(),
-                        eth_chain_id as u8,
+                        eth_chain_id,
                         supported_tokens,
                         deposit_cfg.poll_interval_secs,
                         evm_deposit_tx,

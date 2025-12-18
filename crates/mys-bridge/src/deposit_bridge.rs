@@ -131,13 +131,14 @@ where
             ));
         }
 
-        // STEP 0: Estimate gas for both transactions BEFORE checking balance
-        // This ensures we fund with the correct amount based on actual gas needs
+        // STEP 0: Estimate gas for approval transaction BEFORE checking balance
+        // Note: We cannot estimate bridgeERC20 gas before approval exists (contract checks allowance)
+        // So we'll estimate it after approval, using a conservative estimate for initial funding
         info!(
             token_address = ?event.token_address,
             bridge_address = ?self.eth_bridge_address,
             amount = ?event.amount,
-            "Estimating gas for approval and bridge transactions"
+            "Estimating gas for approval transaction"
         );
 
         let deposit_wallet_for_estimation = deposit_wallet.clone();
@@ -151,17 +152,9 @@ where
         })?;
         let approval_gas_limit = (approval_gas_estimate.as_u64() * 120 / 100) as u64; // Add 20% buffer
 
-        // Estimate gas for bridge call
-        let bridge_call = bridge.bridge_erc20(
-            token_id,
-            event.amount,
-            destination_bytes.clone().into(),
-            recipient_info.destination_chain,
-        );
-        let bridge_gas_estimate = bridge_call.estimate_gas().await.map_err(|e| {
-            BridgeError::Generic(format!("Failed to estimate gas for bridgeERC20: {:?}", e))
-        })?;
-        let bridge_gas_limit = (bridge_gas_estimate.as_u64() * 120 / 100) as u64; // Add 20% buffer
+        // Use conservative estimate for bridgeERC20 (will re-estimate after approval)
+        // Typical bridgeERC20 calls use ~150k-200k gas, use 250k as conservative estimate
+        const CONSERVATIVE_BRIDGE_GAS_LIMIT: u64 = 250_000;
 
         // Get current network gas price
         let gas_price = self.eth_provider.get_gas_price().await.map_err(|e| {
@@ -170,19 +163,19 @@ where
 
         info!(
             approval_gas_limit,
-            bridge_gas_limit,
-            total_gas_limit = approval_gas_limit + bridge_gas_limit,
+            bridge_gas_limit_estimate = CONSERVATIVE_BRIDGE_GAS_LIMIT,
+            total_gas_limit = approval_gas_limit + CONSERVATIVE_BRIDGE_GAS_LIMIT,
             gas_price_wei = ?gas_price,
             gas_price_gwei = gas_price.as_u64() / 1_000_000_000,
-            "Gas estimation complete"
+            "Gas estimation complete (using conservative bridgeERC20 estimate)"
         );
 
-        // CRITICAL: Ensure deposit address has gas using ACTUAL estimated gas amounts
+        // CRITICAL: Ensure deposit address has gas using estimated approval gas + conservative bridge gas
         self.gas_manager
             .ensure_evm_deposit_has_gas_with_estimates(
                 event.to_address,
                 approval_gas_limit,
-                bridge_gas_limit,
+                CONSERVATIVE_BRIDGE_GAS_LIMIT,
                 gas_price,
             )
             .await?;
@@ -239,7 +232,43 @@ where
             ));
         }
 
-        // STEP 2: Call bridgeERC20(tokenID, amount, recipientAddress, destinationChainID)
+        // STEP 2: Estimate gas for bridgeERC20 NOW that approval exists
+        info!(
+            token_id,
+            amount = ?event.amount,
+            "Estimating gas for bridgeERC20 (approval now exists)"
+        );
+
+        let bridge_call_for_estimation = bridge.bridge_erc20(
+            token_id,
+            event.amount,
+            destination_bytes.clone().into(),
+            recipient_info.destination_chain,
+        );
+        let bridge_gas_estimate = bridge_call_for_estimation.estimate_gas().await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to estimate gas for bridgeERC20: {:?}", e))
+        })?;
+        let bridge_gas_limit = (bridge_gas_estimate.as_u64() * 120 / 100) as u64; // Add 20% buffer
+
+        info!(
+            bridge_gas_limit,
+            gas_price_gwei = gas_price.as_u64() / 1_000_000_000,
+            "BridgeERC20 gas estimation complete"
+        );
+
+        // Ensure we have enough gas for the bridge transaction
+        // Approval is already done, so we only need gas for bridgeERC20
+        // Use 0 for approval_gas_limit since approval is complete
+        self.gas_manager
+            .ensure_evm_deposit_has_gas_with_estimates(
+                event.to_address,
+                0, // Approval already done
+                bridge_gas_limit,
+                gas_price,
+            )
+            .await?;
+
+        // STEP 3: Call bridgeERC20(tokenID, amount, recipientAddress, destinationChainID)
         let destination_chain_id = recipient_info.destination_chain;
 
         info!(
@@ -255,19 +284,16 @@ where
             destination_bytes.into(),
             destination_chain_id,
         );
-
-        // Use the already-estimated gas limit (gas price was already fetched)
-        let gas_limit = bridge_gas_limit;
         
         info!(
-            ?gas_limit,
+            ?bridge_gas_limit,
             ?gas_price,
             gas_price_gwei = gas_price.as_u64() / 1_000_000_000,
             "Sending bridgeERC20 transaction with gas settings"
         );
 
         // Send transaction with gas settings
-        let call_with_gas = call.gas(gas_limit).gas_price(gas_price);
+        let call_with_gas = call.gas(bridge_gas_limit).gas_price(gas_price);
         let pending_tx = call_with_gas
             .send()
             .await
