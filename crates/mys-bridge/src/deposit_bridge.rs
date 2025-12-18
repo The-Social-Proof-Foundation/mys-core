@@ -377,11 +377,11 @@ mod tests {
 
     #[test]
     fn test_gas_threshold_constants() {
-        const MIN_GAS_BALANCE: u128 = 10_000_000_000_000_000;
-        const FUND_AMOUNT: u128 = 20_000_000_000_000_000;
+        const MIN_GAS_BALANCE: u128 = 100_000_000_000_000;
+        const FUND_AMOUNT: u128 = 200_000_000_000_000;
 
         assert!(FUND_AMOUNT > MIN_GAS_BALANCE);
-        assert_eq!(MIN_GAS_BALANCE, 10u128.pow(16)); // 0.01 ETH
+        assert_eq!(MIN_GAS_BALANCE, 100u128 * 10u128.pow(12)); // 0.0001 ETH
     }
 }
 
