@@ -107,11 +107,6 @@ where
             "Processing EVM deposit"
         );
 
-        // CRITICAL: Ensure deposit address has gas
-        self.gas_manager
-            .ensure_evm_deposit_has_gas(event.to_address)
-            .await?;
-
         // Get wallet for deposit address
         let deposit_wallet = self
             .address_manager
@@ -119,7 +114,7 @@ where
             .with_chain_id(self.eth_chain_id);
 
         // Create signer
-        let signer = SignerMiddleware::new(self.eth_provider.clone(), deposit_wallet);
+        let signer = SignerMiddleware::new(self.eth_provider.clone(), deposit_wallet.clone());
 
         // Create bridge contract instance
         let bridge = EthMysBridge::new(self.eth_bridge_address, Arc::new(signer));
@@ -136,6 +131,62 @@ where
             ));
         }
 
+        // STEP 0: Estimate gas for both transactions BEFORE checking balance
+        // This ensures we fund with the correct amount based on actual gas needs
+        info!(
+            token_address = ?event.token_address,
+            bridge_address = ?self.eth_bridge_address,
+            amount = ?event.amount,
+            "Estimating gas for approval and bridge transactions"
+        );
+
+        let deposit_wallet_for_estimation = deposit_wallet.clone();
+        let signer_for_estimation = SignerMiddleware::new(self.eth_provider.clone(), deposit_wallet_for_estimation);
+        let token_contract = EthERC20::new(event.token_address, Arc::new(signer_for_estimation));
+
+        // Estimate gas for approval
+        let approve_call = token_contract.approve(self.eth_bridge_address, event.amount);
+        let approval_gas_estimate = approve_call.estimate_gas().await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to estimate gas for approval: {:?}", e))
+        })?;
+        let approval_gas_limit = (approval_gas_estimate.as_u64() * 120 / 100) as u64; // Add 20% buffer
+
+        // Estimate gas for bridge call
+        let bridge_call = bridge.bridge_erc20(
+            token_id,
+            event.amount,
+            destination_bytes.clone().into(),
+            recipient_info.destination_chain,
+        );
+        let bridge_gas_estimate = bridge_call.estimate_gas().await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to estimate gas for bridgeERC20: {:?}", e))
+        })?;
+        let bridge_gas_limit = (bridge_gas_estimate.as_u64() * 120 / 100) as u64; // Add 20% buffer
+
+        // Get current network gas price
+        let gas_price = self.eth_provider.get_gas_price().await.map_err(|e| {
+            BridgeError::Generic(format!("Failed to get gas price: {:?}", e))
+        })?;
+
+        info!(
+            approval_gas_limit,
+            bridge_gas_limit,
+            total_gas_limit = approval_gas_limit + bridge_gas_limit,
+            gas_price_wei = ?gas_price,
+            gas_price_gwei = gas_price.as_u64() / 1_000_000_000,
+            "Gas estimation complete"
+        );
+
+        // CRITICAL: Ensure deposit address has gas using ACTUAL estimated gas amounts
+        self.gas_manager
+            .ensure_evm_deposit_has_gas_with_estimates(
+                event.to_address,
+                approval_gas_limit,
+                bridge_gas_limit,
+                gas_price,
+            )
+            .await?;
+
         // STEP 1: Approve bridge contract to spend tokens
         info!(
             token_address = ?event.token_address,
@@ -144,28 +195,14 @@ where
             "Approving bridge contract to spend tokens"
         );
 
-        let deposit_wallet_for_approval = self
-            .address_manager
-            .get_evm_wallet_for_index(recipient_info.hd_index)?
-            .with_chain_id(self.eth_chain_id);
-        
+        let deposit_wallet_for_approval = deposit_wallet.clone();
         let signer_for_approval = SignerMiddleware::new(self.eth_provider.clone(), deposit_wallet_for_approval);
         let token_contract = EthERC20::new(event.token_address, Arc::new(signer_for_approval));
 
         let approve_call = token_contract.approve(self.eth_bridge_address, event.amount);
         
-        // Estimate gas for approval
-        let gas_estimate = approve_call.estimate_gas().await.map_err(|e| {
-            BridgeError::Generic(format!("Failed to estimate gas for approval: {:?}", e))
-        })?;
-        
-        // Add 20% buffer
-        let gas_limit = gas_estimate * 120 / 100;
-        
-        // Get current network gas price
-        let gas_price = self.eth_provider.get_gas_price().await.map_err(|e| {
-            BridgeError::Generic(format!("Failed to get gas price: {:?}", e))
-        })?;
+        // Use the already-estimated gas limit
+        let gas_limit = approval_gas_limit;
         
         info!(
             ?gas_limit,
@@ -219,18 +256,8 @@ where
             destination_chain_id,
         );
 
-        // Estimate gas for bridge call
-        let gas_estimate = call.estimate_gas().await.map_err(|e| {
-            BridgeError::Generic(format!("Failed to estimate gas for bridgeERC20: {:?}", e))
-        })?;
-        
-        // Add 20% buffer
-        let gas_limit = gas_estimate * 120 / 100;
-        
-        // Get current network gas price (may have changed since approval)
-        let gas_price = self.eth_provider.get_gas_price().await.map_err(|e| {
-            BridgeError::Generic(format!("Failed to get gas price: {:?}", e))
-        })?;
+        // Use the already-estimated gas limit (gas price was already fetched)
+        let gas_limit = bridge_gas_limit;
         
         info!(
             ?gas_limit,

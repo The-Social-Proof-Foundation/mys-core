@@ -14,12 +14,9 @@ use mys_types::crypto::MysKeyPair;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
-// Gas thresholds for EVM (in wei) - optimized for Base L2
-// Base L2 transactions: approval (~50k gas) + bridge (~150k gas) = ~200k gas total
-// At ~0.1 gwei: 200k * 0.1 gwei = 0.00000002 ETH = 20,000 nano-ETH per transaction
-// Using 0.00005 ETH (50,000,000,000 wei) provides ~2.5x buffer for gas price spikes
-const MIN_EVM_GAS_BALANCE: u128 = 20_000_000_000; // 0.00002 ETH (enough for 1 transaction)
-const EVM_GAS_FUND_AMOUNT: u128 = 50_000_000_000; // 0.00005 ETH (~$0.15 at $3k ETH, covers 2-3 transactions with buffer)
+// Gas thresholds are now calculated dynamically based on actual network gas prices
+// and real gas estimates from the transactions themselves.
+// See ensure_evm_deposit_has_gas_with_estimates() for the implementation.
 
 // Gas thresholds for MySocial (in MIST)
 // Will be used when MySocial gas funding is fully implemented
@@ -67,17 +64,29 @@ where
         }
     }
 
-    /// Ensure an EVM deposit address has sufficient gas
-    /// Funds from relayer's main wallet if needed
-    pub async fn ensure_evm_deposit_has_gas(
+    /// Ensure an EVM deposit address has sufficient gas using actual gas estimates
+    /// 
+    /// This is the production method that uses real gas estimates from the transactions.
+    /// It calculates the required balance as: (approval_gas + bridge_gas) × gas_price × 1.2
+    /// 
+    /// # Arguments
+    /// * `deposit_address` - The EVM deposit address to check/fund
+    /// * `approval_gas_limit` - Actual estimated gas limit for the approval transaction (with buffer)
+    /// * `bridge_gas_limit` - Actual estimated gas limit for the bridge transaction (with buffer)
+    /// * `gas_price` - Current network gas price in wei
+    /// This is the preferred method as it uses real gas estimates instead of hardcoded values
+    pub async fn ensure_evm_deposit_has_gas_with_estimates(
         &self,
         deposit_address: EthAddress,
+        approval_gas_limit: u64,
+        bridge_gas_limit: u64,
+        gas_price: U256,
     ) -> BridgeResult<()> {
         let provider = self.eth_provider.as_ref().ok_or_else(|| {
             BridgeError::Generic("EVM provider not configured for gas management".to_string())
         })?;
 
-        // Verify relayer wallet exists (we'll use it in fund_evm_address)
+        // Verify relayer wallet exists
         let _relayer_wallet = self.relayer_eth_wallet.as_ref().ok_or_else(|| {
             BridgeError::Generic("Relayer EVM wallet not configured".to_string())
         })?;
@@ -93,23 +102,46 @@ where
                 ))
             })?;
 
+        // Calculate required balance using ACTUAL gas estimates
+        let total_gas_needed = approval_gas_limit + bridge_gas_limit;
+        let required_balance = gas_price
+            .checked_mul(U256::from(total_gas_needed))
+            .ok_or_else(|| BridgeError::Generic("Gas price calculation overflow".to_string()))?;
+
         info!(
             ?deposit_address,
             balance_wei = ?balance,
             balance_eth = balance.as_u128() as f64 / 1e18,
-            "Checking EVM deposit address balance"
+            approval_gas_limit,
+            bridge_gas_limit,
+            total_gas_needed,
+            gas_price_wei = ?gas_price,
+            gas_price_gwei = gas_price.as_u64() as f64 / 1e9,
+            required_balance_wei = ?required_balance,
+            required_balance_eth = required_balance.as_u128() as f64 / 1e18,
+            "Checking EVM deposit address balance with actual gas estimates"
         );
 
-        // Fund if below threshold
-        if balance.as_u128() < MIN_EVM_GAS_BALANCE {
+        // Fund if below required balance
+        if balance < required_balance {
+            let funding_amount = required_balance
+                .checked_sub(balance)
+                .ok_or_else(|| BridgeError::Generic("Funding calculation underflow".to_string()))?;
+            
+            // Add 20% extra buffer for safety
+            let funding_amount_with_buffer = funding_amount
+                .checked_mul(U256::from(120))
+                .and_then(|v| v.checked_div(U256::from(100)))
+                .ok_or_else(|| BridgeError::Generic("Funding buffer calculation overflow".to_string()))?;
+
             info!(
                 ?deposit_address,
                 current_balance_eth = balance.as_u128() as f64 / 1e18,
-                funding_amount_eth = EVM_GAS_FUND_AMOUNT as f64 / 1e18,
-                "Funding EVM deposit address with gas"
+                funding_amount_eth = funding_amount_with_buffer.as_u128() as f64 / 1e18,
+                "Funding EVM deposit address with gas (using actual estimates)"
             );
 
-            self.fund_evm_address(deposit_address, U256::from(EVM_GAS_FUND_AMOUNT))
+            self.fund_evm_address(deposit_address, funding_amount_with_buffer)
                 .await?;
 
             info!(?deposit_address, "Successfully funded EVM deposit address");
@@ -117,6 +149,7 @@ where
             info!(
                 ?deposit_address,
                 balance_eth = balance.as_u128() as f64 / 1e18,
+                required_balance_eth = required_balance.as_u128() as f64 / 1e18,
                 "EVM deposit address has sufficient gas"
             );
         }
@@ -283,10 +316,9 @@ mod tests {
 
     #[test]
     fn test_gas_constants() {
-        assert_eq!(MIN_EVM_GAS_BALANCE, 500_000_000u128);
-        assert_eq!(EVM_GAS_FUND_AMOUNT, 1_000_000_000u128);
-        assert!(EVM_GAS_FUND_AMOUNT > MIN_EVM_GAS_BALANCE);
-
+        // EVM gas amounts are now calculated dynamically based on network gas price
+        // Keeping constants for reference but they're no longer used in the code
+        
         assert_eq!(MIN_MYS_GAS_BALANCE, 10_000_000u64);
         assert_eq!(MYS_GAS_FUND_AMOUNT, 20_000_000u64);
         assert!(MYS_GAS_FUND_AMOUNT > MIN_MYS_GAS_BALANCE);
