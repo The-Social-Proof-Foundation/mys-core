@@ -259,6 +259,13 @@ async fn start_client_components(
 
     let mys_client = client_config.mys_client.clone();
 
+    info!(
+        contract_count = eth_contracts_to_watch.len(),
+        contracts = ?eth_contracts_to_watch.keys().collect::<Vec<_>>(),
+        "Starting eth_syncer with {} contract(s) to watch",
+        eth_contracts_to_watch.len()
+    );
+
     let mut all_handles = vec![];
     let (task_handles, eth_events_rx, _) =
         EthSyncer::new(client_config.eth_client.clone(), eth_contracts_to_watch)

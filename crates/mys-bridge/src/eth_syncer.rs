@@ -134,7 +134,11 @@ where
         eth_client: Arc<EthClient<P>>,
         metrics: Arc<BridgeMetrics>,
     ) {
-        tracing::info!(contract_address=?contract_address, "Starting eth events listening task from block {start_block}");
+        tracing::info!(
+            contract_address=?contract_address,
+            start_block,
+            "Starting eth events listening task from block {start_block} for contract {contract_address}"
+        );
         let contract_address_str = contract_address.to_string();
         let mut more_blocks = false;
         loop {
@@ -191,18 +195,19 @@ where
                 .expect("All Eth event channel receivers are closed");
             if len != 0 {
                 tracing::info!(
-                    ?contract_address,
+                    contract_address=?contract_address,
                     start_block,
                     end_block,
                     event_count = len,
-                    "Observed {len} new Eth events from contract"
+                    "Observed {len} new Eth events from contract {contract_address}"
                 );
             } else {
                 tracing::debug!(
-                    ?contract_address,
+                    contract_address=?contract_address,
                     start_block,
                     end_block,
-                    "No events found in block range"
+                    finalized_block = new_finalized_block,
+                    "No events found in block range [{start_block}, {end_block}] for contract {contract_address} (finalized block: {new_finalized_block})"
                 );
             }
             metrics
