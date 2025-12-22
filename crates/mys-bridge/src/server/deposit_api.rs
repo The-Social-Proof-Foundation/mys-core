@@ -159,22 +159,41 @@ async fn generate_for_mys_user(
         )
     })?;
 
-    // Check if this MySocial address already has a deposit address
+    // Parse destination chain first to know what deposit chain we need
+    let dest_chain_id = parse_chain_id(&req.message.destination_chain)?;
+    
+    // Check if this MySocial address already has a deposit address for the correct direction
+    // We need a MySocial deposit address (deposit_chain = 2) to bridge TO EVM
     let existing_registrations = state
         .storage
         .get_deposit_registrations(&DepositAddressKey::from_mys(mys_address))
         .map_err(to_status_error)?;
     
     if let Some(registrations) = existing_registrations {
-        if let Some(existing_reg) = registrations.first() {
-            // Return existing deposit address
-            let existing_deposit_addr = if existing_reg.deposit_address.len() == 32 {
-                MysAddress::from_bytes(&existing_reg.deposit_address)
-                    .map(|addr| format!("{}", addr))
-                    .unwrap_or_else(|_| format!("0x{}", fastcrypto::encoding::Hex::encode(&existing_reg.deposit_address)))
-            } else {
-                format!("0x{}", fastcrypto::encoding::Hex::encode(&existing_reg.deposit_address))
-            };
+        // Find registration with MySocial deposit chain (2) and matching destination chain
+        if let Some(existing_reg) = registrations.iter().find(|reg| {
+            reg.deposit_chain == 2 && // MySocial deposit address
+            reg.destination_chain == dest_chain_id // Matches requested destination
+        }) {
+            // Verify it's actually a MySocial address (32 bytes)
+            if existing_reg.deposit_address.len() != 32 {
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!(
+                        "Invalid deposit address length: expected 32 bytes (MySocial address), got {} bytes",
+                        existing_reg.deposit_address.len()
+                    ),
+                ));
+            }
+            
+            let existing_deposit_addr = MysAddress::from_bytes(&existing_reg.deposit_address)
+                .map(|addr| format!("{}", addr))
+                .map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to parse MySocial deposit address: {:?}", e),
+                    )
+                })?;
             
             info!(
                 ?mys_address,
@@ -206,9 +225,6 @@ async fn generate_for_mys_user(
         .address_manager
         .derive_mys_deposit_address(hd_index)
         .map_err(to_status_error)?;
-
-    // Parse destination chain
-    let dest_chain_id = parse_chain_id(&req.message.destination_chain)?;
 
     // Store registration
     let registration = DepositRegistration {
@@ -284,20 +300,37 @@ async fn generate_for_eth_user(
         );
     }
 
-    // Check if this MySocial address already has a deposit address
+    // Parse destination chain first to know what deposit chain we need
+    let dest_chain_id = parse_chain_id(&req.message.destination_chain)?;
+    
+    // Parse source chain from request or default to Base
+    let source_chain_id = 12; // Default to Base Sepolia for now
+    
+    // Check if this MySocial address already has an EVM deposit address for the correct direction
+    // We need an EVM deposit address (deposit_chain = 12 for Base) to bridge TO MySocial
     let existing_registrations = state
         .storage
         .get_deposit_registrations(&DepositAddressKey::from_mys(dest_mys_address))
         .map_err(to_status_error)?;
     
     if let Some(registrations) = existing_registrations {
-        if let Some(existing_reg) = registrations.first() {
-            // Return existing deposit address
-            let existing_deposit_addr = if existing_reg.deposit_address.len() == 20 {
-                format!("{:?}", EthAddress::from_slice(&existing_reg.deposit_address))
-            } else {
-                format!("0x{}", fastcrypto::encoding::Hex::encode(&existing_reg.deposit_address))
-            };
+        // Find registration with EVM deposit chain (12 for Base) and matching destination chain
+        if let Some(existing_reg) = registrations.iter().find(|reg| {
+            reg.deposit_chain == source_chain_id && // EVM deposit address (Base Sepolia)
+            reg.destination_chain == dest_chain_id // Matches requested destination
+        }) {
+            // Verify it's actually an EVM address (20 bytes)
+            if existing_reg.deposit_address.len() != 20 {
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!(
+                        "Invalid deposit address length: expected 20 bytes (EVM address), got {} bytes",
+                        existing_reg.deposit_address.len()
+                    ),
+                ));
+            }
+            
+            let existing_deposit_addr = EthAddress::from_slice(&existing_reg.deposit_address);
             
             info!(
                 ?dest_mys_address,
@@ -307,11 +340,11 @@ async fn generate_for_eth_user(
             
             return Ok(Json(GenerateDepositResponse {
                 deposit_chain: "base".to_string(),
-                deposit_address: existing_deposit_addr.clone(),
+                deposit_address: format!("{:?}", existing_deposit_addr),
                 destination_chain: req.message.destination_chain.clone(),
                 destination_address: req.message.destination_address.clone(),
                 instructions: format!(
-                    "Send tokens to {} on Base chain, they will bridge to {} on MySocial",
+                    "Send tokens to {:?} on Base chain, they will bridge to {} on MySocial",
                     existing_deposit_addr, dest_mys_address
                 ),
             }));
@@ -329,12 +362,6 @@ async fn generate_for_eth_user(
         .address_manager
         .derive_evm_deposit_address(hd_index)
         .map_err(to_status_error)?;
-
-    // Parse destination chain (should be MySocial)
-    let dest_chain_id = parse_chain_id(&req.message.destination_chain)?;
-
-    // Parse source chain from request or default to Base
-    let source_chain_id = 12; // Default to Base Sepolia for now
 
     // Store registration
     let registration = DepositRegistration {
