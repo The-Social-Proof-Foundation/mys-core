@@ -130,7 +130,7 @@ async fn generate_for_mys_user(
     req: GenerateDepositRequest,
     message_str: String,
 ) -> Result<Json<GenerateDepositResponse>, (StatusCode, String)> {
-    // Parse MySocial address (required for MySocial auth type)
+    // Parse MySocial address (required for MySocial auth type - used as key for deduplication)
     let source_address = req.source_address.as_ref().ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
@@ -146,15 +146,10 @@ async fn generate_for_mys_user(
             )
         })?;
 
-    // Verify MySocial signature (required for MySocial auth type)
-    let signature = req.signature.as_ref().ok_or_else(|| {
-        (
-            StatusCode::BAD_REQUEST,
-            "signature is required for MySocial auth type".to_string(),
-        )
-    })?;
-    
-    verify_mys_signature(&message_str, signature, &mys_address).map_err(to_status_error)?;
+    // Optional: Verify MySocial signature if provided (for spam protection)
+    if let Some(signature) = &req.signature {
+        verify_mys_signature(&message_str, signature, &mys_address).map_err(to_status_error)?;
+    }
 
     // Parse destination EVM address
     let dest_eth_address = EthAddress::from_str(&req.message.destination_address).map_err(|e| {

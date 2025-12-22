@@ -237,14 +237,42 @@ fn build_token_bridge_approve_transaction(
     );
 
     if claim {
-        // TEMPORARY WORKAROUND: Map EVM token ID to MySocial token ID for TypeTag lookup
-        // This is needed because the TypeTag lookup uses MySocial token IDs, not EVM token IDs
-        // The bridge message itself uses the original token_id to match signatures
+        // ⚠️ CRITICAL ISSUE: Token ID Mismatch Between EVM and MySocial ⚠️
+        // 
+        // The bridge message contains token_id=5 (from EVM), but MySocial expects token_id=0.
+        // We cannot change the message's token_id because it's already signed.
+        // 
+        // TEMPORARY WORKAROUND: Map EVM token ID to MySocial token ID for TypeTag lookup only.
+        // This allows us to find the correct TypeTag, but the Move code will still fail because
+        // it checks: treasury::token_id<T>(&inner.treasury) == token_payload.token_type()
+        // 
+        // The REAL FIX required on MySocial side:
+        // Token ID 5 must be registered in the MySocial bridge treasury with the SAME TypeTag
+        // as token ID 0. This will allow the message (with token_id=5) to match the TypeTag
+        // (for token_id=0) during claim_token_internal validation.
+        //
+        // Until this is fixed, claims will fail with MoveAbort error code 3 (EUnexpectedTokenType).
         let mys_token_id_for_claim = if is_eth_to_mys {
             map_evm_to_mys_token_id(token_type)
         } else {
             token_type // No mapping needed for other action types
         };
+        
+        // WARNING: This mapping will cause claim_token_internal to fail with error code 3
+        // because the message has token_id=5 but we're using TypeTag for token_id=0.
+        // The MySocial bridge treasury must be configured to map token_id=5 to the same
+        // TypeTag as token_id=0 for this to work.
+        if is_eth_to_mys && token_type != mys_token_id_for_claim {
+            tracing::warn!(
+                evm_token_id = token_type,
+                mys_token_id = mys_token_id_for_claim,
+                "⚠️ Token ID mismatch: Message has token_id={} but using TypeTag for token_id={}. \
+                 This will cause MoveAbort error code 3 (EUnexpectedTokenType) unless token_id {} \
+                 is registered in MySocial treasury with the same TypeTag as token_id {}.",
+                token_type, mys_token_id_for_claim, token_type, mys_token_id_for_claim
+            );
+        }
+        
         let type_tag = mys_token_type_tags
             .get(&mys_token_id_for_claim)
             .ok_or_else(|| {
