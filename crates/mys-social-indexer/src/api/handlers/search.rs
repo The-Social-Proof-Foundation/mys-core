@@ -274,6 +274,7 @@ pub async fn global_search(
             LOWER(name) LIKE LOWER($1) OR
             LOWER(COALESCE(developer_address, '')) LIKE LOWER($1)
         )
+        AND is_approved = true
         AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'platform' = ANY($4))
         
         UNION ALL
@@ -409,6 +410,7 @@ pub async fn global_search(
                 LOWER(name) LIKE LOWER($1) OR
                 LOWER(COALESCE(developer_address, '')) LIKE LOWER($1)
             )
+            AND is_approved = true
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'platform' = ANY($2))
 
             UNION ALL
