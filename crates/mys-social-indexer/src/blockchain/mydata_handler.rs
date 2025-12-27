@@ -16,8 +16,8 @@ use crate::events::{
     mydata_event_types::{
         AccessGrantedEvent, DataAccessGrantedEvent, DataAccessedEvent, DataCreatedEvent,
         DataPricingChangedEvent, DataPurchasedEvent, DataRemovedEvent, DataTransferredEvent,
-        DataTrendingEvent, DataUpdatedEvent, MyDataCreatedEvent, OperationFailedEvent,
-        PurchaseEvent, RevenueDistributedEvent, SubscriptionCancelledEvent,
+        DataTrendingEvent, DataUpdatedEvent, MyDataConfigUpdatedEvent, MyDataCreatedEvent,
+        OperationFailedEvent, PurchaseEvent, RevenueDistributedEvent, SubscriptionCancelledEvent,
         SubscriptionCreatedEvent, SubscriptionRenewedEvent, SystemMaintenanceEvent,
     },
     mydata_events::{process_mydata_registered_event, process_mydata_unregistered_event, EventBatch},
@@ -26,7 +26,8 @@ use crate::events::{
 
 use crate::models::mydata::NewMyDataAccessLog;
 use crate::schema::{
-    mydata_access_logs, mydata_data, mydata_purchases, mydata_revenue, mydata_subscriptions,
+    mydata_access_logs, mydata_config, mydata_data, mydata_purchases, mydata_revenue,
+    mydata_subscriptions,
 };
 use mys_types::event::Event as MysEvent;
 
@@ -102,6 +103,8 @@ impl MyDataEventHandler {
             || event_type.ends_with("::DataTrendingEvent")
             || event_type.ends_with("::OperationFailedEvent")
             || event_type.ends_with("::SystemMaintenanceEvent")
+            || event_type.ends_with("::MyDataConfigUpdatedEvent")
+            || event_type.ends_with("MyDataConfigUpdatedEvent")
     }
 
     /// Handle a blockchain event for MyData marketplace events
@@ -148,6 +151,13 @@ impl MyDataEventHandler {
                 self.handle_mydata_unregistered_from_json(
                     &blockchain_event.data,
                     &blockchain_event.event_id,
+                )
+                .await?;
+            }
+            _ if event_type.ends_with("::MyDataConfigUpdatedEvent") || event_type.ends_with("MyDataConfigUpdatedEvent") => {
+                self.handle_mydata_config_updated_from_json(
+                    &blockchain_event.data,
+                    &blockchain_event.tx_digest,
                 )
                 .await?;
             }
@@ -2035,6 +2045,47 @@ impl MyDataEventHandler {
         let mut conn = self.db.get_connection().await?;
         let event_data = extract_event_fields(&serde_json::to_value(event)?)?;
         process_mydata_unregistered_event(&mut conn, &event_data, transaction_id).await?;
+        Ok(())
+    }
+
+    /// Handle MyDataConfigUpdatedEvent from JSON data
+    async fn handle_mydata_config_updated_from_json(
+        &self,
+        data: &serde_json::Value,
+        transaction_id: &str,
+    ) -> Result<()> {
+        info!("Processing MyDataConfigUpdatedEvent from JSON");
+
+        let fields = extract_event_fields(data)?;
+        let config_event: MyDataConfigUpdatedEvent = serde_json::from_value(fields)
+            .map_err(|e| anyhow!("Failed to parse MyDataConfigUpdatedEvent: {}", e))?;
+
+        let mut conn = self.get_connection().await?;
+
+        let new_config = crate::models::mydata::NewMyDataConfig {
+            updated_by: config_event.updated_by.clone(),
+            enable_flag: config_event.enable_flag,
+            max_tags: config_event.max_tags as i64,
+            max_subscription_days: config_event.max_subscription_days as i64,
+            max_free_access_grants: config_event.max_free_access_grants as i64,
+            timestamp_ms: config_event.timestamp as i64,
+            transaction_id: transaction_id.to_string(),
+        };
+
+        diesel::insert_into(mydata_config::table)
+            .values(&new_config)
+            .execute(&mut conn)
+            .await?;
+
+        info!(
+            "Processed MyDataConfigUpdatedEvent successfully: updated_by={}, enable_flag={}, max_tags={}, max_subscription_days={}, max_free_access_grants={}",
+            config_event.updated_by,
+            config_event.enable_flag,
+            config_event.max_tags,
+            config_event.max_subscription_days,
+            config_event.max_free_access_grants
+        );
+
         Ok(())
     }
 }

@@ -606,6 +606,21 @@ table! {
     }
 }
 
+// MyData config table - stores global MyData marketplace configuration (hypertable)
+table! {
+    mydata_config (id, time) {
+        id -> Int4,
+        updated_by -> Varchar,
+        enable_flag -> Bool,
+        max_tags -> Int8,
+        max_subscription_days -> Int8,
+        max_free_access_grants -> Int8,
+        timestamp_ms -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
 // ===========================================================================
 // SOCIAL PROOF TOKEN TABLES
 // ===========================================================================
@@ -1495,6 +1510,7 @@ allow_tables_to_appear_in_same_query!(
     mydata_revenue,
     mydata_access_logs,
     mydata_registry,
+    mydata_config,
     // Social Proof Token tables
     social_proof_token_pools,
     spt_holdings,

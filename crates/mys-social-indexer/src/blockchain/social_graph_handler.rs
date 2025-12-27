@@ -136,39 +136,8 @@ impl SocialGraphEventHandler {
             warn!("Failed to write follow event to outbox: {}", e);
         }
 
-        // Update the follower's following_count (+1)
-        // First try to update by profile_id, then by owner_address if no rows affected
-        let follower_updated = diesel::update(schema::profiles::table)
-            .filter(schema::profiles::profile_id.eq(&event.follower))
-            .set(schema::profiles::following_count.eq(schema::profiles::following_count + 1))
-            .execute(&mut conn)
-            .await?;
-
-        // If no rows were updated by profile_id, try owner_address
-        if follower_updated == 0 {
-            diesel::update(schema::profiles::table)
-                .filter(schema::profiles::owner_address.eq(&event.follower))
-                .set(schema::profiles::following_count.eq(schema::profiles::following_count + 1))
-                .execute(&mut conn)
-                .await?;
-        }
-
-        // Update the followed profile's followers_count (+1)
-        // First try to update by profile_id, then by owner_address if no rows affected
-        let following_updated = diesel::update(schema::profiles::table)
-            .filter(schema::profiles::profile_id.eq(&event.following))
-            .set(schema::profiles::followers_count.eq(schema::profiles::followers_count + 1))
-            .execute(&mut conn)
-            .await?;
-
-        // If no rows were updated by profile_id, try owner_address
-        if following_updated == 0 {
-            diesel::update(schema::profiles::table)
-                .filter(schema::profiles::owner_address.eq(&event.following))
-                .set(schema::profiles::followers_count.eq(schema::profiles::followers_count + 1))
-                .execute(&mut conn)
-                .await?;
-        }
+        // Count updates are now handled automatically by database triggers
+        // when the relationship is inserted into social_graph_relationships
 
         Ok(())
     }
@@ -182,7 +151,8 @@ impl SocialGraphEventHandler {
         let mut conn = self.get_connection().await?;
 
         // Delete the follow relationship
-        let deleted_count = diesel::delete(schema::social_graph_relationships::table)
+        // Count updates are handled automatically by database triggers
+        diesel::delete(schema::social_graph_relationships::table)
             .filter(schema::social_graph_relationships::follower_address.eq(&event.follower))
             .filter(schema::social_graph_relationships::following_address.eq(&event.unfollowed))
             .execute(&mut conn)
@@ -221,55 +191,8 @@ impl SocialGraphEventHandler {
             warn!("Failed to write unfollow event to outbox: {}", e);
         }
 
-        // Update the follower's following_count (-1)
-        // First try to update by profile_id, then by owner_address if no rows affected
-        let follower_updated = diesel::update(schema::profiles::table)
-            .filter(
-                schema::profiles::profile_id
-                    .eq(&event.follower)
-                    .and(schema::profiles::following_count.gt(0)),
-            )
-            .set(schema::profiles::following_count.eq(schema::profiles::following_count - 1))
-            .execute(&mut conn)
-            .await?;
-
-        // If no rows were updated by profile_id, try owner_address
-        if follower_updated == 0 {
-            diesel::update(schema::profiles::table)
-                .filter(
-                    schema::profiles::owner_address
-                        .eq(&event.follower)
-                        .and(schema::profiles::following_count.gt(0)),
-                )
-                .set(schema::profiles::following_count.eq(schema::profiles::following_count - 1))
-                .execute(&mut conn)
-                .await?;
-        }
-
-        // Update the unfollowed profile's followers_count (-1)
-        // First try to update by profile_id, then by owner_address if no rows affected
-        let unfollowed_updated = diesel::update(schema::profiles::table)
-            .filter(
-                schema::profiles::profile_id
-                    .eq(&event.unfollowed)
-                    .and(schema::profiles::followers_count.gt(0)),
-            )
-            .set(schema::profiles::followers_count.eq(schema::profiles::followers_count - 1))
-            .execute(&mut conn)
-            .await?;
-
-        // If no rows were updated by profile_id, try owner_address
-        if unfollowed_updated == 0 {
-            diesel::update(schema::profiles::table)
-                .filter(
-                    schema::profiles::owner_address
-                        .eq(&event.unfollowed)
-                        .and(schema::profiles::followers_count.gt(0)),
-                )
-                .set(schema::profiles::followers_count.eq(schema::profiles::followers_count - 1))
-                .execute(&mut conn)
-                .await?;
-        }
+        // Count updates are now handled automatically by database triggers
+        // when the relationship is deleted from social_graph_relationships
 
         Ok(())
     }

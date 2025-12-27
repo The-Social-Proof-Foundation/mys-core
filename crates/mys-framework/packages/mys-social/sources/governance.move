@@ -2016,7 +2016,7 @@ module social_contracts::governance {
     }
 
     /// Set version of GovernanceDAO
-    public fun set_version(registry: &mut GovernanceDAO, new_version: u64) {
+    public(package) fun set_version(registry: &mut GovernanceDAO, new_version: u64) {
         registry.version = new_version;
     }
 

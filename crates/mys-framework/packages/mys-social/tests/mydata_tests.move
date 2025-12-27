@@ -13,7 +13,7 @@ module social_contracts::mydata_tests {
     use mys::test_utils;
     use mys::object;
     
-    use social_contracts::mydata::{Self, MyData, MyDataRegistry};
+    use social_contracts::mydata::{Self, MyData, MyDataRegistry, MyDataConfig};
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
     
     // Test addresses
@@ -31,10 +31,12 @@ module social_contracts::mydata_tests {
         // Create MyData data
         {
             test_scenario::next_tx(&mut scenario, CREATOR);
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let mut registry = test_scenario::take_shared<MyDataRegistry>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             mydata::create_and_share(
+                &config,
                 &mut registry,
                 string::utf8(b"data"),
                 vector[string::utf8(b"analytics"), string::utf8(b"personal")],
@@ -56,6 +58,7 @@ module social_contracts::mydata_tests {
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(config);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(clock);
         };
@@ -97,17 +100,20 @@ module social_contracts::mydata_tests {
         // BUYER purchases one-time access
         {
             test_scenario::next_tx(&mut scenario, BUYER);
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
             let payment = test_scenario::take_from_sender<Coin<mys::mys::MYS>>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             mydata::purchase_one_time(
+                &config,
                 &mut mydata,
                 payment,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(config);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(clock);
         };
@@ -146,17 +152,20 @@ module social_contracts::mydata_tests {
         // BUYER purchases subscription
         {
             test_scenario::next_tx(&mut scenario, BUYER);
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
             let payment = test_scenario::take_from_sender<Coin<mys::mys::MYS>>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             mydata::purchase_subscription(
+                &config,
                 &mut mydata,
                 payment,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(config);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(clock);
         };
@@ -224,10 +233,12 @@ module social_contracts::mydata_tests {
         // Grant free access to BUYER
         {
             test_scenario::next_tx(&mut scenario, CREATOR);
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
             let mut mydata = test_scenario::take_shared<MyData>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             
             mydata::grant_access(
+                &config,
                 &mut mydata,
                 BUYER,
                 0, // one-time access
@@ -236,6 +247,7 @@ module social_contracts::mydata_tests {
                 test_scenario::ctx(&mut scenario)
             );
             
+            test_scenario::return_shared(config);
             test_scenario::return_shared(mydata);
             test_scenario::return_shared(clock);
         };
@@ -338,10 +350,12 @@ module social_contracts::mydata_tests {
     fun create_test_mydata(scenario: &mut test_scenario::Scenario) {
         test_scenario::next_tx(scenario, CREATOR);
         {
+            let config = test_scenario::take_shared<MyDataConfig>(scenario);
             let mut registry = test_scenario::take_shared<MyDataRegistry>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             
             mydata::create_and_share(
+                &config,
                 &mut registry,
                 string::utf8(b"data"),
                 vector[string::utf8(b"test")],
@@ -363,6 +377,7 @@ module social_contracts::mydata_tests {
                 test_scenario::ctx(scenario)
             );
             
+            test_scenario::return_shared(config);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(clock);
         };

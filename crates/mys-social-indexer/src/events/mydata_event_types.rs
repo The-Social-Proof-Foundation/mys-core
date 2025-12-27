@@ -227,6 +227,18 @@ pub struct MyDataUnregisteredEvent {
     pub unregistered_at: u64,
 }
 
+/// Event emitted when admin updates MyData marketplace configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MyDataConfigUpdatedEvent {
+    pub updated_by: String,
+    pub enable_flag: bool,
+    pub max_tags: u64,
+    pub max_subscription_days: u64,
+    pub max_free_access_grants: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub timestamp: u64,
+}
+
 // ============================================================================
 // ANALYTICS EVENTS
 // ============================================================================
@@ -305,6 +317,7 @@ pub const EVENT_OPERATION_FAILED: &str = "operation_failed";
 pub const EVENT_SYSTEM_MAINTENANCE: &str = "system_maintenance";
 pub const EVENT_MYDATA_REGISTERED: &str = "mydata_registered";
 pub const EVENT_MYDATA_UNREGISTERED: &str = "mydata_unregistered";
+pub const EVENT_MYDATA_CONFIG_UPDATED: &str = "mydata_config_updated";
 
 // Media type constants
 pub const MEDIA_TYPE_TEXT: &str = "text";

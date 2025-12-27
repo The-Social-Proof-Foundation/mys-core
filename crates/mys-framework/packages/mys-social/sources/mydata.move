@@ -27,6 +27,9 @@ module social_contracts::mydata {
     
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
+    // === Default constants for config initialization ===
+    const DEFAULT_ENABLE: bool = true;
+
     // === Error codes ===
     const EUnauthorized: u64 = 1;
     const ENotForSale: u64 = 2;
@@ -38,6 +41,7 @@ module social_contracts::mydata {
     const ESubscriptionExpired: u64 = 8;
     const EOverflow: u64 = 9;
     const EInvalidTimeRange: u64 = 10;
+    const EDisabled: u64 = 11;
 
     // === Constants ===
     const MAX_TAGS: u64 = 10;
@@ -84,6 +88,21 @@ module social_contracts::mydata {
         update_frequency: Option<String>,       // "daily", "weekly", "monthly"
         
         /// Version for future upgrades
+        version: u64,
+    }
+
+    /// Admin capability for MyData system management
+    public struct MyDataAdminCap has key, store {
+        id: UID,
+    }
+
+    /// Global configuration for MyData system
+    public struct MyDataConfig has key {
+        id: UID,
+        enable_flag: bool,
+        max_tags: u64,
+        max_subscription_days: u64,
+        max_free_access_grants: u64,
         version: u64,
     }
 
@@ -134,10 +153,70 @@ module social_contracts::mydata {
         unregistered_at: u64,
     }
 
+    public struct MyDataConfigUpdatedEvent has copy, drop {
+        updated_by: address,
+        enable_flag: bool,
+        max_tags: u64,
+        max_subscription_days: u64,
+        max_free_access_grants: u64,
+        timestamp: u64,
+    }
+
+    // === Admin Functions ===
+
+    /// Create a MyDataAdminCap for bootstrap (package visibility only)
+    public(package) fun create_mydata_admin_cap(ctx: &mut TxContext): MyDataAdminCap {
+        MyDataAdminCap {
+            id: object::new(ctx)
+        }
+    }
+
+    /// Update MyData configuration (admin only)
+    public entry fun update_mydata_config(
+        _: &MyDataAdminCap,
+        config: &mut MyDataConfig,
+        enable_flag: bool,
+        max_tags: u64,
+        max_subscription_days: u64,
+        max_free_access_grants: u64,
+        ctx: &mut TxContext
+    ) {
+        // Validate parameters
+        assert!(max_subscription_days > 0, EInvalidInput);
+        assert!(max_tags > 0, EInvalidInput);
+        assert!(max_free_access_grants > 0, EInvalidInput);
+
+        config.enable_flag = enable_flag;
+        config.max_tags = max_tags;
+        config.max_subscription_days = max_subscription_days;
+        config.max_free_access_grants = max_free_access_grants;
+        
+        // Emit config updated event
+        event::emit(MyDataConfigUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            enable_flag,
+            max_tags,
+            max_subscription_days,
+            max_free_access_grants,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+        });
+    }
+
     // === Core Functions ===
 
-    /// Bootstrap initialization function - creates the MyData registry
+    /// Bootstrap initialization function - creates the MyData registry and config
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
+        // Create and share MyData config
+        transfer::share_object(MyDataConfig {
+            id: object::new(ctx),
+            enable_flag: DEFAULT_ENABLE,
+            max_tags: MAX_TAGS,
+            max_subscription_days: MAX_SUBSCRIPTION_DAYS,
+            max_free_access_grants: MAX_FREE_ACCESS_GRANTS,
+            version: upgrade::current_version(),
+        });
+        
+        // Create and share registry
         let registry = MyDataRegistry {
             id: object::new(ctx),
             ip_to_owner: table::new(ctx),
@@ -149,6 +228,7 @@ module social_contracts::mydata {
 
     /// Create new MyData data with proper MyData encryption
     public fun create(
+        config: &MyDataConfig,
         media_type: String,
         tags: vector<String>,
         platform_id: Option<address>,
@@ -169,7 +249,7 @@ module social_contracts::mydata {
         ctx: &mut TxContext,
     ): MyData {
         // Input validation
-        assert!(vector::length(&tags) <= MAX_TAGS, EInvalidInput);
+        assert!(vector::length(&tags) <= config.max_tags, EInvalidInput);
         
         // Validate prices with overflow protection
         if (option::is_some(&one_time_price)) {
@@ -184,7 +264,7 @@ module social_contracts::mydata {
         
         // Validate subscription duration with overflow protection
         let sub_duration = if (subscription_duration_days == 0) { 30 } else { subscription_duration_days };
-        assert!(sub_duration <= MAX_SUBSCRIPTION_DAYS, EInvalidInput);
+        assert!(sub_duration <= config.max_subscription_days, EInvalidInput);
         
         // Check for potential overflow in millisecond conversion
         let duration_ms = (sub_duration as u128) * (MILLISECONDS_PER_DAY as u128);
@@ -242,6 +322,7 @@ module social_contracts::mydata {
     /// Create and share MyData publicly
     #[allow(lint(share_owned))]
     public entry fun create_and_share(
+        config: &MyDataConfig,
         registry: &mut MyDataRegistry,
         media_type: String,
         tags: vector<String>,
@@ -262,7 +343,10 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert!(config.enable_flag, EDisabled);
+        
         let mydata = create(
+            config,
             media_type,
             tags,
             platform_id,
@@ -292,11 +376,14 @@ module social_contracts::mydata {
 
     /// Purchase one-time access to MyData data
     public entry fun purchase_one_time(
+        config: &MyDataConfig,
         mydata: &mut MyData,
         payment: Coin<MYS>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert!(config.enable_flag, EDisabled);
+        
         // Check version compatibility
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
         
@@ -332,11 +419,14 @@ module social_contracts::mydata {
 
     /// Purchase subscription access to MyData data
     public entry fun purchase_subscription(
+        config: &MyDataConfig,
         mydata: &mut MyData,
         payment: Coin<MYS>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert!(config.enable_flag, EDisabled);
+        
         // Check version compatibility
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
         
@@ -354,7 +444,7 @@ module social_contracts::mydata {
         
         // Validate subscription duration to prevent overflow
         assert!(mydata.subscription_duration_days > 0, EInvalidInput);
-        assert!(mydata.subscription_duration_days <= MAX_SUBSCRIPTION_DAYS, EInvalidInput);
+        assert!(mydata.subscription_duration_days <= config.max_subscription_days, EInvalidInput);
         
         // Calculate subscription expiry safely with overflow protection
         let current_time = clock::timestamp_ms(clock);
@@ -508,6 +598,7 @@ module social_contracts::mydata {
 
     /// Grant free access (owner only) - useful for samples or promotions
     public entry fun grant_access(
+        config: &MyDataConfig,
         mydata: &mut MyData,
         user: address,
         access_type: u8, // 0 = one-time, 1 = subscription
@@ -515,11 +606,17 @@ module social_contracts::mydata {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert!(config.enable_flag, EDisabled);
+        
         // Check version compatibility
         assert!(mydata.version == upgrade::current_version(), EInvalidInput);
         
         assert!(tx_context::sender(ctx) == mydata.owner, EUnauthorized);
         assert!(user != mydata.owner, ESelfPurchase); // Owner doesn't need granted access
+        
+        // Check max free access grants limit
+        let total_grants = table::length(&mydata.purchasers) + table::length(&mydata.subscribers);
+        assert!(total_grants < config.max_free_access_grants, EInvalidInput);
         
         if (access_type == 0) {
             // Grant one-time access
@@ -530,7 +627,7 @@ module social_contracts::mydata {
             // Grant subscription access
             let duration_days = if (option::is_some(&subscription_days)) {
                 let days = *option::borrow(&subscription_days);
-                assert!(days > 0 && days <= MAX_SUBSCRIPTION_DAYS, EInvalidInput);
+                assert!(days > 0 && days <= config.max_subscription_days, EInvalidInput);
                 days
             } else {
                 mydata.subscription_duration_days
@@ -715,7 +812,7 @@ module social_contracts::mydata {
         mydata.version
     }
 
-    public fun borrow_version_mut(mydata: &mut MyData): &mut u64 {
+    public(package) fun borrow_version_mut(mydata: &mut MyData): &mut u64 {
         &mut mydata.version
     }
 
@@ -723,7 +820,7 @@ module social_contracts::mydata {
         registry.version
     }
 
-    public fun borrow_registry_version_mut(registry: &mut MyDataRegistry): &mut u64 {
+    public(package) fun borrow_registry_version_mut(registry: &mut MyDataRegistry): &mut u64 {
         &mut registry.version
     }
 
@@ -773,6 +870,17 @@ module social_contracts::mydata {
 
     #[test_only]
     public fun test_init(ctx: &mut TxContext) {
+        // Create and share MyData config
+        transfer::share_object(MyDataConfig {
+            id: object::new(ctx),
+            enable_flag: DEFAULT_ENABLE,
+            max_tags: MAX_TAGS,
+            max_subscription_days: MAX_SUBSCRIPTION_DAYS,
+            max_free_access_grants: MAX_FREE_ACCESS_GRANTS,
+            version: upgrade::current_version(),
+        });
+        
+        // Create and share registry
         let registry = MyDataRegistry {
             id: object::new(ctx),
             ip_to_owner: table::new(ctx),

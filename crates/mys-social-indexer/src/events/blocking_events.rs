@@ -270,6 +270,105 @@ pub async fn process_profile_block_event(
                 .await;
             }
 
+            // Remove follow relationships in BOTH directions when blocking
+            // This ensures blocking automatically unfollows in both directions:
+            // 1. Blocker unfollows blocked user (if following)
+            // 2. Blocked user unfollows blocker (if following)
+            
+            // Remove blocker -> blocked relationship
+            let blocker_to_blocked_deleted = diesel::delete(crate::schema::social_graph_relationships::table)
+                .filter(crate::schema::social_graph_relationships::follower_address.eq(&block_event.blocker))
+                .filter(crate::schema::social_graph_relationships::following_address.eq(&block_event.blocked))
+                .execute(conn)
+                .await;
+
+            match blocker_to_blocked_deleted {
+                Ok(deleted_count) => {
+                    if deleted_count > 0 {
+                        info!(
+                            "Removed follow relationship due to block: {} -> {}",
+                            block_event.blocker, block_event.blocked
+                        );
+
+                        // Log the unfollow event for audit trail
+                        let unfollow_event = crate::models::social_graph::NewSocialGraphEvent {
+                            event_type: "unfollow_blocked".to_string(),
+                            follower_address: block_event.blocker.clone(),
+                            following_address: block_event.blocked.clone(),
+                            created_at: now,
+                            event_id: None,
+                            raw_event_data: Some(serde_json::json!({
+                                "reason": "blocked",
+                                "direction": "blocker_to_blocked",
+                                "blocker": block_event.blocker,
+                                "blocked": block_event.blocked,
+                            })),
+                        };
+
+                        if let Err(e) = diesel::insert_into(crate::schema::social_graph_events::table)
+                            .values(&unfollow_event)
+                            .execute(conn)
+                            .await
+                        {
+                            warn!("Failed to log unfollow_blocked event: {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!(
+                        "Failed to remove follow relationship when blocking {} -> {}: {}",
+                        block_event.blocker, block_event.blocked, e
+                    );
+                }
+            }
+
+            // Remove blocked -> blocker relationship (reverse direction)
+            let blocked_to_blocker_deleted = diesel::delete(crate::schema::social_graph_relationships::table)
+                .filter(crate::schema::social_graph_relationships::follower_address.eq(&block_event.blocked))
+                .filter(crate::schema::social_graph_relationships::following_address.eq(&block_event.blocker))
+                .execute(conn)
+                .await;
+
+            match blocked_to_blocker_deleted {
+                Ok(deleted_count) => {
+                    if deleted_count > 0 {
+                        info!(
+                            "Removed reverse follow relationship due to block: {} -> {}",
+                            block_event.blocked, block_event.blocker
+                        );
+
+                        // Log the unfollow event for audit trail
+                        let unfollow_event = crate::models::social_graph::NewSocialGraphEvent {
+                            event_type: "unfollow_blocked".to_string(),
+                            follower_address: block_event.blocked.clone(),
+                            following_address: block_event.blocker.clone(),
+                            created_at: now,
+                            event_id: None,
+                            raw_event_data: Some(serde_json::json!({
+                                "reason": "blocked",
+                                "direction": "blocked_to_blocker",
+                                "blocker": block_event.blocker,
+                                "blocked": block_event.blocked,
+                            })),
+                        };
+
+                        if let Err(e) = diesel::insert_into(crate::schema::social_graph_events::table)
+                            .values(&unfollow_event)
+                            .execute(conn)
+                            .await
+                        {
+                            warn!("Failed to log unfollow_blocked event (reverse): {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!(
+                        "Failed to remove reverse follow relationship when blocking {} -> {}: {}",
+                        block_event.blocked, block_event.blocker, e
+                    );
+                }
+            }
+
             // Create a profile_events entry to track in user history
             let block_timestamp = chrono::Utc::now().timestamp() as u64;
 

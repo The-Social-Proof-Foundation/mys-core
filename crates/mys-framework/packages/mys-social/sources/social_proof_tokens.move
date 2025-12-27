@@ -1675,7 +1675,7 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Clear PoC redirection data from a token pool (called by PoC system)
-    public fun clear_poc_redirection(pool: &mut TokenPool) {
+    public(package) fun clear_poc_redirection(pool: &mut TokenPool) {
         pool.poc_redirect_to = option::none();
         pool.poc_redirect_percentage = option::none();
     }
@@ -1794,7 +1794,7 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Get a mutable reference to the registry version (for upgrade module)
-    public fun borrow_registry_version_mut(registry: &mut TokenRegistry): &mut u64 {
+    public(package) fun borrow_registry_version_mut(registry: &mut TokenRegistry): &mut u64 {
         &mut registry.version
     }
 
@@ -1804,7 +1804,7 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Get a mutable reference to the pool version (for upgrade module)
-    public fun borrow_pool_version_mut(pool: &mut TokenPool): &mut u64 {
+    public(package) fun borrow_pool_version_mut(pool: &mut TokenPool): &mut u64 {
         &mut pool.version
     }
 
@@ -1814,7 +1814,7 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Get a mutable reference to the reservation pool version (for upgrade module)
-    public fun borrow_reservation_pool_version_mut(pool: &mut ReservationPoolObject): &mut u64 {
+    public(package) fun borrow_reservation_pool_version_mut(pool: &mut ReservationPoolObject): &mut u64 {
         &mut pool.version
     }
 

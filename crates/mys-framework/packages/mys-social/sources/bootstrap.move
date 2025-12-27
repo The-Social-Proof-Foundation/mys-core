@@ -19,6 +19,7 @@ module social_contracts::bootstrap {
     use social_contracts::proof_of_creativity::{Self, PoCAdminCap};
     use social_contracts::platform::{Self, PlatformAdminCap};
     use social_contracts::governance::{Self, GovernanceAdminCap};
+    use social_contracts::mydata::{Self, MyDataAdminCap};
     
     // Import framework coin module for coin creation admin cap
     use mys::coin::{Self, CoinCreationAdminCap};
@@ -51,6 +52,7 @@ module social_contracts::bootstrap {
         transfer::public_transfer(proof_of_creativity::create_poc_admin_cap(ctx), admin);
         transfer::public_transfer(platform::create_platform_admin_cap(ctx), admin);
         transfer::public_transfer(governance::create_governance_admin_cap(ctx), admin);
+        transfer::public_transfer(mydata::create_mydata_admin_cap(ctx), admin);
         transfer::public_transfer(coin::create_coin_creation_admin_cap(bootstrap_key, ctx), admin);
 
         // Seal the bootstrap key permanently (prevents any future bootstrap attempts)

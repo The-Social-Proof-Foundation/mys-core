@@ -530,7 +530,7 @@ module social_contracts::platform {
     }
 
     /// Get a mutable reference to the platform version (only for upgrade module)
-    public fun borrow_platform_version_mut(platform: &mut Platform): &mut u64 {
+    public(package) fun borrow_platform_version_mut(platform: &mut Platform): &mut u64 {
         &mut platform.version
     }
 
@@ -540,7 +540,7 @@ module social_contracts::platform {
     }
 
     /// Get a mutable reference to the registry version (only for upgrade module)
-    public fun borrow_registry_version_mut(registry: &mut PlatformRegistry): &mut u64 {
+    public(package) fun borrow_registry_version_mut(registry: &mut PlatformRegistry): &mut u64 {
         &mut registry.version
     }
 
@@ -1193,10 +1193,10 @@ module social_contracts::platform {
     }
 
     /// When adding a moderator to a platform, register them with the profile module
-    public fun add_moderator_register(
+    public(package) fun add_moderator_register(
         platform: &mut Platform,
         moderator_address: address,
-        ctx: &mut TxContext
+        ctx: &TxContext
     ) {
         // Verify caller is platform developer
         let caller = tx_context::sender(ctx);
@@ -1220,10 +1220,10 @@ module social_contracts::platform {
     }
     
     /// When removing a moderator from a platform
-    public fun remove_moderator_unregister(
+    public(package) fun remove_moderator_unregister(
         platform: &mut Platform,
         moderator_address: address,
-        ctx: &mut TxContext
+        ctx: &TxContext
     ) {
         // Verify caller is platform developer
         let caller = tx_context::sender(ctx);

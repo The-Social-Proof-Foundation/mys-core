@@ -845,7 +845,7 @@ module social_contracts::profile {
     }
 
     /// Add tips received (called by post/comment module when tipping)
-    public fun add_tips_received(profile: &mut Profile, amount: u64): u64 {
+    public(package) fun add_tips_received(profile: &mut Profile, amount: u64): u64 {
         assert!(profile.tips_received <= MAX_U64 - amount, EOverflow);
         profile.tips_received = profile.tips_received + amount;
         profile.tips_received
@@ -1136,7 +1136,7 @@ module social_contracts::profile {
     }
 
     // Mutable accessor for version field (only for upgrade module)
-    public fun borrow_version_mut(registry: &mut UsernameRegistry): &mut u64 {
+    public(package) fun borrow_version_mut(registry: &mut UsernameRegistry): &mut u64 {
         &mut registry.version
     }
 
@@ -1248,7 +1248,7 @@ module social_contracts::profile {
 
     /// Adds a badge to a profile - called by platform module
     /// This function trusts the caller has done authorization checks
-    public fun add_badge_to_profile(
+    public(package) fun add_badge_to_profile(
         profile: &mut Profile,
         badge_id: String,
         badge_name: String,
@@ -1304,7 +1304,7 @@ module social_contracts::profile {
     
     /// Removes a badge from a profile - called by platform module
     /// This function trusts the caller has done authorization checks
-    public fun remove_badge_from_profile(
+    public(package) fun remove_badge_from_profile(
         profile: &mut Profile,
         badge_id: &String,
         platform_id: address,

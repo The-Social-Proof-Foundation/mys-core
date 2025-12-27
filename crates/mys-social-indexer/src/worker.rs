@@ -646,38 +646,8 @@ impl SocialIndexerWorker {
             .execute(&mut conn)
             .await?;
             
-        // Update follower and following counts with safe sequential logic
-        // Update the follower's following_count (+1)
-        let follower_updated = diesel::update(schema::profiles::table)
-            .filter(schema::profiles::profile_id.eq(&event.follower_id))
-            .set(schema::profiles::following_count.eq(schema::profiles::following_count + 1))
-            .execute(&mut conn)
-            .await?;
-            
-        // If no rows were updated by profile_id, try owner_address
-        if follower_updated == 0 {
-            diesel::update(schema::profiles::table)
-                .filter(schema::profiles::owner_address.eq(&event.follower_id))
-                .set(schema::profiles::following_count.eq(schema::profiles::following_count + 1))
-                .execute(&mut conn)
-                .await?;
-        }
-            
-        // Update the followed profile's followers_count (+1)
-        let following_updated = diesel::update(schema::profiles::table)
-            .filter(schema::profiles::profile_id.eq(&event.following_id))
-            .set(schema::profiles::followers_count.eq(schema::profiles::followers_count + 1))
-            .execute(&mut conn)
-            .await?;
-            
-        // If no rows were updated by profile_id, try owner_address
-        if following_updated == 0 {
-            diesel::update(schema::profiles::table)
-                .filter(schema::profiles::owner_address.eq(&event.following_id))
-                .set(schema::profiles::followers_count.eq(schema::profiles::followers_count + 1))
-                .execute(&mut conn)
-                .await?;
-        }
+        // Count updates are now handled automatically by database triggers
+        // when the relationship is inserted into social_graph_relationships
             
         info!("Processed profile follow: {} -> {}", event.follower_id, event.following_id);
         Ok(())

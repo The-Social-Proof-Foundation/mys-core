@@ -18,6 +18,8 @@ module social_contracts::block_list {
     use std::{string, option, vector};
     
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
+    use social_contracts::social_graph;
+    use social_contracts::profile;
     
     /// Error codes
     const EAlreadyBlocked: u64 = 1;
@@ -69,7 +71,7 @@ module social_contracts::block_list {
     }
 
     /// Create a new block list
-    public fun create_block_list(owner: address, ctx: &mut TxContext): BlockList {
+    fun create_block_list(owner: address, ctx: &mut TxContext): BlockList {
         BlockList {
             id: object::new(ctx),
             owner,
@@ -138,8 +140,11 @@ module social_contracts::block_list {
     
     /// Block a wallet address
     /// Uses the caller's wallet address as the blocker
+    /// Automatically unfollows in both directions if users are following each other
     public entry fun block_wallet(
         registry: &mut BlockListRegistry,
+        social_graph: &mut social_graph::SocialGraph,
+        username_registry: &profile::UsernameRegistry,
         blocked_wallet_address: address,
         ctx: &mut TxContext
     ) {
@@ -204,7 +209,25 @@ module social_contracts::block_list {
             
             // Return the block list to the caller
             transfer::transfer(block_list, sender);
-        }
+        };
+        
+        // Perform bidirectional unfollow after blocking succeeds
+        // Look up profile IDs for both users
+        let blocker_profile_opt = profile::lookup_profile_by_owner(username_registry, sender);
+        let blocked_profile_opt = profile::lookup_profile_by_owner(username_registry, blocked_wallet_address);
+        
+        // If both profiles exist, attempt bidirectional unfollow
+        if (option::is_some(&blocker_profile_opt) && option::is_some(&blocked_profile_opt)) {
+            let blocker_profile_id = *option::borrow(&blocker_profile_opt);
+            let blocked_profile_id = *option::borrow(&blocked_profile_opt);
+            
+            // Blocker unfollows blocked (if following)
+            social_graph::unfollow_internal(social_graph, blocker_profile_id, blocked_profile_id);
+            
+            // Blocked unfollows blocker (if following)
+            social_graph::unfollow_internal(social_graph, blocked_profile_id, blocker_profile_id);
+        };
+        // Continue - blocking succeeds regardless of unfollow results
     }
 
     /// Unblock a wallet address
@@ -335,7 +358,7 @@ module social_contracts::block_list {
     }
 
     /// Get a mutable reference to the block list version (for upgrade module)
-    public fun borrow_version_mut(block_list: &mut BlockList): &mut u64 {
+    public(package) fun borrow_version_mut(block_list: &mut BlockList): &mut u64 {
         &mut block_list.version
     }
 
@@ -345,7 +368,7 @@ module social_contracts::block_list {
     }
 
     /// Get a mutable reference to the registry version (for upgrade module)
-    public fun borrow_registry_version_mut(registry: &mut BlockListRegistry): &mut u64 {
+    public(package) fun borrow_registry_version_mut(registry: &mut BlockListRegistry): &mut u64 {
         &mut registry.version
     }
 

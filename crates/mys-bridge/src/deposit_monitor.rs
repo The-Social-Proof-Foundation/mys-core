@@ -234,55 +234,43 @@ impl EvmDepositMonitor {
 }
 
 /// Monitors MySocial chain for deposits to our generated deposit addresses
-pub struct MysDepositMonitor<C> {
-    /// MySocial client for querying coin transfers
-    /// Will be used when coin transfer monitoring is fully implemented
-    #[allow(dead_code)]
-    mys_client: Arc<crate::mys_client::MysClient<C>>,
+pub struct MysDepositMonitor {
+    mys_client: Arc<crate::mys_client::MysBridgeClient>,
     storage: Arc<BridgeOrchestratorTables>,
     poll_interval: Duration,
+    /// Channel to send detected deposit events for processing
+    deposit_tx: tokio::sync::mpsc::UnboundedSender<MysDepositEvent>,
 }
 
-impl<C> MysDepositMonitor<C>
-where
-    C: crate::mys_client::MysClientInner + 'static,
-{
+impl MysDepositMonitor {
     pub fn new(
-        mys_client: Arc<crate::mys_client::MysClient<C>>,
+        mys_client: Arc<crate::mys_client::MysBridgeClient>,
         storage: Arc<BridgeOrchestratorTables>,
         poll_interval_secs: u64,
+        deposit_tx: tokio::sync::mpsc::UnboundedSender<MysDepositEvent>,
     ) -> Self {
         Self {
             mys_client,
             storage,
             poll_interval: Duration::from_secs(poll_interval_secs),
+            deposit_tx,
         }
     }
 
-    /// Run the deposit monitor
-    pub async fn run(
-        self,
-        mut shutdown_rx: tokio::sync::watch::Receiver<bool>,
-    ) -> BridgeResult<()> {
+    /// Run the deposit monitor (follows BridgeWatchdog pattern)
+    pub async fn run(self) -> BridgeResult<()> {
         info!("Starting MySocial deposit monitor");
 
+        let mut interval = tokio::time::interval(self.poll_interval);
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
         loop {
-            tokio::select! {
-                _ = shutdown_rx.changed() => {
-                    if *shutdown_rx.borrow() {
-                        info!("MySocial deposit monitor shutting down");
-                        break;
-                    }
-                }
-                _ = tokio::time::sleep(self.poll_interval) => {
-                    if let Err(e) = self.check_for_deposits().await {
-                        error!(?e, "Error checking for MySocial deposits");
-                    }
-                }
+            interval.tick().await;
+            
+            if let Err(e) = self.check_for_deposits().await {
+                error!(?e, "Error checking for MySocial deposits");
             }
         }
-
-        Ok(())
     }
 
     async fn check_for_deposits(&self) -> BridgeResult<()> {
@@ -309,15 +297,90 @@ where
     }
 
     async fn check_address_for_coins(&self, address: MysAddress) -> BridgeResult<()> {
-        // Query coins at this address
-        // This is a simplified version - production would use event filtering
-        // For now, we'll check coin balances
+        // Query transactions sent to this deposit address
+        // We'll check recent transactions and look for coin transfers
+        
+        let mys_sdk_client = self.mys_client.mys_client();
+        
+        // Query transactions for this address (as recipient)
+        // Use ToAddress filter to find transactions where this address received coins
+        let mut options = mys_json_rpc_types::MysTransactionBlockResponseOptions::full_content();
+        options.show_balance_changes = true; // Need balance changes to detect deposits
+        
+        let transactions = mys_sdk_client
+            .read_api()
+            .query_transaction_blocks(
+                mys_json_rpc_types::MysTransactionBlockResponseQuery {
+                    filter: Some(mys_json_rpc_types::TransactionFilter::ToAddress(address)),
+                    options: Some(options),
+                },
+                None, // cursor
+                Some(50), // limit - check last 50 transactions
+                false, // descending_order
+            )
+            .await
+            .map_err(|e| BridgeError::Generic(format!("Failed to query transactions: {:?}", e)))?;
 
-        // TODO: In production, use event subscriptions instead of polling balances
-        // Query for coin objects owned by deposit address
-        // When found, trigger auto-bridge
+        for tx_block in transactions.data {
+            let tx_digest = tx_block.digest;
+            
+            // Check if we've already processed this transaction
+            let deposit_key = crate::storage::DepositTxKey::from_mys(tx_digest, 2);
+            if self.storage.is_deposit_processed(&deposit_key)? {
+                continue; // Already processed
+            }
 
-        info!(?address, "Checked MySocial address for deposits");
+            // Parse transaction to find coin transfers to our deposit address
+            if let Some(balance_changes) = &tx_block.balance_changes {
+                for balance_change in balance_changes {
+                    // Check if this is a positive balance change (coin received) for our address
+                    let is_our_address = matches!(&balance_change.owner, mys_types::object::Owner::AddressOwner(addr) if *addr == address);
+                    
+                    if is_our_address && balance_change.amount > 0 {
+                        // Extract coin type from balance change
+                        let coin_type = balance_change.coin_type.clone();
+                        
+                        // Get sender from transaction
+                        let sender = tx_block.transaction
+                            .as_ref()
+                            .map(|tx| tx.data.sender())
+                            .copied()
+                            .ok_or_else(|| BridgeError::Generic("Transaction missing sender".to_string()))?;
+
+                        // Convert i128 amount to u64 (should be safe for positive values)
+                        let amount_u64 = balance_change.amount
+                            .try_into()
+                            .map_err(|_| BridgeError::Generic(format!("Amount {} too large for u64", balance_change.amount)))?;
+
+                        let event = MysDepositEvent {
+                            tx_digest,
+                            sender: MysAddress::from_bytes(sender.as_ref())
+                                .map_err(|e| BridgeError::Generic(format!("Invalid sender address: {:?}", e)))?,
+                            recipient: address,
+                            coin_type: coin_type.to_string(),
+                            amount: amount_u64,
+                            timestamp: tx_block.timestamp_ms.unwrap_or(0),
+                        };
+
+                        info!(
+                            tx_digest = ?event.tx_digest,
+                            recipient = ?event.recipient,
+                            amount = event.amount,
+                            coin_type = event.coin_type,
+                            "Detected MySocial deposit, sending for processing"
+                        );
+
+                        // Send to auto-bridge handler via channel
+                        self.deposit_tx.send(event).map_err(|e| {
+                            BridgeError::Generic(format!("Failed to send deposit event: {:?}", e))
+                        })?;
+
+                        // Only process one deposit per transaction
+                        break;
+                    }
+                }
+            }
+        }
 
         Ok(())
     }

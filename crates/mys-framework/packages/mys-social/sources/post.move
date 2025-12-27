@@ -3105,7 +3105,7 @@ module social_contracts::post {
     }
 
     /// Get a mutable reference to the post version (for upgrade module)
-    public fun borrow_version_mut(post: &mut Post): &mut u64 {
+    public(package) fun borrow_version_mut(post: &mut Post): &mut u64 {
         &mut post.version
     }
 
@@ -3115,7 +3115,7 @@ module social_contracts::post {
     }
 
     /// Get a mutable reference to the comment version (for upgrade module)
-    public fun borrow_comment_version_mut(comment: &mut Comment): &mut u64 {
+    public(package) fun borrow_comment_version_mut(comment: &mut Comment): &mut u64 {
         &mut comment.version
     }
 
@@ -3125,7 +3125,7 @@ module social_contracts::post {
     }
 
     /// Get a mutable reference to the repost version (for upgrade module)
-    public fun borrow_repost_version_mut(repost: &mut Repost): &mut u64 {
+    public(package) fun borrow_repost_version_mut(repost: &mut Repost): &mut u64 {
         &mut repost.version
     }
 

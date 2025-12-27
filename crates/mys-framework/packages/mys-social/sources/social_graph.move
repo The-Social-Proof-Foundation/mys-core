@@ -160,6 +160,48 @@ module social_contracts::social_graph {
         });
     }
 
+    /// Internal unfollow function that accepts explicit profile IDs
+    /// Used for bidirectional unfollow during blocking operations
+    /// Returns true if unfollow occurred, false if not following
+    public(package) fun unfollow_internal(
+        social_graph: &mut SocialGraph,
+        follower_profile_id: address,
+        following_profile_id: address
+    ): bool {
+        // Check if following relationship exists
+        if (!is_following(social_graph, follower_profile_id, following_profile_id)) {
+            return false  // Not following, nothing to do
+        };
+        
+        // Check if following sets exist (defensive)
+        if (!table::contains(&social_graph.following, follower_profile_id)) {
+            return false
+        };
+        if (!table::contains(&social_graph.followers, following_profile_id)) {
+            return false
+        };
+        
+        // Get mutable references to the sets
+        let follower_following = table::borrow_mut(&mut social_graph.following, follower_profile_id);
+        let following_followers = table::borrow_mut(&mut social_graph.followers, following_profile_id);
+        
+        // Remove if present (defensive check)
+        if (vec_set::contains(follower_following, &following_profile_id)) {
+            vec_set::remove(follower_following, &following_profile_id);
+            vec_set::remove(following_followers, &follower_profile_id);
+            
+            // Emit unfollow event
+            event::emit(UnfollowEvent {
+                follower: follower_profile_id,
+                unfollowed: following_profile_id,
+            });
+            
+            return true
+        };
+        
+        false
+    }
+
     /// Migrate the social graph to a new version
     /// Only callable by the admin with the AdminCap
     public entry fun migrate_social_graph(
@@ -189,7 +231,7 @@ module social_contracts::social_graph {
     }
 
     /// Get a mutable reference to the version field (for upgrade module)
-    public fun borrow_version_mut(social_graph: &mut SocialGraph): &mut u64 {
+    public(package) fun borrow_version_mut(social_graph: &mut SocialGraph): &mut u64 {
         &mut social_graph.version
     }
 
