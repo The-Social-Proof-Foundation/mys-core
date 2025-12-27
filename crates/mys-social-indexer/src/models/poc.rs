@@ -259,6 +259,10 @@ pub struct PocConfiguration {
     pub max_vote_stake: i64,
     #[diesel(sql_type = Int8)]
     pub voting_duration_epochs: i64,
+    #[diesel(sql_type = Int8)]
+    pub max_reasoning_length: i64,
+    #[diesel(sql_type = Int8)]
+    pub max_evidence_urls: i64,
     #[diesel(sql_type = Varchar)]
     pub updated_by: String,
     #[diesel(sql_type = Int8)]
@@ -282,6 +286,8 @@ pub struct NewPocConfiguration {
     pub min_vote_stake: i64,
     pub max_vote_stake: i64,
     pub voting_duration_epochs: i64,
+    pub max_reasoning_length: i64,
+    pub max_evidence_urls: i64,
     pub updated_by: String,
     pub updated_at: i64,
     pub transaction_id: String,
@@ -671,6 +677,8 @@ mod tests {
             min_vote_stake: 50,
             max_vote_stake: 1000,
             voting_duration_epochs: 7, // 1 week
+            max_reasoning_length: 5000,
+            max_evidence_urls: 10,
             updated_by: "test_admin_001".to_string(),
             updated_at: Utc::now().timestamp(),
             time: Utc::now(),

@@ -13,7 +13,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::db::DbPool;
 use crate::models::Profile;
-use crate::schema::profiles;
+use crate::models::profile_extras::ProfileBadge;
+use crate::schema::{profiles, profile_badges};
 
 #[derive(Debug, Deserialize)]
 pub struct ProfileQuery {
@@ -325,4 +326,324 @@ fn validate_username(username: &str) -> Option<String> {
     }
 
     None
+}
+
+// ===========================================================================
+// PROFILE BADGE HANDLERS
+// ===========================================================================
+
+/// Query parameters for fetching profile badges
+#[derive(Debug, Deserialize)]
+pub struct ProfileBadgeQuery {
+    /// Limit for number of badges to return
+    #[serde(default = "default_badge_limit")]
+    pub limit: i64,
+
+    /// Offset for pagination
+    #[serde(default)]
+    pub offset: i64,
+
+    /// Filter by platform ID
+    pub platform_id: Option<String>,
+
+    /// Filter by revoked status
+    pub revoked: Option<bool>,
+
+    /// Filter by badge type/tier
+    pub badge_type: Option<i16>,
+}
+
+fn default_badge_limit() -> i64 {
+    20
+}
+
+/// Get all badges for a specific profile
+pub async fn get_profile_badges(
+    Path(profile_id): Path<String>,
+    Query(query): Query<ProfileBadgeQuery>,
+    State(db_pool): State<DbPool>,
+) -> impl IntoResponse {
+    let mut conn = match db_pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database connection error: {}", e)
+                })),
+            )
+        }
+    };
+
+    let limit = query.limit.min(100);
+    let offset = query.offset;
+
+    // Build the query with filters
+    let mut query_builder = profile_badges::table
+        .filter(profile_badges::profile_id.eq(&profile_id))
+        .into_boxed();
+
+    // Apply optional filters
+    if let Some(platform_id) = &query.platform_id {
+        query_builder = query_builder.filter(profile_badges::platform_id.eq(platform_id));
+    }
+
+    if let Some(revoked) = query.revoked {
+        query_builder = query_builder.filter(profile_badges::revoked.eq(revoked));
+    }
+
+    if let Some(badge_type) = query.badge_type {
+        query_builder = query_builder.filter(profile_badges::badge_type.eq(badge_type));
+    }
+
+    // Build count query separately (can't clone BoxedSelectStatement)
+    let mut count_query = profile_badges::table
+        .filter(profile_badges::profile_id.eq(&profile_id))
+        .into_boxed();
+
+    if let Some(platform_id) = &query.platform_id {
+        count_query = count_query.filter(profile_badges::platform_id.eq(platform_id));
+    }
+
+    if let Some(revoked) = query.revoked {
+        count_query = count_query.filter(profile_badges::revoked.eq(revoked));
+    }
+
+    if let Some(badge_type) = query.badge_type {
+        count_query = count_query.filter(profile_badges::badge_type.eq(badge_type));
+    }
+
+    // Get total count for pagination
+    let total_count = match count_query
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+    {
+        Ok(count) => count,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Failed to get badge count: {}", e)
+                })),
+            )
+        }
+    };
+
+    // Get the badges
+    let badges_result = query_builder
+        .order_by(profile_badges::assigned_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .load::<ProfileBadge>(&mut conn)
+        .await;
+
+    match badges_result {
+        Ok(badges) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "badges": badges,
+                "pagination": {
+                    "total": total_count,
+                    "limit": limit,
+                    "offset": offset
+                }
+            })),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "error": format!("Failed to fetch badges: {}", e)
+            })),
+        ),
+    }
+}
+
+/// Query parameters for getting a badge by ID
+#[derive(Debug, Deserialize)]
+pub struct BadgeByIdQuery {
+    /// Profile ID (required to uniquely identify the badge)
+    pub profile_id: Option<String>,
+}
+
+/// Get a specific badge by badge_id
+pub async fn get_profile_badge_by_id(
+    Path(badge_id): Path<String>,
+    Query(query): Query<BadgeByIdQuery>,
+    State(db_pool): State<DbPool>,
+) -> impl IntoResponse {
+    let profile_id = match query.profile_id {
+        Some(id) => id,
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "profile_id query parameter is required"
+                })),
+            )
+        }
+    };
+
+    let mut conn = match db_pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database connection error: {}", e)
+                })),
+            )
+        }
+    };
+
+    let badge_result = profile_badges::table
+        .filter(profile_badges::badge_id.eq(&badge_id))
+        .filter(profile_badges::profile_id.eq(&profile_id))
+        .first::<ProfileBadge>(&mut conn)
+        .await;
+
+    match badge_result {
+        Ok(badge) => (StatusCode::OK, Json(serde_json::to_value(badge).unwrap_or_default())),
+        Err(diesel::result::Error::NotFound) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Badge not found"
+            })),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "error": format!("Failed to fetch badge: {}", e)
+            })),
+        ),
+    }
+}
+
+/// Query parameters for listing all badges across profiles
+#[derive(Debug, Deserialize)]
+pub struct BadgesQuery {
+    /// Limit for number of badges to return
+    #[serde(default = "default_badge_limit")]
+    pub limit: i64,
+
+    /// Offset for pagination
+    #[serde(default)]
+    pub offset: i64,
+
+    /// Filter by profile ID
+    pub profile_id: Option<String>,
+
+    /// Filter by platform ID
+    pub platform_id: Option<String>,
+
+    /// Filter by revoked status
+    pub revoked: Option<bool>,
+
+    /// Filter by badge type/tier
+    pub badge_type: Option<i16>,
+}
+
+/// List all badges across all profiles with optional filtering
+pub async fn get_badges(
+    Query(query): Query<BadgesQuery>,
+    State(db_pool): State<DbPool>,
+) -> impl IntoResponse {
+    let mut conn = match db_pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database connection error: {}", e)
+                })),
+            )
+        }
+    };
+
+    let limit = query.limit.min(100);
+    let offset = query.offset;
+
+    // Build the query with filters
+    let mut query_builder = profile_badges::table.into_boxed();
+
+    // Apply optional filters
+    if let Some(profile_id) = &query.profile_id {
+        query_builder = query_builder.filter(profile_badges::profile_id.eq(profile_id));
+    }
+
+    if let Some(platform_id) = &query.platform_id {
+        query_builder = query_builder.filter(profile_badges::platform_id.eq(platform_id));
+    }
+
+    if let Some(revoked) = query.revoked {
+        query_builder = query_builder.filter(profile_badges::revoked.eq(revoked));
+    }
+
+    if let Some(badge_type) = query.badge_type {
+        query_builder = query_builder.filter(profile_badges::badge_type.eq(badge_type));
+    }
+
+    // Build count query separately (can't clone BoxedSelectStatement)
+    let mut count_query = profile_badges::table.into_boxed();
+
+    if let Some(profile_id) = &query.profile_id {
+        count_query = count_query.filter(profile_badges::profile_id.eq(profile_id));
+    }
+
+    if let Some(platform_id) = &query.platform_id {
+        count_query = count_query.filter(profile_badges::platform_id.eq(platform_id));
+    }
+
+    if let Some(revoked) = query.revoked {
+        count_query = count_query.filter(profile_badges::revoked.eq(revoked));
+    }
+
+    if let Some(badge_type) = query.badge_type {
+        count_query = count_query.filter(profile_badges::badge_type.eq(badge_type));
+    }
+
+    // Get total count for pagination
+    let total_count = match count_query
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+    {
+        Ok(count) => count,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Failed to get badge count: {}", e)
+                })),
+            )
+        }
+    };
+
+    // Get the badges
+    let badges_result = query_builder
+        .order_by(profile_badges::assigned_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .load::<ProfileBadge>(&mut conn)
+        .await;
+
+    match badges_result {
+        Ok(badges) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "badges": badges,
+                "pagination": {
+                    "total": total_count,
+                    "limit": limit,
+                    "offset": offset
+                }
+            })),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "error": format!("Failed to fetch badges: {}", e)
+            })),
+        ),
+    }
 }

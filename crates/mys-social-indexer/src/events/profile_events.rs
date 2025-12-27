@@ -674,6 +674,18 @@ pub struct BadgeAssignedEvent {
     #[serde(rename = "name", default)]
     pub name: String,
 
+    /// Badge description (optional, may not be in older events)
+    #[serde(rename = "description", default)]
+    pub description: Option<String>,
+
+    /// Media URL for the badge (optional, may not be in older events)
+    #[serde(rename = "media_url", default)]
+    pub media_url: Option<String>,
+
+    /// Icon URL for the badge (optional, may not be in older events)
+    #[serde(rename = "icon_url", default)]
+    pub icon_url: Option<String>,
+
     /// Platform ID that issued the badge
     #[serde(rename = "platform_id", default)]
     pub platform_id: String,

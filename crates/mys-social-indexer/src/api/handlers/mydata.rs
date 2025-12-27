@@ -842,3 +842,61 @@ pub async fn get_popular_mydata(
             .into_response(),
     }
 }
+
+/// Get current MyData marketplace configuration
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct MyDataConfigInfo {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = Bool)]
+    pub enable_flag: bool,
+    #[diesel(sql_type = BigInt)]
+    pub max_tags: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_subscription_days: i64,
+    #[diesel(sql_type = BigInt)]
+    pub max_free_access_grants: i64,
+    #[diesel(sql_type = BigInt)]
+    pub timestamp_ms: i64,
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+pub async fn get_mydata_configuration(State(pool): State<DbPool>) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    let query = "
+        SELECT updated_by, enable_flag, max_tags, max_subscription_days, 
+               max_free_access_grants, timestamp_ms, time, transaction_id
+        FROM mydata_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .get_result::<MyDataConfigInfo>(&mut conn)
+        .await;
+
+    match result {
+        Ok(config) => Json(config).into_response(),
+        Err(diesel::result::Error::NotFound) => {
+            (StatusCode::NOT_FOUND, "MyData configuration not found").into_response()
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}

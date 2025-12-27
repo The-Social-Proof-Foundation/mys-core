@@ -93,6 +93,10 @@ module social_contracts::proof_of_creativity {
         max_vote_stake: u64,
         /// Voting duration in epochs
         voting_duration_epochs: u64,
+        /// Maximum length for reasoning text
+        max_reasoning_length: u64,
+        /// Maximum number of evidence URLs allowed
+        max_evidence_urls: u64,
         /// Governance registry ID for PoC disputes
         dispute_governance_id: ID,
         /// Ecosystem treasury address
@@ -251,6 +255,8 @@ module social_contracts::proof_of_creativity {
         min_vote_stake: u64,
         max_vote_stake: u64,
         voting_duration_epochs: u64,
+        max_reasoning_length: u64,
+        max_evidence_urls: u64,
         timestamp: u64,
     }
 
@@ -280,6 +286,8 @@ module social_contracts::proof_of_creativity {
                 min_vote_stake: DEFAULT_MIN_VOTE_STAKE,
                 max_vote_stake: DEFAULT_MAX_VOTE_STAKE,
                 voting_duration_epochs: DEFAULT_VOTING_DURATION_EPOCHS,
+                max_reasoning_length: MAX_REASONING_LENGTH,
+                max_evidence_urls: MAX_EVIDENCE_URLS,
                 dispute_governance_id: object::id_from_address(@0x0), // Placeholder for future governance
                 ecosystem_treasury: sender, // Auto-configured by bootstrap service during bootstrap
                 version: upgrade::current_version(),
@@ -313,6 +321,8 @@ module social_contracts::proof_of_creativity {
         min_vote_stake: u64,
         max_vote_stake: u64,
         voting_duration_epochs: u64,
+        max_reasoning_length: u64,
+        max_evidence_urls: u64,
         ecosystem_treasury: address,
         ctx: &mut TxContext
     ) {
@@ -323,11 +333,15 @@ module social_contracts::proof_of_creativity {
         assert!(video_threshold <= 100, EInvalidThreshold);
         assert!(audio_threshold <= 100, EInvalidThreshold);
         assert!(revenue_redirect_percentage <= 100, EInvalidThreshold);
-        
+
         // Validate voting parameters
         assert!(min_vote_stake > 0 && min_vote_stake <= max_vote_stake, EInvalidStakeAmount);
         assert!(voting_duration_epochs > 0, EInvalidThreshold);
-        
+
+        // Validate reasoning and evidence URL parameters
+        assert!(max_reasoning_length > 0, EInvalidThreshold);
+        assert!(max_evidence_urls > 0, EInvalidThreshold);
+
         // Update configuration
         config.oracle_address = oracle_address;
         config.image_threshold = image_threshold;
@@ -339,8 +353,10 @@ module social_contracts::proof_of_creativity {
         config.min_vote_stake = min_vote_stake;
         config.max_vote_stake = max_vote_stake;
         config.voting_duration_epochs = voting_duration_epochs;
+        config.max_reasoning_length = max_reasoning_length;
+        config.max_evidence_urls = max_evidence_urls;
         config.ecosystem_treasury = ecosystem_treasury;
-        
+
         // Emit configuration update event
         event::emit(PoCConfigUpdatedEvent {
             updated_by: tx_context::sender(ctx),
@@ -352,6 +368,8 @@ module social_contracts::proof_of_creativity {
             min_vote_stake,
             max_vote_stake,
             voting_duration_epochs,
+            max_reasoning_length,
+            max_evidence_urls,
             timestamp: tx_context::epoch_timestamp_ms(ctx),
         });
     }
@@ -391,13 +409,13 @@ module social_contracts::proof_of_creativity {
         if (option::is_some(&reasoning)) {
             let reasoning_val = option::borrow(&reasoning);
             let reasoning_len = string::length(reasoning_val);
-            assert!(reasoning_len <= MAX_REASONING_LENGTH, EInvalidReasoning);
+            assert!(reasoning_len <= config.max_reasoning_length, EInvalidReasoning);
         };
         
         // Validate evidence URLs array if provided
         if (option::is_some(&evidence_urls)) {
             let urls = option::borrow(&evidence_urls);
-            assert!(vector::length(urls) <= MAX_EVIDENCE_URLS, EInvalidEvidenceUrls);
+            assert!(vector::length(urls) <= config.max_evidence_urls, EInvalidEvidenceUrls);
         };
         
         // Get threshold for this media type
@@ -520,6 +538,10 @@ module social_contracts::proof_of_creativity {
         // Verify sufficient payment
         let total_cost = config.dispute_cost + config.dispute_protocol_fee;
         assert!(coin::value(&payment) >= total_cost, EInsufficientFunds);
+        
+        // Validate evidence length
+        let evidence_len = string::length(&evidence);
+        assert!(evidence_len <= config.max_reasoning_length, EInvalidReasoning);
         
         // Verify only post owner can dispute their post's PoC status
         assert!(disputer == social_contracts::post::get_post_owner(post), EUnauthorized);

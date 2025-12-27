@@ -149,6 +149,7 @@ module social_contracts::platform_tests {
                 badge_name,
                 string::utf8(b"Very Important Person"),
                 string::utf8(b"https://example.com/vip_badge.png"),
+                string::utf8(b"https://example.com/vip_badge_icon.png"),
                 10, // badge_type
                 test_scenario::ctx(&mut scenario)
             );
@@ -209,6 +210,7 @@ module social_contracts::platform_tests {
                 badge_name,
                 string::utf8(b"Active Contributor"),
                 string::utf8(b"https://example.com/contributor_badge.png"),
+                string::utf8(b"https://example.com/contributor_badge_icon.png"),
                 5, // badge_type
                 test_scenario::ctx(&mut scenario)
             );
@@ -275,6 +277,7 @@ module social_contracts::platform_tests {
                 string::utf8(b"VIP"),
                 string::utf8(b"Very Important Person"),
                 string::utf8(b"https://example.com/vip_badge.png"),
+                string::utf8(b"https://example.com/vip_badge_icon.png"),
                 10, // badge_type
                 test_scenario::ctx(&mut scenario)
             );
@@ -287,6 +290,7 @@ module social_contracts::platform_tests {
                 string::utf8(b"Moderator"),
                 string::utf8(b"Community Moderator"),
                 string::utf8(b"https://example.com/mod_badge.png"),
+                string::utf8(b"https://example.com/mod_badge_icon.png"),
                 20, // badge_type
                 test_scenario::ctx(&mut scenario)
             );
@@ -338,6 +342,7 @@ module social_contracts::platform_tests {
                 string::utf8(b"Fake"),
                 string::utf8(b"Fake Badge"),
                 string::utf8(b"https://example.com/fake.png"),
+                string::utf8(b"https://example.com/fake_icon.png"),
                 1,
                 test_scenario::ctx(&mut scenario)
             );
@@ -384,6 +389,7 @@ module social_contracts::platform_tests {
                 badge_name,
                 string::utf8(b"Very Important Person"),
                 string::utf8(b"https://example.com/vip_badge.png"),
+                string::utf8(b"https://example.com/vip_badge_icon.png"),
                 10, // badge_type
                 test_scenario::ctx(&mut scenario)
             );
@@ -396,6 +402,7 @@ module social_contracts::platform_tests {
                 badge_name,
                 string::utf8(b"Very Important Person"),
                 string::utf8(b"https://example.com/vip_badge.png"),
+                string::utf8(b"https://example.com/vip_badge_icon.png"),
                 10, // badge_type
                 test_scenario::ctx(&mut scenario)
             );
@@ -483,6 +490,7 @@ module social_contracts::platform_tests {
                 string::utf8(b"VIP"),
                 string::utf8(b"Very Important Person"),
                 string::utf8(b"https://example.com/vip_badge.png"),
+                string::utf8(b"https://example.com/vip_badge_icon.png"),
                 10, // badge_type
                 test_scenario::ctx(&mut scenario)
             );

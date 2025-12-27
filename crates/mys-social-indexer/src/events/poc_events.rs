@@ -148,6 +148,8 @@ impl PocConfigUpdatedEvent {
             min_vote_stake: self.min_vote_stake as i64,
             max_vote_stake: self.max_vote_stake as i64,
             voting_duration_epochs: self.voting_duration_epochs as i64,
+            max_reasoning_length: self.max_reasoning_length as i64,
+            max_evidence_urls: self.max_evidence_urls as i64,
             updated_by: self.updated_by.clone(),
             updated_at: self.timestamp as i64,
             transaction_id: "".to_string(), // Will be set by handler
@@ -387,6 +389,18 @@ pub fn validate_config_updated_event(event: &PocConfigUpdatedEvent) -> Result<()
     if event.min_vote_stake > event.max_vote_stake {
         return Err(PocEventError::ParseError(
             "Min vote stake cannot be greater than max vote stake".to_string(),
+        ));
+    }
+
+    if event.max_reasoning_length == 0 {
+        return Err(PocEventError::ParseError(
+            "max_reasoning_length must be greater than 0".to_string(),
+        ));
+    }
+
+    if event.max_evidence_urls == 0 {
+        return Err(PocEventError::ParseError(
+            "max_evidence_urls must be greater than 0".to_string(),
         ));
     }
 

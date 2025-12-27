@@ -39,13 +39,15 @@ module social_contracts::platform {
     const EInvalidBadgeType: u64 = 10;
     const EBadgeNameTooLong: u64 = 11;
     const EBadgeDescriptionTooLong: u64 = 12;
-    const EBadgeImageUrlTooLong: u64 = 13;
+    const EBadgeMediaUrlTooLong: u64 = 13;
     const EInvalidReasoning: u64 = 14;
+    const EBadgeIconUrlTooLong: u64 = 15;
 
     /// Maximum lengths for badge fields
     const MAX_BADGE_NAME_LENGTH: u64 = 100;
     const MAX_BADGE_DESCRIPTION_LENGTH: u64 = 500;
-    const MAX_BADGE_IMAGE_URL_LENGTH: u64 = 2048;
+    const MAX_BADGE_MEDIA_URL_LENGTH: u64 = 2048;
+    const MAX_BADGE_ICON_URL_LENGTH: u64 = 2048;
     
     /// Maximum length for approval reasoning
     const MAX_REASONING_LENGTH: u64 = 2000; // Max characters for approval reasoning
@@ -1111,7 +1113,8 @@ module social_contracts::platform {
         profile: &mut profile::Profile,
         badge_name: String,
         badge_description: String,
-        badge_image_url: String,
+        badge_media_url: String,
+        badge_icon_url: String,
         badge_type: u8,
         ctx: &mut TxContext
     ) {
@@ -1132,7 +1135,8 @@ module social_contracts::platform {
         // Validate badge field lengths
         assert!(string::length(&badge_name) > 0 && string::length(&badge_name) <= MAX_BADGE_NAME_LENGTH, EBadgeNameTooLong);
         assert!(string::length(&badge_description) <= MAX_BADGE_DESCRIPTION_LENGTH, EBadgeDescriptionTooLong);
-        assert!(string::length(&badge_image_url) > 0 && string::length(&badge_image_url) <= MAX_BADGE_IMAGE_URL_LENGTH, EBadgeImageUrlTooLong);
+        assert!(string::length(&badge_media_url) > 0 && string::length(&badge_media_url) <= MAX_BADGE_MEDIA_URL_LENGTH, EBadgeMediaUrlTooLong);
+        assert!(string::length(&badge_icon_url) > 0 && string::length(&badge_icon_url) <= MAX_BADGE_ICON_URL_LENGTH, EBadgeIconUrlTooLong);
         
         // Get current time
         let now = tx_context::epoch(ctx);
@@ -1151,7 +1155,8 @@ module social_contracts::platform {
             badge_id,
             badge_name,
             badge_description,
-            badge_image_url,
+            badge_media_url,
+            badge_icon_url,
             platform_id,
             now,
             caller,

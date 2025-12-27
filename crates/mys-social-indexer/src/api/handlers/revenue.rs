@@ -236,8 +236,8 @@ pub async fn get_unified_revenue(
     Query(params): Query<RevenueQuery>,
     State(db_pool): State<DbPool>,
 ) -> impl IntoResponse {
-    let limit = params.limit.unwrap_or(50).min(100);
-    let offset = params.offset.unwrap_or(0);
+    let limit: i64 = params.limit.unwrap_or(50).min(100);
+    let offset: i64 = params.offset.unwrap_or(0);
 
     let mut conn = match db_pool.get().await {
         Ok(conn) => conn,
@@ -338,7 +338,11 @@ pub async fn get_unified_revenue(
         }
     };
 
-    let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
+    let total_pages = if limit > 0 {
+        ((total_count + limit - 1) / limit).max(1)
+    } else {
+        1
+    };
 
     (
         StatusCode::OK,
@@ -405,8 +409,6 @@ async fn build_revenue_dashboard(
             revenue_source,
             total_revenue_24h,
             total_transactions_24h,
-            unique_creators_24h,
-            unique_payers_24h,
             largest_transaction_24h
         FROM revenue_dashboard_24h
         ORDER BY total_revenue_24h DESC
@@ -420,10 +422,6 @@ async fn build_revenue_dashboard(
         total_revenue_24h: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         total_transactions_24h: i64,
-        #[diesel(sql_type = diesel::sql_types::BigInt)]
-        unique_creators_24h: i64,
-        #[diesel(sql_type = diesel::sql_types::BigInt)]
-        unique_payers_24h: i64,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         largest_transaction_24h: i64,
     }
@@ -446,6 +444,8 @@ async fn build_revenue_dashboard(
             COUNT(DISTINCT payer_address) as unique_payers_24h
         FROM unified_revenue
         WHERE time >= NOW() - INTERVAL '24 hours'
+            AND amount > 0
+            AND currency = 'MYS'
     "#;
 
     #[derive(QueryableByName, Debug)]

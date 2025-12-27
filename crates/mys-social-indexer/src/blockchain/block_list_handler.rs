@@ -51,7 +51,6 @@ impl BlockListEventHandler {
 
         // Handle BlockListCreatedEvent
         if event.event_type.ends_with("::BlockListCreatedEvent") {
-            event_handled = true;
             info!("Processing BlockListCreatedEvent in block_list_handler");
             if let Err(e) = crate::events::blocking_events::process_block_list_created_event(
                 &mut conn,
@@ -62,24 +61,25 @@ impl BlockListEventHandler {
                 error!("Failed to process BlockListCreatedEvent: {}", e);
                 return Err(e);
             }
+            return Ok(());
         }
         // Handle UserBlockEvent
         else if event.event_type.ends_with("::UserBlockEvent") {
-            event_handled = true;
             info!("Processing UserBlockEvent");
             if let Err(e) = process_profile_block_event(&mut conn, &event.data).await {
                 error!("Failed to process UserBlockEvent: {}", e);
                 return Err(e);
             }
+            return Ok(());
         }
         // Handle UserUnblockEvent
         else if event.event_type.ends_with("::UserUnblockEvent") {
-            event_handled = true;
             info!("Processing UserUnblockEvent");
             if let Err(e) = process_profile_unblock_event(&mut conn, &event.data).await {
                 error!("Failed to process UserUnblockEvent: {}", e);
                 return Err(e);
             }
+            return Ok(());
         }
         // Fallback: try flexible matching for backwards compatibility
         else {

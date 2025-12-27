@@ -123,6 +123,8 @@ pub struct PocConfigUpdatedEvent {
     pub min_vote_stake: u64,
     pub max_vote_stake: u64,
     pub voting_duration_epochs: u64,
+    pub max_reasoning_length: u64,
+    pub max_evidence_urls: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }

@@ -254,6 +254,17 @@ GET /search?query=social&page=2&limit=50
   - Accepts profile ID for `id` parameter (wallet addresses starting with "0x" are also supported for legacy compatibility)
 - **GET /profiles/:id/blocking** - Get blocking history
 
+### Profile Badge API
+- **GET /profiles/:id/badges** - Get all badges for a specific profile
+  - Query: `limit` (optional, default: 20, max: 100), `offset` (optional, default: 0), `platform_id` (optional), `revoked` (optional - filter by revoked status), `badge_type` (optional - filter by badge type/tier)
+  - Returns badges with all fields including `badge_description`, `badge_media_url`, and `badge_icon_url`
+- **GET /badges/:badge_id** - Get a specific badge by badge_id
+  - Query: `profile_id` (required - uniquely identifies the badge)
+  - Returns full badge details including description, media_url, and icon_url
+- **GET /badges** - List all badges across all profiles with optional filtering
+  - Query: `limit` (optional, default: 20, max: 100), `offset` (optional, default: 0), `profile_id` (optional), `platform_id` (optional), `revoked` (optional), `badge_type` (optional)
+  - Returns paginated list of badges with all fields
+
 ### Social Graph API
 - **GET /profiles/:id/following** - List profiles followed by a profile
   - Query: `viewer_id` (optional), `limit`, `offset`, `page`
@@ -365,6 +376,7 @@ Vesting wallet endpoints return wallets with the following additional fields:
 
 ### MyData Marketplace API
 - **GET /mydata** - List MyData entries
+- **GET /mydata/configuration** - Get current MyData marketplace configuration
 - **GET /mydata/popular** - Get popular MyData entries
 - **GET /mydata/:id** - Get MyData entry by ID
 - **GET /mydata/:id/purchases** - Get purchases for a MyData entry
@@ -421,6 +433,7 @@ Vesting wallet endpoints return wallets with the following additional fields:
 - **GET /social-proof-token/market-sentiment** - Aggregate buy/sell patterns to create market momentum indicators
 
 ### Social Proof of Truth (SPoT) API
+- **GET /spot/configuration** - Get current Social Proof of Truth configuration
 - **GET /spot/:post_id/record** - Get SPoT state for a post (status, outcome, escrow totals)
 - **GET /spot/:post_id/bets** - List SPoT bets for a post
 - **GET /spot/:post_id/payouts** - List SPoT payouts made to winning participants

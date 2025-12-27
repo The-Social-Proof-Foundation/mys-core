@@ -222,6 +222,12 @@ pub struct PocConfigInfo {
     pub voting_duration_epochs: i64,
 
     #[diesel(sql_type = BigInt)]
+    pub max_reasoning_length: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_evidence_urls: i64,
+
+    #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
 }
 
@@ -631,7 +637,7 @@ pub async fn get_poc_configuration(State(pool): State<DbPool>) -> Response {
     let query = "
         SELECT image_threshold, video_threshold, audio_threshold, revenue_redirect_percentage,
                dispute_cost, dispute_protocol_fee, min_vote_stake, max_vote_stake,
-               voting_duration_epochs, updated_at
+               voting_duration_epochs, max_reasoning_length, max_evidence_urls, updated_at
         FROM poc_configuration
         ORDER BY updated_at DESC
         LIMIT 1
@@ -647,16 +653,19 @@ pub async fn get_poc_configuration(State(pool): State<DbPool>) -> Response {
                 Json(&configs[0]).into_response()
             } else {
                 // Return default configuration if none exists
+                // These match the smart contract default values
                 let default_config = PocConfigInfo {
-                    image_threshold: 0,
-                    video_threshold: 0,
-                    audio_threshold: 0,
-                    revenue_redirect_percentage: 0,
-                    dispute_cost: 0,
-                    dispute_protocol_fee: 0,
-                    min_vote_stake: 0,
-                    max_vote_stake: 0,
-                    voting_duration_epochs: 0,
+                    image_threshold: 95,
+                    video_threshold: 95,
+                    audio_threshold: 95,
+                    revenue_redirect_percentage: 100,
+                    dispute_cost: 5_000_000_000,
+                    dispute_protocol_fee: 1_000_000_000,
+                    min_vote_stake: 1_000_000_000,
+                    max_vote_stake: 100_000_000_000,
+                    voting_duration_epochs: 7,
+                    max_reasoning_length: 5000,
+                    max_evidence_urls: 10,
                     updated_at: 0,
                 };
                 Json(default_config).into_response()

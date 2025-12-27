@@ -20,8 +20,8 @@ use crate::api::handlers::governance::{
 use crate::api::handlers::health::health_check;
 use crate::api::handlers::mydata::{
     get_creator_mydata, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_by_id,
-    get_mydata_purchases, get_mydata_revenue, get_mydata_revenue_timeline, get_mydata_stats,
-    get_mydata_subscriptions, get_popular_mydata, list_mydata,
+    get_mydata_configuration, get_mydata_purchases, get_mydata_revenue, get_mydata_revenue_timeline,
+    get_mydata_stats, get_mydata_subscriptions, get_popular_mydata, list_mydata,
 };
 use crate::api::handlers::platforms::{
     check_platform_membership, get_approved_platforms, get_platform_approval_status,
@@ -38,7 +38,8 @@ use crate::api::handlers::profile_events::{
     get_blocking_history, get_platform_memberships, get_profile_events,
 };
 use crate::api::handlers::profiles::{
-    check_username_availability, get_profile_by_address, get_profile_by_username, latest_profiles,
+    check_username_availability, get_badges, get_profile_badge_by_id, get_profile_badges,
+    get_profile_by_address, get_profile_by_username, latest_profiles,
 };
 use crate::api::handlers::social_graph::{
     check_following, get_follow_stats, get_followers, get_following,
@@ -78,7 +79,7 @@ use crate::api::handlers::revenue::{
 };
 // Import stats handlers
 use crate::api::handlers::spot::{
-    get_spot_record, list_spot_bets, list_spot_payouts, list_spot_refunds,
+    get_spot_configuration, get_spot_record, list_spot_bets, list_spot_payouts, list_spot_refunds,
 };
 use crate::api::handlers::stats::get_system_stats;
 
@@ -106,6 +107,10 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/profiles/:id/platforms", get(get_platform_memberships))
         .route("/profiles/:id/platform-memberships", get(get_profile_platforms))
         .route("/profiles/:id/blocking", get(get_blocking_history))
+        // Profile Badge endpoints
+        .route("/profiles/:id/badges", get(get_profile_badges))
+        .route("/badges/:badge_id", get(get_profile_badge_by_id))
+        .route("/badges", get(get_badges))
         // Social Graph endpoints
         .route("/profiles/:id/following", get(get_following))
         .route("/profiles/:id/followers", get(get_followers))
@@ -232,12 +237,14 @@ pub fn build_router(db: Arc<Database>) -> Router {
         )
         .route("/revenue/spt/pools/:pool_id", get(get_spt_pool_revenue))
         // SPoT (Social Proof of Truth) endpoints
+        .route("/spot/configuration", get(get_spot_configuration))
         .route("/spot/:post_id/record", get(get_spot_record))
         .route("/spot/:post_id/bets", get(list_spot_bets))
         .route("/spot/:post_id/payouts", get(list_spot_payouts))
         .route("/spot/:post_id/refunds", get(list_spot_refunds))
         // MyData Marketplace endpoints (using TimescaleDB)
         .route("/mydata", get(list_mydata))
+        .route("/mydata/configuration", get(get_mydata_configuration))
         .route("/mydata/popular", get(get_popular_mydata))
         .route("/mydata/:id", get(get_mydata_by_id))
         .route("/mydata/:id/purchases", get(get_mydata_purchases))

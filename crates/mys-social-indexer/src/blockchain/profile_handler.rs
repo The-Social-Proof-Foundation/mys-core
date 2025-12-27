@@ -882,8 +882,9 @@ impl ProfileEventListener {
             profile_id: event.profile_id.clone(),
             badge_id: event.badge_id.clone(),
             badge_name: event.name.clone(),
-            badge_description: None, // Not provided in event
-            badge_image_url: None,   // Not provided in event
+            badge_description: event.description.clone(),
+            badge_media_url: event.media_url.clone(),
+            badge_icon_url: event.icon_url.clone(),
             platform_id: event.platform_id.clone(),
             assigned_by: event.assigned_by.clone(),
             assigned_at: event.assigned_at as i64,

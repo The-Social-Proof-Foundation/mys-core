@@ -220,3 +220,74 @@ pub async fn list_spot_refunds(
             .into_response(),
     }
 }
+
+/// Get current Social Proof of Truth configuration
+#[derive(QueryableByName, Serialize)]
+pub struct SpotConfigInfo {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub updated_by: String,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    pub enable_flag: bool,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub confidence_threshold_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub resolution_window_epochs: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub max_resolution_window_epochs: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub payout_delay_epochs: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub fee_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub fee_split_bps_platform: i64,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub platform_treasury: String,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub chain_treasury: String,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub oracle_address: String,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub max_single_bet: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub timestamp_ms: i64,
+    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub transaction_id: String,
+}
+
+pub async fn get_spot_configuration(State(pool): State<DbPool>) -> impl IntoResponse {
+    let mut conn = match pool.get().await {
+        Ok(c) => c,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("DB error: {}", e),
+            )
+                .into_response()
+        }
+    };
+    let sql = "
+        SELECT updated_by, enable_flag, confidence_threshold_bps, resolution_window_epochs,
+               max_resolution_window_epochs, payout_delay_epochs, fee_bps, fee_split_bps_platform,
+               platform_treasury, chain_treasury, oracle_address, max_single_bet, timestamp_ms,
+               time, transaction_id
+        FROM spot_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+    match diesel::sql_query(sql)
+        .get_result::<SpotConfigInfo>(&mut conn)
+        .await
+    {
+        Ok(config) => Json(config).into_response(),
+        Err(diesel::result::Error::NotFound) => {
+            (StatusCode::NOT_FOUND, "SPoT configuration not found").into_response()
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Query error: {}", e),
+        )
+            .into_response(),
+    }
+}

@@ -161,8 +161,10 @@ module social_contracts::profile {
         name: String,
         /// Description of what the badge represents
         description: String,
-        /// Image URL for the badge
-        image_url: String,
+        /// Media URL for the badge (can be image, video, etc.)
+        media_url: String,
+        /// Icon URL for the badge (small icon displayed next to username)
+        icon_url: String,
         /// ID of the platform that issued the badge
         platform_id: address,
         /// Timestamp when the badge was issued
@@ -172,8 +174,6 @@ module social_contracts::profile {
         /// Badge type/tier (1-100), allows for badge hierarchy
         badge_type: u8,
     }
-
-
 
     /// Vesting Wallet contains MYS coins that are available for claiming over time
     public struct VestingWallet has key, store {
@@ -204,6 +204,12 @@ module social_contracts::profile {
         badge_id: String,
         /// Badge name
         name: String,
+        /// Description of what the badge represents
+        description: String,
+        /// Media URL for the badge (can be image, video, etc.)
+        media_url: String,
+        /// Icon URL for the badge (small icon displayed next to username)
+        icon_url: String,
         /// Platform ID that issued the badge
         platform_id: address,
         /// Admin/moderator who assigned the badge
@@ -1253,7 +1259,8 @@ module social_contracts::profile {
         badge_id: String,
         badge_name: String,
         badge_description: String,
-        badge_image_url: String,
+        badge_media_url: String,
+        badge_icon_url: String,
         platform_id: address,
         timestamp: u64,
         issuer: address,
@@ -1264,7 +1271,8 @@ module social_contracts::profile {
             badge_id: badge_id,
             name: badge_name,
             description: badge_description,
-            image_url: badge_image_url,
+            media_url: badge_media_url,
+            icon_url: badge_icon_url,
             platform_id,
             issued_at: timestamp,
             issued_by: issuer,
@@ -1295,6 +1303,9 @@ module social_contracts::profile {
             profile_id: object::uid_to_address(&profile.id),
             badge_id: badge_id,
             name: badge_name,
+            description: badge_description,
+            media_url: badge_media_url,
+            icon_url: badge_icon_url,
             platform_id,
             assigned_by: issuer,
             assigned_at: timestamp,
