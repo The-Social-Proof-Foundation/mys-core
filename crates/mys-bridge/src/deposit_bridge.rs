@@ -489,7 +489,7 @@ pub async fn handle_mys_deposit(
     let coin_type_str = coin_type.to_string();
     let coins = mys_sdk_client
         .coin_read_api()
-        .get_all_coins(deposit_mys_address, Some(coin_type_str), None)
+        .get_coins(deposit_mys_address, Some(coin_type_str), None, None)
         .await
         .map_err(|e| {
             BridgeError::Generic(format!(
