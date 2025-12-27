@@ -28,7 +28,7 @@ use shared_crypto::intent::{Intent, IntentMessage};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 /// Handles automatic bridging for deposits
 pub struct DepositBridgeHandler<C> {
@@ -117,6 +117,10 @@ where
         let signer = SignerMiddleware::new(self.eth_provider.clone(), deposit_wallet.clone());
 
         // Create bridge contract instance
+        info!(
+            bridge_contract_address = ?self.eth_bridge_address,
+            "Creating bridge contract instance for bridgeERC20 call"
+        );
         let bridge = EthMysBridge::new(self.eth_bridge_address, Arc::new(signer));
 
         // Determine token ID from bridge config
@@ -314,6 +318,45 @@ where
                 return Err(BridgeError::Generic(
                     "Bridge transaction reverted".to_string(),
                 ));
+            }
+
+            // Verify TokensDeposited event was emitted
+            use crate::abi::EthMysBridgeEvents;
+            let bridge_contract = self.eth_bridge_address;
+            
+            let tokens_deposited_events: Vec<_> = receipt.logs
+                .iter()
+                .filter(|log| log.address == bridge_contract)
+                .filter_map(|log| {
+                    let raw_log = ethers::abi::RawLog {
+                        topics: log.topics.clone(),
+                        data: log.data.to_vec(),
+                    };
+                    EthMysBridgeEvents::decode_log(&raw_log).ok()
+                })
+                .filter_map(|event| {
+                    if let EthMysBridgeEvents::TokensDepositedFilter(_) = event {
+                        Some(event)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            
+            if tokens_deposited_events.is_empty() {
+                error!(
+                    tx_hash = ?tx_hash,
+                    bridge_contract = ?bridge_contract,
+                    total_logs = receipt.logs.len(),
+                    bridge_logs = receipt.logs.iter().filter(|l| l.address == bridge_contract).count(),
+                    "CRITICAL: TokensDeposited event not found in transaction receipt!"
+                );
+            } else {
+                info!(
+                    tx_hash = ?tx_hash,
+                    event_count = tokens_deposited_events.len(),
+                    "TokensDeposited event verified in transaction receipt"
+                );
             }
 
             // Mark as processed
@@ -665,6 +708,78 @@ pub async fn handle_mys_deposit(
             "Bridge transaction failed: {:?}",
             response
         )));
+    }
+
+    // Verify that TokenDepositedEvent was emitted
+    let events = response.events.ok_or_else(|| {
+        BridgeError::Generic(format!(
+            "Transaction succeeded but no events returned for deposit tx: {:?}",
+            tx_digest
+        ))
+    })?;
+
+    // Log all events for diagnostics
+    info!(
+        ?tx_digest,
+        event_count = events.data.len(),
+        event_types = ?events.data.iter().map(|e| &e.type_).collect::<Vec<_>>(),
+        "Bridge transaction executed - analyzing events"
+    );
+
+    // Check for TokenDepositedEvent
+    use crate::events::{init_all_struct_tags, MoveTokenDepositedEvent};
+    use fastcrypto::encoding::{Encoding, Hex};
+    init_all_struct_tags(); // Ensure tags are initialized
+    // Access the static OnceCell directly - it's defined in events module
+    let token_deposited_event_tag = {
+        // Import the static by name - it's a static variable, not a type
+        #[allow(non_upper_case_globals)]
+        use crate::events::MysToEthTokenBridgeV1;
+        MysToEthTokenBridgeV1.get().unwrap()
+    };
+    let token_deposited_event = events
+        .data
+        .iter()
+        .find(|e| e.type_ == *token_deposited_event_tag);
+
+    if let Some(event) = token_deposited_event {
+        // Try to decode the event data for detailed logging
+        // Use the same pattern as events.rs
+        match bcs::from_bytes::<MoveTokenDepositedEvent>(event.bcs.bytes()) {
+            Ok(event_data) => {
+                info!(
+                    ?tx_digest,
+                    seq_num = event_data.seq_num,
+                    source_chain = event_data.source_chain,
+                    target_chain = event_data.target_chain,
+                    token_type = event_data.token_type,
+                    amount = event_data.amount_mys_adjusted,
+                    sender = ?Hex::encode(&event_data.sender_address),
+                    recipient = ?Hex::encode(&event_data.target_address),
+                    "TokenDepositedEvent emitted successfully - will be picked up by orchestrator"
+                );
+            }
+            Err(e) => {
+                warn!(
+                    ?tx_digest,
+                    error = ?e,
+                    "TokenDepositedEvent found but failed to decode event data"
+                );
+                info!(
+                    ?tx_digest,
+                    "TokenDepositedEvent emitted successfully - will be picked up by orchestrator"
+                );
+            }
+        }
+    } else {
+        error!(
+            ?tx_digest,
+            event_types = ?events.data.iter().map(|e| &e.type_).collect::<Vec<_>>(),
+            "TokenDepositedEvent not found in transaction events - bridge may not complete. \
+             The orchestrator may not pick up this deposit for bridging to EVM."
+        );
+        // Don't fail here - the event might be picked up later by the syncer
+        // But log a warning so we can diagnose
     }
 
     // Mark as processed

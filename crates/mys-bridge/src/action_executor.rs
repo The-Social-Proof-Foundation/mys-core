@@ -646,11 +646,31 @@ where
                         }
                     } else if e.type_ == *TokenTransferApproved.get().unwrap() {
                         match action {
-                            BridgeAction::EthToMysBridgeAction(_) => {
+                            BridgeAction::EthToMysBridgeAction(ref eth_action) => {
                                 metrics.eth_mys_token_transfer_approved.inc();
+                                info!(
+                                    tx_digest = ?tx_digest,
+                                    nonce = eth_action.eth_bridge_event.nonce,
+                                    source_chain = ?eth_action.eth_bridge_event.eth_chain_id,
+                                    target_chain = ?eth_action.eth_bridge_event.mys_chain_id,
+                                    token_id = eth_action.eth_bridge_event.token_id,
+                                    amount = eth_action.eth_bridge_event.mys_adjusted_amount,
+                                    "TokenTransferApproved event detected for EthToMysBridgeAction"
+                                );
                             }
-                            BridgeAction::MysToEthBridgeAction(_) => {
+                            BridgeAction::MysToEthBridgeAction(ref mys_action) => {
                                 metrics.mys_eth_token_transfer_approved.inc();
+                                info!(
+                                    tx_digest = ?tx_digest,
+                                    nonce = mys_action.mys_bridge_event.nonce,
+                                    source_chain = ?mys_action.mys_bridge_event.mys_chain_id,
+                                    target_chain = ?mys_action.mys_bridge_event.eth_chain_id,
+                                    token_id = mys_action.mys_bridge_event.token_id,
+                                    amount = mys_action.mys_bridge_event.amount_mys_adjusted,
+                                    mys_address = ?mys_action.mys_bridge_event.mys_address,
+                                    eth_address = ?mys_action.mys_bridge_event.eth_address,
+                                    "TokenTransferApproved event detected for MysToEthBridgeAction - triggering relay"
+                                );
                             }
                             _ => error!("Unexpected action type for approved event: {:?}", action),
                         }
@@ -666,17 +686,25 @@ where
                             tokio::spawn(async move {
                                 match relayer_clone.handle_approved_transfer(&action_clone).await {
                                     Ok(()) => {
-                                        info!(?action_clone, "Auto-relay completed successfully");
+                                        info!(
+                                            action = ?action_clone,
+                                            "Auto-relay completed successfully"
+                                        );
                                     }
                                     Err(e) => {
-                                        error!(?action_clone, ?e, "Auto-relay failed");
+                                        error!(
+                                            action = ?action_clone,
+                                            error = ?e,
+                                            "Auto-relay failed - manual intervention may be required"
+                                        );
                                     }
                                 }
                             });
                         } else {
                             warn!(
                                 action = ?action,
-                                "Relayer not configured - approved transfer will not be auto-relayed"
+                                "Relayer not configured - approved transfer will not be auto-relayed. \
+                                 Add relay configuration to bridge config YAML to enable automatic token claiming."
                             );
                         }
                     }

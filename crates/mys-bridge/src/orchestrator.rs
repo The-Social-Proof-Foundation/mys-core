@@ -16,7 +16,7 @@ use crate::events::MysBridgeEvent;
 use crate::metrics::BridgeMetrics;
 use crate::mys_client::{MysClient, MysClientInner};
 use crate::storage::BridgeOrchestratorTables;
-use crate::types::EthLog;
+use crate::types::{BridgeAction, EthLog};
 use ethers::types::Address as EthAddress;
 use mys_json_rpc_types::MysEvent;
 use mys_types::Identifier;
@@ -161,6 +161,21 @@ where
                 if let Some(action) = bridge_event
                     .try_into_bridge_action(mys_event.id.tx_digest, mys_event.id.event_seq as u16)
                 {
+                    // Log detailed information about MysToEthBridgeAction creation
+                    if let crate::types::BridgeAction::MysToEthBridgeAction(ref mys_action) = action {
+                        info!(
+                            tx_digest = ?mys_event.id.tx_digest,
+                            event_seq = mys_event.id.event_seq,
+                            nonce = mys_action.mys_bridge_event.nonce,
+                            source_chain = ?mys_action.mys_bridge_event.mys_chain_id,
+                            target_chain = ?mys_action.mys_bridge_event.eth_chain_id,
+                            token_id = mys_action.mys_bridge_event.token_id,
+                            amount = mys_action.mys_bridge_event.amount_mys_adjusted,
+                            mys_address = ?mys_action.mys_bridge_event.mys_address,
+                            eth_address = ?mys_action.mys_bridge_event.eth_address,
+                            "Created MysToEthBridgeAction from TokenDepositedEvent - will be processed by action executor"
+                        );
+                    }
                     metrics.last_observed_actions_seq_num.with_label_values(&[
                         action.chain_id().to_string().as_str(),
                         action.action_type().to_string().as_str(),
@@ -230,6 +245,14 @@ where
                 .map(EthBridgeEvent::try_from_eth_log)
                 .collect::<Vec<_>>();
 
+            info!(
+                contract = ?contract,
+                total_logs = logs.len(),
+                parsed_events = bridge_events.iter().filter(|e| e.is_some()).count(),
+                unrecognized_events = bridge_events.iter().filter(|e| e.is_none()).count(),
+                "Parsing Eth logs into bridge events"
+            );
+
             let mut actions = vec![];
             for (log, opt_bridge_event) in logs.iter().zip(bridge_events) {
                 if opt_bridge_event.is_none() {
@@ -257,6 +280,17 @@ where
 
                 match bridge_event.try_into_bridge_action(log.tx_hash, log.log_index_in_tx) {
                     Ok(Some(action)) => {
+                        if let BridgeAction::EthToMysBridgeAction(ref eth_action) = action {
+                            info!(
+                                tx_hash = ?log.tx_hash,
+                                log_index = log.log_index_in_tx,
+                                nonce = eth_action.eth_bridge_event.nonce,
+                                token_id = eth_action.eth_bridge_event.token_id,
+                                amount = eth_action.eth_bridge_event.mys_adjusted_amount,
+                                mys_address = ?eth_action.eth_bridge_event.mys_address,
+                                "Created EthToMysBridgeAction from TokensDeposited event"
+                            );
+                        }
                         metrics.last_observed_actions_seq_num.with_label_values(&[
                             action.chain_id().to_string().as_str(),
                             action.action_type().to_string().as_str(),

@@ -358,7 +358,32 @@ impl BridgeNodeConfig {
 
         // Convert relay config from file format to runtime format
         let relay_config = self.relay.as_ref().map(|relay_cfg| {
+            // Warn if deposits are enabled but relay is disabled
+            if self.deposits.as_ref().map(|d| d.enabled).unwrap_or(false) && !relay_cfg.enabled {
+                tracing::warn!(
+                    "Deposits are enabled but relay is disabled. \
+                     MySocial → EVM deposits will not be automatically bridged. \
+                     Consider enabling relay in config to enable automatic token claiming."
+                );
+            }
+            
             let evm_config = relay_cfg.evm.as_ref().map(|evm_cfg| {
+                if evm_cfg.enabled {
+                    // Validate that eth config has RPC URL and bridge address
+                    if self.eth.eth_rpc_url.is_empty() {
+                        tracing::warn!(
+                            "EVM relay enabled but eth.eth-rpc-url is empty. \
+                             Relay will use ETH_RPC_URL environment variable if available."
+                        );
+                    }
+                    if self.eth.eth_bridge_proxy_address.is_empty() {
+                        tracing::warn!(
+                            "EVM relay enabled but eth.eth-bridge-proxy-address is empty. \
+                             Relay will use ETH_BRIDGE_PROXY_ADDRESS environment variable if available."
+                        );
+                    }
+                }
+                
                 let rpc_url = evm_cfg.rpc_url.clone()
                     .unwrap_or_else(|| self.eth.eth_rpc_url.clone());
                 let bridge_address = evm_cfg.bridge_contract_address.clone()

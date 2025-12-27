@@ -33,7 +33,6 @@ use crate::{
 use arc_swap::ArcSwap;
 use ethers::providers::Provider;
 use ethers::types::Address as EthAddress;
-use mys_sdk::MysClient as MysSdkClient;
 use mys_types::{
     bridge::{
         BRIDGE_COMMITTEE_MODULE_NAME, BRIDGE_LIMITER_MODULE_NAME, BRIDGE_MODULE_NAME,
@@ -117,7 +116,38 @@ pub async fn run_bridge_node(
     if let Some(client_config) = client_config {
         let committee_keys_to_names =
             Arc::new(get_validator_names_by_pub_keys(&committee, &mys_system).await);
-        let (client_components, deposit_state) = start_client_components(
+        // Log relay configuration status
+    if let Some(relay_cfg) = &config.relay {
+        if relay_cfg.enabled {
+            info!("Relay is enabled in configuration");
+            if let Some(evm_cfg) = &relay_cfg.evm {
+                if evm_cfg.enabled {
+                    info!(
+                        "EVM relay is enabled - MySocial → EVM transfers will be automatically relayed"
+                    );
+                } else {
+                    warn!(
+                        "Relay is enabled but EVM relay is disabled - only EVM → MySocial transfers will be relayed"
+                    );
+                }
+            } else {
+                warn!(
+                    "Relay is enabled but no EVM config provided - only EVM → MySocial transfers will be relayed"
+                );
+            }
+        } else {
+            warn!(
+                "Relay is disabled - approved transfers will require manual claiming"
+            );
+        }
+    } else {
+        warn!(
+            "No relay configuration found - approved transfers will require manual claiming. \
+             Add relay section to config to enable automatic token claiming."
+        );
+    }
+    
+    let (client_components, deposit_state) = start_client_components(
             client_config,
             committee.clone(),
             committee_keys_to_names,
@@ -260,6 +290,13 @@ async fn start_client_components(
 
     let mys_client = client_config.mys_client.clone();
 
+    info!(
+        contract_count = eth_contracts_to_watch.len(),
+        contracts = ?eth_contracts_to_watch.keys().collect::<Vec<_>>(),
+        contract_details = ?eth_contracts_to_watch.iter().map(|(addr, block)| format!("{}:{}", addr, block)).collect::<Vec<_>>(),
+        "EthSyncer will watch these contracts with start blocks"
+    );
+    
     info!(
         contract_count = eth_contracts_to_watch.len(),
         contracts = ?eth_contracts_to_watch.keys().collect::<Vec<_>>(),

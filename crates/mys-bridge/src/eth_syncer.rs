@@ -19,7 +19,7 @@ use std::sync::Arc;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::time::{self, Duration, Instant};
-use tracing::error;
+use tracing::{error, info};
 
 const ETH_LOG_QUERY_MAX_BLOCK_RANGE: u64 = 1000;
 const ETH_EVENTS_CHANNEL_SIZE: usize = 1000;
@@ -118,6 +118,16 @@ where
                 last_finalized_block_sender
                     .send(new_value)
                     .expect("last_finalized_block channel receiver is closed");
+                info!(
+                    new_finalized_block = new_value,
+                    previous_finalized_block = last_block_number,
+                    blocks_behind = if new_value > last_block_number {
+                        Some(new_value - last_block_number)
+                    } else {
+                        None
+                    },
+                    "Finalized block updated"
+                );
                 tracing::info!("Observed new finalized eth block: {}", new_value);
                 last_block_number = new_value;
             }
@@ -165,12 +175,26 @@ where
                 new_finalized_block,
             );
             more_blocks = end_block < new_finalized_block;
+            
+            info!(
+                contract_address = ?contract_address,
+                start_block,
+                end_block,
+                finalized_block = new_finalized_block,
+                "Querying eth_getLogs for events in block range"
+            );
+            
             let timer = Instant::now();
             let Ok(Ok(events)) = retry_with_max_elapsed_time!(
                 eth_client.get_events_in_range(contract_address, start_block, end_block),
                 Duration::from_secs(600)
             ) else {
-                error!("Failed to get events from eth client after retry");
+                error!(
+                    contract_address = ?contract_address,
+                    start_block,
+                    end_block,
+                    "Failed to get events from eth client after retry"
+                );
                 continue;
             };
             tracing::debug!(
@@ -182,6 +206,16 @@ where
             );
             let len = events.len();
             let last_block = events.last().map(|e| e.block_number);
+            
+            if !events.is_empty() {
+                info!(
+                    contract_address = ?contract_address,
+                    event_count = events.len(),
+                    tx_hashes = ?events.iter().map(|e| e.tx_hash).collect::<Vec<_>>(),
+                    block_range = format!("{}-{}", start_block, end_block),
+                    "Retrieved events from eth_getLogs"
+                );
+            }
 
             // Note 1: we always events to the channel even when it is empty. This is because of
             // how `eth_getLogs` api is designed - we want cursor to move forward continuously.

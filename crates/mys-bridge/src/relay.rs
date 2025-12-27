@@ -153,11 +153,35 @@ where
                 
                 let provider_arc = Arc::new(provider);
                 
+                // Derive EVM wallet address and check balance
+                let secp_key = match &key {
+                    mys_types::crypto::MysKeyPair::Secp256k1(k) => k,
+                    _ => unreachable!("Already validated above"),
+                };
+                let wallet = secp256k1_to_eth_wallet(secp_key)?;
+                let eth_address = wallet.address();
+                let balance = provider_arc
+                    .get_balance(eth_address, None)
+                    .await
+                    .map_err(|e| BridgeError::Generic(format!("Failed to get EVM balance: {:?}", e)))?;
+                
                 info!(
                     chain_id = %chain_id,
                     bridge_contract = ?evm_config.bridge_contract_address,
+                    evm_wallet = ?eth_address,
+                    balance_eth = ?(balance.as_u64() as f64 / 1e18),
                     "EVM relayer initialized successfully"
                 );
+                
+                // Warn if balance is low
+                let balance_eth = balance.as_u64() as f64 / 1e18;
+                if balance_eth < 0.1 {
+                    warn!(
+                        evm_wallet = ?eth_address,
+                        balance_eth = balance_eth,
+                        "EVM wallet balance is low - please fund with at least 0.5 ETH for reliable relay operation"
+                    );
+                }
                 
                 (
                     Some(provider_arc),
@@ -539,16 +563,40 @@ where
     ) -> BridgeResult<()> {
         // Check if EVM relay is configured
         if self.eth_provider.is_none() {
-            warn!(?relay_key, "EVM relay not configured, skipping");
-            return Ok(());
+            error!(
+                ?relay_key,
+                "EVM relay not configured - tokens will not be minted on EVM side. \
+                 To enable EVM relay, add the following to your bridge config YAML:\n\
+                 relay:\n\
+                   enabled: true\n\
+                   evm:\n\
+                     enabled: true\n\
+                     max-gas-price-gwei: 10\n\
+                     gas-estimate-buffer-percent: 20\n\
+                     confirmation-blocks: 2\n\
+                 Note: rpc-url and bridge-contract-address will automatically use values from eth section."
+            );
+            return Err(BridgeError::Generic(
+                "EVM relay not configured - cannot mint tokens on EVM".to_string(),
+            ));
         }
         
         info!(?relay_key, "Relaying to EVM");
         
         // Check EVM wallet balance before attempting relay
-        if let Err(e) = self.check_evm_wallet_balance().await {
-            error!(?relay_key, ?e, "Insufficient EVM wallet balance");
-            return Err(e);
+        match self.check_evm_wallet_balance().await {
+            Ok(()) => {
+                // Balance check passed, continue
+            }
+            Err(e) => {
+                error!(
+                    ?relay_key,
+                    error = ?e,
+                    "Insufficient EVM wallet balance - cannot execute relay transaction. \
+                     Please fund the EVM wallet derived from bridge authority key."
+                );
+                return Err(e);
+            }
         }
         
         // Record pending status
@@ -692,6 +740,12 @@ where
         let wallet = secp256k1_to_eth_wallet(secp_key)?.with_chain_id(chain_id);
         let eth_signer = SignerMiddleware::new(eth_provider.as_ref().clone(), wallet);
         
+        // Extract values before converting message (which moves it)
+        use fastcrypto::encoding::{Encoding, Hex};
+        let token_id = message.parsed_payload.token_type;
+        let amount = message.parsed_payload.amount;
+        let recipient_hex = Hex::encode(&message.parsed_payload.target_address);
+        
         // Convert message to EVM format (using existing From impl!)
         let evm_message: crate::abi::eth_mys_bridge::Message = message.into();
         
@@ -703,8 +757,13 @@ where
         
         info!(
             ?relay_key,
+            bridge_address = ?bridge_address,
+            chain_id = chain_id,
             sig_count = evm_signatures.len(),
-            "Building EVM transaction"
+            token_id = token_id,
+            amount = amount,
+            recipient = ?recipient_hex,
+            "Building EVM transaction to call transferBridgedTokensWithSignatures"
         );
         
         // Create contract instance
@@ -715,7 +774,11 @@ where
         
         // Estimate gas
         let gas_estimate = call.estimate_gas().await.map_err(|e| {
-            error!(?relay_key, ?e, "Gas estimation failed");
+            error!(
+                ?relay_key,
+                error = ?e,
+                "Gas estimation failed - check contract state and message validity"
+            );
             BridgeError::Generic(format!("EVM gas estimation failed: {:?}", e))
         })?;
         
@@ -727,6 +790,11 @@ where
         
         // Get current gas price
         let gas_price = eth_provider.get_gas_price().await.map_err(|e| {
+            error!(
+                ?relay_key,
+                error = ?e,
+                "Failed to get gas price from EVM provider"
+            );
             BridgeError::Generic(format!("Failed to get gas price: {:?}", e))
         })?;
         
@@ -737,6 +805,16 @@ where
         
         let final_gas_price = gas_price.min(max_gas_price_wei);
         
+        info!(
+            ?relay_key,
+            gas_estimate = ?gas_estimate,
+            gas_limit = ?gas_limit,
+            gas_price_gwei = ?(final_gas_price.as_u64() / 1_000_000_000),
+            max_gas_price_gwei = ?(max_gas_price_wei.as_u64() / 1_000_000_000),
+            estimated_cost_eth = ?((gas_limit.as_u64() as f64 * final_gas_price.as_u64() as f64 / 1e18)),
+            "EVM transaction gas details"
+        );
+        
         if gas_price > max_gas_price_wei {
             warn!(
                 ?relay_key,
@@ -746,14 +824,6 @@ where
             );
         }
         
-        info!(
-            ?relay_key,
-            ?gas_limit,
-            ?final_gas_price,
-            gas_price_gwei = final_gas_price.as_u64() / 1_000_000_000,
-            "Sending EVM transaction"
-        );
-        
         // Send transaction with gas settings
         let call_with_gas = call.gas(gas_limit).gas_price(final_gas_price);
         
@@ -761,17 +831,29 @@ where
             .send()
             .await
             .map_err(|e| {
-                error!(?relay_key, ?e, "Failed to send EVM transaction");
+                error!(
+                    ?relay_key,
+                    error = ?e,
+                    "Failed to send EVM transaction - check wallet balance and network connectivity"
+                );
                 BridgeError::Generic(format!("EVM transaction send failed: {:?}", e))
             })?;
         
         let tx_hash = pending_tx.tx_hash();
-        info!(?relay_key, ?tx_hash, "EVM transaction sent, waiting for confirmation");
         
         // Wait for confirmation
         let confirmation_blocks = self.config.evm.as_ref()
             .map(|c| c.confirmation_blocks as usize)
             .unwrap_or(2);
+        
+        info!(
+            ?relay_key,
+            tx_hash = ?tx_hash,
+            gas_limit = ?gas_limit,
+            gas_price_gwei = ?(final_gas_price.as_u64() / 1_000_000_000),
+            confirmation_blocks = confirmation_blocks,
+            "EVM transaction sent successfully - waiting for confirmation"
+        );
         
         let receipt = pending_tx
             .confirmations(confirmation_blocks)
@@ -791,12 +873,26 @@ where
         })?;
         
         if status != 1.into() {
-            error!(?relay_key, ?receipt, "EVM transaction reverted");
+            error!(
+                ?relay_key,
+                tx_hash = ?receipt.transaction_hash,
+                block_number = ?receipt.block_number,
+                gas_used = ?receipt.gas_used,
+                "EVM transaction reverted - tokens were not minted"
+            );
             return Err(BridgeError::Generic(format!(
                 "EVM transaction reverted. Receipt: {:?}",
                 receipt
             )));
         }
+        
+        info!(
+            ?relay_key,
+            tx_hash = ?receipt.transaction_hash,
+            block_number = ?receipt.block_number,
+            gas_used = ?receipt.gas_used,
+            "EVM transaction confirmed successfully - tokens minted on EVM"
+        );
         
         info!(
             ?relay_key,
