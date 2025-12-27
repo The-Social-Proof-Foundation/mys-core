@@ -65,7 +65,7 @@ pub async fn run_mys_deposit_processor(
     gas_manager: Arc<DepositGasManager<mys_sdk::MysClient>>,
     mys_client: Arc<MysBridgeClient>,
     bridge_object: ObjectArg,
-    token_type_tags: Arc<ArcSwap<Arc<HashMap<u8, TypeTag>>>>,
+    token_type_tags: Arc<ArcSwap<Arc<Arc<HashMap<u8, TypeTag>>>>>,
 ) {
     info!("Starting MySocial deposit processor");
 
@@ -78,8 +78,8 @@ pub async fn run_mys_deposit_processor(
             "Processing MySocial deposit"
         );
 
-        // Get current token type tags from ArcSwap
-        let token_type_tags_map = token_type_tags.load();
+        // Get current token type tags from ArcSwap (unwrap 2 Arc layers to get HashMap)
+        let token_type_tags_map = (**token_type_tags.load()).clone();
 
         match handle_mys_deposit(
             deposit_event.clone(),

@@ -312,6 +312,8 @@ async fn start_client_components(
     );
 
     let mys_token_type_tags = Arc::new(ArcSwap::from(Arc::new(mys_token_type_tags)));
+    // Clone before moving into monitor (needed later for deposit processor)
+    let mys_token_type_tags_for_deposits = mys_token_type_tags.clone();
     
     // Extract secp256k1 key for deposit system BEFORE moving client_config.key
     let bridge_authority_key_secp_opt = match &client_config.key {
@@ -359,6 +361,8 @@ async fn start_client_components(
     );
     all_handles.push(spawn_logged_monitored_task!(monitor.run()));
 
+    // Clone mys_client before moving into orchestrator (needed later for deposit gas manager)
+    let mys_client_for_deposit_gas = mys_client.clone();
     let orchestrator = BridgeOrchestrator::new(
         mys_client,
         mys_events_rx,
@@ -396,6 +400,9 @@ async fn start_client_components(
                 info!("Created ETH wallet for gas funding");
                 
                 // 4. Create DepositGasManager (using cloned values)
+                // Clone key and wallet before moving into DepositGasManager (needed later for mys_gas_manager)
+                let key_copy_for_mys_gas = key_copy_for_deposits.copy();
+                let eth_wallet_for_mys_gas = eth_wallet.clone();
                 let deposit_gas_manager = Arc::new(crate::deposit_gas_manager::DepositGasManager::new(
                     key_copy_for_deposits,
                     mys_client_for_deposits.clone(),
@@ -494,20 +501,13 @@ async fn start_client_components(
                     let (mys_deposit_tx, mys_deposit_rx) = tokio::sync::mpsc::unbounded_channel();
                     
                     // 13. Create DepositGasManager for MySocial deposits (needs mys_sdk::MysClient type)
-                    // We need to create a new MysClient<MysSdkClient> for the gas manager
-                    let mys_sdk_client_for_gas = Arc::new(
-                        crate::mys_client::MysClient::<MysSdkClient>::new(
-                            &client_config.mys.mys_rpc_url,
-                            metrics.clone(),
-                        )
-                        .await
-                        .map_err(|e| anyhow::anyhow!("Failed to create MySocial client for gas manager: {:?}", e))?
-                    );
+                    // Use the cloned mys_client (mys_client was moved into orchestrator earlier)
+                    let mys_sdk_client_for_gas = mys_client_for_deposit_gas.clone();
                     
                     let mys_gas_manager = Arc::new(crate::deposit_gas_manager::DepositGasManager::new(
-                        key_copy_for_deposits,
+                        key_copy_for_mys_gas,
                         mys_sdk_client_for_gas,
-                        Some(eth_wallet),
+                        Some(eth_wallet_for_mys_gas),
                         Some(eth_provider.clone()),
                         Some(eth_chain_id),
                     ));
@@ -532,12 +532,18 @@ async fn start_client_components(
                     // 15. Start MySocial deposit processor task
                     let mys_client_for_processor = mys_client_for_deposits.clone();
                     let bridge_object_for_processor = mys_bridge_object_for_mys_processor;
-                    let token_type_tags_for_processor = mys_token_type_tags.clone();
+                    // Clone values before moving into closure (needed after closure)
+                    let deposit_address_manager_for_processor = deposit_address_manager.clone();
+                    let store_for_processor = store.clone();
+                    // Wrap HashMap in one more Arc layer: mys_token_type_tags_for_deposits is Arc<ArcSwap<Arc<HashMap>>>
+                    // Function expects Arc<ArcSwap<Arc<Arc<HashMap>>>>
+                    let inner_map = (*mys_token_type_tags_for_deposits.load()).clone();
+                    let token_type_tags_for_processor = Arc::new(ArcSwap::from(Arc::new(Arc::new(inner_map))));
                     all_handles.push(spawn_logged_monitored_task!(async move {
                         crate::deposit_handler::run_mys_deposit_processor(
                             mys_deposit_rx,
-                            store.clone(),
-                            deposit_address_manager.clone(),
+                            store_for_processor,
+                            deposit_address_manager_for_processor,
                             mys_gas_manager,
                             mys_client_for_processor,
                             bridge_object_for_processor,
@@ -890,6 +896,8 @@ mod tests {
             metrics_key_pair: default_ed25519_key_pair(),
             metrics: None,
             watchdog_config: None,
+            relay: None,
+            deposits: None,
         };
         // Spawn bridge node in memory
         let _handle = run_bridge_node(
@@ -957,6 +965,8 @@ mod tests {
             metrics_key_pair: default_ed25519_key_pair(),
             metrics: None,
             watchdog_config: None,
+            relay: None,
+            deposits: None,
         };
         // Spawn bridge node in memory
         let _handle = run_bridge_node(
@@ -1035,6 +1045,8 @@ mod tests {
             metrics_key_pair: default_ed25519_key_pair(),
             metrics: None,
             watchdog_config: None,
+            relay: None,
+            deposits: None,
         };
         // Spawn bridge node in memory
         let _handle = run_bridge_node(

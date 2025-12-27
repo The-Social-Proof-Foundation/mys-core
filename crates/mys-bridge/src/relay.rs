@@ -6,6 +6,9 @@
 //! This enables seamless cross-chain transfers without manual claiming
 
 use crate::error::{BridgeError, BridgeResult};
+use crate::events::{
+    TokenTransferAlreadyClaimed, TokenTransferClaimed, TokenTransferLimitExceed,
+};
 use crate::mys_client::{MysClient, MysClientInner};
 use crate::storage::{BridgeOrchestratorTables, RelayKey, RelayResult};
 use crate::types::{BridgeAction, ParsedTokenTransferMessage};
@@ -291,13 +294,32 @@ where
         let recipient_address = MysAddress::from_bytes(&message.parsed_payload.target_address)
             .map_err(|e| BridgeError::Generic(format!("Failed to parse recipient address: {:?}", e)))?;
         
+        let amount = message.parsed_payload.amount;
+        let is_mys_token = token_id == 0;
+        
         info!(
             ?relay_key,
             token_id,
+            is_mys_token,
             recipient_address = ?recipient_address,
-            amount = message.parsed_payload.amount,
-            "Claiming tokens from treasury and transferring to recipient"
+            amount,
+            source_chain = relay_key.source_chain,
+            seq_num = relay_key.seq_num,
+            "Preparing to claim tokens from treasury and transfer to recipient"
         );
+        
+        if is_mys_token {
+            info!(
+                ?relay_key,
+                "Claiming MYS tokens - will unlock from native_mys_locked balance (requires treasury to be bootstrapped)"
+            );
+        } else {
+            info!(
+                ?relay_key,
+                token_id,
+                "Claiming foreign token - will mint new tokens (requires token type to be registered with TreasuryCap)"
+            );
+        }
 
         // Get bridge object ref
         let bridge_object_arg = self
@@ -396,15 +418,117 @@ where
                 response
             )));
         }
-        
+
+        // Verify that tokens were actually transferred by checking for TokenTransferClaimed event
+        let events = response.events.ok_or_else(|| {
+            error!(
+                ?relay_key,
+                tx_digest = ?response.digest,
+                "Transaction succeeded but no events returned"
+            );
+            BridgeError::Generic(format!(
+                "Transaction succeeded but no events returned for relay: {:?}",
+                relay_key
+            ))
+        })?;
+
+        // Log all events for diagnostics
         info!(
             ?relay_key,
             tx_digest = ?response.digest,
-            recipient = ?recipient_address,
-            "Successfully claimed tokens from treasury and transferred to recipient"
+            event_count = events.data.len(),
+            event_types = ?events.data.iter().map(|e| &e.type_).collect::<Vec<_>>(),
+            "Transaction executed - analyzing events"
         );
-        
-        Ok(response.digest)
+
+        let claimed_event = events
+            .data
+            .iter()
+            .find(|e| e.type_ == *TokenTransferClaimed.get().unwrap());
+
+        let limit_exceeded_event = events
+            .data
+            .iter()
+            .find(|e| e.type_ == *TokenTransferLimitExceed.get().unwrap());
+
+        let already_claimed_event = events
+            .data
+            .iter()
+            .find(|e| e.type_ == *TokenTransferAlreadyClaimed.get().unwrap());
+
+        match (claimed_event, limit_exceeded_event, already_claimed_event) {
+            (Some(_), _, _) => {
+                // Success - tokens were claimed and transferred
+                info!(
+                    ?relay_key,
+                    tx_digest = ?response.digest,
+                    recipient = ?recipient_address,
+                    "Successfully claimed tokens from treasury and transferred to recipient"
+                );
+                Ok(response.digest)
+            }
+            (_, Some(_), _) => {
+                // Transfer limit exceeded - tokens not transferred
+                error!(
+                    ?relay_key,
+                    tx_digest = ?response.digest,
+                    recipient = ?recipient_address,
+                    token_id,
+                    amount,
+                    is_mys_token,
+                    "Token transfer limit exceeded - tokens were not transferred. \
+                     This can happen if the bridge limiter has reached its daily/hourly limit for this route."
+                );
+                Err(BridgeError::Generic(format!(
+                    "Token transfer limit exceeded for relay: {:?} (token_id={}, amount={}, is_mys={}). \
+                     Tokens were not transferred to recipient. Check bridge limiter configuration.",
+                    relay_key, token_id, amount, is_mys_token
+                )))
+            }
+            (_, _, Some(_)) => {
+                // Already claimed - tokens not transferred
+                warn!(
+                    ?relay_key,
+                    tx_digest = ?response.digest,
+                    recipient = ?recipient_address,
+                    "Tokens were already claimed - no transfer occurred"
+                );
+                // This is not necessarily an error - could be a retry
+                Ok(response.digest)
+            }
+            (None, None, None) => {
+                // No relevant events - this is an error
+                // This could happen if:
+                // - For MYS: Treasury not bootstrapped (ENativeMysNotBootstrapped) or insufficient balance
+                // - For other tokens: Token type not registered or TreasuryCap missing
+                // - Move abort occurred but transaction still succeeded (shouldn't happen, but log it)
+                error!(
+                    ?relay_key,
+                    tx_digest = ?response.digest,
+                    recipient = ?recipient_address,
+                    token_id,
+                    amount,
+                    is_mys_token,
+                    all_events = ?events.data.iter().map(|e| &e.type_).collect::<Vec<_>>(),
+                    "Transaction succeeded but no TokenTransferClaimed, TokenTransferLimitExceed, or TokenTransferAlreadyClaimed event found. \
+                     Possible causes: \
+                     - For MYS tokens: Treasury not bootstrapped (native_mys_bootstrapped=false) or insufficient native_mys_locked balance \
+                     - For foreign tokens: Token type not registered in treasury or TreasuryCap missing \
+                     - Move abort occurred (check transaction effects for abort codes)"
+                );
+                Err(BridgeError::Generic(format!(
+                    "Claim transaction succeeded but no transfer occurred for relay: {:?} (token_id={}, amount={}, is_mys={}). \
+                     Expected TokenTransferClaimed event but found events: {:?}. \
+                     For MYS tokens, verify treasury is bootstrapped with 50M MYS. \
+                     For foreign tokens, verify token type is registered with TreasuryCap.",
+                    relay_key,
+                    token_id,
+                    amount,
+                    is_mys_token,
+                    events.data.iter().map(|e| &e.type_).collect::<Vec<_>>()
+                )))
+            }
+        }
     }
 
     /// Relay an approved MySocial → EVM transfer by calling transferBridgedTokensWithSignatures
