@@ -33,6 +33,7 @@ use crate::{
 use arc_swap::ArcSwap;
 use ethers::providers::Provider;
 use ethers::types::Address as EthAddress;
+use mys_sdk::MysClient as MysSdkClient;
 use mys_types::{
     bridge::{
         BRIDGE_COMMITTEE_MODULE_NAME, BRIDGE_LIMITER_MODULE_NAME, BRIDGE_MODULE_NAME,
@@ -453,9 +454,14 @@ async fn start_client_components(
                         client_config.eth_contracts[0], // Bridge proxy address
                         eth_bridge_config_address,
                         eth_chain_id,
-                        mys_bridge_object,
+                        mys_bridge_object, // Moved into handler
                     ));
                     info!("Created DepositBridgeHandler");
+                    
+                    // Get bridge object again for MySocial deposit processor (needs its own copy)
+                    let mys_bridge_object_for_mys_processor = mys_client_for_deposits
+                        .get_mutable_bridge_object_arg_must_succeed()
+                        .await;
                     
                     // 9. Create channel for deposit events
                     let (evm_deposit_tx, evm_deposit_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -483,6 +489,63 @@ async fn start_client_components(
                         crate::deposit_handler::run_deposit_processor(evm_deposit_rx, deposit_bridge_handler)
                     ));
                     info!("Started deposit processor");
+                    
+                    // 12. Create channel for MySocial deposit events
+                    let (mys_deposit_tx, mys_deposit_rx) = tokio::sync::mpsc::unbounded_channel();
+                    
+                    // 13. Create DepositGasManager for MySocial deposits (needs mys_sdk::MysClient type)
+                    // We need to create a new MysClient<MysSdkClient> for the gas manager
+                    let mys_sdk_client_for_gas = Arc::new(
+                        crate::mys_client::MysClient::<MysSdkClient>::new(
+                            &client_config.mys.mys_rpc_url,
+                            metrics.clone(),
+                        )
+                        .await
+                        .map_err(|e| anyhow::anyhow!("Failed to create MySocial client for gas manager: {:?}", e))?
+                    );
+                    
+                    let mys_gas_manager = Arc::new(crate::deposit_gas_manager::DepositGasManager::new(
+                        key_copy_for_deposits,
+                        mys_sdk_client_for_gas,
+                        Some(eth_wallet),
+                        Some(eth_provider.clone()),
+                        Some(eth_chain_id),
+                    ));
+                    info!("Created MySocial deposit gas manager");
+                    
+                    // 14. Create and start MySocial deposit monitor
+                    let mys_monitor = crate::deposit_monitor::MysDepositMonitor::new(
+                        mys_client_for_deposits.clone(),
+                        store.clone(),
+                        deposit_cfg.poll_interval_secs,
+                        mys_deposit_tx,
+                    );
+                    
+                    // Spawn MySocial deposit monitor task (follows BridgeWatchdog pattern - runs forever)
+                    all_handles.push(spawn_logged_monitored_task!(async move {
+                        if let Err(e) = mys_monitor.run().await {
+                            error!("MySocial deposit monitor error: {:?}", e);
+                        }
+                    }));
+                    info!("Started MySocial deposit monitor");
+                    
+                    // 15. Start MySocial deposit processor task
+                    let mys_client_for_processor = mys_client_for_deposits.clone();
+                    let bridge_object_for_processor = mys_bridge_object_for_mys_processor;
+                    let token_type_tags_for_processor = mys_token_type_tags.clone();
+                    all_handles.push(spawn_logged_monitored_task!(async move {
+                        crate::deposit_handler::run_mys_deposit_processor(
+                            mys_deposit_rx,
+                            store.clone(),
+                            deposit_address_manager.clone(),
+                            mys_gas_manager,
+                            mys_client_for_processor,
+                            bridge_object_for_processor,
+                            token_type_tags_for_processor,
+                        )
+                        .await;
+                    }));
+                    info!("Started MySocial deposit processor");
                     
                     // Create DepositApiState for server
                     info!("Deposit API state created - will be passed to server");
