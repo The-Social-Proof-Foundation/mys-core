@@ -14,6 +14,7 @@ use mys_types::base_types::MysAddress;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};
+use mys_json_rpc_types::MysTransactionBlockDataAPI;
 
 /// Event representing a deposit to an EVM deposit address
 #[derive(Debug, Clone)]
