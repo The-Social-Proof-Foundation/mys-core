@@ -56,6 +56,7 @@ PoC badge issuance, revenue redirection, and community dispute voting
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
 <b>use</b> <a href="../mys/bls12381.md#mys_bls12381">mys::bls12381</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
@@ -81,6 +82,7 @@ PoC badge issuance, revenue redirection, and community dispute voting
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
 <b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
+<b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
 <b>use</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens">social_contracts::social_proof_tokens</a>;
 <b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
@@ -204,6 +206,18 @@ Global configuration for Proof of Creativity system
 </dt>
 <dd>
  Voting duration in epochs
+</dd>
+<dt>
+<code>max_reasoning_length: u64</code>
+</dt>
+<dd>
+ Maximum length for reasoning text
+</dd>
+<dt>
+<code>max_evidence_urls: u64</code>
+</dt>
+<dd>
+ Maximum number of evidence URLs allowed
 </dd>
 <dt>
 <code>dispute_governance_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a></code>
@@ -904,6 +918,16 @@ Event emitted when PoC configuration is updated
 <dd>
 </dd>
 <dt>
+<code>max_reasoning_length: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_evidence_urls: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>timestamp: u64</code>
 </dt>
 <dd>
@@ -1285,6 +1309,8 @@ Bootstrap initialization function - creates the PoC configuration and registry
             min_vote_stake: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_MIN_VOTE_STAKE">DEFAULT_MIN_VOTE_STAKE</a>,
             max_vote_stake: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_MAX_VOTE_STAKE">DEFAULT_MAX_VOTE_STAKE</a>,
             voting_duration_epochs: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_DEFAULT_VOTING_DURATION_EPOCHS">DEFAULT_VOTING_DURATION_EPOCHS</a>,
+            max_reasoning_length: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>,
+            max_evidence_urls: <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>,
             dispute_governance_id: object::id_from_address(@0x0), // Placeholder <b>for</b> future <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>
             ecosystem_treasury: sender, // Auto-configured by <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> service during <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>
             version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
@@ -1315,7 +1341,7 @@ Bootstrap initialization function - creates the PoC configuration and registry
 Update PoC configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_update_poc_config">update_poc_config</a>(_: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCAdminCap">social_contracts::proof_of_creativity::PoCAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">social_contracts::proof_of_creativity::PoCConfig</a>, oracle_address: <b>address</b>, image_threshold: u64, video_threshold: u64, audio_threshold: u64, revenue_redirect_percentage: u64, dispute_cost: u64, dispute_protocol_fee: u64, min_vote_stake: u64, max_vote_stake: u64, voting_duration_epochs: u64, ecosystem_treasury: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_update_poc_config">update_poc_config</a>(_: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCAdminCap">social_contracts::proof_of_creativity::PoCAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfig">social_contracts::proof_of_creativity::PoCConfig</a>, oracle_address: <b>address</b>, image_threshold: u64, video_threshold: u64, audio_threshold: u64, revenue_redirect_percentage: u64, dispute_cost: u64, dispute_protocol_fee: u64, min_vote_stake: u64, max_vote_stake: u64, voting_duration_epochs: u64, max_reasoning_length: u64, max_evidence_urls: u64, ecosystem_treasury: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1337,6 +1363,8 @@ Update PoC configuration (admin only)
     min_vote_stake: u64,
     max_vote_stake: u64,
     voting_duration_epochs: u64,
+    max_reasoning_length: u64,
+    max_evidence_urls: u64,
     ecosystem_treasury: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -1349,6 +1377,9 @@ Update PoC configuration (admin only)
     // Validate voting parameters
     <b>assert</b>!(min_vote_stake &gt; 0 && min_vote_stake &lt;= max_vote_stake, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidStakeAmount">EInvalidStakeAmount</a>);
     <b>assert</b>!(voting_duration_epochs &gt; 0, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidThreshold">EInvalidThreshold</a>);
+    // Validate reasoning and evidence URL parameters
+    <b>assert</b>!(max_reasoning_length &gt; 0, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidThreshold">EInvalidThreshold</a>);
+    <b>assert</b>!(max_evidence_urls &gt; 0, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidThreshold">EInvalidThreshold</a>);
     // Update configuration
     config.oracle_address = oracle_address;
     config.image_threshold = image_threshold;
@@ -1360,6 +1391,8 @@ Update PoC configuration (admin only)
     config.min_vote_stake = min_vote_stake;
     config.max_vote_stake = max_vote_stake;
     config.voting_duration_epochs = voting_duration_epochs;
+    config.max_reasoning_length = max_reasoning_length;
+    config.max_evidence_urls = max_evidence_urls;
     config.ecosystem_treasury = ecosystem_treasury;
     // Emit configuration update event
     event::emit(<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfigUpdatedEvent">PoCConfigUpdatedEvent</a> {
@@ -1372,6 +1405,8 @@ Update PoC configuration (admin only)
         min_vote_stake,
         max_vote_stake,
         voting_duration_epochs,
+        max_reasoning_length,
+        max_evidence_urls,
         timestamp: tx_context::epoch_timestamp_ms(ctx),
     });
 }
@@ -1428,12 +1463,12 @@ Reasoning and evidence URLs are optional for transparency and accountability
     <b>if</b> (option::is_some(&reasoning)) {
         <b>let</b> reasoning_val = option::borrow(&reasoning);
         <b>let</b> reasoning_len = string::length(reasoning_val);
-        <b>assert</b>!(reasoning_len &lt;= <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidReasoning">EInvalidReasoning</a>);
+        <b>assert</b>!(reasoning_len &lt;= config.max_reasoning_length, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidReasoning">EInvalidReasoning</a>);
     };
     // Validate evidence URLs array <b>if</b> provided
     <b>if</b> (option::is_some(&evidence_urls)) {
         <b>let</b> urls = option::borrow(&evidence_urls);
-        <b>assert</b>!(vector::length(urls) &lt;= <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_MAX_EVIDENCE_URLS">MAX_EVIDENCE_URLS</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidEvidenceUrls">EInvalidEvidenceUrls</a>);
+        <b>assert</b>!(vector::length(urls) &lt;= config.max_evidence_urls, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidEvidenceUrls">EInvalidEvidenceUrls</a>);
     };
     // Get threshold <b>for</b> this media type
     <b>let</b> threshold = <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_get_threshold_for_media_type">get_threshold_for_media_type</a>(config, media_type);
@@ -1582,6 +1617,9 @@ Submit a PoC dispute with community voting
     // Verify sufficient payment
     <b>let</b> total_cost = config.dispute_cost + config.dispute_protocol_fee;
     <b>assert</b>!(coin::value(&payment) &gt;= total_cost, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInsufficientFunds">EInsufficientFunds</a>);
+    // Validate evidence length
+    <b>let</b> evidence_len = string::length(&evidence);
+    <b>assert</b>!(evidence_len &lt;= config.max_reasoning_length, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EInvalidReasoning">EInvalidReasoning</a>);
     // Verify only <a href="../social_contracts/post.md#social_contracts_post">post</a> owner can dispute their <a href="../social_contracts/post.md#social_contracts_post">post</a>'s PoC status
     <b>assert</b>!(disputer == <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">social_contracts::post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EUnauthorized">EUnauthorized</a>);
     // Verify the <a href="../social_contracts/post.md#social_contracts_post">post</a> <b>has</b> PoC data to dispute (badge or redirection)

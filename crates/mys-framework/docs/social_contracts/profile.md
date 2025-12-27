@@ -95,6 +95,7 @@ Handles user identity, profile creation, management, and username registration
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
@@ -385,10 +386,16 @@ These badges cannot be transferred or sold and stay with the profile
  Description of what the badge represents
 </dd>
 <dt>
-<code>image_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+<code>media_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
 </dt>
 <dd>
- Image URL for the badge
+ Media URL for the badge (can be image, video, etc.)
+</dd>
+<dt>
+<code>icon_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+ Icon URL for the badge (small icon displayed next to username)
 </dd>
 <dt>
 <code>platform_id: <b>address</b></code>
@@ -522,6 +529,24 @@ Event emitted when a badge is assigned to a profile
 </dt>
 <dd>
  Badge name
+</dd>
+<dt>
+<code>description: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+ Description of what the badge represents
+</dd>
+<dt>
+<code>media_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+ Media URL for the badge (can be image, video, etc.)
+</dd>
+<dt>
+<code>icon_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+ Icon URL for the badge (small icon displayed next to username)
 </dd>
 <dt>
 <code>platform_id: <b>address</b></code>
@@ -2316,7 +2341,7 @@ Get the tips received for a profile
 Add tips received (called by post/comment module when tipping)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_add_tips_received">add_tips_received</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, amount: u64): u64
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_add_tips_received">add_tips_received</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, amount: u64): u64
 </code></pre>
 
 
@@ -2325,7 +2350,7 @@ Add tips received (called by post/comment module when tipping)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_add_tips_received">add_tips_received</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, amount: u64): u64 {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_add_tips_received">add_tips_received</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>, amount: u64): u64 {
     <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.tips_received &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.tips_received = <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.tips_received + amount;
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.tips_received
@@ -2765,7 +2790,7 @@ Get the treasury address from the EcosystemTreasury
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_borrow_version_mut">borrow_version_mut</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>): &<b>mut</b> u64
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_borrow_version_mut">borrow_version_mut</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>): &<b>mut</b> u64
 </code></pre>
 
 
@@ -2774,7 +2799,7 @@ Get the treasury address from the EcosystemTreasury
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_borrow_version_mut">borrow_version_mut</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>): &<b>mut</b> u64 {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_borrow_version_mut">borrow_version_mut</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>): &<b>mut</b> u64 {
     &<b>mut</b> registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a>
 }
 </code></pre>
@@ -2884,7 +2909,7 @@ Adds a badge to a profile - called by platform module
 This function trusts the caller has done authorization checks
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_add_badge_to_profile">add_badge_to_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_image_url: <a href="../std/string.md#std_string_String">std::string::String</a>, platform_id: <b>address</b>, timestamp: u64, issuer: <b>address</b>, badge_type: u8)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_add_badge_to_profile">add_badge_to_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, platform_id: <b>address</b>, timestamp: u64, issuer: <b>address</b>, badge_type: u8)
 </code></pre>
 
 
@@ -2893,12 +2918,13 @@ This function trusts the caller has done authorization checks
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_add_badge_to_profile">add_badge_to_profile</a>(
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_add_badge_to_profile">add_badge_to_profile</a>(
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
     <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: String,
     badge_name: String,
     badge_description: String,
-    badge_image_url: String,
+    badge_media_url: String,
+    badge_icon_url: String,
     platform_id: <b>address</b>,
     timestamp: u64,
     issuer: <b>address</b>,
@@ -2909,7 +2935,8 @@ This function trusts the caller has done authorization checks
         <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>,
         name: badge_name,
         description: badge_description,
-        image_url: badge_image_url,
+        media_url: badge_media_url,
+        icon_url: badge_icon_url,
         platform_id,
         issued_at: timestamp,
         issued_by: issuer,
@@ -2936,6 +2963,9 @@ This function trusts the caller has done authorization checks
         profile_id: object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>),
         <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>,
         name: badge_name,
+        description: badge_description,
+        media_url: badge_media_url,
+        icon_url: badge_icon_url,
         platform_id,
         assigned_by: issuer,
         assigned_at: timestamp,
@@ -2956,7 +2986,7 @@ Removes a badge from a profile - called by platform module
 This function trusts the caller has done authorization checks
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">remove_badge_from_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &<a href="../std/string.md#std_string_String">std::string::String</a>, platform_id: <b>address</b>, revoker: <b>address</b>, timestamp: u64)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">remove_badge_from_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &<a href="../std/string.md#std_string_String">std::string::String</a>, platform_id: <b>address</b>, revoker: <b>address</b>, timestamp: u64)
 </code></pre>
 
 
@@ -2965,7 +2995,7 @@ This function trusts the caller has done authorization checks
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">remove_badge_from_profile</a>(
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">remove_badge_from_profile</a>(
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
     <a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &String,
     platform_id: <b>address</b>,

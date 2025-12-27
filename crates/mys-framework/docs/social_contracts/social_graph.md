@@ -13,6 +13,7 @@ Manages social relationships between users (following/followers)
 -  [Function `bootstrap_init`](#social_contracts_social_graph_bootstrap_init)
 -  [Function `follow`](#social_contracts_social_graph_follow)
 -  [Function `unfollow`](#social_contracts_social_graph_unfollow)
+-  [Function `unfollow_internal`](#social_contracts_social_graph_unfollow_internal)
 -  [Function `migrate_social_graph`](#social_contracts_social_graph_migrate_social_graph)
 -  [Function `borrow_version_mut`](#social_contracts_social_graph_borrow_version_mut)
 -  [Function `version`](#social_contracts_social_graph_version)
@@ -26,6 +27,7 @@ Manages social relationships between users (following/followers)
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
@@ -362,6 +364,62 @@ Unfollow a profile by address
 
 </details>
 
+<a name="social_contracts_social_graph_unfollow_internal"></a>
+
+## Function `unfollow_internal`
+
+Internal unfollow function that accepts explicit profile IDs
+Used for bidirectional unfollow during blocking operations
+Returns true if unfollow occurred, false if not following
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">unfollow_internal</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, follower_profile_id: <b>address</b>, following_profile_id: <b>address</b>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">unfollow_internal</a>(
+    <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>,
+    follower_profile_id: <b>address</b>,
+    following_profile_id: <b>address</b>
+): bool {
+    // Check <b>if</b> following relationship exists
+    <b>if</b> (!<a href="../social_contracts/social_graph.md#social_contracts_social_graph_is_following">is_following</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, follower_profile_id, following_profile_id)) {
+        <b>return</b> <b>false</b>  // Not following, nothing to do
+    };
+    // Check <b>if</b> following sets exist (defensive)
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_profile_id)) {
+        <b>return</b> <b>false</b>
+    };
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_profile_id)) {
+        <b>return</b> <b>false</b>
+    };
+    // Get mutable references to the sets
+    <b>let</b> follower_following = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_profile_id);
+    <b>let</b> following_followers = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_profile_id);
+    // Remove <b>if</b> present (defensive check)
+    <b>if</b> (vec_set::contains(follower_following, &following_profile_id)) {
+        vec_set::remove(follower_following, &following_profile_id);
+        vec_set::remove(following_followers, &follower_profile_id);
+        // Emit <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow">unfollow</a> event
+        event::emit(<a href="../social_contracts/social_graph.md#social_contracts_social_graph_UnfollowEvent">UnfollowEvent</a> {
+            follower: follower_profile_id,
+            unfollowed: following_profile_id,
+        });
+        <b>return</b> <b>true</b>
+    };
+    <b>false</b>
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_graph_migrate_social_graph"></a>
 
 ## Function `migrate_social_graph`
@@ -413,7 +471,7 @@ Only callable by the admin with the AdminCap
 Get a mutable reference to the version field (for upgrade module)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_borrow_version_mut">borrow_version_mut</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>): &<b>mut</b> u64
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_borrow_version_mut">borrow_version_mut</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>): &<b>mut</b> u64
 </code></pre>
 
 
@@ -422,7 +480,7 @@ Get a mutable reference to the version field (for upgrade module)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_borrow_version_mut">borrow_version_mut</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>): &<b>mut</b> u64 {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_borrow_version_mut">borrow_version_mut</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>): &<b>mut</b> u64 {
     &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.<a href="../social_contracts/social_graph.md#social_contracts_social_graph_version">version</a>
 }
 </code></pre>

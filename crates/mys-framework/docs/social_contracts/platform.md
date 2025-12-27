@@ -85,6 +85,7 @@ Manages social media platforms and their timelines
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
 <b>use</b> <a href="../mys/bls12381.md#mys_bls12381">mys::bls12381</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
@@ -469,6 +470,56 @@ Platform created event
 </dd>
 <dt>
 <code><a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>delegate_count: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>delegate_term_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>proposal_submission_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_on_chain_age_days: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_votes_per_user: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>quadratic_base_cost: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>voting_period_epochs: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>quorum_votes: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -973,11 +1024,20 @@ Event emitted when tokens are added to platform treasury
 
 
 
-<a name="social_contracts_platform_EBadgeImageUrlTooLong"></a>
+<a name="social_contracts_platform_EBadgeIconUrlTooLong"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeImageUrlTooLong">EBadgeImageUrlTooLong</a>: u64 = 13;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeIconUrlTooLong">EBadgeIconUrlTooLong</a>: u64 = 15;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_EBadgeMediaUrlTooLong"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeMediaUrlTooLong">EBadgeMediaUrlTooLong</a>: u64 = 13;
 </code></pre>
 
 
@@ -1100,11 +1160,20 @@ Error codes
 
 
 
-<a name="social_contracts_platform_MAX_BADGE_IMAGE_URL_LENGTH"></a>
+<a name="social_contracts_platform_MAX_BADGE_ICON_URL_LENGTH"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_IMAGE_URL_LENGTH">MAX_BADGE_IMAGE_URL_LENGTH</a>: u64 = 2048;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>: u64 = 2048;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_MAX_BADGE_MEDIA_URL_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_MEDIA_URL_LENGTH">MAX_BADGE_MEDIA_URL_LENGTH</a>: u64 = 2048;
 </code></pre>
 
 
@@ -1347,23 +1416,9 @@ Create a new platform and transfer to developer
     vector::push_back(developer_platforms, platform_id);
     // Add to <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> approvals (starts <b>as</b> not approved)
     table::add(&<b>mut</b> registry.platform_approvals, platform_id, <b>false</b>);
-    // Emit <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> created event
-    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_PlatformCreatedEvent">PlatformCreatedEvent</a> {
-        platform_id,
-        <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>,
-        <a href="../social_contracts/platform.md#social_contracts_platform_tagline">tagline</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_tagline">tagline</a>,
-        <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>,
-        <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>,
-        <a href="../social_contracts/platform.md#social_contracts_platform_logo">logo</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_logo">logo</a>,
-        <a href="../social_contracts/platform.md#social_contracts_platform_terms_of_service">terms_of_service</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_terms_of_service">terms_of_service</a>,
-        <a href="../social_contracts/platform.md#social_contracts_platform_privacy_policy">privacy_policy</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_privacy_policy">privacy_policy</a>,
-        platforms: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.platforms,
-        links: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.links,
-        <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>,
-        <a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>,
-    });
-    // If <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> wants DAO <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>, create <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> registry immediately
-    <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>) {
+    // If <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> wants DAO <a href="../social_contracts/governance.md#social_contracts_governance">governance</a>, create <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> registry immediately so it can
+    // be reflected in the creation event payload.
+    <b>if</b> (<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>) {
         // Use default values <b>if</b> options are None
         <b>let</b> delegate_count = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_count)) {
             *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_count)
@@ -1420,6 +1475,31 @@ Create a new platform and transfer to developer
         // Store registry ID in the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
         <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a> = option::some(registry_id);
     };
+    // Emit <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> created event (after <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> registry creation so DAO fields are populated)
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_PlatformCreatedEvent">PlatformCreatedEvent</a> {
+        platform_id,
+        <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_tagline">tagline</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_tagline">tagline</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_logo">logo</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_logo">logo</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_terms_of_service">terms_of_service</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_terms_of_service">terms_of_service</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_privacy_policy">privacy_policy</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_privacy_policy">privacy_policy</a>,
+        platforms: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.platforms,
+        links: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.links,
+        <a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_status">status</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_release_date">release_date</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_wants_dao_governance">wants_dao_governance</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a>,
+        delegate_count: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_count,
+        delegate_term_epochs: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.delegate_term_epochs,
+        proposal_submission_cost: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.proposal_submission_cost,
+        min_on_chain_age_days: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.min_on_chain_age_days,
+        max_votes_per_user: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.max_votes_per_user,
+        quadratic_base_cost: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quadratic_base_cost,
+        voting_period_epochs: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.voting_period_epochs,
+        quorum_votes: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quorum_votes,
+    });
     // Share <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>as</b> a shared object (publicly accessible)
     transfer::share_object(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
 }
@@ -1531,7 +1611,7 @@ Get the version of a platform
 Get a mutable reference to the platform version (only for upgrade module)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_borrow_platform_version_mut">borrow_platform_version_mut</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>): &<b>mut</b> u64
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_borrow_platform_version_mut">borrow_platform_version_mut</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>): &<b>mut</b> u64
 </code></pre>
 
 
@@ -1540,7 +1620,7 @@ Get a mutable reference to the platform version (only for upgrade module)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_borrow_platform_version_mut">borrow_platform_version_mut</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>): &<b>mut</b> u64 {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_borrow_platform_version_mut">borrow_platform_version_mut</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>): &<b>mut</b> u64 {
     &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version
 }
 </code></pre>
@@ -1581,7 +1661,7 @@ Get the version of the platform registry
 Get a mutable reference to the registry version (only for upgrade module)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_borrow_registry_version_mut">borrow_registry_version_mut</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>): &<b>mut</b> u64
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_borrow_registry_version_mut">borrow_registry_version_mut</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>): &<b>mut</b> u64
 </code></pre>
 
 
@@ -1590,7 +1670,7 @@ Get a mutable reference to the registry version (only for upgrade module)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_borrow_registry_version_mut">borrow_registry_version_mut</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>): &<b>mut</b> u64 {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_borrow_registry_version_mut">borrow_registry_version_mut</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>): &<b>mut</b> u64 {
     &<b>mut</b> registry.version
 }
 </code></pre>
@@ -2879,7 +2959,7 @@ Assign a badge to a profile - can only be called by platform admin/moderator
 This is the primary entry point for badge assignment
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_badge">assign_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_image_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_badge">assign_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2894,7 +2974,8 @@ This is the primary entry point for badge assignment
     <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">profile::Profile</a>,
     badge_name: String,
     badge_description: String,
-    badge_image_url: String,
+    badge_media_url: String,
+    badge_icon_url: String,
     badge_type: u8,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -2911,7 +2992,8 @@ This is the primary entry point for badge assignment
     // Validate badge field lengths
     <b>assert</b>!(string::length(&badge_name) &gt; 0 && string::length(&badge_name) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_NAME_LENGTH">MAX_BADGE_NAME_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeNameTooLong">EBadgeNameTooLong</a>);
     <b>assert</b>!(string::length(&badge_description) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_DESCRIPTION_LENGTH">MAX_BADGE_DESCRIPTION_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeDescriptionTooLong">EBadgeDescriptionTooLong</a>);
-    <b>assert</b>!(string::length(&badge_image_url) &gt; 0 && string::length(&badge_image_url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_IMAGE_URL_LENGTH">MAX_BADGE_IMAGE_URL_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeImageUrlTooLong">EBadgeImageUrlTooLong</a>);
+    <b>assert</b>!(string::length(&badge_media_url) &gt; 0 && string::length(&badge_media_url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_MEDIA_URL_LENGTH">MAX_BADGE_MEDIA_URL_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeMediaUrlTooLong">EBadgeMediaUrlTooLong</a>);
+    <b>assert</b>!(string::length(&badge_icon_url) &gt; 0 && string::length(&badge_icon_url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeIconUrlTooLong">EBadgeIconUrlTooLong</a>);
     // Get current time
     <b>let</b> now = tx_context::epoch(ctx);
     // Create a unique badge ID by including <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> ID to prevent collisions
@@ -2927,7 +3009,8 @@ This is the primary entry point for badge assignment
         badge_id,
         badge_name,
         badge_description,
-        badge_image_url,
+        badge_media_url,
+        badge_icon_url,
         platform_id,
         now,
         caller,
@@ -2996,7 +3079,7 @@ This is the primary entry point for badge revocation
 When adding a moderator to a platform, register them with the profile module
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_add_moderator_register">add_moderator_register</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, moderator_address: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_add_moderator_register">add_moderator_register</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, moderator_address: <b>address</b>, ctx: &<a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3005,10 +3088,10 @@ When adding a moderator to a platform, register them with the profile module
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_add_moderator_register">add_moderator_register</a>(
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_add_moderator_register">add_moderator_register</a>(
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
     moderator_address: <b>address</b>,
-    ctx: &<b>mut</b> TxContext
+    ctx: &TxContext
 ) {
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>
     <b>let</b> caller = tx_context::sender(ctx);
@@ -3040,7 +3123,7 @@ When adding a moderator to a platform, register them with the profile module
 When removing a moderator from a platform
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_remove_moderator_unregister">remove_moderator_unregister</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, moderator_address: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_remove_moderator_unregister">remove_moderator_unregister</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, moderator_address: <b>address</b>, ctx: &<a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3049,10 +3132,10 @@ When removing a moderator from a platform
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_remove_moderator_unregister">remove_moderator_unregister</a>(
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_remove_moderator_unregister">remove_moderator_unregister</a>(
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
     moderator_address: <b>address</b>,
-    ctx: &<b>mut</b> TxContext
+    ctx: &TxContext
 ) {
     // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>
     <b>let</b> caller = tx_context::sender(ctx);

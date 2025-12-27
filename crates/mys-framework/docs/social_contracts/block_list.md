@@ -32,17 +32,30 @@ Manages user blocking between wallet addresses
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
+<b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
+<b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
+<b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
+<b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
+<b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
 <b>use</b> <a href="../mys/dynamic_field.md#mys_dynamic_field">mys::dynamic_field</a>;
+<b>use</b> <a href="../mys/dynamic_object_field.md#mys_dynamic_object_field">mys::dynamic_object_field</a>;
 <b>use</b> <a href="../mys/event.md#mys_event">mys::event</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
+<b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/package.md#mys_package">mys::package</a>;
 <b>use</b> <a href="../mys/table.md#mys_table">mys::table</a>;
 <b>use</b> <a href="../mys/transfer.md#mys_transfer">mys::transfer</a>;
 <b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
+<b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
+<b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
+<b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
+<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -292,7 +305,7 @@ Error codes
 Create a new block list
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_create_block_list">create_block_list</a>(owner: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">social_contracts::block_list::BlockList</a>
+<pre><code><b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_create_block_list">create_block_list</a>(owner: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">social_contracts::block_list::BlockList</a>
 </code></pre>
 
 
@@ -301,7 +314,7 @@ Create a new block list
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_create_block_list">create_block_list</a>(owner: <b>address</b>, ctx: &<b>mut</b> TxContext): <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">BlockList</a> {
+<pre><code><b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_create_block_list">create_block_list</a>(owner: <b>address</b>, ctx: &<b>mut</b> TxContext): <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">BlockList</a> {
     <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">BlockList</a> {
         id: object::new(ctx),
         owner,
@@ -425,9 +438,10 @@ Generate a unique key for storing a user's blocked wallets
 
 Block a wallet address
 Uses the caller's wallet address as the blocker
+Automatically unfollows in both directions if users are following each other
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet">block_wallet</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, blocked_wallet_address: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet">block_wallet</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, blocked_wallet_address: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -438,6 +452,8 @@ Uses the caller's wallet address as the blocker
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet">block_wallet</a>(
     registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>,
+    <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_graph::SocialGraph</a>,
+    username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">profile::UsernameRegistry</a>,
     blocked_wallet_address: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -488,7 +504,21 @@ Uses the caller's wallet address as the blocker
         });
         // Return the block list to the caller
         transfer::transfer(<a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>, sender);
-    }
+    };
+    // Perform bidirectional unfollow after blocking succeeds
+    // Look up <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> IDs <b>for</b> both users
+    <b>let</b> blocker_profile_opt = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(username_registry, sender);
+    <b>let</b> blocked_profile_opt = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(username_registry, blocked_wallet_address);
+    // If both profiles exist, attempt bidirectional unfollow
+    <b>if</b> (option::is_some(&blocker_profile_opt) && option::is_some(&blocked_profile_opt)) {
+        <b>let</b> blocker_profile_id = *option::borrow(&blocker_profile_opt);
+        <b>let</b> blocked_profile_id = *option::borrow(&blocked_profile_opt);
+        // Blocker unfollows blocked (<b>if</b> following)
+        <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">social_graph::unfollow_internal</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, blocker_profile_id, blocked_profile_id);
+        // Blocked unfollows blocker (<b>if</b> following)
+        <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">social_graph::unfollow_internal</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, blocked_profile_id, blocker_profile_id);
+    };
+    // Continue - blocking succeeds regardless of unfollow results
 }
 </code></pre>
 
@@ -749,7 +779,7 @@ Get the version of a block list
 Get a mutable reference to the block list version (for upgrade module)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_borrow_version_mut">borrow_version_mut</a>(<a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">social_contracts::block_list::BlockList</a>): &<b>mut</b> u64
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_borrow_version_mut">borrow_version_mut</a>(<a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">social_contracts::block_list::BlockList</a>): &<b>mut</b> u64
 </code></pre>
 
 
@@ -758,7 +788,7 @@ Get a mutable reference to the block list version (for upgrade module)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_borrow_version_mut">borrow_version_mut</a>(<a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">BlockList</a>): &<b>mut</b> u64 {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_borrow_version_mut">borrow_version_mut</a>(<a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockList">BlockList</a>): &<b>mut</b> u64 {
     &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>.<a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a>
 }
 </code></pre>
@@ -799,7 +829,7 @@ Get the version of the block list registry
 Get a mutable reference to the registry version (for upgrade module)
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_borrow_registry_version_mut">borrow_registry_version_mut</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>): &<b>mut</b> u64
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_borrow_registry_version_mut">borrow_registry_version_mut</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>): &<b>mut</b> u64
 </code></pre>
 
 
@@ -808,7 +838,7 @@ Get a mutable reference to the registry version (for upgrade module)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_borrow_registry_version_mut">borrow_registry_version_mut</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>): &<b>mut</b> u64 {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_borrow_registry_version_mut">borrow_registry_version_mut</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>): &<b>mut</b> u64 {
     &<b>mut</b> registry.<a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a>
 }
 </code></pre>

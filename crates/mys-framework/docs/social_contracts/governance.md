@@ -78,6 +78,7 @@ Implements proposal submission, voting, and execution processes
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
 <b>use</b> <a href="../mys/bls12381.md#mys_bls12381">mys::bls12381</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
@@ -2612,15 +2613,6 @@ Delegate votes on a proposal if it should move to community voting
     <b>let</b> delegate_approval_count = proposal.delegate_approval_count;
     <b>let</b> delegate_rejection_count = proposal.delegate_rejection_count;
     <b>let</b> total_delegates = table::length(&registry.delegates);
-    // Emit event - restore the original reason <b>for</b> event emission
-    <b>let</b> reason_for_event = reason;
-    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_DelegateVoteEvent">DelegateVoteEvent</a> {
-        proposal_id,
-        delegate_address: caller,
-        approve,
-        vote_time: current_time,
-        reason: reason_for_event,
-    });
     // If more than half of delegates approve, <b>move</b> to community voting
     <b>if</b> (delegate_approval_count &gt; total_delegates / 2) {
         <a href="../social_contracts/governance.md#social_contracts_governance_move_to_community_voting_by_id">move_to_community_voting_by_id</a>(registry, proposal_id, ctx);
@@ -2629,6 +2621,15 @@ Delegate votes on a proposal if it should move to community voting
     <b>else</b> <b>if</b> (delegate_rejection_count &gt; total_delegates / 2) {
         <a href="../social_contracts/governance.md#social_contracts_governance_reject_proposal_by_id">reject_proposal_by_id</a>(registry, proposal_id, current_time, ctx);
     };
+    // Emit event after potential state transitions so the event reflects a stable outcome path
+    <b>let</b> reason_for_event = reason;
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_DelegateVoteEvent">DelegateVoteEvent</a> {
+        proposal_id,
+        delegate_address: caller,
+        approve,
+        vote_time: current_time,
+        reason: reason_for_event,
+    });
 }
 </code></pre>
 
@@ -3781,7 +3782,7 @@ Get version of GovernanceDAO
 Set version of GovernanceDAO
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_set_version">set_version</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, new_version: u64)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_set_version">set_version</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, new_version: u64)
 </code></pre>
 
 
@@ -3790,7 +3791,7 @@ Set version of GovernanceDAO
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_set_version">set_version</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>, new_version: u64) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_set_version">set_version</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>, new_version: u64) {
     registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> = new_version;
 }
 </code></pre>

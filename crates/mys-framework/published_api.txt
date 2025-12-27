@@ -1750,6 +1750,24 @@ uncompressed_g1_to_g1
 uncompressed_g1_sum
 	public fun
 	0x2::bls12381
+BootstrapKey
+	public struct
+	0x2::bootstrap_key
+init
+	fun
+	0x2::bootstrap_key
+is_used
+	public fun
+	0x2::bootstrap_key
+version
+	public fun
+	0x2::bootstrap_key
+assert_not_used
+	public fun
+	0x2::bootstrap_key
+finalize_bootstrap
+	public fun
+	0x2::bootstrap_key
 Referent
 	public struct
 	0x2::borrow
@@ -2041,9 +2059,6 @@ per_type_list
 CoinCreationAdminCap
 	public struct
 	0x2::coin
-FrameworkBootstrapKey
-	public struct
-	0x2::coin
 Coin
 	public struct
 	0x2::coin
@@ -2065,19 +2080,7 @@ CurrencyCreated
 DenyCap
 	public struct
 	0x2::coin
-init
-	fun
-	0x2::coin
 create_coin_creation_admin_cap
-	public(package) fun
-	0x2::coin
-bootstrap_framework
-	public entry fun
-	0x2::coin
-is_bootstrap_key_used
-	public fun
-	0x2::coin
-get_bootstrap_key_version
 	public fun
 	0x2::coin
 total_supply
@@ -4738,72 +4741,6 @@ emit_migration_event
 create_upgrade_admin_cap
 	public(package) fun
 	0x50c1::upgrade
-BlockList
-	public struct
-	0x50c1::block_list
-BlockListRegistry
-	public struct
-	0x50c1::block_list
-UserBlockEvent
-	public struct
-	0x50c1::block_list
-UserUnblockEvent
-	public struct
-	0x50c1::block_list
-BlockListCreatedEvent
-	public struct
-	0x50c1::block_list
-create_block_list
-	public fun
-	0x50c1::block_list
-create_block_list_for_sender
-	public entry fun
-	0x50c1::block_list
-bootstrap_init
-	public(package) fun
-	0x50c1::block_list
-get_blocked_wallets_key
-	fun
-	0x50c1::block_list
-block_wallet
-	public entry fun
-	0x50c1::block_list
-unblock_wallet
-	public entry fun
-	0x50c1::block_list
-has_block_list
-	public fun
-	0x50c1::block_list
-find_block_list_id
-	public fun
-	0x50c1::block_list
-is_blocked
-	public fun
-	0x50c1::block_list
-blocked_count
-	public fun
-	0x50c1::block_list
-get_blocked_wallets
-	public fun
-	0x50c1::block_list
-version
-	public fun
-	0x50c1::block_list
-borrow_version_mut
-	public fun
-	0x50c1::block_list
-registry_version
-	public fun
-	0x50c1::block_list
-borrow_registry_version_mut
-	public fun
-	0x50c1::block_list
-migrate_block_list
-	public entry fun
-	0x50c1::block_list
-migrate_block_list_registry
-	public entry fun
-	0x50c1::block_list
 ProfileSubscriptionService
 	public struct
 	0x50c1::subscription
@@ -5003,7 +4940,7 @@ get_tips_received
 	public fun
 	0x50c1::profile
 add_tips_received
-	public fun
+	public(package) fun
 	0x50c1::profile
 create_subscription_service
 	public entry fun
@@ -5033,7 +4970,7 @@ version
 	public fun
 	0x50c1::profile
 borrow_version_mut
-	public fun
+	public(package) fun
 	0x50c1::profile
 migrate_registry
 	public entry fun
@@ -5045,10 +4982,10 @@ is_for_sale
 	public fun
 	0x50c1::profile
 add_badge_to_profile
-	public fun
+	public(package) fun
 	0x50c1::profile
 remove_badge_from_profile
-	public fun
+	public(package) fun
 	0x50c1::profile
 get_profile_badges
 	public fun
@@ -5131,6 +5068,117 @@ requires_paid_message
 get_min_message_cost
 	public fun
 	0x50c1::profile
+SocialGraph
+	public struct
+	0x50c1::social_graph
+FollowEvent
+	public struct
+	0x50c1::social_graph
+UnfollowEvent
+	public struct
+	0x50c1::social_graph
+bootstrap_init
+	public(package) fun
+	0x50c1::social_graph
+follow
+	public entry fun
+	0x50c1::social_graph
+unfollow
+	public entry fun
+	0x50c1::social_graph
+unfollow_internal
+	public(package) fun
+	0x50c1::social_graph
+migrate_social_graph
+	public entry fun
+	0x50c1::social_graph
+borrow_version_mut
+	public(package) fun
+	0x50c1::social_graph
+version
+	public fun
+	0x50c1::social_graph
+is_following
+	public fun
+	0x50c1::social_graph
+following_count
+	public fun
+	0x50c1::social_graph
+follower_count
+	public fun
+	0x50c1::social_graph
+get_following
+	public fun
+	0x50c1::social_graph
+get_followers
+	public fun
+	0x50c1::social_graph
+BlockList
+	public struct
+	0x50c1::block_list
+BlockListRegistry
+	public struct
+	0x50c1::block_list
+UserBlockEvent
+	public struct
+	0x50c1::block_list
+UserUnblockEvent
+	public struct
+	0x50c1::block_list
+BlockListCreatedEvent
+	public struct
+	0x50c1::block_list
+create_block_list
+	fun
+	0x50c1::block_list
+create_block_list_for_sender
+	public entry fun
+	0x50c1::block_list
+bootstrap_init
+	public(package) fun
+	0x50c1::block_list
+get_blocked_wallets_key
+	fun
+	0x50c1::block_list
+block_wallet
+	public entry fun
+	0x50c1::block_list
+unblock_wallet
+	public entry fun
+	0x50c1::block_list
+has_block_list
+	public fun
+	0x50c1::block_list
+find_block_list_id
+	public fun
+	0x50c1::block_list
+is_blocked
+	public fun
+	0x50c1::block_list
+blocked_count
+	public fun
+	0x50c1::block_list
+get_blocked_wallets
+	public fun
+	0x50c1::block_list
+version
+	public fun
+	0x50c1::block_list
+borrow_version_mut
+	public(package) fun
+	0x50c1::block_list
+registry_version
+	public fun
+	0x50c1::block_list
+borrow_registry_version_mut
+	public(package) fun
+	0x50c1::block_list
+migrate_block_list
+	public entry fun
+	0x50c1::block_list
+migrate_block_list_registry
+	public entry fun
+	0x50c1::block_list
 GovernanceAdminCap
 	public struct
 	0x50c1::governance
@@ -5297,7 +5345,7 @@ version
 	public fun
 	0x50c1::governance
 set_version
-	public fun
+	public(package) fun
 	0x50c1::governance
 migrate_registry
 	public entry fun
@@ -5363,13 +5411,13 @@ platform_version
 	public fun
 	0x50c1::platform
 borrow_platform_version_mut
-	public fun
+	public(package) fun
 	0x50c1::platform
 registry_version
 	public fun
 	0x50c1::platform
 borrow_registry_version_mut
-	public fun
+	public(package) fun
 	0x50c1::platform
 add_to_treasury
 	public entry fun
@@ -5495,10 +5543,10 @@ revoke_badge
 	public entry fun
 	0x50c1::platform
 add_moderator_register
-	public fun
+	public(package) fun
 	0x50c1::platform
 remove_moderator_unregister
-	public fun
+	public(package) fun
 	0x50c1::platform
 create_platform_admin_cap
 	public(package) fun
@@ -5771,19 +5819,19 @@ version
 	public fun
 	0x50c1::post
 borrow_version_mut
-	public fun
+	public(package) fun
 	0x50c1::post
 comment_version
 	public fun
 	0x50c1::post
 borrow_comment_version_mut
-	public fun
+	public(package) fun
 	0x50c1::post
 repost_version
 	public fun
 	0x50c1::post
 borrow_repost_version_mut
-	public fun
+	public(package) fun
 	0x50c1::post
 migrate_post
 	public entry fun
@@ -5984,7 +6032,7 @@ set_poc_redirection
 	public fun
 	0x50c1::social_proof_tokens
 clear_poc_redirection
-	public fun
+	public(package) fun
 	0x50c1::social_proof_tokens
 get_ecosystem_treasury
 	public fun
@@ -5993,19 +6041,19 @@ registry_version
 	public fun
 	0x50c1::social_proof_tokens
 borrow_registry_version_mut
-	public fun
+	public(package) fun
 	0x50c1::social_proof_tokens
 pool_version
 	public fun
 	0x50c1::social_proof_tokens
 borrow_pool_version_mut
-	public fun
+	public(package) fun
 	0x50c1::social_proof_tokens
 reservation_pool_version
 	public fun
 	0x50c1::social_proof_tokens
 borrow_reservation_pool_version_mut
-	public fun
+	public(package) fun
 	0x50c1::social_proof_tokens
 migrate_token_registry
 	public entry fun
@@ -6022,48 +6070,6 @@ create_social_proof_tokens_admin_cap
 ensure_post_token_pool
 	public(package) fun
 	0x50c1::social_proof_tokens
-SocialGraph
-	public struct
-	0x50c1::social_graph
-FollowEvent
-	public struct
-	0x50c1::social_graph
-UnfollowEvent
-	public struct
-	0x50c1::social_graph
-bootstrap_init
-	public(package) fun
-	0x50c1::social_graph
-follow
-	public entry fun
-	0x50c1::social_graph
-unfollow
-	public entry fun
-	0x50c1::social_graph
-migrate_social_graph
-	public entry fun
-	0x50c1::social_graph
-borrow_version_mut
-	public fun
-	0x50c1::social_graph
-version
-	public fun
-	0x50c1::social_graph
-is_following
-	public fun
-	0x50c1::social_graph
-following_count
-	public fun
-	0x50c1::social_graph
-follower_count
-	public fun
-	0x50c1::social_graph
-get_following
-	public fun
-	0x50c1::social_graph
-get_followers
-	public fun
-	0x50c1::social_graph
 PoCAdminCap
 	public struct
 	0x50c1::proof_of_creativity
@@ -6175,6 +6181,12 @@ create_poc_admin_cap
 MyData
 	public struct
 	0x50c1::mydata
+MyDataAdminCap
+	public struct
+	0x50c1::mydata
+MyDataConfig
+	public struct
+	0x50c1::mydata
 MyDataRegistry
 	public struct
 	0x50c1::mydata
@@ -6192,6 +6204,15 @@ MyDataRegisteredEvent
 	0x50c1::mydata
 MyDataUnregisteredEvent
 	public struct
+	0x50c1::mydata
+MyDataConfigUpdatedEvent
+	public struct
+	0x50c1::mydata
+create_mydata_admin_cap
+	public(package) fun
+	0x50c1::mydata
+update_mydata_config
+	public entry fun
 	0x50c1::mydata
 bootstrap_init
 	public(package) fun
@@ -6314,13 +6335,13 @@ version
 	public fun
 	0x50c1::mydata
 borrow_version_mut
-	public fun
+	public(package) fun
 	0x50c1::mydata
 registry_version
 	public fun
 	0x50c1::mydata
 borrow_registry_version_mut
-	public fun
+	public(package) fun
 	0x50c1::mydata
 migrate_mydata
 	public entry fun
@@ -6520,19 +6541,13 @@ claim_payment_internal
 refund_paid_message
 	public entry fun
 	0x50c1::message
-BootstrapKey
-	public struct
-	0x50c1::bootstrap
-init
-	fun
-	0x50c1::bootstrap
 claim_all_admin_capabilities
 	public entry fun
 	0x50c1::bootstrap
-is_used
+is_bootstrap_used
 	public fun
 	0x50c1::bootstrap
-version
+bootstrap_version
 	public fun
 	0x50c1::bootstrap
 SpotAdminCap
