@@ -287,7 +287,7 @@ module social_contracts::platform {
     }
 
     /// Create a new platform and transfer to developer
-    public entry fun create_platform(
+    public fun create_platform(
         registry: &mut PlatformRegistry,
         name: String,
         tagline: String,
@@ -513,7 +513,7 @@ module social_contracts::platform {
     }
 
     /// Update platform information
-    public entry fun update_platform(
+    public fun update_platform(
         platform: &mut Platform,
         new_name: String,
         new_tagline: String,
@@ -633,7 +633,7 @@ module social_contracts::platform {
     }
 
     /// Add a moderator to a platform
-    public entry fun add_moderator(
+    public fun add_moderator(
         platform: &mut Platform,
         moderator_address: address,
         ctx: &mut TxContext
@@ -662,7 +662,7 @@ module social_contracts::platform {
     }
 
     /// Remove a moderator from a platform
-    public entry fun remove_moderator(
+    public fun remove_moderator(
         platform: &mut Platform,
         moderator_address: address,
         ctx: &mut TxContext
@@ -697,7 +697,7 @@ module social_contracts::platform {
     /// Block a wallet address from the platform
     /// Allows platform developers/moderators to block wallets using the platform address as the blocker
     /// This enables platforms (shared objects) to block user wallets
-    public entry fun block_wallet(
+    public fun block_wallet(
         block_list_registry: &mut block_list::BlockListRegistry,
         social_graph: &mut social_graph::SocialGraph,
         username_registry: &profile::UsernameRegistry,
@@ -728,7 +728,7 @@ module social_contracts::platform {
 
     /// Unblock a wallet address from the platform
     /// Allows platform developers/moderators to unblock wallets using the platform address as the blocker
-    public entry fun unblock_wallet(
+    public fun unblock_wallet(
         block_list_registry: &mut block_list::BlockListRegistry,
         platform: &mut Platform,
         blocked_wallet_address: address,
@@ -750,7 +750,7 @@ module social_contracts::platform {
 
     /// Toggle platform approval status (requires PlatformAdminCap only)
     /// Optional reasoning can be provided to explain the decision
-    public entry fun toggle_platform_approval(
+    public fun toggle_platform_approval(
         registry: &mut PlatformRegistry,
         platform_id: address,
         _: &PlatformAdminCap,
@@ -844,7 +844,7 @@ module social_contracts::platform {
     /// Join a platform - establishes initial connection between wallet and platform
     /// Checks for blocks before allowing the join and verifies platform is approved
     /// Works with wallet addresses only, no profile required
-    public entry fun join_platform(
+    public fun join_platform(
         platform_registry: &PlatformRegistry,
         block_list_registry: &block_list::BlockListRegistry,
         platform: &mut Platform,
@@ -886,7 +886,7 @@ module social_contracts::platform {
     }
 
     /// Leave a platform - removes the connection between wallet and platform
-    public entry fun leave_platform(
+    public fun leave_platform(
         platform: &mut Platform,
         ctx: &mut TxContext
     ) {
@@ -1088,7 +1088,7 @@ module social_contracts::platform {
 
     /// Update governance parameters for this platform's governance registry
     /// Can only be called by the platform developer
-    public entry fun update_platform_governance(
+    public fun update_platform_governance(
         platform: &Platform,
         registry: &mut governance::GovernanceDAO,
         delegate_count: u64,
@@ -1131,7 +1131,7 @@ module social_contracts::platform {
 
     /// Airdrop tokens to multiple recipients from the platform treasury
     /// Can only be called by platform developer or moderator
-    public entry fun airdrop_from_treasury(
+    public fun airdrop_from_treasury(
         platform: &mut Platform,
         recipients: vector<address>,
         amount_per_recipient: u64,
@@ -1187,7 +1187,7 @@ module social_contracts::platform {
 
     /// Assign a badge to a profile - can only be called by platform admin/moderator
     /// This is the primary entry point for badge assignment
-    public entry fun assign_badge(
+    public fun assign_badge(
         platform_registry: &PlatformRegistry,
         platform: &Platform,
         profile: &mut profile::Profile,
@@ -1246,7 +1246,7 @@ module social_contracts::platform {
 
     /// Revoke a badge from a profile - can only be called by platform admin/moderator
     /// This is the primary entry point for badge revocation
-    public entry fun revoke_badge(
+    public fun revoke_badge(
         platform_registry: &PlatformRegistry,
         platform: &Platform,
         profile: &mut profile::Profile,
