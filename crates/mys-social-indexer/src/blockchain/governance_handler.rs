@@ -83,8 +83,8 @@ impl GovernanceEventHandler {
 
         // Match the function name to determine the event type
         match function_name {
-            "create_registry" | "update_registry" | "GovernanceRegistry" => {
-                process_governance_registry_event(conn, event_data, event_id).await?;
+            "GovernanceRegistryCreated" => {
+                process_governance_registry_created_event(conn, event_data, event_id).await?;
             }
             "nominate_delegate" | "DelegateNominated" => {
                 process_delegate_nominated_event(conn, event_data, event_id).await?;

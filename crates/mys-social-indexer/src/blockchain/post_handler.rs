@@ -17,10 +17,7 @@ use crate::events::post_event_types::{
     ModerationEvent as PostModerationEvent, PostCreatedEvent, PromotedPostCreatedEvent,
     PromotedPostViewConfirmedEvent, PromotionFundsWithdrawnEvent, PromotionStatusToggledEvent,
     ReactionEvent, RemoveReactionEvent, ReportEvent, RepostEvent, TipEvent,
-    OwnershipTransferEvent, PredictionCreatedEvent, PredictionBetPlacedEvent,
-    PredictionResolvedEvent, PredictionPayoutEvent, PredictionBetWithdrawnEvent,
-    PostParametersUpdatedEvent, AutoPoolDisabledUpdatedEvent,
-    PredictionsEnabledUpdatedEvent, PredictionFeeUpdatedEvent,
+    OwnershipTransferEvent, PostParametersUpdatedEvent, AutoPoolDisabledUpdatedEvent,
 };
 use crate::events::{event_utils::parse_json_event, parse_event};
 use crate::models::indexer::NewIndexerProgress;
@@ -1120,62 +1117,6 @@ impl PostEventHandler {
                         }
                     }
                 }
-                // Handle prediction events (logged for now, can be extended later)
-                else if event.event_type.ends_with("::PredictionCreatedEvent") {
-                    match parse_json_event::<PredictionCreatedEvent>(&event.data) {
-                        Ok(prediction_event) => {
-                            info!("Prediction created: post_id={}, prediction_data_id={}", 
-                                prediction_event.post_id, prediction_event.prediction_data_id);
-                        }
-                        Err(e) => {
-                            error!("Failed to deserialize prediction created event: {}", e);
-                        }
-                    }
-                }
-                else if event.event_type.ends_with("::PredictionBetPlacedEvent") {
-                    match parse_json_event::<PredictionBetPlacedEvent>(&event.data) {
-                        Ok(bet_event) => {
-                            info!("Prediction bet placed: post_id={}, user={}, amount={}", 
-                                bet_event.post_id, bet_event.user, bet_event.amount);
-                        }
-                        Err(e) => {
-                            error!("Failed to deserialize prediction bet placed event: {}", e);
-                        }
-                    }
-                }
-                else if event.event_type.ends_with("::PredictionResolvedEvent") {
-                    match parse_json_event::<PredictionResolvedEvent>(&event.data) {
-                        Ok(resolved_event) => {
-                            info!("Prediction resolved: post_id={}, winning_option_id={}", 
-                                resolved_event.post_id, resolved_event.winning_option_id);
-                        }
-                        Err(e) => {
-                            error!("Failed to deserialize prediction resolved event: {}", e);
-                        }
-                    }
-                }
-                else if event.event_type.ends_with("::PredictionPayoutEvent") {
-                    match parse_json_event::<PredictionPayoutEvent>(&event.data) {
-                        Ok(payout_event) => {
-                            info!("Prediction payout: post_id={}, user={}, amount={}", 
-                                payout_event.post_id, payout_event.user, payout_event.amount);
-                        }
-                        Err(e) => {
-                            error!("Failed to deserialize prediction payout event: {}", e);
-                        }
-                    }
-                }
-                else if event.event_type.ends_with("::PredictionBetWithdrawnEvent") {
-                    match parse_json_event::<PredictionBetWithdrawnEvent>(&event.data) {
-                        Ok(withdrawn_event) => {
-                            info!("Prediction bet withdrawn: post_id={}, user={}, withdrawal_amount={}", 
-                                withdrawn_event.post_id, withdrawn_event.user, withdrawn_event.withdrawal_amount);
-                        }
-                        Err(e) => {
-                            error!("Failed to deserialize prediction bet withdrawn event: {}", e);
-                        }
-                    }
-                }
                 // Handle post parameters updated event
                 else if event.event_type.ends_with("::PostParametersUpdatedEvent") {
                     match parse_json_event::<PostParametersUpdatedEvent>(&event.data) {
@@ -1200,38 +1141,6 @@ impl PostEventHandler {
                         }
                         Err(e) => {
                             error!("Failed to deserialize auto pool disabled updated event: {}", e);
-                        }
-                    }
-                }
-                // Handle predictions enabled updated event
-                else if event.event_type.ends_with("::PredictionsEnabledUpdatedEvent") {
-                    match parse_json_event::<PredictionsEnabledUpdatedEvent>(&event.data) {
-                        Ok(predictions_enabled_event) => {
-                            if let Err(e) = self
-                                .process_predictions_enabled_updated(&predictions_enabled_event, &tx_id)
-                                .await
-                            {
-                                error!("Failed to process predictions enabled updated event: {}", e);
-                            }
-                        }
-                        Err(e) => {
-                            error!("Failed to deserialize predictions enabled updated event: {}", e);
-                        }
-                    }
-                }
-                // Handle prediction fee updated event
-                else if event.event_type.ends_with("::PredictionFeeUpdatedEvent") {
-                    match parse_json_event::<PredictionFeeUpdatedEvent>(&event.data) {
-                        Ok(prediction_fee_event) => {
-                            if let Err(e) = self
-                                .process_prediction_fee_updated(&prediction_fee_event, &tx_id)
-                                .await
-                            {
-                                error!("Failed to process prediction fee updated event: {}", e);
-                            }
-                        }
-                        Err(e) => {
-                            error!("Failed to deserialize prediction fee updated event: {}", e);
                         }
                     }
                 }
@@ -1334,178 +1243,6 @@ impl PostEventHandler {
         Ok(())
     }
 
-    /// Process a predictions enabled updated event
-    async fn process_predictions_enabled_updated(&self, event: &PredictionsEnabledUpdatedEvent, tx_id: &str) -> Result<()> {
-        info!("Processing predictions enabled updated event");
-
-        let mut conn = self.get_connection().await?;
-        let datetime = chrono::DateTime::<chrono::Utc>::from_timestamp(event.timestamp as i64 / 1000, 0)
-            .unwrap_or_else(|| chrono::Utc::now());
-
-        // Get the latest prediction config to preserve fee_bps and treasury
-        let latest_prediction_config = schema::post_prediction_config::table
-            .order_by(schema::post_prediction_config::time.desc())
-            .first::<crate::models::post::PostPredictionConfig>(&mut conn)
-            .await
-            .optional()?;
-
-        // Use existing fee_bps and treasury if available, otherwise use defaults
-        let fee_bps = latest_prediction_config.as_ref().map(|c| c.fee_bps).unwrap_or(0);
-        let treasury = latest_prediction_config
-            .as_ref()
-            .map(|c| c.treasury.clone())
-            .unwrap_or_else(|| "".to_string());
-
-        // Insert new prediction config record (for backward compatibility)
-        let new_prediction_config = crate::models::post::NewPostPredictionConfig {
-            updated_by: event.updated_by.clone(),
-            predictions_enabled: event.enabled,
-            fee_bps,
-            treasury: treasury.clone(),
-            updated_at: event.timestamp as i64,
-            time: datetime,
-            transaction_id: tx_id.to_string(),
-        };
-
-        diesel::insert_into(schema::post_prediction_config::table)
-            .values(&new_prediction_config)
-            .execute(&mut conn)
-            .await?;
-
-        // Also store in unified post_config table
-        let latest_post_config = schema::post_config::table
-            .order_by(schema::post_config::time.desc())
-            .first::<crate::models::post::PostConfig>(&mut conn)
-            .await
-            .optional()?;
-
-        // Use existing post config fields if available, otherwise use defaults
-        let max_content_length = latest_post_config.as_ref().map(|c| c.max_content_length).unwrap_or(0);
-        let max_media_urls = latest_post_config.as_ref().map(|c| c.max_media_urls).unwrap_or(0);
-        let max_mentions = latest_post_config.as_ref().map(|c| c.max_mentions).unwrap_or(0);
-        let max_metadata_size = latest_post_config.as_ref().map(|c| c.max_metadata_size).unwrap_or(0);
-        let max_description_length = latest_post_config.as_ref().map(|c| c.max_description_length).unwrap_or(0);
-        let max_reaction_length = latest_post_config.as_ref().map(|c| c.max_reaction_length).unwrap_or(0);
-        let commenter_tip_percentage = latest_post_config.as_ref().map(|c| c.commenter_tip_percentage).unwrap_or(0);
-        let repost_tip_percentage = latest_post_config.as_ref().map(|c| c.repost_tip_percentage).unwrap_or(0);
-        let max_prediction_options = latest_post_config.as_ref().map(|c| c.max_prediction_options).unwrap_or(0);
-
-        let new_post_config = crate::models::post::NewPostConfig {
-            updated_by: event.updated_by.clone(),
-            predictions_enabled: event.enabled,
-            prediction_fee_bps: fee_bps,
-            prediction_treasury: treasury,
-            max_content_length,
-            max_media_urls,
-            max_mentions,
-            max_metadata_size,
-            max_description_length,
-            max_reaction_length,
-            commenter_tip_percentage,
-            repost_tip_percentage,
-            max_prediction_options,
-            updated_at: event.timestamp as i64,
-            transaction_id: tx_id.to_string(),
-        };
-
-        diesel::insert_into(schema::post_config::table)
-            .values(&new_post_config)
-            .execute(&mut conn)
-            .await?;
-
-        info!(
-            "Predictions enabled updated by: {}, enabled: {}, timestamp: {}",
-            event.updated_by, event.enabled, event.timestamp
-        );
-
-        Ok(())
-    }
-
-    /// Process a prediction fee updated event
-    async fn process_prediction_fee_updated(&self, event: &PredictionFeeUpdatedEvent, tx_id: &str) -> Result<()> {
-        info!("Processing prediction fee updated event");
-
-        let mut conn = self.get_connection().await?;
-        let datetime = chrono::DateTime::<chrono::Utc>::from_timestamp(event.timestamp as i64 / 1000, 0)
-            .unwrap_or_else(|| chrono::Utc::now());
-
-        // Get the latest prediction config to preserve predictions_enabled
-        let latest_prediction_config = schema::post_prediction_config::table
-            .order_by(schema::post_prediction_config::time.desc())
-            .first::<crate::models::post::PostPredictionConfig>(&mut conn)
-            .await
-            .optional()?;
-
-        // Use existing predictions_enabled if available, otherwise default to true
-        let predictions_enabled = latest_prediction_config
-            .as_ref()
-            .map(|c| c.predictions_enabled)
-            .unwrap_or(true);
-
-        // Insert new prediction config record (for backward compatibility)
-        let new_prediction_config = crate::models::post::NewPostPredictionConfig {
-            updated_by: event.updated_by.clone(),
-            predictions_enabled,
-            fee_bps: event.fee_bps as i64,
-            treasury: event.treasury.clone(),
-            updated_at: event.timestamp as i64,
-            time: datetime,
-            transaction_id: tx_id.to_string(),
-        };
-
-        diesel::insert_into(schema::post_prediction_config::table)
-            .values(&new_prediction_config)
-            .execute(&mut conn)
-            .await?;
-
-        // Also store in unified post_config table
-        let latest_post_config = schema::post_config::table
-            .order_by(schema::post_config::time.desc())
-            .first::<crate::models::post::PostConfig>(&mut conn)
-            .await
-            .optional()?;
-
-        // Use existing post config fields if available, otherwise use defaults
-        let max_content_length = latest_post_config.as_ref().map(|c| c.max_content_length).unwrap_or(0);
-        let max_media_urls = latest_post_config.as_ref().map(|c| c.max_media_urls).unwrap_or(0);
-        let max_mentions = latest_post_config.as_ref().map(|c| c.max_mentions).unwrap_or(0);
-        let max_metadata_size = latest_post_config.as_ref().map(|c| c.max_metadata_size).unwrap_or(0);
-        let max_description_length = latest_post_config.as_ref().map(|c| c.max_description_length).unwrap_or(0);
-        let max_reaction_length = latest_post_config.as_ref().map(|c| c.max_reaction_length).unwrap_or(0);
-        let commenter_tip_percentage = latest_post_config.as_ref().map(|c| c.commenter_tip_percentage).unwrap_or(0);
-        let repost_tip_percentage = latest_post_config.as_ref().map(|c| c.repost_tip_percentage).unwrap_or(0);
-        let max_prediction_options = latest_post_config.as_ref().map(|c| c.max_prediction_options).unwrap_or(0);
-
-        let new_post_config = crate::models::post::NewPostConfig {
-            updated_by: event.updated_by.clone(),
-            predictions_enabled,
-            prediction_fee_bps: event.fee_bps as i64,
-            prediction_treasury: event.treasury.clone(),
-            max_content_length,
-            max_media_urls,
-            max_mentions,
-            max_metadata_size,
-            max_description_length,
-            max_reaction_length,
-            commenter_tip_percentage,
-            repost_tip_percentage,
-            max_prediction_options,
-            updated_at: event.timestamp as i64,
-            transaction_id: tx_id.to_string(),
-        };
-
-        diesel::insert_into(schema::post_config::table)
-            .values(&new_post_config)
-            .execute(&mut conn)
-            .await?;
-
-        info!(
-            "Prediction fee updated by: {}, fee_bps: {}, treasury: {}, timestamp: {}",
-            event.updated_by, event.fee_bps, event.treasury, event.timestamp
-        );
-
-        Ok(())
-    }
 }
 
 // Helper struct for sql queries
@@ -1561,16 +1298,6 @@ pub async fn handle_event(
         handle_comment_updated(db, event, transaction_id).await?;
     } else if event_type.ends_with("::OwnershipTransferEvent") {
         handle_ownership_transfer(db, event, transaction_id).await?;
-    } else if event_type.ends_with("::PredictionCreatedEvent") {
-        handle_prediction_created(db, event, transaction_id).await?;
-    } else if event_type.ends_with("::PredictionBetPlacedEvent") {
-        handle_prediction_bet_placed(db, event, transaction_id).await?;
-    } else if event_type.ends_with("::PredictionResolvedEvent") {
-        handle_prediction_resolved(db, event, transaction_id).await?;
-    } else if event_type.ends_with("::PredictionPayoutEvent") {
-        handle_prediction_payout(db, event, transaction_id).await?;
-    } else if event_type.ends_with("::PredictionBetWithdrawnEvent") {
-        handle_prediction_bet_withdrawn(db, event, transaction_id).await?;
     } else if event_type.ends_with("::PostParametersUpdatedEvent") {
         handle_post_parameters_updated(db, event, transaction_id).await?;
     } else {
@@ -2339,195 +2066,6 @@ async fn handle_ownership_transfer(
     Ok(())
 }
 
-/// Handle prediction created event
-async fn handle_prediction_created(
-    _db: &Arc<Database>,
-    event: &MysEvent,
-    _transaction_id: &str,
-) -> Result<()> {
-    info!("Processing PredictionCreatedEvent");
-
-    let parsed_event = parse_event::<PredictionCreatedEvent>(event)
-        .map_err(|e| anyhow!("Failed to parse PredictionCreatedEvent: {}", e))?;
-
-    // Prediction posts are handled as regular posts, but we log this for tracking
-    info!(
-        "Prediction post created: post_id={}, prediction_data_id={}, options={:?}",
-        parsed_event.post_id, parsed_event.prediction_data_id, parsed_event.options
-    );
-
-    // The post itself is already handled by PostCreatedEvent
-    // This handler is for tracking prediction-specific metadata if needed in the future
-    Ok(())
-}
-
-/// Handle prediction bet placed event
-async fn handle_prediction_bet_placed(
-    db: &Arc<Database>,
-    event: &MysEvent,
-    transaction_id: &str,
-) -> Result<()> {
-    info!("Processing PredictionBetPlacedEvent");
-
-    let parsed_event = parse_event::<PredictionBetPlacedEvent>(event)
-        .map_err(|e| anyhow!("Failed to parse PredictionBetPlacedEvent: {}", e))?;
-
-    info!(
-        "Prediction bet placed: post_id={}, user={}, option_id={}, amount={}",
-        parsed_event.post_id, parsed_event.user, parsed_event.option_id, parsed_event.amount
-    );
-
-    // Write to relay outbox for notifications - notify post owner
-    let mut conn = db.get_connection().await?;
-    if let Ok(post_owner) = posts::table
-        .filter(posts::post_id.eq(&parsed_event.post_id))
-        .select(posts::owner)
-        .first::<String>(&mut conn)
-        .await
-    {
-        let event_data = serde_json::json!({
-            "post_id": parsed_event.post_id,
-            "post_owner": post_owner,
-            "bettor": parsed_event.user,
-            "option_id": parsed_event.option_id,
-            "amount": parsed_event.amount,
-        });
-        if let Err(e) = crate::relay_outbox::write_notification_event(
-            &mut conn,
-            "prediction.bet_placed",
-            &event_data,
-            Some(&format!("{}:{}", parsed_event.post_id, parsed_event.user)),
-            Some(transaction_id),
-        )
-        .await
-        {
-            warn!("Failed to write prediction bet event to outbox: {}", e);
-        }
-    }
-
-    // Log prediction bets for analytics
-    // Future: Could store in a predictions_bets table if needed
-    Ok(())
-}
-
-/// Handle prediction resolved event
-async fn handle_prediction_resolved(
-    db: &Arc<Database>,
-    event: &MysEvent,
-    transaction_id: &str,
-) -> Result<()> {
-    info!("Processing PredictionResolvedEvent");
-
-    let parsed_event = parse_event::<PredictionResolvedEvent>(event)
-        .map_err(|e| anyhow!("Failed to parse PredictionResolvedEvent: {}", e))?;
-
-    info!(
-        "Prediction resolved: post_id={}, winning_option_id={}, total_bet_amount={}, winning_amount={}, resolved_by={}",
-        parsed_event.post_id,
-        parsed_event.winning_option_id,
-        parsed_event.total_bet_amount,
-        parsed_event.winning_amount,
-        parsed_event.resolved_by
-    );
-
-    // Write to relay outbox for notifications - notify post owner
-    let mut conn = db.get_connection().await?;
-    if let Ok(post_owner) = posts::table
-        .filter(posts::post_id.eq(&parsed_event.post_id))
-        .select(posts::owner)
-        .first::<String>(&mut conn)
-        .await
-    {
-        let event_data = serde_json::json!({
-            "post_id": parsed_event.post_id,
-            "post_owner": post_owner,
-            "winning_option_id": parsed_event.winning_option_id,
-            "total_bet_amount": parsed_event.total_bet_amount,
-            "winning_amount": parsed_event.winning_amount,
-            "resolved_by": parsed_event.resolved_by,
-        });
-        if let Err(e) = crate::relay_outbox::write_notification_event(
-            &mut conn,
-            "prediction.resolved",
-            &event_data,
-            Some(&parsed_event.post_id),
-            Some(transaction_id),
-        )
-        .await
-        {
-            warn!("Failed to write prediction resolved event to outbox: {}", e);
-        }
-    }
-
-    // Log prediction resolution for analytics
-    // Note: Individual bettors will be notified via prediction.payout events
-    Ok(())
-}
-
-/// Handle prediction payout event
-async fn handle_prediction_payout(
-    db: &Arc<Database>,
-    event: &MysEvent,
-    transaction_id: &str,
-) -> Result<()> {
-    info!("Processing PredictionPayoutEvent");
-
-    let parsed_event = parse_event::<PredictionPayoutEvent>(event)
-        .map_err(|e| anyhow!("Failed to parse PredictionPayoutEvent: {}", e))?;
-
-    info!(
-        "Prediction payout: post_id={}, user={}, amount={}",
-        parsed_event.post_id, parsed_event.user, parsed_event.amount
-    );
-
-    // Write to relay outbox for notifications - notify recipient
-    let mut conn = db.get_connection().await?;
-    let event_data = serde_json::json!({
-        "post_id": parsed_event.post_id,
-        "recipient": parsed_event.user,
-        "amount": parsed_event.amount,
-    });
-    if let Err(e) = crate::relay_outbox::write_notification_event(
-        &mut conn,
-        "prediction.payout",
-        &event_data,
-        Some(&format!("{}:{}", parsed_event.post_id, parsed_event.user)),
-        Some(transaction_id),
-    )
-    .await
-    {
-        warn!("Failed to write prediction payout event to outbox: {}", e);
-    }
-
-    // Log prediction payouts for analytics
-    // Future: Could track payouts in a predictions_payouts table
-    Ok(())
-}
-
-/// Handle prediction bet withdrawn event
-async fn handle_prediction_bet_withdrawn(
-    _db: &Arc<Database>,
-    event: &MysEvent,
-    _transaction_id: &str,
-) -> Result<()> {
-    info!("Processing PredictionBetWithdrawnEvent");
-
-    let parsed_event = parse_event::<PredictionBetWithdrawnEvent>(event)
-        .map_err(|e| anyhow!("Failed to parse PredictionBetWithdrawnEvent: {}", e))?;
-
-    info!(
-        "Prediction bet withdrawn: post_id={}, user={}, option_id={}, original_amount={}, withdrawal_amount={}",
-        parsed_event.post_id,
-        parsed_event.user,
-        parsed_event.option_id,
-        parsed_event.original_amount,
-        parsed_event.withdrawal_amount
-    );
-
-    // Log prediction bet withdrawals for analytics
-    Ok(())
-}
-
 /// Handle post parameters updated event
 async fn handle_post_parameters_updated(
     db: &Arc<Database>,
@@ -2541,27 +2079,9 @@ async fn handle_post_parameters_updated(
 
     let mut conn = db.get_connection().await?;
 
-    // Get the latest config to preserve prediction-related fields
-    let latest_config = schema::post_config::table
-        .order_by(schema::post_config::time.desc())
-        .first::<crate::models::post::PostConfig>(&mut conn)
-        .await
-        .optional()?;
-
-    // Use existing prediction fields if available, otherwise use defaults
-    let predictions_enabled = latest_config.as_ref().map(|c| c.predictions_enabled).unwrap_or(true);
-    let prediction_fee_bps = latest_config.as_ref().map(|c| c.prediction_fee_bps).unwrap_or(0);
-    let prediction_treasury = latest_config
-        .as_ref()
-        .map(|c| c.prediction_treasury.clone())
-        .unwrap_or_else(|| "".to_string());
-
     // Insert new config record with updated parameters
     let new_config = crate::models::post::NewPostConfig {
         updated_by: parsed_event.updated_by.clone(),
-        predictions_enabled,
-        prediction_fee_bps,
-        prediction_treasury,
         max_content_length: parsed_event.max_content_length as i64,
         max_media_urls: parsed_event.max_media_urls as i64,
         max_mentions: parsed_event.max_mentions as i64,
@@ -2570,7 +2090,6 @@ async fn handle_post_parameters_updated(
         max_reaction_length: parsed_event.max_reaction_length as i64,
         commenter_tip_percentage: parsed_event.commenter_tip_percentage as i64,
         repost_tip_percentage: parsed_event.repost_tip_percentage as i64,
-        max_prediction_options: parsed_event.max_prediction_options as i64,
         updated_at: parsed_event.timestamp as i64,
         transaction_id: transaction_id.to_string(),
     };

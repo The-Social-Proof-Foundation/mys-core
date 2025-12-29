@@ -6,7 +6,8 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    spot_bets, spot_config, spot_events, spot_payouts, spot_records, spot_refunds, spot_resolutions,
+    spot_bet_withdrawals, spot_bets, spot_config, spot_events, spot_payouts, spot_records,
+    spot_refunds, spot_resolutions,
 };
 
 // =============================================================================
@@ -21,8 +22,10 @@ pub struct SpotRecord {
     pub status: i16,
     pub outcome: Option<i16>,
     pub amm_split_bps_used: i32,
-    pub total_yes_escrow: i64,
-    pub total_no_escrow: i64,
+    pub betting_options: Option<serde_json::Value>,
+    pub option_escrow: Option<serde_json::Value>,
+    pub resolution_window_epochs: Option<i64>,
+    pub max_resolution_window_epochs: Option<i64>,
     pub created_epoch: i64,
     pub last_resolution_epoch: Option<i64>,
     pub version: i64,
@@ -38,8 +41,10 @@ pub struct NewSpotRecord {
     pub status: i16,
     pub outcome: Option<i16>,
     pub amm_split_bps_used: i32,
-    pub total_yes_escrow: i64,
-    pub total_no_escrow: i64,
+    pub betting_options: Option<serde_json::Value>,
+    pub option_escrow: Option<serde_json::Value>,
+    pub resolution_window_epochs: Option<i64>,
+    pub max_resolution_window_epochs: Option<i64>,
     pub created_epoch: i64,
     pub last_resolution_epoch: Option<i64>,
     pub version: i64,
@@ -53,8 +58,7 @@ pub struct NewSpotRecord {
 pub struct UpdateSpotRecord {
     pub status: Option<i16>,
     pub outcome: Option<Option<i16>>,
-    pub total_yes_escrow: Option<i64>,
-    pub total_no_escrow: Option<i64>,
+    pub option_escrow: Option<serde_json::Value>,
     pub last_resolution_epoch: Option<i64>,
     pub updated_at: NaiveDateTime,
 }
@@ -71,8 +75,8 @@ pub struct SpotBet {
     pub post_id: String,
     #[diesel(sql_type = diesel::sql_types::Text)]
     pub user_address: String,
-    #[diesel(sql_type = diesel::sql_types::Bool)]
-    pub is_yes: bool,
+    #[diesel(sql_type = diesel::sql_types::SmallInt)]
+    pub option_id: i16,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub escrow_amount: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
@@ -90,7 +94,7 @@ pub struct SpotBet {
 pub struct NewSpotBet {
     pub post_id: String,
     pub user_address: String,
-    pub is_yes: bool,
+    pub option_id: i16,
     pub escrow_amount: i64,
     pub amm_amount: i64,
     pub timestamp_epoch: i64,
@@ -119,6 +123,23 @@ pub struct NewSpotRefund {
     pub post_id: String,
     pub user_address: String,
     pub amount: i64,
+    pub timestamp_epoch: i64,
+    pub time: chrono::DateTime<chrono::Utc>,
+    pub transaction_id: String,
+}
+
+// =============================================================================
+// Bet withdrawals (hypertable)
+// =============================================================================
+
+#[derive(Insertable, Debug)]
+#[diesel(table_name = spot_bet_withdrawals)]
+pub struct NewSpotBetWithdrawal {
+    pub post_id: String,
+    pub user_address: String,
+    pub option_id: i16,
+    pub amount: i64,
+    pub fee_taken: i64,
     pub timestamp_epoch: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
@@ -166,7 +187,7 @@ pub struct NewSocialProofOfTruthEvent {
     pub event_type: String,
     pub post_id: String,
     pub user_address: Option<String>,
-    pub is_yes: Option<bool>,
+    pub option_id: Option<i16>,
     pub escrow_amount: Option<i64>,
     pub amm_amount: Option<i64>,
     pub amount: Option<i64>,

@@ -19,20 +19,21 @@ use crate::{
     NOMINEE_STATUS_ELECTED, NOMINEE_STATUS_PENDING,
 };
 
-/// Process a governance registry creation/update event
-pub async fn process_governance_registry_event(
+/// Process a governance registry created event
+pub async fn process_governance_registry_created_event(
     conn: &mut DbConnection,
     event: &Value,
     event_id: &str,
 ) -> Result<()> {
-    debug!("Processing governance registry event");
+    debug!("Processing governance registry created event");
 
     // Parse the event
-    let registry_event = parse_json_event::<GovernanceRegistryEvent>(event)?;
+    let registry_event = parse_json_event::<GovernanceRegistryCreatedEvent>(event)?;
 
     // Insert or update registry
     let new_registry = NewGovernanceRegistry {
         registry_type: registry_event.registry_type as i16,
+        registry_id: registry_event.registry_id.clone(),
         delegate_count: registry_event.delegate_count as i64,
         delegate_term_epochs: registry_event.delegate_term_epochs as i64,
         proposal_submission_cost: registry_event.proposal_submission_cost as i64,
@@ -50,6 +51,7 @@ pub async fn process_governance_registry_event(
         .on_conflict(crate::schema::governance_registries::registry_type)
         .do_update()
         .set((
+            crate::schema::governance_registries::registry_id.eq(new_registry.registry_id.clone()),
             crate::schema::governance_registries::delegate_count.eq(new_registry.delegate_count),
             crate::schema::governance_registries::delegate_term_epochs
                 .eq(new_registry.delegate_term_epochs),
@@ -71,13 +73,13 @@ pub async fn process_governance_registry_event(
         .await?;
 
     info!(
-        "Processed governance registry event: {} rows affected",
+        "Processed governance registry created event: {} rows affected",
         result
     );
 
     // Record this event in the governance_events table
     let governance_event = NewGovernanceEvent {
-        event_type: "GovernanceRegistryEvent".to_string(),
+        event_type: "GovernanceRegistryCreatedEvent".to_string(),
         registry_type: registry_event.registry_type as i16,
         event_data: event.clone(),
         event_id: event_id.to_string(),
@@ -1530,41 +1532,33 @@ pub async fn process_governance_parameters_updated_event(
     // Parse the event
     let params_event = parse_json_event::<GovernanceParametersUpdatedEvent>(event)?;
 
-    // Insert or update registry with the new parameters
-    let new_registry = NewGovernanceRegistry {
-        registry_type: params_event.registry_type as i16,
-        delegate_count: params_event.delegate_count as i64,
-        delegate_term_epochs: params_event.delegate_term_epochs as i64,
-        proposal_submission_cost: params_event.proposal_submission_cost as i64,
-        min_on_chain_age_days: params_event.min_on_chain_age_days as i64,
-        max_votes_per_user: params_event.max_votes_per_user as i64,
-        quadratic_base_cost: params_event.quadratic_base_cost as i64,
-        voting_period_epochs: params_event.voting_period_epochs as i64,
-        quorum_votes: params_event.quorum_votes as i64,
-        updated_at: params_event.timestamp as i64,
-        transaction_id: event_id.to_string(),
-    };
+    // Verify registry exists before updating
+    let registry_exists = crate::schema::governance_registries::table
+        .filter(crate::schema::governance_registries::registry_type.eq(params_event.registry_type as i16))
+        .count()
+        .get_result::<i64>(conn)
+        .await?;
 
-    let result = diesel::insert_into(crate::schema::governance_registries::table)
-        .values(&new_registry)
-        .on_conflict(crate::schema::governance_registries::registry_type)
-        .do_update()
+    if registry_exists == 0 {
+        return Err(anyhow::anyhow!(
+            "Cannot update governance parameters: Registry type {} does not exist. Registry must be created via GovernanceRegistryCreatedEvent first.",
+            params_event.registry_type
+        ));
+    }
+
+    // Update existing registry (registry_id is preserved automatically)
+    let result = diesel::update(crate::schema::governance_registries::table)
+        .filter(crate::schema::governance_registries::registry_type.eq(params_event.registry_type as i16))
         .set((
-            crate::schema::governance_registries::delegate_count.eq(new_registry.delegate_count),
-            crate::schema::governance_registries::delegate_term_epochs
-                .eq(new_registry.delegate_term_epochs),
-            crate::schema::governance_registries::proposal_submission_cost
-                .eq(new_registry.proposal_submission_cost),
-            crate::schema::governance_registries::min_on_chain_age_days
-                .eq(new_registry.min_on_chain_age_days),
-            crate::schema::governance_registries::max_votes_per_user
-                .eq(new_registry.max_votes_per_user),
-            crate::schema::governance_registries::quadratic_base_cost
-                .eq(new_registry.quadratic_base_cost),
-            crate::schema::governance_registries::voting_period_epochs
-                .eq(new_registry.voting_period_epochs),
-            crate::schema::governance_registries::quorum_votes.eq(new_registry.quorum_votes),
-            crate::schema::governance_registries::updated_at.eq(new_registry.updated_at),
+            crate::schema::governance_registries::delegate_count.eq(params_event.delegate_count as i64),
+            crate::schema::governance_registries::delegate_term_epochs.eq(params_event.delegate_term_epochs as i64),
+            crate::schema::governance_registries::proposal_submission_cost.eq(params_event.proposal_submission_cost as i64),
+            crate::schema::governance_registries::min_on_chain_age_days.eq(params_event.min_on_chain_age_days as i64),
+            crate::schema::governance_registries::max_votes_per_user.eq(params_event.max_votes_per_user as i64),
+            crate::schema::governance_registries::quadratic_base_cost.eq(params_event.quadratic_base_cost as i64),
+            crate::schema::governance_registries::voting_period_epochs.eq(params_event.voting_period_epochs as i64),
+            crate::schema::governance_registries::quorum_votes.eq(params_event.quorum_votes as i64),
+            crate::schema::governance_registries::updated_at.eq(params_event.timestamp as i64),
             crate::schema::governance_registries::transaction_id.eq(event_id.to_string()),
         ))
         .execute(conn)

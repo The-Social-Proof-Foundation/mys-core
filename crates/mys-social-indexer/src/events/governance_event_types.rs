@@ -20,6 +20,23 @@ pub struct GovernanceRegistryEvent {
     pub updated_at: u64,
 }
 
+/// Event emitted when a governance registry is created
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GovernanceRegistryCreatedEvent {
+    pub registry_id: String,
+    pub registry_type: u8,
+    pub delegate_count: u64,
+    pub delegate_term_epochs: u64,
+    pub proposal_submission_cost: u64,
+    pub min_on_chain_age_days: u64,
+    pub max_votes_per_user: u64,
+    pub quadratic_base_cost: u64,
+    pub voting_period_epochs: u64,
+    pub quorum_votes: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub updated_at: u64,
+}
+
 /// Event emitted when a delegate is nominated
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DelegateNominatedEvent {

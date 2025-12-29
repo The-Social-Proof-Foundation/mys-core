@@ -35,8 +35,10 @@ pub struct SpotRecordResponse {
     pub post_id: String,
     pub status: i16,
     pub outcome: Option<i16>,
-    pub total_yes_escrow: i64,
-    pub total_no_escrow: i64,
+    pub betting_options: Vec<String>,
+    pub option_escrow: std::collections::HashMap<String, i64>,
+    pub resolution_window_epochs: Option<i64>,
+    pub max_resolution_window_epochs: Option<i64>,
     pub created_epoch: i64,
     pub last_resolution_epoch: Option<i64>,
 }
@@ -47,8 +49,8 @@ pub struct SpotBetRow {
     pub post_id: String,
     #[diesel(sql_type = diesel::sql_types::Text)]
     pub user_address: String,
-    #[diesel(sql_type = diesel::sql_types::Bool)]
-    pub is_yes: bool,
+    #[diesel(sql_type = diesel::sql_types::SmallInt)]
+    pub option_id: i16,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub escrow_amount: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
@@ -71,7 +73,7 @@ pub async fn get_spot_record(
                 .into_response()
         }
     };
-    let sql = "SELECT post_id, status, outcome, total_yes_escrow, total_no_escrow, created_epoch, last_resolution_epoch FROM spot_records WHERE post_id = $1";
+    let sql = "SELECT post_id, status, outcome, betting_options, option_escrow, resolution_window_epochs, max_resolution_window_epochs, created_epoch, last_resolution_epoch FROM spot_records WHERE post_id = $1";
     #[derive(QueryableByName)]
     struct Row {
         #[diesel(sql_type=diesel::sql_types::Text)]
@@ -80,10 +82,14 @@ pub async fn get_spot_record(
         status: i16,
         #[diesel(sql_type=diesel::sql_types::Nullable<diesel::sql_types::SmallInt>)]
         outcome: Option<i16>,
-        #[diesel(sql_type=diesel::sql_types::BigInt)]
-        total_yes_escrow: i64,
-        #[diesel(sql_type=diesel::sql_types::BigInt)]
-        total_no_escrow: i64,
+        #[diesel(sql_type=diesel::sql_types::Nullable<diesel::sql_types::Jsonb>)]
+        betting_options: Option<serde_json::Value>,
+        #[diesel(sql_type=diesel::sql_types::Nullable<diesel::sql_types::Jsonb>)]
+        option_escrow: Option<serde_json::Value>,
+        #[diesel(sql_type=diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+        resolution_window_epochs: Option<i64>,
+        #[diesel(sql_type=diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+        max_resolution_window_epochs: Option<i64>,
         #[diesel(sql_type=diesel::sql_types::BigInt)]
         created_epoch: i64,
         #[diesel(sql_type=diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
@@ -94,16 +100,29 @@ pub async fn get_spot_record(
         .get_result::<Row>(&mut conn)
         .await
     {
-        Ok(r) => Json(SpotRecordResponse {
-            post_id: r.post_id,
-            status: r.status,
-            outcome: r.outcome,
-            total_yes_escrow: r.total_yes_escrow,
-            total_no_escrow: r.total_no_escrow,
-            created_epoch: r.created_epoch,
-            last_resolution_epoch: r.last_resolution_epoch,
-        })
-        .into_response(),
+        Ok(r) => {
+            // Parse JSONB fields
+            let betting_options: Vec<String> = r.betting_options
+                .and_then(|v| serde_json::from_value::<Vec<String>>(v).ok())
+                .unwrap_or_default();
+            
+            let option_escrow: std::collections::HashMap<String, i64> = r.option_escrow
+                .and_then(|v| serde_json::from_value::<std::collections::HashMap<String, i64>>(v).ok())
+                .unwrap_or_default();
+
+            Json(SpotRecordResponse {
+                post_id: r.post_id,
+                status: r.status,
+                outcome: r.outcome,
+                betting_options,
+                option_escrow,
+                resolution_window_epochs: r.resolution_window_epochs,
+                max_resolution_window_epochs: r.max_resolution_window_epochs,
+                created_epoch: r.created_epoch,
+                last_resolution_epoch: r.last_resolution_epoch,
+            })
+            .into_response()
+        },
         Err(diesel::result::Error::NotFound) => {
             (StatusCode::NOT_FOUND, "SPoT record not found").into_response()
         }
@@ -130,7 +149,7 @@ pub async fn list_spot_bets(
                 .into_response()
         }
     };
-    let sql = "SELECT post_id, user_address, is_yes, escrow_amount, amm_amount, timestamp_epoch FROM spot_bets WHERE post_id = $1 ORDER BY time DESC LIMIT $2 OFFSET $3";
+    let sql = "SELECT post_id, user_address, option_id, escrow_amount, amm_amount, timestamp_epoch FROM spot_bets WHERE post_id = $1 ORDER BY time DESC LIMIT $2 OFFSET $3";
     match diesel::sql_query(sql)
         .bind::<diesel::sql_types::Text, _>(&post_id)
         .bind::<diesel::sql_types::BigInt, _>(&p.limit())

@@ -1049,6 +1049,49 @@ module social_contracts::platform {
         )
     }
 
+    /// Update governance parameters for this platform's governance registry
+    /// Can only be called by the platform developer
+    public entry fun update_platform_governance(
+        platform: &Platform,
+        registry: &mut governance::GovernanceDAO,
+        delegate_count: u64,
+        delegate_term_epochs: u64,
+        proposal_submission_cost: u64,
+        min_on_chain_age_days: u64,
+        max_votes_per_user: u64,
+        quadratic_base_cost: u64,
+        voting_period_epochs: u64,
+        quorum_votes: u64,
+        ctx: &mut TxContext
+    ) {
+        // Verify caller is platform developer
+        let caller = tx_context::sender(ctx);
+        assert!(developer(platform) == caller, EUnauthorized);
+        
+        // Verify that the platform's governance_registry_id matches this registry
+        // This ensures the registry actually belongs to this platform
+        let platform_registry_id_opt = governance_registry_id(platform);
+        assert!(option::is_some(platform_registry_id_opt), EUnauthorized);
+        let platform_registry_id = *option::borrow(platform_registry_id_opt);
+        let registry_id = object::id(registry);
+        assert!(platform_registry_id == registry_id, EUnauthorized);
+        
+        // Call governance function with verified platform developer address
+        governance::update_platform_governance_parameters(
+            registry,
+            developer(platform),
+            delegate_count,
+            delegate_term_epochs,
+            proposal_submission_cost,
+            min_on_chain_age_days,
+            max_votes_per_user,
+            quadratic_base_cost,
+            voting_period_epochs,
+            quorum_votes,
+            ctx
+        );
+    }
+
     /// Airdrop tokens to multiple recipients from the platform treasury
     /// Can only be called by platform developer or moderator
     public entry fun airdrop_from_treasury(

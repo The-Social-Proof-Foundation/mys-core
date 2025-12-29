@@ -15,7 +15,7 @@ use crate::models::{
 pub struct SpotBetPlacedEvent {
     pub post_id: String,
     pub user: String,
-    pub is_yes: bool,
+    pub option_id: u8, // 0-indexed option ID (replaces is_yes)
     pub amount: u64, // Matches contract - all funds go to escrow
 }
 
@@ -24,7 +24,7 @@ impl SpotBetPlacedEvent {
         Ok(NewSpotBet {
             post_id: self.post_id.clone(),
             user_address: self.user.clone(),
-            is_yes: self.is_yes,
+            option_id: self.option_id as i16,
             escrow_amount: self.amount as i64, // amount goes to escrow
             amm_amount: 0, // No AMM in current contract
             timestamp_epoch: epoch as i64,
@@ -134,7 +134,20 @@ pub struct SpotConfigUpdatedEvent {
 pub struct SpotRecordCreatedEvent {
     pub record_id: String,
     pub post_id: String,
+    pub betting_options: Vec<String>, // Array of option labels (e.g., ["Option A", "Option B", "Option C"])
+    pub resolution_window_epochs: Option<u64>, // Optional time window for resolution
+    pub max_resolution_window_epochs: Option<u64>, // Optional max window
     pub created_epoch: u64,
+}
+
+// Matches social_contracts::social_proof_of_truth::SpotBetWithdrawnEvent
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpotBetWithdrawnEvent {
+    pub post_id: String,
+    pub user: String,
+    pub option_id: u8, // 0-indexed option ID
+    pub amount: u64, // Amount withdrawn
+    pub fee_taken: u64, // Fee taken from withdrawal
 }
 
 // Helper to create initial record if needed
@@ -151,8 +164,10 @@ pub fn default_record_for_post(
         status: 1, // STATUS_OPEN
         outcome: None,
         amm_split_bps_used,
-        total_yes_escrow: 0,
-        total_no_escrow: 0,
+        betting_options: Some(serde_json::json!([])), // Empty array, will be set by SpotRecordCreatedEvent
+        option_escrow: Some(serde_json::json!({})), // Empty JSONB object
+        resolution_window_epochs: None,
+        max_resolution_window_epochs: None,
         created_epoch,
         last_resolution_epoch: None,
         version,

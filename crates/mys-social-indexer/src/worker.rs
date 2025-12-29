@@ -1537,35 +1537,25 @@ impl Worker for SocialIndexerWorker {
 
                                 // Upsert record if missing
                                 let now_ts = chrono::Utc::now().naive_utc();
-                                let new_record = NewSpotRecord {
-                                    post_id: parsed.post_id.clone(),
-                                    status: 1, // OPEN
-                                    outcome: None,
-                                    amm_split_bps_used: 3000, // default; updated if emitted later
-                                    total_yes_escrow: 0,
-                                    total_no_escrow: 0,
-                                    created_epoch: ts_secs as i64,
-                                    last_resolution_epoch: None,
-                                    version: 1,
-                                    created_at: now_ts,
-                                    updated_at: now_ts,
-                                    transaction_id: tx.clone(),
-                                };
-
+                                let betting_options_json = serde_json::json!(["Yes", "No"]);
+                                let option_escrow_json = serde_json::json!({});
+                                
                                 // Insert record if not exists
-                                diesel::sql_query("INSERT INTO spot_records (post_id, status, outcome, amm_split_bps_used, total_yes_escrow, total_no_escrow, created_epoch, last_resolution_epoch, version, created_at, updated_at, transaction_id) \
-                                                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), $10) \
+                                diesel::sql_query("INSERT INTO spot_records (post_id, status, outcome, amm_split_bps_used, betting_options, option_escrow, resolution_window_epochs, max_resolution_window_epochs, created_epoch, last_resolution_epoch, version, created_at, updated_at, transaction_id) \
+                                                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW(), $12) \
                                                    ON CONFLICT (post_id) DO NOTHING")
-                                    .bind::<diesel::sql_types::Text, _>(&new_record.post_id)
-                                    .bind::<diesel::sql_types::SmallInt, _>(&new_record.status)
-                                    .bind::<diesel::sql_types::Nullable<diesel::sql_types::SmallInt>, _>(&new_record.outcome)
-                                    .bind::<diesel::sql_types::Integer, _>(&new_record.amm_split_bps_used)
-                                    .bind::<diesel::sql_types::BigInt, _>(&new_record.total_yes_escrow)
-                                    .bind::<diesel::sql_types::BigInt, _>(&new_record.total_no_escrow)
-                                    .bind::<diesel::sql_types::BigInt, _>(&new_record.created_epoch)
-                                    .bind::<diesel::sql_types::Nullable<diesel::sql_types::BigInt>, _>(&new_record.last_resolution_epoch)
-                                    .bind::<diesel::sql_types::BigInt, _>(&new_record.version)
-                                    .bind::<diesel::sql_types::Text, _>(&new_record.transaction_id)
+                                    .bind::<diesel::sql_types::Text, _>(&parsed.post_id)
+                                    .bind::<diesel::sql_types::SmallInt, _>(&1i16) // STATUS_OPEN
+                                    .bind::<diesel::sql_types::Nullable<diesel::sql_types::SmallInt>, _>(&None::<i16>)
+                                    .bind::<diesel::sql_types::Integer, _>(&3000i32)
+                                    .bind::<diesel::sql_types::Nullable<diesel::sql_types::Jsonb>, _>(&Some(betting_options_json))
+                                    .bind::<diesel::sql_types::Nullable<diesel::sql_types::Jsonb>, _>(&Some(option_escrow_json))
+                                    .bind::<diesel::sql_types::Nullable<diesel::sql_types::BigInt>, _>(&None::<i64>)
+                                    .bind::<diesel::sql_types::Nullable<diesel::sql_types::BigInt>, _>(&None::<i64>)
+                                    .bind::<diesel::sql_types::BigInt, _>(&(ts_secs as i64))
+                                    .bind::<diesel::sql_types::Nullable<diesel::sql_types::BigInt>, _>(&None::<i64>)
+                                    .bind::<diesel::sql_types::BigInt, _>(&1i64)
+                                    .bind::<diesel::sql_types::Text, _>(&tx)
                                     .execute(&mut conn)
                                     .await?;
 
@@ -1575,19 +1565,18 @@ impl Worker for SocialIndexerWorker {
                                     .execute(&mut conn)
                                     .await?;
 
-                                // Update escrow aggregates
-                                if parsed.escrow_amount > 0 {
-                                    if parsed.is_yes {
-                                        diesel::sql_query("UPDATE spot_records SET total_yes_escrow = total_yes_escrow + $1, updated_at = NOW() WHERE post_id = $2")
-                                            .bind::<diesel::sql_types::BigInt, _>(parsed.escrow_amount as i64)
-                                            .bind::<diesel::sql_types::Text, _>(&parsed.post_id)
-                                            .execute(&mut conn).await?;
-                                    } else {
-                                        diesel::sql_query("UPDATE spot_records SET total_no_escrow = total_no_escrow + $1, updated_at = NOW() WHERE post_id = $2")
-                                            .bind::<diesel::sql_types::BigInt, _>(parsed.escrow_amount as i64)
-                                            .bind::<diesel::sql_types::Text, _>(&parsed.post_id)
-                                            .execute(&mut conn).await?;
-                                    }
+                                // Update escrow aggregates using JSONB option_escrow
+                                if parsed.amount > 0 {
+                                    let option_id_str = parsed.option_id.to_string();
+                                    diesel::sql_query("UPDATE spot_records SET option_escrow = jsonb_set(
+                                        COALESCE(option_escrow, '{}'::jsonb),
+                                        ARRAY[$1],
+                                        ((COALESCE((option_escrow->>$1)::bigint, 0) + $2)::text)::jsonb
+                                    ), updated_at = NOW() WHERE post_id = $3")
+                                        .bind::<diesel::sql_types::Text, _>(&option_id_str)
+                                        .bind::<diesel::sql_types::BigInt, _>(&(parsed.amount as i64))
+                                        .bind::<diesel::sql_types::Text, _>(&parsed.post_id)
+                                        .execute(&mut conn).await?;
                                 }
 
                                 // Log event
@@ -1610,10 +1599,10 @@ impl Worker for SocialIndexerWorker {
                                     event_type: "SpotBetPlacedEvent".to_string(),
                                     post_id: parsed.post_id.clone(),
                                     user_address: Some(parsed.user.clone()),
-                                    is_yes: Some(parsed.is_yes),
-                                    escrow_amount: Some(parsed.escrow_amount as i64),
-                                    amm_amount: Some(parsed.amm_amount as i64),
-                                    amount: None,
+                                    option_id: Some(parsed.option_id as i16),
+                                    escrow_amount: Some(parsed.amount as i64),
+                                    amm_amount: Some(0i64), // No AMM in current contract
+                                    amount: Some(parsed.amount as i64),
                                     outcome: None,
                                     total_escrow: None,
                                     fee_taken: None,
@@ -1681,7 +1670,7 @@ impl Worker for SocialIndexerWorker {
                                     event_type: "SpotResolvedEvent".to_string(),
                                     post_id: parsed.post_id.clone(),
                                     user_address: None,
-                                    is_yes: None,
+                                    option_id: None,
                                     escrow_amount: None,
                                     amm_amount: None,
                                     amount: None,
@@ -1735,7 +1724,7 @@ impl Worker for SocialIndexerWorker {
                                     event_type: "SpotDaoRequiredEvent".to_string(),
                                     post_id: parsed.post_id.clone(),
                                     user_address: None,
-                                    is_yes: None,
+                                    option_id: None,
                                     escrow_amount: None,
                                     amm_amount: None,
                                     amount: None,
@@ -1775,7 +1764,7 @@ impl Worker for SocialIndexerWorker {
                                     event_type: "SpotPayoutEvent".to_string(),
                                     post_id: parsed.post_id.clone(),
                                     user_address: Some(parsed.user.clone()),
-                                    is_yes: None,
+                                    option_id: None,
                                     escrow_amount: None,
                                     amm_amount: None,
                                     amount: Some(parsed.amount as i64),
@@ -1815,7 +1804,7 @@ impl Worker for SocialIndexerWorker {
                                     event_type: "SpotRefundEvent".to_string(),
                                     post_id: parsed.post_id.clone(),
                                     user_address: Some(parsed.user.clone()),
-                                    is_yes: None,
+                                    option_id: None,
                                     escrow_amount: None,
                                     amm_amount: None,
                                     amount: Some(parsed.amount as i64),

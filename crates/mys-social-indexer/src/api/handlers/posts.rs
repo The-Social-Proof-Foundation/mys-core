@@ -1329,15 +1329,6 @@ pub struct PostConfigInfo {
     #[diesel(sql_type = Text)]
     pub updated_by: String,
 
-    #[diesel(sql_type = Bool)]
-    pub predictions_enabled: bool,
-
-    #[diesel(sql_type = BigInt)]
-    pub prediction_fee_bps: i64,
-
-    #[diesel(sql_type = Text)]
-    pub prediction_treasury: String,
-
     #[diesel(sql_type = BigInt)]
     pub max_content_length: i64,
 
@@ -1361,9 +1352,6 @@ pub struct PostConfigInfo {
 
     #[diesel(sql_type = BigInt)]
     pub repost_tip_percentage: i64,
-
-    #[diesel(sql_type = BigInt)]
-    pub max_prediction_options: i64,
 
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
@@ -1394,9 +1382,6 @@ pub async fn get_post_configuration(State(pool): State<DbPool>) -> Response {
     let query = "
         SELECT 
             updated_by,
-            predictions_enabled,
-            prediction_fee_bps,
-            prediction_treasury,
             max_content_length,
             max_media_urls,
             max_mentions,
@@ -1405,7 +1390,6 @@ pub async fn get_post_configuration(State(pool): State<DbPool>) -> Response {
             max_reaction_length,
             commenter_tip_percentage,
             repost_tip_percentage,
-            max_prediction_options,
             updated_at,
             time,
             transaction_id
@@ -1426,9 +1410,6 @@ pub async fn get_post_configuration(State(pool): State<DbPool>) -> Response {
                 // Return default configuration if none exists
                 let default_config = PostConfigInfo {
                     updated_by: "".to_string(),
-                    predictions_enabled: true,
-                    prediction_fee_bps: 0,
-                    prediction_treasury: "".to_string(),
                     max_content_length: 0,
                     max_media_urls: 0,
                     max_mentions: 0,
@@ -1437,7 +1418,6 @@ pub async fn get_post_configuration(State(pool): State<DbPool>) -> Response {
                     max_reaction_length: 0,
                     commenter_tip_percentage: 0,
                     repost_tip_percentage: 0,
-                    max_prediction_options: 0,
                     updated_at: 0,
                     time: chrono::Utc::now(),
                     transaction_id: "".to_string(),

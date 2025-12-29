@@ -294,9 +294,27 @@ module social_contracts::governance {
         timestamp: u64,
     }
 
+    /// Event emitted when a governance registry is created
+    /// This event matches the GovernanceRegistryEvent structure expected by the indexer
+    public struct GovernanceRegistryCreatedEvent has copy, drop {
+        registry_id: ID,
+        registry_type: u8,
+        delegate_count: u64,
+        delegate_term_epochs: u64,
+        proposal_submission_cost: u64,
+        min_on_chain_age_days: u64,
+        max_votes_per_user: u64,
+        quadratic_base_cost: u64,
+        voting_period_epochs: u64,
+        quorum_votes: u64,
+        updated_at: u64, // Using updated_at to match indexer structure (represents creation time)
+    }
+
     /// Bootstrap initialization function - creates the governance registries
     /// This function has the same logic as init() but can be called by bootstrap
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
+        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        
         // Create MySocial Ecosystem Governance Registry
         let mut ecosystem_registry = GovernanceDAO {
             id: object::new(ctx),
@@ -321,6 +339,30 @@ module social_contracts::governance {
             voters: table::new<address, Table<address, bool>>(ctx),
             version: upgrade::current_version(),
         };
+        
+        // Initialize ecosystem registry's status tables
+        initialize_registry_tables(&mut ecosystem_registry, ctx);
+        
+        // Get ecosystem registry ID before sharing
+        let ecosystem_registry_id = object::id(&ecosystem_registry);
+        
+        // Emit event for ecosystem registry creation
+        event::emit(GovernanceRegistryCreatedEvent {
+            registry_id: ecosystem_registry_id,
+            registry_type: PROPOSAL_TYPE_ECOSYSTEM,
+            delegate_count: ecosystem_registry.delegate_count,
+            delegate_term_epochs: ecosystem_registry.delegate_term_epochs,
+            proposal_submission_cost: ecosystem_registry.proposal_submission_cost,
+            min_on_chain_age_days: ecosystem_registry.min_on_chain_age_days,
+            max_votes_per_user: ecosystem_registry.max_votes_per_user,
+            quadratic_base_cost: ecosystem_registry.quadratic_base_cost,
+            voting_period_epochs: ecosystem_registry.voting_period_epochs,
+            quorum_votes: ecosystem_registry.quorum_votes,
+            updated_at: current_time,
+        });
+        
+        // Share the ecosystem registry object
+        transfer::share_object(ecosystem_registry);
         
         // Create Proof of Creativity Governance Registry
         let mut proof_of_creativity_registry = GovernanceDAO {
@@ -347,12 +389,28 @@ module social_contracts::governance {
             version: upgrade::current_version(),
         };
         
-        // Initialize each registry's status tables
-        initialize_registry_tables(&mut ecosystem_registry, ctx);
+        // Initialize proof of creativity registry's status tables
         initialize_registry_tables(&mut proof_of_creativity_registry, ctx);
         
-        // Share the registry objects
-        transfer::share_object(ecosystem_registry);
+        // Get proof of creativity registry ID before sharing
+        let proof_of_creativity_registry_id = object::id(&proof_of_creativity_registry);
+        
+        // Emit event for proof of creativity registry creation
+        event::emit(GovernanceRegistryCreatedEvent {
+            registry_id: proof_of_creativity_registry_id,
+            registry_type: PROPOSAL_TYPE_PROOF_OF_CREATIVITY,
+            delegate_count: proof_of_creativity_registry.delegate_count,
+            delegate_term_epochs: proof_of_creativity_registry.delegate_term_epochs,
+            proposal_submission_cost: proof_of_creativity_registry.proposal_submission_cost,
+            min_on_chain_age_days: proof_of_creativity_registry.min_on_chain_age_days,
+            max_votes_per_user: proof_of_creativity_registry.max_votes_per_user,
+            quadratic_base_cost: proof_of_creativity_registry.quadratic_base_cost,
+            voting_period_epochs: proof_of_creativity_registry.voting_period_epochs,
+            quorum_votes: proof_of_creativity_registry.quorum_votes,
+            updated_at: current_time,
+        });
+        
+        // Share the proof of creativity registry object
         transfer::share_object(proof_of_creativity_registry);
     }
 
@@ -366,11 +424,10 @@ module social_contracts::governance {
         table::add(&mut registry.proposals_by_status, STATUS_OWNER_RESCIND, vector::empty<ID>());
     }
 
-    /// Update governance parameters
-    /// Can only be called by the governance admin
-    public entry fun update_governance_parameters(
+    /// Update governance parameters (internal function)
+    /// This function does not perform authorization checks - callers must verify permissions
+    fun update_governance_parameters_internal(
         registry: &mut GovernanceDAO,
-        _: &GovernanceAdminCap,
         delegate_count: u64,
         delegate_term_epochs: u64,
         proposal_submission_cost: u64,
@@ -384,7 +441,6 @@ module social_contracts::governance {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
-        // Admin capability verification is handled by type system
         // Ensure parameters are sensible
         assert!(delegate_count > 1, EInvalidParameter);
         assert!(delegate_term_epochs > 0, EInvalidParameter);
@@ -419,6 +475,77 @@ module social_contracts::governance {
             quorum_votes,
             timestamp: tx_context::epoch_timestamp_ms(_ctx),
         });
+    }
+
+    /// Update governance parameters for platform registries
+    /// Can only be called by the platform module (which verifies platform ownership)
+    /// This function is package-private to prevent direct calls that bypass platform ownership verification
+    public(package) fun update_platform_governance_parameters(
+        registry: &mut GovernanceDAO,
+        platform_developer: address,
+        delegate_count: u64,
+        delegate_term_epochs: u64,
+        proposal_submission_cost: u64,
+        min_on_chain_age_days: u64,
+        max_votes_per_user: u64,
+        quadratic_base_cost: u64,
+        voting_period_epochs: u64,
+        quorum_votes: u64,
+        ctx: &mut TxContext
+    ) {
+        // Verify this is a platform registry
+        assert!(registry.registry_type == PROPOSAL_TYPE_PLATFORM, EInvalidRegistry);
+        
+        // Verify caller is platform developer
+        let caller = tx_context::sender(ctx);
+        assert!(platform_developer == caller, EUnauthorized);
+        
+        // Call the internal update function
+        update_governance_parameters_internal(
+            registry,
+            delegate_count,
+            delegate_term_epochs,
+            proposal_submission_cost,
+            min_on_chain_age_days,
+            max_votes_per_user,
+            quadratic_base_cost,
+            voting_period_epochs,
+            quorum_votes,
+            ctx
+        );
+    }
+
+    /// Update governance parameters for ecosystem/proof-of-creativity registries
+    /// Can only be called by governance admin
+    public entry fun update_governance_parameters(
+        registry: &mut GovernanceDAO,
+        _: &GovernanceAdminCap,
+        delegate_count: u64,
+        delegate_term_epochs: u64,
+        proposal_submission_cost: u64,
+        min_on_chain_age_days: u64,
+        max_votes_per_user: u64,
+        quadratic_base_cost: u64,
+        voting_period_epochs: u64,
+        quorum_votes: u64,
+        _ctx: &mut TxContext
+    ) {
+        // Verify this is NOT a platform registry
+        assert!(registry.registry_type != PROPOSAL_TYPE_PLATFORM, EInvalidRegistry);
+        
+        // Call the internal update function
+        update_governance_parameters_internal(
+            registry,
+            delegate_count,
+            delegate_term_epochs,
+            proposal_submission_cost,
+            min_on_chain_age_days,
+            max_votes_per_user,
+            quadratic_base_cost,
+            voting_period_epochs,
+            quorum_votes,
+            _ctx
+        );
     }
 
     /// Nominate self as a delegate
@@ -1960,8 +2087,7 @@ module social_contracts::governance {
 
     /// Create a platform-specific governance registry when a platform is approved
     /// This function can only be called by the platform toggle_platform_approval function
-    /// and only the package publisher can call it
-    public fun create_platform_governance(
+    public(package) fun create_platform_governance(
         delegate_count: u64,
         delegate_term_epochs: u64,
         proposal_submission_cost: u64,
@@ -1972,6 +2098,8 @@ module social_contracts::governance {
         quorum_votes: u64,
         ctx: &mut TxContext
     ): ID {
+        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        
         // Create Platform Governance Registry with parameters
         let mut platform_registry = GovernanceDAO {
             id: object::new(ctx),
@@ -2002,6 +2130,21 @@ module social_contracts::governance {
         
         // Get the ID before sharing
         let registry_id = object::id(&platform_registry);
+        
+        // Emit event for platform registry creation
+        event::emit(GovernanceRegistryCreatedEvent {
+            registry_id,
+            registry_type: PROPOSAL_TYPE_PLATFORM,
+            delegate_count: platform_registry.delegate_count,
+            delegate_term_epochs: platform_registry.delegate_term_epochs,
+            proposal_submission_cost: platform_registry.proposal_submission_cost,
+            min_on_chain_age_days: platform_registry.min_on_chain_age_days,
+            max_votes_per_user: platform_registry.max_votes_per_user,
+            quadratic_base_cost: platform_registry.quadratic_base_cost,
+            voting_period_epochs: platform_registry.voting_period_epochs,
+            quorum_votes: platform_registry.quorum_votes,
+            updated_at: current_time,
+        });
         
         // Share the registry object
         transfer::share_object(platform_registry);

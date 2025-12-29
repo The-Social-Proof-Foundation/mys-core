@@ -253,55 +253,6 @@ pub struct OwnershipTransferEvent {
     pub is_post: bool,
 }
 
-/// Prediction created event from blockchain
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PredictionCreatedEvent {
-    pub post_id: String,
-    pub prediction_data_id: String,
-    pub owner: String,
-    pub profile_id: String,
-    pub content: String,
-    pub options: Vec<String>,
-    pub betting_end_time: Option<u64>,
-}
-
-/// Prediction bet placed event from blockchain
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PredictionBetPlacedEvent {
-    pub post_id: String,
-    pub user: String,
-    pub option_id: u8,
-    pub amount: u64,
-}
-
-/// Prediction resolved event from blockchain
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PredictionResolvedEvent {
-    pub post_id: String,
-    pub winning_option_id: u8,
-    pub total_bet_amount: u64,
-    pub winning_amount: u64,
-    pub resolved_by: String,
-}
-
-/// Prediction payout event from blockchain
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PredictionPayoutEvent {
-    pub post_id: String,
-    pub user: String,
-    pub amount: u64,
-}
-
-/// Prediction bet withdrawn event from blockchain
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PredictionBetWithdrawnEvent {
-    pub post_id: String,
-    pub user: String,
-    pub option_id: u8,
-    pub original_amount: u64,
-    pub withdrawal_amount: u64,
-}
-
 /// Post parameters updated event from blockchain
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostParametersUpdatedEvent {
@@ -316,7 +267,6 @@ pub struct PostParametersUpdatedEvent {
     pub max_reaction_length: u64,
     pub commenter_tip_percentage: u64,
     pub repost_tip_percentage: u64,
-    pub max_prediction_options: u64,
 }
 
 /// Auto pool disabled updated event from blockchain
@@ -329,21 +279,3 @@ pub struct AutoPoolDisabledUpdatedEvent {
     pub timestamp: u64,
 }
 
-/// Predictions enabled updated event from blockchain
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PredictionsEnabledUpdatedEvent {
-    pub updated_by: String,
-    pub enabled: bool,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub timestamp: u64,
-}
-
-/// Prediction fee updated event from blockchain
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PredictionFeeUpdatedEvent {
-    pub updated_by: String,
-    pub fee_bps: u64,
-    pub treasury: String,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub timestamp: u64,
-}

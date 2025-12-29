@@ -752,6 +752,7 @@ table! {
     governance_registries (id) {
         id -> Int4,
         registry_type -> Int2,
+        registry_id -> Varchar,
         delegate_count -> Int8,
         delegate_term_epochs -> Int8,
         proposal_submission_cost -> Int8,
@@ -1286,28 +1287,11 @@ table! {
     }
 }
 
-// Define post_prediction_config table
-table! {
-    post_prediction_config (id, time) {
-        id -> Int4,
-        updated_by -> Varchar,
-        predictions_enabled -> Bool,
-        fee_bps -> Int8,
-        treasury -> Varchar,
-        updated_at -> Int8,
-        time -> Timestamptz,
-        transaction_id -> Varchar,
-    }
-}
-
 // Define post_config table
 table! {
     post_config (id, time) {
         id -> Int4,
         updated_by -> Varchar,
-        predictions_enabled -> Bool,
-        prediction_fee_bps -> Int8,
-        prediction_treasury -> Varchar,
         max_content_length -> Int8,
         max_media_urls -> Int8,
         max_mentions -> Int8,
@@ -1316,7 +1300,6 @@ table! {
         max_reaction_length -> Int8,
         commenter_tip_percentage -> Int8,
         repost_tip_percentage -> Int8,
-        max_prediction_options -> Int8,
         updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
@@ -1335,8 +1318,10 @@ table! {
         status -> Int2,
         outcome -> Nullable<Int2>,
         amm_split_bps_used -> Int4,
-        total_yes_escrow -> BigInt,
-        total_no_escrow -> BigInt,
+        betting_options -> Nullable<Jsonb>,
+        option_escrow -> Nullable<Jsonb>,
+        resolution_window_epochs -> Nullable<BigInt>,
+        max_resolution_window_epochs -> Nullable<BigInt>,
         created_epoch -> BigInt,
         last_resolution_epoch -> Nullable<BigInt>,
         version -> BigInt,
@@ -1352,7 +1337,7 @@ table! {
         id -> Int4,
         post_id -> Varchar,
         user_address -> Varchar,
-        is_yes -> Bool,
+        option_id -> SmallInt,
         escrow_amount -> BigInt,
         amm_amount -> BigInt,
         timestamp_epoch -> BigInt,
@@ -1444,7 +1429,7 @@ table! {
         event_type -> Varchar,
         post_id -> Varchar,
         user_address -> Nullable<Varchar>,
-        is_yes -> Nullable<Bool>,
+        option_id -> Nullable<SmallInt>,
         escrow_amount -> Nullable<BigInt>,
         amm_amount -> Nullable<BigInt>,
         amount -> Nullable<BigInt>,
@@ -1457,6 +1442,21 @@ table! {
         event_id -> Nullable<Varchar>,
         transaction_id -> Nullable<Varchar>,
         raw_event -> Nullable<Jsonb>,
+    }
+}
+
+// spot_bet_withdrawals: hypertable for tracking bet withdrawals
+table! {
+    spot_bet_withdrawals (id, time) {
+        id -> Int4,
+        post_id -> Varchar,
+        user_address -> Varchar,
+        option_id -> SmallInt,
+        amount -> BigInt,
+        fee_taken -> BigInt,
+        timestamp_epoch -> BigInt,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
     }
 }
 
@@ -1562,6 +1562,7 @@ allow_tables_to_appear_in_same_query!(
     // SPoT tables
     spot_records,
     spot_bets,
+    spot_bet_withdrawals,
     spot_payouts,
     spot_refunds,
     spot_resolutions,

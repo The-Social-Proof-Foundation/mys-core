@@ -17,6 +17,7 @@ use crate::schema::{
 pub struct GovernanceRegistry {
     pub id: i32,
     pub registry_type: i16,
+    pub registry_id: String,
     pub delegate_count: i64,
     pub delegate_term_epochs: i64,
     pub proposal_submission_cost: i64,
@@ -35,6 +36,7 @@ pub struct GovernanceRegistry {
 #[diesel(table_name = governance_registries)]
 pub struct NewGovernanceRegistry {
     pub registry_type: i16,
+    pub registry_id: String,
     pub delegate_count: i64,
     pub delegate_term_epochs: i64,
     pub proposal_submission_cost: i64,

@@ -68,10 +68,7 @@ pub use crate::events::blocking_events::BlockListCreatedEvent;
 pub use post_event_types::{
     CommentCreatedEvent, ContentUpdateEvent, DeletionEvent, ModerationEvent, PostCreatedEvent,
     PostEventType, ReactionEvent, RemoveReactionEvent, ReportEvent, RepostEvent, TipEvent,
-    OwnershipTransferEvent, PredictionCreatedEvent, PredictionBetPlacedEvent,
-    PredictionResolvedEvent, PredictionPayoutEvent, PredictionBetWithdrawnEvent,
-    PostParametersUpdatedEvent, AutoPoolDisabledUpdatedEvent,
-    PredictionsEnabledUpdatedEvent, PredictionFeeUpdatedEvent,
+    OwnershipTransferEvent, PostParametersUpdatedEvent, AutoPoolDisabledUpdatedEvent,
 };
 
 // Re-export social proof token events
@@ -84,8 +81,8 @@ pub use social_proof_token_events::{
 
 // Re-export SPoT events
 pub use social_proof_of_truth_events::{
-    SpotBetPlacedEvent, SpotConfigUpdatedEvent, SpotDaoRequiredEvent, SpotPayoutEvent,
-    SpotRecordCreatedEvent, SpotRefundEvent, SpotResolvedEvent,
+    SpotBetPlacedEvent, SpotBetWithdrawnEvent, SpotConfigUpdatedEvent, SpotDaoRequiredEvent,
+    SpotPayoutEvent, SpotRecordCreatedEvent, SpotRefundEvent, SpotResolvedEvent,
 };
 
 // Re-export social proof token event types
