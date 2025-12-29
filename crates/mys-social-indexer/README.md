@@ -284,7 +284,9 @@ GET /search?query=social&page=2&limit=50
 
 ### Platform API
 - **GET /platforms** - List platforms
+  - Query: `limit` (optional), `offset` (optional), `page` (optional), `primary_category` (optional - filter by primary category), `secondary_category` (optional - filter by secondary category)
 - **GET /platforms/approved** - List approved platforms
+  - Query: `limit` (optional), `offset` (optional), `page` (optional), `primary_category` (optional - filter by primary category), `secondary_category` (optional - filter by secondary category)
 - **GET /platforms/:id** - Get platform by ID
 - **GET /platforms/:id/moderators** - Get platform moderators
 - **GET /platforms/:id/approval** - Get platform approval status

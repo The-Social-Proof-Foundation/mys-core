@@ -26,6 +26,8 @@ pub struct PlatformQuery {
     pub offset: Option<i64>,
     pub page: Option<i64>,
     pub search: Option<String>,
+    pub primary_category: Option<String>,
+    pub secondary_category: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -66,8 +68,22 @@ pub async fn get_platforms(
         }
     };
 
+    // Build base query with category filters
+    let mut count_query = platforms::table.into_boxed();
+    let mut platforms_query = platforms::table.into_boxed();
+
+    // Apply category filters if provided
+    if let Some(ref primary_cat) = query.primary_category {
+        count_query = count_query.filter(platforms::primary_category.eq(primary_cat));
+        platforms_query = platforms_query.filter(platforms::primary_category.eq(primary_cat));
+    }
+    if let Some(ref secondary_cat) = query.secondary_category {
+        count_query = count_query.filter(platforms::secondary_category.eq(secondary_cat));
+        platforms_query = platforms_query.filter(platforms::secondary_category.eq(secondary_cat));
+    }
+
     // Get the total count for pagination info
-    let total_count = match platforms::table.count().get_result::<i64>(&mut conn).await {
+    let total_count = match count_query.count().get_result::<i64>(&mut conn).await {
         Ok(count) => count,
         Err(_) => 0,
     };
@@ -75,7 +91,7 @@ pub async fn get_platforms(
     let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
 
     // Query platforms with pagination
-    let platforms_result = platforms::table
+    let platforms_result = platforms_query
         .order_by(platforms::created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -150,6 +166,8 @@ pub async fn get_platforms(
                     voting_period_epochs: platform.voting_period_epochs,
                     treasury: platform.treasury,
                     version: platform.version,
+                    primary_category: platform.primary_category,
+                    secondary_category: platform.secondary_category.clone(),
                     moderator_count,
                     blocked_profiles_count: blocked_count,
                 });
@@ -318,6 +336,8 @@ pub async fn get_platform_by_id(
                 voting_period_epochs: platform.voting_period_epochs,
                 treasury: platform.treasury,
                 version: platform.version,
+                primary_category: platform.primary_category,
+                secondary_category: platform.secondary_category.clone(),
                 moderator_count,
                 blocked_profiles_count: blocked_count,
             };
@@ -522,13 +542,26 @@ pub async fn get_approved_platforms(
         }
     };
 
-    // Get the total count for pagination info (only approved platforms)
-    let total_count = match platforms::table
+    // Build base query with approval and category filters
+    let mut count_query = platforms::table
         .filter(platforms::is_approved.eq(true))
-        .count()
-        .get_result::<i64>(&mut conn)
-        .await
-    {
+        .into_boxed();
+    let mut platforms_query = platforms::table
+        .filter(platforms::is_approved.eq(true))
+        .into_boxed();
+
+    // Apply category filters if provided
+    if let Some(ref primary_cat) = query.primary_category {
+        count_query = count_query.filter(platforms::primary_category.eq(primary_cat));
+        platforms_query = platforms_query.filter(platforms::primary_category.eq(primary_cat));
+    }
+    if let Some(ref secondary_cat) = query.secondary_category {
+        count_query = count_query.filter(platforms::secondary_category.eq(secondary_cat));
+        platforms_query = platforms_query.filter(platforms::secondary_category.eq(secondary_cat));
+    }
+
+    // Get the total count for pagination info (only approved platforms)
+    let total_count = match count_query.count().get_result::<i64>(&mut conn).await {
         Ok(count) => count,
         Err(_) => 0,
     };
@@ -536,8 +569,7 @@ pub async fn get_approved_platforms(
     let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
 
     // Query platforms with pagination, filtered by approval status
-    let platforms_result = platforms::table
-        .filter(platforms::is_approved.eq(true))
+    let platforms_result = platforms_query
         .order_by(platforms::created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -612,6 +644,8 @@ pub async fn get_approved_platforms(
                     voting_period_epochs: platform.voting_period_epochs,
                     treasury: platform.treasury,
                     version: platform.version,
+                    primary_category: platform.primary_category,
+                    secondary_category: platform.secondary_category.clone(),
                     moderator_count,
                     blocked_profiles_count: blocked_count,
                 });
@@ -1446,6 +1480,8 @@ pub async fn get_profile_platforms(
             platforms::voting_period_epochs,
             platforms::treasury,
             platforms::version,
+            platforms::primary_category,
+            platforms::secondary_category,
             platform_memberships::joined_at,
         ))
         .order_by(platform_memberships::joined_at.desc())
@@ -1464,14 +1500,14 @@ pub async fn get_profile_platforms(
     }
 
     let platforms_result = platforms_query
-        .load::<(i32, String, String, String, Option<String>, Option<String>, String, Option<String>, Option<String>, Option<serde_json::Value>, Option<serde_json::Value>, i16, Option<String>, Option<String>, NaiveDateTime, NaiveDateTime, bool, Option<NaiveDateTime>, Option<String>, Option<bool>, Option<String>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, NaiveDateTime)>(&mut conn)
+        .load::<(i32, String, String, String, Option<String>, Option<String>, String, Option<String>, Option<String>, Option<serde_json::Value>, Option<serde_json::Value>, i16, Option<String>, Option<String>, NaiveDateTime, NaiveDateTime, bool, Option<NaiveDateTime>, Option<String>, Option<bool>, Option<String>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>, String, Option<String>, NaiveDateTime)>(&mut conn)
         .await;
 
     match platforms_result {
         Ok(platforms_data) => {
             let mut platform_memberships = Vec::with_capacity(platforms_data.len());
 
-            for (id, platform_id, name, tagline, description, logo, developer_address, terms_of_service, privacy_policy, platform_names, links, status, release_date, shutdown_date, created_at, updated_at, is_approved, approval_changed_at, approved_by, wants_dao_governance, governance_registry_id, delegate_count, delegate_term_epochs, max_votes_per_user, min_on_chain_age_days, proposal_submission_cost, quadratic_base_cost, quorum_votes, voting_period_epochs, treasury, version, joined_at) in platforms_data {
+            for (id, platform_id, name, tagline, description, logo, developer_address, terms_of_service, privacy_policy, platform_names, links, status, release_date, shutdown_date, created_at, updated_at, is_approved, approval_changed_at, approved_by, wants_dao_governance, governance_registry_id, delegate_count, delegate_term_epochs, max_votes_per_user, min_on_chain_age_days, proposal_submission_cost, quadratic_base_cost, quorum_votes, voting_period_epochs, treasury, version, primary_category, secondary_category, joined_at) in platforms_data {
                 // Get moderator count
                 let moderator_count = platform_moderators::table
                     .filter(platform_moderators::platform_id.eq(&platform_id))
@@ -1532,6 +1568,8 @@ pub async fn get_profile_platforms(
                     voting_period_epochs,
                     treasury,
                     version,
+                    primary_category,
+                    secondary_category,
                     moderator_count,
                     blocked_profiles_count: blocked_count,
                 };

@@ -18,6 +18,77 @@ pub const PLATFORM_STATUS_MAINTENANCE: i16 = 4;
 pub const PLATFORM_STATUS_SUNSET: i16 = 5;
 pub const PLATFORM_STATUS_SHUTDOWN: i16 = 6;
 
+/// Allowed platform category values (case-sensitive, exact match required)
+pub const ALLOWED_CATEGORIES: &[&str] = &[
+    "Social Network",
+    "Messaging",
+    "Long Form Publishing",
+    "Community Forum",
+    "Video Streaming",
+    "Live Streaming",
+    "Audio Streaming",
+    "Decentralized Exchange",
+    "Prediction Market",
+    "Insurance Market",
+    "Agentic Market",
+    "Yield and Staking",
+    "Real World Asset",
+    "Ticketing and Events",
+    "IP Licensing and Royalties",
+    "Digital Asset Vault",
+    "Reputation",
+    "Advertising",
+    "Data Marketplace",
+    "Oracle and Data Feeds",
+    "Analytics",
+    "File Storage",
+    "Privacy",
+    "Gaming",
+    "Developer Tools",
+    "Hardware",
+    "Research",
+];
+
+/// Validate a single category against allowed values
+/// Returns Ok(()) if valid, Err with error message if invalid
+pub fn validate_category(category: &str) -> Result<(), String> {
+    if ALLOWED_CATEGORIES.contains(&category) {
+        Ok(())
+    } else {
+        Err(format!(
+            "Invalid category: '{}'. Must be one of: {}",
+            category,
+            ALLOWED_CATEGORIES.join(", ")
+        ))
+    }
+}
+
+/// Validate primary and secondary categories
+/// Returns Ok(()) if valid, Err with error message if invalid
+/// Validates that:
+/// - Primary category is valid
+/// - Secondary category (if provided) is valid
+/// - Primary and secondary are different (if both provided)
+pub fn validate_categories(primary: &str, secondary: Option<&str>) -> Result<(), String> {
+    // Validate primary category
+    validate_category(primary)?;
+
+    // Validate secondary category if provided
+    if let Some(sec) = secondary {
+        validate_category(sec)?;
+
+        // Ensure primary and secondary are different
+        if primary == sec {
+            return Err(format!(
+                "Primary and secondary categories must be different. Both provided: '{}'",
+                primary
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 /// Platform model
 #[derive(Debug, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = platforms)]
@@ -53,6 +124,8 @@ pub struct Platform {
     pub voting_period_epochs: Option<i64>,
     pub treasury: Option<i64>,
     pub version: Option<i64>,
+    pub primary_category: String,
+    pub secondary_category: Option<String>,
 }
 
 /// DTO for inserting a new platform
@@ -89,6 +162,8 @@ pub struct NewPlatform {
     pub voting_period_epochs: Option<i64>,
     pub treasury: Option<i64>,
     pub version: Option<i64>,
+    pub primary_category: String,
+    pub secondary_category: Option<String>,
 }
 
 /// DTO for updating a platform
@@ -122,6 +197,8 @@ pub struct UpdatePlatform {
     pub voting_period_epochs: Option<i64>,
     pub treasury: Option<i64>,
     pub version: Option<i64>,
+    pub primary_category: Option<String>,
+    pub secondary_category: Option<String>,
 }
 
 /// Platform moderator model
@@ -227,6 +304,8 @@ pub struct PlatformWithDetails {
     pub voting_period_epochs: Option<i64>,
     pub treasury: Option<i64>,
     pub version: Option<i64>,
+    pub primary_category: String,
+    pub secondary_category: Option<String>,
     // Related data
     pub moderator_count: i64,
     pub blocked_profiles_count: i64,
@@ -292,6 +371,9 @@ pub struct PlatformCreatedEvent {
     pub treasury: Option<u64>,
     #[serde(default, deserialize_with = "deserialize_u64_optional")]
     pub version: Option<u64>,
+    pub primary_category: String,
+    #[serde(default)]
+    pub secondary_category: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -525,6 +607,9 @@ pub struct PlatformUpdatedEvent {
     pub shutdown_date: Option<String>,
     #[serde(deserialize_with = "deserialize_timestamp")]
     pub updated_at: u64,
+    pub primary_category: String,
+    #[serde(default)]
+    pub secondary_category: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

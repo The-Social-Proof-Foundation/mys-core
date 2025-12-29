@@ -48,6 +48,8 @@ module social_contracts::platform_tests {
                 string::utf8(b"https://example.com/privacy"),
                 vector[string::utf8(b"web"), string::utf8(b"mobile")],
                 vector[string::utf8(b"https://example.com")],
+                string::utf8(b"Social Network"), // primary_category
+                option::none(), // secondary_category
                 2, // STATUS_BETA
                 string::utf8(b"2023-01-01"),
                 true, // wants_dao_governance

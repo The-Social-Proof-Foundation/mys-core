@@ -149,6 +149,8 @@ module social_contracts::token_exchange_tests {
                 string::utf8(b"https://example.com/privacy"),
                 vector[string::utf8(b"web")],
                 vector[string::utf8(b"https://example.com")],
+                string::utf8(b"Social Network"), // primary_category
+                option::none(), // secondary_category
                 3, // STATUS_LIVE
                 string::utf8(b"2023-01-01"),
                 false, // doesn't want DAO governance

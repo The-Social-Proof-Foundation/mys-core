@@ -185,6 +185,20 @@ impl PlatformEventHandler {
         }
     }
 
+    /// Validate platform categories
+    /// Logs warnings for invalid categories but doesn't fail (blockchain validation handles errors)
+    fn validate_platform_categories(primary: &str, secondary: Option<&str>) -> Result<(), anyhow::Error> {
+        match crate::models::platform::validate_categories(primary, secondary) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                warn!("Invalid platform categories - primary: '{}', secondary: {:?}, error: {}", primary, secondary, e);
+                // Don't fail here - blockchain validation will reject invalid transactions
+                // We just log for monitoring purposes
+                Ok(())
+            }
+        }
+    }
+
     /// Process a platform created event
     async fn process_platform_created_event(
         &self,
@@ -215,6 +229,15 @@ impl PlatformEventHandler {
         
         info!("Normalized DAO fields - wants_dao_governance: {:?}, governance_registry_id: {:?}, delegate_count: {:?}", 
             wants_dao_governance, governance_registry_id, delegate_count);
+
+        // Extract and validate categories
+        let primary_category = event.primary_category.clone();
+        let secondary_category = event.secondary_category.clone();
+        
+        // Validate categories (logs warnings but doesn't fail - blockchain validation handles errors)
+        if let Err(e) = Self::validate_platform_categories(&primary_category, secondary_category.as_deref()) {
+            warn!("Category validation error for platform {}: {}", event.platform_id, e);
+        }
 
         // Start a transaction for atomicity
         conn.build_transaction()
@@ -292,6 +315,8 @@ impl PlatformEventHandler {
                             voting_period_epochs,
                             treasury,
                             version,
+                            primary_category: Some(primary_category.clone()),
+                            secondary_category: secondary_category.clone(),
                         };
 
                         diesel::update(schema::platforms::table)
@@ -340,6 +365,8 @@ impl PlatformEventHandler {
                             voting_period_epochs,
                             treasury,
                             version,
+                            primary_category: primary_category.clone(),
+                            secondary_category: secondary_category.clone(),
                         };
 
                         // Insert platform
@@ -391,6 +418,15 @@ impl PlatformEventHandler {
         debug!("Processing platform updated event");
 
         let mut conn = self.get_connection().await?;
+
+        // Extract and validate categories
+        let primary_category = event.primary_category.clone();
+        let secondary_category = event.secondary_category.clone();
+        
+        // Validate categories (logs warnings but doesn't fail - blockchain validation handles errors)
+        if let Err(e) = Self::validate_platform_categories(&primary_category, secondary_category.as_deref()) {
+            warn!("Category validation error for platform {}: {}", event.platform_id, e);
+        }
 
         // Extract timestamp from blockchain event before moving into closure
         // Filter out 0 timestamps (invalid/unset) - use None instead so we can fallback to current time
@@ -499,6 +535,8 @@ impl PlatformEventHandler {
                             voting_period_epochs: None, // Not in update event
                             treasury: None, // Not in update event
                             version: None, // Not in update event
+                            primary_category: Some(primary_category.clone()),
+                            secondary_category: secondary_category.clone(),
                         };
 
                         diesel::update(schema::platforms::table)
@@ -567,6 +605,8 @@ impl PlatformEventHandler {
                             voting_period_epochs: None, // Not in update event
                             treasury: None, // Not in update event
                             version: None, // Not in update event
+                            primary_category: primary_category.clone(),
+                            secondary_category: secondary_category.clone(),
                         };
 
                         diesel::insert_into(schema::platforms::table)
@@ -681,6 +721,8 @@ impl PlatformEventHandler {
                             voting_period_epochs: None, // Not available for placeholder
                             treasury: None, // Not available for placeholder
                             version: None, // Not available for placeholder
+                            primary_category: "".to_string(), // Placeholder - needs manual categorization
+                            secondary_category: None, // Not available for placeholder
                         };
 
                         diesel::insert_into(schema::platforms::table)
@@ -1107,6 +1149,8 @@ impl PlatformEventHandler {
                             voting_period_epochs: None, // Don't change governance fields
                             treasury: None, // Don't change governance fields
                             version: None, // Don't change governance fields
+                            primary_category: None, // Don't change category
+                            secondary_category: None, // Don't change category
                         };
 
                         diesel::update(schema::platforms::table)
@@ -1559,6 +1603,8 @@ impl PlatformEventHandler {
                         voting_period_epochs: None,
                         treasury: Some(event.new_balance as i64),
                         version: None,
+                        primary_category: None, // Don't change category
+                        secondary_category: None, // Don't change category
                     };
 
                     diesel::update(schema::platforms::table)

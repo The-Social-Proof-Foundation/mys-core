@@ -42,6 +42,8 @@ module social_contracts::platform {
     const EBadgeMediaUrlTooLong: u64 = 13;
     const EInvalidReasoning: u64 = 14;
     const EBadgeIconUrlTooLong: u64 = 15;
+    const EInvalidCategory: u64 = 16;
+    const ECategoriesSame: u64 = 17;
 
     /// Maximum lengths for badge fields
     const MAX_BADGE_NAME_LENGTH: u64 = 100;
@@ -51,6 +53,35 @@ module social_contracts::platform {
     
     /// Maximum length for approval reasoning
     const MAX_REASONING_LENGTH: u64 = 2000; // Max characters for approval reasoning
+
+    /// Platform category constants
+    const CATEGORY_SOCIAL_NETWORK: vector<u8> = b"Social Network";
+    const CATEGORY_MESSAGING: vector<u8> = b"Messaging";
+    const CATEGORY_LONG_FORM_PUBLISHING: vector<u8> = b"Long Form Publishing";
+    const CATEGORY_COMMUNITY_FORUM: vector<u8> = b"Community Forum";
+    const CATEGORY_VIDEO_STREAMING: vector<u8> = b"Video Streaming";
+    const CATEGORY_LIVE_STREAMING: vector<u8> = b"Live Streaming";
+    const CATEGORY_AUDIO_STREAMING: vector<u8> = b"Audio Streaming";
+    const CATEGORY_DECENTRALIZED_EXCHANGE: vector<u8> = b"Decentralized Exchange";
+    const CATEGORY_PREDICTION_MARKET: vector<u8> = b"Prediction Market";
+    const CATEGORY_INSURANCE_MARKET: vector<u8> = b"Insurance Market";
+    const CATEGORY_AGENTIC_MARKET: vector<u8> = b"Agentic Market";
+    const CATEGORY_YIELD_AND_STAKING: vector<u8> = b"Yield and Staking";
+    const CATEGORY_REAL_WORLD_ASSET: vector<u8> = b"Real World Asset";
+    const CATEGORY_TICKETING_AND_EVENTS: vector<u8> = b"Ticketing and Events";
+    const CATEGORY_IP_LICENSING_AND_ROYALTIES: vector<u8> = b"IP Licensing and Royalties";
+    const CATEGORY_DIGITAL_ASSET_VAULT: vector<u8> = b"Digital Asset Vault";
+    const CATEGORY_REPUTATION: vector<u8> = b"Reputation";
+    const CATEGORY_ADVERTISING: vector<u8> = b"Advertising";
+    const CATEGORY_DATA_MARKETPLACE: vector<u8> = b"Data Marketplace";
+    const CATEGORY_ORACLE_AND_DATA_FEEDS: vector<u8> = b"Oracle and Data Feeds";
+    const CATEGORY_ANALYTICS: vector<u8> = b"Analytics";
+    const CATEGORY_FILE_STORAGE: vector<u8> = b"File Storage";
+    const CATEGORY_PRIVACY: vector<u8> = b"Privacy";
+    const CATEGORY_GAMING: vector<u8> = b"Gaming";
+    const CATEGORY_DEVELOPER_TOOLS: vector<u8> = b"Developer Tools";
+    const CATEGORY_HARDWARE: vector<u8> = b"Hardware";
+    const CATEGORY_RESEARCH: vector<u8> = b"Research";
 
     /// Field names for dynamic fields
     const MODERATORS_FIELD: vector<u8> = b"moderators";
@@ -97,6 +128,10 @@ module social_contracts::platform {
         platforms: vector<String>,
         /// Platform URLs
         links: vector<String>,
+        /// Primary platform category 
+        primary_category: String,
+        /// Secondary platform category (optional)
+        secondary_category: Option<String>,
         /// Platform status
         status: PlatformStatus,
         /// Platform release date
@@ -149,6 +184,8 @@ module social_contracts::platform {
         privacy_policy: String,
         platforms: vector<String>,
         links: vector<String>,
+        primary_category: String,
+        secondary_category: Option<String>,
         status: PlatformStatus,
         release_date: String,
         wants_dao_governance: bool,
@@ -173,6 +210,8 @@ module social_contracts::platform {
         privacy_policy: String,
         platforms: vector<String>,
         links: vector<String>,
+        primary_category: String,
+        secondary_category: Option<String>,
         status: PlatformStatus,
         release_date: String,
         shutdown_date: Option<String>,
@@ -274,6 +313,8 @@ module social_contracts::platform {
         privacy_policy: String,
         platforms: vector<String>,
         links: vector<String>,
+        primary_category: String,
+        secondary_category: Option<String>,
         status: u8,
         release_date: String,
         wants_dao_governance: bool,
@@ -297,6 +338,17 @@ module social_contracts::platform {
         // Check if platform name is already taken
         assert!(!table::contains(&registry.platforms_by_name, name), EPlatformAlreadyExists);
 
+        // Validate primary category
+        assert!(is_valid_category(&primary_category), EInvalidCategory);
+        
+        // Validate secondary category if provided
+        if (option::is_some(&secondary_category)) {
+            let secondary = option::borrow(&secondary_category);
+            assert!(is_valid_category(secondary), EInvalidCategory);
+            // Ensure primary and secondary categories are different
+            assert!(primary_category != *secondary, ECategoriesSame);
+        };
+        
         // Validate status code is one of the defined constants
         assert!(
             status == STATUS_DEVELOPMENT || 
@@ -330,6 +382,8 @@ module social_contracts::platform {
             privacy_policy,
             platforms,
             links,
+            primary_category,
+            secondary_category,
             status: new_status(status),
             release_date,
             shutdown_date: option::none(),
@@ -454,6 +508,8 @@ module social_contracts::platform {
             privacy_policy: platform.privacy_policy,
             platforms: platform.platforms,
             links: platform.links,
+            primary_category: platform.primary_category,
+            secondary_category: platform.secondary_category,
             status: platform.status,
             release_date: platform.release_date,
             wants_dao_governance: platform.wants_dao_governance,
@@ -483,6 +539,8 @@ module social_contracts::platform {
         new_privacy_policy: String,
         new_platforms: vector<String>,
         new_links: vector<String>,
+        new_primary_category: String,
+        new_secondary_category: Option<String>,
         new_status: u8,
         new_release_date: String,
         new_shutdown_date: Option<String>,
@@ -496,6 +554,17 @@ module social_contracts::platform {
         // Verify caller is platform developer
         assert!(platform.developer == tx_context::sender(ctx), EUnauthorized);
         
+        // Validate primary category
+        assert!(is_valid_category(&new_primary_category), EInvalidCategory);
+        
+        // Validate secondary category if provided
+        if (option::is_some(&new_secondary_category)) {
+            let secondary = option::borrow(&new_secondary_category);
+            assert!(is_valid_category(secondary), EInvalidCategory);
+            // Ensure primary and secondary categories are different
+            assert!(new_primary_category != *secondary, ECategoriesSame);
+        };
+        
         // Update platform information
         platform.name = new_name;
         platform.tagline = new_tagline;
@@ -505,6 +574,8 @@ module social_contracts::platform {
         platform.privacy_policy = new_privacy_policy;
         platform.platforms = new_platforms;
         platform.links = new_links;
+        platform.primary_category = new_primary_category;
+        platform.secondary_category = new_secondary_category;
         platform.status = new_status(new_status);
         platform.release_date = new_release_date;
         platform.shutdown_date = new_shutdown_date;
@@ -519,6 +590,8 @@ module social_contracts::platform {
             privacy_policy: platform.privacy_policy,
             platforms: platform.platforms,
             links: platform.links,
+            primary_category: platform.primary_category,
+            secondary_category: platform.secondary_category,
             status: platform.status,
             release_date: platform.release_date,
             shutdown_date: platform.shutdown_date,
@@ -547,7 +620,7 @@ module social_contracts::platform {
     }
 
     /// Add MYS tokens to platform treasury
-    public entry fun add_to_treasury(
+    public(package) fun add_to_treasury(
         platform: &mut Platform,
         coin: &mut Coin<MYS>,
         amount: u64,
@@ -555,10 +628,6 @@ module social_contracts::platform {
     ) {
         // Check version compatibility
         assert!(platform.version == upgrade::current_version(), EWrongVersion);
-        
-        // Verify caller is platform developer or moderator
-        let caller = tx_context::sender(ctx);
-        assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
         
         // Check amount validity
         assert!(amount > 0 && coin::value(coin) >= amount, EInvalidTokenAmount);
@@ -573,7 +642,7 @@ module social_contracts::platform {
         event::emit(TreasuryFundedEvent {
             platform_id,
             amount,
-            funded_by: caller,
+            funded_by: tx_context::sender(ctx),
             new_balance,
             timestamp: tx_context::epoch_timestamp_ms(ctx),
         });
@@ -772,6 +841,39 @@ module social_contracts::platform {
         status.status
     }
 
+    /// Validate that a category string matches one of the allowed categories
+    #[allow(implicit_const_copy)]
+    fun is_valid_category(category: &String): bool {
+        let category_bytes = string::as_bytes(category);
+        category_bytes == CATEGORY_SOCIAL_NETWORK ||
+        category_bytes == CATEGORY_MESSAGING ||
+        category_bytes == CATEGORY_LONG_FORM_PUBLISHING ||
+        category_bytes == CATEGORY_COMMUNITY_FORUM ||
+        category_bytes == CATEGORY_VIDEO_STREAMING ||
+        category_bytes == CATEGORY_LIVE_STREAMING ||
+        category_bytes == CATEGORY_AUDIO_STREAMING ||
+        category_bytes == CATEGORY_DECENTRALIZED_EXCHANGE ||
+        category_bytes == CATEGORY_PREDICTION_MARKET ||
+        category_bytes == CATEGORY_INSURANCE_MARKET ||
+        category_bytes == CATEGORY_AGENTIC_MARKET ||
+        category_bytes == CATEGORY_YIELD_AND_STAKING ||
+        category_bytes == CATEGORY_REAL_WORLD_ASSET ||
+        category_bytes == CATEGORY_TICKETING_AND_EVENTS ||
+        category_bytes == CATEGORY_IP_LICENSING_AND_ROYALTIES ||
+        category_bytes == CATEGORY_DIGITAL_ASSET_VAULT ||
+        category_bytes == CATEGORY_REPUTATION ||
+        category_bytes == CATEGORY_ADVERTISING ||
+        category_bytes == CATEGORY_DATA_MARKETPLACE ||
+        category_bytes == CATEGORY_ORACLE_AND_DATA_FEEDS ||
+        category_bytes == CATEGORY_ANALYTICS ||
+        category_bytes == CATEGORY_FILE_STORAGE ||
+        category_bytes == CATEGORY_PRIVACY ||
+        category_bytes == CATEGORY_GAMING ||
+        category_bytes == CATEGORY_DEVELOPER_TOOLS ||
+        category_bytes == CATEGORY_HARDWARE ||
+        category_bytes == CATEGORY_RESEARCH
+    }
+
     /// Join a platform - establishes initial connection between profile and platform
     /// Checks for blocks before allowing the join and verifies platform is approved
     /// Uses the caller's wallet address to find their profile for security
@@ -938,6 +1040,16 @@ module social_contracts::platform {
     /// Get platform links
     public fun get_links(platform: &Platform): &vector<String> {
         &platform.links
+    }
+
+    /// Get platform primary category
+    public fun primary_category(platform: &Platform): String {
+        platform.primary_category
+    }
+
+    /// Get platform secondary category
+    public fun secondary_category(platform: &Platform): &Option<String> {
+        &platform.secondary_category
     }
 
     /// Get platform status

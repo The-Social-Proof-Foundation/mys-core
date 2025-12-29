@@ -133,6 +133,8 @@ table! {
         voting_period_epochs -> Nullable<BigInt>,
         treasury -> Nullable<BigInt>,
         version -> Nullable<BigInt>,
+        primary_category -> Varchar,
+        secondary_category -> Nullable<Varchar>,
     }
 }
 

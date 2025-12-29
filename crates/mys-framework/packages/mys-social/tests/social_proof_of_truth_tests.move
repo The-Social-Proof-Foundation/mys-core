@@ -69,6 +69,8 @@ module social_contracts::social_proof_of_truth_tests {
                 string::utf8(b"https://pp"),
                 vector[string::utf8(b"web")],
                 vector[string::utf8(b"https://example")],
+                string::utf8(b"Social Network"), // primary_category
+                option::none(), // secondary_category
                 3,
                 string::utf8(b"2024-01-01"),
                 false,

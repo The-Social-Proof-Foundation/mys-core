@@ -793,12 +793,21 @@ create_platform() {
     # In a real implementation, you would need to handle platforms, redirects, etc.
     print_info "Creating platform with simplified parameters..."
     
+    read -p "Enter primary category (e.g., 'Social Network'): " primary_category
+    read -p "Enter secondary category (optional, press Enter to skip): " secondary_category
     read -p "Enter platform status (0=Draft, 1=Active, 2=Beta): " status
     read -p "Enter platform launch date (YYYY-MM-DD): " launch_date
     read -p "Enable DAO governance? (true/false): " wants_dao
     
+    # Handle optional secondary category
+    if [ -z "$secondary_category" ]; then
+        secondary_category="option::none()"
+    else
+        secondary_category="option::some(\"$secondary_category\")"
+    fi
+    
     print_info "Creating platform..."
-    myso client call --package $PACKAGE_ID --module platform --function create_platform --args "$registry_id" "$name" "$username" "$description" "$logo_url" "$terms_url" "$privacy_url" "vector[]" "vector[]" "$status" "$launch_date" "$wants_dao" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" --gas-budget $GAS_BUDGET
+    myso client call --package $PACKAGE_ID --module platform --function create_platform --args "$registry_id" "$name" "$username" "$description" "$logo_url" "$terms_url" "$privacy_url" "vector[]" "vector[]" "\"$primary_category\"" "$secondary_category" "$status" "$launch_date" "$wants_dao" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" "option::none()" --gas-budget $GAS_BUDGET
     
     print_success "Platform created!"
     

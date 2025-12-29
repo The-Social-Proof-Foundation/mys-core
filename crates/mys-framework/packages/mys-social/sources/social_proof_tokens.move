@@ -1474,12 +1474,21 @@ module social_contracts::social_proof_tokens {
         // Calculate net refund
         let net_refund = refund_amount - fee_amount;
         
-        // Ensure pool has enough liquidity
-        assert!(balance::value(&pool.mys_balance) >= net_refund, EInsufficientLiquidity);
+        // Ensure pool has enough liquidity for refund + all fees
+        assert!(balance::value(&pool.mys_balance) >= refund_amount, EInsufficientLiquidity);
+        
+        // Verify seller has tokens in the pool
+        assert!(table::contains(&pool.holders, seller), ENoTokensOwned);
         
         // Update holder balance
         let holder_balance = table::borrow_mut(&mut pool.holders, seller);
-        *holder_balance = *holder_balance - amount;
+        if (*holder_balance == amount) {
+            // Remove holder completely if selling all tokens
+            table::remove(&mut pool.holders, seller);
+        } else {
+            // Reduce balance
+            *holder_balance = *holder_balance - amount;
+        };
         
         // Update user's social token
         social_token.amount = social_token.amount - amount;
