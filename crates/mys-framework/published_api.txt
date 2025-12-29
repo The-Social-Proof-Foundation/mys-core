@@ -5140,8 +5140,14 @@ bootstrap_init
 get_blocked_wallets_key
 	fun
 	0x50c1::block_list
+block_wallet_internal
+	public(package) fun
+	0x50c1::block_list
 block_wallet
 	public entry fun
+	0x50c1::block_list
+unblock_wallet_internal
+	public(package) fun
 	0x50c1::block_list
 unblock_wallet
 	public entry fun
@@ -5245,11 +5251,20 @@ ProposalRescindedEvent
 GovernanceParametersUpdatedEvent
 	public struct
 	0x50c1::governance
+GovernanceRegistryCreatedEvent
+	public struct
+	0x50c1::governance
 bootstrap_init
 	public(package) fun
 	0x50c1::governance
 initialize_registry_tables
 	fun
+	0x50c1::governance
+update_governance_parameters_internal
+	fun
+	0x50c1::governance
+update_platform_governance_parameters
+	public(package) fun
 	0x50c1::governance
 update_governance_parameters
 	public entry fun
@@ -5339,7 +5354,7 @@ reject_proposal_manually
 	public entry fun
 	0x50c1::governance
 create_platform_governance
-	public fun
+	public(package) fun
 	0x50c1::governance
 version
 	public fun
@@ -5371,12 +5386,6 @@ PlatformCreatedEvent
 PlatformUpdatedEvent
 	public struct
 	0x50c1::platform
-PlatformBlockedProfileEvent
-	public struct
-	0x50c1::platform
-PlatformUnblockedProfileEvent
-	public struct
-	0x50c1::platform
 ModeratorAddedEvent
 	public struct
 	0x50c1::platform
@@ -5402,10 +5411,10 @@ bootstrap_init
 	public(package) fun
 	0x50c1::platform
 create_platform
-	public entry fun
+	public fun
 	0x50c1::platform
 update_platform
-	public entry fun
+	public fun
 	0x50c1::platform
 platform_version
 	public fun
@@ -5420,22 +5429,22 @@ borrow_registry_version_mut
 	public(package) fun
 	0x50c1::platform
 add_to_treasury
-	public entry fun
+	public(package) fun
 	0x50c1::platform
 add_moderator
-	public entry fun
+	public fun
 	0x50c1::platform
 remove_moderator
-	public entry fun
+	public fun
 	0x50c1::platform
-block_profile
-	public entry fun
+block_wallet
+	public fun
 	0x50c1::platform
-unblock_profile
-	public entry fun
+unblock_wallet
+	public fun
 	0x50c1::platform
 toggle_platform_approval
-	public entry fun
+	public fun
 	0x50c1::platform
 new_status
 	public fun
@@ -5443,11 +5452,14 @@ new_status
 status_value
 	public fun
 	0x50c1::platform
+is_valid_category
+	fun
+	0x50c1::platform
 join_platform
-	public entry fun
+	public fun
 	0x50c1::platform
 leave_platform
-	public entry fun
+	public fun
 	0x50c1::platform
 is_approved
 	public fun
@@ -5485,6 +5497,12 @@ get_platforms
 get_links
 	public fun
 	0x50c1::platform
+primary_category
+	public fun
+	0x50c1::platform
+secondary_category
+	public fun
+	0x50c1::platform
 status
 	public fun
 	0x50c1::platform
@@ -5515,15 +5533,6 @@ get_platform_by_name
 get_platforms_by_developer
 	public fun
 	0x50c1::platform
-is_profile_blocked
-	public fun
-	0x50c1::platform
-is_profile_blocked_by_id
-	public fun
-	0x50c1::platform
-get_blocked_profiles
-	public fun
-	0x50c1::platform
 wants_dao_governance
 	public fun
 	0x50c1::platform
@@ -5533,14 +5542,17 @@ governance_registry_id
 governance_parameters
 	public fun
 	0x50c1::platform
+update_platform_governance
+	public fun
+	0x50c1::platform
 airdrop_from_treasury
-	public entry fun
+	public fun
 	0x50c1::platform
 assign_badge
-	public entry fun
+	public fun
 	0x50c1::platform
 revoke_badge
-	public entry fun
+	public fun
 	0x50c1::platform
 add_moderator_register
 	public(package) fun
@@ -5551,6 +5563,9 @@ remove_moderator_unregister
 create_platform_admin_cap
 	public(package) fun
 	0x50c1::platform
+PoCBadge
+	public struct
+	0x50c1::post
 Post
 	public struct
 	0x50c1::post
@@ -5558,15 +5573,6 @@ Comment
 	public struct
 	0x50c1::post
 Repost
-	public struct
-	0x50c1::post
-PredictionOption
-	public struct
-	0x50c1::post
-PredictionBet
-	public struct
-	0x50c1::post
-PredictionData
 	public struct
 	0x50c1::post
 PromotionView
@@ -5582,15 +5588,6 @@ PostConfig
 	public struct
 	0x50c1::post
 PostParametersUpdatedEvent
-	public struct
-	0x50c1::post
-AutoPoolDisabledUpdatedEvent
-	public struct
-	0x50c1::post
-PredictionsEnabledUpdatedEvent
-	public struct
-	0x50c1::post
-PredictionFeeUpdatedEvent
 	public struct
 	0x50c1::post
 PostCreatedEvent
@@ -5635,21 +5632,6 @@ PostDeletedEvent
 CommentDeletedEvent
 	public struct
 	0x50c1::post
-PredictionCreatedEvent
-	public struct
-	0x50c1::post
-PredictionBetPlacedEvent
-	public struct
-	0x50c1::post
-PredictionResolvedEvent
-	public struct
-	0x50c1::post
-PredictionPayoutEvent
-	public struct
-	0x50c1::post
-PredictionBetWithdrawnEvent
-	public struct
-	0x50c1::post
 PromotedPostCreatedEvent
 	public struct
 	0x50c1::post
@@ -5665,35 +5647,77 @@ PromotionFundsWithdrawnEvent
 ModerationRecord
 	public struct
 	0x50c1::post
-is_auto_pool_disabled
+has_flag
+	fun
+	0x50c1::post
+set_flag
+	fun
+	0x50c1::post
+clear_flag
+	fun
+	0x50c1::post
+allow_comments
 	public fun
 	0x50c1::post
-set_auto_pool_disabled
-	public entry fun
+allow_reactions
+	public fun
+	0x50c1::post
+allow_reposts
+	public fun
+	0x50c1::post
+allow_quotes
+	public fun
+	0x50c1::post
+allow_tips
+	public fun
+	0x50c1::post
+is_spt_enabled
+	public fun
+	0x50c1::post
+is_poc_enabled
+	public fun
+	0x50c1::post
+is_spot_enabled
+	public fun
+	0x50c1::post
+get_poc_badge
+	public fun
+	0x50c1::post
+has_poc_badge
+	public fun
+	0x50c1::post
+get_poc_reasoning
+	public fun
+	0x50c1::post
+get_poc_evidence_urls
+	public fun
+	0x50c1::post
+get_poc_similarity_score
+	public fun
+	0x50c1::post
+get_poc_media_type
+	public fun
+	0x50c1::post
+get_poc_oracle_address
+	public fun
+	0x50c1::post
+get_poc_analyzed_at
+	public fun
+	0x50c1::post
+get_spot_id
+	public fun
+	0x50c1::post
+get_spt_id
+	public fun
+	0x50c1::post
+set_spot_id
+	public(package) fun
+	0x50c1::post
+set_spt_id
+	public(package) fun
 	0x50c1::post
 bootstrap_init
 	public(package) fun
-	0x50c1::post
-set_predictions_enabled
-	public entry fun
-	0x50c1::post
-set_prediction_fee
-	public entry fun
-	0x50c1::post
-is_predictions_enabled
-	public fun
-	0x50c1::post
-create_prediction_post
-	public entry fun
-	0x50c1::post
-place_prediction_bet
-	public entry fun
-	0x50c1::post
-withdraw_prediction_bet
-	public entry fun
-	0x50c1::post
-resolve_prediction
-	public entry fun
 	0x50c1::post
 convert_urls_to_strings
 	fun
@@ -5702,25 +5726,25 @@ create_post_internal
 	fun
 	0x50c1::post
 create_post
-	public entry fun
+	public fun
 	0x50c1::post
 create_comment
-	public entry fun
+	public fun
 	0x50c1::post
 create_repost
-	public entry fun
+	public fun
 	0x50c1::post
 delete_post
-	public entry fun
+	public fun
 	0x50c1::post
 delete_comment
-	public entry fun
+	public fun
 	0x50c1::post
 react_to_post
-	public entry fun
+	public fun
 	0x50c1::post
 tip_post
-	public entry fun
+	public fun
 	0x50c1::post
 apply_poc_redirection_and_transfer
 	fun
@@ -5732,37 +5756,37 @@ clear_poc_data
 	public(package) fun
 	0x50c1::post
 tip_repost
-	public entry fun
+	public fun
 	0x50c1::post
 tip_comment
-	public entry fun
+	public fun
 	0x50c1::post
 transfer_post_ownership
-	public entry fun
+	public fun
 	0x50c1::post
 admin_transfer_post_ownership
-	public entry fun
+	public fun
 	0x50c1::post
 moderate_post
-	public entry fun
+	public fun
 	0x50c1::post
 moderate_comment
-	public entry fun
+	public fun
 	0x50c1::post
 update_post
-	public entry fun
+	public fun
 	0x50c1::post
 update_comment
-	public entry fun
+	public fun
 	0x50c1::post
 report_post
-	public entry fun
+	public fun
 	0x50c1::post
 report_comment
-	public entry fun
+	public fun
 	0x50c1::post
 react_to_comment
-	public entry fun
+	public fun
 	0x50c1::post
 get_post_content
 	public fun
@@ -5791,28 +5815,10 @@ get_reaction_count
 get_tips_received
 	public fun
 	0x50c1::post
-get_poc_badge_id
-	public fun
-	0x50c1::post
 get_revenue_redirect_to
 	public fun
 	0x50c1::post
 get_revenue_redirect_percentage
-	public fun
-	0x50c1::post
-get_total_bet_amount
-	public fun
-	0x50c1::post
-get_bets_count
-	public fun
-	0x50c1::post
-get_bet_user
-	public fun
-	0x50c1::post
-get_bet_option_id
-	public fun
-	0x50c1::post
-get_bet_amount
 	public fun
 	0x50c1::post
 version
@@ -5834,28 +5840,28 @@ borrow_repost_version_mut
 	public(package) fun
 	0x50c1::post
 migrate_post
-	public entry fun
+	public fun
 	0x50c1::post
 migrate_comment
-	public entry fun
+	public fun
 	0x50c1::post
 migrate_repost
-	public entry fun
+	public fun
 	0x50c1::post
 update_post_parameters
-	public entry fun
+	public fun
 	0x50c1::post
 create_promoted_post
 	public fun
 	0x50c1::post
 confirm_promoted_post_view
-	public entry fun
+	public fun
 	0x50c1::post
 toggle_promotion_status
-	public entry fun
+	public fun
 	0x50c1::post
 withdraw_promotion_funds
-	public entry fun
+	public fun
 	0x50c1::post
 get_promotion_stats
 	public fun
@@ -5867,7 +5873,7 @@ get_promotion_id
 	public fun
 	0x50c1::post
 set_moderation_status
-	public entry fun
+	public fun
 	0x50c1::post
 is_content_approved
 	public fun
@@ -6070,6 +6076,90 @@ create_social_proof_tokens_admin_cap
 ensure_post_token_pool
 	public(package) fun
 	0x50c1::social_proof_tokens
+SpotAdminCap
+	public struct
+	0x50c1::social_proof_of_truth
+SpotOracleAdminCap
+	public struct
+	0x50c1::social_proof_of_truth
+SpotConfig
+	public struct
+	0x50c1::social_proof_of_truth
+SpotBet
+	public struct
+	0x50c1::social_proof_of_truth
+SpotRecord
+	public struct
+	0x50c1::social_proof_of_truth
+SpotBetPlacedEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotResolvedEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotDaoRequiredEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotPayoutEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotRefundEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotConfigUpdatedEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotBetWithdrawnEvent
+	public struct
+	0x50c1::social_proof_of_truth
+SpotRecordCreatedEvent
+	public struct
+	0x50c1::social_proof_of_truth
+get_status
+	public fun
+	0x50c1::social_proof_of_truth
+get_bets_len
+	public fun
+	0x50c1::social_proof_of_truth
+get_betting_options
+	public fun
+	0x50c1::social_proof_of_truth
+get_option_escrow
+	public fun
+	0x50c1::social_proof_of_truth
+bootstrap_init
+	public(package) fun
+	0x50c1::social_proof_of_truth
+create_spot_admin_cap
+	public(package) fun
+	0x50c1::social_proof_of_truth
+create_spot_oracle_admin_cap
+	public(package) fun
+	0x50c1::social_proof_of_truth
+update_spot_config
+	public entry fun
+	0x50c1::social_proof_of_truth
+create_spot_record_for_post
+	public entry fun
+	0x50c1::social_proof_of_truth
+withdraw_spot_bet
+	public entry fun
+	0x50c1::social_proof_of_truth
+place_spot_bet
+	public entry fun
+	0x50c1::social_proof_of_truth
+oracle_resolve
+	public entry fun
+	0x50c1::social_proof_of_truth
+finalize_via_dao
+	public entry fun
+	0x50c1::social_proof_of_truth
+refund_unresolved
+	public entry fun
+	0x50c1::social_proof_of_truth
+finalize_resolution_and_payout
+	fun
+	0x50c1::social_proof_of_truth
 PoCAdminCap
 	public struct
 	0x50c1::proof_of_creativity
@@ -6550,75 +6640,6 @@ is_bootstrap_used
 bootstrap_version
 	public fun
 	0x50c1::bootstrap
-SpotAdminCap
-	public struct
-	0x50c1::social_proof_of_truth
-SpotConfig
-	public struct
-	0x50c1::social_proof_of_truth
-SpotBet
-	public struct
-	0x50c1::social_proof_of_truth
-SpotRecord
-	public struct
-	0x50c1::social_proof_of_truth
-SpotBetPlacedEvent
-	public struct
-	0x50c1::social_proof_of_truth
-SpotResolvedEvent
-	public struct
-	0x50c1::social_proof_of_truth
-SpotDaoRequiredEvent
-	public struct
-	0x50c1::social_proof_of_truth
-SpotPayoutEvent
-	public struct
-	0x50c1::social_proof_of_truth
-SpotRefundEvent
-	public struct
-	0x50c1::social_proof_of_truth
-SpotConfigUpdatedEvent
-	public struct
-	0x50c1::social_proof_of_truth
-SpotRecordCreatedEvent
-	public struct
-	0x50c1::social_proof_of_truth
-get_status
-	public fun
-	0x50c1::social_proof_of_truth
-get_total_yes_escrow
-	public fun
-	0x50c1::social_proof_of_truth
-get_total_no_escrow
-	public fun
-	0x50c1::social_proof_of_truth
-get_bets_len
-	public fun
-	0x50c1::social_proof_of_truth
-bootstrap_init
-	public(package) fun
-	0x50c1::social_proof_of_truth
-update_spot_config
-	public entry fun
-	0x50c1::social_proof_of_truth
-create_spot_record_for_post
-	public entry fun
-	0x50c1::social_proof_of_truth
-place_spot_bet
-	public entry fun
-	0x50c1::social_proof_of_truth
-oracle_resolve
-	public entry fun
-	0x50c1::social_proof_of_truth
-finalize_via_dao
-	public entry fun
-	0x50c1::social_proof_of_truth
-refund_unresolved
-	public entry fun
-	0x50c1::social_proof_of_truth
-finalize_resolution_and_payout
-	fun
-	0x50c1::social_proof_of_truth
 log
 	fun
 	0xda7a::gf256

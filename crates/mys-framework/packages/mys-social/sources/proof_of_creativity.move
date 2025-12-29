@@ -560,7 +560,7 @@ module social_contracts::proof_of_creativity {
         
         // Verify the post has PoC data to dispute (badge or redirection)
         let has_poc_data = option::is_some(social_contracts::post::get_revenue_redirect_to(post)) ||
-                            option::is_some(social_contracts::post::get_poc_similarity_score(post));
+                            social_contracts::post::has_poc_badge(post);
         assert!(has_poc_data, EPostNotFound);
         
         // Extract dispute fee and send to ecosystem treasury
@@ -862,7 +862,7 @@ module social_contracts::proof_of_creativity {
     /// Check if a post has PoC data that can be disputed
     public fun has_poc_data(post: &social_contracts::post::Post): bool {
         option::is_some(social_contracts::post::get_revenue_redirect_to(post)) ||
-        option::is_some(social_contracts::post::get_poc_similarity_score(post))
+        social_contracts::post::has_poc_badge(post)
     }
 
     /// Get dispute voting status

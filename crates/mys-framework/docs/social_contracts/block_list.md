@@ -16,7 +16,9 @@ Manages user blocking between wallet addresses
 -  [Function `create_block_list_for_sender`](#social_contracts_block_list_create_block_list_for_sender)
 -  [Function `bootstrap_init`](#social_contracts_block_list_bootstrap_init)
 -  [Function `get_blocked_wallets_key`](#social_contracts_block_list_get_blocked_wallets_key)
+-  [Function `block_wallet_internal`](#social_contracts_block_list_block_wallet_internal)
 -  [Function `block_wallet`](#social_contracts_block_list_block_wallet)
+-  [Function `unblock_wallet_internal`](#social_contracts_block_list_unblock_wallet_internal)
 -  [Function `unblock_wallet`](#social_contracts_block_list_unblock_wallet)
 -  [Function `has_block_list`](#social_contracts_block_list_has_block_list)
 -  [Function `find_block_list_id`](#social_contracts_block_list_find_block_list_id)
@@ -432,6 +434,98 @@ Generate a unique key for storing a user's blocked wallets
 
 </details>
 
+<a name="social_contracts_block_list_block_wallet_internal"></a>
+
+## Function `block_wallet_internal`
+
+Internal helper function to block a wallet with a specific blocker address
+This allows platforms (shared objects) to block wallets on behalf of their address
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet_internal">block_wallet_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, blocker_address: <b>address</b>, blocked_wallet_address: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet_internal">block_wallet_internal</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>,
+    <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_graph::SocialGraph</a>,
+    username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">profile::UsernameRegistry</a>,
+    blocker_address: <b>address</b>,
+    blocked_wallet_address: <b>address</b>,
+    ctx: &<b>mut</b> TxContext
+) {
+    // Check <a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> compatibility
+    <b>assert</b>!(registry.<a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/block_list.md#social_contracts_block_list_EWrongVersion">EWrongVersion</a>);
+    // Cannot block self
+    <b>assert</b>!(blocker_address != blocked_wallet_address, <a href="../social_contracts/block_list.md#social_contracts_block_list_ECannotBlockSelf">ECannotBlockSelf</a>);
+    // Check <b>if</b> blocker already <b>has</b> a block list
+    <b>let</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_has_block_list">has_block_list</a> = table::contains(&registry.wallet_block_lists, blocker_address);
+    <b>if</b> (<a href="../social_contracts/block_list.md#social_contracts_block_list_has_block_list">has_block_list</a>) {
+        // Get key <b>for</b> finding blocked wallets
+        <b>let</b> key = <a href="../social_contracts/block_list.md#social_contracts_block_list_get_blocked_wallets_key">get_blocked_wallets_key</a>(blocker_address);
+        // Get the blocked wallets set from registry
+        <b>let</b> blocked_wallets = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(&<b>mut</b> registry.id, key);
+        // Check <b>if</b> already blocked
+        <b>if</b> (vec_set::contains(blocked_wallets, &blocked_wallet_address)) {
+            <b>abort</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_EAlreadyBlocked">EAlreadyBlocked</a>
+        };
+        // Add to blocked wallets
+        vec_set::insert(blocked_wallets, blocked_wallet_address);
+        // Emit block event
+        event::emit(<a href="../social_contracts/block_list.md#social_contracts_block_list_UserBlockEvent">UserBlockEvent</a> {
+            blocker: blocker_address,
+            blocked: blocked_wallet_address,
+        });
+    } <b>else</b> {
+        // Create a new block list <b>for</b> first-time blockers
+        <b>let</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a> = <a href="../social_contracts/block_list.md#social_contracts_block_list_create_block_list">create_block_list</a>(blocker_address, ctx);
+        <b>let</b> block_list_id = object::uid_to_address(&<a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>.id);
+        // Register the block list
+        table::add(&<b>mut</b> registry.wallet_block_lists, blocker_address, block_list_id);
+        // Create a new blocked wallets set with the blocked <b>address</b>
+        <b>let</b> <b>mut</b> blocked_wallets = vec_set::empty&lt;<b>address</b>&gt;();
+        vec_set::insert(&<b>mut</b> blocked_wallets, blocked_wallet_address);
+        // Add the blocked wallets set to the registry
+        dynamic_field::add(&<b>mut</b> registry.id, <a href="../social_contracts/block_list.md#social_contracts_block_list_get_blocked_wallets_key">get_blocked_wallets_key</a>(blocker_address), blocked_wallets);
+        // Emit block list created event
+        event::emit(<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListCreatedEvent">BlockListCreatedEvent</a> {
+            owner: blocker_address,
+            block_list_id,
+        });
+        // Emit block event
+        event::emit(<a href="../social_contracts/block_list.md#social_contracts_block_list_UserBlockEvent">UserBlockEvent</a> {
+            blocker: blocker_address,
+            blocked: blocked_wallet_address,
+        });
+        // Return the block list to the caller
+        transfer::transfer(<a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>, blocker_address);
+    };
+    // Perform bidirectional unfollow after blocking succeeds
+    // Look up <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> IDs <b>for</b> both users
+    <b>let</b> blocker_profile_opt = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(username_registry, blocker_address);
+    <b>let</b> blocked_profile_opt = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(username_registry, blocked_wallet_address);
+    // If both profiles exist, attempt bidirectional unfollow
+    <b>if</b> (option::is_some(&blocker_profile_opt) && option::is_some(&blocked_profile_opt)) {
+        <b>let</b> blocker_profile_id = *option::borrow(&blocker_profile_opt);
+        <b>let</b> blocked_profile_id = *option::borrow(&blocked_profile_opt);
+        // Blocker unfollows blocked (<b>if</b> following)
+        <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">social_graph::unfollow_internal</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, blocker_profile_id, blocked_profile_id);
+        // Blocked unfollows blocker (<b>if</b> following)
+        <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">social_graph::unfollow_internal</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, blocked_profile_id, blocker_profile_id);
+    };
+    // Continue - blocking succeeds regardless of unfollow results
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_block_list_block_wallet"></a>
 
 ## Function `block_wallet`
@@ -457,68 +551,61 @@ Automatically unfollows in both directions if users are following each other
     blocked_wallet_address: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet_internal">block_wallet_internal</a>(registry, <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, username_registry, sender, blocked_wallet_address, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_block_list_unblock_wallet_internal"></a>
+
+## Function `unblock_wallet_internal`
+
+Internal helper function to unblock a wallet with a specific blocker address
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_unblock_wallet_internal">unblock_wallet_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, blocker_address: <b>address</b>, blocked_wallet_address: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_unblock_wallet_internal">unblock_wallet_internal</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">BlockListRegistry</a>,
+    blocker_address: <b>address</b>,
+    blocked_wallet_address: <b>address</b>
+) {
     // Check <a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/block_list.md#social_contracts_block_list_EWrongVersion">EWrongVersion</a>);
-    // Get the sender <b>address</b> (wallet <b>address</b> of the blocker)
-    <b>let</b> sender = tx_context::sender(ctx);
-    // Cannot block self
-    <b>assert</b>!(sender != blocked_wallet_address, <a href="../social_contracts/block_list.md#social_contracts_block_list_ECannotBlockSelf">ECannotBlockSelf</a>);
-    // Check <b>if</b> sender already <b>has</b> a block list
-    <b>let</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_has_block_list">has_block_list</a> = table::contains(&registry.wallet_block_lists, sender);
-    <b>if</b> (<a href="../social_contracts/block_list.md#social_contracts_block_list_has_block_list">has_block_list</a>) {
-        // Get key <b>for</b> finding blocked wallets
-        <b>let</b> key = <a href="../social_contracts/block_list.md#social_contracts_block_list_get_blocked_wallets_key">get_blocked_wallets_key</a>(sender);
-        // Get the blocked wallets set from registry
-        <b>let</b> blocked_wallets = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(&<b>mut</b> registry.id, key);
-        // Check <b>if</b> already blocked
-        <b>if</b> (vec_set::contains(blocked_wallets, &blocked_wallet_address)) {
-            <b>abort</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_EAlreadyBlocked">EAlreadyBlocked</a>
-        };
-        // Add to blocked wallets
-        vec_set::insert(blocked_wallets, blocked_wallet_address);
-        // Emit block event
-        event::emit(<a href="../social_contracts/block_list.md#social_contracts_block_list_UserBlockEvent">UserBlockEvent</a> {
-            blocker: sender,
-            blocked: blocked_wallet_address,
-        });
-    } <b>else</b> {
-        // Create a new block list <b>for</b> first-time blockers
-        <b>let</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a> = <a href="../social_contracts/block_list.md#social_contracts_block_list_create_block_list">create_block_list</a>(sender, ctx);
-        <b>let</b> block_list_id = object::uid_to_address(&<a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>.id);
-        // Register the block list
-        table::add(&<b>mut</b> registry.wallet_block_lists, sender, block_list_id);
-        // Create a new blocked wallets set with the blocked <b>address</b>
-        <b>let</b> <b>mut</b> blocked_wallets = vec_set::empty&lt;<b>address</b>&gt;();
-        vec_set::insert(&<b>mut</b> blocked_wallets, blocked_wallet_address);
-        // Add the blocked wallets set to the registry
-        dynamic_field::add(&<b>mut</b> registry.id, <a href="../social_contracts/block_list.md#social_contracts_block_list_get_blocked_wallets_key">get_blocked_wallets_key</a>(sender), blocked_wallets);
-        // Emit block list created event
-        event::emit(<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListCreatedEvent">BlockListCreatedEvent</a> {
-            owner: sender,
-            block_list_id,
-        });
-        // Emit block event
-        event::emit(<a href="../social_contracts/block_list.md#social_contracts_block_list_UserBlockEvent">UserBlockEvent</a> {
-            blocker: sender,
-            blocked: blocked_wallet_address,
-        });
-        // Return the block list to the caller
-        transfer::transfer(<a href="../social_contracts/block_list.md#social_contracts_block_list">block_list</a>, sender);
+    // Check <b>if</b> there's a block list <b>for</b> the blocker
+    <b>if</b> (!table::contains(&registry.wallet_block_lists, blocker_address)) {
+        <b>abort</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_ENotBlocked">ENotBlocked</a>
     };
-    // Perform bidirectional unfollow after blocking succeeds
-    // Look up <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> IDs <b>for</b> both users
-    <b>let</b> blocker_profile_opt = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(username_registry, sender);
-    <b>let</b> blocked_profile_opt = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(username_registry, blocked_wallet_address);
-    // If both profiles exist, attempt bidirectional unfollow
-    <b>if</b> (option::is_some(&blocker_profile_opt) && option::is_some(&blocked_profile_opt)) {
-        <b>let</b> blocker_profile_id = *option::borrow(&blocker_profile_opt);
-        <b>let</b> blocked_profile_id = *option::borrow(&blocked_profile_opt);
-        // Blocker unfollows blocked (<b>if</b> following)
-        <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">social_graph::unfollow_internal</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, blocker_profile_id, blocked_profile_id);
-        // Blocked unfollows blocker (<b>if</b> following)
-        <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">social_graph::unfollow_internal</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, blocked_profile_id, blocker_profile_id);
+    // Get key <b>for</b> finding blocked wallets
+    <b>let</b> key = <a href="../social_contracts/block_list.md#social_contracts_block_list_get_blocked_wallets_key">get_blocked_wallets_key</a>(blocker_address);
+    // Check <b>if</b> blocked wallets set exists
+    <b>if</b> (!dynamic_field::exists_(&registry.id, key)) {
+        <b>abort</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_ENotBlocked">ENotBlocked</a>
     };
-    // Continue - blocking succeeds regardless of unfollow results
+    // Get the blocked wallets set
+    <b>let</b> blocked_wallets = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(&<b>mut</b> registry.id, key);
+    // Check <b>if</b> the wallet is actually blocked
+    <b>if</b> (!vec_set::contains(blocked_wallets, &blocked_wallet_address)) {
+        <b>abort</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_ENotBlocked">ENotBlocked</a>
+    };
+    // Remove from blocked wallets
+    vec_set::remove(blocked_wallets, &blocked_wallet_address);
+    // Emit unblock event
+    event::emit(<a href="../social_contracts/block_list.md#social_contracts_block_list_UserUnblockEvent">UserUnblockEvent</a> {
+        blocker: blocker_address,
+        unblocked: blocked_wallet_address,
+    });
 }
 </code></pre>
 
@@ -548,33 +635,8 @@ Uses the caller's wallet address as the blocker
     blocked_wallet_address: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
-    // Check <a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> compatibility
-    <b>assert</b>!(registry.<a href="../social_contracts/block_list.md#social_contracts_block_list_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/block_list.md#social_contracts_block_list_EWrongVersion">EWrongVersion</a>);
-    // Get the sender <b>address</b> (wallet <b>address</b> of the blocker)
     <b>let</b> sender = tx_context::sender(ctx);
-    // Check <b>if</b> there's a block list <b>for</b> this wallet
-    <b>if</b> (!table::contains(&registry.wallet_block_lists, sender)) {
-        <b>abort</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_ENotBlocked">ENotBlocked</a>
-    };
-    // Get key <b>for</b> finding blocked wallets
-    <b>let</b> key = <a href="../social_contracts/block_list.md#social_contracts_block_list_get_blocked_wallets_key">get_blocked_wallets_key</a>(sender);
-    // Check <b>if</b> blocked wallets set exists
-    <b>if</b> (!dynamic_field::exists_(&registry.id, key)) {
-        <b>abort</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_ENotBlocked">ENotBlocked</a>
-    };
-    // Get the blocked wallets set
-    <b>let</b> blocked_wallets = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(&<b>mut</b> registry.id, key);
-    // Check <b>if</b> the wallet is actually blocked
-    <b>if</b> (!vec_set::contains(blocked_wallets, &blocked_wallet_address)) {
-        <b>abort</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_ENotBlocked">ENotBlocked</a>
-    };
-    // Remove from blocked wallets
-    vec_set::remove(blocked_wallets, &blocked_wallet_address);
-    // Emit unblock event
-    event::emit(<a href="../social_contracts/block_list.md#social_contracts_block_list_UserUnblockEvent">UserUnblockEvent</a> {
-        blocker: sender,
-        unblocked: blocked_wallet_address,
-    });
+    <a href="../social_contracts/block_list.md#social_contracts_block_list_unblock_wallet_internal">unblock_wallet_internal</a>(registry, sender, blocked_wallet_address);
 }
 </code></pre>
 

@@ -1093,6 +1093,15 @@ Dispute status constants
 
 
 
+<a name="social_contracts_proof_of_creativity_EDisabled"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EDisabled">EDisabled</a>: u64 = 21;
+</code></pre>
+
+
+
 <a name="social_contracts_proof_of_creativity_EInsufficientFunds"></a>
 
 
@@ -1486,13 +1495,18 @@ Reasoning and evidence URLs are optional for transparency and accountability
             100 // If threshold is 100, redirect 100%
         };
         <b>let</b> redirect_percentage = (config.revenue_redirect_percentage * delta_percentage) / 100;
-        // Update <a href="../social_contracts/post.md#social_contracts_post">post</a> with redirection info
+        // Update <a href="../social_contracts/post.md#social_contracts_post">post</a> with redirection info and PoC metadata
         <a href="../social_contracts/post.md#social_contracts_post_update_poc_result">social_contracts::post::update_poc_result</a>(
             <a href="../social_contracts/post.md#social_contracts_post">post</a>,
             2, // redirection applied
-            option::none(), // no badge
             option::some(original_creator_address), // redirect to original creator
-            option::some(redirect_percentage) // redirect percentage
+            option::some(redirect_percentage), // redirect percentage
+            reasoning, // PoC reasoning
+            evidence_urls, // PoC evidence URLs
+            highest_similarity_score, // similarity score
+            media_type, // media type analyzed
+            caller, // oracle <b>address</b>
+            timestamp // analysis timestamp
         );
         // Update registry tracking
         registry.total_redirections_created = registry.total_redirections_created + 1;
@@ -1507,20 +1521,26 @@ Reasoning and evidence URLs are optional for transparency and accountability
         });
     } <b>else</b> {
         // Content is original - issue PoC badge
-        <b>let</b> badge_id = object::id_from_address(post_id); // Use <a href="../social_contracts/post.md#social_contracts_post">post</a> ID <b>as</b> badge ID
-        // Update <a href="../social_contracts/post.md#social_contracts_post">post</a> with badge info
+        // Verify PoC is enabled <b>for</b> this <a href="../social_contracts/post.md#social_contracts_post">post</a>
+        <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_is_poc_enabled">social_contracts::post::is_poc_enabled</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EDisabled">EDisabled</a>);
+        // Update <a href="../social_contracts/post.md#social_contracts_post">post</a> with PoC metadata (badge issued)
         <a href="../social_contracts/post.md#social_contracts_post_update_poc_result">social_contracts::post::update_poc_result</a>(
             <a href="../social_contracts/post.md#social_contracts_post">post</a>,
             1, // badge issued
-            option::some(badge_id), // badge ID
             option::none(), // no redirection
-            option::none() // no redirection percentage
+            option::none(), // no redirection percentage
+            reasoning, // PoC reasoning
+            evidence_urls, // PoC evidence URLs
+            highest_similarity_score, // similarity score
+            media_type, // media type analyzed
+            caller, // oracle <b>address</b>
+            timestamp // analysis timestamp
         );
         // Update registry tracking
         registry.total_badges_issued = registry.total_badges_issued + 1;
-        // Emit simplified event
+        // Emit event - indexers track badge status from this event
         event::emit(<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCBadgeIssuedEvent">PoCBadgeIssuedEvent</a> {
-            badge_id: post_id, // Use <a href="../social_contracts/post.md#social_contracts_post">post</a> ID <b>as</b> badge ID
+            badge_id: post_id, // Use <a href="../social_contracts/post.md#social_contracts_post">post</a> ID <b>as</b> badge identifier
             post_id,
             media_type,
             issued_by: caller,
@@ -1623,8 +1643,8 @@ Submit a PoC dispute with community voting
     // Verify only <a href="../social_contracts/post.md#social_contracts_post">post</a> owner can dispute their <a href="../social_contracts/post.md#social_contracts_post">post</a>'s PoC status
     <b>assert</b>!(disputer == <a href="../social_contracts/post.md#social_contracts_post_get_post_owner">social_contracts::post::get_post_owner</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>), <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EUnauthorized">EUnauthorized</a>);
     // Verify the <a href="../social_contracts/post.md#social_contracts_post">post</a> <b>has</b> PoC data to dispute (badge or redirection)
-    <b>let</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_has_poc_data">has_poc_data</a> = option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_poc_badge_id">social_contracts::post::get_poc_badge_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) ||
-                      option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">social_contracts::post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>));
+    <b>let</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_has_poc_data">has_poc_data</a> = option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">social_contracts::post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) ||
+                        <a href="../social_contracts/post.md#social_contracts_post_has_poc_badge">social_contracts::post::has_poc_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <b>assert</b>!(<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_has_poc_data">has_poc_data</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_EPostNotFound">EPostNotFound</a>);
     // Extract dispute fee and send to ecosystem treasury
     <b>let</b> dispute_fee = coin::split(&<b>mut</b> payment, total_cost, ctx);
@@ -2023,8 +2043,8 @@ Check if a post has PoC data that can be disputed
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_has_poc_data">has_poc_data</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): bool {
-    option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_poc_badge_id">social_contracts::post::get_poc_badge_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) ||
-    option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">social_contracts::post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>))
+    option::is_some(<a href="../social_contracts/post.md#social_contracts_post_get_revenue_redirect_to">social_contracts::post::get_revenue_redirect_to</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)) ||
+    <a href="../social_contracts/post.md#social_contracts_post_has_poc_badge">social_contracts::post::has_poc_badge</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>)
 }
 </code></pre>
 

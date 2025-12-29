@@ -97,6 +97,31 @@ module social_contracts::post {
     const MODERATION_APPROVED: u8 = 1;
     const MODERATION_FLAGGED: u8 = 2;
 
+    /// Bitfield constants for permission flags (allow_*)
+    const PERMISSION_ALLOW_COMMENTS: u8 = 1;      // bit 0
+    const PERMISSION_ALLOW_REACTIONS: u8 = 2;      // bit 1
+    const PERMISSION_ALLOW_REPOSTS: u8 = 4;        // bit 2
+    const PERMISSION_ALLOW_QUOTES: u8 = 8;          // bit 3
+    const PERMISSION_ALLOW_TIPS: u8 = 16;          // bit 4
+
+    /// Bitfield constants for enable flags (enable_*)
+    const ENABLE_SPT: u8 = 1;                      // bit 0
+    const ENABLE_POC: u8 = 2;                      // bit 1
+    const ENABLE_SPOT: u8 = 4;                     // bit 2
+
+    /// PoC badge struct to consolidate PoC-related fields
+    /// Note: Must have 'store' ability because Post has 'store', but we prevent extraction
+    /// by not providing any functions that extract the badge separately from the Post.
+    /// The badge is permanently tied to the post - when a post is transferred, the badge goes with it.
+    public struct PoCBadge has store, copy, drop {
+        reasoning: Option<String>,
+        evidence_urls: Option<vector<String>>,
+        similarity_score: Option<u64>,
+        media_type: Option<u8>,
+        oracle_address: Option<address>,
+        analyzed_at: Option<u64>,
+    }
+
     /// Post object that contains content information
     public struct Post has key, store {
         id: UID,
@@ -132,38 +157,21 @@ module social_contracts::post {
         user_reactions: Table<address, String>,
         /// Table to count reactions by type
         reaction_counts: Table<String, u64>,
-        /// Direct permission toggles for post interactions
-        allow_comments: bool,
-        allow_reactions: bool,
-        allow_reposts: bool,
-        allow_quotes: bool,
-        allow_tips: bool,
+        /// Permission flags bitfield: allow_comments (bit 0), allow_reactions (bit 1), allow_reposts (bit 2), allow_quotes (bit 3), allow_tips (bit 4)
+        permissions: u8,
         /// Optional revenue redirection to original creator (for derivative content)
         revenue_redirect_to: Option<address>,
         /// Optional revenue redirection percentage (0-100)
         revenue_redirect_percentage: Option<u64>,
-        /// Optional PoC analysis reasoning from oracle
-        poc_reasoning: Option<String>,
-        /// Optional PoC analysis evidence URLs
-        poc_evidence_urls: Option<vector<String>>,
-        /// Optional PoC similarity score (0-100 percentage)
-        poc_similarity_score: Option<u64>,
-        /// Optional media type analyzed (1=IMAGE, 2=VIDEO, 3=AUDIO)
-        poc_media_type: Option<u8>,
-        /// Optional oracle address that performed PoC analysis
-        poc_oracle_address: Option<address>,
-        /// Optional timestamp when PoC analysis was performed
-        poc_analyzed_at: Option<u64>,
+        /// Optional PoC badge (consolidated from 6 fields)
+        /// Note: PoCBadge has no 'store' ability, so it cannot be extracted or transferred separately
+        poc_badge: Option<PoCBadge>,
         /// Reference to the MyData for the post
         mydata_id: Option<address>,
         /// Optional promotion data ID for promoted posts
         promotion_id: Option<address>,
-        /// Opt-in flag to enable Social Proof Tokens (SPT) auto-pool initialization
-        enable_spt: bool,
-        /// Opt-in flag to enable Proof of Creativity (PoC) analysis and badges
-        enable_poc: bool,
-        /// Opt-in flag to enable Social Proof of Truth (SPoT) prediction markets
-        enable_spot: bool,
+        /// Enable flags bitfield: enable_spt (bit 0), enable_poc (bit 1), enable_spot (bit 2)
+        enable_flags: u8,
         /// Optional Social Proof of Truth record ID (address of SpotRecord object)
         spot_id: Option<address>,
         /// Optional Social Proof Token pool ID (address of TokenPool object)
@@ -172,43 +180,132 @@ module social_contracts::post {
         version: u64,
     }
 
+    /// Helper: check if a bit is set in a bitfield
+    fun has_flag(value: u8, flag: u8): bool {
+        (value & flag) == flag
+    }
+
+    /// Helper: set a bit in a bitfield
+    #[allow(unused_function)]
+    fun set_flag(value: &mut u8, flag: u8) {
+        *value = *value | flag
+    }
+
+    /// Helper: clear a bit in a bitfield
+    #[allow(unused_function)]
+    fun clear_flag(value: &mut u8, flag: u8) {
+        *value = *value & (255 - flag)
+    }
+
+    /// Query: check if comments are allowed
+    public fun allow_comments(post: &Post): bool {
+        has_flag(post.permissions, PERMISSION_ALLOW_COMMENTS)
+    }
+
+    /// Query: check if reactions are allowed
+    public fun allow_reactions(post: &Post): bool {
+        has_flag(post.permissions, PERMISSION_ALLOW_REACTIONS)
+    }
+
+    /// Query: check if reposts are allowed
+    public fun allow_reposts(post: &Post): bool {
+        has_flag(post.permissions, PERMISSION_ALLOW_REPOSTS)
+    }
+
+    /// Query: check if quotes are allowed
+    public fun allow_quotes(post: &Post): bool {
+        has_flag(post.permissions, PERMISSION_ALLOW_QUOTES)
+    }
+
+    /// Query: check if tips are allowed
+    public fun allow_tips(post: &Post): bool {
+        has_flag(post.permissions, PERMISSION_ALLOW_TIPS)
+    }
+
     /// Query: check if SPT is enabled for this post
-    public fun is_spt_enabled(post: &Post): bool { post.enable_spt }
+    public fun is_spt_enabled(post: &Post): bool {
+        has_flag(post.enable_flags, ENABLE_SPT)
+    }
 
     /// Query: check if PoC is enabled for this post
-    public fun is_poc_enabled(post: &Post): bool { post.enable_poc }
+    public fun is_poc_enabled(post: &Post): bool {
+        has_flag(post.enable_flags, ENABLE_POC)
+    }
 
     /// Query: check if SPoT is enabled for this post
-    public fun is_spot_enabled(post: &Post): bool { post.enable_spot }
-
-    /// Get PoC reasoning
-    public fun get_poc_reasoning(post: &Post): &Option<String> {
-        &post.poc_reasoning
+    public fun is_spot_enabled(post: &Post): bool {
+        has_flag(post.enable_flags, ENABLE_SPOT)
     }
 
-    /// Get PoC evidence URLs
-    public fun get_poc_evidence_urls(post: &Post): &Option<vector<String>> {
-        &post.poc_evidence_urls
+    /// Get PoC badge (returns reference to Option)
+    /// When a Post is transferred/sold, the badge automatically goes with it.
+    public fun get_poc_badge(post: &Post): &Option<PoCBadge> {
+        &post.poc_badge
     }
 
-    /// Get PoC similarity score
-    public fun get_poc_similarity_score(post: &Post): &Option<u64> {
-        &post.poc_similarity_score
+    /// Check if post has a PoC badge
+    public fun has_poc_badge(post: &Post): bool {
+        option::is_some(&post.poc_badge)
     }
 
-    /// Get PoC media type
-    public fun get_poc_media_type(post: &Post): &Option<u8> {
-        &post.poc_media_type
+    /// Get PoC reasoning (immutable query function)
+    public fun get_poc_reasoning(post: &Post): Option<String> {
+        if (option::is_some(&post.poc_badge)) {
+            let badge_ref = option::borrow(&post.poc_badge);
+            badge_ref.reasoning
+        } else {
+            option::none()
+        }
     }
 
-    /// Get PoC oracle address
-    public fun get_poc_oracle_address(post: &Post): &Option<address> {
-        &post.poc_oracle_address
+    /// Get PoC evidence URLs (immutable query function)
+    public fun get_poc_evidence_urls(post: &Post): Option<vector<String>> {
+        if (option::is_some(&post.poc_badge)) {
+            let badge_ref = option::borrow(&post.poc_badge);
+            badge_ref.evidence_urls
+        } else {
+            option::none()
+        }
     }
 
-    /// Get PoC analysis timestamp
-    public fun get_poc_analyzed_at(post: &Post): &Option<u64> {
-        &post.poc_analyzed_at
+    /// Get PoC similarity score (immutable query function)
+    public fun get_poc_similarity_score(post: &Post): Option<u64> {
+        if (option::is_some(&post.poc_badge)) {
+            let badge_ref = option::borrow(&post.poc_badge);
+            badge_ref.similarity_score
+        } else {
+            option::none()
+        }
+    }
+
+    /// Get PoC media type (immutable query function)
+    public fun get_poc_media_type(post: &Post): Option<u8> {
+        if (option::is_some(&post.poc_badge)) {
+            let badge_ref = option::borrow(&post.poc_badge);
+            badge_ref.media_type
+        } else {
+            option::none()
+        }
+    }
+
+    /// Get PoC oracle address (immutable query function)
+    public fun get_poc_oracle_address(post: &Post): Option<address> {
+        if (option::is_some(&post.poc_badge)) {
+            let badge_ref = option::borrow(&post.poc_badge);
+            badge_ref.oracle_address
+        } else {
+            option::none()
+        }
+    }
+
+    /// Get PoC analysis timestamp (immutable query function)
+    public fun get_poc_analyzed_at(post: &Post): Option<u64> {
+        if (option::is_some(&post.poc_badge)) {
+            let badge_ref = option::borrow(&post.poc_badge);
+            badge_ref.analyzed_at
+        } else {
+            option::none()
+        }
     }
 
     /// Get the SPoT record ID for a post
@@ -613,6 +710,20 @@ module social_contracts::post {
         enable_spot: bool,
         ctx: &mut TxContext
     ): address {
+        // Build permissions bitfield
+        let mut permissions: u8 = 0;
+        if (allow_comments) { permissions = permissions | PERMISSION_ALLOW_COMMENTS };
+        if (allow_reactions) { permissions = permissions | PERMISSION_ALLOW_REACTIONS };
+        if (allow_reposts) { permissions = permissions | PERMISSION_ALLOW_REPOSTS };
+        if (allow_quotes) { permissions = permissions | PERMISSION_ALLOW_QUOTES };
+        if (allow_tips) { permissions = permissions | PERMISSION_ALLOW_TIPS };
+
+        // Build enable flags bitfield
+        let mut enable_flags: u8 = 0;
+        if (enable_spt) { enable_flags = enable_flags | ENABLE_SPT };
+        if (enable_poc) { enable_flags = enable_flags | ENABLE_POC };
+        if (enable_spot) { enable_flags = enable_flags | ENABLE_SPOT };
+
         let post = Post {
             id: object::new(ctx),
             owner,
@@ -631,24 +742,13 @@ module social_contracts::post {
             removed_from_platform: false,
             user_reactions: table::new(ctx),
             reaction_counts: table::new(ctx),
-            allow_comments,
-            allow_reactions,
-            allow_reposts,
-            allow_quotes,
-            allow_tips,
-            poc_reasoning: option::none(),
-            poc_evidence_urls: option::none(),
-            poc_similarity_score: option::none(),
-            poc_media_type: option::none(),
-            poc_oracle_address: option::none(),
-            poc_analyzed_at: option::none(),
+            permissions,
             revenue_redirect_to,
             revenue_redirect_percentage,
+            poc_badge: option::none(),
             mydata_id,
             promotion_id,
-            enable_spt,
-            enable_poc,
-            enable_spot,
+            enable_flags,
             spot_id: option::none(), // Will be set when SPoT record is created
             spt_id: option::none(), // Will be set when SPT pool is created
             version: upgrade::current_version(),
@@ -873,7 +973,7 @@ module social_contracts::post {
         assert!(!block_list::is_blocked(block_list_registry, parent_post.owner, owner), EUnauthorized);
         
         // Check if comments are allowed on the parent post
-        assert!(parent_post.allow_comments, ECommentsNotAllowed);
+        assert!(allow_comments(parent_post), ECommentsNotAllowed);
         
         // Validate content length using config
         assert!(string::length(&content) <= config.max_content_length, EContentTooLarge);
@@ -1015,10 +1115,10 @@ module social_contracts::post {
         // Check post permissions directly
         if (is_quote_repost) {
             // For quote reposts, check if quoting is allowed
-            assert!(original_post.allow_quotes, EQuotesNotAllowed);
+            assert!(allow_quotes(original_post), EQuotesNotAllowed);
         } else {
             // For regular reposts, check if reposting is allowed
-            assert!(original_post.allow_reposts, ERepostsNotAllowed);
+            assert!(allow_reposts(original_post), ERepostsNotAllowed);
         };
         
         // Initialize content string
@@ -1237,24 +1337,13 @@ module social_contracts::post {
             removed_from_platform: _,
             user_reactions,
             reaction_counts,
-            allow_comments: _,
-            allow_reactions: _,
-            allow_reposts: _,
-            allow_quotes: _,
-            allow_tips: _,
+            permissions: _,
             revenue_redirect_to: _,
             revenue_redirect_percentage: _,
-            poc_reasoning: _,
-            poc_evidence_urls: _,
-            poc_similarity_score: _,
-            poc_media_type: _,
-            poc_oracle_address: _,
-            poc_analyzed_at: _,
+            poc_badge: _,
             mydata_id: _,
             promotion_id: _,
-            enable_spt: _,
-            enable_poc: _,
-            enable_spot: _,
+            enable_flags: _,
             spot_id: _,
             spt_id: _,
             version: _,
@@ -1352,7 +1441,7 @@ module social_contracts::post {
         assert!(string::length(&reaction) <= config.max_reaction_length, EReactionContentTooLong);
         
         // Check if reactions are allowed on this post
-        assert!(post.allow_reactions, EReactionsNotAllowed);
+        assert!(allow_reactions(post), EReactionsNotAllowed);
         
         // Check if user already reacted to the post
         if (table::contains(&post.user_reactions, user)) {
@@ -1446,7 +1535,7 @@ module social_contracts::post {
         );
 
         // Check if tips are allowed on this post
-        assert!(post.allow_tips, ETipsNotAllowed);
+        assert!(allow_tips(post), ETipsNotAllowed);
 
         // Apply PoC redirection and transfer
         let actual_received = apply_poc_redirection_and_transfer<T>(
@@ -1551,13 +1640,17 @@ module social_contracts::post {
         oracle_address: address,
         analyzed_at: u64
     ) {
-        // Store PoC analysis metadata (same for both badge and redirection)
-        post.poc_reasoning = reasoning;
-        post.poc_evidence_urls = evidence_urls;
-        post.poc_similarity_score = option::some(similarity_score);
-        post.poc_media_type = option::some(media_type);
-        post.poc_oracle_address = option::some(oracle_address);
-        post.poc_analyzed_at = option::some(analyzed_at);
+        // Store PoC badge data (same for both badge and redirection)
+        // Note: PoCBadge has no 'store' ability, so it cannot be extracted or transferred
+        let poc_badge = PoCBadge {
+            reasoning,
+            evidence_urls,
+            similarity_score: option::some(similarity_score),
+            media_type: option::some(media_type),
+            oracle_address: option::some(oracle_address),
+            analyzed_at: option::some(analyzed_at),
+        };
+        post.poc_badge = option::some(poc_badge);
         
         if (result_type == 1) {
             // PoC badge issued - content is original
@@ -1576,12 +1669,7 @@ module social_contracts::post {
     public(package) fun clear_poc_data(post: &mut Post) {
         post.revenue_redirect_to = option::none();
         post.revenue_redirect_percentage = option::none();
-        post.poc_reasoning = option::none();
-        post.poc_evidence_urls = option::none();
-        post.poc_similarity_score = option::none();
-        post.poc_media_type = option::none();
-        post.poc_oracle_address = option::none();
-        post.poc_analyzed_at = option::none();
+        post.poc_badge = option::none();
         // Note: Badge revocation tracked via PoCDisputeResolvedEvent
     }
      
@@ -1618,8 +1706,8 @@ module social_contracts::post {
         assert!(parent_id == object::uid_to_address(&original_post.id), EInvalidParentReference);
         
         // Check if tips are allowed on both posts
-        assert!(post.allow_tips, ETipsNotAllowed);
-        assert!(original_post.allow_tips, ETipsNotAllowed);
+        assert!(allow_tips(post), ETipsNotAllowed);
+        assert!(allow_tips(original_post), ETipsNotAllowed);
         
         // Skip split if repost owner and original post owner are the same
         if (post.owner == original_post.owner) {
@@ -1726,7 +1814,7 @@ module social_contracts::post {
         assert!(tipper != comment.owner, ESelfTipping);
         
         // Check if tips are allowed on the post
-        assert!(post.allow_tips, ETipsNotAllowed);
+        assert!(allow_tips(post), ETipsNotAllowed);
         
         // Calculate split based on config percentage
         let commenter_amount = (amount * config.commenter_tip_percentage) / 100;

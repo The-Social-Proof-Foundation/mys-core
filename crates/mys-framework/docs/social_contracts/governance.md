@@ -29,9 +29,12 @@ Implements proposal submission, voting, and execution processes
 -  [Struct `VoteDecryptionFailedEvent`](#social_contracts_governance_VoteDecryptionFailedEvent)
 -  [Struct `ProposalRescindedEvent`](#social_contracts_governance_ProposalRescindedEvent)
 -  [Struct `GovernanceParametersUpdatedEvent`](#social_contracts_governance_GovernanceParametersUpdatedEvent)
+-  [Struct `GovernanceRegistryCreatedEvent`](#social_contracts_governance_GovernanceRegistryCreatedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_governance_bootstrap_init)
 -  [Function `initialize_registry_tables`](#social_contracts_governance_initialize_registry_tables)
+-  [Function `update_governance_parameters_internal`](#social_contracts_governance_update_governance_parameters_internal)
+-  [Function `update_platform_governance_parameters`](#social_contracts_governance_update_platform_governance_parameters)
 -  [Function `update_governance_parameters`](#social_contracts_governance_update_governance_parameters)
 -  [Function `nominate_delegate`](#social_contracts_governance_nominate_delegate)
 -  [Function `vote_for_delegate`](#social_contracts_governance_vote_for_delegate)
@@ -1251,6 +1254,84 @@ Event emitted when governance parameters are updated
 
 </details>
 
+<a name="social_contracts_governance_GovernanceRegistryCreatedEvent"></a>
+
+## Struct `GovernanceRegistryCreatedEvent`
+
+Event emitted when a governance registry is created
+This event matches the GovernanceRegistryEvent structure expected by the indexer
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceRegistryCreatedEvent">GovernanceRegistryCreatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>registry_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>registry_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>delegate_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>delegate_term_epochs: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>proposal_submission_cost: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_on_chain_age_days: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_votes_per_user: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>quadratic_base_cost: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>voting_period_epochs: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>quorum_votes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -1612,6 +1693,7 @@ This function has the same logic as init() but can be called by bootstrap
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
+    <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
     // Create MySocial Ecosystem Governance Registry
     <b>let</b> <b>mut</b> ecosystem_registry = <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a> {
         id: object::new(ctx),
@@ -1636,6 +1718,26 @@ This function has the same logic as init() but can be called by bootstrap
         voters: table::new&lt;<b>address</b>, Table&lt;<b>address</b>, bool&gt;&gt;(ctx),
         <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
+    // Initialize ecosystem registry's status tables
+    <a href="../social_contracts/governance.md#social_contracts_governance_initialize_registry_tables">initialize_registry_tables</a>(&<b>mut</b> ecosystem_registry, ctx);
+    // Get ecosystem registry ID before sharing
+    <b>let</b> ecosystem_registry_id = object::id(&ecosystem_registry);
+    // Emit event <b>for</b> ecosystem registry creation
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceRegistryCreatedEvent">GovernanceRegistryCreatedEvent</a> {
+        registry_id: ecosystem_registry_id,
+        registry_type: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_ECOSYSTEM">PROPOSAL_TYPE_ECOSYSTEM</a>,
+        delegate_count: ecosystem_registry.delegate_count,
+        delegate_term_epochs: ecosystem_registry.delegate_term_epochs,
+        proposal_submission_cost: ecosystem_registry.proposal_submission_cost,
+        min_on_chain_age_days: ecosystem_registry.min_on_chain_age_days,
+        max_votes_per_user: ecosystem_registry.max_votes_per_user,
+        quadratic_base_cost: ecosystem_registry.quadratic_base_cost,
+        voting_period_epochs: ecosystem_registry.voting_period_epochs,
+        quorum_votes: ecosystem_registry.quorum_votes,
+        updated_at: current_time,
+    });
+    // Share the ecosystem registry object
+    transfer::share_object(ecosystem_registry);
     // Create Proof of Creativity Governance Registry
     <b>let</b> <b>mut</b> proof_of_creativity_registry = <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a> {
         id: object::new(ctx),
@@ -1660,11 +1762,25 @@ This function has the same logic as init() but can be called by bootstrap
         voters: table::new&lt;<b>address</b>, Table&lt;<b>address</b>, bool&gt;&gt;(ctx),
         <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
-    // Initialize each registry's status tables
-    <a href="../social_contracts/governance.md#social_contracts_governance_initialize_registry_tables">initialize_registry_tables</a>(&<b>mut</b> ecosystem_registry, ctx);
+    // Initialize proof of creativity registry's status tables
     <a href="../social_contracts/governance.md#social_contracts_governance_initialize_registry_tables">initialize_registry_tables</a>(&<b>mut</b> proof_of_creativity_registry, ctx);
-    // Share the registry objects
-    transfer::share_object(ecosystem_registry);
+    // Get proof of creativity registry ID before sharing
+    <b>let</b> proof_of_creativity_registry_id = object::id(&proof_of_creativity_registry);
+    // Emit event <b>for</b> proof of creativity registry creation
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceRegistryCreatedEvent">GovernanceRegistryCreatedEvent</a> {
+        registry_id: proof_of_creativity_registry_id,
+        registry_type: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PROOF_OF_CREATIVITY">PROPOSAL_TYPE_PROOF_OF_CREATIVITY</a>,
+        delegate_count: proof_of_creativity_registry.delegate_count,
+        delegate_term_epochs: proof_of_creativity_registry.delegate_term_epochs,
+        proposal_submission_cost: proof_of_creativity_registry.proposal_submission_cost,
+        min_on_chain_age_days: proof_of_creativity_registry.min_on_chain_age_days,
+        max_votes_per_user: proof_of_creativity_registry.max_votes_per_user,
+        quadratic_base_cost: proof_of_creativity_registry.quadratic_base_cost,
+        voting_period_epochs: proof_of_creativity_registry.voting_period_epochs,
+        quorum_votes: proof_of_creativity_registry.quorum_votes,
+        updated_at: current_time,
+    });
+    // Share the proof of creativity registry object
     transfer::share_object(proof_of_creativity_registry);
 }
 </code></pre>
@@ -1703,15 +1819,15 @@ This function has the same logic as init() but can be called by bootstrap
 
 </details>
 
-<a name="social_contracts_governance_update_governance_parameters"></a>
+<a name="social_contracts_governance_update_governance_parameters_internal"></a>
 
-## Function `update_governance_parameters`
+## Function `update_governance_parameters_internal`
 
-Update governance parameters
-Can only be called by the governance admin
+Update governance parameters (internal function)
+This function does not perform authorization checks - callers must verify permissions
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">social_contracts::governance::GovernanceAdminCap</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters_internal">update_governance_parameters_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1720,9 +1836,8 @@ Can only be called by the governance admin
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters_internal">update_governance_parameters_internal</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">GovernanceAdminCap</a>,
     delegate_count: u64,
     delegate_term_epochs: u64,
     proposal_submission_cost: u64,
@@ -1735,7 +1850,6 @@ Can only be called by the governance admin
 ) {
     // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
-    // Admin capability verification is handled by type system
     // Ensure parameters are sensible
     <b>assert</b>!(delegate_count &gt; 1, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
     <b>assert</b>!(delegate_term_epochs &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
@@ -1768,6 +1882,114 @@ Can only be called by the governance admin
         quorum_votes,
         timestamp: tx_context::epoch_timestamp_ms(_ctx),
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_update_platform_governance_parameters"></a>
+
+## Function `update_platform_governance_parameters`
+
+Update governance parameters for platform registries
+Can only be called by the platform module (which verifies platform ownership)
+This function is package-private to prevent direct calls that bypass platform ownership verification
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_platform_governance_parameters">update_platform_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, platform_developer: <b>address</b>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_platform_governance_parameters">update_platform_governance_parameters</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    platform_developer: <b>address</b>,
+    delegate_count: u64,
+    delegate_term_epochs: u64,
+    proposal_submission_cost: u64,
+    min_on_chain_age_days: u64,
+    max_votes_per_user: u64,
+    quadratic_base_cost: u64,
+    voting_period_epochs: u64,
+    quorum_votes: u64,
+    ctx: &<b>mut</b> TxContext
+) {
+    // Verify this is a <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> registry
+    <b>assert</b>!(registry.registry_type == <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidRegistry">EInvalidRegistry</a>);
+    // Verify caller is <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> developer
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>assert</b>!(platform_developer == caller, <a href="../social_contracts/governance.md#social_contracts_governance_EUnauthorized">EUnauthorized</a>);
+    // Call the internal update function
+    <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters_internal">update_governance_parameters_internal</a>(
+        registry,
+        delegate_count,
+        delegate_term_epochs,
+        proposal_submission_cost,
+        min_on_chain_age_days,
+        max_votes_per_user,
+        quadratic_base_cost,
+        voting_period_epochs,
+        quorum_votes,
+        ctx
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_update_governance_parameters"></a>
+
+## Function `update_governance_parameters`
+
+Update governance parameters for ecosystem/proof-of-creativity registries
+Can only be called by governance admin
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">social_contracts::governance::GovernanceAdminCap</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">GovernanceAdminCap</a>,
+    delegate_count: u64,
+    delegate_term_epochs: u64,
+    proposal_submission_cost: u64,
+    min_on_chain_age_days: u64,
+    max_votes_per_user: u64,
+    quadratic_base_cost: u64,
+    voting_period_epochs: u64,
+    quorum_votes: u64,
+    _ctx: &<b>mut</b> TxContext
+) {
+    // Verify this is NOT a <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> registry
+    <b>assert</b>!(registry.registry_type != <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidRegistry">EInvalidRegistry</a>);
+    // Call the internal update function
+    <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters_internal">update_governance_parameters_internal</a>(
+        registry,
+        delegate_count,
+        delegate_term_epochs,
+        proposal_submission_cost,
+        min_on_chain_age_days,
+        max_votes_per_user,
+        quadratic_base_cost,
+        voting_period_epochs,
+        quorum_votes,
+        _ctx
+    );
 }
 </code></pre>
 
@@ -3688,10 +3910,9 @@ If more than half of delegates reject, reject the proposal manually
 
 Create a platform-specific governance registry when a platform is approved
 This function can only be called by the platform toggle_platform_approval function
-and only the package publisher can call it
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>
 </code></pre>
 
 
@@ -3700,7 +3921,7 @@ and only the package publisher can call it
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(
     delegate_count: u64,
     delegate_term_epochs: u64,
     proposal_submission_cost: u64,
@@ -3711,6 +3932,7 @@ and only the package publisher can call it
     quorum_votes: u64,
     ctx: &<b>mut</b> TxContext
 ): ID {
+    <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
     // Create Platform Governance Registry with parameters
     <b>let</b> <b>mut</b> platform_registry = <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a> {
         id: object::new(ctx),
@@ -3739,6 +3961,20 @@ and only the package publisher can call it
     <a href="../social_contracts/governance.md#social_contracts_governance_initialize_registry_tables">initialize_registry_tables</a>(&<b>mut</b> platform_registry, ctx);
     // Get the ID before sharing
     <b>let</b> registry_id = object::id(&platform_registry);
+    // Emit event <b>for</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> registry creation
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceRegistryCreatedEvent">GovernanceRegistryCreatedEvent</a> {
+        registry_id,
+        registry_type: <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>,
+        delegate_count: platform_registry.delegate_count,
+        delegate_term_epochs: platform_registry.delegate_term_epochs,
+        proposal_submission_cost: platform_registry.proposal_submission_cost,
+        min_on_chain_age_days: platform_registry.min_on_chain_age_days,
+        max_votes_per_user: platform_registry.max_votes_per_user,
+        quadratic_base_cost: platform_registry.quadratic_base_cost,
+        voting_period_epochs: platform_registry.voting_period_epochs,
+        quorum_votes: platform_registry.quorum_votes,
+        updated_at: current_time,
+    });
     // Share the registry object
     transfer::share_object(platform_registry);
     // Return the registry ID
