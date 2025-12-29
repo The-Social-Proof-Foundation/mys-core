@@ -29,7 +29,8 @@ module social_contracts::social_proof_tokens {
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
     use social_contracts::post::{Self, Post};
-    use social_contracts::block_list::{BlockListRegistry};
+    use social_contracts::block_list::{Self, BlockListRegistry};
+    use social_contracts::platform::{Self, PlatformRegistry};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     // === Error codes ===
@@ -81,6 +82,10 @@ module social_contracts::social_proof_tokens {
     const EOverflow: u64 = 22;
     /// Wrong version - object version mismatch
     const EWrongVersion: u64 = 23;
+    /// User has not joined the platform
+    const EUserNotJoinedPlatform: u64 = 24;
+    /// User is blocked by the platform
+    const EUserBlockedByPlatform: u64 = 25;
 
     // === Constants ===
     // Token types
@@ -1173,6 +1178,8 @@ module social_contracts::social_proof_tokens {
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
         config: &SocialProofTokensConfig,
+        platform_registry: &PlatformRegistry,
+        profile_registry: &UsernameRegistry,
         block_list_registry: &BlockListRegistry,
         platform: &mut social_contracts::platform::Platform,
         mut payment: Coin<MYS>,
@@ -1187,11 +1194,26 @@ module social_contracts::social_proof_tokens {
         
         let buyer = tx_context::sender(ctx);
         
+        // Look up the buyer's profile ID
+        let profile_id_option = profile::lookup_profile_by_owner(profile_registry, buyer);
+        assert!(option::is_some(&profile_id_option), ENotAuthorized);
+        
+        // Check if platform is approved
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        
+        // Check if user has joined the platform (by wallet address)
+        assert!(platform::has_joined_platform(platform, buyer), EUserNotJoinedPlatform);
+        
+        // Check if the user is blocked by the platform
+        let platform_address = object::uid_to_address(platform::id(platform));
+        assert!(!block_list::is_blocked(block_list_registry, platform_address, buyer), EUserBlockedByPlatform);
+        
         // Prevent self-trading for token owners
         assert!(buyer != pool.info.owner, ESelfTrading);
         
         // Check if token owner is blocked by the buyer
-        assert!(!social_contracts::block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
+        assert!(!block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
         
         // Calculate the price for the tokens based on quadratic curve
         let (price, _) = calculate_buy_price(
@@ -1305,6 +1327,8 @@ module social_contracts::social_proof_tokens {
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
         config: &SocialProofTokensConfig,
+        platform_registry: &PlatformRegistry,
+        profile_registry: &UsernameRegistry,
         block_list_registry: &BlockListRegistry,
         platform: &mut social_contracts::platform::Platform,
         mut payment: Coin<MYS>,
@@ -1320,11 +1344,26 @@ module social_contracts::social_proof_tokens {
         
         let buyer = tx_context::sender(ctx);
         
+        // Look up the buyer's profile ID
+        let profile_id_option = profile::lookup_profile_by_owner(profile_registry, buyer);
+        assert!(option::is_some(&profile_id_option), ENotAuthorized);
+        
+        // Check if platform is approved
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        
+        // Check if user has joined the platform (by wallet address)
+        assert!(platform::has_joined_platform(platform, buyer), EUserNotJoinedPlatform);
+        
+        // Check if the user is blocked by the platform
+        let platform_address = object::uid_to_address(platform::id(platform));
+        assert!(!block_list::is_blocked(block_list_registry, platform_address, buyer), EUserBlockedByPlatform);
+        
         // Prevent self-trading for token owners
         assert!(buyer != pool.info.owner, ESelfTrading);
         
         // Check if token owner is blocked by the buyer
-        assert!(!social_contracts::block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
+        assert!(!block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
         
         // Verify social token matches the pool
         assert!(social_token.pool_id == object::uid_to_address(&pool.id), EInvalidID);
@@ -1439,6 +1478,9 @@ module social_contracts::social_proof_tokens {
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
         config: &SocialProofTokensConfig,
+        platform_registry: &PlatformRegistry,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
         platform: &mut social_contracts::platform::Platform,
         social_token: &mut SocialToken,
         amount: u64,
@@ -1452,6 +1494,21 @@ module social_contracts::social_proof_tokens {
         
         let seller = tx_context::sender(ctx);
         let pool_id = object::uid_to_address(&pool.id);
+        
+        // Look up the seller's profile ID
+        let profile_id_option = profile::lookup_profile_by_owner(profile_registry, seller);
+        assert!(option::is_some(&profile_id_option), ENotAuthorized);
+        
+        // Check if platform is approved
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        
+        // Check if user has joined the platform (by wallet address)
+        assert!(platform::has_joined_platform(platform, seller), EUserNotJoinedPlatform);
+        
+        // Check if the user is blocked by the platform
+        let platform_address = object::uid_to_address(platform::id(platform));
+        assert!(!block_list::is_blocked(block_list_registry, platform_address, seller), EUserBlockedByPlatform);
         
         // Verify social token matches the pool
         assert!(social_token.pool_id == pool_id, EInvalidID);

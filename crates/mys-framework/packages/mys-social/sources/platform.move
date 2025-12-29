@@ -24,26 +24,26 @@ module social_contracts::platform {
     use social_contracts::profile;
     use social_contracts::governance;
     use social_contracts::upgrade;
+    use social_contracts::block_list;
+    use social_contracts::social_graph;
 
     /// Error codes
     const EUnauthorized: u64 = 0;
     const EPlatformAlreadyExists: u64 = 1;
-    const EAlreadyBlocked: u64 = 2;
-    const ENotBlocked: u64 = 3;
-    const EInvalidTokenAmount: u64 = 4;
-    const EAlreadyJoined: u64 = 5;
-    const ENotJoined: u64 = 6;
-    const EWrongVersion: u64 = 7;
-    const EInsufficientTreasuryFunds: u64 = 8;
-    const EEmptyRecipientsList: u64 = 9;
-    const EInvalidBadgeType: u64 = 10;
-    const EBadgeNameTooLong: u64 = 11;
-    const EBadgeDescriptionTooLong: u64 = 12;
-    const EBadgeMediaUrlTooLong: u64 = 13;
-    const EInvalidReasoning: u64 = 14;
-    const EBadgeIconUrlTooLong: u64 = 15;
-    const EInvalidCategory: u64 = 16;
-    const ECategoriesSame: u64 = 17;
+    const EInvalidTokenAmount: u64 = 2;
+    const EAlreadyJoined: u64 = 3;
+    const ENotJoined: u64 = 4;
+    const EWrongVersion: u64 = 5;
+    const EInsufficientTreasuryFunds: u64 = 6;
+    const EEmptyRecipientsList: u64 = 7;
+    const EInvalidBadgeType: u64 = 8;
+    const EBadgeNameTooLong: u64 = 9;
+    const EBadgeDescriptionTooLong: u64 = 10;
+    const EBadgeMediaUrlTooLong: u64 = 11;
+    const EInvalidReasoning: u64 = 12;
+    const EBadgeIconUrlTooLong: u64 = 13;
+    const EInvalidCategory: u64 = 14;
+    const ECategoriesSame: u64 = 15;
 
     /// Maximum lengths for badge fields
     const MAX_BADGE_NAME_LENGTH: u64 = 100;
@@ -85,8 +85,7 @@ module social_contracts::platform {
 
     /// Field names for dynamic fields
     const MODERATORS_FIELD: vector<u8> = b"moderators";
-    const BLOCKED_PROFILES_FIELD: vector<u8> = b"blocked_profiles";
-    const JOINED_PROFILES_FIELD: vector<u8> = b"joined_profiles";
+    const JOINED_WALLETS_FIELD: vector<u8> = b"joined_wallets";
 
     /// Platform status constants
     const STATUS_DEVELOPMENT: u8 = 0;
@@ -218,19 +217,6 @@ module social_contracts::platform {
         updated_at: u64,
     }
 
-    /// Profile blocked by platform event
-    public struct PlatformBlockedProfileEvent has copy, drop {
-        platform_id: address,
-        profile_id: address,
-        blocked_by: address,
-    }
-
-    /// Profile unblocked by platform event
-    public struct PlatformUnblockedProfileEvent has copy, drop {
-        platform_id: address,
-        profile_id: address,
-        unblocked_by: address,
-    }
 
     /// Moderator added event
     public struct ModeratorAddedEvent has copy, drop {
@@ -256,17 +242,15 @@ module social_contracts::platform {
 
     /// Event emitted when a user joins a platform
     public struct UserJoinedPlatformEvent has copy, drop {
-        profile_id: ID,
+        wallet_address: address,
         platform_id: ID,
-        user: address,
         timestamp: u64,
     }
 
     /// Event emitted when a user leaves a platform
     public struct UserLeftPlatformEvent has copy, drop {
-        profile_id: ID,
+        wallet_address: address,
         platform_id: ID,
-        user: address,
         timestamp: u64,
     }
 
@@ -709,10 +693,16 @@ module social_contracts::platform {
         };
     }
 
-    /// Block a profile from the platform
-    public entry fun block_profile(
+
+    /// Block a wallet address from the platform
+    /// Allows platform developers/moderators to block wallets using the platform address as the blocker
+    /// This enables platforms (shared objects) to block user wallets
+    public entry fun block_wallet(
+        block_list_registry: &mut block_list::BlockListRegistry,
+        social_graph: &mut social_graph::SocialGraph,
+        username_registry: &profile::UsernameRegistry,
         platform: &mut Platform,
-        profile_id: address,
+        blocked_wallet_address: address,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -722,33 +712,26 @@ module social_contracts::platform {
         let caller = tx_context::sender(ctx);
         assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
         
-        // Create blocked profiles set if it doesn't exist
-        if (!dynamic_field::exists_(&platform.id, BLOCKED_PROFILES_FIELD)) {
-            let blocked_profiles = vec_set::empty<address>();
-            dynamic_field::add(&mut platform.id, BLOCKED_PROFILES_FIELD, blocked_profiles);
-        };
+        // Get the platform address (this will be the blocker address)
+        let platform_address = object::uid_to_address(&platform.id);
         
-        // Get blocked profiles set
-        let blocked_profiles = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut platform.id, BLOCKED_PROFILES_FIELD);
-        
-        // Check if already blocked and abort if true
-        assert!(!vec_set::contains(blocked_profiles, &profile_id), EAlreadyBlocked);
-        
-        // Add profile to blocked set
-        vec_set::insert(blocked_profiles, profile_id);
-        
-        // Emit platform-specific block event
-        event::emit(PlatformBlockedProfileEvent {
-            platform_id: object::uid_to_address(&platform.id),
-            profile_id,
-            blocked_by: caller,
-        });
+        // Call block_list's internal helper function with platform address as blocker
+        block_list::block_wallet_internal(
+            block_list_registry,
+            social_graph,
+            username_registry,
+            platform_address,
+            blocked_wallet_address,
+            ctx
+        );
     }
 
-    /// Unblock a profile from the platform
-    public entry fun unblock_profile(
+    /// Unblock a wallet address from the platform
+    /// Allows platform developers/moderators to unblock wallets using the platform address as the blocker
+    public entry fun unblock_wallet(
+        block_list_registry: &mut block_list::BlockListRegistry,
         platform: &mut Platform,
-        profile_id: address,
+        blocked_wallet_address: address,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -758,27 +741,11 @@ module social_contracts::platform {
         let caller = tx_context::sender(ctx);
         assert!(is_developer_or_moderator(platform, caller), EUnauthorized);
         
-        // Check if blocked profiles set exists
-        if (!dynamic_field::exists_(&platform.id, BLOCKED_PROFILES_FIELD)) {
-            // Profile can't be blocked if there's no blocked profiles set
-            abort ENotBlocked
-        };
+        // Get the platform address (this is the blocker address)
+        let platform_address = object::uid_to_address(&platform.id);
         
-        // Get blocked profiles set
-        let blocked_profiles = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut platform.id, BLOCKED_PROFILES_FIELD);
-        
-        // Check if profile is actually blocked and abort if not
-        assert!(vec_set::contains(blocked_profiles, &profile_id), ENotBlocked);
-        
-        // Remove profile from blocked set
-        vec_set::remove(blocked_profiles, &profile_id);
-        
-        // Emit platform-specific unblock event
-        event::emit(PlatformUnblockedProfileEvent {
-            platform_id: object::uid_to_address(&platform.id),
-            profile_id,
-            unblocked_by: caller,
-        });
+        // Call block_list's internal helper function with platform address as blocker
+        block_list::unblock_wallet_internal(block_list_registry, platform_address, blocked_wallet_address);
     }
 
     /// Toggle platform approval status (requires PlatformAdminCap only)
@@ -874,12 +841,12 @@ module social_contracts::platform {
         category_bytes == CATEGORY_RESEARCH
     }
 
-    /// Join a platform - establishes initial connection between profile and platform
+    /// Join a platform - establishes initial connection between wallet and platform
     /// Checks for blocks before allowing the join and verifies platform is approved
-    /// Uses the caller's wallet address to find their profile for security
+    /// Works with wallet addresses only, no profile required
     public entry fun join_platform(
-        profile_registry: &profile::UsernameRegistry,
         platform_registry: &PlatformRegistry,
+        block_list_registry: &block_list::BlockListRegistry,
         platform: &mut Platform,
         ctx: &mut TxContext
     ) {
@@ -887,48 +854,39 @@ module social_contracts::platform {
         let platform_id = object::id(platform);
         let current_time = tx_context::epoch_timestamp_ms(ctx);
         
-        // Look up the caller's profile ID from registry
-        let mut caller_profile_id_opt = profile::lookup_profile_by_owner(profile_registry, caller);
-        assert!(option::is_some(&caller_profile_id_opt), EUnauthorized);
-        
-        // Extract profile ID and convert to ID type
-        let profile_id_addr = option::extract(&mut caller_profile_id_opt);
-        let profile_id = object::id_from_address(profile_id_addr);
-        
-        // Check if the platform has blocked this profile
-        assert!(!is_profile_blocked(platform, profile_id_addr), EUnauthorized);
+        // Check if the platform has blocked this wallet address
+        let platform_address = object::uid_to_address(&platform.id);
+        assert!(!block_list::is_blocked(block_list_registry, platform_address, caller), EUnauthorized);
         
         // Check if the platform is approved by the contract owner (use registry)
         let platform_id_addr = object::uid_to_address(&platform.id);
         assert!(is_approved(platform_registry, platform_id_addr), EUnauthorized);
         
-        // Create joined profiles set if it doesn't exist
-        if (!dynamic_field::exists_(&platform.id, JOINED_PROFILES_FIELD)) {
-            let joined_profiles = vec_set::empty<ID>();
-            dynamic_field::add(&mut platform.id, JOINED_PROFILES_FIELD, joined_profiles);
+        // Create joined wallets set if it doesn't exist
+        if (!dynamic_field::exists_(&platform.id, JOINED_WALLETS_FIELD)) {
+            let joined_wallets = vec_set::empty<address>();
+            dynamic_field::add(&mut platform.id, JOINED_WALLETS_FIELD, joined_wallets);
         };
         
-        // Get joined profiles set
-        let joined_profiles = dynamic_field::borrow_mut<vector<u8>, VecSet<ID>>(&mut platform.id, JOINED_PROFILES_FIELD);
+        // Get joined wallets set
+        let joined_wallets = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut platform.id, JOINED_WALLETS_FIELD);
         
-        // Check if profile is already joined to the platform
-        assert!(!vec_set::contains(joined_profiles, &profile_id), EAlreadyJoined);
+        // Check if wallet is already joined to the platform
+        assert!(!vec_set::contains(joined_wallets, &caller), EAlreadyJoined);
         
-        // Add profile to joined profiles
-        vec_set::insert(joined_profiles, profile_id);
+        // Add wallet to joined wallets
+        vec_set::insert(joined_wallets, caller);
         
         // Emit event
         event::emit(UserJoinedPlatformEvent {
-            profile_id,
+            wallet_address: caller,
             platform_id,
-            user: caller,
             timestamp: current_time,
         });
     }
 
-    /// Leave a platform - removes the connection between profile and platform
+    /// Leave a platform - removes the connection between wallet and platform
     public entry fun leave_platform(
-        registry: &profile::UsernameRegistry,
         platform: &mut Platform,
         ctx: &mut TxContext
     ) {
@@ -936,31 +894,22 @@ module social_contracts::platform {
         let platform_id = object::id(platform);
         let current_time = tx_context::epoch_timestamp_ms(ctx);
         
-        // Look up the caller's profile ID from registry
-        let mut caller_profile_id_opt = profile::lookup_profile_by_owner(registry, caller);
-        assert!(option::is_some(&caller_profile_id_opt), EUnauthorized);
+        // Check if joined wallets set exists
+        assert!(dynamic_field::exists_(&platform.id, JOINED_WALLETS_FIELD), ENotJoined);
         
-        // Extract profile ID and convert to ID type
-        let profile_id_addr = option::extract(&mut caller_profile_id_opt);
-        let profile_id = object::id_from_address(profile_id_addr);
+        // Get joined wallets set
+        let joined_wallets = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut platform.id, JOINED_WALLETS_FIELD);
         
-        // Check if joined profiles set exists
-        assert!(dynamic_field::exists_(&platform.id, JOINED_PROFILES_FIELD), ENotJoined);
+        // Check if wallet is a member of the platform
+        assert!(vec_set::contains(joined_wallets, &caller), ENotJoined);
         
-        // Get joined profiles set
-        let joined_profiles = dynamic_field::borrow_mut<vector<u8>, VecSet<ID>>(&mut platform.id, JOINED_PROFILES_FIELD);
-        
-        // Check if profile is a member of the platform
-        assert!(vec_set::contains(joined_profiles, &profile_id), ENotJoined);
-        
-        // Remove profile from joined profiles
-        vec_set::remove(joined_profiles, &profile_id);
+        // Remove wallet from joined wallets
+        vec_set::remove(joined_wallets, &caller);
         
         // Emit event
         event::emit(UserLeftPlatformEvent {
-            profile_id,
+            wallet_address: caller,
             platform_id,
-            user: caller,
             timestamp: current_time,
         });
     }
@@ -973,14 +922,14 @@ module social_contracts::platform {
         *table::borrow(&registry.platform_approvals, platform_id)
     }
 
-    /// Check if a profile has joined a platform
-    public fun has_joined_platform(platform: &Platform, profile_id: ID): bool {
-        if (!dynamic_field::exists_(&platform.id, JOINED_PROFILES_FIELD)) {
+    /// Check if a wallet address has joined a platform
+    public fun has_joined_platform(platform: &Platform, wallet_address: address): bool {
+        if (!dynamic_field::exists_(&platform.id, JOINED_WALLETS_FIELD)) {
             return false
         };
         
-        let joined_profiles = dynamic_field::borrow<vector<u8>, VecSet<ID>>(&platform.id, JOINED_PROFILES_FIELD);
-        vec_set::contains(joined_profiles, &profile_id)
+        let joined_wallets = dynamic_field::borrow<vector<u8>, VecSet<address>>(&platform.id, JOINED_WALLETS_FIELD);
+        vec_set::contains(joined_wallets, &wallet_address)
     }
 
     // === Helper functions ===
@@ -1112,30 +1061,6 @@ module social_contracts::platform {
         *table::borrow(&registry.platforms_by_developer, developer)
     }
 
-    /// Check if a profile is blocked in a platform
-    public fun is_profile_blocked(platform: &Platform, profile_id: address): bool {
-        if (!dynamic_field::exists_(&platform.id, BLOCKED_PROFILES_FIELD)) {
-            return false
-        };
-        
-        let blocked_profiles = dynamic_field::borrow<vector<u8>, VecSet<address>>(&platform.id, BLOCKED_PROFILES_FIELD);
-        vec_set::contains(blocked_profiles, &profile_id)
-    }
-    
-    /// Check if a profile is blocked in a platform by ID
-    public fun is_profile_blocked_by_id(_platform_id: address, _profile_id: address): bool {
-        false // Placeholder implementation (would need to borrow object by ID)
-    }
-
-    /// Get list of blocked profiles for a platform
-    public fun get_blocked_profiles(platform: &Platform): vector<address> {
-        if (!dynamic_field::exists_(&platform.id, BLOCKED_PROFILES_FIELD)) {
-            return vector::empty()
-        };
-        
-        let blocked_profiles = dynamic_field::borrow<vector<u8>, VecSet<address>>(&platform.id, BLOCKED_PROFILES_FIELD);
-        vec_set::into_keys(*blocked_profiles)
-    }
 
     /// Check if platform wants DAO governance
     public fun wants_dao_governance(platform: &Platform): bool {
@@ -1424,21 +1349,21 @@ module social_contracts::platform {
     }
     
     #[test_only]
-    /// Test helper to directly set a profile as joined to a platform
+    /// Test helper to directly set a wallet as joined to a platform
     /// Simplifies testing by bypassing the normal join flow
-    public fun test_join_platform(platform: &mut Platform, profile_id: ID) {
-        // Create joined profiles set if it doesn't exist
-        if (!dynamic_field::exists_(&platform.id, JOINED_PROFILES_FIELD)) {
-            let joined_profiles = vec_set::empty<ID>();
-            dynamic_field::add(&mut platform.id, JOINED_PROFILES_FIELD, joined_profiles);
+    public fun test_join_platform(platform: &mut Platform, wallet_address: address) {
+        // Create joined wallets set if it doesn't exist
+        if (!dynamic_field::exists_(&platform.id, JOINED_WALLETS_FIELD)) {
+            let joined_wallets = vec_set::empty<address>();
+            dynamic_field::add(&mut platform.id, JOINED_WALLETS_FIELD, joined_wallets);
         };
         
-        // Get joined profiles set
-        let joined_profiles = dynamic_field::borrow_mut<vector<u8>, VecSet<ID>>(&mut platform.id, JOINED_PROFILES_FIELD);
+        // Get joined wallets set
+        let joined_wallets = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut platform.id, JOINED_WALLETS_FIELD);
         
-        // Add profile to joined profiles
-        if (!vec_set::contains(joined_profiles, &profile_id)) {
-            vec_set::insert(joined_profiles, profile_id);
+        // Add wallet to joined wallets
+        if (!vec_set::contains(joined_wallets, &wallet_address)) {
+            vec_set::insert(joined_wallets, wallet_address);
         };
     }
 

@@ -633,9 +633,8 @@ module social_contracts::post {
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
         
-        // Check if user has joined the platform
-        let profile_id_obj = object::id_from_address(profile_id);
-        assert!(platform::has_joined_platform(platform, profile_id_obj), EUserNotJoinedPlatform);
+        // Check if user has joined the platform (by wallet address)
+        assert!(platform::has_joined_platform(platform, owner), EUserNotJoinedPlatform);
         
         // Check if the user is blocked by the platform
         let platform_address = object::uid_to_address(platform::id(platform));
@@ -774,9 +773,8 @@ module social_contracts::post {
         assert!(option::is_some(&profile_id_option), EUnauthorized);
         let profile_id = option::extract(&mut profile_id_option);
         
-        // Check if user has joined the platform
-        let profile_id_obj = object::id_from_address(profile_id);
-        assert!(platform::has_joined_platform(platform, profile_id_obj), EUserNotJoinedPlatform);
+        // Check if user has joined the platform (by wallet address)
+        assert!(platform::has_joined_platform(platform, owner), EUserNotJoinedPlatform);
         
         // Check if the user is blocked by the platform
         let platform_address = object::uid_to_address(platform::id(platform));
@@ -911,9 +909,8 @@ module social_contracts::post {
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
         
-        // Check if user has joined the platform
-        let profile_id_obj = object::id_from_address(profile_id);
-        assert!(platform::has_joined_platform(platform, profile_id_obj), EUserNotJoinedPlatform);
+        // Check if user has joined the platform (by wallet address)
+        assert!(platform::has_joined_platform(platform, owner), EUserNotJoinedPlatform);
         
         // Check if the user is blocked by the platform
         let platform_address = object::uid_to_address(platform::id(platform));

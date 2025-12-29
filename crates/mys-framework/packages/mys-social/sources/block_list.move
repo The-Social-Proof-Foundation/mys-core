@@ -138,31 +138,28 @@ module social_contracts::block_list {
         key
     }
     
-    /// Block a wallet address
-    /// Uses the caller's wallet address as the blocker
-    /// Automatically unfollows in both directions if users are following each other
-    public entry fun block_wallet(
+    /// Internal helper function to block a wallet with a specific blocker address
+    /// This allows platforms (shared objects) to block wallets on behalf of their address
+    public(package) fun block_wallet_internal(
         registry: &mut BlockListRegistry,
         social_graph: &mut social_graph::SocialGraph,
         username_registry: &profile::UsernameRegistry,
+        blocker_address: address,
         blocked_wallet_address: address,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
-        // Get the sender address (wallet address of the blocker)
-        let sender = tx_context::sender(ctx);
-        
         // Cannot block self
-        assert!(sender != blocked_wallet_address, ECannotBlockSelf);
+        assert!(blocker_address != blocked_wallet_address, ECannotBlockSelf);
         
-        // Check if sender already has a block list
-        let has_block_list = table::contains(&registry.wallet_block_lists, sender);
+        // Check if blocker already has a block list
+        let has_block_list = table::contains(&registry.wallet_block_lists, blocker_address);
         
         if (has_block_list) {
             // Get key for finding blocked wallets
-            let key = get_blocked_wallets_key(sender);
+            let key = get_blocked_wallets_key(blocker_address);
             
             // Get the blocked wallets set from registry
             let blocked_wallets = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut registry.id, key);
@@ -177,43 +174,43 @@ module social_contracts::block_list {
             
             // Emit block event
             event::emit(UserBlockEvent {
-                blocker: sender,
+                blocker: blocker_address,
                 blocked: blocked_wallet_address,
             });
         } else {
             // Create a new block list for first-time blockers
-            let block_list = create_block_list(sender, ctx);
+            let block_list = create_block_list(blocker_address, ctx);
             let block_list_id = object::uid_to_address(&block_list.id);
             
             // Register the block list
-            table::add(&mut registry.wallet_block_lists, sender, block_list_id);
+            table::add(&mut registry.wallet_block_lists, blocker_address, block_list_id);
             
             // Create a new blocked wallets set with the blocked address
             let mut blocked_wallets = vec_set::empty<address>();
             vec_set::insert(&mut blocked_wallets, blocked_wallet_address);
             
             // Add the blocked wallets set to the registry
-            dynamic_field::add(&mut registry.id, get_blocked_wallets_key(sender), blocked_wallets);
+            dynamic_field::add(&mut registry.id, get_blocked_wallets_key(blocker_address), blocked_wallets);
             
             // Emit block list created event
             event::emit(BlockListCreatedEvent {
-                owner: sender,
+                owner: blocker_address,
                 block_list_id,
             });
             
             // Emit block event
             event::emit(UserBlockEvent {
-                blocker: sender,
+                blocker: blocker_address,
                 blocked: blocked_wallet_address,
             });
             
             // Return the block list to the caller
-            transfer::transfer(block_list, sender);
+            transfer::transfer(block_list, blocker_address);
         };
         
         // Perform bidirectional unfollow after blocking succeeds
         // Look up profile IDs for both users
-        let blocker_profile_opt = profile::lookup_profile_by_owner(username_registry, sender);
+        let blocker_profile_opt = profile::lookup_profile_by_owner(username_registry, blocker_address);
         let blocked_profile_opt = profile::lookup_profile_by_owner(username_registry, blocked_wallet_address);
         
         // If both profiles exist, attempt bidirectional unfollow
@@ -230,26 +227,36 @@ module social_contracts::block_list {
         // Continue - blocking succeeds regardless of unfollow results
     }
 
-    /// Unblock a wallet address
+    /// Block a wallet address
     /// Uses the caller's wallet address as the blocker
-    public entry fun unblock_wallet(
+    /// Automatically unfollows in both directions if users are following each other
+    public entry fun block_wallet(
         registry: &mut BlockListRegistry,
+        social_graph: &mut social_graph::SocialGraph,
+        username_registry: &profile::UsernameRegistry,
         blocked_wallet_address: address,
         ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        block_wallet_internal(registry, social_graph, username_registry, sender, blocked_wallet_address, ctx);
+    }
+
+    /// Internal helper function to unblock a wallet with a specific blocker address
+    public(package) fun unblock_wallet_internal(
+        registry: &mut BlockListRegistry,
+        blocker_address: address,
+        blocked_wallet_address: address
     ) {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
-        // Get the sender address (wallet address of the blocker)
-        let sender = tx_context::sender(ctx);
-        
-        // Check if there's a block list for this wallet
-        if (!table::contains(&registry.wallet_block_lists, sender)) {
+        // Check if there's a block list for the blocker
+        if (!table::contains(&registry.wallet_block_lists, blocker_address)) {
             abort ENotBlocked
         };
         
         // Get key for finding blocked wallets
-        let key = get_blocked_wallets_key(sender);
+        let key = get_blocked_wallets_key(blocker_address);
         
         // Check if blocked wallets set exists
         if (!dynamic_field::exists_(&registry.id, key)) {
@@ -269,9 +276,20 @@ module social_contracts::block_list {
         
         // Emit unblock event
         event::emit(UserUnblockEvent {
-            blocker: sender,
+            blocker: blocker_address,
             unblocked: blocked_wallet_address,
         });
+    }
+
+    /// Unblock a wallet address
+    /// Uses the caller's wallet address as the blocker
+    public entry fun unblock_wallet(
+        registry: &mut BlockListRegistry,
+        blocked_wallet_address: address,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        unblock_wallet_internal(registry, sender, blocked_wallet_address);
     }
 
     // === PUBLIC API ===
