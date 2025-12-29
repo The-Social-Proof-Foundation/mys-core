@@ -7,12 +7,10 @@ use serde_json::Value;
 
 // Import marketplace event types
 use crate::events::mydata_event_types::{
-    AccessGrantedEvent, AnalyticsEvent, DataAccessGrantedEvent, DataAccessedEvent, DataCreatedEvent,
-    DataPricingChangedEvent, DataPurchasedEvent, DataRemovedEvent, DataTransferredEvent,
-    DataTrendingEvent, DataUpdatedEvent, MyDataCreatedEvent, MyDataRegisteredEvent,
-    MyDataUnregisteredEvent, OperationFailedEvent, PurchaseEvent, RevenueDistributedEvent,
+    AnalyticsEvent, DataAccessGrantedEvent, DataAccessedEvent, DataCreatedEvent,
+    DataPurchasedEvent, DataTransferredEvent, DataTrendingEvent, MyDataRegisteredEvent,
+    MyDataUnregisteredEvent, OperationFailedEvent, RevenueDistributedEvent,
     SubscriptionCancelledEvent, SubscriptionCreatedEvent, SubscriptionRenewedEvent,
-    SystemMaintenanceEvent,
 };
 
 // Import marketplace model types

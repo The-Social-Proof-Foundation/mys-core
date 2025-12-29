@@ -37,6 +37,7 @@ module social_contracts::proof_of_creativity {
     const ENoVotesToResolve: u64 = 18;
     const EInvalidReasoning: u64 = 19;
     const EInvalidEvidenceUrls: u64 = 20;
+    const EDisabled: u64 = 21;
 
     /// Media type constants
     const MEDIA_TYPE_IMAGE: u8 = 1;
@@ -438,13 +439,18 @@ module social_contracts::proof_of_creativity {
             };
             let redirect_percentage = (config.revenue_redirect_percentage * delta_percentage) / 100;
             
-            // Update post with redirection info
+            // Update post with redirection info and PoC metadata
             social_contracts::post::update_poc_result(
                 post,
                 2, // redirection applied
-                option::none(), // no badge
                 option::some(original_creator_address), // redirect to original creator
-                option::some(redirect_percentage) // redirect percentage
+                option::some(redirect_percentage), // redirect percentage
+                reasoning, // PoC reasoning
+                evidence_urls, // PoC evidence URLs
+                highest_similarity_score, // similarity score
+                media_type, // media type analyzed
+                caller, // oracle address
+                timestamp // analysis timestamp
             );
             
             // Update registry tracking
@@ -461,23 +467,29 @@ module social_contracts::proof_of_creativity {
             });
         } else {
             // Content is original - issue PoC badge
-            let badge_id = object::id_from_address(post_id); // Use post ID as badge ID
+            // Verify PoC is enabled for this post
+            assert!(social_contracts::post::is_poc_enabled(post), EDisabled);
             
-            // Update post with badge info
+            // Update post with PoC metadata (badge issued)
             social_contracts::post::update_poc_result(
                 post,
                 1, // badge issued
-                option::some(badge_id), // badge ID
                 option::none(), // no redirection
-                option::none() // no redirection percentage
+                option::none(), // no redirection percentage
+                reasoning, // PoC reasoning
+                evidence_urls, // PoC evidence URLs
+                highest_similarity_score, // similarity score
+                media_type, // media type analyzed
+                caller, // oracle address
+                timestamp // analysis timestamp
             );
             
             // Update registry tracking
             registry.total_badges_issued = registry.total_badges_issued + 1;
             
-            // Emit simplified event
+            // Emit event - indexers track badge status from this event
             event::emit(PoCBadgeIssuedEvent {
-                badge_id: post_id, // Use post ID as badge ID
+                badge_id: post_id, // Use post ID as badge identifier
                 post_id,
                 media_type,
                 issued_by: caller,
@@ -547,8 +559,8 @@ module social_contracts::proof_of_creativity {
         assert!(disputer == social_contracts::post::get_post_owner(post), EUnauthorized);
         
         // Verify the post has PoC data to dispute (badge or redirection)
-        let has_poc_data = option::is_some(social_contracts::post::get_poc_badge_id(post)) ||
-                          option::is_some(social_contracts::post::get_revenue_redirect_to(post));
+        let has_poc_data = option::is_some(social_contracts::post::get_revenue_redirect_to(post)) ||
+                            option::is_some(social_contracts::post::get_poc_similarity_score(post));
         assert!(has_poc_data, EPostNotFound);
         
         // Extract dispute fee and send to ecosystem treasury
@@ -849,8 +861,8 @@ module social_contracts::proof_of_creativity {
 
     /// Check if a post has PoC data that can be disputed
     public fun has_poc_data(post: &social_contracts::post::Post): bool {
-        option::is_some(social_contracts::post::get_poc_badge_id(post)) ||
-        option::is_some(social_contracts::post::get_revenue_redirect_to(post))
+        option::is_some(social_contracts::post::get_revenue_redirect_to(post)) ||
+        option::is_some(social_contracts::post::get_poc_similarity_score(post))
     }
 
     /// Get dispute voting status

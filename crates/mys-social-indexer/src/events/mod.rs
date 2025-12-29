@@ -68,7 +68,7 @@ pub use crate::events::blocking_events::BlockListCreatedEvent;
 pub use post_event_types::{
     CommentCreatedEvent, ContentUpdateEvent, DeletionEvent, ModerationEvent, PostCreatedEvent,
     PostEventType, ReactionEvent, RemoveReactionEvent, ReportEvent, RepostEvent, TipEvent,
-    OwnershipTransferEvent, PostParametersUpdatedEvent, AutoPoolDisabledUpdatedEvent,
+    OwnershipTransferEvent, PostParametersUpdatedEvent,
 };
 
 // Re-export social proof token events

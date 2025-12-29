@@ -321,13 +321,16 @@ module social_contracts::social_proof_of_truth {
     public entry fun create_spot_record_for_post(
         _: &SpotOracleAdminCap,
         config: &SpotConfig,
-        post: &Post,
+        post: &mut Post,
         betting_options: vector<String>,
         resolution_window_epochs: Option<u64>,
         max_resolution_window_epochs: Option<u64>,
         ctx: &mut TxContext
     ) {
         assert!(config.enable_flag, EDisabled);
+        
+        // Verify SPoT is enabled for this post
+        assert!(social_contracts::post::is_spot_enabled(post), EDisabled);
         
         // Validate betting options
         let options_len = vector::length(&betting_options);
@@ -368,6 +371,9 @@ module social_contracts::social_proof_of_truth {
         let betting_options_copy = record.betting_options;
         let resolution_window = record.resolution_window_epochs;
         let max_resolution_window = record.max_resolution_window_epochs;
+        
+        // Store SPoT record ID in post
+        social_contracts::post::set_spot_id(post, record_id);
         
         transfer::share_object(record);
         

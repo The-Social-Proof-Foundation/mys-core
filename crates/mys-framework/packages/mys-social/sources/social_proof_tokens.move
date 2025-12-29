@@ -1976,13 +1976,13 @@ module social_contracts::social_proof_tokens {
     /// Ensure a post token pool exists; if missing and allowed, create a minimal pool.
     /// Guardrails:
     /// - Requires config.allow_auto_pool_init = true
-    /// - Respects post.disable_auto_pool opt-out
+        /// - Respects post.enable_spt opt-in flag
     /// - Throttles by epoch via auto_init_max_per_epoch
     /// - Package visibility prevents arbitrary external calls
     public(package) fun ensure_post_token_pool(
         registry: &mut TokenRegistry,
         config: &mut SocialProofTokensConfig,
-        post: &social_contracts::post::Post,
+        post: &mut social_contracts::post::Post,
         ctx: &mut TxContext
     ): Option<TokenPool> {
         // If token already exists, no-op
@@ -1997,8 +1997,8 @@ module social_contracts::social_proof_tokens {
         // Global opt-in
         assert!(config.allow_auto_pool_init, ENotAuthorized);
 
-        // Per-post opt-out
-        assert!(!social_contracts::post::is_auto_pool_disabled(post), ENotAuthorized);
+        // Per-post opt-in
+        assert!(social_contracts::post::is_spt_enabled(post), ENotAuthorized);
 
         // Epoch throttle (best-effort): limit creations within same epoch
         let now_epoch = tx_context::epoch(ctx);
@@ -2044,6 +2044,9 @@ module social_contracts::social_proof_tokens {
 
         // Register token for associated post id
         table::add(&mut registry.tokens, post_id, updated_token_info);
+        
+        // Store SPT pool ID in post
+        social_contracts::post::set_spt_id(post, pool_address);
 
         // Emit audit event
         event::emit(PostPoolAutoInitializedEvent {

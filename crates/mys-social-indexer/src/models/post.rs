@@ -57,13 +57,33 @@ pub struct Post {
     pub revenue_recipient: Option<String>,
     pub promotion_id: Option<String>,
     #[diesel(sql_type = Nullable<Varchar>)]
-    pub poc_badge_id: Option<String>,
+    pub poc_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_reasoning: Option<String>,
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub poc_evidence_urls: Option<Value>,
+    #[diesel(sql_type = Nullable<Int8>)]
+    pub poc_similarity_score: Option<i64>,
+    #[diesel(sql_type = Nullable<Int2>)]
+    pub poc_media_type: Option<i16>,
+    #[diesel(sql_type = Nullable<Varchar>)]
+    pub poc_oracle_address: Option<String>,
+    #[diesel(sql_type = Nullable<Int8>)]
+    pub poc_analyzed_at: Option<i64>,
     #[diesel(sql_type = Nullable<Varchar>)]
     pub revenue_redirect_to: Option<String>,
     #[diesel(sql_type = Nullable<Int8>)]
     pub revenue_redirect_percentage: Option<i64>,
     #[diesel(sql_type = Bool)]
-    pub auto_pool_disabled: bool,
+    pub enable_spt: bool,
+    #[diesel(sql_type = Bool)]
+    pub enable_poc: bool,
+    #[diesel(sql_type = Bool)]
+    pub enable_spot: bool,
+    #[diesel(sql_type = Nullable<Varchar>)]
+    pub spot_id: Option<String>,
+    #[diesel(sql_type = Nullable<Varchar>)]
+    pub spt_id: Option<String>,
 }
 
 /// New post model for insertion
@@ -93,10 +113,20 @@ pub struct NewPost {
     pub mydata_id: Option<String>,
     pub revenue_recipient: Option<String>,
     pub promotion_id: Option<String>,
-    pub poc_badge_id: Option<String>,
+    pub poc_id: Option<String>,
+    pub poc_reasoning: Option<String>,
+    pub poc_evidence_urls: Option<Value>,
+    pub poc_similarity_score: Option<i64>,
+    pub poc_media_type: Option<i16>,
+    pub poc_oracle_address: Option<String>,
+    pub poc_analyzed_at: Option<i64>,
     pub revenue_redirect_to: Option<String>,
     pub revenue_redirect_percentage: Option<i64>,
-    pub auto_pool_disabled: bool,
+    pub enable_spt: bool,
+    pub enable_poc: bool,
+    pub enable_spot: bool,
+    pub spot_id: Option<String>,
+    pub spt_id: Option<String>,
 }
 
 /// Comment model for database

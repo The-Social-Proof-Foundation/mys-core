@@ -17,7 +17,7 @@ use crate::events::post_event_types::{
     ModerationEvent as PostModerationEvent, PostCreatedEvent, PromotedPostCreatedEvent,
     PromotedPostViewConfirmedEvent, PromotionFundsWithdrawnEvent, PromotionStatusToggledEvent,
     ReactionEvent, RemoveReactionEvent, ReportEvent, RepostEvent, TipEvent,
-    OwnershipTransferEvent, PostParametersUpdatedEvent, AutoPoolDisabledUpdatedEvent,
+    OwnershipTransferEvent, PostParametersUpdatedEvent,
 };
 use crate::events::{event_utils::parse_json_event, parse_event};
 use crate::models::indexer::NewIndexerProgress;
@@ -1128,22 +1128,6 @@ impl PostEventHandler {
                         }
                     }
                 }
-                // Handle auto pool disabled updated event
-                else if event.event_type.ends_with("::AutoPoolDisabledUpdatedEvent") {
-                    match parse_json_event::<AutoPoolDisabledUpdatedEvent>(&event.data) {
-                        Ok(auto_pool_event) => {
-                            if let Err(e) = self
-                                .process_auto_pool_disabled_updated(&auto_pool_event)
-                                .await
-                            {
-                                error!("Failed to process auto pool disabled updated event: {}", e);
-                            }
-                        }
-                        Err(e) => {
-                            error!("Failed to deserialize auto pool disabled updated event: {}", e);
-                        }
-                    }
-                }
                 // Handle promoted post view confirmed event
                 else if event
                     .event_type
@@ -1219,29 +1203,6 @@ impl PostEventHandler {
         Ok(())
     }
 
-    /// Process an auto pool disabled updated event
-    async fn process_auto_pool_disabled_updated(&self, event: &AutoPoolDisabledUpdatedEvent) -> Result<()> {
-        info!("Processing auto pool disabled updated event for post: {}", event.post_id);
-
-        let mut conn = self.get_connection().await?;
-
-        // Update the post's auto_pool_disabled flag and updated_at timestamp
-        diesel::update(schema::posts::table)
-            .filter(schema::posts::post_id.eq(&event.post_id))
-            .set((
-                schema::posts::auto_pool_disabled.eq(event.disabled),
-                schema::posts::updated_at.eq(Some(event.timestamp as i64)),
-            ))
-            .execute(&mut conn)
-            .await?;
-
-        info!(
-            "Auto pool disabled updated for post: {}, disabled: {}, owner: {}",
-            event.post_id, event.disabled, event.owner
-        );
-
-        Ok(())
-    }
 
 }
 

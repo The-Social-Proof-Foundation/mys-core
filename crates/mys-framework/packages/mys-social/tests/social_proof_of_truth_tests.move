@@ -89,8 +89,9 @@ module social_contracts::social_proof_of_truth_tests {
     }
 
     /// Create a simple post without platform/profile constraints (test helper in post module)
+    /// Creates post with SPoT enabled for SPoT tests
     fun create_test_post(owner: address, ctx: &mut tx_context::TxContext): address {
-        post::test_create_post(owner, owner, string::utf8(b"truth?"), ctx)
+        post::test_create_post_with_spot(owner, owner, string::utf8(b"truth?"), ctx)
     }
 
     // --- Tests ---
@@ -153,14 +154,14 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            let p = test_scenario::take_shared<Post>(&scen);
+            let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
             vector::push_back(&mut betting_options, string::utf8(b"No"));
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg, 
-                &p, 
+                &mut p, 
                 betting_options,
                 option::none(), // resolution_window_epochs - immediate resolution
                 option::some(0), // max_resolution_window_epochs - immediate refunds (must be Some for refund_unresolved)
@@ -251,14 +252,14 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            let p = test_scenario::take_shared<Post>(&scen);
+            let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
             vector::push_back(&mut betting_options, string::utf8(b"No"));
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg, 
-                &p, 
+                &mut p, 
                 betting_options,
                 option::none(), // resolution_window_epochs - immediate resolution
                 option::some(0), // max_resolution_window_epochs - immediate refunds (must be Some for refund_unresolved)
@@ -361,14 +362,14 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            let p = test_scenario::take_shared<Post>(&scen);
+            let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
             vector::push_back(&mut betting_options, string::utf8(b"No"));
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg, 
-                &p, 
+                &mut p, 
                 betting_options,
                 option::none(), // resolution_window_epochs - immediate resolution
                 option::some(0), // max_resolution_window_epochs - immediate refunds (must be Some for refund_unresolved)
@@ -437,14 +438,14 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            let p = test_scenario::take_shared<Post>(&scen);
+            let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
             vector::push_back(&mut betting_options, string::utf8(b"Yes")); // Duplicate!
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg, 
-                &p, 
+                &mut p, 
                 betting_options,
                 option::none(),
                 option::none(),
@@ -481,14 +482,14 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            let p = test_scenario::take_shared<Post>(&scen);
+            let mut p = test_scenario::take_shared<Post>(&scen);
             let mut betting_options = vector::empty<String>();
             vector::push_back(&mut betting_options, string::utf8(b"Yes"));
             vector::push_back(&mut betting_options, string::utf8(b"No"));
             spot::create_spot_record_for_post(
                 &oracle_admin_cap,
                 &cfg, 
-                &p, 
+                &mut p, 
                 betting_options,
                 option::none(),
                 option::none(),

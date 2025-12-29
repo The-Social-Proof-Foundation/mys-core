@@ -969,6 +969,22 @@ impl SocialProofTokenHandler {
             .execute(&mut conn)
             .await?;
 
+        // Update the post's spt_id with the pool address
+        // For auto-initialized pools, the pool_id in the model is set to post_id
+        // Use the pool_id from the token_pool model (which is post_id for auto-initialized pools)
+        let pool_address = token_pool.pool_id.clone();
+        
+        diesel::update(schema::posts::table)
+            .filter(schema::posts::post_id.eq(&auto_init_event.post_id))
+            .set(schema::posts::spt_id.eq(&pool_address))
+            .execute(&mut conn)
+            .await?;
+
+        info!(
+            "Updated post {} with auto-initialized SPT pool address: {}",
+            auto_init_event.post_id, pool_address
+        );
+
         // Update progress tracking
         self.update_progress().await?;
 
@@ -1141,6 +1157,19 @@ impl SocialProofTokenHandler {
             info!(
                 "Updated profile {} with social proof token address: {}",
                 token_pool_event.owner, token_pool_event.id
+            );
+        } else if token_pool_event.token_type == 2 {
+            // 2 = Post token type (TOKEN_TYPE_POST)
+            // Update the post's spt_id with the pool address
+            diesel::update(schema::posts::table)
+                .filter(schema::posts::post_id.eq(&token_pool_event.associated_id))
+                .set(schema::posts::spt_id.eq(&token_pool_event.id))
+                .execute(&mut conn)
+                .await?;
+
+            info!(
+                "Updated post {} with SPT pool address: {}",
+                token_pool_event.associated_id, token_pool_event.id
             );
         }
 

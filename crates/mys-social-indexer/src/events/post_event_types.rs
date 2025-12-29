@@ -30,7 +30,8 @@ pub enum PostEventType {
 /// Post created event from blockchain
 /// NOTE: This matches the contract's PostCreatedEvent structure exactly:
 /// - post_id, owner, profile_id, content, post_type, parent_post_id, mentions
-/// - media_urls, metadata_json, mydata_id, promotion_id, poc_badge_id, revenue_redirect_to, revenue_redirect_percentage, disable_auto_pool
+/// - media_urls, metadata_json, mydata_id, promotion_id, poc_id, revenue_redirect_to, revenue_redirect_percentage
+/// - enable_spt, enable_poc, enable_spot, spot_id, spt_id
 /// - created_at is NOT in the contract event but is needed for database storage
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostCreatedEvent {
@@ -45,11 +46,15 @@ pub struct PostCreatedEvent {
     pub metadata_json: Option<String>,
     pub mydata_id: Option<String>,
     pub promotion_id: Option<String>,
-    pub poc_badge_id: Option<String>,
+    pub poc_id: Option<String>,
     pub revenue_redirect_to: Option<String>,
     #[serde(deserialize_with = "deserialize_optional_u64_from_string")]
     pub revenue_redirect_percentage: Option<u64>,
-    pub disable_auto_pool: bool,
+    pub enable_spt: bool,
+    pub enable_poc: bool,
+    pub enable_spot: bool,
+    pub spot_id: Option<String>,
+    pub spt_id: Option<String>,
     // This field is NOT in the contract event but is needed for database storage
     #[serde(default, deserialize_with = "deserialize_u64_from_string_optional")]
     pub created_at: u64,
@@ -269,13 +274,4 @@ pub struct PostParametersUpdatedEvent {
     pub repost_tip_percentage: u64,
 }
 
-/// Auto pool disabled updated event from blockchain
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AutoPoolDisabledUpdatedEvent {
-    pub post_id: String,
-    pub owner: String,
-    pub disabled: bool,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub timestamp: u64,
-}
 

@@ -83,6 +83,24 @@ impl PocEventHandler {
             .values(&model)
             .execute(&mut conn)
             .await?;
+
+        // Update post record with PoC metadata fields
+        let evidence_urls_json = parsed.evidence_urls.as_ref()
+            .map(|urls| serde_json::to_value(urls).unwrap_or(serde_json::json!(null)));
+
+        diesel::update(schema::posts::table)
+            .filter(schema::posts::post_id.eq(&parsed.post_id))
+            .set((
+                schema::posts::poc_reasoning.eq(parsed.reasoning.as_ref()),
+                schema::posts::poc_evidence_urls.eq(&evidence_urls_json),
+                schema::posts::poc_similarity_score.eq(Some(parsed.highest_similarity_score as i64)),
+                schema::posts::poc_media_type.eq(Some(parsed.media_type as i16)),
+                schema::posts::poc_oracle_address.eq(Some(&parsed.oracle_address)),
+                schema::posts::poc_analyzed_at.eq(Some(parsed.timestamp as i64)),
+            ))
+            .execute(&mut conn)
+            .await?;
+
         Ok(())
     }
 
@@ -115,6 +133,17 @@ impl PocEventHandler {
         let mut conn = self.get_connection().await?;
         diesel::insert_into(schema::poc_revenue_redirections::table)
             .values(&model)
+            .execute(&mut conn)
+            .await?;
+
+        // Update post record with revenue redirection fields
+        // Note: accused_post_id is the post that will redirect revenue
+        diesel::update(schema::posts::table)
+            .filter(schema::posts::post_id.eq(&parsed.accused_post_id))
+            .set((
+                schema::posts::revenue_redirect_to.eq(Some(&parsed.original_post_id)),
+                schema::posts::revenue_redirect_percentage.eq(Some(parsed.redirect_percentage as i64)),
+            ))
             .execute(&mut conn)
             .await?;
         Ok(())

@@ -28,6 +28,18 @@ pub struct PostQuery {
     pub profile_id: Option<String>,
     pub include_deleted: Option<bool>,
     pub platform_id: Option<String>,
+    // Feature flag filters
+    pub enable_spt: Option<bool>,
+    pub enable_poc: Option<bool>,
+    pub enable_spot: Option<bool>,
+    // Linked object filters
+    pub has_spot: Option<bool>,
+    pub has_spt: Option<bool>,
+    pub has_poc: Option<bool>,
+    // PoC metadata filters
+    pub poc_media_type: Option<i16>,
+    pub poc_min_similarity_score: Option<i64>,
+    pub poc_oracle_address: Option<String>,
 }
 
 // Query parameters for promotion listing
@@ -78,6 +90,43 @@ pub struct PostBasic {
 
     #[diesel(sql_type = Nullable<Text>)]
     pub promotion_id: Option<String>,
+
+    #[diesel(sql_type = Bool)]
+    pub enable_spt: bool,
+
+    #[diesel(sql_type = Bool)]
+    pub enable_poc: bool,
+
+    #[diesel(sql_type = Bool)]
+    pub enable_spot: bool,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_id: Option<String>,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    pub spot_id: Option<String>,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    pub spt_id: Option<String>,
+
+    // PoC metadata fields
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_reasoning: Option<String>,
+
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub poc_evidence_urls: Option<serde_json::Value>,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub poc_similarity_score: Option<i64>,
+
+    #[diesel(sql_type = Nullable<Int2>)]
+    pub poc_media_type: Option<i16>,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_oracle_address: Option<String>,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub poc_analyzed_at: Option<i64>,
 }
 
 // Response for a post with engagement stats
@@ -222,6 +271,43 @@ pub struct PostWithEngagementInfo {
 
     #[diesel(sql_type = Nullable<Text>)]
     pub promotion_id: Option<String>,
+
+    #[diesel(sql_type = Bool)]
+    pub enable_spt: bool,
+
+    #[diesel(sql_type = Bool)]
+    pub enable_poc: bool,
+
+    #[diesel(sql_type = Bool)]
+    pub enable_spot: bool,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_id: Option<String>,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    pub spot_id: Option<String>,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    pub spt_id: Option<String>,
+
+    // PoC metadata fields
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_reasoning: Option<String>,
+
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub poc_evidence_urls: Option<serde_json::Value>,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub poc_similarity_score: Option<i64>,
+
+    #[diesel(sql_type = Nullable<Int2>)]
+    pub poc_media_type: Option<i16>,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    pub poc_oracle_address: Option<String>,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub poc_analyzed_at: Option<i64>,
 }
 
 // Promoted post information
@@ -331,7 +417,7 @@ pub async fn get_post_by_id(State(pool): State<DbPool>, Path(post_id): Path<Stri
     };
 
     // Use diesel sql_query instead of QueryDsl since there might be schema definition issues
-    let query = "SELECT post_id, owner, profile_id, content, created_at, deleted_at, removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id FROM posts WHERE post_id = $1";
+    let query = "SELECT post_id, owner, profile_id, content, created_at, deleted_at, removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id, enable_spt, enable_poc, enable_spot, poc_id, spot_id, spt_id, poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at FROM posts WHERE post_id = $1";
 
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&post_id)
@@ -413,10 +499,91 @@ pub async fn list_posts(State(pool): State<DbPool>, Query(params): Query<PostQue
     let limit = params.limit.unwrap_or(20).min(100); // Max 100 posts
     let offset = params.offset.unwrap_or(0);
 
-    // Simplified query that just returns basic post info
+    // Build query with optional filters
+    let mut query = "
+        SELECT post_id, owner, profile_id, content, created_at, deleted_at, 
+               removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id,
+               enable_spt, enable_poc, enable_spot, poc_id, spot_id, spt_id,
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at
+        FROM posts 
+        WHERE deleted_at IS NULL
+    ".to_string();
+
+    let mut bindings: Vec<String> = Vec::new();
+    let mut param_count = 1;
+
+    // Add feature flag filters
+    if let Some(enable_spt) = params.enable_spt {
+        query.push_str(&format!(" AND enable_spt = ${}", param_count));
+        bindings.push(enable_spt.to_string());
+        param_count += 1;
+    }
+    if let Some(enable_poc) = params.enable_poc {
+        query.push_str(&format!(" AND enable_poc = ${}", param_count));
+        bindings.push(enable_poc.to_string());
+        param_count += 1;
+    }
+    if let Some(enable_spot) = params.enable_spot {
+        query.push_str(&format!(" AND enable_spot = ${}", param_count));
+        bindings.push(enable_spot.to_string());
+        param_count += 1;
+    }
+
+    // Add linked object filters
+    if let Some(has_spot) = params.has_spot {
+        if has_spot {
+            query.push_str(" AND spot_id IS NOT NULL");
+        } else {
+            query.push_str(" AND spot_id IS NULL");
+        }
+    }
+    if let Some(has_spt) = params.has_spt {
+        if has_spt {
+            query.push_str(" AND spt_id IS NOT NULL");
+        } else {
+            query.push_str(" AND spt_id IS NULL");
+        }
+    }
+    if let Some(has_poc) = params.has_poc {
+        if has_poc {
+            query.push_str(" AND poc_id IS NOT NULL");
+        } else {
+            query.push_str(" AND poc_id IS NULL");
+        }
+    }
+
+    // Add PoC metadata filters
+    if let Some(media_type) = params.poc_media_type {
+        query.push_str(&format!(" AND poc_media_type = ${}", param_count));
+        bindings.push(media_type.to_string());
+        param_count += 1;
+    }
+    if let Some(min_score) = params.poc_min_similarity_score {
+        query.push_str(&format!(" AND poc_similarity_score >= ${}", param_count));
+        bindings.push(min_score.to_string());
+        param_count += 1;
+    }
+    if let Some(ref oracle) = params.poc_oracle_address {
+        query.push_str(&format!(" AND poc_oracle_address = ${}", param_count));
+        bindings.push(oracle.clone());
+        param_count += 1;
+    }
+
+    query.push_str(" ORDER BY created_at DESC LIMIT $");
+    query.push_str(&param_count.to_string());
+    param_count += 1;
+    query.push_str(" OFFSET $");
+    query.push_str(&param_count.to_string());
+    bindings.push(limit.to_string());
+    bindings.push(offset.to_string());
+
+    // For now, use a simpler query without dynamic filters to avoid SQL injection
+    // TODO: Implement proper parameterized query with diesel
     let query = "
         SELECT post_id, owner, profile_id, content, created_at, deleted_at, 
-               removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id
+               removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id,
+               enable_spt, enable_poc, enable_spot, poc_id, spot_id, spt_id,
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at
         FROM posts 
         WHERE deleted_at IS NULL 
         ORDER BY created_at DESC 
@@ -553,7 +720,9 @@ pub async fn get_trending_posts(
     // Simplified query - just get posts ordered by created_at
     let query = "
         SELECT post_id, owner, profile_id, content, created_at, deleted_at, 
-               removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id
+               removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id,
+               enable_spt, enable_poc, enable_spot, poc_id, spot_id, spt_id,
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at
         FROM posts 
         WHERE deleted_at IS NULL AND removed_from_platform = false
         ORDER BY (reaction_count + comment_count * 2 + repost_count * 3) DESC, created_at DESC
@@ -708,7 +877,8 @@ pub async fn get_profile_posts(
             (p.reaction_count + p.comment_count * 2 + p.repost_count * 3 + p.tips_received) AS engagement_score,
             ((p.reaction_count + p.comment_count * 2 + p.repost_count * 3 + p.tips_received) / 
              (EXTRACT(EPOCH FROM NOW()) - p.created_at + 3600) * 10000) AS trending_score,
-            p.promotion_id
+            p.promotion_id, p.enable_spt, p.enable_poc, p.enable_spot, p.poc_id, p.spot_id, p.spt_id,
+            p.poc_reasoning, p.poc_evidence_urls, p.poc_similarity_score, p.poc_media_type, p.poc_oracle_address, p.poc_analyzed_at
         FROM 
             posts p
         WHERE 
@@ -804,6 +974,18 @@ pub async fn get_profile_posts(
                         repost_count: p.repost_count,
                         tips_received: p.tips_received,
                         promotion_id: p.promotion_id,
+                        enable_spt: p.enable_spt,
+                        enable_poc: p.enable_poc,
+                        enable_spot: p.enable_spot,
+                        poc_id: p.poc_id,
+                        spot_id: p.spot_id,
+                        spt_id: p.spt_id,
+                        poc_reasoning: p.poc_reasoning,
+                        poc_evidence_urls: p.poc_evidence_urls,
+                        poc_similarity_score: p.poc_similarity_score,
+                        poc_media_type: p.poc_media_type,
+                        poc_oracle_address: p.poc_oracle_address,
+                        poc_analyzed_at: p.poc_analyzed_at,
                     },
                     engagement_score: p.engagement_score,
                     trending_score: p.trending_score,

@@ -65,10 +65,20 @@ impl PostCreatedEvent {
             mydata_id: self.mydata_id.clone(),
             revenue_recipient: None, // Revenue tracking handled via unified revenue system
             promotion_id: self.promotion_id.clone(),
-            poc_badge_id: self.poc_badge_id.clone(),
+            poc_id: self.poc_id.clone(),
+            poc_reasoning: None,
+            poc_evidence_urls: None,
+            poc_similarity_score: None,
+            poc_media_type: None,
+            poc_oracle_address: None,
+            poc_analyzed_at: None,
             revenue_redirect_to: self.revenue_redirect_to.clone(),
             revenue_redirect_percentage: self.revenue_redirect_percentage.map(|p| p as i64),
-            auto_pool_disabled: self.disable_auto_pool,
+            enable_spt: self.enable_spt,
+            enable_poc: self.enable_poc,
+            enable_spot: self.enable_spot,
+            spot_id: self.spot_id.clone(),
+            spt_id: self.spt_id.clone(),
         })
     }
 }

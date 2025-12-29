@@ -1070,6 +1070,13 @@ impl SocialProofOfTruthEventHandler {
                     Self::write_unified_row_in_transaction(&mut conn, &event_for_unified, "SpotRecordCreatedEvent", unified)
                         .await?;
 
+                    // Update post record with spot_id
+                    diesel::update(schema::posts::table)
+                        .filter(schema::posts::post_id.eq(&post_id))
+                        .set(schema::posts::spot_id.eq(&parsed.record_id))
+                        .execute(&mut conn)
+                        .await?;
+
                     Ok::<(), DieselError>(())
                 })
             })

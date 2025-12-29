@@ -353,7 +353,14 @@ table! {
         mydata_id -> Nullable<Varchar>,
         revenue_recipient -> Nullable<Varchar>,
         // PoC fields
-        poc_badge_id -> Nullable<Varchar>,
+        poc_id -> Nullable<Varchar>,
+        // PoC metadata fields (from AnalysisSubmittedEvent)
+        poc_reasoning -> Nullable<Text>,
+        poc_evidence_urls -> Nullable<Jsonb>,
+        poc_similarity_score -> Nullable<Int8>,
+        poc_media_type -> Nullable<Int2>,
+        poc_oracle_address -> Nullable<Varchar>,
+        poc_analyzed_at -> Nullable<Int8>,
         revenue_redirect_to -> Nullable<Varchar>,
         revenue_redirect_percentage -> Nullable<Int8>,
         // Subscription fields
@@ -363,8 +370,13 @@ table! {
         encrypted_content_hash -> Nullable<Varchar>,
         // Promotion fields
         promotion_id -> Nullable<Varchar>,
-        // Auto pool fields
-        auto_pool_disabled -> Bool,
+        // Opt-in flags for features
+        enable_spt -> Bool,
+        enable_poc -> Bool,
+        enable_spot -> Bool,
+        // Linked object addresses
+        spot_id -> Nullable<Varchar>,
+        spt_id -> Nullable<Varchar>,
     }
 }
 

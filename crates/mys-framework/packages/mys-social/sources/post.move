@@ -138,42 +138,97 @@ module social_contracts::post {
         allow_reposts: bool,
         allow_quotes: bool,
         allow_tips: bool,
-        /// Optional Proof of Creativity badge ID (for original content that passed verification)
-        poc_badge_id: Option<ID>,
         /// Optional revenue redirection to original creator (for derivative content)
         revenue_redirect_to: Option<address>,
         /// Optional revenue redirection percentage (0-100)
         revenue_redirect_percentage: Option<u64>,
+        /// Optional PoC analysis reasoning from oracle
+        poc_reasoning: Option<String>,
+        /// Optional PoC analysis evidence URLs
+        poc_evidence_urls: Option<vector<String>>,
+        /// Optional PoC similarity score (0-100 percentage)
+        poc_similarity_score: Option<u64>,
+        /// Optional media type analyzed (1=IMAGE, 2=VIDEO, 3=AUDIO)
+        poc_media_type: Option<u8>,
+        /// Optional oracle address that performed PoC analysis
+        poc_oracle_address: Option<address>,
+        /// Optional timestamp when PoC analysis was performed
+        poc_analyzed_at: Option<u64>,
         /// Reference to the MyData for the post
         mydata_id: Option<address>,
         /// Optional promotion data ID for promoted posts
         promotion_id: Option<address>,
-        /// Opt-out flag to disable auto SPT pool initialization by SPoT
-        disable_auto_pool: bool,
+        /// Opt-in flag to enable Social Proof Tokens (SPT) auto-pool initialization
+        enable_spt: bool,
+        /// Opt-in flag to enable Proof of Creativity (PoC) analysis and badges
+        enable_poc: bool,
+        /// Opt-in flag to enable Social Proof of Truth (SPoT) prediction markets
+        enable_spot: bool,
+        /// Optional Social Proof of Truth record ID (address of SpotRecord object)
+        spot_id: Option<address>,
+        /// Optional Social Proof Token pool ID (address of TokenPool object)
+        spt_id: Option<address>,
         /// Version for upgrades
         version: u64,
     }
 
-    /// Query: per-post opt-out for auto SPT pool init
-    public fun is_auto_pool_disabled(post: &Post): bool { post.disable_auto_pool }
+    /// Query: check if SPT is enabled for this post
+    public fun is_spt_enabled(post: &Post): bool { post.enable_spt }
 
-    /// Owner-only: set per-post opt-out flag
-    public entry fun set_auto_pool_disabled(
-        post: &mut Post,
-        disabled: bool,
-        ctx: &mut TxContext
-    ) {
-        let caller = tx_context::sender(ctx);
-        assert!(caller == post.owner, EUnauthorized);
-        post.disable_auto_pool = disabled;
-        
-        // Emit event for auto pool disabled flag update
-        event::emit(AutoPoolDisabledUpdatedEvent {
-            post_id: object::uid_to_address(&post.id),
-            owner: caller,
-            disabled,
-            timestamp: tx_context::epoch_timestamp_ms(ctx),
-        });
+    /// Query: check if PoC is enabled for this post
+    public fun is_poc_enabled(post: &Post): bool { post.enable_poc }
+
+    /// Query: check if SPoT is enabled for this post
+    public fun is_spot_enabled(post: &Post): bool { post.enable_spot }
+
+    /// Get PoC reasoning
+    public fun get_poc_reasoning(post: &Post): &Option<String> {
+        &post.poc_reasoning
+    }
+
+    /// Get PoC evidence URLs
+    public fun get_poc_evidence_urls(post: &Post): &Option<vector<String>> {
+        &post.poc_evidence_urls
+    }
+
+    /// Get PoC similarity score
+    public fun get_poc_similarity_score(post: &Post): &Option<u64> {
+        &post.poc_similarity_score
+    }
+
+    /// Get PoC media type
+    public fun get_poc_media_type(post: &Post): &Option<u8> {
+        &post.poc_media_type
+    }
+
+    /// Get PoC oracle address
+    public fun get_poc_oracle_address(post: &Post): &Option<address> {
+        &post.poc_oracle_address
+    }
+
+    /// Get PoC analysis timestamp
+    public fun get_poc_analyzed_at(post: &Post): &Option<u64> {
+        &post.poc_analyzed_at
+    }
+
+    /// Get the SPoT record ID for a post
+    public fun get_spot_id(post: &Post): &Option<address> {
+        &post.spot_id
+    }
+
+    /// Get the SPT pool ID for a post
+    public fun get_spt_id(post: &Post): &Option<address> {
+        &post.spt_id
+    }
+
+    /// Internal function to set SPoT record ID (package visibility only)
+    public(package) fun set_spot_id(post: &mut Post, spot_id: address) {
+        post.spot_id = option::some(spot_id);
+    }
+
+    /// Internal function to set SPT pool ID (package visibility only)
+    public(package) fun set_spt_id(post: &mut Post, spt_id: address) {
+        post.spt_id = option::some(spt_id);
     }
 
     /// Comment object for posts, supporting nested comments
@@ -308,14 +363,6 @@ module social_contracts::post {
         repost_tip_percentage: u64,
     }
 
-    /// Event emitted when auto pool disabled flag is updated
-    public struct AutoPoolDisabledUpdatedEvent has copy, drop {
-        post_id: address,
-        owner: address,
-        disabled: bool,
-        timestamp: u64,
-    }
-
     /// Post created event
     public struct PostCreatedEvent has copy, drop {
         post_id: address,
@@ -329,10 +376,13 @@ module social_contracts::post {
         metadata_json: Option<String>,
         mydata_id: Option<address>,
         promotion_id: Option<address>,
-        poc_badge_id: Option<ID>,
         revenue_redirect_to: Option<address>,
         revenue_redirect_percentage: Option<u64>,
-        disable_auto_pool: bool,
+        enable_spt: bool,
+        enable_poc: bool,
+        enable_spot: bool,
+        spot_id: Option<address>,
+        spt_id: Option<address>,
     }
 
     /// Comment created event
@@ -554,12 +604,13 @@ module social_contracts::post {
         allow_reposts: bool,
         allow_quotes: bool,
         allow_tips: bool,
-        poc_badge_id: Option<ID>,
         revenue_redirect_to: Option<address>,
         revenue_redirect_percentage: Option<u64>,
         mydata_id: Option<address>,
         promotion_id: Option<address>,
-        disable_auto_pool: bool,
+        enable_spt: bool,
+        enable_poc: bool,
+        enable_spot: bool,
         ctx: &mut TxContext
     ): address {
         let post = Post {
@@ -585,12 +636,21 @@ module social_contracts::post {
             allow_reposts,
             allow_quotes,
             allow_tips,
-            poc_badge_id,
+            poc_reasoning: option::none(),
+            poc_evidence_urls: option::none(),
+            poc_similarity_score: option::none(),
+            poc_media_type: option::none(),
+            poc_oracle_address: option::none(),
+            poc_analyzed_at: option::none(),
             revenue_redirect_to,
             revenue_redirect_percentage,
             mydata_id,
             promotion_id,
-            disable_auto_pool,
+            enable_spt,
+            enable_poc,
+            enable_spot,
+            spot_id: option::none(), // Will be set when SPoT record is created
+            spt_id: option::none(), // Will be set when SPT pool is created
             version: upgrade::current_version(),
         };
         
@@ -605,7 +665,7 @@ module social_contracts::post {
     }
 
     /// Create a new post with interaction permissions
-    public entry fun create_post(
+    public fun create_post(
         registry: &UsernameRegistry,
         platform_registry: &platform::PlatformRegistry,
         platform: &platform::Platform,
@@ -620,6 +680,9 @@ module social_contracts::post {
         allow_reposts: Option<bool>,
         allow_quotes: Option<bool>,
         allow_tips: Option<bool>,
+        enable_spt: Option<bool>,
+        enable_poc: Option<bool>,
+        enable_spot: Option<bool>,
         ctx: &mut TxContext
     ) {
         let owner = tx_context::sender(ctx);
@@ -704,6 +767,23 @@ module social_contracts::post {
             true // Default to allowing tips
         };
         
+        // Set defaults for feature flags (default to opt-out - users must explicitly opt-in)
+        let final_enable_spt = if (option::is_some(&enable_spt)) {
+            *option::borrow(&enable_spt)
+        } else {
+            false // Default to opt-out (user must explicitly opt-in)
+        };
+        let final_enable_poc = if (option::is_some(&enable_poc)) {
+            *option::borrow(&enable_poc)
+        } else {
+            false // Default to opt-out (user must explicitly opt-in)
+        };
+        let final_enable_spot = if (option::is_some(&enable_spot)) {
+            *option::borrow(&enable_spot)
+        } else {
+            false // Default to opt-out (user must explicitly opt-in)
+        };
+        
         // Convert media URLs to strings for event (before moving media_option)
         let media_urls_for_event = convert_urls_to_strings(&media_option);
         
@@ -722,12 +802,13 @@ module social_contracts::post {
             final_allow_reposts,
             final_allow_quotes,
             final_allow_tips,
-            option::none(), // poc_badge_id
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
             option::none(), // mydata_id
             option::none(), // promotion_id
-            true, // disable_auto_pool - default to disabling auto pool
+            final_enable_spt,
+            final_enable_poc,
+            final_enable_spot,
             ctx
         );
         
@@ -744,17 +825,21 @@ module social_contracts::post {
             metadata_json,
             mydata_id: option::none(),
             promotion_id: option::none(),
-            poc_badge_id: option::none(),
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
-            disable_auto_pool: true, // disable_auto_pool value used in create_post_internal
+            enable_spt: final_enable_spt,
+            enable_poc: final_enable_poc,
+            enable_spot: final_enable_spot,
+            spot_id: option::none(),
+            spt_id: option::none(),
         });
     }
 
     /// Create a comment on a post or a reply to another comment
     /// Returns the ID of the created comment
-    public entry fun create_comment(
+    public fun create_comment(
         registry: &UsernameRegistry,
+        platform_registry: &platform::PlatformRegistry,
         platform: &platform::Platform,
         block_list_registry: &BlockListRegistry,
         config: &PostConfig,
@@ -772,6 +857,10 @@ module social_contracts::post {
         let mut profile_id_option = social_contracts::profile::lookup_profile_by_owner(registry, owner);
         assert!(option::is_some(&profile_id_option), EUnauthorized);
         let profile_id = option::extract(&mut profile_id_option);
+        
+        // Check if platform is approved
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
         
         // Check if user has joined the platform (by wallet address)
         assert!(platform::has_joined_platform(platform, owner), EUserNotJoinedPlatform);
@@ -879,7 +968,7 @@ module social_contracts::post {
     /// Create a repost or quote repost depending on provided parameters
     /// If content is provided, it's treated as a quote repost
     /// If content is empty/none, it's treated as a standard repost
-    public entry fun create_repost(
+    public fun create_repost(
         registry: &UsernameRegistry,
         platform_registry: &platform::PlatformRegistry,
         platform: &platform::Platform,
@@ -895,7 +984,9 @@ module social_contracts::post {
         allow_reposts: Option<bool>,
         allow_quotes: Option<bool>,
         allow_tips: Option<bool>,
-        disable_auto_pool: Option<bool>,
+        enable_spt: Option<bool>,
+        enable_poc: Option<bool>,
+        enable_spot: Option<bool>,
         ctx: &mut TxContext
     ) {
         let owner = tx_context::sender(ctx);
@@ -1042,11 +1133,21 @@ module social_contracts::post {
             true // Default to allowing tips
         };
         
-        // Set default for disable_auto_pool
-        let final_disable_auto_pool = if (option::is_some(&disable_auto_pool)) {
-            *option::borrow(&disable_auto_pool)
+        // Set defaults for feature flags (default to opt-out - users must explicitly opt-in)
+        let final_enable_spt = if (option::is_some(&enable_spt)) {
+            *option::borrow(&enable_spt)
         } else {
-            true // Default to disabling auto pool - users must opt-in
+            false // Default to opt-out (user must explicitly opt-in)
+        };
+        let final_enable_poc = if (option::is_some(&enable_poc)) {
+            *option::borrow(&enable_poc)
+        } else {
+            false // Default to opt-out (user must explicitly opt-in)
+        };
+        let final_enable_spot = if (option::is_some(&enable_spot)) {
+            *option::borrow(&enable_spot)
+        } else {
+            false // Default to opt-out (user must explicitly opt-in)
         };
         
         // Convert media URLs to strings for event (before moving media_option)
@@ -1067,12 +1168,13 @@ module social_contracts::post {
             final_allow_reposts,
             final_allow_quotes,
             final_allow_tips,
-            option::none(), // poc_badge_id
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
             option::none(), // No MyData for reposts
             option::none(), // promotion_id
-            final_disable_auto_pool,
+            final_enable_spt,
+            final_enable_poc,
+            final_enable_spot,
             ctx
         );
         
@@ -1089,15 +1191,18 @@ module social_contracts::post {
             metadata_json,
             mydata_id: option::none(),
             promotion_id: option::none(),
-            poc_badge_id: option::none(),
             revenue_redirect_to: option::none(),
             revenue_redirect_percentage: option::none(),
-            disable_auto_pool: final_disable_auto_pool, // disable_auto_pool value used in create_post_internal
+            enable_spt: final_enable_spt,
+            enable_poc: final_enable_poc,
+            enable_spot: final_enable_spot,
+            spot_id: option::none(),
+            spt_id: option::none(),
         });
     }
 
     /// Delete a post owned by the caller
-    public entry fun delete_post(
+    public fun delete_post(
         post: Post,
         ctx: &mut TxContext
     ) {
@@ -1137,12 +1242,21 @@ module social_contracts::post {
             allow_reposts: _,
             allow_quotes: _,
             allow_tips: _,
-            poc_badge_id: _,
             revenue_redirect_to: _,
             revenue_redirect_percentage: _,
+            poc_reasoning: _,
+            poc_evidence_urls: _,
+            poc_similarity_score: _,
+            poc_media_type: _,
+            poc_oracle_address: _,
+            poc_analyzed_at: _,
             mydata_id: _,
             promotion_id: _,
-            disable_auto_pool: _,
+            enable_spt: _,
+            enable_poc: _,
+            enable_spot: _,
+            spot_id: _,
+            spt_id: _,
             version: _,
         } = post;
         
@@ -1155,7 +1269,7 @@ module social_contracts::post {
     }
     
     /// Delete a comment owned by the caller
-    public entry fun delete_comment(
+    public fun delete_comment(
         post: &mut Post,
         comment: Comment,
         ctx: &mut TxContext
@@ -1212,13 +1326,27 @@ module social_contracts::post {
 
     /// React to a post with a specific reaction (emoji or text)
     /// If the user already has the exact same reaction, it will be removed (toggle behavior)
-    public entry fun react_to_post(
+    public fun react_to_post(
         post: &mut Post,
+        platform_registry: &platform::PlatformRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
         reaction: String,
         ctx: &mut TxContext
     ) {
         let user = tx_context::sender(ctx);
+        
+        // Check if platform is approved
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
+        
+        // Check if user has joined the platform (by wallet address)
+        assert!(platform::has_joined_platform(platform, user), EUserNotJoinedPlatform);
+        
+        // Check if the user is blocked by the platform
+        let platform_address = object::uid_to_address(platform::id(platform));
+        assert!(!block_list::is_blocked(block_list_registry, platform_address, user), EUserBlockedByPlatform);
         
         // Validate reaction length using config
         assert!(string::length(&reaction) <= config.max_reaction_length, EReactionContentTooLong);
@@ -1299,7 +1427,7 @@ module social_contracts::post {
 
     /// Tip a post creator with any supported coin type (with PoC revenue redirection support)
     /// Supports MYS and MYUSD
-    public entry fun tip_post<T>(
+    public fun tip_post<T>(
         post: &mut Post,
         coins: &mut Coin<T>,
         amount: u64,
@@ -1414,18 +1542,31 @@ module social_contracts::post {
     public(package) fun update_poc_result(
         post: &mut Post,
         result_type: u8, // 1 = badge issued, 2 = redirection applied
-        badge_id: Option<ID>,
         redirect_to: Option<address>,
-        redirect_percentage: Option<u64>
+        redirect_percentage: Option<u64>,
+        reasoning: Option<String>,
+        evidence_urls: Option<vector<String>>,
+        similarity_score: u64,
+        media_type: u8,
+        oracle_address: address,
+        analyzed_at: u64
     ) {
+        // Store PoC analysis metadata (same for both badge and redirection)
+        post.poc_reasoning = reasoning;
+        post.poc_evidence_urls = evidence_urls;
+        post.poc_similarity_score = option::some(similarity_score);
+        post.poc_media_type = option::some(media_type);
+        post.poc_oracle_address = option::some(oracle_address);
+        post.poc_analyzed_at = option::some(analyzed_at);
+        
         if (result_type == 1) {
             // PoC badge issued - content is original
-            post.poc_badge_id = badge_id;
+            // Clear any existing revenue redirection
             post.revenue_redirect_to = option::none();
             post.revenue_redirect_percentage = option::none();
+            // Note: Badge status tracked via PoCBadgeIssuedEvent
         } else if (result_type == 2) {
             // Revenue redirection applied - content is derivative
-            post.poc_badge_id = option::none();
             post.revenue_redirect_to = redirect_to;
             post.revenue_redirect_percentage = redirect_percentage;
         };
@@ -1433,14 +1574,20 @@ module social_contracts::post {
 
     /// Internal function to clear PoC data after dispute resolution
     public(package) fun clear_poc_data(post: &mut Post) {
-        post.poc_badge_id = option::none();
         post.revenue_redirect_to = option::none();
         post.revenue_redirect_percentage = option::none();
+        post.poc_reasoning = option::none();
+        post.poc_evidence_urls = option::none();
+        post.poc_similarity_score = option::none();
+        post.poc_media_type = option::none();
+        post.poc_oracle_address = option::none();
+        post.poc_analyzed_at = option::none();
+        // Note: Badge revocation tracked via PoCDisputeResolvedEvent
     }
      
      /// Tip a repost with any supported coin type - applies 50/50 split between repost owner and original post owner
      /// Supports MYS and MYUSD
-    public entry fun tip_repost<T>(
+    public fun tip_repost<T>(
         post: &mut Post, // The repost
         original_post: &mut Post, // The original post
         config: &PostConfig,
@@ -1562,7 +1709,7 @@ module social_contracts::post {
     /// Tip a comment with any supported coin type
     /// Supports MYS and MYUSD
     /// Split is 80% to commenter, 20% to post owner (with PoC redirection on post owner's share)
-    public entry fun tip_comment<T>(
+    public fun tip_comment<T>(
         comment: &mut Comment,
         post: &mut Post,
         config: &PostConfig,
@@ -1629,7 +1776,7 @@ module social_contracts::post {
     }
 
     /// Transfer post ownership to another user (by post owner)
-    public entry fun transfer_post_ownership(
+    public fun transfer_post_ownership(
         post: &mut Post,
         new_owner: address,
         registry: &UsernameRegistry,
@@ -1663,7 +1810,7 @@ module social_contracts::post {
     }
 
     /// Admin function to transfer post ownership (requires PostAdminCap)
-    public entry fun admin_transfer_post_ownership(
+    public fun admin_transfer_post_ownership(
         _: &PostAdminCap,
         post: &mut Post,
         new_owner: address,
@@ -1695,7 +1842,7 @@ module social_contracts::post {
     }
 
     /// Moderate a post (remove/restore from platform)
-    public entry fun moderate_post(
+    public fun moderate_post(
         post: &mut Post,
         platform: &platform::Platform,
         platform_registry: &platform::PlatformRegistry,
@@ -1727,7 +1874,7 @@ module social_contracts::post {
     }
 
     /// Moderate a comment (remove/restore from platform)
-    public entry fun moderate_comment(
+    public fun moderate_comment(
         comment: &mut Comment,
         platform: &platform::Platform,
         platform_registry: &platform::PlatformRegistry,
@@ -1759,7 +1906,7 @@ module social_contracts::post {
     }
 
     /// Update an existing post
-    public entry fun update_post(
+    public fun update_post(
         post: &mut Post,
         config: &PostConfig,
         content: String,
@@ -1825,7 +1972,7 @@ module social_contracts::post {
     }
 
     /// Update an existing comment
-    public entry fun update_comment(
+    public fun update_comment(
         comment: &mut Comment,
         config: &PostConfig,
         content: String,
@@ -1861,7 +2008,7 @@ module social_contracts::post {
     }
 
     /// Report a post
-    public entry fun report_post(
+    public fun report_post(
         post: &Post,
         config: &PostConfig,
         reason_code: u8,
@@ -1897,7 +2044,7 @@ module social_contracts::post {
     }
 
     /// Report a comment
-    public entry fun report_comment(
+    public fun report_comment(
         comment: &Comment,
         config: &PostConfig,
         reason_code: u8,
@@ -1934,13 +2081,27 @@ module social_contracts::post {
 
     /// React to a comment with a specific reaction (emoji or text)
     /// If the user already has the exact same reaction, it will be removed (toggle behavior)
-    public entry fun react_to_comment(
+    public fun react_to_comment(
         comment: &mut Comment,
+        platform_registry: &platform::PlatformRegistry,
+        platform: &platform::Platform,
+        block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
         reaction: String,
         ctx: &mut TxContext
     ) {
         let user = tx_context::sender(ctx);
+        
+        // Check if platform is approved
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
+        
+        // Check if user has joined the platform (by wallet address)
+        assert!(platform::has_joined_platform(platform, user), EUserNotJoinedPlatform);
+        
+        // Check if the user is blocked by the platform
+        let platform_address = object::uid_to_address(platform::id(platform));
+        assert!(!block_list::is_blocked(block_list_registry, platform_address, user), EUserBlockedByPlatform);
         
         // Validate reaction length using config
         assert!(string::length(&reaction) <= config.max_reaction_length, EReactionContentTooLong);
@@ -2061,10 +2222,6 @@ module social_contracts::post {
         post.tips_received
     }
 
-    /// Get the PoC badge ID for a post
-    public fun get_poc_badge_id(post: &Post): &Option<ID> {
-        &post.poc_badge_id
-    }
 
     /// Get the revenue redirect address for a post
     public fun get_revenue_redirect_to(post: &Post): &Option<address> {
@@ -2124,12 +2281,46 @@ module social_contracts::post {
             true, // allow_reposts
             true, // allow_quotes
             true, // allow_tips
-            option::none(), // poc_badge_id
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
             option::none(), // No MyData ID
             option::none(), // promotion_id
-            true, // disable_auto_pool - default to disabling auto pool
+            false, // enable_spt - default to opt-out
+            false, // enable_poc - default to opt-out
+            false, // enable_spot - default to opt-out
+            ctx
+        )
+    }
+
+    /// Test helper to create a post with SPoT enabled
+    #[test_only]
+    public fun test_create_post_with_spot(
+        owner: address,
+        profile_id: address,
+        content: String,
+        ctx: &mut TxContext
+    ): address {
+        create_post_internal(
+            owner,
+            profile_id,
+            content,
+            option::none(), // No media
+            option::none(), // No mentions
+            option::none(), // No metadata
+            string::utf8(POST_TYPE_STANDARD), // Standard post type
+            option::none(), // No parent post
+            true, // allow_comments
+            true, // allow_reactions
+            true, // allow_reposts
+            true, // allow_quotes
+            true, // allow_tips
+            option::none(), // revenue_redirect_to
+            option::none(), // revenue_redirect_percentage
+            option::none(), // No MyData ID
+            option::none(), // promotion_id
+            false, // enable_spt - default to opt-out
+            false, // enable_poc - default to opt-out
+            true, // enable_spot - enable SPoT for tests
             ctx
         )
     }
@@ -2173,12 +2364,13 @@ module social_contracts::post {
             true, // allow_reposts
             true, // allow_quotes
             true, // allow_tips
-            option::none(), // poc_badge_id
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
             option::none(), // mydata_id
             option::some(promotion_id), // promotion_id
-            true, // disable_auto_pool - default to disabling auto pool
+            false, // enable_spt - default to opt-out
+            false, // enable_poc - default to opt-out
+            false, // enable_spot - default to opt-out
             ctx
         );
         
@@ -2283,7 +2475,7 @@ module social_contracts::post {
     }
 
     /// Migration function for Post
-    public entry fun migrate_post(
+    public fun migrate_post(
         post: &mut Post,
         _: &UpgradeAdminCap,
         ctx: &mut TxContext
@@ -2310,7 +2502,7 @@ module social_contracts::post {
     }
 
     /// Migration function for Comment
-    public entry fun migrate_comment(
+    public fun migrate_comment(
         comment: &mut Comment,
         _: &UpgradeAdminCap,
         ctx: &mut TxContext
@@ -2337,7 +2529,7 @@ module social_contracts::post {
     }
 
     /// Migration function for Repost
-    public entry fun migrate_repost(
+    public fun migrate_repost(
         repost: &mut Repost,
         _: &UpgradeAdminCap,
         ctx: &mut TxContext
@@ -2366,7 +2558,7 @@ module social_contracts::post {
 
 
     /// Update post parameters (admin only)
-    public entry fun update_post_parameters(
+    public fun update_post_parameters(
         _admin_cap: &PostAdminCap,
         config: &mut PostConfig,
         max_content_length: u64,
@@ -2416,7 +2608,7 @@ module social_contracts::post {
         registry: &UsernameRegistry,
         platform_registry: &platform::PlatformRegistry,
         platform: &platform::Platform,
-        _block_list_registry: &block_list::BlockListRegistry,
+        block_list_registry: &block_list::BlockListRegistry,
         config: &PostConfig,
         content: String,
         mut media_urls: Option<vector<String>>,
@@ -2425,6 +2617,9 @@ module social_contracts::post {
         mydata_id: Option<address>,
         payment_per_view: u64,
         promotion_budget: Coin<MYS>,
+        enable_spt: Option<bool>,
+        enable_poc: Option<bool>,
+        enable_spot: Option<bool>,
         ctx: &mut TxContext
     ) {
         let owner = tx_context::sender(ctx);
@@ -2443,8 +2638,11 @@ module social_contracts::post {
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), EUnauthorized);
         
-        // Validate block list - simplified for this implementation
-        // assert!(!block_list::is_profile_blocked(block_list_registry, profile_id), EUserBlockedByPlatform);
+        // Check if user has joined the platform (by wallet address)
+        assert!(platform::has_joined_platform(platform, owner), EUserNotJoinedPlatform);
+        
+        // Check if the user is blocked by the platform
+        assert!(!block_list::is_blocked(block_list_registry, platform_id, owner), EUserBlockedByPlatform);
         
         // Validate content length using config
         assert!(string::length(&content) <= config.max_content_length, EContentTooLarge);
@@ -2494,6 +2692,23 @@ module social_contracts::post {
         
         let promotion_id = object::uid_to_address(&promotion_data.id);
         
+        // Set defaults for feature flags (default to opt-out - users must explicitly opt-in)
+        let final_enable_spt = if (option::is_some(&enable_spt)) {
+            *option::borrow(&enable_spt)
+        } else {
+            false // Default to opt-out (user must explicitly opt-in)
+        };
+        let final_enable_poc = if (option::is_some(&enable_poc)) {
+            *option::borrow(&enable_poc)
+        } else {
+            false // Default to opt-out (user must explicitly opt-in)
+        };
+        let final_enable_spot = if (option::is_some(&enable_spot)) {
+            *option::borrow(&enable_spot)
+        } else {
+            false // Default to opt-out (user must explicitly opt-in)
+        };
+        
         // Create and share the post
         let post_id = create_post_internal(
             owner,
@@ -2509,12 +2724,13 @@ module social_contracts::post {
             true, // allow_reposts
             true, // allow_quotes
             true, // allow_tips
-            option::none(), // poc_badge_id
             option::none(), // revenue_redirect_to
             option::none(), // revenue_redirect_percentage
             mydata_id,
             option::some(promotion_id),
-            true, // disable_auto_pool - default to disabling auto pool
+            final_enable_spt,
+            final_enable_poc,
+            final_enable_spot,
             ctx
         );
         
@@ -2539,7 +2755,7 @@ module social_contracts::post {
     }
 
     /// Confirm a user has viewed a promoted post and pay them (platform only)
-    public entry fun confirm_promoted_post_view(
+    public fun confirm_promoted_post_view(
         post: &Post,
         promotion_data: &mut PromotionData,
         platform_obj: &platform::Platform,
@@ -2551,6 +2767,17 @@ module social_contracts::post {
         // Verify this is a platform call (platform developer or moderator)
         let caller = tx_context::sender(ctx);
         assert!(platform::is_developer_or_moderator(platform_obj, caller), EUnauthorized);
+        
+        // Verify the platform object is approved (ensures legitimate platform)
+        let platform_id = object::uid_to_address(platform::id(platform_obj));
+        // Note: Cannot verify this matches post's original platform without storing platform_id in Post
+        // This at least ensures the platform_obj is a valid, approved platform
+        
+        // Verify viewer_address has joined the platform (prevents paying fake addresses)
+        assert!(platform::has_joined_platform(platform_obj, viewer_address), EUserNotJoinedPlatform);
+        
+        // Prevent platform from paying themselves
+        assert!(viewer_address != caller, EUnauthorized);
         
         // Verify the post is promoted
         assert!(option::is_some(&post.promotion_id), ENotPromotedPost);
@@ -2574,7 +2801,7 @@ module social_contracts::post {
             viewer: viewer_address,
             view_duration,
             view_timestamp: clock::timestamp_ms(clock),
-            platform_id: caller, // Use caller as platform identifier
+            platform_id: object::uid_to_address(platform::id(platform_obj)), // Platform object ID
         };
         vector::push_back(&mut promotion_data.views, view_record);
         
@@ -2597,7 +2824,7 @@ module social_contracts::post {
             viewer: viewer_address,
             payment_amount: promotion_data.payment_per_view,
             view_duration,
-            platform_id: caller, // Use caller as platform identifier
+            platform_id: object::uid_to_address(platform::id(platform_obj)), // Platform object ID
             timestamp: clock::timestamp_ms(clock),
         });
     }
@@ -2605,7 +2832,7 @@ module social_contracts::post {
 
     /// Toggle promotion status (platform can activate, both platform and owner can deactivate)
     /// Use with activate: false to deactivate promotions
-    public entry fun toggle_promotion_status(
+    public fun toggle_promotion_status(
         post: &Post,
         promotion_data: &mut PromotionData,
         platform_obj: &platform::Platform,
@@ -2641,7 +2868,8 @@ module social_contracts::post {
     }
 
     /// Withdraw all MYS tokens from promotion (owner only, deactivates promotion)
-    public entry fun withdraw_promotion_funds(
+    #[allow(lint(self_transfer))]
+    public fun withdraw_promotion_funds(
         post: &Post,
         promotion_data: &mut PromotionData,
         ctx: &mut TxContext
@@ -2697,7 +2925,7 @@ module social_contracts::post {
     }
 
     /// Set moderation status for a post (platform devs/mods only)
-    public entry fun set_moderation_status(
+    public fun set_moderation_status(
         post: &mut Post,
         platform: &platform::Platform,
         platform_registry: &platform::PlatformRegistry,
