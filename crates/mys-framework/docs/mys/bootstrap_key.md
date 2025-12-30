@@ -8,7 +8,7 @@ Ensures all admin capabilities can only be created once during initial bootstrap
 
 -  [Struct `BootstrapKey`](#mys_bootstrap_key_BootstrapKey)
 -  [Constants](#@Constants_0)
--  [Function `init`](#mys_bootstrap_key_init)
+-  [Function `bootstrap_init`](#mys_bootstrap_key_bootstrap_init)
 -  [Function `is_used`](#mys_bootstrap_key_is_used)
 -  [Function `version`](#mys_bootstrap_key_version)
 -  [Function `assert_not_used`](#mys_bootstrap_key_assert_not_used)
@@ -81,14 +81,24 @@ Bootstrap key has already been used
 
 
 
-<a name="mys_bootstrap_key_init"></a>
+<a name="mys_bootstrap_key_ENotSystemAddress"></a>
 
-## Function `init`
+Sender is not @0x0 the system address.
+
+
+<pre><code><b>const</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key_ENotSystemAddress">ENotSystemAddress</a>: u64 = 1;
+</code></pre>
+
+
+
+<a name="mys_bootstrap_key_bootstrap_init"></a>
+
+## Function `bootstrap_init`
 
 Creates the shared BootstrapKey on module publication
 
 
-<pre><code><b>fun</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key_init">init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -97,7 +107,8 @@ Creates the shared BootstrapKey on module publication
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key_init">init</a>(ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
+    <b>assert</b>!(ctx.sender() == @0x0, <a href="../mys/bootstrap_key.md#mys_bootstrap_key_ENotSystemAddress">ENotSystemAddress</a>);
     <a href="../mys/transfer.md#mys_transfer_share_object">transfer::share_object</a>(<a href="../mys/bootstrap_key.md#mys_bootstrap_key_BootstrapKey">BootstrapKey</a> {
         id: <a href="../mys/object.md#mys_object_new">object::new</a>(ctx),
         used: <b>false</b>,

@@ -9,6 +9,8 @@ module mys::bootstrap_key;
 
 /// Bootstrap key has already been used
 const EAlreadyUsed: u64 = 0;
+/// Sender is not @0x0 the system address.
+const ENotSystemAddress: u64 = 1;
 
 /// One-time bootstrap key - protects all admin capability creation
 public struct BootstrapKey has key {
@@ -18,7 +20,9 @@ public struct BootstrapKey has key {
 }
 
 /// Creates the shared BootstrapKey on module publication
-fun init(ctx: &mut TxContext) {
+public fun bootstrap_init(ctx: &mut TxContext) {
+    assert!(ctx.sender() == @0x0, ENotSystemAddress);
+
     transfer::share_object(BootstrapKey {
         id: object::new(ctx),
         used: false,
@@ -49,7 +53,7 @@ public fun finalize_bootstrap(key: &mut BootstrapKey) {
 
 #[test_only]
 public fun init_for_testing(ctx: &mut TxContext) {
-    init(ctx)
+    bootstrap_init(ctx)
 }
 
 #[test_only]

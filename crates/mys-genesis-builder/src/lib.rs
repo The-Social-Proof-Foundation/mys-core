@@ -1114,6 +1114,15 @@ pub fn generate_genesis_system_object(
             vec![],
         )?;
 
+        // Step 2.5: Initialize BootstrapKey
+        builder.move_call(
+            MYS_FRAMEWORK_ADDRESS.into(),
+            ident_str!("bootstrap_key").to_owned(),
+            ident_str!("bootstrap_init").to_owned(),
+            vec![],
+            vec![],
+        )?;
+
         // Step 3: Create ProtocolConfig-controlled system objects, unless disabled (which only
         // happens in tests).
         if protocol_config.create_authenticator_state_in_genesis() {

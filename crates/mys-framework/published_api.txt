@@ -1753,8 +1753,8 @@ uncompressed_g1_sum
 BootstrapKey
 	public struct
 	0x2::bootstrap_key
-init
-	fun
+bootstrap_init
+	public fun
 	0x2::bootstrap_key
 is_used
 	public fun
