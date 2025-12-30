@@ -2080,7 +2080,7 @@ CurrencyCreated
 DenyCap
 	public struct
 	0x2::coin
-create_coin_creation_admin_cap
+create_coin_creation_admin_cap_for_bootstrap
 	public fun
 	0x2::coin
 total_supply

@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1764406800000 # 1764402584000
+  chain_start_timestamp_ms: 1767096000000 # 1767081600000
 
   # Protocol version
   protocol_version: 75  # Latest version
@@ -43,7 +43,7 @@ accounts:
   # Social Proof Foundation
   - address: "0x14c3080e1f3e12e0d9a51bfd13bb4e4cdbb02d4539928ae2fa54e5917b8ea925"
     gas_amounts:
-      - 596200000000000000 # 696,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators - 150 mill from staking subsidy)
+      - 646200000000000000 # 646,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators - 150 mill from staking subsidy)
   # Core Team
   - address: "0xbd06a84576d91fc9dfd02b58dd09944ed004fdaa8b969d964456372a323c3a44"
     gas_amounts:

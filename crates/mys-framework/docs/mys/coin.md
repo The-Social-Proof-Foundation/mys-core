@@ -16,7 +16,7 @@ tokens and coins. <code><a href="../mys/coin.md#mys_coin_Coin">Coin</a></code> c
 -  [Struct `CurrencyCreated`](#mys_coin_CurrencyCreated)
 -  [Struct `DenyCap`](#mys_coin_DenyCap)
 -  [Constants](#@Constants_0)
--  [Function `create_coin_creation_admin_cap`](#mys_coin_create_coin_creation_admin_cap)
+-  [Function `create_coin_creation_admin_cap_for_bootstrap`](#mys_coin_create_coin_creation_admin_cap_for_bootstrap)
 -  [Function `total_supply`](#mys_coin_total_supply)
 -  [Function `treasury_into_supply`](#mys_coin_treasury_into_supply)
 -  [Function `supply_immut`](#mys_coin_supply_immut)
@@ -68,7 +68,6 @@ tokens and coins. <code><a href="../mys/coin.md#mys_coin_Coin">Coin</a></code> c
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
-<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
 <b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
 <b>use</b> <a href="../mys/dynamic_field.md#mys_dynamic_field">mys::dynamic_field</a>;
@@ -440,14 +439,15 @@ Trying to split a coin more times than its balance allows.
 
 
 
-<a name="mys_coin_create_coin_creation_admin_cap"></a>
+<a name="mys_coin_create_coin_creation_admin_cap_for_bootstrap"></a>
 
-## Function `create_coin_creation_admin_cap`
+## Function `create_coin_creation_admin_cap_for_bootstrap`
 
-Create the coin creation admin capability (one-time only, requires BootstrapKey)
+Create CoinCreationAdminCap for bootstrap (called by bootstrap module)
+Bootstrap module handles BootstrapKey check before calling this
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap">create_coin_creation_admin_cap</a>(<a href="../mys/bootstrap_key.md#mys_bootstrap_key">bootstrap_key</a>: &<a href="../mys/bootstrap_key.md#mys_bootstrap_key_BootstrapKey">mys::bootstrap_key::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">mys::coin::CoinCreationAdminCap</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap_for_bootstrap">create_coin_creation_admin_cap_for_bootstrap</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">mys::coin::CoinCreationAdminCap</a>
 </code></pre>
 
 
@@ -456,11 +456,9 @@ Create the coin creation admin capability (one-time only, requires BootstrapKey)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap">create_coin_creation_admin_cap</a>(
-    <a href="../mys/bootstrap_key.md#mys_bootstrap_key">bootstrap_key</a>: &<a href="../mys/bootstrap_key.md#mys_bootstrap_key_BootstrapKey">mys::bootstrap_key::BootstrapKey</a>,
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap_for_bootstrap">create_coin_creation_admin_cap_for_bootstrap</a>(
     ctx: &<b>mut</b> TxContext
 ): <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> {
-    <a href="../mys/bootstrap_key.md#mys_bootstrap_key_assert_not_used">mys::bootstrap_key::assert_not_used</a>(<a href="../mys/bootstrap_key.md#mys_bootstrap_key">bootstrap_key</a>);
     <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> {
         id: <a href="../mys/object.md#mys_object_new">object::new</a>(ctx)
     }

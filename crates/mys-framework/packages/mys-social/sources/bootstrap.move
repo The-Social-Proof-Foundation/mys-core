@@ -57,7 +57,7 @@ module social_contracts::bootstrap {
         transfer::public_transfer(mydata::create_mydata_admin_cap(ctx), admin);
         transfer::public_transfer(social_proof_of_truth::create_spot_admin_cap(ctx), admin);
         transfer::public_transfer(social_proof_of_truth::create_spot_oracle_admin_cap(ctx), admin);
-        transfer::public_transfer(coin::create_coin_creation_admin_cap(bootstrap_key, ctx), admin);
+        transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(ctx), admin);
 
         // Seal the bootstrap key permanently (prevents any future bootstrap attempts)
         bootstrap_key::finalize_bootstrap(bootstrap_key);

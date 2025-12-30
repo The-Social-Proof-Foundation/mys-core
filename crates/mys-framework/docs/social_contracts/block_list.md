@@ -37,7 +37,6 @@ Manages user blocking between wallet addresses
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
-<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;

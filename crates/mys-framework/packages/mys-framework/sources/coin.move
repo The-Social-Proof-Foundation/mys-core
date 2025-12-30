@@ -46,12 +46,11 @@ public struct CoinCreationAdminCap has key, store {
     id: UID,
 }
 
-/// Create the coin creation admin capability (one-time only, requires BootstrapKey)
-public fun create_coin_creation_admin_cap(
-    bootstrap_key: &mys::bootstrap_key::BootstrapKey,
+/// Create CoinCreationAdminCap for bootstrap (called by bootstrap module)
+/// Bootstrap module handles BootstrapKey check before calling this
+public fun create_coin_creation_admin_cap_for_bootstrap(
     ctx: &mut TxContext
 ): CoinCreationAdminCap {
-    mys::bootstrap_key::assert_not_used(bootstrap_key);
     CoinCreationAdminCap {
         id: object::new(ctx)
     }
