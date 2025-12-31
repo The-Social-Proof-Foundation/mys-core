@@ -118,6 +118,7 @@ module social_contracts::social_proof_of_truth {
         escrow: Balance<MYS>,
         betting_options: vector<String>,
         option_escrow: Table<u8, u64>,
+        user_option_amounts: Table<address, vector<u64>>,
         bets: vector<SpotBet>,
         resolution_window_epochs: Option<u64>,
         max_resolution_window_epochs: Option<u64>,
@@ -204,6 +205,30 @@ module social_contracts::social_proof_of_truth {
             0
         }
     }
+    public fun get_id_address(rec: &SpotRecord): address {
+        object::uid_to_address(&rec.id)
+    }
+    public fun get_outcome(rec: &SpotRecord): &Option<u8> { &rec.outcome }
+    public fun is_open(rec: &SpotRecord): bool { rec.status == STATUS_OPEN }
+    public fun is_resolved(rec: &SpotRecord): bool { rec.status == STATUS_RESOLVED }
+    public fun outcome_draw(): u8 { OUTCOME_DRAW }
+    public fun outcome_unapplicable(): u8 { OUTCOME_UNAPPLICABLE }
+    public fun get_user_option_amount(rec: &SpotRecord, user: address, option_id: u8): u64 {
+        if (!table::contains(&rec.user_option_amounts, user)) {
+            0
+        } else {
+            let amounts = table::borrow(&rec.user_option_amounts, user);
+            let idx = option_id as u64;
+            if (idx >= vector::length(amounts)) {
+                0
+            } else {
+                *vector::borrow(amounts, idx)
+            }
+        }
+    }
+
+    // Public getter for SpotConfig
+    public fun is_enabled(config: &SpotConfig): bool { config.enable_flag }
 
     // Bootstrap
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
@@ -359,6 +384,7 @@ module social_contracts::social_proof_of_truth {
             escrow: balance::zero(),
             betting_options,
             option_escrow: table::new(ctx),
+            user_option_amounts: table::new(ctx),
             bets: vector::empty<SpotBet>(),
             resolution_window_epochs,
             max_resolution_window_epochs,
@@ -442,6 +468,18 @@ module social_contracts::social_proof_of_truth {
                 *escrow_ref = current_escrow - bet.amount;
             };
         };
+
+        if (table::contains(&record.user_option_amounts, bet.user)) {
+            let user_amounts = table::borrow_mut(&mut record.user_option_amounts, bet.user);
+            let idx = bet.option_id as u64;
+            if (idx < vector::length(user_amounts)) {
+                let current_user_amount = *vector::borrow(user_amounts, idx);
+                if (current_user_amount >= bet.amount) {
+                    let user_amount_ref = vector::borrow_mut(user_amounts, idx);
+                    *user_amount_ref = current_user_amount - bet.amount;
+                };
+            };
+        };
         
         // Remove bet from vector (swap with last and pop)
         let last_index = bets_len - 1;
@@ -513,6 +551,24 @@ module social_contracts::social_proof_of_truth {
             amount,
             timestamp: tx_context::epoch(ctx),
         });
+
+        let user = tx_context::sender(ctx);
+        let options_len = vector::length(&record.betting_options);
+        if (!table::contains(&record.user_option_amounts, user)) {
+            let mut amounts = vector::empty<u64>();
+            let mut i = 0;
+            while (i < options_len) {
+                vector::push_back(&mut amounts, 0);
+                i = i + 1;
+            };
+            table::add(&mut record.user_option_amounts, user, amounts);
+        };
+        let user_amounts = table::borrow_mut(&mut record.user_option_amounts, user);
+        let idx = option_id as u64;
+        let current_user_amount = *vector::borrow(user_amounts, idx);
+        assert!(current_user_amount <= MAX_U64 - amount, EOverflow);
+        let user_amount_ref = vector::borrow_mut(user_amounts, idx);
+        *user_amount_ref = current_user_amount + amount;
 
         event::emit(SpotBetPlacedEvent {
             post_id: post::get_id_address(post),
