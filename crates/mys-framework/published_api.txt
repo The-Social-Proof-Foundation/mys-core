@@ -6127,6 +6127,30 @@ get_betting_options
 get_option_escrow
 	public fun
 	0x50c1::social_proof_of_truth
+get_id_address
+	public fun
+	0x50c1::social_proof_of_truth
+get_outcome
+	public fun
+	0x50c1::social_proof_of_truth
+is_open
+	public fun
+	0x50c1::social_proof_of_truth
+is_resolved
+	public fun
+	0x50c1::social_proof_of_truth
+outcome_draw
+	public fun
+	0x50c1::social_proof_of_truth
+outcome_unapplicable
+	public fun
+	0x50c1::social_proof_of_truth
+get_user_option_amount
+	public fun
+	0x50c1::social_proof_of_truth
+is_enabled
+	public fun
+	0x50c1::social_proof_of_truth
 bootstrap_init
 	public(package) fun
 	0x50c1::social_proof_of_truth
@@ -6631,6 +6655,108 @@ claim_payment_internal
 refund_paid_message
 	public entry fun
 	0x50c1::message
+InsuranceAdminCap
+	public struct
+	0x50c1::insurance
+InsuranceConfig
+	public struct
+	0x50c1::insurance
+UnderwriterVault
+	public struct
+	0x50c1::insurance
+MarketExposure
+	public struct
+	0x50c1::insurance
+CoveragePolicy
+	public struct
+	0x50c1::insurance
+ConfigInitializedEvent
+	public struct
+	0x50c1::insurance
+UnderwriterVaultCreatedEvent
+	public struct
+	0x50c1::insurance
+UnderwriterVaultDepositedEvent
+	public struct
+	0x50c1::insurance
+UnderwriterVaultWithdrawnEvent
+	public struct
+	0x50c1::insurance
+CoveragePurchasedEvent
+	public struct
+	0x50c1::insurance
+CoverageCancelledEvent
+	public struct
+	0x50c1::insurance
+CoverageClaimedEvent
+	public struct
+	0x50c1::insurance
+init_config
+	public(package) fun
+	0x50c1::insurance
+set_config
+	public entry fun
+	0x50c1::insurance
+set_paused
+	public entry fun
+	0x50c1::insurance
+create_insurance_admin_cap
+	public(package) fun
+	0x50c1::insurance
+bootstrap_init
+	public(package) fun
+	0x50c1::insurance
+create_vault
+	public entry fun
+	0x50c1::insurance
+deposit_capital
+	public entry fun
+	0x50c1::insurance
+withdraw_capital
+	public entry fun
+	0x50c1::insurance
+quote_premium
+	public fun
+	0x50c1::insurance
+buy_coverage
+	public entry fun
+	0x50c1::insurance
+cancel_coverage
+	public entry fun
+	0x50c1::insurance
+claim
+	public entry fun
+	0x50c1::insurance
+expire_policy
+	public entry fun
+	0x50c1::insurance
+compute_reserve
+	fun
+	0x50c1::insurance
+enforce_exposure_limits
+	fun
+	0x50c1::insurance
+add_exposure
+	fun
+	0x50c1::insurance
+release_exposure
+	fun
+	0x50c1::insurance
+get_market_exposure_mut
+	fun
+	0x50c1::insurance
+get_user_exposure
+	fun
+	0x50c1::insurance
+set_user_exposure
+	fun
+	0x50c1::insurance
+get_option_reserved
+	fun
+	0x50c1::insurance
+set_option_reserved
+	fun
+	0x50c1::insurance
 claim_all_admin_capabilities
 	public entry fun
 	0x50c1::bootstrap
@@ -6640,6 +6766,69 @@ is_bootstrap_used
 bootstrap_version
 	public fun
 	0x50c1::bootstrap
+Pcrs
+	public struct
+	0x50c1::enclave
+EnclaveConfig
+	public struct
+	0x50c1::enclave
+Enclave
+	public struct
+	0x50c1::enclave
+Cap
+	public struct
+	0x50c1::enclave
+IntentMessage
+	public struct
+	0x50c1::enclave
+new_cap
+	public fun
+	0x50c1::enclave
+create_enclave_config
+	public fun
+	0x50c1::enclave
+register_enclave
+	public fun
+	0x50c1::enclave
+verify_signature
+	public fun
+	0x50c1::enclave
+update_pcrs
+	public fun
+	0x50c1::enclave
+update_name
+	public fun
+	0x50c1::enclave
+pcr0
+	public fun
+	0x50c1::enclave
+pcr1
+	public fun
+	0x50c1::enclave
+pcr2
+	public fun
+	0x50c1::enclave
+pk
+	public fun
+	0x50c1::enclave
+destroy_old_enclave
+	public fun
+	0x50c1::enclave
+deploy_old_enclave_by_owner
+	public fun
+	0x50c1::enclave
+assert_is_valid_for_config
+	fun
+	0x50c1::enclave
+load_pk
+	fun
+	0x50c1::enclave
+to_pcrs
+	fun
+	0x50c1::enclave
+create_intent_message
+	fun
+	0x50c1::enclave
 log
 	fun
 	0xda7a::gf256

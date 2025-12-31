@@ -27,6 +27,14 @@ with the same fee structure as payouts. Time-based resolution windows are option
 -  [Function `get_bets_len`](#social_contracts_social_proof_of_truth_get_bets_len)
 -  [Function `get_betting_options`](#social_contracts_social_proof_of_truth_get_betting_options)
 -  [Function `get_option_escrow`](#social_contracts_social_proof_of_truth_get_option_escrow)
+-  [Function `get_id_address`](#social_contracts_social_proof_of_truth_get_id_address)
+-  [Function `get_outcome`](#social_contracts_social_proof_of_truth_get_outcome)
+-  [Function `is_open`](#social_contracts_social_proof_of_truth_is_open)
+-  [Function `is_resolved`](#social_contracts_social_proof_of_truth_is_resolved)
+-  [Function `outcome_draw`](#social_contracts_social_proof_of_truth_outcome_draw)
+-  [Function `outcome_unapplicable`](#social_contracts_social_proof_of_truth_outcome_unapplicable)
+-  [Function `get_user_option_amount`](#social_contracts_social_proof_of_truth_get_user_option_amount)
+-  [Function `is_enabled`](#social_contracts_social_proof_of_truth_is_enabled)
 -  [Function `bootstrap_init`](#social_contracts_social_proof_of_truth_bootstrap_init)
 -  [Function `create_spot_admin_cap`](#social_contracts_social_proof_of_truth_create_spot_admin_cap)
 -  [Function `create_spot_oracle_admin_cap`](#social_contracts_social_proof_of_truth_create_spot_oracle_admin_cap)
@@ -326,6 +334,11 @@ SPoT record per post
 </dd>
 <dt>
 <code>option_escrow: <a href="../mys/table.md#mys_table_Table">mys::table::Table</a>&lt;u8, u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>user_option_amounts: <a href="../mys/table.md#mys_table_Table">mys::table::Table</a>&lt;<b>address</b>, vector&lt;u64&gt;&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -1156,6 +1169,196 @@ Status
 
 </details>
 
+<a name="social_contracts_social_proof_of_truth_get_id_address"></a>
+
+## Function `get_id_address`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_get_id_address">get_id_address</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_get_id_address">get_id_address</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>): <b>address</b> {
+    object::uid_to_address(&rec.id)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_get_outcome"></a>
+
+## Function `get_outcome`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_get_outcome">get_outcome</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>): &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u8&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_get_outcome">get_outcome</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>): &Option&lt;u8&gt; { &rec.outcome }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_is_open"></a>
+
+## Function `is_open`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_is_open">is_open</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_is_open">is_open</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>): bool { rec.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_OPEN">STATUS_OPEN</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_is_resolved"></a>
+
+## Function `is_resolved`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_is_resolved">is_resolved</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_is_resolved">is_resolved</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>): bool { rec.status == <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_STATUS_RESOLVED">STATUS_RESOLVED</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_outcome_draw"></a>
+
+## Function `outcome_draw`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_outcome_draw">outcome_draw</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_outcome_draw">outcome_draw</a>(): u8 { <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_OUTCOME_DRAW">OUTCOME_DRAW</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_outcome_unapplicable"></a>
+
+## Function `outcome_unapplicable`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_outcome_unapplicable">outcome_unapplicable</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_outcome_unapplicable">outcome_unapplicable</a>(): u8 { <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_OUTCOME_UNAPPLICABLE">OUTCOME_UNAPPLICABLE</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_get_user_option_amount"></a>
+
+## Function `get_user_option_amount`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_get_user_option_amount">get_user_option_amount</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, user: <b>address</b>, option_id: u8): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_get_user_option_amount">get_user_option_amount</a>(rec: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>, user: <b>address</b>, option_id: u8): u64 {
+    <b>if</b> (!table::contains(&rec.user_option_amounts, user)) {
+        0
+    } <b>else</b> {
+        <b>let</b> amounts = table::borrow(&rec.user_option_amounts, user);
+        <b>let</b> idx = option_id <b>as</b> u64;
+        <b>if</b> (idx &gt;= vector::length(amounts)) {
+            0
+        } <b>else</b> {
+            *vector::borrow(amounts, idx)
+        }
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_is_enabled"></a>
+
+## Function `is_enabled`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_is_enabled">is_enabled</a>(config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_is_enabled">is_enabled</a>(config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>): bool { config.enable_flag }
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_of_truth_bootstrap_init"></a>
 
 ## Function `bootstrap_init`
@@ -1370,6 +1573,7 @@ Update SPoT configuration (admin only)
         escrow: balance::zero(),
         betting_options,
         option_escrow: table::new(ctx),
+        user_option_amounts: table::new(ctx),
         bets: vector::empty&lt;<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotBet">SpotBet</a>&gt;(),
         resolution_window_epochs,
         max_resolution_window_epochs,
@@ -1464,6 +1668,17 @@ Only allowed when status is OPEN (not DAO_REQUIRED, not RESOLVED, not REFUNDABLE
             *escrow_ref = current_escrow - bet.amount;
         };
     };
+    <b>if</b> (table::contains(&record.user_option_amounts, bet.user)) {
+        <b>let</b> user_amounts = table::borrow_mut(&<b>mut</b> record.user_option_amounts, bet.user);
+        <b>let</b> idx = bet.option_id <b>as</b> u64;
+        <b>if</b> (idx &lt; vector::length(user_amounts)) {
+            <b>let</b> current_user_amount = *vector::borrow(user_amounts, idx);
+            <b>if</b> (current_user_amount &gt;= bet.amount) {
+                <b>let</b> user_amount_ref = vector::borrow_mut(user_amounts, idx);
+                *user_amount_ref = current_user_amount - bet.amount;
+            };
+        };
+    };
     // Remove bet from vector (swap with last and pop)
     <b>let</b> last_index = bets_len - 1;
     <b>if</b> (bet_index != last_index) {
@@ -1548,6 +1763,23 @@ Place bet - all funds go to escrow
         amount,
         timestamp: tx_context::epoch(ctx),
     });
+    <b>let</b> user = tx_context::sender(ctx);
+    <b>let</b> options_len = vector::length(&record.betting_options);
+    <b>if</b> (!table::contains(&record.user_option_amounts, user)) {
+        <b>let</b> <b>mut</b> amounts = vector::empty&lt;u64&gt;();
+        <b>let</b> <b>mut</b> i = 0;
+        <b>while</b> (i &lt; options_len) {
+            vector::push_back(&<b>mut</b> amounts, 0);
+            i = i + 1;
+        };
+        table::add(&<b>mut</b> record.user_option_amounts, user, amounts);
+    };
+    <b>let</b> user_amounts = table::borrow_mut(&<b>mut</b> record.user_option_amounts, user);
+    <b>let</b> idx = option_id <b>as</b> u64;
+    <b>let</b> current_user_amount = *vector::borrow(user_amounts, idx);
+    <b>assert</b>!(current_user_amount &lt;= <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_MAX_U64">MAX_U64</a> - amount, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EOverflow">EOverflow</a>);
+    <b>let</b> user_amount_ref = vector::borrow_mut(user_amounts, idx);
+    *user_amount_ref = current_user_amount + amount;
     event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotBetPlacedEvent">SpotBetPlacedEvent</a> {
         post_id: <a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>),
         user: tx_context::sender(ctx),
