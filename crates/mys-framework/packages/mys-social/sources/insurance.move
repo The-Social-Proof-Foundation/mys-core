@@ -39,6 +39,7 @@ module social_contracts::insurance {
     const EMarketMismatch: u64 = 13;
     const EExposureLimit: u64 = 14;
     const EInsufficientPremium: u64 = 15;
+    const EExposureInvariantBroken: u64 = 16;
 
     /// Status
     const STATUS_ACTIVE: u8 = 1;
@@ -85,13 +86,13 @@ module social_contracts::insurance {
         version: u64,
     }
 
-    public struct MarketExposure has store, drop {
+    public struct MarketExposure has store {
         market_id: address,
         total_reserved: u64,
         reserved_by_option: Table<u8, u64>,
     }
 
-    public struct CoveragePolicy has key {
+    public struct CoveragePolicy has key, store {
         id: UID,
         market_id: address,
         insured: address,
@@ -115,7 +116,7 @@ module social_contracts::insurance {
         treasury: address,
     }
 
-    public struct VaultCreatedEvent has copy, drop {
+    public struct UnderwriterVaultCreatedEvent has copy, drop {
         vault_id: ID,
         underwriter: address,
         base_rate_bps_per_day: u64,
@@ -124,13 +125,13 @@ module social_contracts::insurance {
         max_exposure_per_user: u64,
     }
 
-    public struct VaultDepositedEvent has copy, drop {
+    public struct UnderwriterVaultDepositedEvent has copy, drop {
         vault_id: ID,
         amount: u64,
         new_balance: u64,
     }
 
-    public struct VaultWithdrawnEvent has copy, drop {
+    public struct UnderwriterVaultWithdrawnEvent has copy, drop {
         vault_id: ID,
         amount: u64,
         new_balance: u64,
@@ -241,7 +242,7 @@ module social_contracts::insurance {
         let admin = tx_context::sender(ctx);
         transfer::share_object(InsuranceConfig {
             id: object::new(ctx),
-            paused: false,
+            paused: true,
             min_coverage_bps: DEFAULT_MIN_COVERAGE_BPS,
             max_coverage_bps: DEFAULT_MAX_COVERAGE_BPS,
             max_duration_ms: DEFAULT_MAX_DURATION_MS,
@@ -276,7 +277,7 @@ module social_contracts::insurance {
         let vault_id = object::id(&vault);
         transfer::share_object(vault);
 
-        event::emit(VaultCreatedEvent {
+        event::emit(UnderwriterVaultCreatedEvent {
             vault_id,
             underwriter,
             base_rate_bps_per_day,
@@ -297,7 +298,7 @@ module social_contracts::insurance {
         let deposit_amount = coin::value(&payment);
         assert!(deposit_amount > 0, EInvalidAmount);
         balance::join(&mut vault.capital, coin::into_balance(payment));
-        event::emit(VaultDepositedEvent {
+        event::emit(UnderwriterVaultDepositedEvent {
             vault_id: object::id(vault),
             amount: deposit_amount,
             new_balance: balance::value(&vault.capital),
@@ -324,7 +325,7 @@ module social_contracts::insurance {
         let payout_coin = coin::from_balance(payout_balance, ctx);
         transfer::public_transfer(payout_coin, vault.underwriter);
 
-        event::emit(VaultWithdrawnEvent {
+        event::emit(UnderwriterVaultWithdrawnEvent {
             vault_id: object::id(vault),
             amount,
             new_balance: balance::value(&vault.capital),
@@ -362,6 +363,7 @@ module social_contracts::insurance {
     /// Buy coverage for a SPoT position
     public entry fun buy_coverage(
         config: &InsuranceConfig,
+        spot_config: &spot::SpotConfig,
         vault: &mut UnderwriterVault,
         record: &spot::SpotRecord,
         option_id: u8,
@@ -373,6 +375,7 @@ module social_contracts::insurance {
         ctx: &mut TxContext
     ) {
         assert!(!config.paused, EPaused);
+        assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(spot::is_open(record), EMarketClosed);
         assert!(coverage_bps >= config.min_coverage_bps, EInvalidCoverage);
         assert!(coverage_bps <= config.max_coverage_bps, EInvalidCoverage);
@@ -447,8 +450,10 @@ module social_contracts::insurance {
     }
 
     /// Cancel coverage while the market is open
+    /// Cancellation can result in 0 refund due to fee + rounding
     public entry fun cancel_coverage(
         config: &InsuranceConfig,
+        spot_config: &spot::SpotConfig,
         vault: &mut UnderwriterVault,
         record: &spot::SpotRecord,
         policy: &mut CoveragePolicy,
@@ -456,6 +461,7 @@ module social_contracts::insurance {
         ctx: &mut TxContext
     ) {
         assert!(!config.paused, EPaused);
+        assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(spot::is_open(record), EMarketClosed);
         assert!(policy.status == STATUS_ACTIVE, EPolicyNotActive);
         assert!(tx_context::sender(ctx) == policy.insured, ENotPolicyOwner);
@@ -469,21 +475,22 @@ module social_contracts::insurance {
         let remaining = policy.expiry_time_ms - now;
         let refund_u128 = (policy.premium_paid as u128) * (remaining as u128) / (total_duration as u128);
         assert!(refund_u128 <= (MAX_U64 as u128), EOverflow);
-        let mut refund = refund_u128 as u64;
+        let original_refund = refund_u128 as u64;
 
-        let fee = (refund * config.fee_bps) / BPS_DENOM;
-        let total_refund = refund;
+        let fee = (original_refund * config.fee_bps) / BPS_DENOM;
+        let net_refund = original_refund - fee;
+        // original_refund == fee + net_refund; ensure vault can fund both splits
         let capital_value = balance::value(&vault.capital);
-        assert!(capital_value >= total_refund, EInsufficientCapital);
+        assert!(capital_value >= original_refund, EInsufficientCapital);
+        
         if (fee > 0) {
-            refund = refund - fee;
             let fee_balance = balance::split(&mut vault.capital, fee);
             let fee_coin = coin::from_balance(fee_balance, ctx);
             transfer::public_transfer(fee_coin, config.treasury);
         };
 
-        if (refund > 0) {
-            let refund_balance = balance::split(&mut vault.capital, refund);
+        if (net_refund > 0) {
+            let refund_balance = balance::split(&mut vault.capital, net_refund);
             let refund_coin = coin::from_balance(refund_balance, ctx);
             transfer::public_transfer(refund_coin, policy.insured);
         };
@@ -497,14 +504,18 @@ module social_contracts::insurance {
         event::emit(CoverageCancelledEvent {
             policy_id: object::id(policy),
             insured: policy.insured,
-            refunded_amount: refund,
+            refunded_amount: net_refund,
             fee_paid: fee,
         });
     }
 
     /// Claim payout after SPoT resolution
+    /// Payout is calculated as min(current_position, covered_amount) * coverage_bps / BPS_DENOM
+    /// Dynamic coverage: payout adjusts if user reduces their SPoT position after buying insurance.
+    /// This prevents exploitation where user buys insurance then exits bet.
     public entry fun claim(
         config: &InsuranceConfig,
+        spot_config: &spot::SpotConfig,
         vault: &mut UnderwriterVault,
         record: &spot::SpotRecord,
         policy: &mut CoveragePolicy,
@@ -512,6 +523,7 @@ module social_contracts::insurance {
         ctx: &mut TxContext
     ) {
         assert!(!config.paused, EPaused);
+        assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(policy.status == STATUS_ACTIVE, EPolicyNotActive);
         assert!(tx_context::sender(ctx) == policy.insured, ENotPolicyOwner);
         assert!(policy.market_id == spot::get_id_address(record), EMarketMismatch);
@@ -528,6 +540,7 @@ module social_contracts::insurance {
         let mut payout = 0;
         if (outcome != spot::outcome_draw() && outcome != spot::outcome_unapplicable()) {
             if (outcome != policy.option_id) {
+                // Dynamic coverage: payout adjusts if user reduces their SPoT position after buying insurance
                 let current_position = spot::get_user_option_amount(record, policy.insured, policy.option_id);
                 let eligible_amount = if (current_position < policy.covered_amount) {
                     current_position
@@ -566,14 +579,14 @@ module social_contracts::insurance {
         clock: &Clock
     ) {
         if (policy.status != STATUS_ACTIVE) {
-            return;
+            return
         };
         if (policy.vault_id != object::id(vault)) {
-            return;
+            return
         };
         let now = clock::timestamp_ms(clock);
         if (now < policy.expiry_time_ms) {
-            return;
+            return
         };
 
         let reserve_amount = compute_reserve(policy.covered_amount, policy.coverage_bps);
@@ -598,20 +611,27 @@ module social_contracts::insurance {
         reserve_amount: u64,
         ctx: &mut TxContext
     ) {
-        if (vault.max_exposure_per_market > 0) {
-            let exposure = get_market_exposure_mut(vault, market_id, ctx);
-            assert!(exposure.total_reserved <= MAX_U64 - reserve_amount, EOverflow);
-            let new_total = exposure.total_reserved + reserve_amount;
-            assert!(new_total <= vault.max_exposure_per_market, EExposureLimit);
-        };
-        if (vault.max_exposure_per_user > 0) {
+        // Read limit values before creating mutable borrows
+        let max_exposure_per_market = vault.max_exposure_per_market;
+        let max_exposure_per_user = vault.max_exposure_per_user;
+        
+        // Check user exposure limit first (doesn't require market exposure)
+        if (max_exposure_per_user > 0) {
             let current_user = get_user_exposure(vault, insured);
             assert!(current_user <= MAX_U64 - reserve_amount, EOverflow);
             let new_user = current_user + reserve_amount;
-            assert!(new_user <= vault.max_exposure_per_user, EExposureLimit);
+            assert!(new_user <= max_exposure_per_user, EExposureLimit);
         };
 
+        // Now get mutable reference to market exposure for market and option checks
         let exposure = get_market_exposure_mut(vault, market_id, ctx);
+        
+        if (max_exposure_per_market > 0) {
+            assert!(exposure.total_reserved <= MAX_U64 - reserve_amount, EOverflow);
+            let new_total = exposure.total_reserved + reserve_amount;
+            assert!(new_total <= max_exposure_per_market, EExposureLimit);
+        };
+
         let option_reserved = get_option_reserved(exposure, option_id);
         assert!(option_reserved <= MAX_U64 - reserve_amount, EOverflow);
     }
@@ -645,29 +665,26 @@ module social_contracts::insurance {
         option_id: u8,
         reserve_amount: u64
     ) {
-        if (!table::contains(&vault.market_exposures, market_id)) {
-            return;
+        if (reserve_amount == 0) {
+            return
         };
+        
+        assert!(table::contains(&vault.market_exposures, market_id), EExposureInvariantBroken);
         let exposure = table::borrow_mut(&mut vault.market_exposures, market_id);
-        if (exposure.total_reserved >= reserve_amount) {
-            exposure.total_reserved = exposure.total_reserved - reserve_amount;
-        };
+        assert!(exposure.total_reserved >= reserve_amount, EExposureInvariantBroken);
+        exposure.total_reserved = exposure.total_reserved - reserve_amount;
 
-        if (table::contains(&exposure.reserved_by_option, option_id)) {
-            let current_option = *table::borrow(&exposure.reserved_by_option, option_id);
-            if (current_option >= reserve_amount) {
-                let option_ref = table::borrow_mut(&mut exposure.reserved_by_option, option_id);
-                *option_ref = current_option - reserve_amount;
-            };
-        };
+        assert!(table::contains(&exposure.reserved_by_option, option_id), EExposureInvariantBroken);
+        let current_option = *table::borrow(&exposure.reserved_by_option, option_id);
+        assert!(current_option >= reserve_amount, EExposureInvariantBroken);
+        let option_ref = table::borrow_mut(&mut exposure.reserved_by_option, option_id);
+        *option_ref = current_option - reserve_amount;
 
-        if (table::contains(&vault.user_exposures, insured)) {
-            let current_user = *table::borrow(&vault.user_exposures, insured);
-            if (current_user >= reserve_amount) {
-                let user_ref = table::borrow_mut(&mut vault.user_exposures, insured);
-                *user_ref = current_user - reserve_amount;
-            };
-        };
+        assert!(table::contains(&vault.user_exposures, insured), EExposureInvariantBroken);
+        let current_user = *table::borrow(&vault.user_exposures, insured);
+        assert!(current_user >= reserve_amount, EExposureInvariantBroken);
+        let user_ref = table::borrow_mut(&mut vault.user_exposures, insured);
+        *user_ref = current_user - reserve_amount;
     }
 
     fun get_market_exposure_mut(

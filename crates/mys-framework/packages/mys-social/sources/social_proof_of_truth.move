@@ -227,6 +227,9 @@ module social_contracts::social_proof_of_truth {
         }
     }
 
+    // Public getter for SpotConfig
+    public fun is_enabled(config: &SpotConfig): bool { config.enable_flag }
+
     // Bootstrap
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let admin = tx_context::sender(ctx);
