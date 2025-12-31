@@ -279,7 +279,7 @@ cat > "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1767096000000 # $(( $(date +%s) * 1000 ))
+  chain_start_timestamp_ms: 1767182400000 # $(( $(date +%s) * 1000 ))
 
   # Protocol version
   protocol_version: 75  # Latest version
