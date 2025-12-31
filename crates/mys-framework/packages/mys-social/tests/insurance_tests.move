@@ -119,6 +119,15 @@ module social_contracts::insurance_tests {
         {
             insurance::create_vault(25, 5000, 0, 0, test_scenario::ctx(scenario));
         };
+        // Unpause the config before depositing capital
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            let admin_cap = test_scenario::take_from_sender<insurance::InsuranceAdminCap>(scenario);
+            let mut config = test_scenario::take_shared<insurance::InsuranceConfig>(scenario);
+            insurance::set_paused(&admin_cap, &mut config, false);
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(scenario, admin_cap);
+        };
         test_scenario::next_tx(scenario, UNDERWRITER);
         {
             let config = test_scenario::take_shared<insurance::InsuranceConfig>(scenario);
@@ -245,6 +254,16 @@ module social_contracts::insurance_tests {
         test_scenario::next_tx(&mut scen, UNDERWRITER);
         {
             insurance::create_vault(25, 5000, 0, 0, test_scenario::ctx(&mut scen));
+        };
+
+        // Unpause the config before depositing capital
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let admin_cap = test_scenario::take_from_sender<insurance::InsuranceAdminCap>(&scen);
+            let mut config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
+            insurance::set_paused(&admin_cap, &mut config, false);
+            test_scenario::return_shared(config);
+            test_scenario::return_to_sender(&scen, admin_cap);
         };
 
         test_scenario::next_tx(&mut scen, UNDERWRITER);

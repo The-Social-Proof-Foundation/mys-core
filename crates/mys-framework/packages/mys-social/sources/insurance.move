@@ -180,7 +180,7 @@ module social_contracts::insurance {
         let admin = tx_context::sender(ctx);
         transfer::share_object(InsuranceConfig {
             id: object::new(ctx),
-            paused: false,
+            paused: true,
             min_coverage_bps,
             max_coverage_bps,
             max_duration_ms,
