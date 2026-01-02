@@ -82,6 +82,11 @@ use crate::api::handlers::spot::{
     get_spot_configuration, get_spot_record, list_spot_bets, list_spot_payouts, list_spot_refunds,
 };
 use crate::api::handlers::stats::get_system_stats;
+// Import insurance handlers
+use crate::api::handlers::insurance::{
+    get_insurance_configuration, get_policy, get_vault, get_vault_exposures, list_market_policies,
+    list_policies, list_vault_transactions, list_vaults,
+};
 
 /// Build the application router with all API routes
 pub fn build_router(db: Arc<Database>) -> Router {
@@ -242,6 +247,18 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route("/spot/:post_id/bets", get(list_spot_bets))
         .route("/spot/:post_id/payouts", get(list_spot_payouts))
         .route("/spot/:post_id/refunds", get(list_spot_refunds))
+        // Insurance endpoints
+        .route("/insurance/config", get(get_insurance_configuration))
+        .route("/insurance/vaults", get(list_vaults))
+        .route("/insurance/vaults/:vault_id", get(get_vault))
+        .route(
+            "/insurance/vaults/:vault_id/transactions",
+            get(list_vault_transactions),
+        )
+        .route("/insurance/vaults/:vault_id/exposures", get(get_vault_exposures))
+        .route("/insurance/policies", get(list_policies))
+        .route("/insurance/policies/:policy_id", get(get_policy))
+        .route("/insurance/markets/:market_id/policies", get(list_market_policies))
         // MyData Marketplace endpoints (using TimescaleDB)
         .route("/mydata", get(list_mydata))
         .route("/mydata/configuration", get(get_mydata_configuration))

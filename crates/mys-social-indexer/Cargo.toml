@@ -55,6 +55,11 @@ dotenv = "0.15.0"
 hex = "0.4.3"
 base64 = "0.21.0"
 
+# Ethereum address derivation for bridge committee
+# k256 types are available through default features in ethers-core 2.0
+ethers-core = { version = "2.0" }
+fastcrypto = "0.1"
+
 jsonrpsee = { workspace = true, features = ["client", "ws-client", "http-client"] }
 
 # Web server for API

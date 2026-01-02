@@ -4,6 +4,7 @@
 pub mod blocking;
 pub mod governance;
 pub mod indexer;
+pub mod insurance;
 pub mod mydata;
 pub mod platform;
 pub mod poc;
@@ -97,3 +98,5 @@ pub use vesting::{
 // SPoT types
 pub use social_proof_of_truth::NewSocialProofOfTruthEvent;
 pub use social_proof_of_truth::*;
+// Insurance types
+pub use insurance::*;

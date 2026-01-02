@@ -10,10 +10,10 @@ use mys_social_indexer::{
     api,
     blockchain::{
         handler_trait::spawn_handler_task, BlockListEventHandler, BlockchainEventListener,
-        EventPattern, EventRouter, GovernanceEventHandler, MyDataEventHandler,
-        PlatformEventHandler, PocEventHandler, PostEventHandler, ProfileEventListener,
-        SocialGraphEventHandler, SocialProofOfTruthEventHandler, SocialProofTokenHandler,
-        SubscriptionEventHandler,
+        EventPattern, EventRouter, GovernanceEventHandler, InsuranceEventHandler,
+        MyDataEventHandler, PlatformEventHandler, PocEventHandler, PostEventHandler,
+        ProfileEventListener, SocialGraphEventHandler, SocialProofOfTruthEventHandler,
+        SocialProofTokenHandler, SubscriptionEventHandler,
     },
     config::Config,
     db::{self, ConnectionManager},
@@ -175,6 +175,10 @@ async fn main() -> Result<()> {
     let poc_patterns = vec![EventPattern::poc_events(package_address)];
     let poc_rx = event_router.register_handler("poc-handler".to_string(), poc_patterns, 1000);
 
+    // Insurance handler
+    let insurance_patterns = vec![EventPattern::insurance_events(package_address)];
+    let insurance_rx = event_router.register_handler("insurance-handler".to_string(), insurance_patterns, 1000);
+
     info!("✅ All event handlers registered successfully");
 
     // Create handler instances
@@ -220,6 +224,12 @@ async fn main() -> Result<()> {
         SocialProofOfTruthEventHandler::new(db_pool.clone(), spot_rx, "spot-worker".to_string());
 
     let poc_handler = PocEventHandler::new(db_pool.clone(), poc_rx, "poc-worker".to_string());
+
+    let insurance_handler = InsuranceEventHandler::new(
+        db_pool.clone(),
+        insurance_rx,
+        "insurance-worker".to_string(),
+    );
 
     // Spawn handler tasks
     info!("🔄 Starting event handler tasks...");
@@ -294,6 +304,13 @@ async fn main() -> Result<()> {
         let mut handler = poc_handler;
         if let Err(e) = handler.start().await {
             error!("PoC handler error: {}", e);
+        }
+    });
+
+    let insurance_task = tokio::spawn(async move {
+        let mut handler = insurance_handler;
+        if let Err(e) = handler.start().await {
+            error!("Insurance handler error: {}", e);
         }
     });
 
@@ -403,6 +420,7 @@ async fn main() -> Result<()> {
     spt_task.abort();
     spot_task.abort();
     poc_task.abort();
+    insurance_task.abort();
     blockchain_task.abort();
 
     // Log final metrics

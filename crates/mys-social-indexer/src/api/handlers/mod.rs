@@ -4,6 +4,7 @@
 pub mod blocking;
 pub mod governance;
 pub mod health;
+pub mod insurance;
 pub mod mydata;
 pub mod platforms;
 pub mod poc;

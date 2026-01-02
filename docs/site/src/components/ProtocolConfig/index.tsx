@@ -46,28 +46,57 @@ export default function ProtocolConfig(props) {
   const DisplayResults = (props) => {
     const { results } = props;
     return (
-      <table className="table w-full">
-        <thead>
-          <tr>
-            <th>Parameter</th>
-            <th>Type</th>
-            <th>Value</th>
-          </tr>
-        </thead>
-        <tbody>
+      <>
+        <style>{`
+          .config-table {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            width: 100%;
+          }
+          .config-row {
+            display: grid;
+            grid-template-columns: minmax(min-content, max-content) 1fr;
+            gap: 1rem;
+            align-items: start;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--ifm-color-emphasis-200);
+          }
+          .config-row:last-child {
+            border-bottom: none;
+          }
+          .config-label {
+            font-weight: 600;
+            color: var(--ifm-color-content);
+            white-space: nowrap;
+            min-width: fit-content;
+          }
+          .config-value {
+            color: var(--ifm-color-content-secondary);
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            min-width: 0;
+          }
+          .config-value code {
+            word-break: break-all;
+            white-space: pre-wrap;
+          }
+        `}</style>
+        <div className="config-table">
           {results.map((item, index) => (
             <>
               {(!fields || fields.includes(item[0])) && (
-                <tr key={index}>
-                  <td>{item[0]}</td>
-                  <td>{item[1]}</td>
-                  <td>{item[2] ? item[2] : "null"}</td>
-                </tr>
+                <div key={index} className="config-row">
+                  <div className="config-label">{item[0]}</div>
+                  <div className="config-value">
+                    {item[2] ? item[2] : "null"}
+                  </div>
+                </div>
               )}
             </>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </>
     );
   };
 

@@ -1474,6 +1474,140 @@ table! {
     }
 }
 
+// ===========================================================================
+// INSURANCE TABLES
+// ===========================================================================
+
+// insurance_config: global insurance configuration (hypertable)
+table! {
+    insurance_config (id, time) {
+        id -> Int4,
+        updated_by -> Varchar,
+        paused -> Bool,
+        min_coverage_bps -> Int8,
+        max_coverage_bps -> Int8,
+        max_duration_ms -> Int8,
+        fee_bps -> Int8,
+        treasury -> Varchar,
+        version -> Int8,
+        timestamp_ms -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// insurance_vaults: current state of underwriter vaults
+table! {
+    insurance_vaults (vault_id) {
+        vault_id -> Varchar,
+        underwriter -> Varchar,
+        capital_balance -> Int8,
+        reserved -> Int8,
+        base_rate_bps_per_day -> Int8,
+        utilization_multiplier_bps -> Int8,
+        max_exposure_per_market -> Int8,
+        max_exposure_per_user -> Int8,
+        version -> Int8,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+        transaction_id -> Varchar,
+    }
+}
+
+// insurance_policies: current state of coverage policies
+table! {
+    insurance_policies (policy_id) {
+        policy_id -> Varchar,
+        market_id -> Varchar,
+        insured -> Varchar,
+        option_id -> SmallInt,
+        covered_amount -> Int8,
+        coverage_bps -> Int8,
+        premium_paid -> Int8,
+        start_time_ms -> Int8,
+        expiry_time_ms -> Int8,
+        vault_id -> Varchar,
+        status -> SmallInt,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+        transaction_id -> Varchar,
+    }
+}
+
+// insurance_events: audit log of raw insurance events
+table! {
+    insurance_events (id) {
+        id -> Int4,
+        event_type -> Varchar,
+        event_data -> Jsonb,
+        event_id -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
+// insurance_vault_transactions: time-series data for vault deposits/withdrawals (hypertable)
+table! {
+    insurance_vault_transactions (id, time) {
+        id -> Int4,
+        vault_id -> Varchar,
+        transaction_type -> Varchar,
+        amount -> Int8,
+        balance_after -> Int8,
+        timestamp_ms -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// insurance_policy_events: time-series data for policy lifecycle events (hypertable)
+table! {
+    insurance_policy_events (id, time) {
+        id -> Int4,
+        policy_id -> Varchar,
+        event_type -> Varchar,
+        market_id -> Varchar,
+        insured -> Varchar,
+        option_id -> SmallInt,
+        covered_amount -> Int8,
+        coverage_bps -> Int8,
+        premium_paid -> Int8,
+        reserve_locked -> Int8,
+        refunded_amount -> Nullable<Int8>,
+        fee_paid -> Nullable<Int8>,
+        payout -> Nullable<Int8>,
+        timestamp_ms -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// insurance_market_exposures: track exposure per market/option for analytics (hypertable)
+table! {
+    insurance_market_exposures (id, time) {
+        id -> Int4,
+        vault_id -> Varchar,
+        market_id -> Varchar,
+        option_id -> SmallInt,
+        reserved_amount -> Int8,
+        timestamp_ms -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
+// insurance_user_exposures: track exposure per user for analytics (hypertable)
+table! {
+    insurance_user_exposures (id, time) {
+        id -> Int4,
+        vault_id -> Varchar,
+        insured -> Varchar,
+        reserved_amount -> Int8,
+        timestamp_ms -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
 // Relay outbox table for CDC
 table! {
     relay_outbox (id) {
@@ -1582,6 +1716,15 @@ allow_tables_to_appear_in_same_query!(
     spot_resolutions,
     spot_events,
     social_proof_of_truth,
+    // Insurance tables
+    insurance_config,
+    insurance_vaults,
+    insurance_policies,
+    insurance_events,
+    insurance_vault_transactions,
+    insurance_policy_events,
+    insurance_market_exposures,
+    insurance_user_exposures,
     // Relay tables
     relay_outbox,
 );

@@ -124,8 +124,10 @@ module social_contracts::insurance_tests {
         {
             let admin_cap = test_scenario::take_from_sender<insurance::InsuranceAdminCap>(scenario);
             let mut config = test_scenario::take_shared<insurance::InsuranceConfig>(scenario);
-            insurance::set_paused(&admin_cap, &mut config, false);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            insurance::set_paused(&admin_cap, &mut config, false, &clock, test_scenario::ctx(scenario));
             test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
             test_scenario::return_to_sender(scenario, admin_cap);
         };
         test_scenario::next_tx(scenario, UNDERWRITER);
@@ -261,8 +263,10 @@ module social_contracts::insurance_tests {
         {
             let admin_cap = test_scenario::take_from_sender<insurance::InsuranceAdminCap>(&scen);
             let mut config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
-            insurance::set_paused(&admin_cap, &mut config, false);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            insurance::set_paused(&admin_cap, &mut config, false, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
             test_scenario::return_to_sender(&scen, admin_cap);
         };
 

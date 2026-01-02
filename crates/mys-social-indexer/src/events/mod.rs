@@ -5,6 +5,8 @@ pub mod blocking_events;
 pub mod event_utils;
 pub mod governance_event_types;
 pub mod governance_events;
+pub mod insurance_event_types;
+pub mod insurance_events;
 pub mod mydata_event_types;
 pub mod mydata_events;
 pub mod platform_event_types;
@@ -83,6 +85,26 @@ pub use social_proof_token_events::{
 pub use social_proof_of_truth_events::{
     SpotBetPlacedEvent, SpotBetWithdrawnEvent, SpotConfigUpdatedEvent, SpotDaoRequiredEvent,
     SpotPayoutEvent, SpotRecordCreatedEvent, SpotRefundEvent, SpotResolvedEvent,
+};
+
+// Re-export Insurance events
+pub use insurance_events::{
+    ConfigInitializedEvent, CoverageCancelledEvent, CoverageClaimedEvent,
+    CoveragePurchasedEvent, new_insurance_event_log, PolicyExpiredEvent,
+    UnderwriterVaultCreatedEvent, UnderwriterVaultDepositedEvent,
+    UnderwriterVaultWithdrawnEvent,
+};
+// Export insurance ConfigUpdatedEvent with a qualified name to avoid conflict with social_proof_token_events
+pub use insurance_events::ConfigUpdatedEvent as InsuranceConfigUpdatedEvent;
+
+// Re-export Insurance event types
+pub use insurance_event_types::{
+    EVENT_COVERAGE_CANCELLED, EVENT_COVERAGE_CLAIMED, EVENT_COVERAGE_PURCHASED,
+    EVENT_CONFIG_INITIALIZED, EVENT_CONFIG_UPDATED, EVENT_POLICY_EXPIRED,
+    EVENT_VAULT_CREATED, EVENT_VAULT_DEPOSITED, EVENT_VAULT_WITHDRAWN,
+    InsuranceEventType, POLICY_EVENT_CANCELLED, POLICY_EVENT_CLAIMED, POLICY_EVENT_EXPIRED,
+    POLICY_EVENT_PURCHASED, STATUS_ACTIVE, STATUS_CANCELLED, STATUS_CLAIMED, STATUS_EXPIRED,
+    TRANSACTION_TYPE_DEPOSIT, TRANSACTION_TYPE_WITHDRAWAL,
 };
 
 // Re-export social proof token event types
@@ -270,6 +292,7 @@ pub const MODULE_PREFIX_SOCIAL_PROOF_TOKEN: &str = module_prefix!();
 pub const MODULE_PREFIX_SOCIAL_PROOF_OF_TRUTH: &str = module_prefix!();
 pub const MODULE_PREFIX_POC: &str = module_prefix!();
 pub const MODULE_PREFIX_SUBSCRIPTION: &str = module_prefix!();
+pub const MODULE_PREFIX_INSURANCE: &str = module_prefix!();
 
 pub use event_utils::*;
 

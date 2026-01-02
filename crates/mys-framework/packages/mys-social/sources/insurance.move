@@ -162,6 +162,26 @@ module social_contracts::insurance {
         payout: u64,
     }
 
+    public struct ConfigUpdatedEvent has copy, drop {
+        updated_by: address,
+        paused: bool,
+        min_coverage_bps: u64,
+        max_coverage_bps: u64,
+        max_duration_ms: u64,
+        fee_bps: u64,
+        treasury: address,
+        timestamp: u64,
+    }
+
+    public struct PolicyExpiredEvent has copy, drop {
+        policy_id: ID,
+        insured: address,
+        market_id: address,
+        vault_id: ID,
+        reserve_released: u64,
+        expiry_time_ms: u64,
+    }
+
     /// Initialize config (package only)
     /// Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
     public(package) fun init_config(
@@ -210,6 +230,7 @@ module social_contracts::insurance {
         max_duration_ms: u64,
         fee_bps: u64,
         treasury: address,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(min_coverage_bps > 0, EInvalidCoverage);
@@ -223,16 +244,43 @@ module social_contracts::insurance {
         config.max_duration_ms = max_duration_ms;
         config.fee_bps = fee_bps;
         config.treasury = treasury;
-        let _ = ctx;
+
+        let updated_by = tx_context::sender(ctx);
+        let timestamp = clock::timestamp_ms(clock);
+        event::emit(ConfigUpdatedEvent {
+            updated_by,
+            paused: config.paused,
+            min_coverage_bps,
+            max_coverage_bps,
+            max_duration_ms,
+            fee_bps,
+            treasury,
+            timestamp,
+        });
     }
 
     /// Emergency pause toggle (admin only)
     public entry fun set_paused(
         _: &InsuranceAdminCap,
         config: &mut InsuranceConfig,
-        paused: bool
+        paused: bool,
+        clock: &Clock,
+        ctx: &mut TxContext
     ) {
         config.paused = paused;
+
+        let updated_by = tx_context::sender(ctx);
+        let timestamp = clock::timestamp_ms(clock);
+        event::emit(ConfigUpdatedEvent {
+            updated_by,
+            paused: config.paused,
+            min_coverage_bps: config.min_coverage_bps,
+            max_coverage_bps: config.max_coverage_bps,
+            max_duration_ms: config.max_duration_ms,
+            fee_bps: config.fee_bps,
+            treasury: config.treasury,
+            timestamp,
+        });
     }
 
     public(package) fun create_insurance_admin_cap(ctx: &mut TxContext): InsuranceAdminCap {
@@ -594,6 +642,15 @@ module social_contracts::insurance {
         assert!(vault.reserved >= reserve_amount, EOverflow);
         vault.reserved = vault.reserved - reserve_amount;
         policy.status = STATUS_EXPIRED;
+
+        event::emit(PolicyExpiredEvent {
+            policy_id: object::id(policy),
+            insured: policy.insured,
+            market_id: policy.market_id,
+            vault_id: policy.vault_id,
+            reserve_released: reserve_amount,
+            expiry_time_ms: policy.expiry_time_ms,
+        });
     }
 
     fun compute_reserve(covered_amount: u64, coverage_bps: u64): u64 {

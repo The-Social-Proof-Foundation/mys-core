@@ -399,6 +399,14 @@ impl EventPattern {
     pub fn poc_events(_package_address: &str) -> EventPattern {
         EventPattern::Contains("::poc::".to_string())
     }
+
+    /// Create pattern for Insurance events
+    pub fn insurance_events(package_address: &str) -> EventPattern {
+        EventPattern::Module {
+            package: package_address.to_string(),
+            module: "insurance".to_string(),
+        }
+    }
 }
 
 #[cfg(test)]
