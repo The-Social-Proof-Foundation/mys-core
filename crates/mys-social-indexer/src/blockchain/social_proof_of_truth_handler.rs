@@ -944,7 +944,9 @@ impl SocialProofOfTruthEventHandler {
             outcome: None,
             total_escrow: None,
             fee_taken: None,
-            confidence_bps: Some(parsed.confidence_threshold_bps as i64),
+            confidence_bps: parsed.confidence_threshold_bps.map(|v| v as i64).or_else(|| {
+                latest_config.as_ref().map(|c| c.confidence_threshold_bps)
+            }),
             timestamp_epoch: Self::timestamp_epoch(event),
             time: Utc::now(),
             event_id: Some(event_id.clone()),
