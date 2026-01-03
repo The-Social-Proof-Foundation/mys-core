@@ -21,7 +21,8 @@ use crate::events::social_proof_of_truth_events::{
     SpotPayoutEvent, SpotRecordCreatedEvent, SpotRefundEvent, SpotResolvedEvent,
 };
 use crate::models::social_proof_of_truth::{
-    NewSocialProofOfTruthEvent, NewSpotBetWithdrawal, NewSpotConfig, NewSpotEventLog,
+    NewSocialProofOfTruthEvent, NewSpotBetWithdrawal, NewSpotEventLog,
+    SpotConfig,
 };
 use crate::schema;
 
@@ -902,26 +903,27 @@ impl SocialProofOfTruthEventHandler {
         .await
         .context("Failed to log spot event")?;
 
+        // Fetch the latest config from database to use as fallback for missing values
+        let latest_config = diesel::sql_query(
+            "SELECT id, updated_by, enable_flag, confidence_threshold_bps, resolution_window_epochs, \
+             max_resolution_window_epochs, payout_delay_epochs, fee_bps, fee_split_bps_platform, \
+             platform_treasury, chain_treasury, oracle_address, max_single_bet, timestamp_ms, \
+             time, transaction_id \
+             FROM spot_config ORDER BY time DESC LIMIT 1"
+        )
+        .get_result::<SpotConfig>(&mut conn)
+        .await
+        .ok(); // Use None if no previous config exists
+
         // Insert into spot_config table
+        // Use values from event when present, fallback to latest DB config if missing
         let datetime = Self::event_time(event);
-        let timestamp_ms = event_timestamp_ms as i64;
-        let new_config = NewSpotConfig {
-            updated_by: parsed.updated_by.clone(),
-            enable_flag: parsed.enable_flag,
-            confidence_threshold_bps: parsed.confidence_threshold_bps as i64,
-            resolution_window_epochs: parsed.resolution_window_epochs as i64,
-            max_resolution_window_epochs: parsed.max_resolution_window_epochs as i64,
-            payout_delay_epochs: parsed.payout_delay_epochs as i64,
-            fee_bps: parsed.fee_bps as i64,
-            fee_split_bps_platform: parsed.fee_split_bps_platform as i64,
-            platform_treasury: parsed.platform_treasury.clone(),
-            chain_treasury: parsed.chain_treasury.clone(),
-            oracle_address: parsed.oracle_address.clone(),
-            max_single_bet: parsed.max_single_bet as i64,
-            timestamp_ms,
-            time: datetime,
-            transaction_id: tx_digest.clone(),
-        };
+        let new_config = parsed.into_config_model(
+            event_timestamp_ms,
+            tx_digest.clone(),
+            datetime,
+            latest_config.as_ref(),
+        );
 
         diesel::insert_into(schema::spot_config::table)
             .values(&new_config)

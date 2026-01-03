@@ -206,7 +206,7 @@ pub struct NewSocialProofOfTruthEvent {
 // SPoT Configuration (hypertable)
 // =============================================================================
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, QueryableByName)]
 #[diesel(table_name = spot_config)]
 pub struct SpotConfig {
     pub id: i32,

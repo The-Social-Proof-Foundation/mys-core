@@ -231,15 +231,51 @@ pub struct MyDataUnregisteredEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MyDataConfigUpdatedEvent {
     pub updated_by: String,
-    pub enable_flag: bool,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub max_tags: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub max_subscription_days: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub max_free_access_grants: u64,
+    pub enable_flag: bool, // Primary field being toggled - always required
+    // Optional config fields - will fallback to latest DB config if missing
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub max_tags: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub max_subscription_days: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub max_free_access_grants: Option<u64>,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
+}
+
+impl MyDataConfigUpdatedEvent {
+    /// Convert to database model using values from event when present, falling back to latest DB config if missing
+    /// The enable_flag is always taken from the event (this is the primary field being toggled)
+    pub fn into_config_model(
+        &self,
+        timestamp_ms: u64,
+        transaction_id: String,
+        latest_config: Option<&crate::models::mydata::MyDataConfig>,
+    ) -> crate::models::mydata::NewMyDataConfig {
+        // Helper to get value from event or fallback to latest config
+        let get_value = |event_val: Option<u64>, config_val: i64| -> i64 {
+            event_val.map(|v| v as i64).unwrap_or(config_val)
+        };
+
+        crate::models::mydata::NewMyDataConfig {
+            updated_by: self.updated_by.clone(),
+            enable_flag: self.enable_flag, // Always use event value for enable_flag
+            max_tags: get_value(
+                self.max_tags,
+                latest_config.map(|c| c.max_tags).unwrap_or(0),
+            ),
+            max_subscription_days: get_value(
+                self.max_subscription_days,
+                latest_config.map(|c| c.max_subscription_days).unwrap_or(0),
+            ),
+            max_free_access_grants: get_value(
+                self.max_free_access_grants,
+                latest_config.map(|c| c.max_free_access_grants).unwrap_or(0),
+            ),
+            timestamp_ms: timestamp_ms as i64,
+            transaction_id,
+        }
+    }
 }
 
 // ============================================================================

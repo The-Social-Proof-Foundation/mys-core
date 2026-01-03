@@ -189,7 +189,7 @@ pub struct NewMyDataRegistry {
     pub transaction_id: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, QueryableByName, PartialEq)]
 #[diesel(table_name = mydata_config)]
 #[diesel(primary_key(id, time))]
 pub struct MyDataConfig {

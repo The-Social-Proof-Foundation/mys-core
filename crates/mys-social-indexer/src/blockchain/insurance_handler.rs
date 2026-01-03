@@ -144,10 +144,13 @@ impl InsuranceEventHandler {
         let mut conn = self.get_connection().await?;
         let event_id = event.event_id.clone();
         let tx_digest = event.tx_digest.clone();
+        let event_timestamp_ms = event.timestamp_ms;
         let parsed_clone = parsed.clone();
 
+        // Use timestamp_ms from BlockchainEvent (in milliseconds) for correct timestamp
+        // The database trigger will convert it: to_timestamp(timestamp_ms / 1000)
         let config = parsed
-            .into_config_model(tx_digest.clone())
+            .into_config_model(event_timestamp_ms, tx_digest.clone())
             .map_err(|e| anyhow!("Failed to convert ConfigUpdatedEvent: {}", e))?;
 
         diesel::insert_into(schema::insurance_config::table)

@@ -24,7 +24,7 @@ use crate::events::{
     parse_event,
 };
 
-use crate::models::mydata::NewMyDataAccessLog;
+use crate::models::mydata::{MyDataConfig, NewMyDataAccessLog};
 use crate::schema::{
     mydata_access_logs, mydata_config, mydata_data, mydata_purchases, mydata_revenue,
     mydata_subscriptions,
@@ -158,6 +158,7 @@ impl MyDataEventHandler {
                 self.handle_mydata_config_updated_from_json(
                     &blockchain_event.data,
                     &blockchain_event.tx_digest,
+                    blockchain_event.timestamp_ms,
                 )
                 .await?;
             }
@@ -2049,10 +2050,13 @@ impl MyDataEventHandler {
     }
 
     /// Handle MyDataConfigUpdatedEvent from JSON data
+    /// Uses timestamp_ms from BlockchainEvent (in milliseconds) for correct timestamp
+    /// The database trigger will convert it: to_timestamp(timestamp_ms / 1000)
     async fn handle_mydata_config_updated_from_json(
         &self,
         data: &serde_json::Value,
         transaction_id: &str,
+        timestamp_ms: u64,
     ) -> Result<()> {
         info!("Processing MyDataConfigUpdatedEvent from JSON");
 
@@ -2062,15 +2066,22 @@ impl MyDataEventHandler {
 
         let mut conn = self.get_connection().await?;
 
-        let new_config = crate::models::mydata::NewMyDataConfig {
-            updated_by: config_event.updated_by.clone(),
-            enable_flag: config_event.enable_flag,
-            max_tags: config_event.max_tags as i64,
-            max_subscription_days: config_event.max_subscription_days as i64,
-            max_free_access_grants: config_event.max_free_access_grants as i64,
-            timestamp_ms: config_event.timestamp as i64,
-            transaction_id: transaction_id.to_string(),
-        };
+        // Fetch the latest config from database to use as fallback for missing values
+        let latest_config = diesel::sql_query(
+            "SELECT id, updated_by, enable_flag, max_tags, max_subscription_days, \
+             max_free_access_grants, timestamp_ms, time, transaction_id \
+             FROM mydata_config ORDER BY time DESC LIMIT 1"
+        )
+        .get_result::<MyDataConfig>(&mut conn)
+        .await
+        .ok(); // Use None if no previous config exists
+
+        // Use values from event when present, fallback to latest DB config if missing
+        let new_config = config_event.into_config_model(
+            timestamp_ms,
+            transaction_id.to_string(),
+            latest_config.as_ref(),
+        );
 
         diesel::insert_into(mydata_config::table)
             .values(&new_config)
@@ -2078,12 +2089,13 @@ impl MyDataEventHandler {
             .await?;
 
         info!(
-            "Processed MyDataConfigUpdatedEvent successfully: updated_by={}, enable_flag={}, max_tags={}, max_subscription_days={}, max_free_access_grants={}",
+            "Processed MyDataConfigUpdatedEvent successfully: updated_by={}, enable_flag={}, max_tags={:?}, max_subscription_days={:?}, max_free_access_grants={:?}, timestamp_ms={}",
             config_event.updated_by,
             config_event.enable_flag,
             config_event.max_tags,
             config_event.max_subscription_days,
-            config_event.max_free_access_grants
+            config_event.max_free_access_grants,
+            timestamp_ms
         );
 
         Ok(())

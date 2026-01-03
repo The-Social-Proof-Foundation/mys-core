@@ -137,7 +137,8 @@ impl VotingRewardClaimedEvent {
 
 // Model conversion impl for PocConfigUpdatedEvent
 impl PocConfigUpdatedEvent {
-    pub fn into_model(&self) -> Result<NewPocConfiguration> {
+    /// Convert to database model using timestamp_ms from BlockchainEvent (in milliseconds)
+    pub fn into_model(&self, timestamp_ms: u64) -> Result<NewPocConfiguration> {
         Ok(NewPocConfiguration {
             image_threshold: self.image_threshold as i64,
             video_threshold: self.video_threshold as i64,
@@ -151,7 +152,7 @@ impl PocConfigUpdatedEvent {
             max_reasoning_length: self.max_reasoning_length as i64,
             max_evidence_urls: self.max_evidence_urls as i64,
             updated_by: self.updated_by.clone(),
-            updated_at: self.timestamp as i64,
+            updated_at: timestamp_ms as i64, // Use timestamp_ms from BlockchainEvent (milliseconds)
             transaction_id: "".to_string(), // Will be set by handler
         })
     }

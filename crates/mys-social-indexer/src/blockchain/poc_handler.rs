@@ -255,8 +255,9 @@ impl PocEventHandler {
         let parsed = Self::parse_event::<PocConfigUpdatedEvent>(&event.data)?;
         validate_config_updated_event(&parsed)?;
 
+        // Use timestamp_ms from BlockchainEvent (in milliseconds) for correct timestamp
         let mut model = parsed
-            .into_model()
+            .into_model(event.timestamp_ms)
             .map_err(|e| anyhow!("Failed to convert PocConfigUpdatedEvent: {}", e))?;
         model.transaction_id = event.tx_digest.clone();
 

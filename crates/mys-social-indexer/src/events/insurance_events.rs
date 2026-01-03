@@ -326,7 +326,9 @@ pub struct ConfigUpdatedEvent {
 }
 
 impl ConfigUpdatedEvent {
-    pub fn into_config_model(&self, tx: String) -> Result<NewInsuranceConfig> {
+    /// Convert to database model using timestamp_ms from BlockchainEvent (in milliseconds)
+    /// The database trigger will convert timestamp_ms to time: to_timestamp(timestamp_ms / 1000)
+    pub fn into_config_model(&self, timestamp_ms: u64, tx: String) -> Result<NewInsuranceConfig> {
         Ok(NewInsuranceConfig {
             updated_by: self.updated_by.clone(),
             paused: self.paused,
@@ -336,8 +338,8 @@ impl ConfigUpdatedEvent {
             fee_bps: self.fee_bps as i64,
             treasury: self.treasury.clone(),
             version: 1, // Increment version if needed, or keep same
-            timestamp_ms: self.timestamp as i64,
-            time: Utc::now(),
+            timestamp_ms: timestamp_ms as i64, // Use timestamp_ms from BlockchainEvent (milliseconds)
+            time: Utc::now(), // Will be overridden by database trigger
             transaction_id: tx,
         })
     }

@@ -6,10 +6,11 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::events::event_utils::deserialize_u64_from_string;
+use crate::events::event_utils::{deserialize_u64_from_string, deserialize_optional_u64_from_string};
 
 use crate::models::{
     NewSpotBet, NewSpotEventLog, NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution,
+    SpotConfig,
 };
 
 // Matches social_contracts::social_proof_of_truth::SpotBetPlacedEvent
@@ -117,26 +118,99 @@ impl SpotRefundEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpotConfigUpdatedEvent {
     pub updated_by: String,
-    pub enable_flag: bool,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub confidence_threshold_bps: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub resolution_window_epochs: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub max_resolution_window_epochs: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub payout_delay_epochs: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub fee_bps: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub fee_split_bps_platform: u64,
-    pub platform_treasury: String,
-    pub chain_treasury: String,
-    pub oracle_address: String,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub max_single_bet: u64,
+    pub enable_flag: bool, // Primary field being toggled - always required
+    // Optional config fields - will fallback to latest DB config if missing
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub confidence_threshold_bps: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub resolution_window_epochs: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub max_resolution_window_epochs: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub payout_delay_epochs: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub fee_bps: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub fee_split_bps_platform: Option<u64>,
+    #[serde(default)]
+    pub platform_treasury: Option<String>,
+    #[serde(default)]
+    pub chain_treasury: Option<String>,
+    #[serde(default)]
+    pub oracle_address: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub max_single_bet: Option<u64>,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
+}
+
+impl SpotConfigUpdatedEvent {
+    /// Convert to database model using values from event when present, falling back to latest DB config if missing
+    /// The enable_flag is always taken from the event (this is the primary field being toggled)
+    pub fn into_config_model(
+        &self,
+        timestamp_ms: u64,
+        transaction_id: String,
+        time: chrono::DateTime<chrono::Utc>,
+        latest_config: Option<&SpotConfig>,
+    ) -> crate::models::social_proof_of_truth::NewSpotConfig {
+        // Helper to get value from event or fallback to latest config
+        let get_value = |event_val: Option<u64>, config_val: i64| -> i64 {
+            event_val.map(|v| v as i64).unwrap_or(config_val)
+        };
+
+        let get_string_value = |event_val: Option<String>, config_val: &str| -> String {
+            event_val.unwrap_or_else(|| config_val.to_string())
+        };
+
+        crate::models::social_proof_of_truth::NewSpotConfig {
+            updated_by: self.updated_by.clone(),
+            enable_flag: self.enable_flag, // Always use event value for enable_flag
+            confidence_threshold_bps: get_value(
+                self.confidence_threshold_bps,
+                latest_config.map(|c| c.confidence_threshold_bps).unwrap_or(0),
+            ),
+            resolution_window_epochs: get_value(
+                self.resolution_window_epochs,
+                latest_config.map(|c| c.resolution_window_epochs).unwrap_or(0),
+            ),
+            max_resolution_window_epochs: get_value(
+                self.max_resolution_window_epochs,
+                latest_config.map(|c| c.max_resolution_window_epochs).unwrap_or(0),
+            ),
+            payout_delay_epochs: get_value(
+                self.payout_delay_epochs,
+                latest_config.map(|c| c.payout_delay_epochs).unwrap_or(0),
+            ),
+            fee_bps: get_value(
+                self.fee_bps,
+                latest_config.map(|c| c.fee_bps).unwrap_or(0),
+            ),
+            fee_split_bps_platform: get_value(
+                self.fee_split_bps_platform,
+                latest_config.map(|c| c.fee_split_bps_platform).unwrap_or(0),
+            ),
+            platform_treasury: get_string_value(
+                self.platform_treasury.clone(),
+                latest_config.map(|c| c.platform_treasury.as_str()).unwrap_or(""),
+            ),
+            chain_treasury: get_string_value(
+                self.chain_treasury.clone(),
+                latest_config.map(|c| c.chain_treasury.as_str()).unwrap_or(""),
+            ),
+            oracle_address: get_string_value(
+                self.oracle_address.clone(),
+                latest_config.map(|c| c.oracle_address.as_str()).unwrap_or(""),
+            ),
+            max_single_bet: get_value(
+                self.max_single_bet,
+                latest_config.map(|c| c.max_single_bet).unwrap_or(0),
+            ),
+            timestamp_ms: timestamp_ms as i64,
+            time,
+            transaction_id,
+        }
+    }
 }
 
 // Matches social_contracts::social_proof_of_truth::SpotRecordCreatedEvent
