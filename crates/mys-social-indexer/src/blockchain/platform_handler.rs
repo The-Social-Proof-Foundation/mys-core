@@ -264,10 +264,20 @@ impl PlatformEventHandler {
                     };
 
                     // Insert platform event
-                    diesel::insert_into(schema::platform_events::table)
+                    info!("📝 Inserting into platform_events table for platform_id: {}", event.platform_id);
+                    let platform_event_result = diesel::insert_into(schema::platform_events::table)
                         .values(&platform_event)
                         .execute(&mut conn)
-                        .await?;
+                        .await;
+                    match platform_event_result {
+                        Ok(rows) => {
+                            info!("✅ Successfully inserted into platform_events: {} rows affected", rows);
+                        }
+                        Err(e) => {
+                            error!("❌ Failed to insert into platform_events: {}", e);
+                            return Err(e);
+                        }
+                    }
 
                     // Check if platform already exists
                     let platform_exists = schema::platforms::table
@@ -319,11 +329,21 @@ impl PlatformEventHandler {
                             secondary_category: secondary_category.clone(),
                         };
 
-                        diesel::update(schema::platforms::table)
+                        info!("📝 Updating existing platform in platforms table: {}", event.platform_id);
+                        let update_result = diesel::update(schema::platforms::table)
                             .filter(schema::platforms::platform_id.eq(&event.platform_id))
                             .set(&platform_update)
                             .execute(&mut conn)
-                            .await?;
+                            .await;
+                        match update_result {
+                            Ok(rows) => {
+                                info!("✅ Successfully updated platform in platforms table: {} rows affected", rows);
+                            }
+                            Err(e) => {
+                                error!("❌ Failed to update platform in platforms table: {}", e);
+                                return Err(e);
+                            }
+                        }
 
                         info!("Updated existing platform: {}", event.platform_id);
                     } else {
@@ -370,10 +390,20 @@ impl PlatformEventHandler {
                         };
 
                         // Insert platform
-                        diesel::insert_into(schema::platforms::table)
+                        info!("📝 Inserting new platform into platforms table: {}", event.platform_id);
+                        let platform_insert_result = diesel::insert_into(schema::platforms::table)
                             .values(&new_platform)
                             .execute(&mut conn)
-                            .await?;
+                            .await;
+                        match platform_insert_result {
+                            Ok(rows) => {
+                                info!("✅ Successfully inserted platform into platforms table: {} rows affected", rows);
+                            }
+                            Err(e) => {
+                                error!("❌ Failed to insert platform into platforms table: {}", e);
+                                return Err(e);
+                            }
+                        }
 
                         // Add developer as a moderator
                         let new_moderator = NewPlatformModerator {
@@ -386,7 +416,9 @@ impl PlatformEventHandler {
                         };
 
                         // Insert developer as moderator
-                        diesel::insert_into(schema::platform_moderators::table)
+                        info!("📝 Inserting developer as moderator into platform_moderators table: platform_id={}, moderator={}", 
+                            event.platform_id, event.developer);
+                        let moderator_insert_result = diesel::insert_into(schema::platform_moderators::table)
                             .values(&new_moderator)
                             .on_conflict((
                                 schema::platform_moderators::platform_id,
@@ -394,7 +426,16 @@ impl PlatformEventHandler {
                             ))
                             .do_nothing() // If already exists, do nothing
                             .execute(&mut conn)
-                            .await?;
+                            .await;
+                        match moderator_insert_result {
+                            Ok(rows) => {
+                                info!("✅ Successfully inserted moderator into platform_moderators: {} rows affected", rows);
+                            }
+                            Err(e) => {
+                                error!("❌ Failed to insert moderator into platform_moderators: {}", e);
+                                return Err(e);
+                            }
+                        }
 
                         info!("Created new platform: {}", event.platform_id);
                     }
@@ -1630,6 +1671,8 @@ impl PlatformEventHandler {
 
     /// Process raw blockchain events
     async fn process_event(&self, event: BlockchainEvent) -> Result<()> {
+        // CRITICAL: Log at the very start to confirm events reach the handler
+        info!("🔵 PLATFORM HANDLER ENTRY: Received event type: {}", event.event_type);
         debug!("Platform handler examining event: {}", event.event_type);
 
         // Log the raw event data for debugging
@@ -1640,13 +1683,29 @@ impl PlatformEventHandler {
         );
 
         // Use the PlatformEventType from_str method which handles package prefixes
-        if let Some(event_type) =
-            crate::events::platform_events::PlatformEventType::from_str(&event.event_type)
-        {
-            info!("Identified platform event type: {:?}", event_type);
+        let event_type = match crate::events::platform_events::PlatformEventType::from_str(&event.event_type) {
+            Some(et) => {
+                info!("Identified platform event type: {:?}", et);
+                et
+            }
+            None => {
+                // Log when platform events match pattern but don't match PlatformEventType
+                if event.event_type.contains("::platform::") || event.event_type.contains("Platform") {
+                    warn!(
+                        "⚠️ Platform event matched pattern but failed PlatformEventType matching: {}",
+                        event.event_type
+                    );
+                    info!(
+                        "Event data structure: {}",
+                        serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                    );
+                }
+                return Ok(()); // Not a platform event we handle
+            }
+        };
 
-            match event_type {
-                PlatformEventType::PlatformCreated => {
+        match event_type {
+            PlatformEventType::PlatformCreated => {
                     info!("Processing PlatformCreated event");
                     // Log complete event data for debugging
                     info!(
@@ -1877,20 +1936,6 @@ impl PlatformEventHandler {
                     }
                 }
             }
-        } else {
-            // Check if it contains platform in the event name for debugging
-            if event.event_type.to_lowercase().contains("platform") {
-                info!(
-                    "Found potential platform event but type not recognized: {}",
-                    event.event_type
-                );
-                info!(
-                    "Event data: {}",
-                    serde_json::to_string_pretty(&event.data).unwrap_or_default()
-                );
-            }
-            debug!("Not a recognized platform event: {}", event.event_type);
-        }
 
         Ok(())
     }

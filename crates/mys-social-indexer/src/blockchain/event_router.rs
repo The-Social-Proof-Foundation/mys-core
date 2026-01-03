@@ -192,6 +192,30 @@ impl EventRouter {
                     }
                 }
 
+                // Enhanced logging for PlatformCreatedEvent specifically
+                if event.event_type.contains("PlatformCreatedEvent") {
+                    info!(
+                        "🔍 PLATFORM CREATED EVENT PATTERN CHECK: event='{}', handler='{}', pattern={:?}, matches={}",
+                        event.event_type, handler_name, pattern, result
+                    );
+
+                    if let EventPattern::Module { package, module } = pattern {
+                        let short_package = if package.len() > 10 && package.starts_with("0x") {
+                            format!("0x{}", &package[package.len() - 4..])
+                        } else {
+                            package.clone()
+                        };
+                        info!(
+                            "🔍 MODULE PATTERN DETAILS: full_package='{}', short_package='{}', module='{}', event_starts_with_short={}, event_contains_module={}",
+                            package,
+                            short_package,
+                            module,
+                            event.event_type.starts_with(&short_package),
+                            event.event_type.contains(&format!("::{module}::"))
+                        );
+                    }
+                }
+
                 if result {
                     debug!(
                         "Event {} matches pattern {:?} for handler {}",
@@ -213,6 +237,14 @@ impl EventRouter {
                     );
                 }
 
+                // Enhanced logging for PlatformCreatedEvent routing
+                if event.event_type.contains("PlatformCreatedEvent") {
+                    info!(
+                        "✅ ROUTING PlatformCreatedEvent to handler '{}'",
+                        handler_name
+                    );
+                }
+
                 // Try to send the event
                 match registration.sender.try_send(event.clone()) {
                     Ok(_) => {
@@ -221,6 +253,11 @@ impl EventRouter {
                         if event.event_type.contains("ReservationPoolCreatedEvent") {
                             info!(
                                 "✅ Successfully sent ReservationPoolCreatedEvent to handler '{}'",
+                                handler_name
+                            );
+                        } else if event.event_type.contains("PlatformCreatedEvent") {
+                            info!(
+                                "✅ Successfully sent PlatformCreatedEvent to handler '{}'",
                                 handler_name
                             );
                         } else {
