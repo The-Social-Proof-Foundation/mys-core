@@ -17,6 +17,10 @@ pub mod social_graph_handler;
 pub mod social_proof_of_truth_handler;
 pub mod social_proof_token_handler;
 pub mod subscription_handler;
+pub mod watermark;
+pub mod collector;
+pub mod processor;
+pub mod committer;
 
 pub use block_list_handler::BlockListEventHandler;
 pub use event_router::{EventHandlerRegistration, EventPattern, EventRouter};

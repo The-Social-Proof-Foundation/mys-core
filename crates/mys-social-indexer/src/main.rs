@@ -9,16 +9,20 @@ use tracing::{error, info, warn};
 use mys_social_indexer::{
     api,
     blockchain::{
-        handler_trait::spawn_handler_task, BlockListEventHandler, BlockchainEventListener,
+        handler_trait::spawn_handler_task, BlockListEventHandler,
         EventPattern, EventRouter, GovernanceEventHandler, InsuranceEventHandler,
         MyDataEventHandler, PlatformEventHandler, PocEventHandler, PostEventHandler,
         ProfileEventListener, SocialGraphEventHandler, SocialProofOfTruthEventHandler,
         SocialProofTokenHandler, SubscriptionEventHandler,
+        collector::Collector,
+        processor::Processor,
+        committer::Committer,
     },
     config::Config,
     db::{self, ConnectionManager},
     get_mysocial_package_address, set_mysocial_package_address,
 };
+use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -316,77 +320,72 @@ async fn main() -> Result<()> {
 
     info!("✅ All handler tasks started");
 
-    // Create blockchain event listener
-    let blockchain_listener = Arc::new(BlockchainEventListener::new(
+    // Create checkpoint-based pipeline: Collector -> Processor -> Committer
+    info!("🔄 Setting up checkpoint-based pipeline architecture...");
+
+    // Create channels for pipeline
+    let (collector_tx, processor_rx) = mpsc::channel::<crate::blockchain::collector::TransactionBatch>(1000);
+    let (processor_tx, committer_rx) = mpsc::channel::<crate::blockchain::processor::ProcessedTransactionBatch>(1000);
+
+    // Create event router (shared with processor)
+    let event_router_arc = Arc::new(tokio::sync::Mutex::new(event_router));
+
+    // Create Collector
+    let collector = Collector::new(
         config.clone(),
         db_pool.clone(),
-    ));
+        collector_tx,
+    );
 
-    // Test blockchain connectivity
+    // Create Processor
+    let mut processor = Processor::new(
+        event_router_arc.clone(),
+        processor_rx,
+        processor_tx,
+    );
+
+    // Create Committer
+    let mut committer = Committer::new(
+        db_pool.clone(),
+        committer_rx,
+    );
+
+    // Start pipeline components as tasks
+    let collector_task = tokio::spawn(async move {
+        info!("🚀 Starting Collector...");
+        if let Err(e) = collector.start().await {
+            error!("Collector error: {}", e);
+        }
+    });
+
+    let processor_task = tokio::spawn(async move {
+        info!("🚀 Starting Processor...");
+        if let Err(e) = processor.start().await {
+            error!("Processor error: {}", e);
+        }
+    });
+
+    let committer_task = tokio::spawn(async move {
+        info!("🚀 Starting Committer...");
+        if let Err(e) = committer.start().await {
+            error!("Committer error: {}", e);
+        }
+    });
+
+    info!("✅ Pipeline components started: Collector -> Processor -> Committer");
+
+    // Test blockchain connectivity (using a simple client test)
     info!("🔗 Testing blockchain connectivity...");
-    match blockchain_listener.test_connectivity().await {
+    match mys_sdk::MysClientBuilder::default()
+        .build(&config.blockchain.rpc_url)
+        .await
+    {
         Ok(_) => info!("✅ Blockchain connectivity test passed"),
         Err(e) => {
             error!("❌ Blockchain connectivity test failed: {}", e);
             warn!("Blockchain events may not work, but API server will continue");
         }
     }
-
-    // Start the event router with blockchain listener
-    let event_router_arc = Arc::new(tokio::sync::Mutex::new(event_router));
-    let blockchain_task = tokio::spawn({
-        let listener = blockchain_listener.clone();
-        let router = event_router_arc.clone();
-        async move {
-            // Register the router as an event handler for the blockchain listener
-            let (router_tx, mut router_rx) = tokio::sync::mpsc::channel(10000);
-            listener.register_event_handler(router_tx).await;
-
-            // Start the blockchain listener
-            let listener_task = tokio::spawn(async move {
-                loop {
-                    match listener.start().await {
-                        Ok(_) => {
-                            info!("Blockchain listener completed normally");
-                            break;
-                        }
-                        Err(e) => {
-                            error!("Blockchain listener error: {}", e);
-                            warn!("Retrying blockchain connection in 30 seconds...");
-                            tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
-                        }
-                    }
-                }
-            });
-
-            // Event routing loop
-            let routing_task = tokio::spawn(async move {
-                while let Some(event) = router_rx.recv().await {
-                    let mut router_guard = router.lock().await;
-                    if let Err(e) = router_guard.route_event(event).await {
-                        error!("Event routing error: {}", e);
-                    }
-
-                    // Log metrics every 1000 events
-                    if router_guard.get_metrics().total_events_received % 1000 == 0
-                        && router_guard.get_metrics().total_events_received > 0
-                    {
-                        router_guard.log_metrics();
-                    }
-                }
-            });
-
-            // Wait for either task to complete
-            tokio::select! {
-                _ = listener_task => {
-                    warn!("Blockchain listener task completed");
-                }
-                _ = routing_task => {
-                    warn!("Event routing task completed");
-                }
-            }
-        }
-    });
 
     // Start the API server
     info!("🌐 Starting API server...");
@@ -421,7 +420,9 @@ async fn main() -> Result<()> {
     spot_task.abort();
     poc_task.abort();
     insurance_task.abort();
-    blockchain_task.abort();
+    collector_task.abort();
+    processor_task.abort();
+    committer_task.abort();
 
     // Log final metrics
     {

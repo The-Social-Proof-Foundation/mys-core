@@ -15,7 +15,7 @@ use crate::config::Config;
 use crate::db::Database;
 
 /// Type for events received from the blockchain
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BlockchainEvent {
     /// Transaction digest
     pub tx_digest: String,
@@ -27,6 +27,10 @@ pub struct BlockchainEvent {
     pub data: serde_json::Value,
     /// Timestamp from the blockchain
     pub timestamp_ms: u64,
+    /// Checkpoint sequence number (if available)
+    pub checkpoint_seq: Option<u64>,
+    /// Event sequence within transaction
+    pub event_seq: Option<u64>,
 }
 
 /// Listener that connects to the blockchain and processes events
@@ -405,6 +409,8 @@ impl BlockchainEventListener {
                         event_type: event.type_.to_string(),
                         data: parsed_data,
                         timestamp_ms,
+                        checkpoint_seq: None, // Not available in websocket listener
+                        event_seq: Some(event.id.event_seq),
                     };
 
                     // Process the event
@@ -493,6 +499,10 @@ impl BlockchainEventListener {
                 Ok(events) => {
                     consecutive_errors = 0;
                     
+                    // Log all event types returned by API query for debugging
+                    let event_types: Vec<String> = events.data.iter().map(|e| e.type_.to_string()).collect();
+                    debug!("API returned {} events: {:?}", events.data.len(), event_types);
+                    
                     // Process events in reverse order (oldest to newest)
                     for event in events.data.into_iter().rev() {
                         // Generate the event ID first (before any filtering)
@@ -505,10 +515,13 @@ impl BlockchainEventListener {
                         }
 
                         // Get the timestamp for initial filtering (skip very old events)
+                        // Only skip if timestamp is significantly older (more than 1 second) to allow
+                        // multiple events from the same transaction with the same timestamp
                         let event_timestamp = event.timestamp_ms.unwrap_or(0);
-                        if event_timestamp <= last_seen_timestamp {
-                            // Still mark as seen even if we skip due to timestamp
-                            // This prevents reprocessing if timestamp filtering changes
+                        if event_timestamp < last_seen_timestamp.saturating_sub(1000) {
+                            // Only skip events that are more than 1 second older than last seen
+                            // This allows events with the same timestamp to be processed
+                            // Still mark as seen to prevent reprocessing
                             seen_event_ids.insert(event_id);
                             continue;
                         }
@@ -571,6 +584,8 @@ impl BlockchainEventListener {
                             event_type: event.type_.to_string(),
                             data: parsed_data,
                             timestamp_ms,
+                            checkpoint_seq: None, // Not available in polling listener
+                            event_seq: Some(event.id.event_seq),
                         };
 
                         // Process the event
@@ -643,14 +658,3 @@ impl BlockchainEventListener {
 }
 
 /// Allow cloning BlockchainEvent
-impl Clone for BlockchainEvent {
-    fn clone(&self) -> Self {
-        Self {
-            tx_digest: self.tx_digest.clone(),
-            event_id: self.event_id.clone(),
-            event_type: self.event_type.clone(),
-            data: self.data.clone(),
-            timestamp_ms: self.timestamp_ms,
-        }
-    }
-}

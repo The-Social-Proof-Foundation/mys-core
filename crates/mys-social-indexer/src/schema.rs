@@ -98,6 +98,18 @@ table! {
     }
 }
 
+// Define indexer watermarks table for checkpoint-based pipeline
+table! {
+    indexer_watermarks (id) {
+        id -> Integer,
+        checkpoint_seq -> Bigint,
+        tx_digest -> Varchar,
+        reader_watermark -> Nullable<Bigint>,
+        committer_watermark -> Nullable<Bigint>,
+        updated_at -> Timestamptz,
+    }
+}
+
 // Define platforms table
 table! {
     platforms (id) {
