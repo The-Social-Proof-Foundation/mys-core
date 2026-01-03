@@ -22,6 +22,7 @@ module social_contracts::bootstrap {
     use social_contracts::mydata::{Self, MyDataAdminCap};
     use social_contracts::social_proof_of_truth::{Self, SpotAdminCap, SpotOracleAdminCap};
     use social_contracts::insurance::{Self, InsuranceAdminCap};
+    use social_contracts::profile::{Self, EcosystemTreasuryAdminCap};
     
     // Import framework coin module for coin creation admin cap
     use mys::coin::{Self, CoinCreationAdminCap};
@@ -59,6 +60,7 @@ module social_contracts::bootstrap {
         transfer::public_transfer(mydata::create_mydata_admin_cap(ctx), admin);
         transfer::public_transfer(social_proof_of_truth::create_spot_admin_cap(ctx), admin);
         transfer::public_transfer(social_proof_of_truth::create_spot_oracle_admin_cap(ctx), admin);
+        transfer::public_transfer(profile::create_ecosystem_treasury_admin_cap(ctx), admin);
         transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(ctx), admin);
 
         // Seal the bootstrap key permanently (prevents any future bootstrap attempts)

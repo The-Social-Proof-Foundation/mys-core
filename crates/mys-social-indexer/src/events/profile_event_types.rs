@@ -42,6 +42,8 @@ pub enum ProfileEventType {
     VestingWalletDeleted,
     // Paid messaging settings updated
     PaidMessagingSettingsUpdated,
+    // Ecosystem treasury updated
+    EcosystemTreasuryUpdated,
 }
 
 impl ProfileEventType {
@@ -75,6 +77,7 @@ impl ProfileEventType {
             s if s.contains("::BadgeSelectedEvent") => Some(Self::BadgeSelected),
             s if s.contains("::VestingWalletDeletedEvent") => Some(Self::VestingWalletDeleted),
             s if s.contains("::PaidMessagingSettingsUpdatedEvent") => Some(Self::PaidMessagingSettingsUpdated),
+            s if s.contains("::EcosystemTreasuryUpdatedEvent") => Some(Self::EcosystemTreasuryUpdated),
             _ => None,
         }
     }
@@ -101,6 +104,7 @@ impl ProfileEventType {
             Self::BadgeSelected => "BadgeSelectedEvent",
             Self::VestingWalletDeleted => "VestingWalletDeletedEvent",
             Self::PaidMessagingSettingsUpdated => "PaidMessagingSettingsUpdatedEvent",
+            Self::EcosystemTreasuryUpdated => "EcosystemTreasuryUpdatedEvent",
         }
     }
 }

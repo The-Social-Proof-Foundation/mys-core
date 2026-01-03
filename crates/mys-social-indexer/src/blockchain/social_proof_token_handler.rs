@@ -1096,7 +1096,7 @@ impl SocialProofTokenHandler {
         let latest_config = diesel::sql_query(
             "SELECT id, updated_by, post_threshold, profile_threshold, max_individual_reservation_bps, \
              total_fee_bps, creator_fee_bps, platform_fee_bps, treasury_fee_bps, base_price, \
-             quadratic_coefficient, ecosystem_treasury, max_hold_percent_bps, trading_halted, \
+             quadratic_coefficient, max_hold_percent_bps, trading_halted, \
              updated_at, time, transaction_id \
              FROM spt_exchange_config ORDER BY time DESC LIMIT 1"
         )

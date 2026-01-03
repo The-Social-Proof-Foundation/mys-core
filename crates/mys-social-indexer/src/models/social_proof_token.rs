@@ -372,8 +372,6 @@ pub struct SptExchangeConfig {
     pub base_price: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub quadratic_coefficient: i64,
-    #[diesel(sql_type = diesel::sql_types::Text)]
-    pub ecosystem_treasury: String,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub max_hold_percent_bps: i64,
     #[diesel(sql_type = diesel::sql_types::Bool)]
@@ -400,7 +398,6 @@ pub struct NewSptExchangeConfig {
     pub treasury_fee_bps: i64,
     pub base_price: i64,
     pub quadratic_coefficient: i64,
-    pub ecosystem_treasury: String,
     pub max_hold_percent_bps: i64,
     pub trading_halted: bool,
     pub updated_at: i64,

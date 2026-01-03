@@ -88,11 +88,18 @@ module social_contracts::profile {
     // Field name for offers
     const OFFERS_FIELD: vector<u8> = b"profile_offers";
 
+    /// Admin capability for Ecosystem Treasury management
+    public struct EcosystemTreasuryAdminCap has key, store {
+        id: UID,
+    }
+
     /// Social Ecosystem Treasury that receives fees from profile sales
     public struct EcosystemTreasury has key {
         id: UID,
         /// Treasury address that receives fees
         treasury_address: address,
+        /// Version for upgrades
+        version: u64,
     }
 
     /// Username Registry that stores mappings between usernames and profiles
@@ -359,6 +366,13 @@ module social_contracts::profile {
         min_cost: Option<u64>,
         updated_at: u64,
     }
+
+    /// Event emitted when Ecosystem Treasury address is updated
+    public struct EcosystemTreasuryUpdatedEvent has copy, drop {
+        updated_by: address,
+        new_treasury_address: address,
+        timestamp: u64,
+    }
     
     /// Bootstrap initialization function - creates the username registry and treasury
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
@@ -376,6 +390,7 @@ module social_contracts::profile {
         let treasury = EcosystemTreasury {
             id: object::new(ctx),
             treasury_address: tx_context::sender(ctx),
+            version: current_version,
         };
         
         // Share the registry to make it globally accessible
@@ -979,7 +994,7 @@ module social_contracts::profile {
         let fee_payment = coin::split(&mut payment, fee_amount, ctx);
         
         // Send the fee to the treasury treasury
-        transfer::public_transfer(fee_payment, treasury.treasury_address);
+        transfer::public_transfer(fee_payment, get_treasury_address(treasury));
         
         // Send the remaining amount to the profile owner
         transfer::public_transfer(payment, sender);
@@ -1057,7 +1072,7 @@ module social_contracts::profile {
             previous_owner,
             sale_amount: amount,
             fee_amount,
-            fee_recipient: treasury.treasury_address,
+            fee_recipient: get_treasury_address(treasury),
             timestamp: now,
         });
         
@@ -1134,6 +1149,61 @@ module social_contracts::profile {
     /// Get the treasury address from the EcosystemTreasury
     public fun get_treasury_address(treasury: &EcosystemTreasury): address {
         treasury.treasury_address
+    }
+
+    /// Update Ecosystem Treasury address (admin only)
+    public entry fun update_treasury_address(
+        _: &EcosystemTreasuryAdminCap,
+        treasury: &mut EcosystemTreasury,
+        new_address: address,
+        ctx: &mut TxContext
+    ) {
+        treasury.treasury_address = new_address;
+        
+        // Emit event for treasury address update
+        event::emit(EcosystemTreasuryUpdatedEvent {
+            updated_by: tx_context::sender(ctx),
+            new_treasury_address: new_address,
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+        });
+    }
+
+    /// Get the version of the EcosystemTreasury
+    public fun treasury_version(treasury: &EcosystemTreasury): u64 {
+        treasury.version
+    }
+
+    /// Migration function for EcosystemTreasury
+    public entry fun migrate_ecosystem_treasury(
+        treasury: &mut EcosystemTreasury,
+        _: &upgrade::UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade
+        assert!(treasury.version < current_version, 1);
+        
+        // Remember old version and update to new version
+        let old_version = treasury.version;
+        treasury.version = current_version;
+        
+        // Emit event for object migration
+        let treasury_id = object::id(treasury);
+        upgrade::emit_migration_event(
+            treasury_id,
+            string::utf8(b"EcosystemTreasury"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    /// Create an EcosystemTreasuryAdminCap for bootstrap (package visibility only)
+    /// This function is only callable by other modules in the same package
+    public(package) fun create_ecosystem_treasury_admin_cap(ctx: &mut TxContext): EcosystemTreasuryAdminCap {
+        EcosystemTreasuryAdminCap {
+            id: object::new(ctx)
+        }
     }
 
     // Accessor for version field

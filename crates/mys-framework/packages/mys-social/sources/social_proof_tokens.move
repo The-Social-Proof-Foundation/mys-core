@@ -27,7 +27,7 @@ module social_contracts::social_proof_tokens {
         package::{Self, Publisher}
     };
     
-    use social_contracts::profile::{Self, Profile, UsernameRegistry};
+    use social_contracts::profile::{Self, Profile, UsernameRegistry, EcosystemTreasury};
     use social_contracts::post::{Self, Post};
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::platform::{Self, PlatformRegistry};
@@ -135,8 +135,6 @@ module social_contracts::social_proof_tokens {
         base_price: u64,
         /// Quadratic coefficient for pricing curve
         quadratic_coefficient: u64,
-        /// Ecosystem treasury address
-        ecosystem_treasury: address,
         /// Maximum percentage a single wallet can hold of any token
         max_hold_percent_bps: u64,
         /// Reservation thresholds for social proof token creation
@@ -363,8 +361,6 @@ module social_contracts::social_proof_tokens {
         /// Curve parameters
         base_price: u64,
         quadratic_coefficient: u64,
-        /// Treasury addresses
-        ecosystem_treasury: address,
         /// Maximum hold percentage
         max_hold_percent_bps: u64,
         /// Reservation thresholds
@@ -410,8 +406,6 @@ module social_contracts::social_proof_tokens {
 
     /// Bootstrap initialization function - creates the social proof tokens configuration and registry
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
-        let admin = tx_context::sender(ctx);
-        
         // Create and share social proof tokens config with proper treasury and trading enabled
         transfer::share_object(
             SocialProofTokensConfig {
@@ -422,7 +416,6 @@ module social_contracts::social_proof_tokens {
                 treasury_fee_bps: DEFAULT_TREASURY_FEE_BPS,
                 base_price: DEFAULT_BASE_PRICE,
                 quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
-                ecosystem_treasury: admin, // Auto-configured to admin during bootstrap
                 max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
                 post_threshold: DEFAULT_POST_THRESHOLD,
                 profile_threshold: DEFAULT_PROFILE_THRESHOLD,
@@ -458,7 +451,6 @@ module social_contracts::social_proof_tokens {
         treasury_fee_bps: u64,
         base_price: u64,
         quadratic_coefficient: u64,
-        ecosystem_treasury: address,
         max_hold_percent_bps: u64,
         post_threshold: u64,
         profile_threshold: u64,
@@ -481,8 +473,7 @@ module social_contracts::social_proof_tokens {
         config.base_price = base_price;
         config.quadratic_coefficient = quadratic_coefficient;
         
-        // Update treasury addresses
-        config.ecosystem_treasury = ecosystem_treasury;
+        // Update max hold percentage
         config.max_hold_percent_bps = max_hold_percent_bps;
         
         // Update reservation thresholds
@@ -500,7 +491,6 @@ module social_contracts::social_proof_tokens {
             treasury_fee_bps,
             base_price,
             quadratic_coefficient,
-            ecosystem_treasury,
             max_hold_percent_bps,
             post_threshold,
             profile_threshold,
@@ -1178,6 +1168,7 @@ module social_contracts::social_proof_tokens {
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
         config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
         platform_registry: &PlatformRegistry,
         profile_registry: &UsernameRegistry,
         block_list_registry: &BlockListRegistry,
@@ -1254,7 +1245,7 @@ module social_contracts::social_proof_tokens {
             // Send treasury fee
             if (treasury_fee > 0) {
                 let treasury_fee_coin = coin::split(&mut payment, treasury_fee, ctx);
-                transfer::public_transfer(treasury_fee_coin, config.ecosystem_treasury);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
             };
         };
         
@@ -1327,6 +1318,7 @@ module social_contracts::social_proof_tokens {
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
         config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
         platform_registry: &PlatformRegistry,
         profile_registry: &UsernameRegistry,
         block_list_registry: &BlockListRegistry,
@@ -1407,7 +1399,7 @@ module social_contracts::social_proof_tokens {
             // Send treasury fee
             if (treasury_fee > 0) {
                 let treasury_fee_coin = coin::split(&mut payment, treasury_fee, ctx);
-                transfer::public_transfer(treasury_fee_coin, config.ecosystem_treasury);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
             };
         };
         
@@ -1478,6 +1470,7 @@ module social_contracts::social_proof_tokens {
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
         config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
         platform_registry: &PlatformRegistry,
         profile_registry: &UsernameRegistry,
         block_list_registry: &BlockListRegistry,
@@ -1575,7 +1568,7 @@ module social_contracts::social_proof_tokens {
             // Send fee to treasury
             if (treasury_fee > 0) {
                 let treasury_fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, treasury_fee), ctx);
-                transfer::public_transfer(treasury_fee_coin, config.ecosystem_treasury);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
             };
         };
         
@@ -1746,10 +1739,6 @@ module social_contracts::social_proof_tokens {
         pool.poc_redirect_percentage = option::none();
     }
 
-    /// Get the ecosystem treasury address from config
-    public fun get_ecosystem_treasury(config: &SocialProofTokensConfig): address {
-        config.ecosystem_treasury
-    }
 
     // Test-only functions
     #[test_only]
@@ -1776,7 +1765,6 @@ module social_contracts::social_proof_tokens {
                 treasury_fee_bps: DEFAULT_TREASURY_FEE_BPS,
                 base_price: DEFAULT_BASE_PRICE,
                 quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
-                ecosystem_treasury: sender,
                 max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
                 post_threshold: DEFAULT_POST_THRESHOLD,
                 profile_threshold: DEFAULT_PROFILE_THRESHOLD,

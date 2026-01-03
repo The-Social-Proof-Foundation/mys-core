@@ -814,3 +814,23 @@ pub struct PaidMessagingSettingsUpdatedEvent {
     )]
     pub updated_at: u64,
 }
+
+/// Event emitted when the ecosystem treasury address is updated
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EcosystemTreasuryUpdatedEvent {
+    /// Address of the admin who updated the treasury
+    #[serde(rename = "updated_by", default)]
+    pub updated_by: String,
+
+    /// New treasury address
+    #[serde(rename = "new_treasury_address", default)]
+    pub new_treasury_address: String,
+
+    /// Timestamp when the treasury was updated (in milliseconds)
+    #[serde(
+        rename = "timestamp",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    pub timestamp: u64,
+}

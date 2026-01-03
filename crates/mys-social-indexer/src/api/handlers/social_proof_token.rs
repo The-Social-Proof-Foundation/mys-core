@@ -2032,9 +2032,6 @@ pub struct SptConfigInfo {
     #[diesel(sql_type = BigInt)]
     pub quadratic_coefficient: i64,
 
-    #[diesel(sql_type = Text)]
-    pub ecosystem_treasury: String,
-
     #[diesel(sql_type = BigInt)]
     pub max_hold_percent_bps: i64,
 
@@ -2079,7 +2076,6 @@ pub async fn get_spt_configuration(State(db): State<Arc<Database>>) -> Response 
             treasury_fee_bps,
             base_price,
             quadratic_coefficient,
-            ecosystem_treasury,
             max_hold_percent_bps,
             trading_halted,
             updated_at,
@@ -2095,7 +2091,44 @@ pub async fn get_spt_configuration(State(db): State<Arc<Database>>) -> Response 
         .await;
 
     match result {
-        Ok(config) => Json(config).into_response(),
+        Ok(config) => {
+            // Query current treasury address from ecosystem_treasury table
+            let treasury_address = match crate::models::get_current_treasury_address(&mut conn).await {
+                Ok(addr) => addr,
+                Err(e) => {
+                    error!("Failed to get current treasury address: {}", e);
+                    // Return error if treasury not found
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({
+                            "error": format!("Failed to get treasury address: {}", e)
+                        })),
+                    )
+                        .into_response();
+                }
+            };
+
+            // Add treasury address to response
+            let mut config_json = match serde_json::to_value(&config) {
+                Ok(json) => json,
+                Err(e) => {
+                    error!("Failed to serialize config: {}", e);
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({
+                            "error": format!("Failed to serialize config: {}", e)
+                        })),
+                    )
+                        .into_response();
+                }
+            };
+
+            if let Some(obj) = config_json.as_object_mut() {
+                obj.insert("ecosystem_treasury".to_string(), serde_json::Value::String(treasury_address));
+            }
+
+            Json(config_json).into_response()
+        },
         Err(diesel::result::Error::NotFound) => {
             (
                 StatusCode::NOT_FOUND,

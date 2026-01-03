@@ -85,8 +85,6 @@ module social_contracts::token_exchange_tests {
             let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
             let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
             
-            let ecosystem_treasury = @0x67890;
-            
             social_proof_tokens::update_social_proof_tokens_config(
                 &admin_cap,
                 &mut config,
@@ -96,7 +94,6 @@ module social_contracts::token_exchange_tests {
                 25,  // treasury_fee_bps (0.25%)
                 200_000_000, // base_price (0.2 MYS)
                 200_000,     // quadratic_coefficient (doubled)
-                ecosystem_treasury,
                 1000, // max_hold_percent_bps (10%)
                 2000_000_000, // post_threshold (2000 MYS)
                 20000_000_000, // profile_threshold (20000 MYS) 
@@ -209,7 +206,6 @@ module social_contracts::token_exchange_tests {
                 25,  // treasury_fee_bps
                 100_000_000, // base_price (0.1 MYS)
                 100_000,     // quadratic_coefficient
-                ECOSYSTEM_TREASURY,
                 500, // max_hold_percent_bps (5%)
                 1000_000_000, // post_threshold (1000 MYS)
                 10000_000_000, // profile_threshold (10000 MYS)

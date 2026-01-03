@@ -21,6 +21,7 @@ module social_contracts::proof_of_creativity {
     };
     use mys::mys::MYS;
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
+    use social_contracts::profile::EcosystemTreasury;
 
     /// Error codes
     const EUnauthorized: u64 = 0;
@@ -100,8 +101,6 @@ module social_contracts::proof_of_creativity {
         max_evidence_urls: u64,
         /// Governance registry ID for PoC disputes
         dispute_governance_id: ID,
-        /// Ecosystem treasury address
-        ecosystem_treasury: address,
         /// Version for upgrades
         version: u64,
     }
@@ -290,7 +289,6 @@ module social_contracts::proof_of_creativity {
                 max_reasoning_length: MAX_REASONING_LENGTH,
                 max_evidence_urls: MAX_EVIDENCE_URLS,
                 dispute_governance_id: object::id_from_address(@0x0), // Placeholder for future governance
-                ecosystem_treasury: sender, // Auto-configured by bootstrap service during bootstrap
                 version: upgrade::current_version(),
             }
         );
@@ -324,7 +322,6 @@ module social_contracts::proof_of_creativity {
         voting_duration_epochs: u64,
         max_reasoning_length: u64,
         max_evidence_urls: u64,
-        ecosystem_treasury: address,
         ctx: &mut TxContext
     ) {
         // Admin capability verification is handled by type system
@@ -356,7 +353,6 @@ module social_contracts::proof_of_creativity {
         config.voting_duration_epochs = voting_duration_epochs;
         config.max_reasoning_length = max_reasoning_length;
         config.max_evidence_urls = max_evidence_urls;
-        config.ecosystem_treasury = ecosystem_treasury;
 
         // Emit configuration update event
         event::emit(PoCConfigUpdatedEvent {
@@ -537,6 +533,7 @@ module social_contracts::proof_of_creativity {
     public entry fun submit_poc_dispute(
         config: &PoCConfig,
         registry: &mut PoCRegistry,
+        treasury: &EcosystemTreasury,
         post: &mut social_contracts::post::Post,
         evidence: String,
         mut payment: Coin<MYS>,
@@ -565,7 +562,7 @@ module social_contracts::proof_of_creativity {
         
         // Extract dispute fee and send to ecosystem treasury
         let dispute_fee = coin::split(&mut payment, total_cost, ctx);
-        transfer::public_transfer(dispute_fee, config.ecosystem_treasury);
+        transfer::public_transfer(dispute_fee, social_contracts::profile::get_treasury_address(treasury));
         
         // Return excess payment
         if (coin::value(&payment) > 0) {

@@ -723,7 +723,6 @@ pub struct ConfigUpdatedEvent {
     pub base_price: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quadratic_coefficient: u64,
-    pub ecosystem_treasury: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_hold_percent_bps: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
@@ -768,11 +767,6 @@ impl TryFrom<Value> for ConfigUpdatedEvent {
             treasury_fee_bps: parse_u64("treasury_fee_bps")?,
             base_price: parse_u64("base_price")?,
             quadratic_coefficient: parse_u64("quadratic_coefficient")?,
-            ecosystem_treasury: obj
-                .get("ecosystem_treasury")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| anyhow!("Missing or invalid ecosystem_treasury"))?
-                .to_string(),
             max_hold_percent_bps: parse_u64("max_hold_percent_bps")?,
             post_threshold: parse_u64("post_threshold")?,
             profile_threshold: parse_u64("profile_threshold")?,
@@ -783,6 +777,7 @@ impl TryFrom<Value> for ConfigUpdatedEvent {
 
 impl ConfigUpdatedEvent {
     /// Convert the event to an exchange config model
+    /// Note: Treasury address is no longer stored in config, it's tracked separately in ecosystem_treasury table
     pub fn into_exchange_config_model(
         &self,
         timestamp: u64,
@@ -799,7 +794,6 @@ impl ConfigUpdatedEvent {
             treasury_fee_bps: self.treasury_fee_bps as i64,
             base_price: self.base_price as i64,
             quadratic_coefficient: self.quadratic_coefficient as i64,
-            ecosystem_treasury: self.ecosystem_treasury.clone(),
             max_hold_percent_bps: self.max_hold_percent_bps as i64,
             trading_halted: false, // Will be set from actual event data
             updated_at: self.timestamp as i64,
@@ -1593,8 +1587,6 @@ pub struct EmergencyKillSwitchEvent {
     pub base_price: Option<u64>,
     #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
     pub quadratic_coefficient: Option<u64>,
-    #[serde(default)]
-    pub ecosystem_treasury: Option<String>,
     #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
     pub max_hold_percent_bps: Option<u64>,
     #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
@@ -1658,10 +1650,6 @@ impl TryFrom<Value> for EmergencyKillSwitchEvent {
             treasury_fee_bps: parse_optional_u64("treasury_fee_bps")?,
             base_price: parse_optional_u64("base_price")?,
             quadratic_coefficient: parse_optional_u64("quadratic_coefficient")?,
-            ecosystem_treasury: obj
-                .get("ecosystem_treasury")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string()),
             max_hold_percent_bps: parse_optional_u64("max_hold_percent_bps")?,
             post_threshold: parse_optional_u64("post_threshold")?,
             profile_threshold: parse_optional_u64("profile_threshold")?,
@@ -1682,10 +1670,6 @@ impl EmergencyKillSwitchEvent {
         // Helper to get value from event or fallback to latest config
         let get_value = |event_val: Option<u64>, config_val: i64| -> i64 {
             event_val.map(|v| v as i64).unwrap_or(config_val)
-        };
-
-        let get_string_value = |event_val: Option<String>, config_val: &str| -> String {
-            event_val.unwrap_or_else(|| config_val.to_string())
         };
 
         Ok(NewSptExchangeConfig {
@@ -1727,12 +1711,6 @@ impl EmergencyKillSwitchEvent {
             quadratic_coefficient: get_value(
                 self.quadratic_coefficient,
                 latest_config.map(|c| c.quadratic_coefficient).unwrap_or(0),
-            ),
-            ecosystem_treasury: get_string_value(
-                self.ecosystem_treasury.clone(),
-                latest_config
-                    .map(|c| c.ecosystem_treasury.as_str())
-                    .unwrap_or(""),
             ),
             max_hold_percent_bps: get_value(
                 self.max_hold_percent_bps,

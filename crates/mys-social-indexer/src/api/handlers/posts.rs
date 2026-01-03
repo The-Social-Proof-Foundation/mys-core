@@ -1539,7 +1539,6 @@ pub struct PostConfigInfo {
     pub updated_at: i64,
 
     #[diesel(sql_type = Timestamptz)]
-    #[serde(skip_serializing)]
     pub time: chrono::DateTime<chrono::Utc>,
 
     #[diesel(sql_type = Text)]

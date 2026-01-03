@@ -22,9 +22,8 @@ module social_contracts::message {
         mys::MYS
     };
 
-    use social_contracts::profile::{Self, Profile};
+    use social_contracts::profile::{Self, Profile, EcosystemTreasury};
     use social_contracts::platform::{Self, Platform};
-    use social_contracts::social_proof_tokens::{Self as spt, SocialProofTokensConfig};
     use social_contracts::upgrade;
 
     // === Error Codes ===
@@ -1187,7 +1186,7 @@ module social_contracts::message {
         registry: &Registry,
         conv: &mut Conversation,
         platform: &mut Platform,
-        spt_config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
         paid_msg_seq: u64,
         kind: u8,
         digest_hash: vector<u8>,
@@ -1276,14 +1275,14 @@ module social_contracts::message {
         });
 
         // Automatically claim the payment
-        claim_payment_internal(conv, platform, spt_config, paid_msg_seq, ctx);
+        claim_payment_internal(conv, platform, treasury, paid_msg_seq, ctx);
     }
 
     /// Claim payment from a replied paid message (internal helper)
     fun claim_payment_internal(
         conv: &mut Conversation,
         platform: &mut Platform,
-        spt_config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
         paid_msg_seq: u64,
         ctx: &mut TxContext
     ) {
@@ -1311,7 +1310,7 @@ module social_contracts::message {
         // Treasury fee
         if (treasury_fee > 0) {
             let treasury_fee_coin = coin::split(&mut escrow_coin, treasury_fee, ctx);
-            transfer::public_transfer(treasury_fee_coin, spt::get_ecosystem_treasury(spt_config));
+            transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
         };
 
         // Net amount to recipient

@@ -18,6 +18,7 @@ pub mod social_proof_of_truth;
 pub mod social_proof_token;
 pub mod social_proof_tokens_config;
 pub mod subscription;
+pub mod treasury;
 pub mod vesting;
 
 pub use indexer::*;
@@ -100,3 +101,5 @@ pub use social_proof_of_truth::NewSocialProofOfTruthEvent;
 pub use social_proof_of_truth::*;
 // Insurance types
 pub use insurance::*;
+// Treasury types
+pub use treasury::{EcosystemTreasury, NewEcosystemTreasury, get_current_treasury_address, get_treasury_history};

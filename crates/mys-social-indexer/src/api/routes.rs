@@ -87,6 +87,8 @@ use crate::api::handlers::insurance::{
     get_insurance_configuration, get_policy, get_vault, get_vault_exposures, list_market_policies,
     list_policies, list_vault_transactions, list_vaults,
 };
+// Import treasury handlers
+use crate::api::handlers::treasury::{get_current_treasury, get_treasury_history_endpoint};
 
 /// Build the application router with all API routes
 pub fn build_router(db: Arc<Database>) -> Router {
@@ -386,6 +388,9 @@ pub fn build_router(db: Arc<Database>) -> Router {
             "/social-proof-token/configuration",
             get(get_spt_configuration),
         )
+        // Treasury endpoints
+        .route("/treasury/current", get(get_current_treasury))
+        .route("/treasury/history", get(get_treasury_history_endpoint))
         .route("/search", get(global_search))
         .with_state(db);
 

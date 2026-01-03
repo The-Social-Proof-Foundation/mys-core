@@ -18,4 +18,5 @@ pub mod social_proof_token;
 pub mod spot;
 pub mod stats;
 pub mod subscriptions;
+pub mod treasury;
 pub mod vesting;

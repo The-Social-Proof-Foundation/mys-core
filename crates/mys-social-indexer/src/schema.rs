@@ -722,6 +722,18 @@ table! {
     }
 }
 
+// Define ecosystem_treasury table (hypertable)
+table! {
+    ecosystem_treasury (id, time) {
+        id -> Int4,
+        treasury_address -> Varchar,
+        updated_by -> Varchar,
+        timestamp_ms -> BigInt,
+        time -> Timestamptz,
+        transaction_id -> Varchar,
+    }
+}
+
 // Define spt_exchange_config table
 table! {
     spt_exchange_config (id, time) {
@@ -736,7 +748,6 @@ table! {
         treasury_fee_bps -> Int8,
         base_price -> Int8,
         quadratic_coefficient -> Int8,
-        ecosystem_treasury -> Varchar,
         max_hold_percent_bps -> Int8,
         trading_halted -> Bool,
         updated_at -> Int8,
@@ -1716,6 +1727,8 @@ allow_tables_to_appear_in_same_query!(
     spot_resolutions,
     spot_events,
     social_proof_of_truth,
+    // Treasury table
+    ecosystem_treasury,
     // Insurance tables
     insurance_config,
     insurance_vaults,

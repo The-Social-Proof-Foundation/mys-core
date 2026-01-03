@@ -17,12 +17,12 @@ use crate::events::profile_events::{
     ProfileCreatedEvent, ProfileUpdatedEvent, TokensClaimedEvent, TokensVestedEvent,
     ProfileOfferCreatedEvent, ProfileOfferAcceptedEvent, ProfileOfferRejectedEvent,
     ProfileSaleFeeEvent, BadgeAssignedEvent, BadgeRevokedEvent, BadgeSelectedEvent,
-    VestingWalletDeletedEvent, PaidMessagingSettingsUpdatedEvent,
+    VestingWalletDeletedEvent, PaidMessagingSettingsUpdatedEvent, EcosystemTreasuryUpdatedEvent,
 };
 use crate::models::indexer::NewIndexerProgress;
 use crate::models::profile_events::NewProfileEvent;
 use crate::models::profile_extras::{NewProfileOffer, NewProfileSaleFee, NewProfileBadge};
-use crate::models::{VestingWallet, UpdateVestingWallet};
+use crate::models::{VestingWallet, UpdateVestingWallet, NewEcosystemTreasury};
 use crate::schema;
 use crate::PROFILE_MODULE_NAME;
 
@@ -828,6 +828,25 @@ impl ProfileEventListener {
             event.profile_id, event.sale_amount, event.fee_amount
         );
 
+        // Validate that fee_recipient matches current unified treasury address
+        match crate::models::get_current_treasury_address(&mut conn).await {
+            Ok(current_treasury) => {
+                if event.fee_recipient != current_treasury {
+                    warn!(
+                        "ProfileSaleFeeEvent fee_recipient ({}) does not match current treasury address ({})",
+                        event.fee_recipient, current_treasury
+                    );
+                }
+            }
+            Err(e) => {
+                warn!(
+                    "Failed to get current treasury address for validation: {}. Fee recipient: {}",
+                    e, event.fee_recipient
+                );
+                // Continue processing even if treasury lookup fails
+            }
+        }
+
         let now = chrono::Utc::now().naive_utc();
         let new_fee = NewProfileSaleFee {
             profile_id: event.profile_id.clone(),
@@ -1162,6 +1181,51 @@ impl ProfileEventListener {
 
         info!("✅ Successfully processed paid messaging settings updated: profile_id={}", 
               event.profile_id);
+        Ok(())
+    }
+
+    /// Process an ecosystem treasury updated event
+    async fn process_ecosystem_treasury_updated(
+        &self,
+        event: &EcosystemTreasuryUpdatedEvent,
+        transaction_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+
+        info!(
+            "Processing EcosystemTreasuryUpdatedEvent: updated_by={}, new_treasury_address={}",
+            event.updated_by, event.new_treasury_address
+        );
+
+        // Insert into ecosystem_treasury table
+        let new_treasury = NewEcosystemTreasury::from_event(
+            event.new_treasury_address.clone(),
+            event.updated_by.clone(),
+            event.timestamp,
+            transaction_id.to_string(),
+        );
+
+        diesel::insert_into(schema::ecosystem_treasury::table)
+            .values(&new_treasury)
+            .execute(&mut conn)
+            .await?;
+
+        // Log to profile_events table (using "system" as profile_id since this is a system-level event)
+        let profile_event = NewProfileEvent::from_blockchain_event(
+            ProfileEventType::EcosystemTreasuryUpdated.to_str(),
+            "system".to_string(), // System-level event, not profile-specific
+            serde_json::to_value(event)?,
+            Some(transaction_id.to_string()),
+            Some(event.timestamp / 1000), // Convert ms to seconds
+        );
+
+        diesel::insert_into(schema::profile_events::table)
+            .values(&profile_event)
+            .execute(&mut conn)
+            .await?;
+
+        info!("✅ Successfully processed ecosystem treasury updated: new_treasury_address={}", 
+              event.new_treasury_address);
         Ok(())
     }
 
@@ -1618,6 +1682,32 @@ impl ProfileEventListener {
                         }
                         Err(e) => {
                             error!("Failed to deserialize paid messaging settings updated event: {}", e);
+                        }
+                    }
+                }
+                // Handle ecosystem treasury updated event
+                else if event.event_type.ends_with("::EcosystemTreasuryUpdatedEvent") {
+                    info!(
+                        "Ecosystem treasury updated event detected with data: {}",
+                        serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                    );
+
+                    match crate::events::event_utils::extract_event_fields(&event.data).and_then(
+                        |fields| {
+                            serde_json::from_value::<EcosystemTreasuryUpdatedEvent>(fields)
+                                .map_err(|e| anyhow::anyhow!(e))
+                        },
+                    ) {
+                        Ok(treasury_event) => {
+                            if let Err(e) = self
+                                .process_ecosystem_treasury_updated(&treasury_event, &event.tx_digest)
+                                .await
+                            {
+                                error!("Failed to process ecosystem treasury updated event: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to deserialize ecosystem treasury updated event: {}", e);
                         }
                     }
                 }
