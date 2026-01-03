@@ -351,25 +351,25 @@ pub struct PlatformCreatedEvent {
     pub wants_dao_governance: Option<bool>,
     #[serde(default, deserialize_with = "deserialize_string_to_option")]
     pub governance_registry_id: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    #[serde(default, deserialize_with = "crate::events::event_utils::deserialize_optional_u64_from_string")]
     pub delegate_count: Option<u64>,
-    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    #[serde(default, deserialize_with = "crate::events::event_utils::deserialize_optional_u64_from_string")]
     pub delegate_term_epochs: Option<u64>,
-    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    #[serde(default, deserialize_with = "crate::events::event_utils::deserialize_optional_u64_from_string")]
     pub max_votes_per_user: Option<u64>,
-    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    #[serde(default, deserialize_with = "crate::events::event_utils::deserialize_optional_u64_from_string")]
     pub min_on_chain_age_days: Option<u64>,
-    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    #[serde(default, deserialize_with = "crate::events::event_utils::deserialize_optional_u64_from_string")]
     pub proposal_submission_cost: Option<u64>,
-    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    #[serde(default, deserialize_with = "crate::events::event_utils::deserialize_optional_u64_from_string")]
     pub quadratic_base_cost: Option<u64>,
-    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    #[serde(default, deserialize_with = "crate::events::event_utils::deserialize_optional_u64_from_string")]
     pub quorum_votes: Option<u64>,
-    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    #[serde(default, deserialize_with = "crate::events::event_utils::deserialize_optional_u64_from_string")]
     pub voting_period_epochs: Option<u64>,
-    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    #[serde(default, deserialize_with = "crate::events::event_utils::deserialize_optional_u64_from_string")]
     pub treasury: Option<u64>,
-    #[serde(default, deserialize_with = "deserialize_u64_optional")]
+    #[serde(default, deserialize_with = "crate::events::event_utils::deserialize_optional_u64_from_string")]
     pub version: Option<u64>,
     pub primary_category: String,
     #[serde(default)]
@@ -579,18 +579,6 @@ where
     })
 }
 
-// Deserializer for u64 values that may come as strings or numbers from blockchain
-fn deserialize_u64_optional<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    Option::deserialize(deserializer).map(|opt_val: Option<serde_json::Value>| match opt_val {
-        Some(serde_json::Value::Number(n)) => n.as_u64(),
-        Some(serde_json::Value::String(s)) => s.parse::<u64>().ok(),
-        Some(serde_json::Value::Null) => None,
-        _ => None,
-    })
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlatformUpdatedEvent {
