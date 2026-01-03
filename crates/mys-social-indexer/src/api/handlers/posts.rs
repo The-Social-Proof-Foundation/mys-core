@@ -1589,19 +1589,24 @@ pub async fn get_post_configuration(State(pool): State<DbPool>) -> Response {
             if !configs.is_empty() {
                 Json(&configs[0]).into_response()
             } else {
-                // Return default configuration if none exists
+                // Return default configuration matching smart contract constants
+                // Default values from PostAdminCap smart contract
+                let updated_at = 0i64; // No update timestamp for defaults
                 let default_config = PostConfigInfo {
                     updated_by: "".to_string(),
-                    max_content_length: 0,
-                    max_media_urls: 0,
-                    max_mentions: 0,
-                    max_metadata_size: 0,
-                    max_description_length: 0,
-                    max_reaction_length: 0,
-                    commenter_tip_percentage: 0,
-                    repost_tip_percentage: 0,
-                    updated_at: 0,
-                    time: chrono::Utc::now(),
+                    max_content_length: 5000, // MAX_CONTENT_LENGTH
+                    max_media_urls: 10, // MAX_MEDIA_URLS
+                    max_mentions: 10, // MAX_MENTIONS
+                    max_metadata_size: 10000, // MAX_METADATA_SIZE
+                    max_description_length: 500, // MAX_DESCRIPTION_LENGTH
+                    max_reaction_length: 20, // MAX_REACTION_LENGTH
+                    commenter_tip_percentage: 80, // COMMENTER_TIP_PERCENTAGE
+                    repost_tip_percentage: 50, // REPOST_TIP_PERCENTAGE
+                    updated_at,
+                    // Derive time from updated_at (same as database trigger does)
+                    // If updated_at is 0, this will be epoch time (1970-01-01)
+                    time: chrono::DateTime::from_timestamp(updated_at / 1000, ((updated_at % 1000) * 1_000_000) as u32)
+                        .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap()),
                     transaction_id: "".to_string(),
                 };
                 Json(default_config).into_response()
