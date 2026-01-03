@@ -1539,6 +1539,7 @@ pub struct PostConfigInfo {
     pub updated_at: i64,
 
     #[diesel(sql_type = Timestamptz)]
+    #[serde(skip_serializing)]
     pub time: chrono::DateTime<chrono::Utc>,
 
     #[diesel(sql_type = Text)]
@@ -1591,7 +1592,6 @@ pub async fn get_post_configuration(State(pool): State<DbPool>) -> Response {
             } else {
                 // Return default configuration matching smart contract constants
                 // Default values from PostAdminCap smart contract
-                let updated_at = 0i64; // No update timestamp for defaults
                 let default_config = PostConfigInfo {
                     updated_by: "".to_string(),
                     max_content_length: 5000, // MAX_CONTENT_LENGTH
@@ -1602,11 +1602,8 @@ pub async fn get_post_configuration(State(pool): State<DbPool>) -> Response {
                     max_reaction_length: 20, // MAX_REACTION_LENGTH
                     commenter_tip_percentage: 80, // COMMENTER_TIP_PERCENTAGE
                     repost_tip_percentage: 50, // REPOST_TIP_PERCENTAGE
-                    updated_at,
-                    // Derive time from updated_at (same as database trigger does)
-                    // If updated_at is 0, this will be epoch time (1970-01-01)
-                    time: chrono::DateTime::from_timestamp(updated_at / 1000, ((updated_at % 1000) * 1_000_000) as u32)
-                        .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap()),
+                    updated_at: 0, // No update timestamp for defaults
+                    time: chrono::DateTime::from_timestamp(0, 0).unwrap(), // Epoch time (not serialized)
                     transaction_id: "".to_string(),
                 };
                 Json(default_config).into_response()

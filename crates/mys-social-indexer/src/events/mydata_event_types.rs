@@ -232,8 +232,11 @@ pub struct MyDataUnregisteredEvent {
 pub struct MyDataConfigUpdatedEvent {
     pub updated_by: String,
     pub enable_flag: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_tags: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_subscription_days: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_free_access_grants: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,

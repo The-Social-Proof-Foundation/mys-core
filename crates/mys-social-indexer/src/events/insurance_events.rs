@@ -6,6 +6,8 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::events::event_utils::deserialize_u64_from_string;
+
 use crate::models::insurance::{
     NewInsuranceConfig, NewInsuranceEventLog, NewInsuranceMarketExposure, NewInsurancePolicy,
     NewInsurancePolicyEvent, NewInsuranceUserExposure, NewInsuranceVault,
@@ -310,11 +312,16 @@ impl CoverageClaimedEvent {
 pub struct ConfigUpdatedEvent {
     pub updated_by: String,
     pub paused: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub min_coverage_bps: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_coverage_bps: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_duration_ms: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub fee_bps: u64,
     pub treasury: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 

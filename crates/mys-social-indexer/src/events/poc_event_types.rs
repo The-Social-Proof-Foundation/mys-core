@@ -115,15 +115,25 @@ pub struct VotingRewardClaimedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PocConfigUpdatedEvent {
     pub updated_by: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub image_threshold: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub video_threshold: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub audio_threshold: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub revenue_redirect_percentage: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub dispute_cost: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub min_vote_stake: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_vote_stake: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub voting_duration_epochs: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_reasoning_length: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_evidence_urls: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,

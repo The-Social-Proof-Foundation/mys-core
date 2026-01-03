@@ -6,6 +6,8 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::events::event_utils::deserialize_u64_from_string;
+
 use crate::models::{
     NewSpotBet, NewSpotEventLog, NewSpotPayout, NewSpotRecord, NewSpotRefund, NewSpotResolution,
 };
@@ -116,16 +118,24 @@ impl SpotRefundEvent {
 pub struct SpotConfigUpdatedEvent {
     pub updated_by: String,
     pub enable_flag: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub confidence_threshold_bps: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub resolution_window_epochs: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_resolution_window_epochs: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub payout_delay_epochs: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub fee_bps: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub fee_split_bps_platform: u64,
     pub platform_treasury: String,
     pub chain_treasury: String,
     pub oracle_address: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_single_bet: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 

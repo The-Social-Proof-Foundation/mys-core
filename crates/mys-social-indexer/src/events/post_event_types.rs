@@ -264,13 +264,21 @@ pub struct PostParametersUpdatedEvent {
     pub updated_by: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_content_length: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_media_urls: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_mentions: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_metadata_size: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_description_length: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_reaction_length: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub commenter_tip_percentage: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub repost_tip_percentage: u64,
 }
 
