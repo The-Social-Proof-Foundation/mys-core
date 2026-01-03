@@ -652,12 +652,15 @@ impl PostEventHandler {
         &self,
         event: &PostParametersUpdatedEvent,
         tx_id: &str,
+        timestamp_ms: u64,
     ) -> Result<()> {
         let mut conn = self.get_connection().await?;
 
         info!("Processing post parameters updated event");
 
         // Insert new config record with updated parameters
+        // Use timestamp_ms from BlockchainEvent (already in milliseconds)
+        // The database trigger will convert it: to_timestamp(updated_at / 1000)
         let new_config = crate::models::post::NewPostConfig {
             updated_by: event.updated_by.clone(),
             max_content_length: event.max_content_length as i64,
@@ -668,7 +671,7 @@ impl PostEventHandler {
             max_reaction_length: event.max_reaction_length as i64,
             commenter_tip_percentage: event.commenter_tip_percentage as i64,
             repost_tip_percentage: event.repost_tip_percentage as i64,
-            updated_at: event.timestamp as i64,
+            updated_at: timestamp_ms as i64,
             transaction_id: tx_id.to_string(),
         };
 
@@ -678,8 +681,8 @@ impl PostEventHandler {
             .await?;
 
         info!(
-            "Post parameters updated by: {}, max_content_length={}, max_media_urls={}",
-            event.updated_by, event.max_content_length, event.max_media_urls
+            "Post parameters updated by: {}, max_content_length={}, max_media_urls={}, updated_at={}",
+            event.updated_by, event.max_content_length, event.max_media_urls, timestamp_ms
         );
 
         Ok(())
@@ -1159,7 +1162,7 @@ impl PostEventHandler {
                 else if event.event_type.ends_with("::PostParametersUpdatedEvent") {
                     match parse_json_event::<PostParametersUpdatedEvent>(&event.data) {
                         Ok(params_event) => {
-                            if let Err(e) = self.process_post_parameters_updated(&params_event, &tx_id).await {
+                            if let Err(e) = self.process_post_parameters_updated(&params_event, &tx_id, event.timestamp_ms).await {
                                 error!("Failed to process post parameters updated event: {}", e);
                             }
                         }
@@ -2081,6 +2084,8 @@ async fn handle_post_parameters_updated(
     let mut conn = db.get_connection().await?;
 
     // Insert new config record with updated parameters
+    // Note: parsed_event.timestamp is in milliseconds (blockchain standard)
+    // The database trigger will convert it: to_timestamp(updated_at / 1000)
     let new_config = crate::models::post::NewPostConfig {
         updated_by: parsed_event.updated_by.clone(),
         max_content_length: parsed_event.max_content_length as i64,
@@ -2101,8 +2106,8 @@ async fn handle_post_parameters_updated(
         .await?;
 
     info!(
-        "Post parameters updated by: {}, max_content_length={}, max_media_urls={}",
-        parsed_event.updated_by, parsed_event.max_content_length, parsed_event.max_media_urls
+        "Post parameters updated by: {}, max_content_length={}, max_media_urls={}, updated_at={}",
+        parsed_event.updated_by, parsed_event.max_content_length, parsed_event.max_media_urls, parsed_event.timestamp
     );
 
     Ok(())
