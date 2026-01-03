@@ -3,6 +3,7 @@
 
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 use tokio::time::{interval, Duration};
@@ -457,7 +458,13 @@ impl BlockchainEventListener {
             self.config.blockchain.poll_interval_ms,
         ));
 
-        // Track the last seen event timestamp
+        // Track seen event IDs to prevent duplicate processing
+        // Using event ID (tx_digest:event_seq) instead of timestamp to handle
+        // multiple events from the same transaction correctly
+        let mut seen_event_ids: HashSet<String> = HashSet::new();
+        
+        // Track the last seen event timestamp for initial filtering (to avoid processing very old events)
+        // But we still use event IDs for precise deduplication
         let mut last_seen_timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
             .as_millis() as u64;
@@ -488,11 +495,21 @@ impl BlockchainEventListener {
                     
                     // Process events in reverse order (oldest to newest)
                     for event in events.data.into_iter().rev() {
-                        // Get the timestamp
-                        let event_timestamp = event.timestamp_ms.unwrap_or(0);
+                        // Generate the event ID first (before any filtering)
+                        let event_id = format!("{}:{}", event.id.tx_digest, event.id.event_seq);
+                        
+                        // Skip events we've already seen (using event ID for precise deduplication)
+                        if seen_event_ids.contains(&event_id) {
+                            debug!("Skipping already processed event: {}", event_id);
+                            continue;
+                        }
 
-                        // Skip events we've already seen
+                        // Get the timestamp for initial filtering (skip very old events)
+                        let event_timestamp = event.timestamp_ms.unwrap_or(0);
                         if event_timestamp <= last_seen_timestamp {
+                            // Still mark as seen even if we skip due to timestamp
+                            // This prevents reprocessing if timestamp filtering changes
+                            seen_event_ids.insert(event_id);
                             continue;
                         }
 
@@ -508,6 +525,10 @@ impl BlockchainEventListener {
 
                         // Update the last seen timestamp
                         last_seen_timestamp = timestamp_ms;
+                        
+                        // Mark this event as seen BEFORE processing to prevent duplicates
+                        // if the same event appears in a future batch
+                        seen_event_ids.insert(event_id.clone());
 
                         // CRITICAL: Enhanced social graph event detection
                         let event_type_str = event.type_.to_string();
@@ -542,9 +563,6 @@ impl BlockchainEventListener {
                                 serde_json::to_string_pretty(&parsed_data).unwrap_or_default()
                             );
                         }
-
-                        // Generate the event ID in format <digest>:<event_seq>
-                        let event_id = format!("{}:{}", event.id.tx_digest, event.id.event_seq);
 
                         // Convert to blockchain event
                         let blockchain_event = BlockchainEvent {

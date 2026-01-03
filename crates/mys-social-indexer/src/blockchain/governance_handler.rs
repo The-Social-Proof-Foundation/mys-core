@@ -58,7 +58,6 @@ impl GovernanceEventHandler {
                 &function_name,
                 &event.data,
                 &event.event_id,
-                &event.tx_digest,
             )
             .await?;
         }
@@ -74,7 +73,6 @@ impl GovernanceEventHandler {
         function_name: &str,
         event_data: &Value,
         event_id: &str,
-        tx_digest: &str,
     ) -> Result<()> {
         // Skip if this is not a governance module event
         if module_name != GOVERNANCE_MODULE_NAME {
@@ -86,7 +84,7 @@ impl GovernanceEventHandler {
         // Match the function name to determine the event type
         match function_name {
             "GovernanceRegistryCreated" => {
-                process_governance_registry_created_event(conn, event_data, event_id, tx_digest).await?;
+                process_governance_registry_created_event(conn, event_data, event_id).await?;
             }
             "nominate_delegate" | "DelegateNominated" => {
                 process_delegate_nominated_event(conn, event_data, event_id).await?;
