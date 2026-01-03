@@ -1956,3 +1956,213 @@ impl PlatformEventHandler {
         Ok(())
     }
 }
+
+/// Standalone function to process PlatformCreatedEvent from a transaction
+/// This can be called from other handlers (e.g., governance handler) when PlatformCreatedEvent
+/// is found in the same transaction as another event
+pub async fn process_platform_created_event_standalone(
+    conn: &mut DbConnection,
+    event_data: &serde_json::Value,
+    tx_digest: &str,
+) -> Result<()> {
+    debug!("Processing PlatformCreatedEvent standalone from transaction {}", tx_digest);
+    
+    // Try to deserialize the event
+    let platform_event: PlatformCreatedEvent = match serde_json::from_value(event_data.clone()) {
+        Ok(event) => event,
+        Err(e) => {
+            // Try with MoveObjectFields wrapper
+            match serde_json::from_value::<event_utils::MoveObjectFields<PlatformCreatedEvent>>(event_data.clone()) {
+                Ok(wrapper) => wrapper.into_inner(),
+                Err(_) => {
+                    error!("Failed to deserialize PlatformCreatedEvent: {}", e);
+                    return Err(anyhow!("Failed to parse PlatformCreatedEvent: {}", e));
+                }
+            }
+        }
+    };
+    
+    info!("Deserialized PlatformCreatedEvent for platform_id: {}", platform_event.platform_id);
+    
+    // Normalize DAO fields
+    let (
+        wants_dao_governance,
+        governance_registry_id,
+        delegate_count,
+        delegate_term_epochs,
+        max_votes_per_user,
+        min_on_chain_age_days,
+        proposal_submission_cost,
+        quadratic_base_cost,
+        quorum_votes,
+        voting_period_epochs,
+        treasury,
+        version,
+    ) = PlatformEventHandler::normalize_dao_fields(&platform_event);
+    
+    // Extract categories
+    let primary_category = platform_event.primary_category.clone();
+    let secondary_category = platform_event.secondary_category.clone();
+    
+    // Validate categories
+    if let Err(e) = PlatformEventHandler::validate_platform_categories(&primary_category, secondary_category.as_deref()) {
+        warn!("Category validation error for platform {}: {}", platform_event.platform_id, e);
+    }
+    
+    // Start transaction
+    conn.build_transaction()
+        .run(|mut conn| {
+            Box::pin(async move {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default();
+                
+                // Create event_id from transaction digest
+                let event_id = format!("{}:0", tx_digest);
+                
+                // Create platform event record
+                let platform_event_record = NewPlatformEvent {
+                    event_type: PlatformEventType::PlatformCreated.to_str().to_string(),
+                    platform_id: platform_event.platform_id.clone(),
+                    event_data: serde_json::to_value(&platform_event).unwrap_or_default(),
+                    event_id: Some(event_id.clone()),
+                    created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                        .unwrap_or_else(|| chrono::Utc::now())
+                        .naive_utc(),
+                    reasoning: None,
+                };
+                
+                // Insert platform event
+                info!("📝 Inserting PlatformCreatedEvent into platform_events table");
+                diesel::insert_into(schema::platform_events::table)
+                    .values(&platform_event_record)
+                    .execute(&mut conn)
+                    .await?;
+                
+                // Check if platform exists
+                let platform_exists = schema::platforms::table
+                    .filter(schema::platforms::platform_id.eq(&platform_event.platform_id))
+                    .count()
+                    .get_result::<i64>(&mut conn)
+                    .await
+                    .unwrap_or(0) > 0;
+                
+                if platform_exists {
+                    // Update existing platform
+                    let platform_update = UpdatePlatform {
+                        name: Some(platform_event.name.clone()),
+                        tagline: Some(platform_event.tagline.clone()),
+                        description: platform_event.description.clone(),
+                        logo: platform_event.logo.clone(),
+                        terms_of_service: Some(platform_event.terms_of_service.clone()),
+                        privacy_policy: Some(platform_event.privacy_policy.clone()),
+                        platform_names: Some(serde_json::to_value(&platform_event.platforms).unwrap_or_default()),
+                        links: Some(serde_json::to_value(&platform_event.links).unwrap_or_default()),
+                        status: Some(platform_event.status.status as i16),
+                        release_date: Some(platform_event.release_date.clone()),
+                        shutdown_date: platform_event.shutdown_date.clone(),
+                        updated_at: Some(chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                            .unwrap_or_else(|| chrono::Utc::now())
+                            .naive_utc()),
+                        is_approved: None,
+                        approval_changed_at: None,
+                        approved_by: None,
+                        wants_dao_governance,
+                        governance_registry_id,
+                        delegate_count,
+                        delegate_term_epochs,
+                        max_votes_per_user,
+                        min_on_chain_age_days,
+                        proposal_submission_cost,
+                        quadratic_base_cost,
+                        quorum_votes,
+                        voting_period_epochs,
+                        treasury,
+                        version,
+                        primary_category: Some(primary_category.clone()),
+                        secondary_category: secondary_category.clone(),
+                    };
+                    
+                    info!("📝 Updating existing platform in platforms table");
+                    diesel::update(schema::platforms::table)
+                        .filter(schema::platforms::platform_id.eq(&platform_event.platform_id))
+                        .set(&platform_update)
+                        .execute(&mut conn)
+                        .await?;
+                } else {
+                    // Create new platform
+                    let new_platform = NewPlatform {
+                        platform_id: platform_event.platform_id.clone(),
+                        name: platform_event.name.clone(),
+                        tagline: platform_event.tagline.clone(),
+                        description: platform_event.description.clone(),
+                        logo: platform_event.logo.clone(),
+                        developer_address: platform_event.developer.clone(),
+                        terms_of_service: Some(platform_event.terms_of_service.clone()),
+                        privacy_policy: Some(platform_event.privacy_policy.clone()),
+                        platform_names: Some(serde_json::to_value(&platform_event.platforms).unwrap_or_default()),
+                        links: Some(serde_json::to_value(&platform_event.links).unwrap_or_default()),
+                        status: platform_event.status.status as i16,
+                        release_date: Some(platform_event.release_date.clone()),
+                        shutdown_date: platform_event.shutdown_date.clone(),
+                        created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                            .unwrap_or_else(|| chrono::Utc::now())
+                            .naive_utc(),
+                        updated_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                            .unwrap_or_else(|| chrono::Utc::now())
+                            .naive_utc(),
+                        is_approved: false,
+                        approval_changed_at: None,
+                        approved_by: None,
+                        wants_dao_governance,
+                        governance_registry_id,
+                        delegate_count,
+                        delegate_term_epochs,
+                        max_votes_per_user,
+                        min_on_chain_age_days,
+                        proposal_submission_cost,
+                        quadratic_base_cost,
+                        quorum_votes,
+                        voting_period_epochs,
+                        treasury,
+                        version,
+                        primary_category: primary_category.clone(),
+                        secondary_category: secondary_category.clone(),
+                    };
+                    
+                    info!("📝 Inserting new platform into platforms table");
+                    diesel::insert_into(schema::platforms::table)
+                        .values(&new_platform)
+                        .execute(&mut conn)
+                        .await?;
+                    
+                    // Add developer as moderator
+                    let new_moderator = NewPlatformModerator {
+                        platform_id: platform_event.platform_id.clone(),
+                        moderator_address: platform_event.developer.clone(),
+                        added_by: platform_event.developer.clone(),
+                        created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                            .unwrap_or_else(|| chrono::Utc::now())
+                            .naive_utc(),
+                    };
+                    
+                    info!("📝 Inserting developer as moderator");
+                    diesel::insert_into(schema::platform_moderators::table)
+                        .values(&new_moderator)
+                        .on_conflict((
+                            schema::platform_moderators::platform_id,
+                            schema::platform_moderators::moderator_address,
+                        ))
+                        .do_nothing()
+                        .execute(&mut conn)
+                        .await?;
+                }
+                
+                Result::<_, diesel::result::Error>::Ok(())
+            })
+        })
+        .await?;
+    
+    info!("Successfully processed PlatformCreatedEvent standalone");
+    Ok(())
+}

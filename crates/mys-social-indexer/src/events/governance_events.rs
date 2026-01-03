@@ -1,13 +1,16 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chrono::Utc;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
+use mys_sdk::MysClientBuilder;
 use serde_json::Value;
+use std::env;
 use tracing::{debug, error, info, warn};
 
+use crate::blockchain::platform_handler::process_platform_created_event_standalone;
 use crate::db::query_types::{DelegateVoteResult, ProposalTypeResult};
 use crate::db::DbConnection;
 use crate::events::event_utils::parse_json_event;
@@ -19,13 +22,97 @@ use crate::{
     NOMINEE_STATUS_ELECTED, NOMINEE_STATUS_PENDING,
 };
 
+/// Query all events from a transaction by digest
+async fn query_transaction_events(tx_digest: &str, rpc_url: &str) -> Result<Vec<Value>> {
+    info!("Querying transaction events for digest: {}", tx_digest);
+    
+    let client = MysClientBuilder::default()
+        .build(rpc_url)
+        .await
+        .map_err(|e| anyhow!("Failed to build blockchain client: {}", e))?;
+    
+    // Query events filtered by transaction digest
+    let event_filter = mys_sdk::rpc_types::EventFilter::Transaction(tx_digest.parse()?);
+    
+    let events_response = client
+        .event_api()
+        .query_events(event_filter, None, Some(100), false)
+        .await
+        .map_err(|e| anyhow!("Failed to query transaction events: {}", e))?;
+    
+    info!("Found {} events in transaction {}", events_response.data.len(), tx_digest);
+    
+    // Extract parsed JSON from events
+    Ok(events_response.data.into_iter().map(|e| {
+        // Use parsed_json if available, otherwise construct from type
+        if e.parsed_json.is_object() && !e.parsed_json.as_object().unwrap().is_empty() {
+            e.parsed_json
+        } else {
+            // Construct minimal event JSON with type
+            let mut event_json = serde_json::json!({});
+            event_json["type"] = serde_json::Value::String(e.type_.to_string());
+            event_json
+        }
+    }).collect())
+}
+
 /// Process a governance registry created event
 pub async fn process_governance_registry_created_event(
     conn: &mut DbConnection,
     event: &Value,
     event_id: &str,
+    tx_digest: &str,
 ) -> Result<()> {
     debug!("Processing governance registry created event");
+    
+    // Get RPC URL from environment
+    let rpc_url = env::var("RPC_URL")
+        .unwrap_or_else(|_| "http://fullnode.testnet.mysocial.network:9000".to_string());
+    
+    // Query transaction for PlatformCreatedEvent
+    info!("Checking transaction {} for PlatformCreatedEvent", tx_digest);
+    match query_transaction_events(tx_digest, &rpc_url).await {
+        Ok(tx_events) => {
+            // Look for PlatformCreatedEvent in transaction events
+            for tx_event in tx_events {
+                if let Some(event_type) = tx_event.get("type") {
+                    if let Some(type_str) = event_type.as_str() {
+                        if type_str.contains("PlatformCreatedEvent") {
+                            info!("Found PlatformCreatedEvent in transaction {}", tx_digest);
+                            
+                            // Extract event data - try fields first, then use event directly
+                            let event_data = if let Some(fields) = tx_event.get("fields") {
+                                fields.clone()
+                            } else if let Some(content) = tx_event.get("content") {
+                                if let Some(fields) = content.get("fields") {
+                                    fields.clone()
+                                } else {
+                                    content.clone()
+                                }
+                            } else {
+                                tx_event.clone()
+                            };
+                            
+                            // Process PlatformCreatedEvent
+                            if let Err(e) = process_platform_created_event_standalone(
+                                conn,
+                                &event_data,
+                                tx_digest,
+                            ).await {
+                                error!("Failed to process PlatformCreatedEvent from transaction: {}", e);
+                                // Don't fail the governance event processing if platform event fails
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            warn!("Failed to query transaction events for {}: {}", tx_digest, e);
+            // Continue processing governance event even if transaction query fails
+        }
+    }
 
     // Parse the event
     let registry_event = parse_json_event::<GovernanceRegistryCreatedEvent>(event)?;
