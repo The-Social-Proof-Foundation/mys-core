@@ -200,7 +200,8 @@ pub async fn process_delegate_elected_event(
                     .await?;
 
                 // Create or update delegate record
-                let now_unix = Utc::now().timestamp() as i64;
+                // Convert to milliseconds for consistency with blockchain timestamps
+                let now_unix_ms = Utc::now().timestamp_millis() as i64;
                 let new_delegate = NewDelegate {
                     address: elected_event.address.clone(),
                     profile_id: elected_event.profile_id.clone(),
@@ -214,8 +215,8 @@ pub async fn process_delegate_elected_event(
                     term_start: elected_event.term_start as i64,
                     term_end: elected_event.term_end as i64,
                     is_active: true,
-                    created_at: now_unix,
-                    updated_at: now_unix,
+                    created_at: now_unix_ms,
+                    updated_at: now_unix_ms,
                     transaction_id: event_id.to_string(),
                 };
 
@@ -233,7 +234,7 @@ pub async fn process_delegate_elected_event(
                         crate::schema::delegates::term_start.eq(new_delegate.term_start),
                         crate::schema::delegates::term_end.eq(new_delegate.term_end),
                         crate::schema::delegates::is_active.eq(true),
-                        crate::schema::delegates::updated_at.eq(now_unix),
+                        crate::schema::delegates::updated_at.eq(now_unix_ms),
                         crate::schema::delegates::transaction_id.eq(event_id.to_string()),
                     ))
                     .execute(tx_conn)
@@ -280,13 +281,14 @@ pub async fn process_delegate_voted_event(
         .run(|tx_conn| {
             Box::pin(async move {
                 // Create delegate rating record
+                // Convert to milliseconds for consistency with blockchain timestamps
                 let new_rating = NewDelegateRating {
                     target_address: voted_event.target_address.clone(),
                     voter_address: voted_event.voter.clone(), // Use voter field
                     registry_type: voted_event.registry_type as i16,
                     is_active_delegate: voted_event.is_active_delegate,
                     upvote: voted_event.upvote,
-                    rated_at: Utc::now().timestamp(), // Use current time since event doesn't have timestamp
+                    rated_at: Utc::now().timestamp_millis(), // Use current time since event doesn't have timestamp
                     transaction_id: event_id.to_string(),
                 };
 
