@@ -23,7 +23,8 @@ use crate::events::social_proof_token_events::{
 };
 use crate::models::indexer::NewIndexerProgress;
 use crate::models::social_proof_token::{
-    NewSocialProofTokenPool, NewSptReservationPool, SocialProofTokenPool, SptReservationPool,
+    NewSocialProofTokenPool, NewSptReservationPool, SocialProofTokenPool, SptExchangeConfig,
+    SptReservationPool,
 };
 use crate::schema;
 
@@ -1091,8 +1092,25 @@ impl SocialProofTokenHandler {
         let timestamp = (event.timestamp_ms / 1000) as i64;
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
 
+        // Fetch the latest config from database to use as fallback for missing values
+        let latest_config = diesel::sql_query(
+            "SELECT id, updated_by, post_threshold, profile_threshold, max_individual_reservation_bps, \
+             total_fee_bps, creator_fee_bps, platform_fee_bps, treasury_fee_bps, base_price, \
+             quadratic_coefficient, ecosystem_treasury, max_hold_percent_bps, trading_halted, \
+             updated_at, time, transaction_id \
+             FROM spt_exchange_config ORDER BY time DESC LIMIT 1"
+        )
+        .get_result::<SptExchangeConfig>(&mut conn)
+        .await
+        .ok(); // Use None if no previous config exists
+
         // Log the kill switch event to exchange config table
-        let mut config = kill_switch_event.into_exchange_config_model(timestamp as u64, event.tx_digest.clone())?;
+        // Use latest config as fallback for any missing values in the event
+        let mut config = kill_switch_event.into_exchange_config_model(
+            timestamp as u64,
+            event.tx_digest.clone(),
+            latest_config.as_ref(),
+        )?;
         config.time = datetime;
 
         diesel::insert_into(schema::spt_exchange_config::table)

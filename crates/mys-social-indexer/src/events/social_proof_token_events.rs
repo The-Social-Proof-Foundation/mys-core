@@ -1,7 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::events::event_utils::deserialize_u64_from_string;
+use crate::events::event_utils::{deserialize_u64_from_string, deserialize_optional_u64_from_string};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -10,8 +10,8 @@ use serde_json::Value;
 use crate::models::social_proof_token::{
     NewSocialProofPriceHistory, NewSocialProofTokenHolding, NewSocialProofTokenPool,
     NewSocialProofTokenTransaction, NewSptExchangeConfig, NewSptReservation, NewSptReservationPool,
-    RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET, TOKEN_TYPE_POST,
-    TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL,
+    SptExchangeConfig, RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
+    TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL,
 };
 
 /// Event emitted when a token pool is created
@@ -1580,31 +1580,165 @@ pub struct EmergencyKillSwitchEvent {
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
     pub reason: String,
+    // Optional config fields - will fallback to latest DB config if missing
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub total_fee_bps: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub creator_fee_bps: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub platform_fee_bps: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub treasury_fee_bps: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub base_price: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub quadratic_coefficient: Option<u64>,
+    #[serde(default)]
+    pub ecosystem_treasury: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub max_hold_percent_bps: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub post_threshold: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub profile_threshold: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub max_individual_reservation_bps: Option<u64>,
+}
+
+impl TryFrom<Value> for EmergencyKillSwitchEvent {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        let obj = value
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object"))?;
+
+        // Helper to parse optional u64 from string or number
+        let parse_optional_u64 = |key: &str| -> Result<Option<u64>> {
+            match obj.get(key) {
+                Some(v) => {
+                    if let Some(s) = v.as_str() {
+                        if s.is_empty() {
+                            Ok(None)
+                        } else {
+                            s.parse::<u64>().map(Some).map_err(|e| anyhow!("Invalid {}: {}", key, e))
+                        }
+                    } else if let Some(n) = v.as_u64() {
+                        Ok(Some(n))
+                    } else if v.is_null() {
+                        Ok(None)
+                    } else {
+                        Err(anyhow!("Invalid type for {}", key))
+                    }
+                }
+                None => Ok(None),
+            }
+        };
+
+        Ok(Self {
+            admin: obj
+                .get("admin")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing or invalid admin"))?
+                .to_string(),
+            trading_halted: obj
+                .get("trading_halted")
+                .and_then(|v| v.as_bool())
+                .ok_or_else(|| anyhow!("Missing or invalid trading_halted"))?,
+            timestamp: parse_optional_u64("timestamp")?
+                .ok_or_else(|| anyhow!("Missing timestamp"))?,
+            reason: obj
+                .get("reason")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+            total_fee_bps: parse_optional_u64("total_fee_bps")?,
+            creator_fee_bps: parse_optional_u64("creator_fee_bps")?,
+            platform_fee_bps: parse_optional_u64("platform_fee_bps")?,
+            treasury_fee_bps: parse_optional_u64("treasury_fee_bps")?,
+            base_price: parse_optional_u64("base_price")?,
+            quadratic_coefficient: parse_optional_u64("quadratic_coefficient")?,
+            ecosystem_treasury: obj
+                .get("ecosystem_treasury")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            max_hold_percent_bps: parse_optional_u64("max_hold_percent_bps")?,
+            post_threshold: parse_optional_u64("post_threshold")?,
+            profile_threshold: parse_optional_u64("profile_threshold")?,
+            max_individual_reservation_bps: parse_optional_u64("max_individual_reservation_bps")?,
+        })
+    }
 }
 
 impl EmergencyKillSwitchEvent {
     /// Convert the event to an exchange config model (for logging kill switch state)
+    /// Uses values from event when present, falls back to latest DB config if missing
     pub fn into_exchange_config_model(
         &self,
         timestamp: u64,
         transaction_id: String,
+        latest_config: Option<&SptExchangeConfig>,
     ) -> Result<NewSptExchangeConfig> {
-        // Create a minimal config record to log the kill switch event
-        // Most fields will be defaults since we're only tracking the kill switch state
+        // Helper to get value from event or fallback to latest config
+        let get_value = |event_val: Option<u64>, config_val: i64| -> i64 {
+            event_val.map(|v| v as i64).unwrap_or(config_val)
+        };
+
+        let get_string_value = |event_val: Option<String>, config_val: &str| -> String {
+            event_val.unwrap_or_else(|| config_val.to_string())
+        };
+
         Ok(NewSptExchangeConfig {
             updated_by: self.admin.clone(),
-            post_threshold: 0, // Not updated in this event
-            profile_threshold: 0, // Not updated in this event
-            max_individual_reservation_bps: 0, // Not updated in this event
-            total_fee_bps: 0, // Not updated in this event
-            creator_fee_bps: 0, // Not updated in this event
-            platform_fee_bps: 0, // Not updated in this event
-            treasury_fee_bps: 0, // Not updated in this event
-            base_price: 0, // Not updated in this event
-            quadratic_coefficient: 0, // Not updated in this event
-            ecosystem_treasury: "".to_string(), // Not updated in this event
-            max_hold_percent_bps: 0, // Not updated in this event
-            trading_halted: self.trading_halted,
+            post_threshold: get_value(
+                self.post_threshold,
+                latest_config.map(|c| c.post_threshold).unwrap_or(0),
+            ),
+            profile_threshold: get_value(
+                self.profile_threshold,
+                latest_config.map(|c| c.profile_threshold).unwrap_or(0),
+            ),
+            max_individual_reservation_bps: get_value(
+                self.max_individual_reservation_bps,
+                latest_config
+                    .map(|c| c.max_individual_reservation_bps)
+                    .unwrap_or(0),
+            ),
+            total_fee_bps: get_value(
+                self.total_fee_bps,
+                latest_config.map(|c| c.total_fee_bps).unwrap_or(0),
+            ),
+            creator_fee_bps: get_value(
+                self.creator_fee_bps,
+                latest_config.map(|c| c.creator_fee_bps).unwrap_or(0),
+            ),
+            platform_fee_bps: get_value(
+                self.platform_fee_bps,
+                latest_config.map(|c| c.platform_fee_bps).unwrap_or(0),
+            ),
+            treasury_fee_bps: get_value(
+                self.treasury_fee_bps,
+                latest_config.map(|c| c.treasury_fee_bps).unwrap_or(0),
+            ),
+            base_price: get_value(
+                self.base_price,
+                latest_config.map(|c| c.base_price).unwrap_or(0),
+            ),
+            quadratic_coefficient: get_value(
+                self.quadratic_coefficient,
+                latest_config.map(|c| c.quadratic_coefficient).unwrap_or(0),
+            ),
+            ecosystem_treasury: get_string_value(
+                self.ecosystem_treasury.clone(),
+                latest_config
+                    .map(|c| c.ecosystem_treasury.as_str())
+                    .unwrap_or(""),
+            ),
+            max_hold_percent_bps: get_value(
+                self.max_hold_percent_bps,
+                latest_config.map(|c| c.max_hold_percent_bps).unwrap_or(0),
+            ),
+            trading_halted: self.trading_halted, // Always use event value for trading_halted
             updated_at: self.timestamp as i64,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),

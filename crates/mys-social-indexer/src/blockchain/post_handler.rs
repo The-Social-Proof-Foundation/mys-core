@@ -647,6 +647,44 @@ impl PostEventHandler {
         Ok(())
     }
 
+    /// Process a post parameters updated event
+    async fn process_post_parameters_updated(
+        &self,
+        event: &PostParametersUpdatedEvent,
+        tx_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.get_connection().await?;
+
+        info!("Processing post parameters updated event");
+
+        // Insert new config record with updated parameters
+        let new_config = crate::models::post::NewPostConfig {
+            updated_by: event.updated_by.clone(),
+            max_content_length: event.max_content_length as i64,
+            max_media_urls: event.max_media_urls as i64,
+            max_mentions: event.max_mentions as i64,
+            max_metadata_size: event.max_metadata_size as i64,
+            max_description_length: event.max_description_length as i64,
+            max_reaction_length: event.max_reaction_length as i64,
+            commenter_tip_percentage: event.commenter_tip_percentage as i64,
+            repost_tip_percentage: event.repost_tip_percentage as i64,
+            updated_at: event.timestamp as i64,
+            transaction_id: tx_id.to_string(),
+        };
+
+        diesel::insert_into(schema::post_config::table)
+            .values(&new_config)
+            .execute(&mut conn)
+            .await?;
+
+        info!(
+            "Post parameters updated by: {}, max_content_length={}, max_media_urls={}",
+            event.updated_by, event.max_content_length, event.max_media_urls
+        );
+
+        Ok(())
+    }
+
     /// Process a promoted post created event
     async fn process_promoted_post_created(
         &self,
@@ -1121,7 +1159,9 @@ impl PostEventHandler {
                 else if event.event_type.ends_with("::PostParametersUpdatedEvent") {
                     match parse_json_event::<PostParametersUpdatedEvent>(&event.data) {
                         Ok(params_event) => {
-                            info!("Post parameters updated by: {}", params_event.updated_by);
+                            if let Err(e) = self.process_post_parameters_updated(&params_event, &tx_id).await {
+                                error!("Failed to process post parameters updated event: {}", e);
+                            }
                         }
                         Err(e) => {
                             error!("Failed to deserialize post parameters updated event: {}", e);
