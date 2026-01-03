@@ -13,7 +13,9 @@ use crate::db::{Database, DbConnection};
 use crate::events::event_utils;
 use crate::events::platform_events::PlatformEventType;
 use crate::models::platform::*;
+use crate::models::governance::{NewGovernanceRegistry, NewGovernanceEvent};
 use crate::schema;
+use chrono::Utc;
 
 use super::listener::BlockchainEvent;
 
@@ -230,6 +232,10 @@ impl PlatformEventHandler {
         info!("Normalized DAO fields - wants_dao_governance: {:?}, governance_registry_id: {:?}, delegate_count: {:?}", 
             wants_dao_governance, governance_registry_id, delegate_count);
 
+        // Clone governance_registry_id for later use in governance creation
+        // (it will be moved into UpdatePlatform/NewPlatform structs)
+        let governance_registry_id_for_governance = governance_registry_id.clone();
+
         // Extract and validate categories
         let primary_category = event.primary_category.clone();
         let secondary_category = event.secondary_category.clone();
@@ -438,6 +444,162 @@ impl PlatformEventHandler {
                         }
 
                         info!("Created new platform: {}", event.platform_id);
+                    }
+
+                    // If this is a DAO platform, create governance registry and event entries
+                    // This ensures PlatformCreatedEvent is the single source of truth for platform governance
+                    let has_dao_governance = wants_dao_governance == Some(true) || governance_registry_id_for_governance.is_some() || delegate_count.is_some();
+                    if has_dao_governance {
+                        if let Some(registry_id) = governance_registry_id_for_governance.as_ref() {
+                            info!("Creating governance registry entry for platform: {} with registry_id: {}", event.platform_id, registry_id);
+                            
+                            // Determine registry_type - for platform governance, we'll need to check what type is used
+                            // Since PlatformCreatedEvent doesn't have registry_type, we'll need to determine it
+                            // For now, we'll try to query if a GovernanceRegistryCreatedEvent exists with this registry_id
+                            // to get the registry_type, otherwise use a default
+                            
+                            // Try to find existing registry to get registry_type
+                            let existing_registry = schema::governance_registries::table
+                                .filter(schema::governance_registries::registry_id.eq(registry_id))
+                                .select(schema::governance_registries::registry_type)
+                                .first::<i16>(&mut conn)
+                                .await
+                                .optional()?;
+
+                            // Use existing registry_type if found, otherwise default to 3 (platform governance)
+                            // Note: This assumes platform governance uses registry_type = 3
+                            // If GovernanceRegistryCreatedEvent was already processed, we'll use its type
+                            let registry_type = existing_registry.unwrap_or(3i16);
+
+                            let updated_at_ms = now.as_millis() as i64;
+                            let event_id_str = blockchain_event.as_ref()
+                                .map(|e| e.event_id.clone())
+                                .unwrap_or_else(|| format!("platform_created_{}", event.platform_id));
+
+                            let new_registry = NewGovernanceRegistry {
+                                registry_type,
+                                registry_id: registry_id.clone(),
+                                delegate_count: delegate_count.unwrap_or(0),
+                                delegate_term_epochs: delegate_term_epochs.unwrap_or(0),
+                                proposal_submission_cost: proposal_submission_cost.unwrap_or(0),
+                                min_on_chain_age_days: min_on_chain_age_days.unwrap_or(0),
+                                max_votes_per_user: max_votes_per_user.unwrap_or(0),
+                                quadratic_base_cost: quadratic_base_cost.unwrap_or(0),
+                                voting_period_epochs: voting_period_epochs.unwrap_or(0),
+                                quorum_votes: quorum_votes.unwrap_or(0),
+                                updated_at: updated_at_ms,
+                                transaction_id: event_id_str.clone(),
+                            };
+
+                            // Check if registry with this registry_id already exists
+                            let existing_registry_id = schema::governance_registries::table
+                                .filter(schema::governance_registries::registry_id.eq(registry_id))
+                                .select(schema::governance_registries::id)
+                                .first::<i32>(&mut conn)
+                                .await
+                                .optional()?;
+
+                            let registry_result = if existing_registry_id.is_some() {
+                                // Update existing registry
+                                diesel::update(schema::governance_registries::table)
+                                    .filter(schema::governance_registries::registry_id.eq(registry_id))
+                                    .set((
+                                        schema::governance_registries::registry_type.eq(new_registry.registry_type),
+                                        schema::governance_registries::delegate_count.eq(new_registry.delegate_count),
+                                        schema::governance_registries::delegate_term_epochs.eq(new_registry.delegate_term_epochs),
+                                        schema::governance_registries::proposal_submission_cost.eq(new_registry.proposal_submission_cost),
+                                        schema::governance_registries::min_on_chain_age_days.eq(new_registry.min_on_chain_age_days),
+                                        schema::governance_registries::max_votes_per_user.eq(new_registry.max_votes_per_user),
+                                        schema::governance_registries::quadratic_base_cost.eq(new_registry.quadratic_base_cost),
+                                        schema::governance_registries::voting_period_epochs.eq(new_registry.voting_period_epochs),
+                                        schema::governance_registries::quorum_votes.eq(new_registry.quorum_votes),
+                                        schema::governance_registries::updated_at.eq(new_registry.updated_at),
+                                        schema::governance_registries::transaction_id.eq(new_registry.transaction_id.clone()),
+                                    ))
+                                    .execute(&mut conn)
+                                    .await
+                            } else {
+                                // Insert new registry
+                                // Note: If registry_type has a unique constraint and this type already exists,
+                                // we'll need to handle that case. For now, try insert and handle error.
+                                diesel::insert_into(schema::governance_registries::table)
+                                    .values(&new_registry)
+                                    .execute(&mut conn)
+                                    .await
+                            };
+
+                            match registry_result {
+                                Ok(rows) => {
+                                    info!("✅ Successfully created/updated governance registry: {} rows affected", rows);
+                                }
+                                Err(e) => {
+                                    error!("❌ Failed to create/update governance registry: {}", e);
+                                    // If insert failed due to unique constraint on registry_type, try updating by registry_type
+                                    // This handles the case where registry_type = 3 already exists for another platform
+                                    if existing_registry_id.is_none() {
+                                        warn!("Insert failed, trying update by registry_type");
+                                        let transaction_id_clone = new_registry.transaction_id.clone();
+                                        let registry_result_alt = diesel::update(schema::governance_registries::table)
+                                            .filter(schema::governance_registries::registry_type.eq(new_registry.registry_type))
+                                            .set((
+                                                schema::governance_registries::registry_id.eq(new_registry.registry_id.clone()),
+                                                schema::governance_registries::delegate_count.eq(new_registry.delegate_count),
+                                                schema::governance_registries::delegate_term_epochs.eq(new_registry.delegate_term_epochs),
+                                                schema::governance_registries::proposal_submission_cost.eq(new_registry.proposal_submission_cost),
+                                                schema::governance_registries::min_on_chain_age_days.eq(new_registry.min_on_chain_age_days),
+                                                schema::governance_registries::max_votes_per_user.eq(new_registry.max_votes_per_user),
+                                                schema::governance_registries::quadratic_base_cost.eq(new_registry.quadratic_base_cost),
+                                                schema::governance_registries::voting_period_epochs.eq(new_registry.voting_period_epochs),
+                                                schema::governance_registries::quorum_votes.eq(new_registry.quorum_votes),
+                                                schema::governance_registries::updated_at.eq(new_registry.updated_at),
+                                                schema::governance_registries::transaction_id.eq(transaction_id_clone),
+                                            ))
+                                            .execute(&mut conn)
+                                            .await;
+                                        
+                                        match registry_result_alt {
+                                            Ok(rows) => {
+                                                info!("✅ Successfully updated governance registry by registry_type: {} rows affected", rows);
+                                            }
+                                            Err(e2) => {
+                                                error!("❌ Failed to update governance registry by registry_type: {}", e2);
+                                                return Err(e2);
+                                            }
+                                        }
+                                    } else {
+                                        return Err(e);
+                                    }
+                                }
+                            }
+
+                            // Create governance event entry
+                            let governance_event = NewGovernanceEvent {
+                                event_type: "GovernanceRegistryCreatedEvent".to_string(),
+                                registry_type,
+                                event_data: serde_json::to_value(event).unwrap_or_default(),
+                                event_id: event_id_str.clone(),
+                                created_at: Utc::now(),
+                                anonymous_voting_related: None,
+                            };
+
+                            let event_result = diesel::insert_into(schema::governance_events::table)
+                                .values(&governance_event)
+                                .execute(&mut conn)
+                                .await;
+
+                            match event_result {
+                                Ok(rows) => {
+                                    info!("✅ Successfully created governance event: {} rows affected", rows);
+                                }
+                                Err(e) => {
+                                    error!("❌ Failed to create governance event: {}", e);
+                                    // Don't fail the entire transaction - log and continue
+                                    warn!("Continuing despite governance event creation failure");
+                                }
+                            }
+                        } else {
+                            warn!("Platform {} has DAO governance enabled but no governance_registry_id provided", event.platform_id);
+                        }
                     }
 
                     Result::<_, diesel::result::Error>::Ok(())
@@ -1704,8 +1866,8 @@ impl PlatformEventHandler {
             }
         };
 
-        match event_type {
-            PlatformEventType::PlatformCreated => {
+            match event_type {
+                PlatformEventType::PlatformCreated => {
                     info!("Processing PlatformCreated event");
                     // Log complete event data for debugging
                     info!(
@@ -1935,7 +2097,7 @@ impl PlatformEventHandler {
                         }
                     }
                 }
-            }
+        }
 
         Ok(())
     }
