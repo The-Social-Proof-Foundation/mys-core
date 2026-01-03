@@ -169,6 +169,29 @@ where
     }
 }
 
+/// Helper function to deserialize strings as numbers (u8)
+/// Handles both string and numeric inputs from blockchain events
+/// This is useful when blockchain sends numeric values as strings
+pub fn deserialize_u8_from_string<'de, D>(deserializer: D) -> Result<u8, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrNumber {
+        String(String),
+        Number(u64),
+    }
+
+    match StringOrNumber::deserialize(deserializer) {
+        Ok(StringOrNumber::String(s)) => {
+            s.parse::<u8>().map_err(serde::de::Error::custom)
+        }
+        Ok(StringOrNumber::Number(n)) => Ok(n as u8),
+        Err(e) => Err(e),
+    }
+}
+
 /// Helper function to deserialize optional strings as optional numbers (Option<u64>)
 /// Handles both string and numeric inputs from blockchain events, including None values
 pub fn deserialize_optional_u64_from_string<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>

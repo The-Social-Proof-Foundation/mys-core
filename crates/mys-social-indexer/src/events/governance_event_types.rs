@@ -1,20 +1,29 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::events::event_utils::deserialize_u64_from_string;
+use crate::events::event_utils::{deserialize_u64_from_string, deserialize_u8_from_string};
 use serde::{Deserialize, Serialize};
 
 /// Event emitted when a governance registry is created or updated
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GovernanceRegistryEvent {
+    #[serde(deserialize_with = "deserialize_u8_from_string")]
     pub registry_type: u8,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub delegate_count: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub delegate_term_epochs: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub proposal_submission_cost: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub min_on_chain_age_days: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_votes_per_user: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quadratic_base_cost: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub voting_period_epochs: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quorum_votes: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub updated_at: u64,
@@ -24,14 +33,23 @@ pub struct GovernanceRegistryEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GovernanceRegistryCreatedEvent {
     pub registry_id: String,
+    #[serde(deserialize_with = "deserialize_u8_from_string")]
     pub registry_type: u8,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub delegate_count: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub delegate_term_epochs: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub proposal_submission_cost: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub min_on_chain_age_days: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_votes_per_user: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quadratic_base_cost: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub voting_period_epochs: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quorum_votes: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub updated_at: u64,
@@ -42,7 +60,9 @@ pub struct GovernanceRegistryCreatedEvent {
 pub struct DelegateNominatedEvent {
     pub address: String,
     pub profile_id: String,
+    #[serde(deserialize_with = "deserialize_u8_from_string")]
     pub registry_type: u8,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub scheduled_term_start_epoch: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub nomination_time: u64,
@@ -53,10 +73,13 @@ pub struct DelegateNominatedEvent {
 pub struct DelegateVotedEvent {
     pub target_address: String,
     pub voter: String, // Changed from voter_address to match contract
+    #[serde(deserialize_with = "deserialize_u8_from_string")]
     pub registry_type: u8,
     pub is_active_delegate: bool,
     pub upvote: bool,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub new_upvote_count: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub new_downvote_count: u64,
 }
 
@@ -65,12 +88,15 @@ pub struct DelegateVotedEvent {
 pub struct DelegateElectedEvent {
     pub address: String,
     pub profile_id: String,
+    #[serde(deserialize_with = "deserialize_u8_from_string")]
     pub registry_type: u8,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub term_start: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub term_end: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub upvotes: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub downvotes: u64,
 }
 
@@ -80,12 +106,14 @@ pub struct ProposalSubmittedEvent {
     pub id: String,
     pub title: String,
     pub description: String,
+    #[serde(deserialize_with = "deserialize_u8_from_string")]
     pub proposal_type: u8,
     pub reference_id: Option<String>,
     pub metadata_json: Option<serde_json::Value>,
     pub submitter: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub submission_time: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub reward_pool: u64,
 }
 
@@ -105,10 +133,12 @@ pub struct DelegateVoteEvent {
 pub struct CommunityVoteEvent {
     pub proposal_id: String,
     pub voter_address: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub vote_weight: u64,
     pub approve: bool,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub vote_time: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub vote_cost: u64,
 }
 
@@ -137,6 +167,7 @@ pub struct ProposalRescindedEvent {
     pub submitter: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub rescind_time: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub refund_amount: u64,
 }
 
@@ -146,7 +177,9 @@ pub struct ProposalApprovedEvent {
     pub proposal_id: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub approval_time: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub votes_for: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub votes_against: u64,
 }
 
@@ -156,7 +189,9 @@ pub struct ProposalRejectedByCommunityEvent {
     pub proposal_id: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub rejection_time: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub votes_for: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub votes_against: u64,
 }
 
@@ -173,7 +208,9 @@ pub struct ProposalImplementedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RewardsDistributedEvent {
     pub proposal_id: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub total_reward: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub recipient_count: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub distribution_time: u64,
@@ -202,15 +239,24 @@ pub struct VoteDecryptionFailedEvent {
 /// Event emitted when governance parameters are updated
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GovernanceParametersUpdatedEvent {
+    #[serde(deserialize_with = "deserialize_u8_from_string")]
     pub registry_type: u8,
     pub updated_by: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub delegate_count: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub delegate_term_epochs: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub proposal_submission_cost: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub min_on_chain_age_days: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_votes_per_user: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quadratic_base_cost: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub voting_period_epochs: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quorum_votes: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
