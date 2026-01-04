@@ -911,12 +911,9 @@ pub async fn get_social_graph_chart_data(
         }
     };
 
-    debug!("Getting social graph chart data for bucket: {} ({} days)", bucket_str, days);
-
     let mut conn = match db_pool.get().await {
         Ok(conn) => conn,
         Err(e) => {
-            error!("Database connection error: {}", e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -930,18 +927,15 @@ pub async fn get_social_graph_chart_data(
     let end_date = Utc::now().date_naive();
     let start_date = end_date - chrono::Duration::days(days as i64);
 
-    // Query the continuous aggregate
-    let query = format!(
-        "
+    let query = "
         SELECT 
             day,
             event_type,
-            event_count
+            event_count::BIGINT as event_count
         FROM social_graph_daily_stats
         WHERE day >= $1
         ORDER BY day ASC, event_type ASC
-        "
-    );
+    ";
 
     #[derive(QueryableByName, Debug)]
     struct ChartQueryResult {
@@ -960,7 +954,6 @@ pub async fn get_social_graph_chart_data(
     {
         Ok(data) => data,
         Err(e) => {
-            error!("Failed to query social_graph_daily_stats: {}", e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
