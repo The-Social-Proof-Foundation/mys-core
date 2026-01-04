@@ -7,13 +7,71 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+use chrono::{NaiveDate, Utc};
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
+use serde::{Deserialize, Serialize};
 use tracing::{debug, error};
 
 use crate::db::DbPool;
 use crate::models::social_graph::{FollowDetail, FollowsQuery};
 use crate::schema::{profiles, social_graph_relationships};
+
+// ==============================================================================
+// CHART DATA STRUCTURES
+// ==============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct SocialGraphChartQuery {
+    pub bucket: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DailyStatsPoint {
+    pub day: String,
+    pub event_type: String,
+    pub event_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DateRange {
+    pub start_date: String,
+    pub end_date: String,
+    pub days: i32,
+    pub bucket: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Summary {
+    pub total_follows: i64,
+    pub total_unfollows: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SocialGraphChartData {
+    pub chart_data: Vec<DailyStatsPoint>,
+    pub date_range: DateRange,
+    pub summary: Summary,
+}
+
+// ==============================================================================
+// HELPER FUNCTIONS
+// ==============================================================================
+
+/// Convert bucket string to number of days
+fn bucket_to_days(bucket: &str) -> Result<i32, String> {
+    match bucket.to_lowercase().as_str() {
+        "7d" => Ok(7),
+        "30d" => Ok(30),
+        "90d" => Ok(90),
+        "180d" => Ok(180),
+        "1y" => Ok(365),
+        _ => Err(format!(
+            "Invalid bucket '{}'. Must be one of: 7d, 30d, 90d, 180d, 1y",
+            bucket
+        )),
+    }
+}
 
 /// Get a list of profiles that a user is following
 pub async fn get_following(
@@ -832,4 +890,122 @@ pub async fn get_follow_stats(
             )
         }
     }
+}
+
+/// Get social graph daily statistics chart data
+pub async fn get_social_graph_chart_data(
+    Query(params): Query<SocialGraphChartQuery>,
+    State(db_pool): State<DbPool>,
+) -> impl IntoResponse {
+    // Parse and validate bucket parameter
+    let bucket_str = params.bucket.as_deref().unwrap_or("30d").to_lowercase();
+    let days = match bucket_to_days(&bucket_str) {
+        Ok(d) => d,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": e
+                })),
+            );
+        }
+    };
+
+    debug!("Getting social graph chart data for bucket: {} ({} days)", bucket_str, days);
+
+    let mut conn = match db_pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("Database connection error: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database connection error: {}", e)
+                })),
+            );
+        }
+    };
+
+    // Calculate date range
+    let end_date = Utc::now().date_naive();
+    let start_date = end_date - chrono::Duration::days(days as i64);
+
+    // Query the continuous aggregate
+    let query = format!(
+        "
+        SELECT 
+            day,
+            event_type,
+            event_count
+        FROM social_graph_daily_stats
+        WHERE day >= $1
+        ORDER BY day ASC, event_type ASC
+        "
+    );
+
+    #[derive(QueryableByName, Debug)]
+    struct ChartQueryResult {
+        #[diesel(sql_type = diesel::sql_types::Date)]
+        day: NaiveDate,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        event_type: String,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        event_count: i64,
+    }
+
+    let results: Vec<ChartQueryResult> = match diesel::sql_query(query)
+        .bind::<diesel::sql_types::Date, _>(start_date)
+        .load::<ChartQueryResult>(&mut conn)
+        .await
+    {
+        Ok(data) => data,
+        Err(e) => {
+            error!("Failed to query social_graph_daily_stats: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Failed to query chart data: {}", e)
+                })),
+            );
+        }
+    };
+
+    // Transform results into response format
+    let chart_data: Vec<DailyStatsPoint> = results
+        .into_iter()
+        .map(|r| DailyStatsPoint {
+            day: r.day.format("%Y-%m-%d").to_string(),
+            event_type: r.event_type,
+            event_count: r.event_count,
+        })
+        .collect();
+
+    // Calculate summary statistics
+    let total_follows: i64 = chart_data
+        .iter()
+        .filter(|p| p.event_type == "follow")
+        .map(|p| p.event_count)
+        .sum();
+
+    let total_unfollows: i64 = chart_data
+        .iter()
+        .filter(|p| p.event_type == "unfollow")
+        .map(|p| p.event_count)
+        .sum();
+
+    let response = SocialGraphChartData {
+        chart_data,
+        date_range: DateRange {
+            start_date: start_date.format("%Y-%m-%d").to_string(),
+            end_date: end_date.format("%Y-%m-%d").to_string(),
+            days,
+            bucket: bucket_str,
+        },
+        summary: Summary {
+            total_follows,
+            total_unfollows,
+        },
+    };
+
+    (StatusCode::OK, Json(serde_json::json!(response)))
 }

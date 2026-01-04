@@ -43,6 +43,7 @@ use crate::api::handlers::profiles::{
 };
 use crate::api::handlers::social_graph::{
     check_following, get_follow_stats, get_followers, get_following,
+    get_social_graph_chart_data,
 };
 // Import social proof token handlers
 use crate::api::handlers::social_proof_token::{
@@ -126,6 +127,7 @@ pub fn build_router(db: Arc<Database>) -> Router {
             "/social-graph/check/:follower/:following",
             get(check_following),
         )
+        .route("/social-graph/chart-data", get(get_social_graph_chart_data))
         // Blocking endpoints
         .route("/profiles/:id/blocked", get(get_blocked_profiles))
         .route(
