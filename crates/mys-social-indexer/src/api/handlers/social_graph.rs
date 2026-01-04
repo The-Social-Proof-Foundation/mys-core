@@ -9,6 +9,7 @@ use axum::{
 };
 use chrono::{NaiveDate, Utc};
 use diesel::prelude::*;
+use diesel::sql_types::*;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error};
@@ -940,16 +941,16 @@ pub async fn get_social_graph_chart_data(
     #[derive(QueryableByName, Debug)]
     #[diesel(check_for_backend(diesel::pg::Pg))]
     struct ChartQueryResult {
-        #[diesel(sql_type = diesel::sql_types::Date)]
+        #[diesel(sql_type = Date)]
         day: NaiveDate,
-        #[diesel(sql_type = diesel::sql_types::Text)]
+        #[diesel(sql_type = Text)]
         event_type: String,
-        #[diesel(sql_type = diesel::sql_types::BigInt, column_name = "cnt")]
+        #[diesel(sql_type = Int8, column_name = "cnt")]
         event_count: i64,
     }
 
     let results: Vec<ChartQueryResult> = match diesel::sql_query(query)
-        .bind::<diesel::sql_types::Date, _>(start_date)
+        .bind::<Date, _>(start_date)
         .load::<ChartQueryResult>(&mut conn)
         .await
     {
