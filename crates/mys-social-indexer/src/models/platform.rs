@@ -126,6 +126,7 @@ pub struct Platform {
     pub version: Option<i64>,
     pub primary_category: String,
     pub secondary_category: Option<String>,
+    pub deleted_at: Option<NaiveDateTime>,
 }
 
 /// DTO for inserting a new platform
@@ -164,6 +165,7 @@ pub struct NewPlatform {
     pub version: Option<i64>,
     pub primary_category: String,
     pub secondary_category: Option<String>,
+    pub deleted_at: Option<NaiveDateTime>,
 }
 
 /// DTO for updating a platform
@@ -199,6 +201,7 @@ pub struct UpdatePlatform {
     pub version: Option<i64>,
     pub primary_category: Option<String>,
     pub secondary_category: Option<String>,
+    pub deleted_at: Option<NaiveDateTime>,
 }
 
 /// Platform moderator model
@@ -664,6 +667,18 @@ pub struct TreasuryFundedEvent {
     pub new_balance: u64,
     #[serde(deserialize_with = "deserialize_timestamp")]
     pub timestamp: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PlatformDeletedEvent {
+    pub platform_id: String,
+    pub name: String,
+    pub developer: String,
+    pub deleted_by: String,
+    #[serde(deserialize_with = "deserialize_timestamp")]
+    pub timestamp: u64,
+    #[serde(default)]
+    pub reasoning: Option<String>,
 }
 
 // Helper deserializer for u64 that accepts both string and number

@@ -44,6 +44,7 @@ module social_contracts::platform {
     const EBadgeIconUrlTooLong: u64 = 13;
     const EInvalidCategory: u64 = 14;
     const ECategoriesSame: u64 = 15;
+    const EPlatformApproved: u64 = 16;
 
     /// Maximum lengths for badge fields
     const MAX_BADGE_NAME_LENGTH: u64 = 100;
@@ -238,6 +239,16 @@ module social_contracts::platform {
         approved: bool,
         changed_by: address,
         reasoning: Option<String>, // Optional reasoning for approval/disapproval
+    }
+
+    /// Platform deleted event
+    public struct PlatformDeletedEvent has copy, drop {
+        platform_id: address,
+        name: String,
+        developer: address,
+        deleted_by: address,
+        timestamp: u64,
+        reasoning: Option<String>, // Optional reasoning for deletion
     }
 
     /// Event emitted when a user joins a platform
@@ -782,6 +793,75 @@ module social_contracts::platform {
             platform_id,
             approved: new_approval,
             changed_by: tx_context::sender(ctx),
+            reasoning,
+        });
+    }
+
+    /// Delete a platform (requires PlatformAdminCap only)
+    /// Can only delete platforms that are NOT approved
+    /// Optional reasoning can be provided to explain the deletion
+    public fun delete_platform(
+        registry: &mut PlatformRegistry,
+        platform: &Platform,
+        _: &PlatformAdminCap,
+        reasoning: Option<String>,
+        ctx: &mut TxContext
+    ) {
+        // Check version compatibility
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        
+        // Admin capability verification is handled by type system
+        let platform_id = object::uid_to_address(&platform.id);
+        let platform_name = name(platform);
+        let developer = developer(platform);
+        
+        // Verify the platform exists in the registry
+        assert!(table::contains(&registry.platform_approvals, platform_id), EUnauthorized);
+        
+        // Verify platform is NOT approved (can only delete unapproved platforms)
+        let is_approved = *table::borrow(&registry.platform_approvals, platform_id);
+        assert!(!is_approved, EPlatformApproved);
+        
+        // Validate reasoning length if provided
+        if (option::is_some(&reasoning)) {
+            let reasoning_val = option::borrow(&reasoning);
+            assert!(string::length(reasoning_val) <= MAX_REASONING_LENGTH, EInvalidReasoning);
+        };
+        
+        // Remove from platforms_by_name table
+        if (table::contains(&registry.platforms_by_name, platform_name)) {
+            table::remove(&mut registry.platforms_by_name, platform_name);
+        };
+        
+        // Remove from platforms_by_developer table
+        if (table::contains(&registry.platforms_by_developer, developer)) {
+            let developer_platforms = table::borrow_mut(&mut registry.platforms_by_developer, developer);
+            let mut i = 0;
+            let len = vector::length(developer_platforms);
+            while (i < len) {
+                if (*vector::borrow(developer_platforms, i) == platform_id) {
+                    vector::remove(developer_platforms, i);
+                    break
+                };
+                i = i + 1;
+            };
+            // If developer has no more platforms, remove the entry
+            if (vector::length(developer_platforms) == 0) {
+                table::remove(&mut registry.platforms_by_developer, developer);
+            };
+        };
+        
+        // Remove from platform_approvals table
+        table::remove(&mut registry.platform_approvals, platform_id);
+        
+        // Emit platform deleted event
+        event::emit(PlatformDeletedEvent {
+            platform_id,
+            name: platform_name,
+            developer,
+            deleted_by: tx_context::sender(ctx),
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
             reasoning,
         });
     }

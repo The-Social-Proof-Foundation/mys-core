@@ -17,6 +17,7 @@ pub enum PlatformEventType {
     UserJoinedPlatform,
     UserLeftPlatform,
     TreasuryFunded,
+    PlatformDeleted,
 }
 
 impl PlatformEventType {
@@ -34,6 +35,7 @@ impl PlatformEventType {
             s if s.contains("::UserJoinedPlatformEvent") => Some(Self::UserJoinedPlatform),
             s if s.contains("::UserLeftPlatformEvent") => Some(Self::UserLeftPlatform),
             s if s.contains("::TreasuryFundedEvent") => Some(Self::TreasuryFunded),
+            s if s.contains("::PlatformDeletedEvent") => Some(Self::PlatformDeleted),
             _ => None,
         }
     }
@@ -50,6 +52,7 @@ impl PlatformEventType {
             Self::UserJoinedPlatform => "UserJoinedPlatformEvent",
             Self::UserLeftPlatform => "UserLeftPlatformEvent",
             Self::TreasuryFunded => "TreasuryFundedEvent",
+            Self::PlatformDeleted => "PlatformDeletedEvent",
         }
     }
 }

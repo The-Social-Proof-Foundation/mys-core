@@ -135,6 +135,7 @@ table! {
         version -> Nullable<BigInt>,
         primary_category -> Varchar,
         secondary_category -> Nullable<Varchar>,
+        deleted_at -> Nullable<Timestamp>,
     }
 }
 

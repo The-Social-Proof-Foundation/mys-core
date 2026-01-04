@@ -333,6 +333,7 @@ impl PlatformEventHandler {
                             version,
                             primary_category: Some(primary_category.clone()),
                             secondary_category: secondary_category.clone(),
+                            deleted_at: None,
                         };
 
                         info!("📝 Updating existing platform in platforms table: {}", event.platform_id);
@@ -393,6 +394,7 @@ impl PlatformEventHandler {
                             version,
                             primary_category: primary_category.clone(),
                             secondary_category: secondary_category.clone(),
+                            deleted_at: None,
                         };
 
                         // Insert platform
@@ -740,6 +742,7 @@ impl PlatformEventHandler {
                             version: None, // Not in update event
                             primary_category: Some(primary_category.clone()),
                             secondary_category: secondary_category.clone(),
+                            deleted_at: None,
                         };
 
                         diesel::update(schema::platforms::table)
@@ -810,6 +813,7 @@ impl PlatformEventHandler {
                             version: None, // Not in update event
                             primary_category: primary_category.clone(),
                             secondary_category: secondary_category.clone(),
+                            deleted_at: None,
                         };
 
                         diesel::insert_into(schema::platforms::table)
@@ -926,6 +930,7 @@ impl PlatformEventHandler {
                             version: None, // Not available for placeholder
                             primary_category: "".to_string(), // Placeholder - needs manual categorization
                             secondary_category: None, // Not available for placeholder
+                            deleted_at: None,
                         };
 
                         diesel::insert_into(schema::platforms::table)
@@ -1354,6 +1359,7 @@ impl PlatformEventHandler {
                             version: None, // Don't change governance fields
                             primary_category: None, // Don't change category
                             secondary_category: None, // Don't change category
+                            deleted_at: None,
                         };
 
                         diesel::update(schema::platforms::table)
@@ -1379,6 +1385,125 @@ impl PlatformEventHandler {
             .await?;
 
         info!("Successfully processed platform approval changed event");
+
+        Ok(())
+    }
+
+    /// Process a platform deleted event
+    async fn process_platform_deleted_event(
+        &self,
+        event: &PlatformDeletedEvent,
+        blockchain_event: Option<&BlockchainEvent>,
+    ) -> Result<()> {
+        debug!(
+            "Processing platform deleted event for platform: {}",
+            event.platform_id
+        );
+
+        let mut conn = self.get_connection().await?;
+
+        // Start a transaction for atomicity
+        conn.build_transaction()
+            .run(|mut conn| {
+                Box::pin(async move {
+                    // Store event for historical record
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default();
+
+                    // Get event_id from blockchain_event if available
+                    let event_id = blockchain_event.map(|e| e.event_id.clone());
+
+                    // Convert timestamp from milliseconds to NaiveDateTime
+                    let deleted_at = crate::models::platform::milliseconds_to_naive_datetime(event.timestamp);
+
+                    // Create new platform event record
+                    let platform_event = NewPlatformEvent {
+                        event_type: PlatformEventType::PlatformDeleted
+                            .to_str()
+                            .to_string(),
+                        platform_id: event.platform_id.clone(),
+                        event_data: serde_json::to_value(event).unwrap_or_default(),
+                        event_id,
+                        created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                            .unwrap_or_else(|| chrono::Utc::now())
+                            .naive_utc(),
+                        reasoning: event.reasoning.clone(),
+                    };
+
+                    // Insert platform event
+                    diesel::insert_into(schema::platform_events::table)
+                        .values(&platform_event)
+                        .execute(&mut conn)
+                        .await?;
+
+                    // Check if platform exists
+                    let platform_exists = schema::platforms::table
+                        .filter(schema::platforms::platform_id.eq(&event.platform_id))
+                        .count()
+                        .get_result::<i64>(&mut conn)
+                        .await
+                        .unwrap_or(0)
+                        > 0;
+
+                    if platform_exists {
+                        // Update platform to mark as deleted (soft delete)
+                        let platform_update = UpdatePlatform {
+                            name: None,
+                            tagline: None,
+                            description: None,
+                            logo: None,
+                            terms_of_service: None,
+                            privacy_policy: None,
+                            platform_names: None,
+                            links: None,
+                            status: None,
+                            release_date: None,
+                            shutdown_date: None,
+                            updated_at: Some(deleted_at),
+                            is_approved: None, // Don't change approval status
+                            approval_changed_at: None,
+                            approved_by: None,
+                            wants_dao_governance: None, // Don't change governance fields
+                            governance_registry_id: None, // Don't change governance fields
+                            delegate_count: None, // Don't change governance fields
+                            delegate_term_epochs: None, // Don't change governance fields
+                            max_votes_per_user: None, // Don't change governance fields
+                            min_on_chain_age_days: None, // Don't change governance fields
+                            proposal_submission_cost: None, // Don't change governance fields
+                            quadratic_base_cost: None, // Don't change governance fields
+                            quorum_votes: None, // Don't change governance fields
+                            voting_period_epochs: None, // Don't change governance fields
+                            treasury: None, // Don't change governance fields
+                            version: None, // Don't change governance fields
+                            primary_category: None, // Don't change category
+                            secondary_category: None, // Don't change category
+                            deleted_at: Some(deleted_at),
+                        };
+
+                        diesel::update(schema::platforms::table)
+                            .filter(schema::platforms::platform_id.eq(&event.platform_id))
+                            .set(&platform_update)
+                            .execute(&mut conn)
+                            .await?;
+
+                        info!(
+                            "Marked platform as deleted: platform_id={}, name={}, deleted_by={}",
+                            event.platform_id, event.name, event.deleted_by
+                        );
+                    } else {
+                        warn!(
+                            "Platform not found for deletion: {}",
+                            event.platform_id
+                        );
+                    }
+
+                    Result::<_, diesel::result::Error>::Ok(())
+                })
+            })
+            .await?;
+
+        info!("Successfully processed platform deleted event");
 
         Ok(())
     }
@@ -1808,6 +1933,7 @@ impl PlatformEventHandler {
                         version: None,
                         primary_category: None, // Don't change category
                         secondary_category: None, // Don't change category
+                        deleted_at: None,
                     };
 
                     diesel::update(schema::platforms::table)
@@ -2094,6 +2220,24 @@ impl PlatformEventHandler {
                                 serde_json::to_string_pretty(&event.data).unwrap_or_default()
                             );
                             return Err(anyhow!("Failed to parse TreasuryFundedEvent: {}", e));
+                        }
+                    }
+                }
+                PlatformEventType::PlatformDeleted => {
+                    info!("Processing PlatformDeleted event");
+                    match serde_json::from_value::<event_utils::MoveObjectFields<PlatformDeletedEvent>>(event.data.clone()) {
+                        Ok(wrapper) => {
+                            let platform_event = wrapper.into_inner();
+                            self.process_platform_deleted_event(&platform_event, Some(&event))
+                                .await?;
+                        }
+                        Err(e) => {
+                            error!("Failed to parse PlatformDeletedEvent: {}", e);
+                            error!(
+                                "Event data: {}",
+                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                            );
+                            return Err(anyhow!("Failed to parse PlatformDeletedEvent: {}", e));
                         }
                     }
                 }
