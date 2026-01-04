@@ -928,16 +928,24 @@ pub async fn get_social_graph_chart_data(
     let start_date = end_date - chrono::Duration::days(days as i64);
 
     let query = "
+        WITH typed_stats AS (
+            SELECT 
+                day,
+                event_type,
+                event_count::BIGINT as event_count
+            FROM social_graph_daily_stats
+            WHERE day >= $1
+        )
         SELECT 
             day,
             event_type,
-            event_count::BIGINT as event_count
-        FROM social_graph_daily_stats
-        WHERE day >= $1
+            event_count
+        FROM typed_stats
         ORDER BY day ASC, event_type ASC
     ";
 
     #[derive(QueryableByName, Debug)]
+    #[diesel(check_for_backend(diesel::pg::Pg))]
     struct ChartQueryResult {
         #[diesel(sql_type = diesel::sql_types::Date)]
         day: NaiveDate,
