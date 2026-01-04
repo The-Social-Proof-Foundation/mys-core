@@ -276,7 +276,7 @@ pub fn run_migrations(config: &Config) -> Result<()> {
     tracing::info!("Running pending database migrations...");
 
     // Run migrations
-    match conn.run_pending_migrations(MIGRATIONS) {
+    let migrations_run = match conn.run_pending_migrations(MIGRATIONS) {
         Ok(migrations_run) => {
             if migrations_run.is_empty() {
                 tracing::info!("No pending migrations to run");
@@ -286,15 +286,60 @@ pub fn run_migrations(config: &Config) -> Result<()> {
                     tracing::info!("  - {}", migration);
                 }
             }
+            migrations_run
         }
         Err(e) => {
             tracing::error!("Migration execution failed: {}", e);
             return Err(anyhow::anyhow!("Migration error: {}", e));
         }
-    }
+    };
 
     tracing::info!("Database migrations completed successfully");
 
+    // Check if we need to refresh profile_daily_stats continuous aggregate
+    // This must be done after migrations complete (outside transaction)
+    let migration_name = "20260103210000_refresh_profile_daily_stats_initial";
+    if migrations_run.iter().any(|m| m.to_string().contains(migration_name)) {
+        tracing::info!("Migration {} detected - refreshing profile_daily_stats continuous aggregate", migration_name);
+        if let Err(e) = refresh_profile_daily_stats_aggregate(&mut conn) {
+            tracing::warn!("Failed to refresh profile_daily_stats continuous aggregate: {}. It will be populated by the automatic refresh policy.", e);
+        }
+    }
+
+    Ok(())
+}
+
+/// Refresh the profile_daily_stats continuous aggregate
+/// This must be called outside of a transaction block
+fn refresh_profile_daily_stats_aggregate(conn: &mut PgConnection) -> Result<()> {
+    use diesel::sql_query;
+    
+    tracing::info!("Refreshing profile_daily_stats continuous aggregate with all historical data...");
+    
+    // Ensure we're in autocommit mode (not in a transaction)
+    // Diesel migrations commit after each migration, but we explicitly ensure autocommit
+    sql_query("COMMIT")
+        .execute(conn)
+        .ok(); // Ignore error if not in transaction
+    
+    // refresh_continuous_aggregate cannot run in a transaction
+    sql_query("CALL refresh_continuous_aggregate('profile_daily_stats', NULL, NULL)")
+        .execute(conn)
+        .map_err(|e| anyhow::anyhow!("Failed to refresh continuous aggregate: {}", e))?;
+    
+    // Update tracking table
+    sql_query(
+        "INSERT INTO continuous_aggregate_refresh_status (view_name, last_manual_refresh, notes)
+         VALUES ('profile_daily_stats', NOW(), 'Initial historical data refresh')
+         ON CONFLICT (view_name) DO UPDATE
+         SET last_manual_refresh = NOW(),
+             notes = 'Initial historical data refresh'"
+    )
+    .execute(conn)
+    .map_err(|e| anyhow::anyhow!("Failed to update tracking table: {}", e))?;
+    
+    tracing::info!("Successfully refreshed profile_daily_stats continuous aggregate");
+    
     Ok(())
 }
 

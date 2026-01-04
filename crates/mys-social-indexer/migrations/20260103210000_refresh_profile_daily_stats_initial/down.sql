@@ -1,17 +1,11 @@
--- This migration performs a data refresh operation
--- There is no rollback needed as this only populates the materialized view
--- The data will continue to be maintained by the automatic refresh policy
---
--- NOTE: refresh_continuous_aggregate() cannot run inside a transaction block,
--- so we commit the transaction first, then execute operations in autocommit mode
+-- Rollback for profile_daily_stats refresh migration
+-- This migration only records that it ran, so rollback just removes the tracking entry
+-- The materialized data in the continuous aggregate will remain (as it should)
 
--- Commit any existing transaction
-COMMIT;
-
--- Remove the tracking entry (optional - the refresh policy will continue to maintain the aggregate)
+-- Remove the tracking entry
 DELETE FROM continuous_aggregate_refresh_status 
 WHERE view_name = 'profile_daily_stats' 
-AND notes = 'Initial historical data refresh';
+AND notes = 'Migration recorded - refresh pending';
 
 -- Note: The materialized data in the continuous aggregate will remain.
 -- If you want to clear it, you would need to manually drop and recreate the aggregate,
