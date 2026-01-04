@@ -928,19 +928,12 @@ pub async fn get_social_graph_chart_data(
     let start_date = end_date - chrono::Duration::days(days as i64);
 
     let query = "
-        WITH typed_stats AS (
-            SELECT 
-                day,
-                event_type,
-                event_count::BIGINT as event_count
-            FROM social_graph_daily_stats
-            WHERE day >= $1
-        )
         SELECT 
             day,
             event_type,
-            event_count
-        FROM typed_stats
+            CAST(event_count AS BIGINT) as cnt
+        FROM social_graph_daily_stats
+        WHERE day >= $1
         ORDER BY day ASC, event_type ASC
     ";
 
@@ -951,7 +944,7 @@ pub async fn get_social_graph_chart_data(
         day: NaiveDate,
         #[diesel(sql_type = diesel::sql_types::Text)]
         event_type: String,
-        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        #[diesel(sql_type = diesel::sql_types::BigInt, column_name = "cnt")]
         event_count: i64,
     }
 
