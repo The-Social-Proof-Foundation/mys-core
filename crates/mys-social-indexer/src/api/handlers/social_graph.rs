@@ -930,11 +930,11 @@ pub async fn get_social_graph_chart_data(
 
     let query = "
         SELECT 
-            day,
+            day::DATE as day,
             event_type,
-            CAST(event_count AS BIGINT) as cnt
+            event_count::BIGINT as event_count
         FROM social_graph_daily_stats
-        WHERE day >= $1
+        WHERE day >= $1::DATE
         ORDER BY day ASC, event_type ASC
     ";
 
@@ -945,7 +945,7 @@ pub async fn get_social_graph_chart_data(
         day: NaiveDate,
         #[diesel(sql_type = Text)]
         event_type: String,
-        #[diesel(sql_type = Int8, column_name = "cnt")]
+        #[diesel(sql_type = Int8)]
         event_count: i64,
     }
 
