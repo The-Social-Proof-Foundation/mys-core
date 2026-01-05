@@ -12,38 +12,26 @@ module social_contracts::block_list {
         transfer,
         event,
         table::{Self, Table},
-        vec_set::{Self, VecSet},
-        dynamic_field
+        vec_set::{Self, VecSet}
     };
     use std::{string, option, vector};
     
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::social_graph;
-    use social_contracts::profile;
     
     /// Error codes
     const EAlreadyBlocked: u64 = 1;
     const ENotBlocked: u64 = 2;
     const ECannotBlockSelf: u64 = 3;
     const EWrongVersion: u64 = 4;
-
-    /// Key for storing blocked wallets in the registry
-    const BLOCKED_WALLETS_KEY: vector<u8> = b"blocked_wallets";
-
-    /// Block list for a user's wallet
-    public struct BlockList has key {
-        id: UID,
-        /// The wallet address this block list belongs to
-        owner: address,
-        /// Version for upgrades
-        version: u64,
-    }
     
     /// Registry to track all block lists
+    /// Uses unified table architecture (like SocialGraph) for wallet-level blocking
+    /// Works for both users and platforms (both are just addresses)
     public struct BlockListRegistry has key {
         id: UID,
-        /// Table mapping wallet addresses to block list IDs
-        wallet_block_lists: Table<address, address>,
+        /// Unified table: blocker_address -> set of blocked addresses
+        blocked: Table<address, VecSet<address>>,
         /// Version for upgrades
         version: u64,
     }
@@ -64,63 +52,11 @@ module social_contracts::block_list {
         unblocked: address,
     }
 
-    /// Event emitted when a block list is created
-    public struct BlockListCreatedEvent has copy, drop {
-        owner: address,
-        block_list_id: address,
-    }
-
-    /// Create a new block list
-    fun create_block_list(owner: address, ctx: &mut TxContext): BlockList {
-        BlockList {
-            id: object::new(ctx),
-            owner,
-            version: upgrade::current_version(),
-        }
-    }
-
-    /// Internal helper to create a block list for a specific address
-    /// Called from block_wallet_internal for lazy initialization
-    /// Creates the block list object, registers it, initializes empty blocked wallets set,
-    /// emits event, and transfers the object to the owner
-    public(package) fun create_block_list_for_address(
-        registry: &mut BlockListRegistry,
-        owner: address,
-        ctx: &mut TxContext
-    ) {
-        // Check version compatibility
-        assert!(registry.version == upgrade::current_version(), EWrongVersion);
-        
-        // Check if a block list already exists for the owner (idempotent)
-        if (table::contains(&registry.wallet_block_lists, owner)) {
-            return
-        };
-        
-        // Create a new block list
-        let block_list = create_block_list(owner, ctx);
-        let block_list_id = object::uid_to_address(&block_list.id);
-        
-        // Register the block list
-        table::add(&mut registry.wallet_block_lists, owner, block_list_id);
-        
-        // Initialize an empty blocked wallets set in the registry
-        dynamic_field::add(&mut registry.id, get_blocked_wallets_key(owner), vec_set::empty<address>());
-        
-        // Emit block list created event
-        event::emit(BlockListCreatedEvent {
-            owner,
-            block_list_id,
-        });
-        
-        // Transfer block list to owner
-        transfer::transfer(block_list, owner);
-    }
-    
     /// Bootstrap initialization function - creates the block list registry
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let registry = BlockListRegistry {
             id: object::new(ctx),
-            wallet_block_lists: table::new(ctx),
+            blocked: table::new(ctx),
             version: upgrade::current_version(),
         };
         
@@ -134,23 +70,14 @@ module social_contracts::block_list {
         bootstrap_init(ctx)
     }
     
-    /// Generate a unique key for storing a user's blocked wallets
-    fun get_blocked_wallets_key(user_address: address): vector<u8> {
-        let mut key = BLOCKED_WALLETS_KEY;
-        let address_bytes = mys::bcs::to_bytes(&user_address);
-        std::vector::append(&mut key, address_bytes);
-        key
-    }
-    
     /// Internal helper function to block a wallet with a specific blocker address
     /// This allows platforms (shared objects) to block wallets on behalf of their address
+    /// Uses unified table architecture with lazy initialization (like following)
     public(package) fun block_wallet_internal(
         registry: &mut BlockListRegistry,
         social_graph: &mut social_graph::SocialGraph,
-        username_registry: &profile::UsernameRegistry,
         blocker_address: address,
-        blocked_wallet_address: address,
-        ctx: &mut TxContext
+        blocked_wallet_address: address
     ) {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
@@ -158,63 +85,34 @@ module social_contracts::block_list {
         // Cannot block self
         assert!(blocker_address != blocked_wallet_address, ECannotBlockSelf);
         
-        // Check if blocker already has a block list
-        let has_block_list = table::contains(&registry.wallet_block_lists, blocker_address);
-        
-        if (has_block_list) {
-            // Get key for finding blocked wallets
-            let key = get_blocked_wallets_key(blocker_address);
-            
-            // Get the blocked wallets set from registry
-            let blocked_wallets = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut registry.id, key);
-            
-            // Check if already blocked
-            if (vec_set::contains(blocked_wallets, &blocked_wallet_address)) {
-                abort EAlreadyBlocked
-            };
-            
-            // Add to blocked wallets
-            vec_set::insert(blocked_wallets, blocked_wallet_address);
-            
-            // Emit block event
-            event::emit(UserBlockEvent {
-                blocker: blocker_address,
-                blocked: blocked_wallet_address,
-            });
-        } else {
-            // Create a new block list for first-time blockers (lazy initialization)
-            create_block_list_for_address(registry, blocker_address, ctx);
-            
-            // Now get the blocked wallets set and add the blocked address
-            let key = get_blocked_wallets_key(blocker_address);
-            let blocked_wallets = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut registry.id, key);
-            
-            // Add the blocked address to the set
-            vec_set::insert(blocked_wallets, blocked_wallet_address);
-            
-            // Emit block event
-            event::emit(UserBlockEvent {
-                blocker: blocker_address,
-                blocked: blocked_wallet_address,
-            });
+        // Initialize blocker's blocked set if it doesn't exist (lazy initialization)
+        if (!table::contains(&registry.blocked, blocker_address)) {
+            table::add(&mut registry.blocked, blocker_address, vec_set::empty());
         };
         
-        // Perform bidirectional unfollow after blocking succeeds
-        // Look up profile IDs for both users
-        let blocker_profile_opt = profile::lookup_profile_by_owner(username_registry, blocker_address);
-        let blocked_profile_opt = profile::lookup_profile_by_owner(username_registry, blocked_wallet_address);
+        // Get the blocked set and check if already blocked
+        let blocked_set = table::borrow_mut(&mut registry.blocked, blocker_address);
         
-        // If both profiles exist, attempt bidirectional unfollow
-        if (option::is_some(&blocker_profile_opt) && option::is_some(&blocked_profile_opt)) {
-            let blocker_profile_id = *option::borrow(&blocker_profile_opt);
-            let blocked_profile_id = *option::borrow(&blocked_profile_opt);
-            
-            // Blocker unfollows blocked (if following)
-            social_graph::unfollow_internal(social_graph, blocker_profile_id, blocked_profile_id);
-            
-            // Blocked unfollows blocker (if following)
-            social_graph::unfollow_internal(social_graph, blocked_profile_id, blocker_profile_id);
+        // Check if already blocked
+        if (vec_set::contains(blocked_set, &blocked_wallet_address)) {
+            abort EAlreadyBlocked
         };
+        
+        // Add to blocked set
+        vec_set::insert(blocked_set, blocked_wallet_address);
+        
+        // Emit block event
+        event::emit(UserBlockEvent {
+            blocker: blocker_address,
+            blocked: blocked_wallet_address,
+        });
+        
+        // Perform bidirectional unfollow after blocking succeeds (wallet-level)
+        // Blocker unfollows blocked (if following)
+        social_graph::unfollow_internal(social_graph, blocker_address, blocked_wallet_address);
+        
+        // Blocked unfollows blocker (if following)
+        social_graph::unfollow_internal(social_graph, blocked_wallet_address, blocker_address);
         // Continue - blocking succeeds regardless of unfollow results
     }
 
@@ -224,12 +122,11 @@ module social_contracts::block_list {
     public entry fun block_wallet(
         registry: &mut BlockListRegistry,
         social_graph: &mut social_graph::SocialGraph,
-        username_registry: &profile::UsernameRegistry,
         blocked_wallet_address: address,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
-        block_wallet_internal(registry, social_graph, username_registry, sender, blocked_wallet_address, ctx);
+        block_wallet_internal(registry, social_graph, sender, blocked_wallet_address);
     }
 
     /// Internal helper function to unblock a wallet with a specific blocker address
@@ -241,29 +138,21 @@ module social_contracts::block_list {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
-        // Check if there's a block list for the blocker
-        if (!table::contains(&registry.wallet_block_lists, blocker_address)) {
+        // Check if blocker has any blocked addresses
+        if (!table::contains(&registry.blocked, blocker_address)) {
             abort ENotBlocked
         };
         
-        // Get key for finding blocked wallets
-        let key = get_blocked_wallets_key(blocker_address);
-        
-        // Check if blocked wallets set exists
-        if (!dynamic_field::exists_(&registry.id, key)) {
-            abort ENotBlocked
-        };
-        
-        // Get the blocked wallets set
-        let blocked_wallets = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut registry.id, key);
+        // Get the blocked set
+        let blocked_set = table::borrow_mut(&mut registry.blocked, blocker_address);
         
         // Check if the wallet is actually blocked
-        if (!vec_set::contains(blocked_wallets, &blocked_wallet_address)) {
+        if (!vec_set::contains(blocked_set, &blocked_wallet_address)) {
             abort ENotBlocked
         };
         
-        // Remove from blocked wallets
-        vec_set::remove(blocked_wallets, &blocked_wallet_address);
+        // Remove from blocked set
+        vec_set::remove(blocked_set, &blocked_wallet_address);
         
         // Emit unblock event
         event::emit(UserUnblockEvent {
@@ -285,91 +174,37 @@ module social_contracts::block_list {
 
     // === PUBLIC API ===
 
-    /// Check if a wallet has a block list
-    public fun has_block_list(registry: &BlockListRegistry, wallet_address: address): bool {
-        table::contains(&registry.wallet_block_lists, wallet_address)
-    }
-    
-    /// Find a block list ID for a wallet address
-    public fun find_block_list_id(registry: &BlockListRegistry, wallet_address: address): option::Option<address> {
-        if (table::contains(&registry.wallet_block_lists, wallet_address)) {
-            option::some(*table::borrow(&registry.wallet_block_lists, wallet_address))
-        } else {
-            option::none()
-        }
-    }
-
     /// Check if a wallet address is blocked by a blocker
     public fun is_blocked(registry: &BlockListRegistry, blocker: address, blocked: address): bool {
-        // First check if blocker has a block list
-        if (!table::contains(&registry.wallet_block_lists, blocker)) {
+        if (!table::contains(&registry.blocked, blocker)) {
             return false
         };
         
-        // Get key for finding blocked wallets
-        let key = get_blocked_wallets_key(blocker);
-        
-        // Check if blocked wallets set exists
-        if (!dynamic_field::exists_(&registry.id, key)) {
-            return false
-        };
-        
-        // Get the blocked wallets set and check if blocked address is in it
-        let blocked_wallets = dynamic_field::borrow<vector<u8>, VecSet<address>>(&registry.id, key);
-        vec_set::contains(blocked_wallets, &blocked)
+        let blocked_set = table::borrow(&registry.blocked, blocker);
+        vec_set::contains(blocked_set, &blocked)
     }
 
-    /// Get the number of blocked wallet addresses
+    /// Get the number of blocked wallet addresses for a blocker
     public fun blocked_count(registry: &BlockListRegistry, blocker: address): u64 {
-        // First check if blocker has a block list
-        if (!table::contains(&registry.wallet_block_lists, blocker)) {
+        if (!table::contains(&registry.blocked, blocker)) {
             return 0
         };
         
-        // Get key for finding blocked wallets
-        let key = get_blocked_wallets_key(blocker);
-        
-        // Check if blocked wallets set exists
-        if (!dynamic_field::exists_(&registry.id, key)) {
-            return 0
-        };
-        
-        // Get the blocked wallets set and return its size
-        let blocked_wallets = dynamic_field::borrow<vector<u8>, VecSet<address>>(&registry.id, key);
-        vec_set::size(blocked_wallets)
+        let blocked_set = table::borrow(&registry.blocked, blocker);
+        vec_set::size(blocked_set)
     }
 
     /// Get the list of blocked wallet addresses for a blocker
     public fun get_blocked_wallets(registry: &BlockListRegistry, blocker: address): vector<address> {
-        // First check if blocker has a block list
-        if (!table::contains(&registry.wallet_block_lists, blocker)) {
+        if (!table::contains(&registry.blocked, blocker)) {
             return std::vector::empty()
         };
         
-        // Get key for finding blocked wallets
-        let key = get_blocked_wallets_key(blocker);
-        
-        // Check if blocked wallets set exists
-        if (!dynamic_field::exists_(&registry.id, key)) {
-            return std::vector::empty()
-        };
-        
-        // Get the blocked wallets set and return its contents
-        let blocked_wallets = dynamic_field::borrow<vector<u8>, VecSet<address>>(&registry.id, key);
-        vec_set::into_keys(*blocked_wallets)
+        let blocked_set = table::borrow(&registry.blocked, blocker);
+        vec_set::into_keys(*blocked_set)
     }
 
     // === Versioning Functions ===
-
-    /// Get the version of a block list
-    public fun version(block_list: &BlockList): u64 {
-        block_list.version
-    }
-
-    /// Get a mutable reference to the block list version (for upgrade module)
-    public(package) fun borrow_version_mut(block_list: &mut BlockList): &mut u64 {
-        &mut block_list.version
-    }
 
     /// Get the version of the block list registry
     public fun registry_version(registry: &BlockListRegistry): u64 {
@@ -379,33 +214,6 @@ module social_contracts::block_list {
     /// Get a mutable reference to the registry version (for upgrade module)
     public(package) fun borrow_registry_version_mut(registry: &mut BlockListRegistry): &mut u64 {
         &mut registry.version
-    }
-
-    /// Migration function for BlockList
-    public entry fun migrate_block_list(
-        block_list: &mut BlockList,
-        _: &UpgradeAdminCap,
-        ctx: &mut TxContext
-    ) {
-        let current_version = upgrade::current_version();
-        
-        // Verify this is an upgrade (new version > current version)
-        assert!(block_list.version < current_version, EWrongVersion);
-        
-        // Remember old version and update to new version
-        let old_version = block_list.version;
-        block_list.version = current_version;
-        
-        // Emit event for object migration
-        let block_list_id = object::id(block_list);
-        upgrade::emit_migration_event(
-            block_list_id,
-            string::utf8(b"BlockList"),
-            old_version,
-            tx_context::sender(ctx)
-        );
-        
-        // Any migration logic can be added here for future upgrades
     }
 
     /// Migration function for BlockListRegistry

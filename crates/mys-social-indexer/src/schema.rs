@@ -47,8 +47,6 @@ table! {
         reddit_username -> Nullable<Text>,
         github_username -> Nullable<Text>,
         instagram_username -> Nullable<Text>,
-        // Block list address
-        block_list_address -> Nullable<Varchar>,
         // Social proof token address
         social_proof_token_address -> Nullable<Varchar>,
         // Reservation pool object address
@@ -195,7 +193,6 @@ table! {
         event_type -> Varchar,
         blocker_address -> Varchar,
         blocked_address -> Nullable<Varchar>,
-        block_list_address -> Nullable<Varchar>,
         raw_event_data -> Nullable<Jsonb>,
         processed_at -> Timestamp,
         created_at -> Timestamp,
@@ -208,7 +205,6 @@ table! {
         id -> Integer,
         blocker_address -> Varchar,
         blocked_address -> Varchar,
-        block_list_address -> Nullable<Varchar>,
         // Rich profile data for performance (denormalized from profiles table)
         blocked_profile_id -> Nullable<Varchar>,
         blocked_username -> Varchar,

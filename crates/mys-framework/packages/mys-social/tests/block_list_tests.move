@@ -32,7 +32,7 @@ module social_contracts::block_list_tests {
         init_test_environment(scenario);
     }
     
-    /// Test lazy initialization - block list is created automatically on first block
+    /// Test lazy initialization - blocked set is created automatically on first block
     #[test]
     fun test_create_block_list() {
         let mut scenario = test_scenario::begin(ADMIN);
@@ -40,31 +40,30 @@ module social_contracts::block_list_tests {
         // Initialize block list registry
         init_block_list_registry(&mut scenario);
         
-        // Verify block list doesn't exist yet
+        // Verify no blocked addresses yet
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            assert!(!block_list::has_block_list(&registry, USER1), 0);
+            assert!(block_list::blocked_count(&registry, USER1) == 0, 0);
+            assert!(!block_list::is_blocked(&registry, USER1, USER2), 0);
             test_scenario::return_shared(registry);
         };
         
-        // Block USER2 - this should automatically create the block list (lazy initialization)
+        // Block USER2 - this should automatically create the blocked set (lazy initialization)
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            let username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, &username_registry, USER2, test_scenario::ctx(&mut scenario));
+            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
-            test_scenario::return_shared(username_registry);
         };
         
-        // Verify block list was created automatically
+        // Verify blocked set was created automatically
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            assert!(block_list::has_block_list(&registry, USER1), 1);
+            assert!(block_list::is_blocked(&registry, USER1, USER2), 1);
             assert!(block_list::blocked_count(&registry, USER1) == 1, 2);
             test_scenario::return_shared(registry);
         };
@@ -85,11 +84,9 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            let username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, &username_registry, USER2, test_scenario::ctx(&mut scenario));
+            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
-            test_scenario::return_shared(username_registry);
         };
         
         // Verify USER2 is blocked
@@ -122,11 +119,9 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            let username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, &username_registry, USER2, test_scenario::ctx(&mut scenario));
+            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
-            test_scenario::return_shared(username_registry);
         };
         
         // Unblock USER2
@@ -166,11 +161,9 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            let username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, &username_registry, USER2, test_scenario::ctx(&mut scenario));
+            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
-            test_scenario::return_shared(username_registry);
         };
         
         // Block USER3
@@ -178,11 +171,9 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            let username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, &username_registry, USER3, test_scenario::ctx(&mut scenario));
+            block_list::block_wallet(&mut registry, &mut social_graph, USER3, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
-            test_scenario::return_shared(username_registry);
         };
         
         // Verify both users are blocked
@@ -216,11 +207,9 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            let username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, &username_registry, USER1, test_scenario::ctx(&mut scenario));
+            block_list::block_wallet(&mut registry, &mut social_graph, USER1, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
-            test_scenario::return_shared(username_registry);
         };
         
         test_scenario::end(scenario);
@@ -240,11 +229,9 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            let username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, &username_registry, USER2, test_scenario::ctx(&mut scenario));
+            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
-            test_scenario::return_shared(username_registry);
         };
         
         // Try to block USER2 again (should fail)
@@ -252,11 +239,9 @@ module social_contracts::block_list_tests {
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            let username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, &username_registry, USER2, test_scenario::ctx(&mut scenario));
+            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
-            test_scenario::return_shared(username_registry);
         };
         
         test_scenario::end(scenario);
@@ -282,38 +267,49 @@ module social_contracts::block_list_tests {
         test_scenario::end(scenario);
     }
     
-    /// Test find_block_list_id function
+    /// Test unified table behavior - verify multiple users can block independently
     #[test]
-    fun test_find_block_list_id() {
+    fun test_unified_table_behavior() {
         let mut scenario = test_scenario::begin(ADMIN);
         
         // Initialize block list registry
         init_block_list_registry(&mut scenario);
         
-        // Block USER2 to create block list via lazy initialization
+        // USER1 blocks USER2
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
-            let username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&mut scenario);
-            block_list::block_wallet(&mut registry, &mut social_graph, &username_registry, USER2, test_scenario::ctx(&mut scenario));
+            block_list::block_wallet(&mut registry, &mut social_graph, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
-            test_scenario::return_shared(username_registry);
         };
         
-        // Test find_block_list_id
+        // USER2 blocks USER3 (different blocker, should work independently)
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
+            let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
+            block_list::block_wallet(&mut registry, &mut social_graph, USER3, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(social_graph);
+        };
+        
+        // Verify unified table works correctly
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
             
-            // Check that USER1 has a block list
-            let id_option = block_list::find_block_list_id(&registry, USER1);
-            assert!(option::is_some(&id_option), 0);
+            // USER1 blocked USER2
+            assert!(block_list::is_blocked(&registry, USER1, USER2), 0);
+            assert!(block_list::blocked_count(&registry, USER1) == 1, 1);
             
-            // Check that USER2 does not have a block list
-            let id_option2 = block_list::find_block_list_id(&registry, USER2);
-            assert!(option::is_none(&id_option2), 1);
+            // USER2 blocked USER3
+            assert!(block_list::is_blocked(&registry, USER2, USER3), 2);
+            assert!(block_list::blocked_count(&registry, USER2) == 1, 3);
+            
+            // USER1 did not block USER3
+            assert!(!block_list::is_blocked(&registry, USER1, USER3), 4);
             
             test_scenario::return_shared(registry);
         };

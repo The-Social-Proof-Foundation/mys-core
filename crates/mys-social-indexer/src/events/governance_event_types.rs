@@ -16,8 +16,6 @@ pub struct GovernanceRegistryEvent {
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub proposal_submission_cost: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub min_on_chain_age_days: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_votes_per_user: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quadratic_base_cost: u64,
@@ -42,8 +40,6 @@ pub struct GovernanceRegistryCreatedEvent {
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub proposal_submission_cost: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub min_on_chain_age_days: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_votes_per_user: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quadratic_base_cost: u64,
@@ -59,7 +55,6 @@ pub struct GovernanceRegistryCreatedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DelegateNominatedEvent {
     pub address: String,
-    pub profile_id: String,
     #[serde(deserialize_with = "deserialize_u8_from_string")]
     pub registry_type: u8,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
@@ -87,7 +82,6 @@ pub struct DelegateVotedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DelegateElectedEvent {
     pub address: String,
-    pub profile_id: String,
     #[serde(deserialize_with = "deserialize_u8_from_string")]
     pub registry_type: u8,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
@@ -248,8 +242,6 @@ pub struct GovernanceParametersUpdatedEvent {
     pub delegate_term_epochs: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub proposal_submission_cost: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub min_on_chain_age_days: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_votes_per_user: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]

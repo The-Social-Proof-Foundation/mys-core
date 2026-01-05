@@ -581,6 +581,7 @@ module social_contracts::governance_tests {
 
     /// Test creating platform governance registry
     #[test]
+    #[allow(unused_mut_ref)]
     fun test_create_platform_governance() {
         use mys::object::{Self, ID};
         use social_contracts::governance;
@@ -598,7 +599,6 @@ module social_contracts::governance_tests {
             let delegate_count = 7;
             let delegate_term_epochs = 30;
             let proposal_submission_cost = 50000000;
-            let min_on_chain_age_days = 7;
             let max_votes_per_user = 5;
             let quadratic_base_cost = 5000000;
             let voting_period_epochs = 3;
@@ -609,7 +609,6 @@ module social_contracts::governance_tests {
                 delegate_count,
                 delegate_term_epochs,
                 proposal_submission_cost,
-                min_on_chain_age_days,
                 max_votes_per_user,
                 quadratic_base_cost,
                 voting_period_epochs,
@@ -624,11 +623,36 @@ module social_contracts::governance_tests {
             object::delete(platform_uid);
         };
         
+        // Verify governance parameters in next transaction
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            
+            // Verify all parameters were set correctly
+            let (actual_delegate_count, actual_delegate_term_epochs, actual_proposal_submission_cost,
+                 actual_max_votes_per_user, actual_quadratic_base_cost, actual_voting_period_epochs,
+                 actual_quorum_votes) = governance::get_governance_parameters(&registry);
+            
+            assert!(actual_delegate_count == 7, 1);
+            assert!(actual_delegate_term_epochs == 30, 2);
+            assert!(actual_proposal_submission_cost == 50000000, 3);
+            assert!(actual_max_votes_per_user == 5, 4);
+            assert!(actual_quadratic_base_cost == 5000000, 5);
+            assert!(actual_voting_period_epochs == 3, 6);
+            assert!(actual_quorum_votes == 15, 7);
+            
+            // Verify registry type is platform (checking internal field via struct pattern matching would require borrowing)
+            // We'll verify this indirectly by checking the parameters match
+            
+            test_scenario::return_shared(registry);
+        };
+        
         test_scenario::end(scenario);
     }
     
     /// Test platform governance parameters
     #[test]
+    #[allow(unused_mut_ref)]
     fun test_platform_governance_parameters() {
         use mys::object::{Self, ID};
         use social_contracts::governance;
@@ -646,7 +670,6 @@ module social_contracts::governance_tests {
             let delegate_count = 7;
             let delegate_term_epochs = 30;
             let proposal_submission_cost = 50000000;
-            let min_on_chain_age_days = 7;
             let max_votes_per_user = 5;
             let quadratic_base_cost = 5000000;
             let voting_period_epochs = 3;
@@ -658,7 +681,6 @@ module social_contracts::governance_tests {
                 delegate_count,
                 delegate_term_epochs,
                 proposal_submission_cost,
-                min_on_chain_age_days,
                 max_votes_per_user,
                 quadratic_base_cost,
                 voting_period_epochs,
@@ -666,20 +688,45 @@ module social_contracts::governance_tests {
                 ctx
             );
             
-            // In a real test, we would borrow the registry and verify the parameters
-            // Since we can't do that directly in this test, we'll check if the registry exists
+            // Verify the registry ID is valid
             assert!(object::id_to_address(&registry_id) != @0x0, 0);
             
             // Clean up
             object::delete(platform_uid);
         };
         
-        // Try to use the governance registry in the next transaction
+        // Verify governance parameters in next transaction
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            
+            // Verify all parameters were set correctly
+            let (actual_delegate_count, actual_delegate_term_epochs, actual_proposal_submission_cost,
+                 actual_max_votes_per_user, actual_quadratic_base_cost, actual_voting_period_epochs,
+                 actual_quorum_votes) = governance::get_governance_parameters(&registry);
+            
+            assert!(actual_delegate_count == 7, 1);
+            assert!(actual_delegate_term_epochs == 30, 2);
+            assert!(actual_proposal_submission_cost == 50000000, 3);
+            assert!(actual_max_votes_per_user == 5, 4);
+            assert!(actual_quadratic_base_cost == 5000000, 5);
+            assert!(actual_voting_period_epochs == 3, 6);
+            assert!(actual_quorum_votes == 15, 7);
+            
+            test_scenario::return_shared(registry);
+        };
+        
+        // Verify registry can be accessed by different user
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            // In a real test, we would verify that we can take the registry from the shared objects
-            // Here we're just ensuring the test structure is correct
-            assert!(tx_context::sender(test_scenario::ctx(&mut scenario)) == USER1, 1);
+            let registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            
+            // Verify we can read parameters as a different user
+            let (_, _, _, _, _, _, _) = governance::get_governance_parameters(&registry);
+            
+            assert!(tx_context::sender(test_scenario::ctx(&mut scenario)) == USER1, 8);
+            
+            test_scenario::return_shared(registry);
         };
         
         test_scenario::end(scenario);

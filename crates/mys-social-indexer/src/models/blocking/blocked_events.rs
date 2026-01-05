@@ -15,7 +15,6 @@ pub struct BlockedEvent {
     pub event_type: String,
     pub blocker_address: String,
     pub blocked_address: Option<String>,
-    pub block_list_address: Option<String>,
     pub raw_event_data: Option<serde_json::Value>,
     pub processed_at: NaiveDateTime,
     pub created_at: NaiveDateTime,
@@ -29,7 +28,6 @@ pub struct NewBlockedEvent {
     pub event_type: String,
     pub blocker_address: String,
     pub blocked_address: Option<String>,
-    pub block_list_address: Option<String>,
     pub raw_event_data: Option<serde_json::Value>,
     pub processed_at: NaiveDateTime,
     pub created_at: NaiveDateTime,
@@ -41,7 +39,6 @@ impl NewBlockedEvent {
         event_id: Option<String>,
         blocker_address: String,
         blocked_address: String,
-        block_list_address: Option<String>,
         raw_event_data: Option<serde_json::Value>,
         created_at: NaiveDateTime,
     ) -> Self {
@@ -50,7 +47,6 @@ impl NewBlockedEvent {
             event_type: "block".to_string(),
             blocker_address,
             blocked_address: Some(blocked_address),
-            block_list_address,
             raw_event_data,
             processed_at: chrono::Utc::now().naive_utc(),
             created_at,
@@ -62,7 +58,6 @@ impl NewBlockedEvent {
         event_id: Option<String>,
         blocker_address: String,
         blocked_address: String,
-        block_list_address: Option<String>,
         raw_event_data: Option<serde_json::Value>,
         created_at: NaiveDateTime,
     ) -> Self {
@@ -71,27 +66,6 @@ impl NewBlockedEvent {
             event_type: "unblock".to_string(),
             blocker_address,
             blocked_address: Some(blocked_address),
-            block_list_address,
-            raw_event_data,
-            processed_at: chrono::Utc::now().naive_utc(),
-            created_at,
-        }
-    }
-
-    /// Create a new block list created event
-    pub fn new_block_list_created_event(
-        event_id: Option<String>,
-        blocker_address: String,
-        block_list_address: String,
-        raw_event_data: Option<serde_json::Value>,
-        created_at: NaiveDateTime,
-    ) -> Self {
-        Self {
-            event_id,
-            event_type: "block_list_created".to_string(),
-            blocker_address,
-            blocked_address: None, // No specific blocked address for block list creation
-            block_list_address: Some(block_list_address),
             raw_event_data,
             processed_at: chrono::Utc::now().naive_utc(),
             created_at,

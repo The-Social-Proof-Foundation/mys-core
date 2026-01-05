@@ -40,7 +40,7 @@ pub struct NewGovernanceRegistry {
     pub delegate_count: i64,
     pub delegate_term_epochs: i64,
     pub proposal_submission_cost: i64,
-    pub min_on_chain_age_days: i64,
+    pub min_on_chain_age_days: i64, // Deprecated: kept for database compatibility, always set to 0
     pub max_votes_per_user: i64,
     pub quadratic_base_cost: i64,
     pub voting_period_epochs: i64,
@@ -50,9 +50,10 @@ pub struct NewGovernanceRegistry {
 }
 
 /// Model for delegates table
-#[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
+#[derive(Debug, Clone, Queryable, Selectable, Identifiable, Serialize, Deserialize)]
 #[diesel(table_name = delegates)]
 #[diesel(primary_key(id, time))]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Delegate {
     pub id: i32,
     pub address: String,
@@ -95,9 +96,10 @@ pub struct NewDelegate {
 }
 
 /// Model for nominated_delegates table
-#[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
+#[derive(Debug, Clone, Queryable, Selectable, Identifiable, Serialize, Deserialize)]
 #[diesel(table_name = nominated_delegates)]
 #[diesel(primary_key(id, time))]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct NominatedDelegate {
     pub id: i32,
     pub address: String,

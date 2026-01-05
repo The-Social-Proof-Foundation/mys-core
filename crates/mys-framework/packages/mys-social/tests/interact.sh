@@ -571,11 +571,10 @@ follow_user() {
     print_header "Following User"
     
     read -p "Enter social graph ID: " graph_id
-    read -p "Enter registry ID: " registry_id
-    read -p "Enter profile ID to follow: " profile_to_follow
+    read -p "Enter wallet address to follow: " address_to_follow
     
     print_info "Following user..."
-    myso client call --package $PACKAGE_ID --module social_graph --function follow --args "$graph_id" "$registry_id" "$profile_to_follow" --gas-budget $GAS_BUDGET
+    myso client call --package $PACKAGE_ID --module social_graph --function follow --args "$graph_id" "$address_to_follow" --gas-budget $GAS_BUDGET
     
     print_success "Now following user!"
     
@@ -588,11 +587,10 @@ unfollow_user() {
     print_header "Unfollowing User"
     
     read -p "Enter social graph ID: " graph_id
-    read -p "Enter registry ID: " registry_id
-    read -p "Enter profile ID to unfollow: " profile_to_unfollow
+    read -p "Enter wallet address to unfollow: " address_to_unfollow
     
     print_info "Unfollowing user..."
-    myso client call --package $PACKAGE_ID --module social_graph --function unfollow --args "$graph_id" "$registry_id" "$profile_to_unfollow" --gas-budget $GAS_BUDGET
+    myso client call --package $PACKAGE_ID --module social_graph --function unfollow --args "$graph_id" "$address_to_unfollow" --gas-budget $GAS_BUDGET
     
     print_success "User unfollowed!"
     
@@ -980,14 +978,13 @@ create_platform_governance() {
     read -p "Enter delegate count: " delegate_count
     read -p "Enter delegate term epochs: " delegate_term
     read -p "Enter proposal submission cost (in MYS): " submission_cost
-    read -p "Enter minimum on-chain age (days): " min_age
     read -p "Enter maximum votes per user: " max_votes
     read -p "Enter quadratic base cost: " quadratic_cost
     read -p "Enter voting period (epochs): " voting_period
     read -p "Enter quorum votes percentage: " quorum_votes
     
     print_info "Creating platform governance..."
-    myso client call --package $PACKAGE_ID --module governance --function create_platform_governance --args "$delegate_count" "$delegate_term" "$submission_cost" "$min_age" "$max_votes" "$quadratic_cost" "$voting_period" "$quorum_votes" --gas-budget $GAS_BUDGET
+    myso client call --package $PACKAGE_ID --module governance --function create_platform_governance --args "$delegate_count" "$delegate_term" "$submission_cost" "$max_votes" "$quadratic_cost" "$voting_period" "$quorum_votes" --gas-budget $GAS_BUDGET
     
     print_success "Platform governance created!"
     

@@ -63,9 +63,6 @@ pub use crate::models::blocking::{
 // Re-export platform events (from models::platform)
 pub use crate::models::platform::{PlatformBlockedProfileEvent, PlatformUnblockedProfileEvent};
 
-// BlockListCreatedEvent
-pub use crate::events::blocking_events::BlockListCreatedEvent;
-
 // Re-export post events
 pub use post_event_types::{
     CommentCreatedEvent, ContentUpdateEvent, DeletionEvent, ModerationEvent, PostCreatedEvent,

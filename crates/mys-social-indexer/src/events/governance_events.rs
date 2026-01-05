@@ -55,7 +55,7 @@ pub async fn process_governance_registry_created_event(
         delegate_count: registry_event.delegate_count as i64,
         delegate_term_epochs: registry_event.delegate_term_epochs as i64,
         proposal_submission_cost: registry_event.proposal_submission_cost as i64,
-        min_on_chain_age_days: registry_event.min_on_chain_age_days as i64,
+        min_on_chain_age_days: 0, // Deprecated field, set to 0 for new registries
         max_votes_per_user: registry_event.max_votes_per_user as i64,
         quadratic_base_cost: registry_event.quadratic_base_cost as i64,
         voting_period_epochs: registry_event.voting_period_epochs as i64,
@@ -75,8 +75,6 @@ pub async fn process_governance_registry_created_event(
                 .eq(new_registry.delegate_term_epochs),
             crate::schema::governance_registries::proposal_submission_cost
                 .eq(new_registry.proposal_submission_cost),
-            crate::schema::governance_registries::min_on_chain_age_days
-                .eq(new_registry.min_on_chain_age_days),
             crate::schema::governance_registries::max_votes_per_user
                 .eq(new_registry.max_votes_per_user),
             crate::schema::governance_registries::quadratic_base_cost
@@ -125,9 +123,10 @@ pub async fn process_delegate_nominated_event(
     let nomination_event = parse_json_event::<DelegateNominatedEvent>(event)?;
 
     // Create new nominee record
+    // Use address as profile_id since governance is wallet-address-based, not platform-based
     let new_nominee = NewNominatedDelegate {
         address: nomination_event.address.clone(),
-        profile_id: nomination_event.profile_id.clone(),
+        profile_id: nomination_event.address.clone(), // Use address as profile_id
         registry_type: nomination_event.registry_type as i16,
         upvotes: 0,
         downvotes: 0,
@@ -146,7 +145,6 @@ pub async fn process_delegate_nominated_event(
         ))
         .do_update()
         .set((
-            crate::schema::nominated_delegates::profile_id.eq(new_nominee.profile_id.clone()),
             crate::schema::nominated_delegates::upvotes.eq(0),
             crate::schema::nominated_delegates::downvotes.eq(0),
             crate::schema::nominated_delegates::scheduled_term_start_epoch
@@ -220,9 +218,10 @@ pub async fn process_delegate_elected_event(
                 // Create or update delegate record
                 // Convert to milliseconds for consistency with blockchain timestamps
                 let now_unix_ms = Utc::now().timestamp_millis() as i64;
+                // Use address as profile_id since governance is wallet-address-based, not platform-based
                 let new_delegate = NewDelegate {
                     address: elected_event.address.clone(),
-                    profile_id: elected_event.profile_id.clone(),
+                    profile_id: elected_event.address.clone(), // Use address as profile_id
                     registry_type: elected_event.registry_type as i16,
                     upvotes: elected_event.upvotes as i64,
                     downvotes: elected_event.downvotes as i64,
@@ -246,7 +245,6 @@ pub async fn process_delegate_elected_event(
                     ))
                     .do_update()
                     .set((
-                        crate::schema::delegates::profile_id.eq(new_delegate.profile_id.clone()),
                         crate::schema::delegates::upvotes.eq(new_delegate.upvotes),
                         crate::schema::delegates::downvotes.eq(new_delegate.downvotes),
                         crate::schema::delegates::term_start.eq(new_delegate.term_start),
@@ -1573,7 +1571,6 @@ pub async fn process_governance_parameters_updated_event(
             crate::schema::governance_registries::delegate_count.eq(params_event.delegate_count as i64),
             crate::schema::governance_registries::delegate_term_epochs.eq(params_event.delegate_term_epochs as i64),
             crate::schema::governance_registries::proposal_submission_cost.eq(params_event.proposal_submission_cost as i64),
-            crate::schema::governance_registries::min_on_chain_age_days.eq(params_event.min_on_chain_age_days as i64),
             crate::schema::governance_registries::max_votes_per_user.eq(params_event.max_votes_per_user as i64),
             crate::schema::governance_registries::quadratic_base_cost.eq(params_event.quadratic_base_cost as i64),
             crate::schema::governance_registries::voting_period_epochs.eq(params_event.voting_period_epochs as i64),

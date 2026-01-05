@@ -197,7 +197,6 @@ impl ProfileCreatedEvent {
             reddit_username: None,
             github_username: None,
             instagram_username: None,
-            block_list_address: None,
             social_proof_token_address: None,
             reservation_pool_address: None, // Will be set when reservation pool is created
             selected_badge_id: None, // Will be set when badge is selected

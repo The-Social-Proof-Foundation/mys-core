@@ -25,7 +25,6 @@ module social_contracts::governance {
     use mydata::bf_hmac_encryption::{EncryptedObject, VerifiedDerivedKey, PublicKey, decrypt};
     
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
-    use social_contracts::profile;
 
     /// Error codes
     const EUnauthorized: u64 = 0;
@@ -88,7 +87,6 @@ module social_contracts::governance {
         delegate_count: u64,
         delegate_term_epochs: u64,
         proposal_submission_cost: u64,
-        min_on_chain_age_days: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
         voting_period_epochs: u64,  // Number of epochs for the voting period
@@ -108,7 +106,6 @@ module social_contracts::governance {
     /// Delegate struct representing a member of the delegate council
     public struct Delegate has store {
         address: address,
-        profile_id: ID,
         upvotes: u64,
         downvotes: u64,
         proposals_reviewed: u64,
@@ -122,7 +119,6 @@ module social_contracts::governance {
     /// Nominee struct representing a user nominated but not yet active
     public struct NominatedDelegate has store {
         address: address,
-        profile_id: ID,
         scheduled_term_start_epoch: u64,
         upvotes: u64,
         downvotes: u64,
@@ -134,7 +130,7 @@ module social_contracts::governance {
         title: String,
         description: String,
         proposal_type: u8,  // Ecosystem, Proof of Creativity, Platform
-        reference_id: Option<ID>,  // Optional reference to content/profile/post ID
+        reference_id: Option<ID>,  // Optional reference to content/post ID
         metadata_json: Option<String>, // Optional JSON metadata string
         submitter: address,
         submission_time: u64,
@@ -154,7 +150,6 @@ module social_contracts::governance {
     /// Event emitted when a new delegate is elected
     public struct DelegateElectedEvent has copy, drop {
         delegate_address: address,
-        profile_id: ID,
         term_start: u64,
         term_end: u64,
         registry_type: u8,
@@ -163,7 +158,6 @@ module social_contracts::governance {
     /// Event emitted when a user is nominated to become a delegate in a future term
     public struct DelegateNominatedEvent has copy, drop {
         nominee_address: address,
-        profile_id: ID,
         scheduled_term_start_epoch: u64,
         registry_type: u8,
     }
@@ -286,7 +280,6 @@ module social_contracts::governance {
         delegate_count: u64,
         delegate_term_epochs: u64,
         proposal_submission_cost: u64,
-        min_on_chain_age_days: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
         voting_period_epochs: u64,
@@ -302,7 +295,6 @@ module social_contracts::governance {
         delegate_count: u64,
         delegate_term_epochs: u64,
         proposal_submission_cost: u64,
-        min_on_chain_age_days: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
         voting_period_epochs: u64,
@@ -323,7 +315,6 @@ module social_contracts::governance {
             delegate_count: 3, // Larger council for ecosystem decisions
             delegate_term_epochs: 90, // 3 months for ecosystem delegates
             proposal_submission_cost: 100_000_000, // 100 MYS for ecosystem proposals
-            min_on_chain_age_days: 30, // 1 month minimum for ecosystem voting
             max_votes_per_user: 10, // Up to 10 votes per user
             quadratic_base_cost: 10_000_000, // 10 MYS per additional vote
             voting_period_epochs: 7, // 7 epochs for ecosystem votes
@@ -353,7 +344,6 @@ module social_contracts::governance {
             delegate_count: ecosystem_registry.delegate_count,
             delegate_term_epochs: ecosystem_registry.delegate_term_epochs,
             proposal_submission_cost: ecosystem_registry.proposal_submission_cost,
-            min_on_chain_age_days: ecosystem_registry.min_on_chain_age_days,
             max_votes_per_user: ecosystem_registry.max_votes_per_user,
             quadratic_base_cost: ecosystem_registry.quadratic_base_cost,
             voting_period_epochs: ecosystem_registry.voting_period_epochs,
@@ -372,7 +362,6 @@ module social_contracts::governance {
             delegate_count: 2, // Smaller council for proof of creativity
             delegate_term_epochs: 180, // 3 months for proof of creativity delegates
             proposal_submission_cost: 25_000_000, // 25 MYS for proof of creativity
-            min_on_chain_age_days: 1, // 1 day minimum for proof of creativity voting
             max_votes_per_user: 3, // Up to 3 votes per user
             quadratic_base_cost: 2_500_000, // 2.5 MYS per additional vote
             voting_period_epochs: 1, // 1 epoch for proof of creativity votes
@@ -402,7 +391,6 @@ module social_contracts::governance {
             delegate_count: proof_of_creativity_registry.delegate_count,
             delegate_term_epochs: proof_of_creativity_registry.delegate_term_epochs,
             proposal_submission_cost: proof_of_creativity_registry.proposal_submission_cost,
-            min_on_chain_age_days: proof_of_creativity_registry.min_on_chain_age_days,
             max_votes_per_user: proof_of_creativity_registry.max_votes_per_user,
             quadratic_base_cost: proof_of_creativity_registry.quadratic_base_cost,
             voting_period_epochs: proof_of_creativity_registry.voting_period_epochs,
@@ -431,7 +419,6 @@ module social_contracts::governance {
         delegate_count: u64,
         delegate_term_epochs: u64,
         proposal_submission_cost: u64,
-        min_on_chain_age_days: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
         voting_period_epochs: u64,
@@ -445,7 +432,6 @@ module social_contracts::governance {
         assert!(delegate_count > 1, EInvalidParameter);
         assert!(delegate_term_epochs > 0, EInvalidParameter);
         // proposal_submission_cost can be 0
-        // min_on_chain_age_days can be 0
         assert!(max_votes_per_user > 0, EInvalidParameter);
         // quadratic_base_cost can be 0 (if voting is free)
         assert!(voting_period_epochs > 0, EInvalidParameter);
@@ -455,7 +441,6 @@ module social_contracts::governance {
         registry.delegate_count = delegate_count;
         registry.delegate_term_epochs = delegate_term_epochs;
         registry.proposal_submission_cost = proposal_submission_cost;
-        registry.min_on_chain_age_days = min_on_chain_age_days;
         registry.max_votes_per_user = max_votes_per_user;
         registry.quadratic_base_cost = quadratic_base_cost;
         registry.voting_period_epochs = voting_period_epochs;
@@ -468,7 +453,6 @@ module social_contracts::governance {
             delegate_count,
             delegate_term_epochs,
             proposal_submission_cost,
-            min_on_chain_age_days,
             max_votes_per_user,
             quadratic_base_cost,
             voting_period_epochs,
@@ -486,7 +470,6 @@ module social_contracts::governance {
         delegate_count: u64,
         delegate_term_epochs: u64,
         proposal_submission_cost: u64,
-        min_on_chain_age_days: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
         voting_period_epochs: u64,
@@ -506,7 +489,6 @@ module social_contracts::governance {
             delegate_count,
             delegate_term_epochs,
             proposal_submission_cost,
-            min_on_chain_age_days,
             max_votes_per_user,
             quadratic_base_cost,
             voting_period_epochs,
@@ -523,7 +505,6 @@ module social_contracts::governance {
         delegate_count: u64,
         delegate_term_epochs: u64,
         proposal_submission_cost: u64,
-        min_on_chain_age_days: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
         voting_period_epochs: u64,
@@ -539,7 +520,6 @@ module social_contracts::governance {
             delegate_count,
             delegate_term_epochs,
             proposal_submission_cost,
-            min_on_chain_age_days,
             max_votes_per_user,
             quadratic_base_cost,
             voting_period_epochs,
@@ -549,10 +529,9 @@ module social_contracts::governance {
     }
 
     /// Nominate self as a delegate
-    /// Requires the caller to have a valid profile
+    /// Uses wallet-level architecture - no profile required
     public entry fun nominate_delegate(
         registry: &mut GovernanceDAO,
-        profile_registry: &profile::UsernameRegistry,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -565,18 +544,10 @@ module social_contracts::governance {
         assert!(!table::contains(&registry.delegates, caller), EAlreadyDelegate);
         assert!(!table::contains(&registry.nominated_delegates, caller), EAlreadyNominated);
 
-        let mut profile_id_opt = profile::lookup_profile_by_owner(profile_registry, caller);
-        assert!(option::is_some(&profile_id_opt), EUnauthorized);
-        
-        // Get profile ID
-        let profile_id_addr = option::extract(&mut profile_id_opt);
-        let profile_id = object::id_from_address(profile_id_addr);
-
         let scheduled_term_start_epoch = ((current_epoch / registry.delegate_term_epochs) + 1) * registry.delegate_term_epochs;
 
         let nominated_delegate = NominatedDelegate {
             address: caller,
-            profile_id,
             scheduled_term_start_epoch,
             upvotes: 0,
             downvotes: 0,
@@ -589,7 +560,6 @@ module social_contracts::governance {
 
         event::emit(DelegateNominatedEvent {
             nominee_address: caller,
-            profile_id,
             scheduled_term_start_epoch,
             registry_type: registry.registry_type,
         });
@@ -764,7 +734,6 @@ module social_contracts::governance {
 
         // --- Gather Candidates Data --- 
         let mut candidate_addresses = vector::empty<address>();
-        let mut candidate_profile_ids = vector::empty<ID>();
         let mut candidate_upvotes = vector::empty<u64>();
         let mut candidate_downvotes = vector::empty<u64>();
         let mut candidate_net_votes = vector::empty<u64>(); // For sorting calculations
@@ -784,7 +753,6 @@ module social_contracts::governance {
             if (table::contains(&registry.delegates, addr)) { // Check existence before borrow
                 let delegate: &Delegate = table::borrow(&registry.delegates, addr);
                 vector::push_back(&mut candidate_addresses, addr);
-                vector::push_back(&mut candidate_profile_ids, delegate.profile_id);
                 vector::push_back(&mut candidate_upvotes, delegate.upvotes);
                 vector::push_back(&mut candidate_downvotes, delegate.downvotes);
                 vector::push_back(&mut candidate_is_incumbent, true); // Mark as incumbent
@@ -824,7 +792,6 @@ module social_contracts::governance {
             if (table::contains(&registry.nominated_delegates, addr)) { // Check existence
                 let nominee: &NominatedDelegate = table::borrow(&registry.nominated_delegates, addr);
                 vector::push_back(&mut candidate_addresses, addr);
-                vector::push_back(&mut candidate_profile_ids, nominee.profile_id);
                 vector::push_back(&mut candidate_upvotes, nominee.upvotes);
                 vector::push_back(&mut candidate_downvotes, nominee.downvotes);
                 vector::push_back(&mut candidate_is_incumbent, false); // Mark as non-incumbent
@@ -880,11 +847,6 @@ module social_contracts::governance {
                     *vector::borrow_mut(&mut candidate_addresses, a) = *vector::borrow(&candidate_addresses, b);
                     *vector::borrow_mut(&mut candidate_addresses, b) = temp_addr;
                     
-                    // Swap profile IDs
-                    let temp_id = *vector::borrow(&candidate_profile_ids, a);
-                    *vector::borrow_mut(&mut candidate_profile_ids, a) = *vector::borrow(&candidate_profile_ids, b);
-                    *vector::borrow_mut(&mut candidate_profile_ids, b) = temp_id;
-                    
                     // Swap upvotes
                     let temp_up = *vector::borrow(&candidate_upvotes, a);
                     *vector::borrow_mut(&mut candidate_upvotes, a) = *vector::borrow(&candidate_upvotes, b);
@@ -924,7 +886,7 @@ module social_contracts::governance {
             // Check if it exists before removing (might have been removed if somehow duplicated)
             if (table::contains(&registry.delegates, addr)) {
                  let old_delegate = table::remove(&mut registry.delegates, addr);
-                 let Delegate { address: _, profile_id: _, upvotes: _, downvotes: _, proposals_reviewed: _, proposals_submitted: _, sided_winning_proposals: _, sided_losing_proposals: _, term_start: _, term_end: _ } = old_delegate;
+                 let Delegate { address: _, upvotes: _, downvotes: _, proposals_reviewed: _, proposals_submitted: _, sided_winning_proposals: _, sided_losing_proposals: _, term_start: _, term_end: _ } = old_delegate;
             };
             k = k + 1;
         };
@@ -935,7 +897,7 @@ module social_contracts::governance {
             let addr = *vector::borrow(&nominee_keys_vec, l);
             if (table::contains(&registry.nominated_delegates, addr)) { 
                 let old_nominee = table::remove(&mut registry.nominated_delegates, addr);
-                let NominatedDelegate { address: _, profile_id: _, scheduled_term_start_epoch: _, upvotes: _, downvotes: _ } = old_nominee;
+                let NominatedDelegate { address: _, scheduled_term_start_epoch: _, upvotes: _, downvotes: _ } = old_nominee;
              };
              l = l + 1;
         };
@@ -945,7 +907,6 @@ module social_contracts::governance {
         let mut m = 0;
         while (m < final_winner_count) {
             let winner_addr = *vector::borrow(&candidate_addresses, m);
-            let winner_profile_id = *vector::borrow(&candidate_profile_ids, m);
             let winner_upvotes = *vector::borrow(&candidate_upvotes, m);
             let winner_downvotes = *vector::borrow(&candidate_downvotes, m);
             
@@ -954,7 +915,6 @@ module social_contracts::governance {
 
             let new_delegate = Delegate {
                 address: winner_addr,
-                profile_id: winner_profile_id,
                 upvotes: winner_upvotes,
                 downvotes: winner_downvotes,
                 proposals_reviewed: 0, // Reset counters
@@ -971,7 +931,6 @@ module social_contracts::governance {
 
             event::emit(DelegateElectedEvent {
                 delegate_address: winner_addr,
-                profile_id: winner_profile_id,
                 term_start: term_start,
                 term_end: term_end,
                 registry_type: registry.registry_type,
@@ -981,7 +940,6 @@ module social_contracts::governance {
         
         // Destroy helper vectors used for candidate data
         vector::destroy_empty(candidate_addresses);
-        vector::destroy_empty(candidate_profile_ids);
         vector::destroy_empty(candidate_upvotes);
         vector::destroy_empty(candidate_downvotes);
         vector::destroy_empty(candidate_net_votes);
@@ -998,7 +956,7 @@ module social_contracts::governance {
         proposal_type: u8,
         title: String,
         description: String,
-        disputed_id: Option<ID>, // Optional ID for disputes (profile or content)
+        disputed_id: Option<ID>, // Optional ID for disputes (content only)
         reference_id: Option<ID>, // Optional reference
         metadata_json: Option<String>,
         coin: &mut Coin<MYS>,
@@ -1970,12 +1928,11 @@ module social_contracts::governance {
     public fun get_delegate_info(
         registry: &GovernanceDAO,
         addr: address
-    ): (ID, u64, u64, u64, u64, u64, u64, u64, u64) {
+    ): (u64, u64, u64, u64, u64, u64, u64, u64) {
         assert!(table::contains(&registry.delegates, addr), ENotDelegate);
         
         let delegate = table::borrow(&registry.delegates, addr);
         (
-            delegate.profile_id,
             delegate.upvotes,
             delegate.downvotes,
             delegate.proposals_reviewed,
@@ -2049,12 +2006,11 @@ module social_contracts::governance {
     /// Get governance parameters
     public fun get_governance_parameters(
         registry: &GovernanceDAO
-    ): (u64, u64, u64, u64, u64, u64, u64, u64) {
+    ): (u64, u64, u64, u64, u64, u64, u64) {
         (
             registry.delegate_count,
             registry.delegate_term_epochs,
             registry.proposal_submission_cost,
-            registry.min_on_chain_age_days,
             registry.max_votes_per_user,
             registry.quadratic_base_cost,
             registry.voting_period_epochs,
@@ -2091,7 +2047,6 @@ module social_contracts::governance {
         delegate_count: u64,
         delegate_term_epochs: u64,
         proposal_submission_cost: u64,
-        min_on_chain_age_days: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
         voting_period_epochs: u64,
@@ -2108,7 +2063,6 @@ module social_contracts::governance {
             delegate_count, 
             delegate_term_epochs,
             proposal_submission_cost,
-            min_on_chain_age_days,
             max_votes_per_user,
             quadratic_base_cost,
             voting_period_epochs,
@@ -2138,7 +2092,6 @@ module social_contracts::governance {
             delegate_count: platform_registry.delegate_count,
             delegate_term_epochs: platform_registry.delegate_term_epochs,
             proposal_submission_cost: platform_registry.proposal_submission_cost,
-            min_on_chain_age_days: platform_registry.min_on_chain_age_days,
             max_votes_per_user: platform_registry.max_votes_per_user,
             quadratic_base_cost: platform_registry.quadratic_base_cost,
             voting_period_epochs: platform_registry.voting_period_epochs,

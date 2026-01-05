@@ -1719,7 +1719,6 @@ impl ProfileEventListener {
             }
             // Platform blocking events are handled by platform_handler.rs to avoid duplication
             // UserBlockEvent and UserUnblockEvent are handled by block_list_handler.rs to avoid duplication
-            // BlockListCreatedEvent is handled by block_list_handler.rs to avoid duplication
         }
 
         warn!("Profile event listener channel closed");

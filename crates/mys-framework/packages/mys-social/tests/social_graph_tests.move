@@ -100,14 +100,6 @@ module social_contracts::social_graph_tests {
         };
     }
     
-    // === Helper to get profile IDs ===
-    
-    fun get_profile_id(registry: &UsernameRegistry, username: vector<u8>): address {
-        let username_str = string::utf8(username);
-        let mut profile_id_opt = profile::lookup_profile_by_username(registry, username_str);
-        assert!(option::is_some(&profile_id_opt), 1000);
-        option::extract(&mut profile_id_opt)
-    }
     
     // === Basic follow test ===
     
@@ -119,40 +111,33 @@ module social_contracts::social_graph_tests {
         initialize_modules(&mut scenario);
         create_test_profiles(&mut scenario);
         
-        // Get profile IDs
+        // User1 follows User2 (using wallet addresses directly)
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
             
-            let user1_profile_id = get_profile_id(&registry, b"user1");
-            let user2_profile_id = get_profile_id(&registry, b"user2");
-            
-            // User1 follows User2
             social_graph::follow(
                 &mut social_graph,
-                &registry,
-                user2_profile_id,
+                USER2,
                 test_scenario::ctx(&mut scenario)
             );
             
             // Check that User1 is following User2
-            assert!(social_graph::is_following(&social_graph, user1_profile_id, user2_profile_id), 1);
+            assert!(social_graph::is_following(&social_graph, USER1, USER2), 1);
             
             // Check counts
-            assert!(social_graph::following_count(&social_graph, user1_profile_id) == 1, 2);
-            assert!(social_graph::follower_count(&social_graph, user2_profile_id) == 1, 3);
+            assert!(social_graph::following_count(&social_graph, USER1) == 1, 2);
+            assert!(social_graph::follower_count(&social_graph, USER2) == 1, 3);
             
             // Check lists
-            let following = social_graph::get_following(&social_graph, user1_profile_id);
-            let followers = social_graph::get_followers(&social_graph, user2_profile_id);
+            let following = social_graph::get_following(&social_graph, USER1);
+            let followers = social_graph::get_followers(&social_graph, USER2);
             
             assert!(vector::length(&following) == 1, 4);
             assert!(vector::length(&followers) == 1, 5);
-            assert!(*vector::borrow(&following, 0) == user2_profile_id, 6);
-            assert!(*vector::borrow(&followers, 0) == user1_profile_id, 7);
+            assert!(*vector::borrow(&following, 0) == USER2, 6);
+            assert!(*vector::borrow(&followers, 0) == USER1, 7);
             
-            test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
         
@@ -172,46 +157,35 @@ module social_contracts::social_graph_tests {
         // User1 follows User2
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
-            
-            let user2_profile_id = get_profile_id(&registry, b"user2");
             
             social_graph::follow(
                 &mut social_graph,
-                &registry,
-                user2_profile_id,
+                USER2,
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
         
         // User1 unfollows User2
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
-            
-            let user1_profile_id = get_profile_id(&registry, b"user1");
-            let user2_profile_id = get_profile_id(&registry, b"user2");
             
             social_graph::unfollow(
                 &mut social_graph,
-                &registry,
-                user2_profile_id,
+                USER2,
                 test_scenario::ctx(&mut scenario)
             );
             
             // Check that User1 is no longer following User2
-            assert!(!social_graph::is_following(&social_graph, user1_profile_id, user2_profile_id), 1);
+            assert!(!social_graph::is_following(&social_graph, USER1, USER2), 1);
             
             // Check counts are back to 0
-            assert!(social_graph::following_count(&social_graph, user1_profile_id) == 0, 2);
-            assert!(social_graph::follower_count(&social_graph, user2_profile_id) == 0, 3);
+            assert!(social_graph::following_count(&social_graph, USER1) == 0, 2);
+            assert!(social_graph::follower_count(&social_graph, USER2) == 0, 3);
             
-            test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
         
@@ -231,55 +205,43 @@ module social_contracts::social_graph_tests {
         // User1 follows User2 and User3
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
-            
-            let user2_profile_id = get_profile_id(&registry, b"user2");
-            let user3_profile_id = get_profile_id(&registry, b"user3");
             
             // User1 follows User2
             social_graph::follow(
                 &mut social_graph,
-                &registry,
-                user2_profile_id,
+                USER2,
                 test_scenario::ctx(&mut scenario)
             );
             
             // User1 follows User3
             social_graph::follow(
                 &mut social_graph,
-                &registry,
-                user3_profile_id,
+                USER3,
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
         
         // Verify multiple follows
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
             
-            let user1_profile_id = get_profile_id(&registry, b"user1");
-            let user2_profile_id = get_profile_id(&registry, b"user2");
-            let user3_profile_id = get_profile_id(&registry, b"user3");
-            
             // Check that User1 is following both User2 and User3
-            assert!(social_graph::is_following(&social_graph, user1_profile_id, user2_profile_id), 1);
-            assert!(social_graph::is_following(&social_graph, user1_profile_id, user3_profile_id), 2);
+            assert!(social_graph::is_following(&social_graph, USER1, USER2), 1);
+            assert!(social_graph::is_following(&social_graph, USER1, USER3), 2);
             
             // Check following count
-            assert!(social_graph::following_count(&social_graph, user1_profile_id) == 2, 3);
+            assert!(social_graph::following_count(&social_graph, USER1) == 2, 3);
             
             // Check follower counts
-            assert!(social_graph::follower_count(&social_graph, user2_profile_id) == 1, 4);
-            assert!(social_graph::follower_count(&social_graph, user3_profile_id) == 1, 5);
+            assert!(social_graph::follower_count(&social_graph, USER2) == 1, 4);
+            assert!(social_graph::follower_count(&social_graph, USER3) == 1, 5);
             
             // Check following list contains both User2 and User3
-            let following = social_graph::get_following(&social_graph, user1_profile_id);
+            let following = social_graph::get_following(&social_graph, USER1);
             assert!(vector::length(&following) == 2, 6);
             
             // The order might not be guaranteed, so check both are in the list
@@ -288,11 +250,11 @@ module social_contracts::social_graph_tests {
             
             let mut i = 0;
             while (i < vector::length(&following)) {
-                let profile_id = *vector::borrow(&following, i);
-                if (profile_id == user2_profile_id) {
+                let address = *vector::borrow(&following, i);
+                if (address == USER2) {
                     has_user2 = true;
                 };
-                if (profile_id == user3_profile_id) {
+                if (address == USER3) {
                     has_user3 = true;
                 };
                 i = i + 1;
@@ -301,7 +263,6 @@ module social_contracts::social_graph_tests {
             assert!(has_user2, 7);
             assert!(has_user3, 8);
             
-            test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
         
@@ -321,61 +282,46 @@ module social_contracts::social_graph_tests {
         // User1 follows User2
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
-            
-            let user2_profile_id = get_profile_id(&registry, b"user2");
             
             social_graph::follow(
                 &mut social_graph,
-                &registry,
-                user2_profile_id,
+                USER2,
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
         
         // User2 follows User1 (mutual follow)
         test_scenario::next_tx(&mut scenario, USER2);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
-            
-            let user1_profile_id = get_profile_id(&registry, b"user1");
             
             social_graph::follow(
                 &mut social_graph,
-                &registry,
-                user1_profile_id,
+                USER1,
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
         
         // Verify mutual follows
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
             
-            let user1_profile_id = get_profile_id(&registry, b"user1");
-            let user2_profile_id = get_profile_id(&registry, b"user2");
-            
             // Check that User1 and User2 are following each other
-            assert!(social_graph::is_following(&social_graph, user1_profile_id, user2_profile_id), 1);
-            assert!(social_graph::is_following(&social_graph, user2_profile_id, user1_profile_id), 2);
+            assert!(social_graph::is_following(&social_graph, USER1, USER2), 1);
+            assert!(social_graph::is_following(&social_graph, USER2, USER1), 2);
             
             // Check counts
-            assert!(social_graph::following_count(&social_graph, user1_profile_id) == 1, 3);
-            assert!(social_graph::following_count(&social_graph, user2_profile_id) == 1, 4);
-            assert!(social_graph::follower_count(&social_graph, user1_profile_id) == 1, 5);
-            assert!(social_graph::follower_count(&social_graph, user2_profile_id) == 1, 6);
+            assert!(social_graph::following_count(&social_graph, USER1) == 1, 3);
+            assert!(social_graph::following_count(&social_graph, USER2) == 1, 4);
+            assert!(social_graph::follower_count(&social_graph, USER1) == 1, 5);
+            assert!(social_graph::follower_count(&social_graph, USER2) == 1, 6);
             
-            test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
         
@@ -396,20 +342,15 @@ module social_contracts::social_graph_tests {
         // User1 tries to follow themselves
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
-            
-            let user1_profile_id = get_profile_id(&registry, b"user1");
             
             // This should fail with ECannotFollowSelf
             social_graph::follow(
                 &mut social_graph,
-                &registry,
-                user1_profile_id,
+                USER1,
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
         
@@ -428,39 +369,29 @@ module social_contracts::social_graph_tests {
         // User1 follows User2
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
-            
-            let user2_profile_id = get_profile_id(&registry, b"user2");
             
             social_graph::follow(
                 &mut social_graph,
-                &registry,
-                user2_profile_id,
+                USER2,
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
         
         // User1 tries to follow User2 again
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
-            
-            let user2_profile_id = get_profile_id(&registry, b"user2");
             
             // This should fail with EAlreadyFollowing
             social_graph::follow(
                 &mut social_graph,
-                &registry,
-                user2_profile_id,
+                USER2,
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
         
@@ -479,20 +410,15 @@ module social_contracts::social_graph_tests {
         // User1 tries to unfollow User2 without following them first
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
-            
-            let user2_profile_id = get_profile_id(&registry, b"user2");
             
             // This should fail with ENotFollowing
             social_graph::unfollow(
                 &mut social_graph,
-                &registry,
-                user2_profile_id,
+                USER2,
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_shared(registry);
             test_scenario::return_shared(social_graph);
         };
         
@@ -528,29 +454,29 @@ module social_contracts::social_graph_tests {
     }
     
     #[test]
-    #[expected_failure(abort_code = social_graph::EProfileNotFound, location = social_contracts::social_graph)]
-    fun test_profile_not_found() {
+    fun test_follow_without_profile() {
         let mut scenario = test_scenario::begin(ADMIN);
         
         // Initialize modules but DON'T create profiles
         initialize_modules(&mut scenario);
         
-        // User1 tries to follow User2 without having a profile
+        // User1 follows User2 without having a profile (wallet-level following)
         test_scenario::next_tx(&mut scenario, USER1);
         {
-            let registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let mut social_graph = test_scenario::take_shared<SocialGraph>(&scenario);
             
-            // Create a random address to try to follow
-            // This should fail because USER1 doesn't have a profile
+            // This should work - no profile required
             social_graph::follow(
                 &mut social_graph,
-                &registry,
-                @0x1234,
+                USER2,
                 test_scenario::ctx(&mut scenario)
             );
             
-            test_scenario::return_shared(registry);
+            // Verify following relationship exists
+            assert!(social_graph::is_following(&social_graph, USER1, USER2), 1);
+            assert!(social_graph::following_count(&social_graph, USER1) == 1, 2);
+            assert!(social_graph::follower_count(&social_graph, USER2) == 1, 3);
+            
             test_scenario::return_shared(social_graph);
         };
         

@@ -444,12 +444,6 @@ module social_contracts::platform {
                 50_000_000 // Default value
             };
             
-            let min_on_chain_age_days = if (option::is_some(&platform.min_on_chain_age_days)) {
-                *option::borrow(&platform.min_on_chain_age_days)
-            } else {
-                7 // Default value
-            };
-            
             let max_votes_per_user = if (option::is_some(&platform.max_votes_per_user)) {
                 *option::borrow(&platform.max_votes_per_user)
             } else {
@@ -479,7 +473,6 @@ module social_contracts::platform {
                 delegate_count,
                 delegate_term_epochs,
                 proposal_submission_cost,
-                min_on_chain_age_days,
                 max_votes_per_user,
                 quadratic_base_cost,
                 voting_period_epochs,
@@ -711,7 +704,6 @@ module social_contracts::platform {
     public fun block_wallet(
         block_list_registry: &mut block_list::BlockListRegistry,
         social_graph: &mut social_graph::SocialGraph,
-        username_registry: &profile::UsernameRegistry,
         platform: &mut Platform,
         blocked_wallet_address: address,
         ctx: &mut TxContext
@@ -730,10 +722,8 @@ module social_contracts::platform {
         block_list::block_wallet_internal(
             block_list_registry,
             social_graph,
-            username_registry,
             platform_address,
-            blocked_wallet_address,
-            ctx
+            blocked_wallet_address
         );
     }
 
@@ -1174,7 +1164,6 @@ module social_contracts::platform {
         delegate_count: u64,
         delegate_term_epochs: u64,
         proposal_submission_cost: u64,
-        min_on_chain_age_days: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
         voting_period_epochs: u64,
@@ -1200,7 +1189,6 @@ module social_contracts::platform {
             delegate_count,
             delegate_term_epochs,
             proposal_submission_cost,
-            min_on_chain_age_days,
             max_votes_per_user,
             quadratic_base_cost,
             voting_period_epochs,

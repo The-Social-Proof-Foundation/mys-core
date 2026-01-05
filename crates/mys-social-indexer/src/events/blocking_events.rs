@@ -4,7 +4,6 @@
 use anyhow::Result;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-use serde::{Deserialize, Serialize};
 use serde_json;
 use tracing::{error, info, warn};
 
@@ -17,15 +16,6 @@ use crate::schema::{blocked_events, blocked_profiles, profile_events};
 
 // Import platform event types
 use crate::models::platform::{PlatformBlockedProfileEvent, PlatformUnblockedProfileEvent};
-
-/// Event emitted when a BlockList is created
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BlockListCreatedEvent {
-    /// ID of the BlockList object
-    pub block_list_id: String,
-    /// Address of the wallet that owns this block list
-    pub owner: String,
-}
 
 /// Process a profile block event
 pub async fn process_profile_block_event(
@@ -129,41 +119,11 @@ pub async fn process_profile_block_event(
 
     let now = chrono::Utc::now().naive_utc();
 
-    // Look up the blocker's block_list_address from profiles table
-    let block_list_address = {
-        use crate::schema::profiles;
-
-        match profiles::table
-            .filter(profiles::owner_address.eq(&block_event.blocker))
-            .select(profiles::block_list_address)
-            .first::<Option<String>>(conn)
-            .await
-        {
-            Ok(addr) => {
-                if let Some(ref addr) = addr {
-                    info!(
-                        "Found block_list_address for blocker {}: {}",
-                        block_event.blocker, addr
-                    );
-                }
-                addr
-            }
-            Err(e) => {
-                info!(
-                    "Could not find profile or block_list_address for blocker {}: {}",
-                    block_event.blocker, e
-                );
-                None
-            }
-        }
-    };
-
     // 1. Insert into blocked_events for audit trail
     let blocked_event = NewBlockedEvent::new_block_event(
         None, // event_id - could be extracted from blockchain if available
         block_event.blocker.clone(),
         block_event.blocked.clone(),
-        block_list_address.clone(),
         Some(event_data.clone()),
         now,
     );
@@ -225,7 +185,6 @@ pub async fn process_profile_block_event(
     let new_blocked_profile = NewBlockedProfile::new(
         block_event.blocker.clone(),
         block_event.blocked.clone(),
-        block_list_address.clone(),
         blocked_profile_id.clone(),
         blocked_username.clone(),
         blocked_display_name.clone(),
@@ -241,7 +200,6 @@ pub async fn process_profile_block_event(
         ))
         .do_update()
         .set((
-            blocked_profiles::block_list_address.eq(&block_list_address),
             blocked_profiles::last_blocked_at.eq(now),
             // Update rich profile data in case it has changed
             blocked_profiles::blocked_profile_id.eq(blocked_profile_id),
@@ -525,41 +483,11 @@ pub async fn process_profile_unblock_event(
 
     let now = chrono::Utc::now().naive_utc();
 
-    // Look up the blocker's block_list_address from profiles table
-    let block_list_address = {
-        use crate::schema::profiles;
-
-        match profiles::table
-            .filter(profiles::owner_address.eq(&unblock_event.blocker))
-            .select(profiles::block_list_address)
-            .first::<Option<String>>(conn)
-            .await
-        {
-            Ok(addr) => {
-                if let Some(ref addr) = addr {
-                    info!(
-                        "Found block_list_address for blocker {}: {}",
-                        unblock_event.blocker, addr
-                    );
-                }
-                addr
-            }
-            Err(e) => {
-                info!(
-                    "Could not find profile or block_list_address for blocker {}: {}",
-                    unblock_event.blocker, e
-                );
-                None
-            }
-        }
-    };
-
     // 1. Insert into blocked_events for audit trail
     let blocked_event = NewBlockedEvent::new_unblock_event(
         None, // event_id - could be extracted from blockchain if available
         unblock_event.blocker.clone(),
         unblock_event.unblocked.clone(),
-        block_list_address,
         Some(event_data.clone()),
         now,
     );
@@ -880,297 +808,6 @@ pub async fn process_platform_unblock_event(
                 e
             );
             return Err(anyhow::anyhow!("Database error: {}", e));
-        }
-    }
-
-    Ok(())
-}
-
-/// Process a block list created event
-pub async fn process_block_list_created_event(
-    conn: &mut DbConnection,
-    event_data: &serde_json::Value,
-) -> Result<()> {
-    // Log the raw event data
-    info!(
-        "Processing block list created event (raw data): {:?}",
-        event_data
-    );
-
-    // Try to parse the event data with more thorough field extraction
-    let block_list_event = match serde_json::from_value::<BlockListCreatedEvent>(event_data.clone())
-    {
-        Ok(evt) => {
-            info!(
-                "Successfully parsed blockchain event: block_list_id={}, owner={}",
-                evt.block_list_id, evt.owner
-            );
-            evt
-        }
-        Err(e) => {
-            // When parsing fails, try to extract fields directly from the raw event
-            info!(
-                "Failed to parse event normally, trying direct extraction: {}",
-                e
-            );
-
-            // Create a longer-lived Map
-            let empty_map = serde_json::Map::new();
-
-            // Try to extract from root or fields container
-            let obj = event_data.as_object().unwrap_or(&empty_map);
-
-            // Look for fields container in Move event structure
-            let fields = if let Some(fields) = obj.get("fields").and_then(|f| f.as_object()) {
-                fields
-            } else {
-                obj
-            };
-
-            // Create an event object using fields directly from the event_data JSON
-            let block_list_id = fields
-                .get("block_list_id")
-                .and_then(|v| v.as_str())
-                .or_else(|| fields.get("id").and_then(|v| v.as_str()))
-                .or_else(|| obj.get("block_list_id").and_then(|v| v.as_str()))
-                .or_else(|| obj.get("id").and_then(|v| v.as_str()))
-                .unwrap_or_default()
-                .to_string();
-
-            let owner = fields
-                .get("owner")
-                .and_then(|v| v.as_str())
-                .or_else(|| obj.get("owner").and_then(|v| v.as_str()))
-                .unwrap_or_default()
-                .to_string();
-
-            info!(
-                "Manually extracted block_list_id={}, owner={}",
-                block_list_id, owner
-            );
-
-            BlockListCreatedEvent {
-                block_list_id,
-                owner,
-            }
-        }
-    };
-
-    // Check if all required fields are present
-    if block_list_event.block_list_id.is_empty() || block_list_event.owner.is_empty() {
-        info!("Missing required fields in block list created event, skipping");
-        return Ok(());
-    }
-
-    info!(
-        "Processing block list created event: BlockList {} created for owner {}",
-        block_list_event.block_list_id, block_list_event.owner
-    );
-
-    // ==================== DUAL-WRITE IMPLEMENTATION ====================
-    let now = chrono::Utc::now().naive_utc();
-
-    // PHASE 1: Write to NEW system (blocked_events)
-    // Record this event in our audit trail
-    let blocked_event = NewBlockedEvent::new_block_list_created_event(
-        None, // event_id - could be extracted from blockchain if available
-        block_list_event.owner.clone(),
-        block_list_event.block_list_id.clone(),
-        Some(event_data.clone()),
-        now,
-    );
-
-    let event_result = diesel::insert_into(blocked_events::table)
-        .values(&blocked_event)
-        .execute(conn)
-        .await;
-
-    match event_result {
-        Ok(_) => {
-            info!("✅ Successfully recorded BlockListCreatedEvent in blocked_events");
-        }
-        Err(e) => {
-            error!(
-                "Failed to record BlockListCreatedEvent in blocked_events: {}",
-                e
-            );
-            // Don't return error here, continue with profile update
-        }
-    }
-
-    // PHASE 2: Update the profile to set the block list address
-    use crate::models::profile::UpdateProfile;
-    use crate::schema::profiles;
-
-    // First, log the current profile in the database
-    match diesel::dsl::select(diesel::dsl::exists(
-        profiles::table.filter(profiles::owner_address.eq(&block_list_event.owner)),
-    ))
-    .get_result::<bool>(conn)
-    .await
-    {
-        Ok(exists) => {
-            info!(
-                "Profile with owner_address {} exists in database: {}",
-                block_list_event.owner, exists
-            );
-
-            if !exists {
-                info!(
-                    "Could not find profile with owner_address {}, cannot update",
-                    block_list_event.owner
-                );
-                return Ok(());
-            }
-
-            // If we found a profile by owner_address, update it
-            info!(
-                "Updating profile with owner_address {}",
-                block_list_event.owner
-            );
-
-            let update = UpdateProfile {
-                display_name: None,
-                bio: None,
-                profile_photo: None,
-                website: None,
-                cover_photo: None,
-                followers_count: None,
-                following_count: None,
-                blocked_count: None,
-                post_count: None,
-                min_offer_amount: None,
-                birthdate: None,
-                current_location: None,
-                raised_location: None,
-                phone: None,
-                email: None,
-                gender: None,
-                political_view: None,
-                religion: None,
-                education: None,
-                primary_language: None,
-                relationship_status: None,
-                x_username: None,
-                mastodon_username: None,
-                facebook_username: None,
-                reddit_username: None,
-                github_username: None,
-                instagram_username: None,
-                block_list_address: Some(block_list_event.block_list_id.clone()),
-                social_proof_token_address: None,
-                selected_badge_id: None,
-                paid_messaging_enabled: None,
-                paid_messaging_min_cost: None,
-            };
-
-            diesel::update(profiles::table)
-                .filter(profiles::owner_address.eq(&block_list_event.owner))
-                .set(&update)
-                .execute(conn)
-                .await?;
-
-            info!(
-                "Updated profile with owner_address {} with block list address {}",
-                block_list_event.owner, block_list_event.block_list_id
-            );
-        }
-        Err(e) => {
-            info!("Error checking if profile exists: {}", e);
-        }
-    }
-
-    // PHASE 3: If the creation event also contains an initial blocked address,
-    // record that relationship in blocked_profiles to keep state consistent.
-    // This guards against chains where the first block emits only BlockListCreated.
-    if let Ok(fields) = crate::events::event_utils::extract_event_fields(event_data) {
-        // Try common field names for the initially blocked address
-        let maybe_blocked = fields
-            .get("blocked")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-            .or_else(|| {
-                fields
-                    .get("blocked_address")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-            });
-
-        if let Some(blocked_addr) = maybe_blocked {
-            if !blocked_addr.is_empty() {
-                use diesel::dsl::exists;
-                // Check if this block relationship already exists
-                let already_exists = diesel::select(exists(
-                    blocked_profiles::table
-                        .filter(blocked_profiles::blocker_address.eq(&block_list_event.owner))
-                        .filter(blocked_profiles::blocked_address.eq(&blocked_addr)),
-                ))
-                .get_result::<bool>(conn)
-                .await
-                .unwrap_or(false);
-
-                if !already_exists {
-                    // Fetch rich profile data for blocked user (if available)
-                    let (
-                        blocked_profile_id,
-                        blocked_username,
-                        blocked_display_name,
-                        blocked_profile_photo,
-                    ) = match profiles::table
-                        .filter(profiles::owner_address.eq(&blocked_addr))
-                        .select((
-                            profiles::profile_id.nullable(),
-                            profiles::username,
-                            profiles::display_name.nullable(),
-                            profiles::profile_photo.nullable(),
-                        ))
-                        .first::<(Option<String>, String, Option<String>, Option<String>)>(conn)
-                        .await
-                    {
-                        Ok(data) => data,
-                        Err(_) => (None, blocked_addr.clone(), None, None),
-                    };
-
-                    let new_blocked_profile = NewBlockedProfile::new(
-                        block_list_event.owner.clone(),
-                        blocked_addr.clone(),
-                        Some(block_list_event.block_list_id.clone()),
-                        blocked_profile_id,
-                        blocked_username,
-                        blocked_display_name,
-                        blocked_profile_photo,
-                        now,
-                    );
-
-                    let inserted = diesel::insert_into(blocked_profiles::table)
-                        .values(&new_blocked_profile)
-                        .on_conflict((
-                            blocked_profiles::blocker_address,
-                            blocked_profiles::blocked_address,
-                        ))
-                        .do_nothing()
-                        .execute(conn)
-                        .await
-                        .unwrap_or(0);
-
-                    // If we inserted a new active block, increment blocked_count
-                    if inserted > 0 {
-                        let _ = diesel::update(
-                            profiles::table
-                                .filter(profiles::owner_address.eq(&block_list_event.owner)),
-                        )
-                        .set(profiles::blocked_count.eq(profiles::blocked_count + 1))
-                        .execute(conn)
-                        .await;
-                    }
-
-                    info!(
-                        "Ensured initial block relationship exists for owner {} -> {} after block list creation",
-                        block_list_event.owner,
-                        blocked_addr
-                    );
-                }
-            }
         }
     }
 

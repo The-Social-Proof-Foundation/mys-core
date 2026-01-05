@@ -13,7 +13,6 @@ pub struct BlockedProfile {
     pub id: i32,
     pub blocker_address: String,
     pub blocked_address: String,
-    pub block_list_address: Option<String>,
     // Rich profile data for performance (denormalized from profiles table)
     pub blocked_profile_id: Option<String>,
     pub blocked_username: String,
@@ -31,7 +30,6 @@ pub struct BlockedProfile {
 pub struct NewBlockedProfile {
     pub blocker_address: String,
     pub blocked_address: String,
-    pub block_list_address: Option<String>,
     // Rich profile data for performance (denormalized from profiles table)
     pub blocked_profile_id: Option<String>,
     pub blocked_username: String,
@@ -47,7 +45,6 @@ pub struct NewBlockedProfile {
 #[derive(Debug, AsChangeset, Serialize, Deserialize)]
 #[diesel(table_name = blocked_profiles)]
 pub struct UpdateBlockedProfile {
-    pub block_list_address: Option<String>,
     // Rich profile data updates (in case profile info changes)
     pub blocked_profile_id: Option<Option<String>>,
     pub blocked_username: Option<String>,
@@ -63,7 +60,6 @@ impl NewBlockedProfile {
     pub fn new(
         blocker_address: String,
         blocked_address: String,
-        block_list_address: Option<String>,
         blocked_profile_id: Option<String>,
         blocked_username: String,
         blocked_display_name: Option<String>,
@@ -73,7 +69,6 @@ impl NewBlockedProfile {
         Self {
             blocker_address,
             blocked_address,
-            block_list_address,
             blocked_profile_id,
             blocked_username,
             blocked_display_name,
@@ -101,7 +96,6 @@ pub struct EnrichedBlockedProfile {
     pub blocked_at: NaiveDateTime,          // When last blocked
     pub first_blocked_at: NaiveDateTime,    // When first blocked
     pub total_block_count: i32,             // Times blocked
-    pub block_list_address: Option<String>, // Block list object ID
 }
 
 impl From<BlockedProfile> for EnrichedBlockedProfile {
@@ -116,7 +110,6 @@ impl From<BlockedProfile> for EnrichedBlockedProfile {
             blocked_at: blocked_profile.last_blocked_at,
             first_blocked_at: blocked_profile.first_blocked_at,
             total_block_count: blocked_profile.total_block_count,
-            block_list_address: blocked_profile.block_list_address,
         }
     }
 }

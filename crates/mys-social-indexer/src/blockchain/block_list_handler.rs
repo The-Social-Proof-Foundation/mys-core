@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{anyhow, Result};
-use serde_json;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
@@ -49,22 +48,8 @@ impl BlockListEventHandler {
         let mut event_handled = false;
         let mut conn = self.get_connection().await?;
 
-        // Handle BlockListCreatedEvent
-        if event.event_type.ends_with("::BlockListCreatedEvent") {
-            info!("Processing BlockListCreatedEvent in block_list_handler");
-            if let Err(e) = crate::events::blocking_events::process_block_list_created_event(
-                &mut conn,
-                &event.data,
-            )
-            .await
-            {
-                error!("Failed to process BlockListCreatedEvent: {}", e);
-                return Err(e);
-            }
-            return Ok(());
-        }
         // Handle UserBlockEvent
-        else if event.event_type.ends_with("::UserBlockEvent") {
+        if event.event_type.ends_with("::UserBlockEvent") {
             info!("Processing UserBlockEvent");
             if let Err(e) = process_profile_block_event(&mut conn, &event.data).await {
                 error!("Failed to process UserBlockEvent: {}", e);
@@ -85,19 +70,7 @@ impl BlockListEventHandler {
         else {
             let event_type_lower = event.event_type.to_lowercase();
 
-            if event_type_lower.contains("blocklistcreatedevent") {
-                event_handled = true;
-                info!("Processing BlockListCreatedEvent (flexible match)");
-                if let Err(e) = crate::events::blocking_events::process_block_list_created_event(
-                    &mut conn,
-                    &event.data,
-                )
-                .await
-                {
-                    error!("Failed to process BlockListCreatedEvent: {}", e);
-                    return Err(e);
-                }
-            } else if event_type_lower.contains("userblockevent") {
+            if event_type_lower.contains("userblockevent") {
                 event_handled = true;
                 info!("Processing UserBlockEvent (flexible match)");
                 if let Err(e) = process_profile_block_event(&mut conn, &event.data).await {
@@ -125,25 +98,11 @@ impl BlockListEventHandler {
                 if fields.as_object().map_or(false, |obj| {
                     (obj.contains_key("blocker") && obj.contains_key("blocked"))
                         || (obj.contains_key("blocker") && obj.contains_key("unblocked"))
-                        || (obj.contains_key("owner") && obj.contains_key("block_list_id"))
                 }) {
                     info!("Attempting to process unknown event as generic blocking event");
 
-                    // Try as BlockListCreatedEvent
-                    if fields.get("owner").is_some() && fields.get("block_list_id").is_some() {
-                        event_handled = true;
-                        info!("Processing unknown event as BlockListCreatedEvent");
-                        if let Err(e) = crate::events::blocking_events::process_block_list_created_event(
-                            &mut conn,
-                            &fields,
-                        )
-                        .await
-                        {
-                            warn!("Failed to process as BlockListCreatedEvent: {}", e);
-                        }
-                    }
                     // Try as profile block event
-                    else if fields.get("blocker").is_some() && fields.get("blocked").is_some() {
+                    if fields.get("blocker").is_some() && fields.get("blocked").is_some() {
                         event_handled = true;
                         info!("Processing unknown event as UserBlockEvent");
                         if let Err(e) = process_profile_block_event(&mut conn, &fields).await {

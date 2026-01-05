@@ -17,36 +17,39 @@ module social_contracts::social_graph {
         vec_set::{Self, VecSet}
     };
     
-    use social_contracts::profile;
     use social_contracts::upgrade;
 
     /// Error codes
     const EAlreadyFollowing: u64 = 0;
     const ENotFollowing: u64 = 1;
     const ECannotFollowSelf: u64 = 2;
-    const EProfileNotFound: u64 = 3;
     const EWrongVersion: u64 = 4;
 
-    /// Global social graph object that tracks relationships between users
+    /// Global social graph object that tracks relationships between wallet addresses
+    /// Uses wallet-level architecture - no profile required
     public struct SocialGraph has key {
         id: UID,
-        /// Table mapping profile IDs to sets of profiles they are following
+        /// Table mapping wallet addresses to sets of addresses they are following
         following: Table<address, VecSet<address>>,
-        /// Table mapping profile IDs to sets of profiles following them
+        /// Table mapping wallet addresses to sets of addresses following them
         followers: Table<address, VecSet<address>>,
         /// Current version of the object
         version: u64,
     }
 
-    /// Follow event
+    /// Follow event - emitted when a wallet address follows another wallet address
     public struct FollowEvent has copy, drop {
+        /// Wallet address of the follower
         follower: address,
+        /// Wallet address being followed
         following: address,
     }
 
-    /// Unfollow event
+    /// Unfollow event - emitted when a wallet address unfollows another wallet address
     public struct UnfollowEvent has copy, drop {
+        /// Wallet address of the unfollower
         follower: address,
+        /// Wallet address being unfollowed
         unfollowed: address,
     }
 
@@ -69,11 +72,11 @@ module social_contracts::social_graph {
         bootstrap_init(ctx)
     }
 
-    /// Follow a profile by address
+    /// Follow a wallet address
+    /// Uses wallet-level architecture - no profile required
     public entry fun follow(
         social_graph: &mut SocialGraph,
-        registry: &profile::UsernameRegistry,
-        following_profile_id: address,
+        following_address: address,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -81,49 +84,42 @@ module social_contracts::social_graph {
         
         let sender = tx_context::sender(ctx);
         
-        // Look up the caller's profile ID from registry
-        let mut caller_profile_id_opt = profile::lookup_profile_by_owner(registry, sender);
-        assert!(option::is_some(&caller_profile_id_opt), EProfileNotFound);
-        
-        // Extract follower profile ID
-        let follower_profile_id = option::extract(&mut caller_profile_id_opt);
-        
         // Cannot follow self
-        assert!(follower_profile_id != following_profile_id, ECannotFollowSelf);
+        assert!(sender != following_address, ECannotFollowSelf);
         
-        // Initialize follower's following set if it doesn't exist
-        if (!table::contains(&social_graph.following, follower_profile_id)) {
-            table::add(&mut social_graph.following, follower_profile_id, vec_set::empty());
+        // Initialize follower's following set if it doesn't exist (lazy initialization)
+        if (!table::contains(&social_graph.following, sender)) {
+            table::add(&mut social_graph.following, sender, vec_set::empty());
         };
         
-        // Initialize followed's followers set if it doesn't exist
-        if (!table::contains(&social_graph.followers, following_profile_id)) {
-            table::add(&mut social_graph.followers, following_profile_id, vec_set::empty());
+        // Initialize followed's followers set if it doesn't exist (lazy initialization)
+        if (!table::contains(&social_graph.followers, following_address)) {
+            table::add(&mut social_graph.followers, following_address, vec_set::empty());
         };
         
         // Get mutable references to the sets
-        let follower_following = table::borrow_mut(&mut social_graph.following, follower_profile_id);
-        let following_followers = table::borrow_mut(&mut social_graph.followers, following_profile_id);
+        let follower_following = table::borrow_mut(&mut social_graph.following, sender);
+        let following_followers = table::borrow_mut(&mut social_graph.followers, following_address);
         
         // Check if already following
-        assert!(!vec_set::contains(follower_following, &following_profile_id), EAlreadyFollowing);
+        assert!(!vec_set::contains(follower_following, &following_address), EAlreadyFollowing);
         
         // Add to sets
-        vec_set::insert(follower_following, following_profile_id);
-        vec_set::insert(following_followers, follower_profile_id);
+        vec_set::insert(follower_following, following_address);
+        vec_set::insert(following_followers, sender);
         
         // Emit follow event
         event::emit(FollowEvent {
-            follower: follower_profile_id,
-            following: following_profile_id,
+            follower: sender,
+            following: following_address,
         });
     }
 
-    /// Unfollow a profile by address
+    /// Unfollow a wallet address
+    /// Uses wallet-level architecture - no profile required
     public entry fun unfollow(
         social_graph: &mut SocialGraph,
-        registry: &profile::UsernameRegistry,
-        following_profile_id: address,
+        following_address: address,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -131,69 +127,68 @@ module social_contracts::social_graph {
         
         let sender = tx_context::sender(ctx);
         
-        // Look up the caller's profile ID from registry
-        let mut caller_profile_id_opt = profile::lookup_profile_by_owner(registry, sender);
-        assert!(option::is_some(&caller_profile_id_opt), EProfileNotFound);
-        
-        // Extract follower profile ID
-        let follower_profile_id = option::extract(&mut caller_profile_id_opt);
-        
         // Check if following sets exist
-        assert!(table::contains(&social_graph.following, follower_profile_id), ENotFollowing);
-        assert!(table::contains(&social_graph.followers, following_profile_id), ENotFollowing);
+        if (!table::contains(&social_graph.following, sender)) {
+            abort ENotFollowing
+        };
+        if (!table::contains(&social_graph.followers, following_address)) {
+            abort ENotFollowing
+        };
         
         // Get mutable references to the sets
-        let follower_following = table::borrow_mut(&mut social_graph.following, follower_profile_id);
-        let following_followers = table::borrow_mut(&mut social_graph.followers, following_profile_id);
+        let follower_following = table::borrow_mut(&mut social_graph.following, sender);
+        let following_followers = table::borrow_mut(&mut social_graph.followers, following_address);
         
         // Check if following
-        assert!(vec_set::contains(follower_following, &following_profile_id), ENotFollowing);
+        if (!vec_set::contains(follower_following, &following_address)) {
+            abort ENotFollowing
+        };
         
         // Remove from sets
-        vec_set::remove(follower_following, &following_profile_id);
-        vec_set::remove(following_followers, &follower_profile_id);
+        vec_set::remove(follower_following, &following_address);
+        vec_set::remove(following_followers, &sender);
         
         // Emit unfollow event
         event::emit(UnfollowEvent {
-            follower: follower_profile_id,
-            unfollowed: following_profile_id,
+            follower: sender,
+            unfollowed: following_address,
         });
     }
 
-    /// Internal unfollow function that accepts explicit profile IDs
+    /// Internal unfollow function that accepts explicit wallet addresses
     /// Used for bidirectional unfollow during blocking operations
     /// Returns true if unfollow occurred, false if not following
     public(package) fun unfollow_internal(
         social_graph: &mut SocialGraph,
-        follower_profile_id: address,
-        following_profile_id: address
+        follower_address: address,
+        following_address: address
     ): bool {
         // Check if following relationship exists
-        if (!is_following(social_graph, follower_profile_id, following_profile_id)) {
+        if (!is_following(social_graph, follower_address, following_address)) {
             return false  // Not following, nothing to do
         };
         
         // Check if following sets exist (defensive)
-        if (!table::contains(&social_graph.following, follower_profile_id)) {
+        if (!table::contains(&social_graph.following, follower_address)) {
             return false
         };
-        if (!table::contains(&social_graph.followers, following_profile_id)) {
+        if (!table::contains(&social_graph.followers, following_address)) {
             return false
         };
         
         // Get mutable references to the sets
-        let follower_following = table::borrow_mut(&mut social_graph.following, follower_profile_id);
-        let following_followers = table::borrow_mut(&mut social_graph.followers, following_profile_id);
+        let follower_following = table::borrow_mut(&mut social_graph.following, follower_address);
+        let following_followers = table::borrow_mut(&mut social_graph.followers, following_address);
         
         // Remove if present (defensive check)
-        if (vec_set::contains(follower_following, &following_profile_id)) {
-            vec_set::remove(follower_following, &following_profile_id);
-            vec_set::remove(following_followers, &follower_profile_id);
+        if (vec_set::contains(follower_following, &following_address)) {
+            vec_set::remove(follower_following, &following_address);
+            vec_set::remove(following_followers, &follower_address);
             
             // Emit unfollow event
             event::emit(UnfollowEvent {
-                follower: follower_profile_id,
-                unfollowed: following_profile_id,
+                follower: follower_address,
+                unfollowed: following_address,
             });
             
             return true
@@ -242,53 +237,53 @@ module social_contracts::social_graph {
         social_graph.version
     }
 
-    /// Check if a profile is following another profile
-    public fun is_following(social_graph: &SocialGraph, follower_id: address, following_id: address): bool {
-        if (!table::contains(&social_graph.following, follower_id)) {
+    /// Check if a wallet address is following another wallet address
+    public fun is_following(social_graph: &SocialGraph, follower_address: address, following_address: address): bool {
+        if (!table::contains(&social_graph.following, follower_address)) {
             return false
         };
         
-        let follower_following = table::borrow(&social_graph.following, follower_id);
-        vec_set::contains(follower_following, &following_id)
+        let follower_following = table::borrow(&social_graph.following, follower_address);
+        vec_set::contains(follower_following, &following_address)
     }
 
-    /// Get the number of profiles a user is following
-    public fun following_count(social_graph: &SocialGraph, profile_id: address): u64 {
-        if (!table::contains(&social_graph.following, profile_id)) {
+    /// Get the number of wallet addresses a user is following
+    public fun following_count(social_graph: &SocialGraph, wallet_address: address): u64 {
+        if (!table::contains(&social_graph.following, wallet_address)) {
             return 0
         };
         
-        let following = table::borrow(&social_graph.following, profile_id);
+        let following = table::borrow(&social_graph.following, wallet_address);
         vec_set::size(following)
     }
 
-    /// Get the number of followers a profile has
-    public fun follower_count(social_graph: &SocialGraph, profile_id: address): u64 {
-        if (!table::contains(&social_graph.followers, profile_id)) {
+    /// Get the number of followers a wallet address has
+    public fun follower_count(social_graph: &SocialGraph, wallet_address: address): u64 {
+        if (!table::contains(&social_graph.followers, wallet_address)) {
             return 0
         };
         
-        let followers = table::borrow(&social_graph.followers, profile_id);
+        let followers = table::borrow(&social_graph.followers, wallet_address);
         vec_set::size(followers)
     }
 
-    /// Get the list of profiles a user is following
-    public fun get_following(social_graph: &SocialGraph, profile_id: address): vector<address> {
-        if (!table::contains(&social_graph.following, profile_id)) {
+    /// Get the list of wallet addresses a user is following
+    public fun get_following(social_graph: &SocialGraph, wallet_address: address): vector<address> {
+        if (!table::contains(&social_graph.following, wallet_address)) {
             return vector::empty()
         };
         
-        let following = table::borrow(&social_graph.following, profile_id);
+        let following = table::borrow(&social_graph.following, wallet_address);
         vec_set::into_keys(*following)
     }
 
-    /// Get the list of followers for a profile
-    public fun get_followers(social_graph: &SocialGraph, profile_id: address): vector<address> {
-        if (!table::contains(&social_graph.followers, profile_id)) {
+    /// Get the list of followers for a wallet address
+    public fun get_followers(social_graph: &SocialGraph, wallet_address: address): vector<address> {
+        if (!table::contains(&social_graph.followers, wallet_address)) {
             return vector::empty()
         };
         
-        let followers = table::borrow(&social_graph.followers, profile_id);
+        let followers = table::borrow(&social_graph.followers, wallet_address);
         vec_set::into_keys(*followers)
     }
 }

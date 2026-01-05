@@ -47,8 +47,6 @@ pub struct Profile {
     pub reddit_username: Option<String>,
     pub github_username: Option<String>,
     pub instagram_username: Option<String>,
-    // BlockList object address
-    pub block_list_address: Option<String>,
     // Social proof token address
     pub social_proof_token_address: Option<String>,
     // Reservation pool object address
@@ -107,8 +105,6 @@ pub struct NewProfile {
     pub reddit_username: Option<String>,
     pub github_username: Option<String>,
     pub instagram_username: Option<String>,
-    // BlockList object address
-    pub block_list_address: Option<String>,
     // Social proof token address
     pub social_proof_token_address: Option<String>,
     // Reservation pool object address
@@ -156,8 +152,6 @@ pub struct UpdateProfile {
     pub reddit_username: Option<String>,
     pub github_username: Option<String>,
     pub instagram_username: Option<String>,
-    // BlockList object address
-    pub block_list_address: Option<String>,
     // Social proof token address
     pub social_proof_token_address: Option<String>,
     // Selected badge ID - the badge currently selected for display

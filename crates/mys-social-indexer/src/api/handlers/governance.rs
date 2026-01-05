@@ -231,6 +231,7 @@ pub async fn list_delegates(
     let offset = params.offset.unwrap_or(0);
 
     let mut query = delegates::table
+        .select(Delegate::as_select())
         .order_by(delegates::upvotes.desc())
         .limit(limit)
         .offset(offset)
@@ -263,6 +264,7 @@ pub async fn get_delegate_by_address(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let delegate = delegates::table
+        .select(Delegate::as_select())
         .filter(delegates::address.eq(&address))
         .first::<Delegate>(&mut conn)
         .await
@@ -356,6 +358,7 @@ pub async fn list_nominees(
     let offset = params.offset.unwrap_or(0);
 
     let mut query = nominated_delegates::table
+        .select(NominatedDelegate::as_select())
         .order_by(nominated_delegates::upvotes.desc())
         .limit(limit)
         .offset(offset)
