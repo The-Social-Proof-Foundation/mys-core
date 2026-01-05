@@ -75,9 +75,10 @@ fn bucket_to_days(bucket: &str) -> Result<i32, String> {
 }
 
 /// Get a list of profiles that a user is following
+/// Accepts wallet address (owner_address) as input
 pub async fn get_following(
     State(db_pool): State<DbPool>,
-    Path(profile_id): Path<String>,
+    Path(wallet_address): Path<String>,
     Query(query): Query<FollowsQuery>,
 ) -> impl IntoResponse {
     let limit = query.limit.unwrap_or(50);
@@ -88,8 +89,8 @@ pub async fn get_following(
     let offset = if page > 1 { (page - 1) * limit } else { offset };
 
     debug!(
-        "Getting following for profile_id: {}, limit: {}, offset: {}",
-        profile_id, limit, offset
+        "Getting following for wallet_address: {}, limit: {}, offset: {}",
+        wallet_address, limit, offset
     );
 
     let mut conn = match db_pool.get().await {
@@ -105,9 +106,9 @@ pub async fn get_following(
         }
     };
 
-    // First verify the profile exists using profile_id
+    // First verify the profile exists using wallet address (owner_address)
     let profile_exists = match profiles::table
-        .filter(profiles::profile_id.eq(&profile_id))
+        .filter(profiles::owner_address.eq(&wallet_address))
         .count()
         .get_result::<i64>(&mut conn)
         .await
@@ -125,7 +126,7 @@ pub async fn get_following(
     };
 
     if !profile_exists {
-        debug!("Profile not found with profile_id: {}", profile_id);
+        debug!("Profile not found with wallet_address: {}", wallet_address);
         return (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({
@@ -134,20 +135,9 @@ pub async fn get_following(
         );
     }
 
-    // Get profile's wallet address to handle legacy data
-    let wallet_address = profiles::table
-        .filter(profiles::profile_id.eq(&profile_id))
-        .select(profiles::owner_address)
-        .first::<String>(&mut conn)
-        .await
-        .unwrap_or_default();
-
     // Build base query: following relationships joined with profiles for details
     let mut following_query = social_graph_relationships::table
-        .filter(
-            social_graph_relationships::follower_address.eq(&profile_id)
-                .or(social_graph_relationships::follower_address.eq(&wallet_address))
-        )
+        .filter(social_graph_relationships::follower_address.eq(&wallet_address))
         .inner_join(profiles::table.on(
             diesel::dsl::sql::<diesel::sql_types::Bool>(
                 "profiles.profile_id = social_graph_relationships.following_address OR profiles.owner_address = social_graph_relationships.following_address",
@@ -206,10 +196,7 @@ pub async fn get_following(
 
     // Also get the total count for pagination info (with same search filter)
     let mut count_query = social_graph_relationships::table
-        .filter(
-            social_graph_relationships::follower_address.eq(&profile_id)
-                .or(social_graph_relationships::follower_address.eq(&wallet_address))
-        )
+        .filter(social_graph_relationships::follower_address.eq(&wallet_address))
         .inner_join(profiles::table.on(
             diesel::dsl::sql::<diesel::sql_types::Bool>(
                 "profiles.profile_id = social_graph_relationships.following_address OR profiles.owner_address = social_graph_relationships.following_address",
@@ -347,9 +334,10 @@ pub async fn get_following(
 }
 
 /// Get a list of profiles that follow a user
+/// Accepts wallet address (owner_address) as input
 pub async fn get_followers(
     State(db_pool): State<DbPool>,
-    Path(profile_id): Path<String>,
+    Path(wallet_address): Path<String>,
     Query(query): Query<FollowsQuery>,
 ) -> impl IntoResponse {
     let limit = query.limit.unwrap_or(50);
@@ -360,8 +348,8 @@ pub async fn get_followers(
     let offset = if page > 1 { (page - 1) * limit } else { offset };
 
     debug!(
-        "Getting followers for profile_id: {}, limit: {}, offset: {}",
-        profile_id, limit, offset
+        "Getting followers for wallet_address: {}, limit: {}, offset: {}",
+        wallet_address, limit, offset
     );
 
     let mut conn = match db_pool.get().await {
@@ -377,9 +365,9 @@ pub async fn get_followers(
         }
     };
 
-    // First verify the profile exists using profile_id
+    // First verify the profile exists using wallet address (owner_address)
     let profile_exists = match profiles::table
-        .filter(profiles::profile_id.eq(&profile_id))
+        .filter(profiles::owner_address.eq(&wallet_address))
         .count()
         .get_result::<i64>(&mut conn)
         .await
@@ -397,7 +385,7 @@ pub async fn get_followers(
     };
 
     if !profile_exists {
-        debug!("Profile not found with profile_id: {}", profile_id);
+        debug!("Profile not found with wallet_address: {}", wallet_address);
         return (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({
@@ -406,20 +394,9 @@ pub async fn get_followers(
         );
     }
 
-    // Get profile's wallet address to handle legacy data
-    let wallet_address = profiles::table
-        .filter(profiles::profile_id.eq(&profile_id))
-        .select(profiles::owner_address)
-        .first::<String>(&mut conn)
-        .await
-        .unwrap_or_default();
-
     // Build base query: followers joined with profiles for details
     let mut followers_query = social_graph_relationships::table
-        .filter(
-            social_graph_relationships::following_address.eq(&profile_id)
-                .or(social_graph_relationships::following_address.eq(&wallet_address))
-        )
+        .filter(social_graph_relationships::following_address.eq(&wallet_address))
         .inner_join(profiles::table.on(
             diesel::dsl::sql::<diesel::sql_types::Bool>(
                 "profiles.profile_id = social_graph_relationships.follower_address OR profiles.owner_address = social_graph_relationships.follower_address",
@@ -478,10 +455,7 @@ pub async fn get_followers(
 
     // Also get the total count for pagination info (with same search filter)
     let mut count_query = social_graph_relationships::table
-        .filter(
-            social_graph_relationships::following_address.eq(&profile_id)
-                .or(social_graph_relationships::following_address.eq(&wallet_address))
-        )
+        .filter(social_graph_relationships::following_address.eq(&wallet_address))
         .inner_join(profiles::table.on(
             diesel::dsl::sql::<diesel::sql_types::Bool>(
                 "profiles.profile_id = social_graph_relationships.follower_address OR profiles.owner_address = social_graph_relationships.follower_address",
@@ -619,13 +593,14 @@ pub async fn get_followers(
 }
 
 /// Check if a user is following another user
+/// Accepts wallet addresses (owner_address) as input
 pub async fn check_following(
     State(db_pool): State<DbPool>,
-    Path((follower_profile_id, following_profile_id)): Path<(String, String)>,
+    Path((follower_wallet, following_wallet)): Path<(String, String)>,
 ) -> impl IntoResponse {
     debug!(
-        "Checking if profile {} follows profile {}",
-        follower_profile_id, following_profile_id
+        "Checking if wallet {} follows wallet {}",
+        follower_wallet, following_wallet
     );
 
     let mut conn = match db_pool.get().await {
@@ -641,127 +616,51 @@ pub async fn check_following(
         }
     };
 
-    // Helper function to find profile by multiple identifiers
-    async fn find_profile_identifiers(
-        conn: &mut crate::db::DbConnection,
-        identifier: &str,
-    ) -> Result<Option<(String, String)>, diesel::result::Error> {
-        // Try to find profile by profile_id, owner_address, or username
-        let result = profiles::table
-            .filter(
-                profiles::profile_id
-                    .eq(identifier)
-                    .or(profiles::owner_address.eq(identifier))
-                    .or(profiles::username.eq(identifier)),
-            )
-            .select((profiles::profile_id.nullable(), profiles::owner_address))
-            .first::<(Option<String>, String)>(conn)
-            .await;
+    // Verify both profiles exist
+    let follower_exists = profiles::table
+        .filter(profiles::owner_address.eq(&follower_wallet))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+        .unwrap_or(0)
+        > 0;
 
-        match result {
-            Ok((profile_id, owner_address)) => {
-                // Return (profile_id_or_address, owner_address)
-                Ok(Some((
-                    profile_id.unwrap_or(owner_address.clone()),
-                    owner_address,
-                )))
-            }
-            Err(diesel::result::Error::NotFound) => Ok(None),
-            Err(e) => Err(e),
-        }
+    if !follower_exists {
+        debug!("Follower profile not found: {}", follower_wallet);
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Follower profile not found",
+                "is_following": false
+            })),
+        );
     }
 
-    // Find follower profile identifiers
-    let (follower_profile_identifier, follower_wallet) =
-        match find_profile_identifiers(&mut conn, &follower_profile_id).await {
-            Ok(Some((profile_id, wallet))) => (profile_id, wallet),
-            Ok(None) => {
-                debug!("Follower profile not found: {}", follower_profile_id);
-                return (
-                    StatusCode::NOT_FOUND,
-                    Json(serde_json::json!({
-                        "error": "Follower profile not found",
-                        "is_following": false
-                    })),
-                );
-            }
-            Err(e) => {
-                error!("Failed to check follower profile: {}", e);
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({
-                        "error": format!("Failed to check follower profile: {}", e),
-                        "is_following": false
-                    })),
-                );
-            }
-        };
+    let following_exists = profiles::table
+        .filter(profiles::owner_address.eq(&following_wallet))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+        .unwrap_or(0)
+        > 0;
 
-    // Find following profile identifiers
-    let (following_profile_identifier, following_wallet) =
-        match find_profile_identifiers(&mut conn, &following_profile_id).await {
-            Ok(Some((profile_id, wallet))) => (profile_id, wallet),
-            Ok(None) => {
-                debug!("Following profile not found: {}", following_profile_id);
-                return (
-                    StatusCode::NOT_FOUND,
-                    Json(serde_json::json!({
-                        "error": "Following profile not found",
-                        "is_following": false
-                    })),
-                );
-            }
-            Err(e) => {
-                error!("Failed to check following profile: {}", e);
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({
-                        "error": format!("Failed to check following profile: {}", e),
-                        "is_following": false
-                    })),
-                );
-            }
-        };
+    if !following_exists {
+        debug!("Following profile not found: {}", following_wallet);
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Following profile not found",
+                "is_following": false
+            })),
+        );
+    }
 
-    // Check if a relationship exists
-    // Note: The follower_address and following_address fields may contain various identifiers
-    // (profile_ids, wallet addresses, etc.) so we check all possible combinations
-
+    // Check if a relationship exists using wallet addresses
+    // The relationship table may store wallet addresses or profile_ids, so check both
     let relationship_exists = social_graph_relationships::table
         .filter(
-            // Check all possible combinations of identifiers stored in the relationship table
-            (social_graph_relationships::follower_address
-                .eq(&follower_profile_identifier)
-                .and(
-                    social_graph_relationships::following_address.eq(&following_profile_identifier),
-                ))
-            .or(
-                // Follower as profile_id, following as wallet
-                social_graph_relationships::follower_address
-                    .eq(&follower_profile_identifier)
-                    .and(social_graph_relationships::following_address.eq(&following_wallet)),
-            )
-            .or(
-                // Follower as wallet, following as profile_id
-                social_graph_relationships::follower_address
-                    .eq(&follower_wallet)
-                    .and(
-                        social_graph_relationships::following_address
-                            .eq(&following_profile_identifier),
-                    ),
-            )
-            .or(
-                // Both as wallet addresses
-                social_graph_relationships::follower_address
-                    .eq(&follower_wallet)
-                    .and(social_graph_relationships::following_address.eq(&following_wallet)),
-            )
-            .or(
-                // Also check with original input parameters in case they're stored differently
-                social_graph_relationships::follower_address
-                    .eq(&follower_profile_id)
-                    .and(social_graph_relationships::following_address.eq(&following_profile_id)),
-            ),
+            social_graph_relationships::follower_address.eq(&follower_wallet)
+                .and(social_graph_relationships::following_address.eq(&following_wallet))
         )
         .count()
         .get_result::<i64>(&mut conn)
@@ -774,30 +673,8 @@ pub async fn check_following(
             // Check if the following profile is also following back
             let reverse_relationship_exists = social_graph_relationships::table
                 .filter(
-                    // Check all possible combinations for reverse relationship
-                    (social_graph_relationships::follower_address
-                        .eq(&following_profile_identifier)
-                        .and(
-                            social_graph_relationships::following_address
-                                .eq(&follower_profile_identifier),
-                        ))
-                    .or(social_graph_relationships::follower_address
-                        .eq(&following_profile_identifier)
-                        .and(social_graph_relationships::following_address.eq(&follower_wallet)))
-                    .or(social_graph_relationships::follower_address
-                        .eq(&following_wallet)
-                        .and(
-                            social_graph_relationships::following_address
-                                .eq(&follower_profile_identifier),
-                        ))
-                    .or(social_graph_relationships::follower_address
-                        .eq(&following_wallet)
-                        .and(social_graph_relationships::following_address.eq(&follower_wallet)))
-                    .or(social_graph_relationships::follower_address
-                        .eq(&following_profile_id)
-                        .and(
-                            social_graph_relationships::following_address.eq(&follower_profile_id),
-                        )),
+                    social_graph_relationships::follower_address.eq(&following_wallet)
+                        .and(social_graph_relationships::following_address.eq(&follower_wallet))
                 )
                 .count()
                 .get_result::<i64>(&mut conn)
@@ -828,11 +705,12 @@ pub async fn check_following(
 }
 
 /// Get stats for a profile (followers count, following count)
+/// Accepts wallet address (owner_address) as input
 pub async fn get_follow_stats(
     State(db_pool): State<DbPool>,
-    Path(profile_id): Path<String>,
+    Path(wallet_address): Path<String>,
 ) -> impl IntoResponse {
-    debug!("Getting follow stats for profile_id: {}", profile_id);
+    debug!("Getting follow stats for wallet_address: {}", wallet_address);
 
     let mut conn = match db_pool.get().await {
         Ok(conn) => conn,
@@ -847,24 +725,26 @@ pub async fn get_follow_stats(
         }
     };
 
-    // Get profile stats from the profiles table using profile_id
+    // Get profile stats from the profiles table using wallet address
     let profile_result = profiles::table
-        .filter(profiles::profile_id.eq(&profile_id))
+        .filter(profiles::owner_address.eq(&wallet_address))
         .select((
             profiles::followers_count,
             profiles::following_count,
             profiles::username,
             profiles::display_name.nullable(),
             profiles::profile_photo.nullable(),
+            profiles::profile_id.nullable(),
         ))
-        .first::<(i32, i32, String, Option<String>, Option<String>)>(&mut conn)
+        .first::<(i32, i32, String, Option<String>, Option<String>, Option<String>)>(&mut conn)
         .await;
 
     match profile_result {
-        Ok((followers, following, username, display_name, profile_photo)) => (
+        Ok((followers, following, username, display_name, profile_photo, profile_id)) => (
             StatusCode::OK,
             Json(serde_json::json!({
                 "profile_id": profile_id,
+                "wallet_address": wallet_address,
                 "username": username,
                 "display_name": display_name,
                 "profile_photo": profile_photo,
@@ -873,7 +753,7 @@ pub async fn get_follow_stats(
             })),
         ),
         Err(diesel::result::Error::NotFound) => {
-            debug!("Profile not found with profile_id: {}", profile_id);
+            debug!("Profile not found with wallet_address: {}", wallet_address);
             (
                 StatusCode::NOT_FOUND,
                 Json(serde_json::json!({

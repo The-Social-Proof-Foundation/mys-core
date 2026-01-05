@@ -358,8 +358,9 @@ fn default_badge_limit() -> i64 {
 }
 
 /// Get all badges for a specific profile
+/// Accepts wallet address (owner_address) as input
 pub async fn get_profile_badges(
-    Path(profile_id): Path<String>,
+    Path(wallet_address): Path<String>,
     Query(query): Query<ProfileBadgeQuery>,
     State(db_pool): State<DbPool>,
 ) -> impl IntoResponse {
@@ -370,6 +371,32 @@ pub async fn get_profile_badges(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": format!("Database connection error: {}", e)
+                })),
+            )
+        }
+    };
+
+    // Resolve wallet address to profile_id for profile_badges query
+    let profile_id = match profiles::table
+        .filter(profiles::owner_address.eq(&wallet_address))
+        .select(profiles::profile_id.nullable())
+        .first::<Option<String>>(&mut conn)
+        .await
+    {
+        Ok(Some(pid)) => pid,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Profile found but no profile_id"
+                })),
+            )
+        }
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Profile not found"
                 })),
             )
         }

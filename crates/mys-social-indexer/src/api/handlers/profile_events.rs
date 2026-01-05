@@ -43,22 +43,41 @@ pub struct ProfileEventsResponse {
     pub total: i64,
 }
 
-/// Handler for getting profile events by profile ID
+/// Handler for getting profile events by wallet address
 /// Note: This handler returns profile management events (creation, updates, etc.).
 /// For vesting-related events (TokensVested, TokensClaimed), use the vesting endpoints:
 /// - GET /vesting/users/{address}/wallets
 /// - GET /vesting/events?owner_address={address}
 pub async fn get_profile_events(
-    Path(profile_id): Path<String>,
+    Path(wallet_address): Path<String>,
     Query(query): Query<ProfileEventsQuery>,
     State(pool): State<DbPool>,
 ) -> Result<Json<ProfileEventsResponse>, StatusCode> {
-    debug!("Getting profile events for profile_id: {}", profile_id);
+    debug!("Getting profile events for wallet_address: {}", wallet_address);
 
     let mut conn = pool.get().await.map_err(|e| {
         error!("Failed to get database connection: {}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
+
+    // Resolve wallet address to profile_id for profile_events query
+    use crate::schema::profiles;
+    let profile_id = match profiles::table
+        .filter(profiles::owner_address.eq(&wallet_address))
+        .select(profiles::profile_id.nullable())
+        .first::<Option<String>>(&mut conn)
+        .await
+    {
+        Ok(Some(pid)) => pid,
+        Ok(None) => {
+            debug!("Profile found but no profile_id for wallet_address: {}", wallet_address);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(_) => {
+            debug!("Profile not found with wallet_address: {}", wallet_address);
+            return Err(StatusCode::NOT_FOUND);
+        }
+    };
 
     // Build the base query
     let mut query_builder = schema::profile_events::table
@@ -94,28 +113,48 @@ pub async fn get_profile_events(
         })?;
 
     debug!(
-        "Found {} profile events for profile_id: {}",
+        "Found {} profile events for wallet_address: {}",
         events.len(),
-        profile_id
+        wallet_address
     );
 
     Ok(Json(ProfileEventsResponse { events, total }))
 }
 
 /// Get platform membership history for a profile
+/// Accepts wallet address (owner_address) as input
 pub async fn get_platform_memberships(
-    Path(profile_id): Path<String>,
+    Path(wallet_address): Path<String>,
     State(pool): State<DbPool>,
 ) -> Result<Json<ProfileEventsResponse>, StatusCode> {
     debug!(
-        "Getting platform memberships for profile_id: {}",
-        profile_id
+        "Getting platform memberships for wallet_address: {}",
+        wallet_address
     );
 
     let mut conn = pool.get().await.map_err(|e| {
         error!("Failed to get database connection: {}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
+
+    // Resolve wallet address to profile_id for profile_events query
+    use crate::schema::profiles;
+    let profile_id = match profiles::table
+        .filter(profiles::owner_address.eq(&wallet_address))
+        .select(profiles::profile_id.nullable())
+        .first::<Option<String>>(&mut conn)
+        .await
+    {
+        Ok(Some(pid)) => pid,
+        Ok(None) => {
+            debug!("Profile found but no profile_id for wallet_address: {}", wallet_address);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(_) => {
+            debug!("Profile not found with wallet_address: {}", wallet_address);
+            return Err(StatusCode::NOT_FOUND);
+        }
+    };
 
     // Query for PlatformJoined and PlatformLeft events
     let query = schema::profile_events::table
@@ -150,25 +189,45 @@ pub async fn get_platform_memberships(
     })?;
 
     debug!(
-        "Found {} platform membership events for profile_id: {}",
+        "Found {} platform membership events for wallet_address: {}",
         events.len(),
-        profile_id
+        wallet_address
     );
 
     Ok(Json(ProfileEventsResponse { events, total }))
 }
 
 /// Get blocking history for a profile
+/// Accepts wallet address (owner_address) as input
 pub async fn get_blocking_history(
-    Path(profile_id): Path<String>,
+    Path(wallet_address): Path<String>,
     State(pool): State<DbPool>,
 ) -> Result<Json<ProfileEventsResponse>, StatusCode> {
-    debug!("Getting blocking history for profile_id: {}", profile_id);
+    debug!("Getting blocking history for wallet_address: {}", wallet_address);
 
     let mut conn = pool.get().await.map_err(|e| {
         error!("Failed to get database connection: {}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
+
+    // Resolve wallet address to profile_id for profile_events query
+    use crate::schema::profiles;
+    let profile_id = match profiles::table
+        .filter(profiles::owner_address.eq(&wallet_address))
+        .select(profiles::profile_id.nullable())
+        .first::<Option<String>>(&mut conn)
+        .await
+    {
+        Ok(Some(pid)) => pid,
+        Ok(None) => {
+            debug!("Profile found but no profile_id for wallet_address: {}", wallet_address);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(_) => {
+            debug!("Profile not found with wallet_address: {}", wallet_address);
+            return Err(StatusCode::NOT_FOUND);
+        }
+    };
 
     // Query for BlockAdded and BlockRemoved events
     let query = schema::profile_events::table
@@ -203,9 +262,9 @@ pub async fn get_blocking_history(
     })?;
 
     debug!(
-        "Found {} blocking events for profile_id: {}",
+        "Found {} blocking events for wallet_address: {}",
         events.len(),
-        profile_id
+        wallet_address
     );
 
     Ok(Json(ProfileEventsResponse { events, total }))

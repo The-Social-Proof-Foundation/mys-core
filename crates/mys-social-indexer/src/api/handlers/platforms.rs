@@ -1133,33 +1133,34 @@ pub async fn get_platform_members(
 }
 
 /// Check if a profile is a member of a platform
+/// Accepts wallet address (owner_address) as input
 pub async fn check_platform_membership(
-    Path((platform_id, profile_id)): Path<(String, String)>,
+    Path((platform_id, wallet_address)): Path<(String, String)>,
     State(db_pool): State<DbPool>,
 ) -> impl IntoResponse {
     debug!(
-        "Checking if profile {} is a member of platform {}",
-        profile_id, platform_id
+        "Checking if wallet {} is a member of platform {}",
+        wallet_address, platform_id
     );
 
     // Input validation
-    if platform_id.trim().is_empty() || profile_id.trim().is_empty() {
+    if platform_id.trim().is_empty() || wallet_address.trim().is_empty() {
         debug!("Invalid IDs: empty string");
         return (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({
-                "error": "Platform ID and profile ID are required"
+                "error": "Platform ID and wallet address are required"
             })),
         );
     }
 
     // Basic length validation to prevent potential attacks
-    if platform_id.len() > 256 || profile_id.len() > 256 {
+    if platform_id.len() > 256 || wallet_address.len() > 256 {
         debug!("Invalid IDs: too long");
         return (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({
-                "error": "Platform ID and profile ID must be 256 characters or less"
+                "error": "Platform ID and wallet address must be 256 characters or less"
             })),
         );
     }
@@ -1177,67 +1178,27 @@ pub async fn check_platform_membership(
         }
     };
 
-    // Resolve profile_id to wallet address if needed
-    // profile_id in platform_memberships is the wallet address (owner_address)
-    // Supports: wallet address (0x...), profile_id, or username
-    let profile_address = if profile_id.starts_with("0x") {
-        profile_id.clone()
-    } else {
-        // Try to resolve as profile_id first
-        match profiles::table
-            .filter(profiles::profile_id.eq(&profile_id))
-            .select(profiles::owner_address)
-            .first::<String>(&mut conn)
-            .await
-        {
-            Ok(addr) => {
-                debug!("Resolved profile_id {} to wallet address {}", profile_id, addr);
-                addr
-            }
-            Err(diesel::result::Error::NotFound) => {
-                // If profile_id not found, try resolving as username
-                match profiles::table
-                    .filter(profiles::username.eq(&profile_id))
-                    .select(profiles::owner_address)
-                    .first::<String>(&mut conn)
-                    .await
-                {
-                    Ok(addr) => {
-                        debug!("Resolved username {} to wallet address {}", profile_id, addr);
-                        addr
-                    }
-                    Err(diesel::result::Error::NotFound) => {
-                        // If neither found, return error
-                        debug!("Profile ID or username not found: {}", profile_id);
-                        return (
-                            StatusCode::NOT_FOUND,
-                            Json(serde_json::json!({
-                                "error": format!("Profile not found: {}", profile_id)
-                            })),
-                        );
-                    }
-                    Err(e) => {
-                        error!("Error resolving username: {}", e);
-                        return (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            Json(serde_json::json!({
-                                "error": format!("Failed to resolve username: {}", e)
-                            })),
-                        );
-                    }
-                }
-            }
-            Err(e) => {
-                error!("Error resolving profile_id: {}", e);
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({
-                        "error": format!("Failed to resolve profile ID: {}", e)
-                    })),
-                );
-            }
-        }
-    };
+    // Verify profile exists
+    let profile_exists = profiles::table
+        .filter(profiles::owner_address.eq(&wallet_address))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+        .unwrap_or(0)
+        > 0;
+
+    if !profile_exists {
+        debug!("Profile not found with wallet_address: {}", wallet_address);
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": format!("Profile not found: {}", wallet_address)
+            })),
+        );
+    }
+
+    // profile_id in platform_memberships table stores wallet address (owner_address)
+    let profile_address = wallet_address;
 
     // Check if platform exists
     let platform_exists = match platforms::table
@@ -1323,31 +1284,32 @@ pub struct PlatformMembership {
 }
 
 /// Get all platforms a profile is a member of
+/// Accepts wallet address (owner_address) as input
 pub async fn get_profile_platforms(
-    Path(profile_id): Path<String>,
+    Path(wallet_address): Path<String>,
     Query(query): Query<PlatformQuery>,
     State(db_pool): State<DbPool>,
 ) -> impl IntoResponse {
-    debug!("Getting platforms for profile: {}", profile_id);
+    debug!("Getting platforms for wallet_address: {}", wallet_address);
 
     // Input validation
-    if profile_id.trim().is_empty() {
-        debug!("Invalid profile_id: empty string");
+    if wallet_address.trim().is_empty() {
+        debug!("Invalid wallet_address: empty string");
         return (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({
-                "error": "Profile ID is required"
+                "error": "Wallet address is required"
             })),
         );
     }
 
     // Basic length validation to prevent potential attacks
-    if profile_id.len() > 256 {
-        debug!("Invalid profile_id: too long");
+    if wallet_address.len() > 256 {
+        debug!("Invalid wallet_address: too long");
         return (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({
-                "error": "Profile ID must be 256 characters or less"
+                "error": "Wallet address must be 256 characters or less"
             })),
         );
     }
@@ -1372,40 +1334,27 @@ pub async fn get_profile_platforms(
         }
     };
 
-    // Resolve profile_id to wallet address if needed
-    // profile_id in platform_memberships is the wallet address (owner_address)
-    // Supports: wallet address (if starts with "0x"), otherwise treats as profile_id
-    let profile_address = if profile_id.starts_with("0x") {
-        // It's already a wallet address
-        profile_id.clone()
-    } else {
-        // It might be a profile ID, look up the wallet address
-        match profiles::table
-            .filter(profiles::profile_id.eq(&profile_id))
-            .select(profiles::owner_address)
-            .first::<String>(&mut conn)
-            .await
-        {
-            Ok(addr) => {
-                debug!("Resolved profile_id {} to wallet address {}", profile_id, addr);
-                addr
-            }
-            Err(diesel::result::Error::NotFound) => {
-                // If profile_id not found, assume it's a wallet address (for legacy data)
-                debug!("Profile ID not found, treating as wallet address: {}", profile_id);
-                profile_id.clone()
-            }
-            Err(e) => {
-                error!("Error resolving profile_id: {}", e);
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({
-                        "error": format!("Failed to resolve profile ID: {}", e)
-                    })),
-                );
-            }
-        }
-    };
+    // Verify profile exists
+    let profile_exists = profiles::table
+        .filter(profiles::owner_address.eq(&wallet_address))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+        .unwrap_or(0)
+        > 0;
+
+    if !profile_exists {
+        debug!("Profile not found with wallet_address: {}", wallet_address);
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Profile not found"
+            })),
+        );
+    }
+
+    // profile_id in platform_memberships table stores wallet address (owner_address)
+    let profile_address = wallet_address;
 
     // Prepare search pattern if provided
     let search_pattern = query.search.as_ref().and_then(|s| {

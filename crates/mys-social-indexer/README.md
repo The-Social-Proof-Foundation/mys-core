@@ -242,45 +242,70 @@ GET /search?query=social&page=2&limit=50
 ```
 
 ### Profile API
+
+**Note**: All endpoints with `:id` parameters accept wallet addresses (owner_address) only. Profile IDs are not accepted as input parameters.
+
 - **GET /profiles** - List profiles
 - **GET /profiles/address/:address** - Get profile by blockchain address
 - **GET /profiles/username/:username** - Get profile by username
 - **GET /profiles/username/:username/availability** - Check if a username is available for registration
 - **GET /profiles/:id/posts** - Get posts by a profile
+  - `:id` parameter accepts wallet address (owner_address)
 - **GET /profiles/:id/events** - Get profile events
+  - `:id` parameter accepts wallet address (owner_address)
 - **GET /profiles/:id/platforms** - Get platform membership events (history)
+  - `:id` parameter accepts wallet address (owner_address)
 - **GET /profiles/:id/platform-memberships** - Get all platforms a profile is currently a member of
   - Query: `limit` (optional), `offset` (optional), `page` (optional), `search` (optional - searches platform name, platform ID, or tagline)
-  - Accepts profile ID for `id` parameter (wallet addresses starting with "0x" are also supported for legacy compatibility)
+  - `:id` parameter accepts wallet address (owner_address)
 - **GET /profiles/:id/blocking** - Get blocking history
+  - `:id` parameter accepts wallet address (owner_address)
 
 ### Profile Badge API
+
+**Note**: All endpoints accept wallet addresses (owner_address) only. Profile IDs are not accepted as input parameters.
+
 - **GET /profiles/:id/badges** - Get all badges for a specific profile
+  - `:id` parameter accepts wallet address (owner_address)
   - Query: `limit` (optional, default: 20, max: 100), `offset` (optional, default: 0), `platform_id` (optional), `revoked` (optional - filter by revoked status), `badge_type` (optional - filter by badge type/tier)
   - Returns badges with all fields including `badge_description`, `badge_media_url`, and `badge_icon_url`
 - **GET /badges/:badge_id** - Get a specific badge by badge_id
-  - Query: `profile_id` (required - uniquely identifies the badge)
+  - Query: `profile_id` (required - wallet address that uniquely identifies the badge)
   - Returns full badge details including description, media_url, and icon_url
 - **GET /badges** - List all badges across all profiles with optional filtering
-  - Query: `limit` (optional, default: 20, max: 100), `offset` (optional, default: 0), `profile_id` (optional), `platform_id` (optional), `revoked` (optional), `badge_type` (optional)
+  - Query: `limit` (optional, default: 20, max: 100), `offset` (optional, default: 0), `profile_id` (optional - wallet address), `platform_id` (optional), `revoked` (optional), `badge_type` (optional)
   - Returns paginated list of badges with all fields
 
 ### Social Graph API
+
+**Note**: All endpoints accept wallet addresses (owner_address) only. Profile IDs are not accepted as input parameters.
+
 - **GET /profiles/:id/following** - List profiles followed by a profile
+  - `:id` parameter accepts wallet address (owner_address)
   - Query: `viewer_id` (optional), `limit`, `offset`, `page`
-  - New Query: `sort` (latest | earliest | alphabetical; default latest), `search` (matches username, display name, or wallet address)
+  - Query: `sort` (latest | earliest | alphabetical; default latest), `search` (matches username, display name, or wallet address)
 - **GET /profiles/:id/followers** - List followers of a profile
+  - `:id` parameter accepts wallet address (owner_address)
   - Query: `viewer_id` (optional), `limit`, `offset`, `page`
-  - New Query: `sort` (latest | earliest | alphabetical; default latest), `search` (matches username, display name, or wallet address)
+  - Query: `sort` (latest | earliest | alphabetical; default latest), `search` (matches username, display name, or wallet address)
 - **GET /profiles/:id/stats** - Get follow statistics
+  - `:id` parameter accepts wallet address (owner_address)
 - **GET /social-graph/check/:follower/:following** - Check if a profile follows another
+  - Both `:follower` and `:following` parameters accept wallet addresses (owner_address)
 
 ### Blocking API
+
+**Note**: All endpoints accept wallet addresses (owner_address) only. Profile IDs are not accepted as input parameters.
+
 - **GET /profiles/:id/blocked** - List profiles blocked by a profile
-  - New Query: `sort` (latest | earliest | alphabetical; default latest), `search` (matches username, display name, or wallet address)
+  - `:id` parameter accepts wallet address (owner_address)
+  - Query: `sort` (latest | earliest | alphabetical; default latest), `search` (matches username, display name, or wallet address)
 - **GET /profiles/:id/blocked-platforms** - List platforms blocked by a profile
+  - `:id` parameter accepts wallet address (owner_address)
 - **GET /blocklist/check/profile/:blocker/:blocked** - Check if a profile is blocked
+  - Both `:blocker` and `:blocked` parameters accept wallet addresses (owner_address)
 - **GET /blocklist/check/platform/:profile/:platform** - Check if a platform is blocked
+  - `:profile` parameter accepts wallet address (owner_address)
 
 ### Platform API
 - **GET /platforms** - List platforms
@@ -295,7 +320,7 @@ GET /search?query=social&page=2&limit=50
 - **GET /platforms/:id/members** - Get platform members with profile information
   - Query: `limit` (optional), `offset` (optional), `page` (optional), `search` (optional - searches usernames and wallet addresses)
 - **GET /platforms/:id/membership/:profile_id** - Check if a profile is a member of a platform
-  - Accepts wallet addresses (0x...), profile IDs, or usernames for `profile_id`
+  - `:profile_id` parameter accepts wallet address (owner_address)
 - **GET /platforms/:id/events** - Get platform events with pagination and optional event type filtering
   - Query: `limit` (optional, default: 50), `offset` (optional, default: 0), `page` (optional, default: 1), `event_type` (optional - filter by specific event type)
   - Returns: JSON object with `events` array and `pagination` object containing `total`, `limit`, `offset`, `page`, and `total_pages` 

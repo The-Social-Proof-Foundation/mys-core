@@ -37,25 +37,26 @@ pub struct BlockCheckResponse {
 }
 
 /// Get profiles blocked by a user with rich profile information and pagination
+/// Accepts wallet address (owner_address) as input
 pub async fn get_blocked_profiles(
-    Path(profile_id): Path<String>,
+    Path(wallet_address): Path<String>,
     Query(query): Query<BlockedListQuery>,
     State(pool): State<DbPool>,
 ) -> Result<Json<PaginatedBlockedProfilesResponse>, StatusCode> {
     debug!(
-        "Getting enriched profiles blocked by profile_id: {}",
-        profile_id
+        "Getting enriched profiles blocked by wallet_address: {}",
+        wallet_address
     );
 
     // Input validation
-    if profile_id.trim().is_empty() {
-        debug!("Invalid profile_id: empty string");
+    if wallet_address.trim().is_empty() {
+        debug!("Invalid wallet_address: empty string");
         return Err(StatusCode::BAD_REQUEST);
     }
 
     // Basic length validation to prevent potential attacks
-    if profile_id.len() > 256 {
-        debug!("Invalid profile_id: too long");
+    if wallet_address.len() > 256 {
+        debug!("Invalid wallet_address: too long");
         return Err(StatusCode::BAD_REQUEST);
     }
 
@@ -67,32 +68,30 @@ pub async fn get_blocked_profiles(
         }
     };
 
-    // Optimized query: blocked_profiles now contains all rich data directly (no JOINs needed!)
-    // First, determine if profile_id is a wallet address or profile_id
-    let blocker_address = if profile_id.starts_with("0x") {
-        // It's already a wallet address
-        profile_id.clone()
-    } else {
-        // It might be a profile ID, look up the wallet address
-        match profiles::table
-            .filter(profiles::profile_id.eq(&profile_id))
-            .select(profiles::owner_address)
-            .first::<String>(&mut conn)
-            .await
-        {
-            Ok(addr) => addr,
-            Err(_) => {
-                // Assume it's a wallet address if lookup fails
-                profile_id.clone()
-            }
+    // Verify profile exists
+    let profile_exists = match profiles::table
+        .filter(profiles::owner_address.eq(&wallet_address))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+    {
+        Ok(count) => count > 0,
+        Err(e) => {
+            error!("Failed to check profile: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
 
-    debug!("Resolved blocker wallet address: {}", blocker_address);
+    if !profile_exists {
+        debug!("Profile not found with wallet_address: {}", wallet_address);
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    debug!("Using blocker wallet address: {}", wallet_address);
 
     // Build fast query with dynamic search and sorting
     let mut query_builder = blocked_profiles::table
-        .filter(blocked_profiles::blocker_address.eq(&blocker_address))
+        .filter(blocked_profiles::blocker_address.eq(&wallet_address))
         .into_boxed();
 
     // Apply search if provided
@@ -151,7 +150,7 @@ pub async fn get_blocked_profiles(
 
     debug!(
         "Found {} enriched blocked profiles for blocker {}",
-        total_count, blocker_address
+        total_count, wallet_address
     );
 
     Ok(Json(PaginatedBlockedProfilesResponse {
@@ -162,23 +161,24 @@ pub async fn get_blocked_profiles(
 }
 
 /// Check if a profile is blocked by another profile
+/// Accepts wallet addresses (owner_address) as input
 pub async fn check_profile_blocked(
-    Path((blocker_profile_id, blocked_profile_id)): Path<(String, String)>,
+    Path((blocker_wallet, blocked_wallet)): Path<(String, String)>,
     State(pool): State<DbPool>,
 ) -> Result<Json<BlockCheckResponse>, StatusCode> {
     debug!(
-        "Checking if profile {} is blocked by {}",
-        blocked_profile_id, blocker_profile_id
+        "Checking if wallet {} is blocked by {}",
+        blocked_wallet, blocker_wallet
     );
 
     // Input validation
-    if blocker_profile_id.trim().is_empty() || blocked_profile_id.trim().is_empty() {
-        debug!("Invalid profile IDs: empty string");
+    if blocker_wallet.trim().is_empty() || blocked_wallet.trim().is_empty() {
+        debug!("Invalid wallet addresses: empty string");
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    if blocker_profile_id.len() > 256 || blocked_profile_id.len() > 256 {
-        debug!("Invalid profile IDs: too long");
+    if blocker_wallet.len() > 256 || blocked_wallet.len() > 256 {
+        debug!("Invalid wallet addresses: too long");
         return Err(StatusCode::BAD_REQUEST);
     }
 
@@ -190,45 +190,42 @@ pub async fn check_profile_blocked(
         }
     };
 
-    // Resolve blocker address (could be profile_id or wallet address)
-    let blocker_address = if blocker_profile_id.starts_with("0x") {
-        blocker_profile_id.clone()
-    } else {
-        match profiles::table
-            .filter(profiles::profile_id.eq(&blocker_profile_id))
-            .select(profiles::owner_address)
-            .first::<String>(&mut conn)
-            .await
-        {
-            Ok(addr) => addr,
-            Err(_) => blocker_profile_id.clone(), // Fallback to original value
-        }
-    };
+    // Verify both profiles exist
+    let blocker_exists = profiles::table
+        .filter(profiles::owner_address.eq(&blocker_wallet))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+        .unwrap_or(0)
+        > 0;
 
-    // Resolve blocked address (could be profile_id or wallet address)
-    let blocked_address = if blocked_profile_id.starts_with("0x") {
-        blocked_profile_id.clone()
-    } else {
-        match profiles::table
-            .filter(profiles::profile_id.eq(&blocked_profile_id))
-            .select(profiles::owner_address)
-            .first::<String>(&mut conn)
-            .await
-        {
-            Ok(addr) => addr,
-            Err(_) => blocked_profile_id.clone(), // Fallback to original value
-        }
-    };
+    if !blocker_exists {
+        debug!("Blocker profile not found: {}", blocker_wallet);
+        return Ok(Json(BlockCheckResponse { is_blocked: false }));
+    }
+
+    let blocked_exists = profiles::table
+        .filter(profiles::owner_address.eq(&blocked_wallet))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .await
+        .unwrap_or(0)
+        > 0;
+
+    if !blocked_exists {
+        debug!("Blocked profile not found: {}", blocked_wallet);
+        return Ok(Json(BlockCheckResponse { is_blocked: false }));
+    }
 
     debug!(
-        "Resolved addresses: blocker={}, blocked={}",
-        blocker_address, blocked_address
+        "Checking blocking relationship: blocker={}, blocked={}",
+        blocker_wallet, blocked_wallet
     );
 
     // Check production blocking system (blocked_profiles table)
     let is_blocked = match blocked_profiles::table
-        .filter(blocked_profiles::blocker_address.eq(&blocker_address))
-        .filter(blocked_profiles::blocked_address.eq(&blocked_address))
+        .filter(blocked_profiles::blocker_address.eq(&blocker_wallet))
+        .filter(blocked_profiles::blocked_address.eq(&blocked_wallet))
         .select(blocked_profiles::id)
         .first::<i32>(&mut conn)
         .await
@@ -251,20 +248,21 @@ pub async fn check_profile_blocked(
 }
 
 /// Get platforms that have blocked a user (platform-to-profile blocking)
+/// Accepts wallet address (owner_address) as input
 pub async fn get_blocked_platforms(
-    Path(profile_id): Path<String>,
+    Path(wallet_address): Path<String>,
     State(pool): State<DbPool>,
 ) -> Result<Json<BlockedPlatformsResponse>, StatusCode> {
-    debug!("Getting platforms blocked by profile_id: {}", profile_id);
+    debug!("Getting platforms blocked by wallet_address: {}", wallet_address);
 
     // Input validation
-    if profile_id.trim().is_empty() {
-        debug!("Invalid profile_id: empty string");
+    if wallet_address.trim().is_empty() {
+        debug!("Invalid wallet_address: empty string");
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    if profile_id.len() > 256 {
-        debug!("Invalid profile_id: too long");
+    if wallet_address.len() > 256 {
+        debug!("Invalid wallet_address: too long");
         return Err(StatusCode::BAD_REQUEST);
     }
 
@@ -273,6 +271,24 @@ pub async fn get_blocked_platforms(
         Err(e) => {
             error!("Failed to get database connection: {}", e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Resolve wallet address to profile_id for profile_events query
+    let profile_id = match profiles::table
+        .filter(profiles::owner_address.eq(&wallet_address))
+        .select(profiles::profile_id.nullable())
+        .first::<Option<String>>(&mut conn)
+        .await
+    {
+        Ok(Some(pid)) => pid,
+        Ok(None) => {
+            debug!("Profile found but no profile_id for wallet_address: {}", wallet_address);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(_) => {
+            debug!("Profile not found with wallet_address: {}", wallet_address);
+            return Err(StatusCode::NOT_FOUND);
         }
     };
 
@@ -347,22 +363,23 @@ pub async fn get_blocked_platforms(
 }
 
 /// Check if a profile has been blocked by a platform (platform-to-profile blocking)
+/// Accepts wallet address (owner_address) as input
 pub async fn check_platform_blocked(
-    Path((profile_id, platform_id)): Path<(String, String)>,
+    Path((wallet_address, platform_id)): Path<(String, String)>,
     State(pool): State<DbPool>,
 ) -> Result<Json<BlockCheckResponse>, StatusCode> {
     debug!(
         "Checking if profile {} has been blocked by platform {}",
-        profile_id, platform_id
+        wallet_address, platform_id
     );
 
     // Input validation
-    if profile_id.trim().is_empty() || platform_id.trim().is_empty() {
+    if wallet_address.trim().is_empty() || platform_id.trim().is_empty() {
         debug!("Invalid IDs: empty string");
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    if profile_id.len() > 256 || platform_id.len() > 256 {
+    if wallet_address.len() > 256 || platform_id.len() > 256 {
         debug!("Invalid IDs: too long");
         return Err(StatusCode::BAD_REQUEST);
     }
@@ -372,6 +389,24 @@ pub async fn check_platform_blocked(
         Err(e) => {
             error!("Failed to get database connection: {}", e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Resolve wallet address to profile_id for profile_events query
+    let profile_id = match profiles::table
+        .filter(profiles::owner_address.eq(&wallet_address))
+        .select(profiles::profile_id.nullable())
+        .first::<Option<String>>(&mut conn)
+        .await
+    {
+        Ok(Some(pid)) => pid,
+        Ok(None) => {
+            debug!("Profile found but no profile_id for wallet_address: {}", wallet_address);
+            return Ok(Json(BlockCheckResponse { is_blocked: false }));
+        }
+        Err(_) => {
+            debug!("Profile not found with wallet_address: {}", wallet_address);
+            return Ok(Json(BlockCheckResponse { is_blocked: false }));
         }
     };
 
