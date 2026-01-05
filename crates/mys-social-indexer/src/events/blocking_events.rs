@@ -11,11 +11,160 @@ use crate::db::DbConnection;
 use crate::events::profile_event_types::{BlockAddedEvent, BlockRemovedEvent};
 use crate::models::blocking::{NewBlockedEvent, NewBlockedProfile};
 use crate::models::blocking::{UserBlockEvent, UserUnblockEvent};
+use crate::models::profile::NewProfile;
 use crate::models::profile_events::NewProfileEvent;
-use crate::schema::{blocked_events, blocked_profiles, profile_events};
+use crate::schema::{blocked_events, blocked_profiles, profile_events, profiles};
 
 // Import platform event types
 use crate::models::platform::{PlatformBlockedProfileEvent, PlatformUnblockedProfileEvent};
+
+/// Ensure a profile exists for the given wallet address.
+/// Creates a minimal profile if one doesn't exist, using any provided profile data.
+/// This is idempotent - if a profile already exists, it does nothing.
+async fn ensure_profile_exists(
+    conn: &mut DbConnection,
+    wallet_address: &str,
+    existing_username: Option<&str>,
+    existing_display_name: Option<&str>,
+    existing_profile_photo: Option<&str>,
+) -> Result<()> {
+    use diesel::dsl::exists;
+    use diesel::select;
+
+    // Check if profile already exists
+    let profile_exists = select(exists(
+        profiles::table.filter(profiles::owner_address.eq(wallet_address)),
+    ))
+    .get_result::<bool>(conn)
+    .await
+    .unwrap_or(false);
+
+    if profile_exists {
+        info!(
+            "Profile already exists for wallet address: {}",
+            wallet_address
+        );
+        return Ok(());
+    }
+
+    // Generate username from address if not provided
+    let username = existing_username.map(|s| s.to_string()).unwrap_or_else(|| {
+        format!(
+            "user_{}",
+            wallet_address.chars().take(8).collect::<String>()
+        )
+    });
+
+    let now = chrono::Utc::now().naive_utc();
+
+    // Create minimal profile
+    let new_profile = NewProfile {
+        owner_address: wallet_address.to_string(),
+        username: username.clone(),
+        display_name: existing_display_name.map(|s| s.to_string()),
+        bio: None,
+        profile_photo: existing_profile_photo.map(|s| s.to_string()),
+        website: None,
+        created_at: now,
+        updated_at: now,
+        cover_photo: None,
+        profile_id: None,
+        followers_count: 0,
+        following_count: 0,
+        blocked_count: 0,
+        post_count: 0,
+        min_offer_amount: None,
+        birthdate: None,
+        current_location: None,
+        raised_location: None,
+        phone: None,
+        email: None,
+        gender: None,
+        political_view: None,
+        religion: None,
+        education: None,
+        primary_language: None,
+        relationship_status: None,
+        x_username: None,
+        mastodon_username: None,
+        facebook_username: None,
+        reddit_username: None,
+        github_username: None,
+        instagram_username: None,
+        social_proof_token_address: None,
+        reservation_pool_address: None,
+        selected_badge_id: None,
+        paid_messaging_enabled: false,
+        paid_messaging_min_cost: None,
+    };
+
+    // Insert profile, handling conflicts gracefully (idempotent)
+    match diesel::insert_into(profiles::table)
+        .values(&new_profile)
+        .on_conflict(profiles::owner_address)
+        .do_nothing()
+        .execute(conn)
+        .await
+    {
+        Ok(0) => {
+            // Profile already exists (race condition handled)
+            info!(
+                "Profile already exists for wallet address (race condition): {}",
+                wallet_address
+            );
+        }
+        Ok(_) => {
+            info!(
+                "Created minimal profile for wallet address: {} with username: {}",
+                wallet_address, username
+            );
+        }
+        Err(e) => {
+            // If it's a unique constraint violation on username, try with a modified username
+            if e.to_string().contains("username") || e.to_string().contains("unique") {
+                warn!(
+                    "Username conflict for {}, trying with address-based username",
+                    wallet_address
+                );
+                // Try again with a more unique username
+                let unique_username = format!(
+                    "user_{}_{}",
+                    wallet_address.chars().take(8).collect::<String>(),
+                    chrono::Utc::now().timestamp()
+                );
+                let mut retry_profile = new_profile;
+                retry_profile.username = unique_username.clone();
+
+                if let Err(retry_err) = diesel::insert_into(profiles::table)
+                    .values(&retry_profile)
+                    .on_conflict(profiles::owner_address)
+                    .do_nothing()
+                    .execute(conn)
+                    .await
+                {
+                    error!(
+                        "Failed to create profile for wallet address {} even after retry: {}",
+                        wallet_address, retry_err
+                    );
+                    return Err(anyhow::anyhow!("Failed to create profile: {}", retry_err));
+                } else {
+                    info!(
+                        "Created profile with unique username for wallet address: {}",
+                        wallet_address
+                    );
+                }
+            } else {
+                error!(
+                    "Failed to create profile for wallet address {}: {}",
+                    wallet_address, e
+                );
+                return Err(anyhow::anyhow!("Failed to create profile: {}", e));
+            }
+        }
+    }
+
+    Ok(())
+}
 
 /// Process a profile block event
 pub async fn process_profile_block_event(
@@ -134,7 +283,7 @@ pub async fn process_profile_block_event(
         .await;
 
     // 2. Fetch blocked user's profile data for rich information
-    let profile_data = {
+    let (blocked_profile_id, blocked_username, blocked_display_name, blocked_profile_photo) = {
         use crate::schema::profiles;
 
         match profiles::table
@@ -153,20 +302,19 @@ pub async fn process_profile_block_event(
                     "Found rich profile data for blocked user {}: username={}",
                     block_event.blocked, username
                 );
-                (profile_id, username, display_name, profile_photo)
+                (profile_id, Some(username), display_name, profile_photo)
             }
             Err(e) => {
-                info!("Could not find profile data for blocked user {}: {}. Using address as username", block_event.blocked, e);
-                // Fallback: use the wallet address as username if profile not found
-                (None, block_event.blocked.clone(), None, None)
+                info!("Could not find profile data for blocked user {}: {}", block_event.blocked, e);
+                // Profile doesn't exist - will be created by ensure_profile_exists
+                (None, None, None, None)
             }
         }
     };
 
-    let blocked_profile_id = &profile_data.0;
-    let blocked_username = &profile_data.1;
-    let blocked_display_name = &profile_data.2;
-    let blocked_profile_photo = &profile_data.3;
+    // Clone values before they're moved in the database update
+    let blocked_display_name_clone = blocked_display_name.clone();
+    let blocked_profile_photo_clone = blocked_profile_photo.clone();
 
     // Before upsert, check if an active block record already exists (to maintain accurate blocked_count)
     let existed_before = {
@@ -186,7 +334,7 @@ pub async fn process_profile_block_event(
         block_event.blocker.clone(),
         block_event.blocked.clone(),
         blocked_profile_id.clone(),
-        blocked_username.clone(),
+        blocked_username.clone().unwrap_or_else(|| block_event.blocked.clone()),
         blocked_display_name.clone(),
         blocked_profile_photo.clone(),
         now,
@@ -203,9 +351,9 @@ pub async fn process_profile_block_event(
             blocked_profiles::last_blocked_at.eq(now),
             // Update rich profile data in case it has changed
             blocked_profiles::blocked_profile_id.eq(blocked_profile_id),
-            blocked_profiles::blocked_username.eq(blocked_username),
-            blocked_profiles::blocked_display_name.eq(blocked_display_name),
-            blocked_profiles::blocked_profile_photo.eq(blocked_profile_photo),
+            blocked_profiles::blocked_username.eq(blocked_username.clone().unwrap_or_else(|| block_event.blocked.clone())),
+            blocked_profiles::blocked_display_name.eq(blocked_display_name.clone()),
+            blocked_profiles::blocked_profile_photo.eq(blocked_profile_photo.clone()),
             // Increment count only when re-blocking the same profile
             blocked_profiles::total_block_count.eq(blocked_profiles::total_block_count + 1_i32),
         ))
@@ -216,6 +364,47 @@ pub async fn process_profile_block_event(
     match (event_result, profile_result) {
         (Ok(_), Ok(_)) => {
             info!("✅ Successfully wrote block event to production blocking system");
+
+            // Ensure profiles exist for both blocker and blocked addresses
+            // This ensures that follower/following counts are correctly updated when relationships are deleted
+            info!(
+                "Ensuring profiles exist for blocker={} and blocked={}",
+                block_event.blocker, block_event.blocked
+            );
+
+            // Ensure blocker profile exists
+            if let Err(e) = ensure_profile_exists(
+                conn,
+                &block_event.blocker,
+                None, // No existing username data for blocker
+                None, // No existing display_name data for blocker
+                None, // No existing profile_photo data for blocker
+            )
+            .await
+            {
+                warn!(
+                    "Failed to ensure profile exists for blocker {}: {}",
+                    block_event.blocker, e
+                );
+                // Continue anyway - the relationship deletion will still work
+            }
+
+            // Ensure blocked profile exists, using any available profile data
+            if let Err(e) = ensure_profile_exists(
+                conn,
+                &block_event.blocked,
+                blocked_username.as_deref(), // Use fetched username if available (None if profile didn't exist)
+                blocked_display_name_clone.as_deref(), // Use cloned display_name if available
+                blocked_profile_photo_clone.as_deref(), // Use cloned profile_photo if available
+            )
+            .await
+            {
+                warn!(
+                    "Failed to ensure profile exists for blocked {}: {}",
+                    block_event.blocked, e
+                );
+                // Continue anyway - the relationship deletion will still work
+            }
 
             // Increment blocker's blocked_count if this is a new active block relationship
             if !existed_before {
