@@ -274,6 +274,14 @@ pub async fn process_profile_block_event(
             // This ensures blocking automatically unfollows in both directions:
             // 1. Blocker unfollows blocked user (if following)
             // 2. Blocked user unfollows blocker (if following)
+            //
+            // Smart contract uses wallet addresses for following/blocking.
+            // Relationships are stored with wallet addresses, so we delete using wallet addresses.
+            
+            info!(
+                "BLOCK EVENT: Severing follow relationships: blocker={}, blocked={}",
+                block_event.blocker, block_event.blocked
+            );
             
             // Remove blocker -> blocked relationship
             let blocker_to_blocked_deleted = diesel::delete(crate::schema::social_graph_relationships::table)
@@ -286,8 +294,8 @@ pub async fn process_profile_block_event(
                 Ok(deleted_count) => {
                     if deleted_count > 0 {
                         info!(
-                            "Removed follow relationship due to block: {} -> {}",
-                            block_event.blocker, block_event.blocked
+                            "BLOCK EVENT: Deleted {} relationship(s): {} -> {} (triggers will update counts)",
+                            deleted_count, block_event.blocker, block_event.blocked
                         );
 
                         // Log the unfollow event for audit trail
@@ -302,6 +310,7 @@ pub async fn process_profile_block_event(
                                 "direction": "blocker_to_blocked",
                                 "blocker": block_event.blocker,
                                 "blocked": block_event.blocked,
+                                "deleted_count": deleted_count,
                             })),
                         };
 
@@ -312,11 +321,16 @@ pub async fn process_profile_block_event(
                         {
                             warn!("Failed to log unfollow_blocked event: {}", e);
                         }
+                    } else {
+                        info!(
+                            "BLOCK EVENT: No relationship found to delete: {} -> {} (may not have been following)",
+                            block_event.blocker, block_event.blocked
+                        );
                     }
                 }
                 Err(e) => {
                     warn!(
-                        "Failed to remove follow relationship when blocking {} -> {}: {}",
+                        "BLOCK EVENT: Failed to remove follow relationship when blocking {} -> {}: {}",
                         block_event.blocker, block_event.blocked, e
                     );
                 }
@@ -333,8 +347,8 @@ pub async fn process_profile_block_event(
                 Ok(deleted_count) => {
                     if deleted_count > 0 {
                         info!(
-                            "Removed reverse follow relationship due to block: {} -> {}",
-                            block_event.blocked, block_event.blocker
+                            "BLOCK EVENT: Deleted {} reverse relationship(s): {} -> {} (triggers will update counts)",
+                            deleted_count, block_event.blocked, block_event.blocker
                         );
 
                         // Log the unfollow event for audit trail
@@ -349,6 +363,7 @@ pub async fn process_profile_block_event(
                                 "direction": "blocked_to_blocker",
                                 "blocker": block_event.blocker,
                                 "blocked": block_event.blocked,
+                                "deleted_count": deleted_count,
                             })),
                         };
 
@@ -359,11 +374,16 @@ pub async fn process_profile_block_event(
                         {
                             warn!("Failed to log unfollow_blocked event (reverse): {}", e);
                         }
+                    } else {
+                        info!(
+                            "BLOCK EVENT: No reverse relationship found to delete: {} -> {} (may not have been following)",
+                            block_event.blocked, block_event.blocker
+                        );
                     }
                 }
                 Err(e) => {
                     warn!(
-                        "Failed to remove reverse follow relationship when blocking {} -> {}: {}",
+                        "BLOCK EVENT: Failed to remove reverse follow relationship when blocking {} -> {}: {}",
                         block_event.blocked, block_event.blocker, e
                     );
                 }
