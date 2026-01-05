@@ -57,7 +57,6 @@ pub struct NewGovernanceRegistry {
 pub struct Delegate {
     pub id: i32,
     pub address: String,
-    pub profile_id: String,
     pub registry_type: i16,
     pub upvotes: i64,
     pub downvotes: i64,
@@ -79,7 +78,6 @@ pub struct Delegate {
 #[diesel(table_name = delegates)]
 pub struct NewDelegate {
     pub address: String,
-    pub profile_id: String,
     pub registry_type: i16,
     pub upvotes: i64,
     pub downvotes: i64,
@@ -103,7 +101,6 @@ pub struct NewDelegate {
 pub struct NominatedDelegate {
     pub id: i32,
     pub address: String,
-    pub profile_id: String,
     pub registry_type: i16,
     pub upvotes: i64,
     pub downvotes: i64,
@@ -119,7 +116,6 @@ pub struct NominatedDelegate {
 #[diesel(table_name = nominated_delegates)]
 pub struct NewNominatedDelegate {
     pub address: String,
-    pub profile_id: String,
     pub registry_type: i16,
     pub upvotes: i64,
     pub downvotes: i64,

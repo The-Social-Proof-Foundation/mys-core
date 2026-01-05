@@ -794,7 +794,6 @@ table! {
     delegates (id, time) {
         id -> Int4,
         address -> Varchar,
-        profile_id -> Varchar,
         registry_type -> Int2,
         upvotes -> Int8,
         downvotes -> Int8,
@@ -817,7 +816,6 @@ table! {
     nominated_delegates (id, time) {
         id -> Int4,
         address -> Varchar,
-        profile_id -> Varchar,
         registry_type -> Int2,
         upvotes -> Int8,
         downvotes -> Int8,

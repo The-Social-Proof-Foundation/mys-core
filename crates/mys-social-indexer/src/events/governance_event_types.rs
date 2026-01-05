@@ -54,13 +54,11 @@ pub struct GovernanceRegistryCreatedEvent {
 /// Event emitted when a delegate is nominated
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DelegateNominatedEvent {
-    pub address: String,
+    pub nominee_address: String,
     #[serde(deserialize_with = "deserialize_u8_from_string")]
     pub registry_type: u8,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub scheduled_term_start_epoch: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub nomination_time: u64,
 }
 
 /// Event emitted when a delegate is voted on (upvoted or downvoted)
@@ -81,34 +79,30 @@ pub struct DelegateVotedEvent {
 /// Event emitted when a delegate is elected
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DelegateElectedEvent {
-    pub address: String,
+    pub delegate_address: String,
     #[serde(deserialize_with = "deserialize_u8_from_string")]
     pub registry_type: u8,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub term_start: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub term_end: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub upvotes: u64,
-    #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub downvotes: u64,
 }
 
 /// Event emitted when a proposal is submitted
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProposalSubmittedEvent {
-    pub id: String,
+    pub proposal_id: String,
     pub title: String,
     pub description: String,
     #[serde(deserialize_with = "deserialize_u8_from_string")]
     pub proposal_type: u8,
     pub reference_id: Option<String>,
-    pub metadata_json: Option<serde_json::Value>,
+    pub metadata_json: Option<String>,
     pub submitter: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub submission_time: u64,
+    pub reward_amount: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub reward_pool: u64,
+    pub submission_time: u64,
 }
 
 /// Event emitted when a delegate votes on a proposal
@@ -126,7 +120,7 @@ pub struct DelegateVoteEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommunityVoteEvent {
     pub proposal_id: String,
-    pub voter_address: String,
+    pub voter: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub vote_weight: u64,
     pub approve: bool,
@@ -195,7 +189,7 @@ pub struct ProposalImplementedEvent {
     pub proposal_id: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub implementation_time: u64,
-    pub implemented_description: String,
+    pub description: Option<String>,
 }
 
 /// Event emitted when rewards are distributed

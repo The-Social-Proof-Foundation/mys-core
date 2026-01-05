@@ -123,15 +123,16 @@ pub async fn process_delegate_nominated_event(
     let nomination_event = parse_json_event::<DelegateNominatedEvent>(event)?;
 
     // Create new nominee record
-    // Use address as profile_id since governance is wallet-address-based, not platform-based
+    // Address is the primary identifier for governance
+    // Calculate nomination_time from current timestamp since contract doesn't emit it
+    let nomination_time = Utc::now().timestamp() as i64;
     let new_nominee = NewNominatedDelegate {
-        address: nomination_event.address.clone(),
-        profile_id: nomination_event.address.clone(), // Use address as profile_id
+        address: nomination_event.nominee_address.clone(),
         registry_type: nomination_event.registry_type as i16,
         upvotes: 0,
         downvotes: 0,
         scheduled_term_start_epoch: nomination_event.scheduled_term_start_epoch as i64,
-        nomination_time: nomination_event.nomination_time as i64,
+        nomination_time,
         status: NOMINEE_STATUS_PENDING as i16,
         transaction_id: event_id.to_string(),
     };
@@ -194,37 +195,36 @@ pub async fn process_delegate_elected_event(
     conn.build_transaction()
         .run(|tx_conn| {
             Box::pin(async move {
-                // Update nominee status to elected
+                // Update nominee status to elected (if nominee exists)
+                // Note: Contract doesn't emit upvotes/downvotes in DelegateElectedEvent
+                // We'll keep existing upvotes/downvotes from the nominee record
                 diesel::update(crate::schema::nominated_delegates::table)
                     .filter(
                         crate::schema::nominated_delegates::address
-                            .eq(&elected_event.address)
+                            .eq(&elected_event.delegate_address)
                             .and(
                                 crate::schema::nominated_delegates::registry_type
                                     .eq(elected_event.registry_type as i16),
                             ),
                     )
-                    .set((
+                    .set(
                         crate::schema::nominated_delegates::status
                             .eq(NOMINEE_STATUS_ELECTED as i16),
-                        crate::schema::nominated_delegates::upvotes
-                            .eq(elected_event.upvotes as i64),
-                        crate::schema::nominated_delegates::downvotes
-                            .eq(elected_event.downvotes as i64),
-                    ))
+                    )
                     .execute(tx_conn)
                     .await?;
 
                 // Create or update delegate record
                 // Convert to milliseconds for consistency with blockchain timestamps
                 let now_unix_ms = Utc::now().timestamp_millis() as i64;
-                // Use address as profile_id since governance is wallet-address-based, not platform-based
+                // Address is the primary identifier for governance
+                // For new delegates, start with 0 upvotes/downvotes
+                // For existing delegates, preserve their current vote counts
                 let new_delegate = NewDelegate {
-                    address: elected_event.address.clone(),
-                    profile_id: elected_event.address.clone(), // Use address as profile_id
+                    address: elected_event.delegate_address.clone(),
                     registry_type: elected_event.registry_type as i16,
-                    upvotes: elected_event.upvotes as i64,
-                    downvotes: elected_event.downvotes as i64,
+                    upvotes: 0, // Contract doesn't emit upvotes/downvotes, start at 0
+                    downvotes: 0,
                     proposals_reviewed: 0, // These start at 0 for new delegates
                     proposals_submitted: 0,
                     sided_winning_proposals: 0,
@@ -245,8 +245,7 @@ pub async fn process_delegate_elected_event(
                     ))
                     .do_update()
                     .set((
-                        crate::schema::delegates::upvotes.eq(new_delegate.upvotes),
-                        crate::schema::delegates::downvotes.eq(new_delegate.downvotes),
+                        // Don't update upvotes/downvotes on conflict - preserve existing values
                         crate::schema::delegates::term_start.eq(new_delegate.term_start),
                         crate::schema::delegates::term_end.eq(new_delegate.term_end),
                         crate::schema::delegates::is_active.eq(true),
@@ -400,17 +399,22 @@ pub async fn process_proposal_submitted_event(
     let proposal_event = parse_json_event::<ProposalSubmittedEvent>(event)?;
 
     // Create new proposal
+    // Parse metadata_json from String to Value if present
+    let metadata_json_value = proposal_event.metadata_json.as_ref().and_then(|s| {
+        serde_json::from_str::<serde_json::Value>(s).ok()
+    });
+    
     let new_proposal = NewProposal {
-        id: proposal_event.id.clone(),
+        id: proposal_event.proposal_id.clone(),
         title: proposal_event.title.clone(),
         description: proposal_event.description.clone(),
         proposal_type: proposal_event.proposal_type as i16,
         reference_id: proposal_event.reference_id.clone(),
-        metadata_json: proposal_event.metadata_json.clone(),
+        metadata_json: metadata_json_value,
         submitter: proposal_event.submitter.clone(),
         submission_time: proposal_event.submission_time as i64,
         status: GOVERNANCE_STATUS_SUBMITTED as i16,
-        reward_pool: proposal_event.reward_pool as i64,
+        reward_pool: proposal_event.reward_amount as i64,
         transaction_id: event_id.to_string(),
     };
 
@@ -460,7 +464,7 @@ pub async fn process_proposal_submitted_event(
     // Write to relay outbox for notifications - notify delegates/platform admins
     // Note: Proposal submissions are important for governance participants
     let event_data = serde_json::json!({
-        "proposal_id": proposal_event.id,
+        "proposal_id": proposal_event.proposal_id,
         "submitter": proposal_event.submitter,
         "title": proposal_event.title,
         "proposal_type": proposal_event.proposal_type,
@@ -469,7 +473,7 @@ pub async fn process_proposal_submitted_event(
         conn,
         "governance.proposal_submitted",
         &event_data,
-        Some(&proposal_event.id),
+        Some(&proposal_event.proposal_id),
         Some(event_id),
     )
     .await
@@ -613,7 +617,7 @@ pub async fn process_community_vote_event(
                 // Insert the vote
                 let new_vote = NewCommunityVote {
                     proposal_id: vote_event.proposal_id.clone(),
-                    voter_address: vote_event.voter_address.clone(),
+                    voter_address: vote_event.voter.clone(),
                     vote_weight: vote_event.vote_weight as i64,
                     approve: vote_event.approve,
                     vote_time: vote_event.vote_time as i64,
@@ -1259,6 +1263,7 @@ pub async fn process_proposal_implemented_event(
     let proposal_id = implemented_event.proposal_id.clone();
 
     // Update proposal status
+    // Handle optional description field
     let result = diesel::update(crate::schema::proposals::table)
         .filter(crate::schema::proposals::id.eq(&proposal_id))
         .set((
@@ -1266,7 +1271,7 @@ pub async fn process_proposal_implemented_event(
             crate::schema::proposals::implementation_time
                 .eq(implemented_event.implementation_time as i64),
             crate::schema::proposals::implemented_description
-                .eq(&implemented_event.implemented_description),
+                .eq(implemented_event.description.clone()),
         ))
         .execute(conn)
         .await?;
