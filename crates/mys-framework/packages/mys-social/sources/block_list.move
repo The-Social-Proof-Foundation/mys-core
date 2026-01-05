@@ -79,37 +79,41 @@ module social_contracts::block_list {
         }
     }
 
-    /// Create a new block list for the sender
-    /// This is an explicit operation to create a block list, even if not blocking anyone yet
-    public entry fun create_block_list_for_sender(registry: &mut BlockListRegistry, ctx: &mut TxContext) {
+    /// Internal helper to create a block list for a specific address
+    /// Called from block_wallet_internal for lazy initialization
+    /// Creates the block list object, registers it, initializes empty blocked wallets set,
+    /// emits event, and transfers the object to the owner
+    public(package) fun create_block_list_for_address(
+        registry: &mut BlockListRegistry,
+        owner: address,
+        ctx: &mut TxContext
+    ) {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
-        let sender = tx_context::sender(ctx);
-        
-        // Check if a block list already exists for the sender
-        if (table::contains(&registry.wallet_block_lists, sender)) {
+        // Check if a block list already exists for the owner (idempotent)
+        if (table::contains(&registry.wallet_block_lists, owner)) {
             return
         };
         
         // Create a new block list
-        let block_list = create_block_list(sender, ctx);
+        let block_list = create_block_list(owner, ctx);
         let block_list_id = object::uid_to_address(&block_list.id);
         
         // Register the block list
-        table::add(&mut registry.wallet_block_lists, sender, block_list_id);
+        table::add(&mut registry.wallet_block_lists, owner, block_list_id);
         
         // Initialize an empty blocked wallets set in the registry
-        dynamic_field::add(&mut registry.id, get_blocked_wallets_key(sender), vec_set::empty<address>());
+        dynamic_field::add(&mut registry.id, get_blocked_wallets_key(owner), vec_set::empty<address>());
         
         // Emit block list created event
         event::emit(BlockListCreatedEvent {
-            owner: sender,
+            owner,
             block_list_id,
         });
         
-        // Return the block list to the caller
-        transfer::transfer(block_list, sender);
+        // Transfer block list to owner
+        transfer::transfer(block_list, owner);
     }
     
     /// Bootstrap initialization function - creates the block list registry
@@ -178,34 +182,21 @@ module social_contracts::block_list {
                 blocked: blocked_wallet_address,
             });
         } else {
-            // Create a new block list for first-time blockers
-            let block_list = create_block_list(blocker_address, ctx);
-            let block_list_id = object::uid_to_address(&block_list.id);
+            // Create a new block list for first-time blockers (lazy initialization)
+            create_block_list_for_address(registry, blocker_address, ctx);
             
-            // Register the block list
-            table::add(&mut registry.wallet_block_lists, blocker_address, block_list_id);
+            // Now get the blocked wallets set and add the blocked address
+            let key = get_blocked_wallets_key(blocker_address);
+            let blocked_wallets = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut registry.id, key);
             
-            // Create a new blocked wallets set with the blocked address
-            let mut blocked_wallets = vec_set::empty<address>();
-            vec_set::insert(&mut blocked_wallets, blocked_wallet_address);
-            
-            // Add the blocked wallets set to the registry
-            dynamic_field::add(&mut registry.id, get_blocked_wallets_key(blocker_address), blocked_wallets);
-            
-            // Emit block list created event
-            event::emit(BlockListCreatedEvent {
-                owner: blocker_address,
-                block_list_id,
-            });
+            // Add the blocked address to the set
+            vec_set::insert(blocked_wallets, blocked_wallet_address);
             
             // Emit block event
             event::emit(UserBlockEvent {
                 blocker: blocker_address,
                 blocked: blocked_wallet_address,
             });
-            
-            // Return the block list to the caller
-            transfer::transfer(block_list, blocker_address);
         };
         
         // Perform bidirectional unfollow after blocking succeeds

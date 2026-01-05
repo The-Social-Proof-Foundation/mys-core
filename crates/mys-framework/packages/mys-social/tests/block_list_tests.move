@@ -32,7 +32,7 @@ module social_contracts::block_list_tests {
         init_test_environment(scenario);
     }
     
-    /// Test creating a block list
+    /// Test lazy initialization - block list is created automatically on first block
     #[test]
     fun test_create_block_list() {
         let mut scenario = test_scenario::begin(ADMIN);
@@ -40,20 +40,32 @@ module social_contracts::block_list_tests {
         // Initialize block list registry
         init_block_list_registry(&mut scenario);
         
-        // Create a block list
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-            let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            block_list::create_block_list_for_sender(&mut registry, test_scenario::ctx(&mut scenario));
-            test_scenario::return_shared(registry);
-        };
-        
-        // Verify block list was created
+        // Verify block list doesn't exist yet
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            assert!(block_list::has_block_list(&registry, USER1), 0);
-            assert!(block_list::blocked_count(&registry, USER1) == 0, 1);
+            assert!(!block_list::has_block_list(&registry, USER1), 0);
+            test_scenario::return_shared(registry);
+        };
+        
+        // Block USER2 - this should automatically create the block list (lazy initialization)
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
+            let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
+            let username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&mut scenario);
+            block_list::block_wallet(&mut registry, &mut social_graph, &username_registry, USER2, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(social_graph);
+            test_scenario::return_shared(username_registry);
+        };
+        
+        // Verify block list was created automatically
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
+            assert!(block_list::has_block_list(&registry, USER1), 1);
+            assert!(block_list::blocked_count(&registry, USER1) == 1, 2);
             test_scenario::return_shared(registry);
         };
         
@@ -68,15 +80,7 @@ module social_contracts::block_list_tests {
         // Initialize block list registry
         init_block_list_registry(&mut scenario);
         
-        // Create block list for USER1
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-            let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            block_list::create_block_list_for_sender(&mut registry, test_scenario::ctx(&mut scenario));
-            test_scenario::return_shared(registry);
-        };
-        
-        // Block USER2
+        // Block USER2 (block list will be created automatically via lazy initialization)
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
@@ -113,15 +117,7 @@ module social_contracts::block_list_tests {
         // Initialize block list registry
         init_block_list_registry(&mut scenario);
         
-        // Create block list for USER1
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-            let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            block_list::create_block_list_for_sender(&mut registry, test_scenario::ctx(&mut scenario));
-            test_scenario::return_shared(registry);
-        };
-        
-        // Block USER2
+        // Block USER2 (block list will be created automatically via lazy initialization)
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
@@ -165,15 +161,7 @@ module social_contracts::block_list_tests {
         // Initialize block list registry
         init_block_list_registry(&mut scenario);
         
-        // Create block list for USER1
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-            let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            block_list::create_block_list_for_sender(&mut registry, test_scenario::ctx(&mut scenario));
-            test_scenario::return_shared(registry);
-        };
-        
-        // Block USER2
+        // Block USER2 (block list will be created automatically via lazy initialization)
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
@@ -223,15 +211,7 @@ module social_contracts::block_list_tests {
         // Initialize block list registry
         init_block_list_registry(&mut scenario);
         
-        // Create block list for USER1
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-            let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            block_list::create_block_list_for_sender(&mut registry, test_scenario::ctx(&mut scenario));
-            test_scenario::return_shared(registry);
-        };
-        
-        // Try to block self (should fail)
+        // Try to block self (should fail - lazy initialization won't happen because validation fails first)
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
@@ -255,15 +235,7 @@ module social_contracts::block_list_tests {
         // Initialize block list registry
         init_block_list_registry(&mut scenario);
         
-        // Create block list for USER1
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-            let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            block_list::create_block_list_for_sender(&mut registry, test_scenario::ctx(&mut scenario));
-            test_scenario::return_shared(registry);
-        };
-        
-        // Block USER2
+        // Block USER2 (block list will be created automatically via lazy initialization)
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
@@ -299,15 +271,7 @@ module social_contracts::block_list_tests {
         // Initialize block list registry
         init_block_list_registry(&mut scenario);
         
-        // Create block list for USER1
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-            let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            block_list::create_block_list_for_sender(&mut registry, test_scenario::ctx(&mut scenario));
-            test_scenario::return_shared(registry);
-        };
-        
-        // Try to unblock USER2 who isn't blocked (should fail)
+        // Try to unblock USER2 who isn't blocked (should fail - no block list exists)
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
@@ -326,12 +290,16 @@ module social_contracts::block_list_tests {
         // Initialize block list registry
         init_block_list_registry(&mut scenario);
         
-        // Create block list for USER1
+        // Block USER2 to create block list via lazy initialization
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<block_list::BlockListRegistry>(&mut scenario);
-            block_list::create_block_list_for_sender(&mut registry, test_scenario::ctx(&mut scenario));
+            let mut social_graph = test_scenario::take_shared<social_graph::SocialGraph>(&mut scenario);
+            let username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&mut scenario);
+            block_list::block_wallet(&mut registry, &mut social_graph, &username_registry, USER2, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
+            test_scenario::return_shared(social_graph);
+            test_scenario::return_shared(username_registry);
         };
         
         // Test find_block_list_id

@@ -185,20 +185,18 @@ platform_menu() {
 # Block List Management Menu
 block_list_menu() {
     print_header "Block List Management Menu"
-    echo "1. Create Block List"
-    echo "2. Block Wallet"
-    echo "3. Unblock Wallet"
-    echo "4. View Blocked Wallets"
-    echo "5. Back to Main Menu"
+    echo "1. Block Wallet (creates block list automatically if needed)"
+    echo "2. Unblock Wallet"
+    echo "3. View Blocked Wallets"
+    echo "4. Back to Main Menu"
     echo ""
-    read -p "Select an option [1-5]: " choice
+    read -p "Select an option [1-4]: " choice
     
     case $choice in
-        1) create_block_list ;;
-        2) block_wallet ;;
-        3) unblock_wallet ;;
-        4) view_blocked_wallets ;;
-        5) show_menu ;;
+        1) block_wallet ;;
+        2) unblock_wallet ;;
+        3) view_blocked_wallets ;;
+        4) show_menu ;;
         *) echo "Invalid option" && block_list_menu ;;
     esac
 }
@@ -882,21 +880,6 @@ revoke_badge() {
     
     read -p "Press Enter to continue..."
     platform_menu
-}
-
-# Create Block List
-create_block_list() {
-    print_header "Creating Block List"
-    
-    read -p "Enter registry ID: " registry_id
-    
-    print_info "Creating block list..."
-    myso client call --package $PACKAGE_ID --module block_list --function create_block_list_for_sender --args "$registry_id" --gas-budget $GAS_BUDGET
-    
-    print_success "Block list created!"
-    
-    read -p "Press Enter to continue..."
-    block_list_menu
 }
 
 # Block Wallet
