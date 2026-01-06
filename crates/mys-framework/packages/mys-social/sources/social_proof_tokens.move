@@ -92,11 +92,15 @@ module social_contracts::social_proof_tokens {
     const TOKEN_TYPE_PROFILE: u8 = 1;
     const TOKEN_TYPE_POST: u8 = 2;
 
-    // Default fee percentages (in basis points, 10000 = 100%)
-    const DEFAULT_TOTAL_FEE_BPS: u64 = 150; // 1.5% total fee
-    const DEFAULT_CREATOR_FEE_BPS: u64 = 100; // 1.0% to creator (profile/post owner)
-    const DEFAULT_PLATFORM_FEE_BPS: u64 = 25; // 0.25% to platform
-    const DEFAULT_TREASURY_FEE_BPS: u64 = 25; // 0.25% to ecosystem treasury
+    // Default trading fee percentages (in basis points, 10000 = 100%)
+    const DEFAULT_TRADING_CREATOR_FEE_BPS: u64 = 100; // 1.0% to creator (profile/post owner)
+    const DEFAULT_TRADING_PLATFORM_FEE_BPS: u64 = 25; // 0.25% to platform
+    const DEFAULT_TRADING_TREASURY_FEE_BPS: u64 = 25; // 0.25% to ecosystem treasury
+
+    // Default reservation fee percentages (in basis points, 10000 = 100%)
+    const DEFAULT_RESERVATION_CREATOR_FEE_BPS: u64 = 100; // 1.0% to creator (profile/post owner)
+    const DEFAULT_RESERVATION_PLATFORM_FEE_BPS: u64 = 25; // 0.25% to platform
+    const DEFAULT_RESERVATION_TREASURY_FEE_BPS: u64 = 25; // 0.25% to ecosystem treasury
 
     // Maximum hold percentage per wallet (5% of supply)
     const MAX_HOLD_PERCENT_BPS: u64 = 500;
@@ -123,14 +127,18 @@ module social_contracts::social_proof_tokens {
     /// Global social proof tokens configuration
     public struct SocialProofTokensConfig has key {
         id: UID,
-        /// Total fee percentage in basis points
-        total_fee_bps: u64,
-        /// Creator fee percentage in basis points
-        creator_fee_bps: u64,
-        /// Platform fee percentage in basis points
-        platform_fee_bps: u64,
-        /// Treasury fee percentage in basis points
-        treasury_fee_bps: u64,
+        /// Creator fee percentage in basis points (for trading)
+        trading_creator_fee_bps: u64,
+        /// Platform fee percentage in basis points (for trading)
+        trading_platform_fee_bps: u64,
+        /// Treasury fee percentage in basis points (for trading)
+        trading_treasury_fee_bps: u64,
+        /// Creator reservation fee percentage in basis points
+        reservation_creator_fee_bps: u64,
+        /// Platform reservation fee percentage in basis points
+        reservation_platform_fee_bps: u64,
+        /// Treasury reservation fee percentage in basis points
+        reservation_treasury_fee_bps: u64,
         /// Base price for new tokens
         base_price: u64,
         /// Quadratic coefficient for pricing curve
@@ -315,6 +323,10 @@ module social_contracts::social_proof_tokens {
         total_reserved: u64,
         threshold_met: bool,
         reserved_at: u64,
+        fee_amount: u64,
+        creator_fee: u64,
+        platform_fee: u64,
+        treasury_fee: u64,
     }
 
     /// Event emitted when MYS reservation is withdrawn
@@ -325,6 +337,10 @@ module social_contracts::social_proof_tokens {
         amount: u64,
         total_reserved: u64,
         withdrawn_at: u64,
+        fee_amount: u64,
+        creator_fee: u64,
+        platform_fee: u64,
+        treasury_fee: u64,
     }
 
     /// Event emitted when reservation threshold is met for the first time
@@ -353,11 +369,16 @@ module social_contracts::social_proof_tokens {
         updated_by: address,
         /// When the update occurred
         timestamp: u64,
-        /// Fee percentages
+        /// Trading fee percentages
         total_fee_bps: u64,
-        creator_fee_bps: u64,
-        platform_fee_bps: u64,
-        treasury_fee_bps: u64,
+        trading_creator_fee_bps: u64,
+        trading_platform_fee_bps: u64,
+        trading_treasury_fee_bps: u64,
+        /// Reservation fee percentages
+        reservation_total_fee_bps: u64,
+        reservation_creator_fee_bps: u64,
+        reservation_platform_fee_bps: u64,
+        reservation_treasury_fee_bps: u64,
         /// Curve parameters
         base_price: u64,
         quadratic_coefficient: u64,
@@ -410,10 +431,12 @@ module social_contracts::social_proof_tokens {
         transfer::share_object(
             SocialProofTokensConfig {
                 id: object::new(ctx),
-                total_fee_bps: DEFAULT_TOTAL_FEE_BPS,
-                creator_fee_bps: DEFAULT_CREATOR_FEE_BPS,
-                platform_fee_bps: DEFAULT_PLATFORM_FEE_BPS,
-                treasury_fee_bps: DEFAULT_TREASURY_FEE_BPS,
+                trading_creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
+                trading_platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
+                trading_treasury_fee_bps: DEFAULT_TRADING_TREASURY_FEE_BPS,
+                reservation_creator_fee_bps: DEFAULT_RESERVATION_CREATOR_FEE_BPS,
+                reservation_platform_fee_bps: DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
+                reservation_treasury_fee_bps: DEFAULT_RESERVATION_TREASURY_FEE_BPS,
                 base_price: DEFAULT_BASE_PRICE,
                 quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
                 max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
@@ -445,10 +468,12 @@ module social_contracts::social_proof_tokens {
     public entry fun update_social_proof_tokens_config(
         _admin_cap: &SocialProofTokensAdminCap,
         config: &mut SocialProofTokensConfig,
-        total_fee_bps: u64, 
-        creator_fee_bps: u64,
-        platform_fee_bps: u64,
-        treasury_fee_bps: u64,
+        trading_creator_fee_bps: u64,
+        trading_platform_fee_bps: u64,
+        trading_treasury_fee_bps: u64,
+        reservation_creator_fee_bps: u64,
+        reservation_platform_fee_bps: u64,
+        reservation_treasury_fee_bps: u64,
         base_price: u64,
         quadratic_coefficient: u64,
         max_hold_percent_bps: u64,
@@ -457,17 +482,18 @@ module social_contracts::social_proof_tokens {
         max_individual_reservation_bps: u64,
         ctx: &mut TxContext
     ) {
-        // Verify sum of fee percentages equals total
-        assert!(creator_fee_bps + platform_fee_bps + treasury_fee_bps == total_fee_bps, EInvalidFeeConfig);
-        
         // Verify curve parameters are valid
         assert!(base_price > 0 && quadratic_coefficient > 0, EInvalidCurveParams);
         
-        // Update fee config
-        config.total_fee_bps = total_fee_bps;
-        config.creator_fee_bps = creator_fee_bps;
-        config.platform_fee_bps = platform_fee_bps;
-        config.treasury_fee_bps = treasury_fee_bps;
+        // Update trading fee config
+        config.trading_creator_fee_bps = trading_creator_fee_bps;
+        config.trading_platform_fee_bps = trading_platform_fee_bps;
+        config.trading_treasury_fee_bps = trading_treasury_fee_bps;
+        
+        // Update reservation fee config
+        config.reservation_creator_fee_bps = reservation_creator_fee_bps;
+        config.reservation_platform_fee_bps = reservation_platform_fee_bps;
+        config.reservation_treasury_fee_bps = reservation_treasury_fee_bps;
         
         // Update curve parameters
         config.base_price = base_price;
@@ -481,14 +507,22 @@ module social_contracts::social_proof_tokens {
         config.profile_threshold = profile_threshold;
         config.max_individual_reservation_bps = max_individual_reservation_bps;
         
+        // Calculate totals for event emission (backwards compatibility with indexers)
+        let total_fee_bps = calculate_total_fee_bps(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        
         // Emit config updated event
         event::emit(ConfigUpdatedEvent {
             updated_by: tx_context::sender(ctx),
             timestamp: tx_context::epoch(ctx),
             total_fee_bps,
-            creator_fee_bps,
-            platform_fee_bps,
-            treasury_fee_bps,
+            trading_creator_fee_bps,
+            trading_platform_fee_bps,
+            trading_treasury_fee_bps,
+            reservation_total_fee_bps,
+            reservation_creator_fee_bps,
+            reservation_platform_fee_bps,
+            reservation_treasury_fee_bps,
             base_price,
             quadratic_coefficient,
             max_hold_percent_bps,
@@ -524,6 +558,16 @@ module social_contracts::social_proof_tokens {
         config.trading_halted
     }
 
+    /// Calculate total trading fee from component fees
+    public(package) fun calculate_total_fee_bps(config: &SocialProofTokensConfig): u64 {
+        config.trading_creator_fee_bps + config.trading_platform_fee_bps + config.trading_treasury_fee_bps
+    }
+
+    /// Calculate total reservation fee from component fees
+    public(package) fun calculate_reservation_total_fee_bps(config: &SocialProofTokensConfig): u64 {
+        config.reservation_creator_fee_bps + config.reservation_platform_fee_bps + config.reservation_treasury_fee_bps
+    }
+
     // === Reservation Functions ===
 
     /// Reserve MYS tokens towards a post to support social proof token creation
@@ -532,7 +576,10 @@ module social_contracts::social_proof_tokens {
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
         reservation_pool_object: &mut ReservationPoolObject,
-        mut payment: Coin<MYS>,
+        treasury: &EcosystemTreasury,
+        platform: &mut social_contracts::platform::Platform,
+        post: &Post,
+        payment: Coin<MYS>,
         amount: u64,
         ctx: &mut TxContext
     ) {
@@ -548,37 +595,55 @@ module social_contracts::social_proof_tokens {
         // Verify reservation pool is for a post
         assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
         
+        // Verify post matches reservation pool
+        assert!(post::get_id_address(post) == post_id, EInvalidID);
+        
         // Ensure reserver has enough funds
         assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
         
-        // Check individual reservation limit
+        // Calculate and distribute fees
+        let (mut remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = distribute_reservation_fees_with_post(
+            config,
+            reservation_pool_object,
+            post,
+            amount,
+            payment,
+            treasury,
+            platform,
+            ctx
+        );
+        
+        // Net amount after fees
+        let net_amount = amount - fee_amount;
+        
+        // Check individual reservation limit (based on net amount)
         let max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / 10000;
         let current_reservation = if (table::contains(&reservation_pool_object.reservations, reserver)) {
             *table::borrow(&reservation_pool_object.reservations, reserver)
         } else {
             0
         };
-        assert!(current_reservation + amount <= max_individual_reservation, EExceededMaxHold);
+        assert!(current_reservation + net_amount <= max_individual_reservation, EExceededMaxHold);
         
-        // Extract reservation payment
-        let reservation_payment = coin::split(&mut payment, amount, ctx);
+        // Extract net reservation payment
+        let reservation_payment = coin::split(&mut remaining_payment, net_amount, ctx);
         balance::join(&mut reservation_pool_object.mys_balance, coin::into_balance(reservation_payment));
         
-        // Update reserver's balance in the pool
+        // Update reserver's balance in the pool (store net amount)
         if (table::contains(&reservation_pool_object.reservations, reserver)) {
             let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
-            assert!(*reservation_balance <= MAX_U64 - amount, EOverflow);
-            *reservation_balance = *reservation_balance + amount;
+            assert!(*reservation_balance <= MAX_U64 - net_amount, EOverflow);
+            *reservation_balance = *reservation_balance + net_amount;
         } else {
-            table::add(&mut reservation_pool_object.reservations, reserver, amount);
+            table::add(&mut reservation_pool_object.reservations, reserver, net_amount);
             // Add to reservers list for tracking
             vector::push_back(&mut reservation_pool_object.info.reservers, reserver);
         };
 
-        // Update total reserved
+        // Update total reserved (with net amount)
 
-        assert!(reservation_pool_object.info.total_reserved <= MAX_U64 - amount, EOverflow);
-        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + amount;
+        assert!(reservation_pool_object.info.total_reserved <= MAX_U64 - net_amount, EOverflow);
+        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + net_amount;
 
         // Update registry
         if (table::contains(&registry.reservation_pools, post_id)) {
@@ -600,7 +665,7 @@ module social_contracts::social_proof_tokens {
         
         // Check if threshold was just met
         let threshold_met = reservation_pool_object.info.total_reserved >= config.post_threshold;
-        let was_threshold_met = (reservation_pool_object.info.total_reserved - amount) >= config.post_threshold;
+        let was_threshold_met = (reservation_pool_object.info.total_reserved - net_amount) >= config.post_threshold;
         
         // Emit threshold met event if this reservation pushed us over the threshold
         if (threshold_met && !was_threshold_met) {
@@ -615,10 +680,10 @@ module social_contracts::social_proof_tokens {
         };
         
         // Return excess payment
-        if (coin::value(&payment) > 0) {
-            transfer::public_transfer(payment, reserver);
+        if (coin::value(&remaining_payment) > 0) {
+            transfer::public_transfer(remaining_payment, reserver);
         } else {
-            coin::destroy_zero(payment);
+            coin::destroy_zero(remaining_payment);
         };
         
         // Emit reservation created event
@@ -630,6 +695,10 @@ module social_contracts::social_proof_tokens {
             total_reserved: reservation_pool_object.info.total_reserved,
             threshold_met,
             reserved_at: now,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
         });
     }
 
@@ -639,7 +708,9 @@ module social_contracts::social_proof_tokens {
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
         reservation_pool_object: &mut ReservationPoolObject,
-        mut payment: Coin<MYS>,
+        treasury: &EcosystemTreasury,
+        platform: &mut social_contracts::platform::Platform,
+        payment: Coin<MYS>,
         amount: u64,
         ctx: &mut TxContext
     ) {
@@ -658,34 +729,48 @@ module social_contracts::social_proof_tokens {
         // Ensure reserver has enough funds
         assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
         
-        // Check individual reservation limit
+        // Calculate and distribute fees (no PoC for profiles)
+        let (mut remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = distribute_reservation_fees_no_poc(
+            config,
+            reservation_pool_object,
+            amount,
+            payment,
+            treasury,
+            platform,
+            ctx
+        );
+        
+        // Net amount after fees
+        let net_amount = amount - fee_amount;
+        
+        // Check individual reservation limit (based on net amount)
         let max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / 10000;
         let current_reservation = if (table::contains(&reservation_pool_object.reservations, reserver)) {
             *table::borrow(&reservation_pool_object.reservations, reserver)
         } else {
             0
         };
-        assert!(current_reservation + amount <= max_individual_reservation, EExceededMaxHold);
+        assert!(current_reservation + net_amount <= max_individual_reservation, EExceededMaxHold);
         
-        // Extract reservation payment
-        let reservation_payment = coin::split(&mut payment, amount, ctx);
+        // Extract net reservation payment
+        let reservation_payment = coin::split(&mut remaining_payment, net_amount, ctx);
         balance::join(&mut reservation_pool_object.mys_balance, coin::into_balance(reservation_payment));
 
-        // Update reserver's balance in the pool
+        // Update reserver's balance in the pool (store net amount)
         if (table::contains(&reservation_pool_object.reservations, reserver)) {
             let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
-            assert!(*reservation_balance <= MAX_U64 - amount, EOverflow);
-            *reservation_balance = *reservation_balance + amount;
+            assert!(*reservation_balance <= MAX_U64 - net_amount, EOverflow);
+            *reservation_balance = *reservation_balance + net_amount;
         } else {
-            table::add(&mut reservation_pool_object.reservations, reserver, amount);
+            table::add(&mut reservation_pool_object.reservations, reserver, net_amount);
             // Add to reservers list for tracking
             vector::push_back(&mut reservation_pool_object.info.reservers, reserver);
         };
 
-        // Update total reserved
+        // Update total reserved (with net amount)
 
-        assert!(reservation_pool_object.info.total_reserved <= MAX_U64 - amount, EOverflow);
-        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + amount;
+        assert!(reservation_pool_object.info.total_reserved <= MAX_U64 - net_amount, EOverflow);
+        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + net_amount;
 
         // Update registry
         if (table::contains(&registry.reservation_pools, profile_id)) {
@@ -707,7 +792,7 @@ module social_contracts::social_proof_tokens {
         
         // Check if threshold was just met
         let threshold_met = reservation_pool_object.info.total_reserved >= config.profile_threshold;
-        let was_threshold_met = (reservation_pool_object.info.total_reserved - amount) >= config.profile_threshold;
+        let was_threshold_met = (reservation_pool_object.info.total_reserved - net_amount) >= config.profile_threshold;
         
         // Emit threshold met event if this reservation pushed us over the threshold
         if (threshold_met && !was_threshold_met) {
@@ -722,10 +807,10 @@ module social_contracts::social_proof_tokens {
         };
         
         // Return excess payment
-        if (coin::value(&payment) > 0) {
-            transfer::public_transfer(payment, reserver);
+        if (coin::value(&remaining_payment) > 0) {
+            transfer::public_transfer(remaining_payment, reserver);
         } else {
-            coin::destroy_zero(payment);
+            coin::destroy_zero(remaining_payment);
         };
         
         // Emit reservation created event
@@ -737,13 +822,20 @@ module social_contracts::social_proof_tokens {
             total_reserved: reservation_pool_object.info.total_reserved,
             threshold_met,
             reserved_at: now,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
         });
     }
 
     /// Withdraw MYS reservation from a post or profile
     public entry fun withdraw_reservation(
         registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
         reservation_pool_object: &mut ReservationPoolObject,
+        treasury: &EcosystemTreasury,
+        platform: &mut social_contracts::platform::Platform,
         amount: u64,
         ctx: &mut TxContext
     ) {
@@ -756,6 +848,19 @@ module social_contracts::social_proof_tokens {
         
         let current_reservation = *table::borrow(&reservation_pool_object.reservations, reserver);
         assert!(current_reservation >= amount, EInsufficientLiquidity);
+        
+        // Calculate fees on withdrawal amount
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = (amount * reservation_total_fee_bps) / 10000;
+        let creator_fee = (fee_amount * config.reservation_creator_fee_bps) / reservation_total_fee_bps;
+        let platform_fee = (fee_amount * config.reservation_platform_fee_bps) / reservation_total_fee_bps;
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+        
+        // Net amount after fees
+        let net_amount = amount - fee_amount;
+        
+        // Ensure pool has enough liquidity for refund + all fees
+        assert!(balance::value(&reservation_pool_object.mys_balance) >= amount, EInsufficientLiquidity);
         
         // Update reserver's balance
         if (current_reservation == amount) {
@@ -787,8 +892,30 @@ module social_contracts::social_proof_tokens {
             registry_pool.total_reserved = reservation_pool_object.info.total_reserved;
         };
         
-        // Transfer reserved MYS back to reserver
-        let refund_balance = balance::split(&mut reservation_pool_object.mys_balance, amount);
+        // Distribute fees from pool balance (no PoC redirection on withdrawals)
+        if (fee_amount > 0) {
+            // Send creator fee directly to owner (no PoC redirection on withdrawals)
+            if (creator_fee > 0) {
+                let creator_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.mys_balance, creator_fee), ctx);
+                transfer::public_transfer(creator_fee_coin, reservation_pool_object.info.owner);
+            };
+            
+            // Send platform fee - add to platform treasury
+            if (platform_fee > 0) {
+                let mut platform_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.mys_balance, platform_fee), ctx);
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+                coin::destroy_zero(platform_fee_coin);
+            };
+            
+            // Send treasury fee
+            if (treasury_fee > 0) {
+                let treasury_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.mys_balance, treasury_fee), ctx);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
+            };
+        };
+        
+        // Transfer net refund to reserver
+        let refund_balance = balance::split(&mut reservation_pool_object.mys_balance, net_amount);
         let refund_coin = coin::from_balance(refund_balance, ctx);
         transfer::public_transfer(refund_coin, reserver);
         
@@ -800,6 +927,10 @@ module social_contracts::social_proof_tokens {
             amount,
             total_reserved: reservation_pool_object.info.total_reserved,
             withdrawn_at: now,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
         });
     }
 
@@ -1160,6 +1291,157 @@ module social_contracts::social_proof_tokens {
         };
     }
 
+    // === Reservation Fee Distribution Functions ===
+
+    /// Apply PoC redirection from post (reuses calculate_poc_split utility)
+    public(package) fun apply_post_poc_redirection(
+        post: &Post,
+        amount: u64
+    ): (u64, u64) {
+        if (option::is_some(post::get_revenue_redirect_to(post)) && option::is_some(post::get_revenue_redirect_percentage(post))) {
+            let redirect_percentage = *option::borrow(post::get_revenue_redirect_percentage(post));
+            calculate_poc_split(amount, redirect_percentage)
+        } else {
+            (0, amount)
+        }
+    }
+
+    /// Distribute creator fees with PoC redirection from post (reuses existing pattern)
+    /// This follows the same logic as distribute_creator_fee but works with Post instead of TokenPool
+    public(package) fun distribute_reservation_creator_fee(
+        reservation_pool: &ReservationPoolObject,
+        post: &Post,
+        creator_fee_amount: u64,
+        creator_fee_coin: &mut Coin<MYS>,
+        ctx: &mut TxContext
+    ) {
+        if (creator_fee_amount == 0) {
+            return
+        };
+
+        let (redirected_amount, _remaining_amount) = apply_post_poc_redirection(post, creator_fee_amount);
+        let mut fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
+        
+        if (redirected_amount > 0) {
+            // Split the fee: redirected portion goes to original creator, remainder to post owner
+            let redirected_fee = coin::split(&mut fee_coin, redirected_amount, ctx);
+            let redirect_to = *option::borrow(post::get_revenue_redirect_to(post));
+            transfer::public_transfer(redirected_fee, redirect_to);
+            
+            // Send remainder to current post owner
+            if (coin::value(&fee_coin) > 0) {
+                transfer::public_transfer(fee_coin, reservation_pool.info.owner);
+            } else {
+                coin::destroy_zero(fee_coin);
+            };
+        } else {
+            // No redirection - send full amount to current post owner
+            transfer::public_transfer(fee_coin, reservation_pool.info.owner);
+        };
+    }
+
+    /// Distribute creator fees without PoC (for profile reservations)
+    public(package) fun distribute_reservation_creator_fee_no_poc(
+        reservation_pool: &ReservationPoolObject,
+        creator_fee_amount: u64,
+        creator_fee_coin: &mut Coin<MYS>,
+        ctx: &mut TxContext
+    ) {
+        if (creator_fee_amount == 0) {
+            return
+        };
+
+        let fee_coin = coin::split(creator_fee_coin, creator_fee_amount, ctx);
+        transfer::public_transfer(fee_coin, reservation_pool.info.owner);
+    }
+
+    /// Calculate and distribute all reservation fees (for post reservations with PoC)
+    /// Reuses the same fee calculation and distribution pattern as trading fees
+    public(package) fun distribute_reservation_fees_with_post(
+        config: &SocialProofTokensConfig,
+        reservation_pool: &ReservationPoolObject,
+        post: &Post,
+        amount: u64,
+        mut payment: Coin<MYS>,
+        treasury: &EcosystemTreasury,
+        platform: &mut social_contracts::platform::Platform,
+        ctx: &mut TxContext
+    ): (Coin<MYS>, u64, u64, u64, u64) {
+        // Calculate fees (same pattern as trading fees)
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = (amount * reservation_total_fee_bps) / 10000;
+        let creator_fee = (fee_amount * config.reservation_creator_fee_bps) / reservation_total_fee_bps;
+        let platform_fee = (fee_amount * config.reservation_platform_fee_bps) / reservation_total_fee_bps;
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+        
+        // Distribute fees (same pattern as trading fees)
+        if (fee_amount > 0) {
+            // Send creator fee with PoC redirection support
+            if (creator_fee > 0) {
+                distribute_reservation_creator_fee(reservation_pool, post, creator_fee, &mut payment, ctx);
+            };
+            
+            // Send platform fee - add to platform treasury
+            if (platform_fee > 0) {
+                let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+                coin::destroy_zero(platform_fee_coin);
+            };
+            
+            // Send treasury fee
+            if (treasury_fee > 0) {
+                let treasury_fee_coin = coin::split(&mut payment, treasury_fee, ctx);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
+            };
+        };
+        
+        // Return remaining payment and fee amounts
+        (payment, fee_amount, creator_fee, platform_fee, treasury_fee)
+    }
+
+    /// Calculate and distribute all reservation fees (for profile reservations without PoC)
+    /// Reuses the same fee calculation and distribution pattern as trading fees
+    public(package) fun distribute_reservation_fees_no_poc(
+        config: &SocialProofTokensConfig,
+        reservation_pool: &ReservationPoolObject,
+        amount: u64,
+        mut payment: Coin<MYS>,
+        treasury: &EcosystemTreasury,
+        platform: &mut social_contracts::platform::Platform,
+        ctx: &mut TxContext
+    ): (Coin<MYS>, u64, u64, u64, u64) {
+        // Calculate fees (same pattern as trading fees)
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = (amount * reservation_total_fee_bps) / 10000;
+        let creator_fee = (fee_amount * config.reservation_creator_fee_bps) / reservation_total_fee_bps;
+        let platform_fee = (fee_amount * config.reservation_platform_fee_bps) / reservation_total_fee_bps;
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+        
+        // Distribute fees (same pattern as trading fees)
+        if (fee_amount > 0) {
+            // Send creator fee without PoC redirection
+            if (creator_fee > 0) {
+                distribute_reservation_creator_fee_no_poc(reservation_pool, creator_fee, &mut payment, ctx);
+            };
+            
+            // Send platform fee - add to platform treasury
+            if (platform_fee > 0) {
+                let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+                coin::destroy_zero(platform_fee_coin);
+            };
+            
+            // Send treasury fee
+            if (treasury_fee > 0) {
+                let treasury_fee_coin = coin::split(&mut payment, treasury_fee, ctx);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
+            };
+        };
+        
+        // Return remaining payment and fee amounts
+        (payment, fee_amount, creator_fee, platform_fee, treasury_fee)
+    }
+
     // === Trading Functions ===
 
     /// Buy tokens from the pool - first purchase
@@ -1218,9 +1500,10 @@ module social_contracts::social_proof_tokens {
         assert!(coin::value(&payment) >= price, EInsufficientFunds);
         
         // Calculate fees
-        let fee_amount = (price * config.total_fee_bps) / 10000;
-        let creator_fee = (fee_amount * config.creator_fee_bps) / config.total_fee_bps;
-        let platform_fee = (fee_amount * config.platform_fee_bps) / config.total_fee_bps;
+        let total_fee_bps = calculate_total_fee_bps(config);
+        let fee_amount = (price * total_fee_bps) / 10000;
+        let creator_fee = (fee_amount * config.trading_creator_fee_bps) / total_fee_bps;
+        let platform_fee = (fee_amount * config.trading_platform_fee_bps) / total_fee_bps;
         let treasury_fee = fee_amount - creator_fee - platform_fee;
         
         // Calculate the net amount to the liquidity pool
@@ -1372,9 +1655,10 @@ module social_contracts::social_proof_tokens {
         assert!(coin::value(&payment) >= price, EInsufficientFunds);
         
         // Calculate fees
-        let fee_amount = (price * config.total_fee_bps) / 10000;
-        let creator_fee = (fee_amount * config.creator_fee_bps) / config.total_fee_bps;
-        let platform_fee = (fee_amount * config.platform_fee_bps) / config.total_fee_bps;
+        let total_fee_bps = calculate_total_fee_bps(config);
+        let fee_amount = (price * total_fee_bps) / 10000;
+        let creator_fee = (fee_amount * config.trading_creator_fee_bps) / total_fee_bps;
+        let platform_fee = (fee_amount * config.trading_platform_fee_bps) / total_fee_bps;
         let treasury_fee = fee_amount - creator_fee - platform_fee;
         
         // Calculate the net amount to the liquidity pool
@@ -1516,9 +1800,10 @@ module social_contracts::social_proof_tokens {
         );
         
         // Calculate fees
-        let fee_amount = (refund_amount * config.total_fee_bps) / 10000;
-        let creator_fee = (fee_amount * config.creator_fee_bps) / config.total_fee_bps;
-        let platform_fee = (fee_amount * config.platform_fee_bps) / config.total_fee_bps;
+        let total_fee_bps = calculate_total_fee_bps(config);
+        let fee_amount = (refund_amount * total_fee_bps) / 10000;
+        let creator_fee = (fee_amount * config.trading_creator_fee_bps) / total_fee_bps;
+        let platform_fee = (fee_amount * config.trading_platform_fee_bps) / total_fee_bps;
         let treasury_fee = fee_amount - creator_fee - platform_fee;
         
         // Calculate net refund
@@ -1759,10 +2044,12 @@ module social_contracts::social_proof_tokens {
         transfer::share_object(
             SocialProofTokensConfig {
                 id: object::new(ctx),
-                total_fee_bps: DEFAULT_TOTAL_FEE_BPS,
-                creator_fee_bps: DEFAULT_CREATOR_FEE_BPS,
-                platform_fee_bps: DEFAULT_PLATFORM_FEE_BPS,
-                treasury_fee_bps: DEFAULT_TREASURY_FEE_BPS,
+                trading_creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
+                trading_platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
+                trading_treasury_fee_bps: DEFAULT_TRADING_TREASURY_FEE_BPS,
+                reservation_creator_fee_bps: DEFAULT_RESERVATION_CREATOR_FEE_BPS,
+                reservation_platform_fee_bps: DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
+                reservation_treasury_fee_bps: DEFAULT_RESERVATION_TREASURY_FEE_BPS,
                 base_price: DEFAULT_BASE_PRICE,
                 quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
                 max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,

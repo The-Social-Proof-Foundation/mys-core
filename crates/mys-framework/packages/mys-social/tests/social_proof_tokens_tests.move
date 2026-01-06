@@ -88,10 +88,12 @@ module social_contracts::token_exchange_tests {
             social_proof_tokens::update_social_proof_tokens_config(
                 &admin_cap,
                 &mut config,
-                200, // total_fee_bps (2%)
-                150, // creator_fee_bps (1.5%)
-                25,  // platform_fee_bps (0.25%)
-                25,  // treasury_fee_bps (0.25%)
+                150, // trading_creator_fee_bps (1.5%)
+                25,  // trading_platform_fee_bps (0.25%)
+                25,  // trading_treasury_fee_bps (0.25%)
+                100, // reservation_creator_fee_bps (1.0%)
+                25,  // reservation_platform_fee_bps (0.25%)
+                25,  // reservation_treasury_fee_bps (0.25%)
                 200_000_000, // base_price (0.2 MYS)
                 200_000,     // quadratic_coefficient (doubled)
                 1000, // max_hold_percent_bps (10%)
@@ -200,10 +202,12 @@ module social_contracts::token_exchange_tests {
             social_proof_tokens::update_social_proof_tokens_config(
                 &admin_cap,
                 &mut config,
-                150, // total_fee_bps 
-                100, // creator_fee_bps
-                25,  // platform_fee_bps
-                25,  // treasury_fee_bps
+                100, // trading_creator_fee_bps (1.0%)
+                25,  // trading_platform_fee_bps (0.25%)
+                25,  // trading_treasury_fee_bps (0.25%)
+                100, // reservation_creator_fee_bps (1.0%)
+                25,  // reservation_platform_fee_bps (0.25%)
+                25,  // reservation_treasury_fee_bps (0.25%)
                 100_000_000, // base_price (0.1 MYS)
                 100_000,     // quadratic_coefficient
                 500, // max_hold_percent_bps (5%)
