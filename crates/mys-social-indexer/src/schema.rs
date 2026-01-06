@@ -177,8 +177,23 @@ table! {
     platform_memberships (id) {
         id -> Integer,
         platform_id -> Varchar,
-        profile_id -> Varchar,
+        wallet_address -> Varchar,
         joined_at -> Timestamp,
+    }
+}
+
+// Define platform_token_airdrops table
+table! {
+    platform_token_airdrops (id) {
+        id -> Integer,
+        platform_id -> Varchar,
+        recipient -> Varchar,
+        amount -> BigInt,
+        reason_code -> SmallInt,
+        executed_by -> Varchar,
+        timestamp -> BigInt,
+        created_at -> Timestamp,
+        event_id -> Nullable<Varchar>,
     }
 }
 

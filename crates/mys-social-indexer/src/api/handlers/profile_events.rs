@@ -123,6 +123,7 @@ pub async fn get_profile_events(
 
 /// Get platform membership history for a profile
 /// Accepts wallet address (owner_address) as input
+/// Queries profile_events table for PlatformJoined/PlatformLeft events
 pub async fn get_platform_memberships(
     Path(wallet_address): Path<String>,
     State(pool): State<DbPool>,
@@ -166,7 +167,7 @@ pub async fn get_platform_memberships(
         )
         .order_by(schema::profile_events::created_at.desc());
 
-    // Get total count - rebuilding similar query for count
+    // Get total count
     let total = schema::profile_events::table
         .filter(schema::profile_events::profile_id.eq(&profile_id))
         .filter(

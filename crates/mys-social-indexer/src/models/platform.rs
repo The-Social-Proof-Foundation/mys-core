@@ -3,7 +3,7 @@
 
 use crate::schema::{
     platform_blocked_profiles, platform_events, platform_memberships, platform_moderators,
-    platforms,
+    platform_token_airdrops, platforms,
 };
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
@@ -639,20 +639,29 @@ pub struct PlatformUnblockedProfileEvent {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserJoinedPlatformEvent {
-    pub profile_id: String,
+    pub wallet_address: String,
     pub platform_id: String,
-    #[serde(default)]
-    pub user: String,
     #[serde(deserialize_with = "deserialize_timestamp")]
     pub timestamp: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserLeftPlatformEvent {
-    pub profile_id: String,
+    pub wallet_address: String,
     pub platform_id: String,
-    #[serde(default)]
-    pub user: String,
+    #[serde(deserialize_with = "deserialize_timestamp")]
+    pub timestamp: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TokenAirdropEvent {
+    pub platform_id: String,
+    pub recipient: String,
+    #[serde(deserialize_with = "deserialize_u64_from_string_or_number")]
+    pub amount: u64,
+    #[serde(deserialize_with = "deserialize_u8_from_string_or_number")]
+    pub reason_code: u8,
+    pub executed_by: String,
     #[serde(deserialize_with = "deserialize_timestamp")]
     pub timestamp: u64,
 }
@@ -679,6 +688,35 @@ pub struct PlatformDeletedEvent {
     pub timestamp: u64,
     #[serde(default)]
     pub reasoning: Option<String>,
+}
+
+/// Platform token airdrop record
+#[derive(Debug, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = platform_token_airdrops)]
+pub struct PlatformTokenAirdrop {
+    pub id: i32,
+    pub platform_id: String,
+    pub recipient: String,
+    pub amount: i64,
+    pub reason_code: i16,
+    pub executed_by: String,
+    pub timestamp: i64,
+    pub created_at: NaiveDateTime,
+    pub event_id: Option<String>,
+}
+
+/// DTO for inserting a new platform token airdrop
+#[derive(Debug, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = platform_token_airdrops)]
+pub struct NewPlatformTokenAirdrop {
+    pub platform_id: String,
+    pub recipient: String,
+    pub amount: i64,
+    pub reason_code: i16,
+    pub executed_by: String,
+    pub timestamp: i64,
+    pub created_at: NaiveDateTime,
+    pub event_id: Option<String>,
 }
 
 // Helper deserializer for u64 that accepts both string and number
@@ -714,11 +752,48 @@ where
     deserializer.deserialize_any(U64Visitor)
 }
 
+// Helper deserializer for u8 that accepts both string and number
+fn deserialize_u8_from_string_or_number<'de, D>(deserializer: D) -> Result<u8, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Visitor;
+    struct U8Visitor;
+
+    impl<'de> Visitor<'de> for U8Visitor {
+        type Value = u8;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a number or string representing a u8")
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            if value > u8::MAX as u64 {
+                Err(serde::de::Error::custom(format!("value {} exceeds u8::MAX", value)))
+            } else {
+                Ok(value as u8)
+            }
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            value.parse::<u8>().map_err(serde::de::Error::custom)
+        }
+    }
+
+    deserializer.deserialize_any(U8Visitor)
+}
+
 #[derive(Debug, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = platform_memberships)]
 pub struct NewPlatformMembership {
     pub platform_id: String,
-    pub profile_id: String,
+    pub wallet_address: String,
     pub joined_at: NaiveDateTime,
 }
 

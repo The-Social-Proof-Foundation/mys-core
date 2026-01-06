@@ -106,14 +106,30 @@ pub async fn get_following(
         }
     };
 
-    // First verify the profile exists using wallet address (owner_address)
-    let profile_exists = match profiles::table
-        .filter(profiles::owner_address.eq(&wallet_address))
-        .count()
-        .get_result::<i64>(&mut conn)
+    // Resolve the input parameter to both profile_id and owner_address
+    // The input could be either a profile_id or owner_address (wallet address)
+    let profile_info = match profiles::table
+        .filter(
+            profiles::owner_address.eq(&wallet_address)
+                .or(profiles::profile_id.eq(Some(&wallet_address)))
+        )
+        .select((
+            profiles::profile_id.nullable(),
+            profiles::owner_address,
+        ))
+        .first::<(Option<String>, String)>(&mut conn)
         .await
     {
-        Ok(count) => count > 0,
+        Ok(info) => info,
+        Err(diesel::result::Error::NotFound) => {
+            debug!("Profile not found with input: {}", wallet_address);
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Profile not found"
+                })),
+            );
+        }
         Err(e) => {
             error!("Failed to check profile: {}", e);
             return (
@@ -125,19 +141,18 @@ pub async fn get_following(
         }
     };
 
-    if !profile_exists {
-        debug!("Profile not found with wallet_address: {}", wallet_address);
-        return (
-            StatusCode::NOT_FOUND,
-            Json(serde_json::json!({
-                "error": "Profile not found"
-            })),
-        );
-    }
+    let (resolved_profile_id, resolved_owner_address) = profile_info;
 
     // Build base query: following relationships joined with profiles for details
+    // Match relationships where follower_address equals wallet address (and optionally profile_id)
+    // Always use .or() structure for type consistency, prioritizing wallet address
+    let filter_condition = social_graph_relationships::follower_address.eq(&resolved_owner_address)
+        .or(social_graph_relationships::follower_address.eq(
+            resolved_profile_id.as_ref().unwrap_or(&resolved_owner_address)
+        ));
+    
     let mut following_query = social_graph_relationships::table
-        .filter(social_graph_relationships::follower_address.eq(&wallet_address))
+        .filter(filter_condition)
         .inner_join(profiles::table.on(
             diesel::dsl::sql::<diesel::sql_types::Bool>(
                 "profiles.profile_id = social_graph_relationships.following_address OR profiles.owner_address = social_graph_relationships.following_address",
@@ -195,8 +210,15 @@ pub async fn get_following(
         .await;
 
     // Also get the total count for pagination info (with same search filter)
+    // Match relationships where follower_address equals wallet address (and optionally profile_id)
+    // Always use .or() structure for type consistency, prioritizing wallet address
+    let filter_condition = social_graph_relationships::follower_address.eq(&resolved_owner_address)
+        .or(social_graph_relationships::follower_address.eq(
+            resolved_profile_id.as_ref().unwrap_or(&resolved_owner_address)
+        ));
+    
     let mut count_query = social_graph_relationships::table
-        .filter(social_graph_relationships::follower_address.eq(&wallet_address))
+        .filter(filter_condition)
         .inner_join(profiles::table.on(
             diesel::dsl::sql::<diesel::sql_types::Bool>(
                 "profiles.profile_id = social_graph_relationships.following_address OR profiles.owner_address = social_graph_relationships.following_address",
@@ -365,14 +387,30 @@ pub async fn get_followers(
         }
     };
 
-    // First verify the profile exists using wallet address (owner_address)
-    let profile_exists = match profiles::table
-        .filter(profiles::owner_address.eq(&wallet_address))
-        .count()
-        .get_result::<i64>(&mut conn)
+    // Resolve the input parameter to both profile_id and owner_address
+    // The input could be either a profile_id or owner_address (wallet address)
+    let profile_info = match profiles::table
+        .filter(
+            profiles::owner_address.eq(&wallet_address)
+                .or(profiles::profile_id.eq(Some(&wallet_address)))
+        )
+        .select((
+            profiles::profile_id.nullable(),
+            profiles::owner_address,
+        ))
+        .first::<(Option<String>, String)>(&mut conn)
         .await
     {
-        Ok(count) => count > 0,
+        Ok(info) => info,
+        Err(diesel::result::Error::NotFound) => {
+            debug!("Profile not found with input: {}", wallet_address);
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Profile not found"
+                })),
+            );
+        }
         Err(e) => {
             error!("Failed to check profile: {}", e);
             return (
@@ -384,19 +422,18 @@ pub async fn get_followers(
         }
     };
 
-    if !profile_exists {
-        debug!("Profile not found with wallet_address: {}", wallet_address);
-        return (
-            StatusCode::NOT_FOUND,
-            Json(serde_json::json!({
-                "error": "Profile not found"
-            })),
-        );
-    }
+    let (resolved_profile_id, resolved_owner_address) = profile_info;
 
     // Build base query: followers joined with profiles for details
+    // Match relationships where following_address equals wallet address (and optionally profile_id)
+    // Always use .or() structure for type consistency, prioritizing wallet address
+    let filter_condition = social_graph_relationships::following_address.eq(&resolved_owner_address)
+        .or(social_graph_relationships::following_address.eq(
+            resolved_profile_id.as_ref().unwrap_or(&resolved_owner_address)
+        ));
+    
     let mut followers_query = social_graph_relationships::table
-        .filter(social_graph_relationships::following_address.eq(&wallet_address))
+        .filter(filter_condition)
         .inner_join(profiles::table.on(
             diesel::dsl::sql::<diesel::sql_types::Bool>(
                 "profiles.profile_id = social_graph_relationships.follower_address OR profiles.owner_address = social_graph_relationships.follower_address",
@@ -454,8 +491,15 @@ pub async fn get_followers(
         .await;
 
     // Also get the total count for pagination info (with same search filter)
+    // Match relationships where following_address equals wallet address (and optionally profile_id)
+    // Always use .or() structure for type consistency, prioritizing wallet address
+    let filter_condition = social_graph_relationships::following_address.eq(&resolved_owner_address)
+        .or(social_graph_relationships::following_address.eq(
+            resolved_profile_id.as_ref().unwrap_or(&resolved_owner_address)
+        ));
+    
     let mut count_query = social_graph_relationships::table
-        .filter(social_graph_relationships::following_address.eq(&wallet_address))
+        .filter(filter_condition)
         .inner_join(profiles::table.on(
             diesel::dsl::sql::<diesel::sql_types::Bool>(
                 "profiles.profile_id = social_graph_relationships.follower_address OR profiles.owner_address = social_graph_relationships.follower_address",

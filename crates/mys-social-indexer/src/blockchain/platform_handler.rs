@@ -1576,22 +1576,23 @@ impl PlatformEventHandler {
                         return Ok(());
                     }
 
-                    // Check if the profile is blocked by the platform
-                    let profile_is_blocked = schema::platform_blocked_profiles::table
+                    // Check if the wallet is blocked by the platform
+                    // Note: platform_blocked_profiles uses profile_id which may be wallet address
+                    let wallet_is_blocked = schema::platform_blocked_profiles::table
                         .filter(
                             schema::platform_blocked_profiles::platform_id.eq(&event.platform_id),
                         )
-                        .filter(schema::platform_blocked_profiles::profile_id.eq(&event.profile_id))
+                        .filter(schema::platform_blocked_profiles::profile_id.eq(&event.wallet_address))
                         .count()
                         .get_result::<i64>(&mut conn)
                         .await
                         .unwrap_or(0)
                         > 0;
 
-                    if profile_is_blocked {
+                    if wallet_is_blocked {
                         warn!(
-                            "Ignoring join event for blocked profile: {} in platform {}",
-                            event.profile_id, event.platform_id
+                            "Ignoring join event for blocked wallet: {} in platform {}",
+                            event.wallet_address, event.platform_id
                         );
                         return Ok(());
                     }
@@ -1599,7 +1600,7 @@ impl PlatformEventHandler {
                     // Check if membership already exists
                     let membership_exists = schema::platform_memberships::table
                         .filter(schema::platform_memberships::platform_id.eq(&event.platform_id))
-                        .filter(schema::platform_memberships::profile_id.eq(&event.profile_id))
+                        .filter(schema::platform_memberships::wallet_address.eq(&event.wallet_address))
                         .count()
                         .get_result::<i64>(&mut conn)
                         .await
@@ -1630,7 +1631,7 @@ impl PlatformEventHandler {
                         // Create new membership
                         let new_membership = NewPlatformMembership {
                             platform_id: event.platform_id.clone(),
-                            profile_id: event.profile_id.clone(),
+                            wallet_address: event.wallet_address.clone(),
                             joined_at,
                         };
 
@@ -1642,46 +1643,58 @@ impl PlatformEventHandler {
 
                         info!(
                             "Created new platform membership: {} -> {}",
-                            event.profile_id, event.platform_id
+                            event.wallet_address, event.platform_id
                         );
 
-                        // Also create a profile event for this action to track in profile history
-                        // Use blockchain event timestamp in milliseconds, or current time as fallback
-                        let profile_event_timestamp = if let Some(timestamp_ms) = event_timestamp_ms {
-                            timestamp_ms
-                        } else {
-                            std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_millis() as u64
-                        };
+                        // Create profile event if profile exists for this wallet
+                        // Look up profile by owner_address (wallet address)
+                        let profile_id_opt = schema::profiles::table
+                            .filter(schema::profiles::owner_address.eq(&event.wallet_address))
+                            .select(schema::profiles::profile_id.nullable())
+                            .first::<Option<String>>(&mut conn)
+                            .await
+                            .ok()
+                            .flatten();
 
-                        let platform_join_event =
-                            crate::events::profile_event_types::PlatformJoinedEvent {
-                                profile_id: event.profile_id.clone(),
-                                platform_id: event.platform_id.clone(),
-                                timestamp: profile_event_timestamp,
+                        if let Some(profile_id) = profile_id_opt {
+                            // Create a profile event from UserJoinedPlatformEvent
+                            // Use blockchain event timestamp in milliseconds, or current time as fallback
+                            let profile_event_timestamp = if let Some(timestamp_ms) = event_timestamp_ms {
+                                timestamp_ms
+                            } else {
+                                std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap_or_default()
+                                    .as_millis() as u64
                             };
 
-                        // We need to get the event ID again since it was moved in the platform_event
-                        let event_id_for_profile = blockchain_event.map(|e| e.event_id.clone());
+                            let platform_join_event =
+                                crate::events::profile_event_types::PlatformJoinedEvent {
+                                    profile_id: profile_id.clone(),
+                                    platform_id: event.platform_id.clone(),
+                                    timestamp: profile_event_timestamp,
+                                };
 
-                        let profile_event =
-                            crate::models::profile_events::NewProfileEvent::from_platform_joined(
-                                &platform_join_event,
-                                event_id_for_profile,
+                            // Get event ID from blockchain_event
+                            let event_id_for_profile = blockchain_event.map(|e| e.event_id.clone());
+
+                            let profile_event =
+                                crate::models::profile_events::NewProfileEvent::from_platform_joined(
+                                    &platform_join_event,
+                                    event_id_for_profile,
+                                );
+
+                            // Insert into profile events table
+                            diesel::insert_into(schema::profile_events::table)
+                                .values(&profile_event)
+                                .execute(&mut conn)
+                                .await?;
+
+                            info!(
+                                "Created profile event for platform join: {} -> {}",
+                                profile_id, event.platform_id
                             );
-
-                        // Insert into profile events table
-                        diesel::insert_into(schema::profile_events::table)
-                            .values(&profile_event)
-                            .execute(&mut conn)
-                            .await?;
-
-                        info!(
-                            "Created profile event for platform join: {} -> {}",
-                            event.profile_id, event.platform_id
-                        );
+                        }
                     }
 
                     Result::<_, diesel::result::Error>::Ok(())
@@ -1695,7 +1708,7 @@ impl PlatformEventHandler {
         let mut outbox_conn = self.get_connection().await?;
         let event_data = serde_json::json!({
             "platform_id": event.platform_id,
-            "profile_id": event.profile_id,
+            "wallet_address": event.wallet_address,
         });
         if let Err(e) = crate::relay_outbox::write_notification_event(
             &mut outbox_conn,
@@ -1769,7 +1782,7 @@ impl PlatformEventHandler {
                     // Update existing membership if it exists
                     let membership_exists = schema::platform_memberships::table
                         .filter(schema::platform_memberships::platform_id.eq(&event.platform_id))
-                        .filter(schema::platform_memberships::profile_id.eq(&event.profile_id))
+                        .filter(schema::platform_memberships::wallet_address.eq(&event.wallet_address))
                         .count()
                         .get_result::<i64>(&mut conn)
                         .await
@@ -1782,52 +1795,63 @@ impl PlatformEventHandler {
                             .filter(
                                 schema::platform_memberships::platform_id.eq(&event.platform_id),
                             )
-                            .filter(schema::platform_memberships::profile_id.eq(&event.profile_id))
+                            .filter(schema::platform_memberships::wallet_address.eq(&event.wallet_address))
                             .execute(&mut conn)
                             .await?;
 
                         info!(
                             "Deleted platform membership for user leaving: {} -> {}",
-                            event.profile_id, event.platform_id
+                            event.wallet_address, event.platform_id
                         );
 
-                        // Also create a profile event for this action to track in profile history
-                        // Use blockchain event timestamp in milliseconds, or current time as fallback
-                        let profile_event_timestamp = if let Some(timestamp_ms) = event_timestamp_ms {
-                            timestamp_ms
-                        } else {
-                            std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_millis() as u64
-                        };
+                        // Create profile event if profile exists for this wallet
+                        let profile_id_opt = schema::profiles::table
+                            .filter(schema::profiles::owner_address.eq(&event.wallet_address))
+                            .select(schema::profiles::profile_id.nullable())
+                            .first::<Option<String>>(&mut conn)
+                            .await
+                            .ok()
+                            .flatten();
 
-                        let platform_left_event =
-                            crate::events::profile_event_types::PlatformLeftEvent {
-                                profile_id: event.profile_id.clone(),
-                                platform_id: event.platform_id.clone(),
-                                timestamp: profile_event_timestamp,
+                        if let Some(profile_id) = profile_id_opt {
+                            // Create a profile event from UserLeftPlatformEvent
+                            // Use blockchain event timestamp in milliseconds, or current time as fallback
+                            let profile_event_timestamp = if let Some(timestamp_ms) = event_timestamp_ms {
+                                timestamp_ms
+                            } else {
+                                std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap_or_default()
+                                    .as_millis() as u64
                             };
 
-                        // We need to get the event ID again since it was moved in the platform_event
-                        let event_id_for_profile = blockchain_event.map(|e| e.event_id.clone());
+                            let platform_left_event =
+                                crate::events::profile_event_types::PlatformLeftEvent {
+                                    profile_id: profile_id.clone(),
+                                    platform_id: event.platform_id.clone(),
+                                    timestamp: profile_event_timestamp,
+                                };
 
-                        let profile_event =
-                            crate::models::profile_events::NewProfileEvent::from_platform_left(
-                                &platform_left_event,
-                                event_id_for_profile,
+                            // Get event ID from blockchain_event
+                            let event_id_for_profile = blockchain_event.map(|e| e.event_id.clone());
+
+                            let profile_event =
+                                crate::models::profile_events::NewProfileEvent::from_platform_left(
+                                    &platform_left_event,
+                                    event_id_for_profile,
+                                );
+
+                            // Insert into profile events table
+                            diesel::insert_into(schema::profile_events::table)
+                                .values(&profile_event)
+                                .execute(&mut conn)
+                                .await?;
+
+                            info!(
+                                "Created profile event for platform leave: {} -> {}",
+                                profile_id, event.platform_id
                             );
-
-                        // Insert into profile events table
-                        diesel::insert_into(schema::profile_events::table)
-                            .values(&profile_event)
-                            .execute(&mut conn)
-                            .await?;
-
-                        info!(
-                            "Created profile event for platform leave: {} -> {}",
-                            event.profile_id, event.platform_id
-                        );
+                        }
                     }
 
                     Result::<_, diesel::result::Error>::Ok(())
@@ -1839,7 +1863,7 @@ impl PlatformEventHandler {
         let mut outbox_conn = self.get_connection().await?;
         let event_data = serde_json::json!({
             "platform_id": event.platform_id,
-            "profile_id": event.profile_id,
+            "wallet_address": event.wallet_address,
         });
         if let Err(e) = crate::relay_outbox::write_notification_event(
             &mut outbox_conn,
@@ -1854,6 +1878,81 @@ impl PlatformEventHandler {
         }
 
         info!("Successfully processed user left platform event");
+
+        Ok(())
+    }
+
+    /// Process a token airdrop event
+    async fn process_token_airdrop_event(
+        &self,
+        event: &TokenAirdropEvent,
+        blockchain_event: Option<&BlockchainEvent>,
+    ) -> Result<()> {
+        debug!("Processing token airdrop event");
+
+        let mut conn = self.get_connection().await?;
+
+        // Start a transaction for atomicity
+        conn.build_transaction()
+            .run(|mut conn| {
+                Box::pin(async move {
+                    // Store event for historical record
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default();
+
+                    // Get event_id from blockchain_event if available
+                    let event_id = blockchain_event.map(|e| e.event_id.clone());
+
+                    // Create new platform event record
+                    let platform_event = NewPlatformEvent {
+                        event_type: PlatformEventType::TokenAirdrop.to_str().to_string(),
+                        platform_id: event.platform_id.clone(),
+                        event_data: serde_json::to_value(event).unwrap_or_default(),
+                        event_id,
+                        created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                            .unwrap_or_else(|| chrono::Utc::now())
+                            .naive_utc(),
+                        reasoning: None,
+                    };
+
+                    // Insert platform event
+                    diesel::insert_into(schema::platform_events::table)
+                        .values(&platform_event)
+                        .execute(&mut conn)
+                        .await?;
+
+                    // Create detailed airdrop record
+                    let airdrop_record = crate::models::platform::NewPlatformTokenAirdrop {
+                        platform_id: event.platform_id.clone(),
+                        recipient: event.recipient.clone(),
+                        amount: event.amount as i64,
+                        reason_code: event.reason_code as i16,
+                        executed_by: event.executed_by.clone(),
+                        timestamp: event.timestamp as i64,
+                        created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
+                            .unwrap_or_else(|| chrono::Utc::now())
+                            .naive_utc(),
+                        event_id: blockchain_event.map(|e| e.event_id.clone()),
+                    };
+
+                    // Insert detailed airdrop record
+                    diesel::insert_into(schema::platform_token_airdrops::table)
+                        .values(&airdrop_record)
+                        .execute(&mut conn)
+                        .await?;
+
+                    info!(
+                        "Processed token airdrop: platform_id={}, recipient={}, amount={}, reason_code={}",
+                        event.platform_id, event.recipient, event.amount, event.reason_code
+                    );
+
+                    Result::<_, diesel::result::Error>::Ok(())
+                })
+            })
+            .await?;
+
+        info!("Successfully processed token airdrop event");
 
         Ok(())
     }
@@ -2202,6 +2301,24 @@ impl PlatformEventHandler {
                                 serde_json::to_string_pretty(&event.data).unwrap_or_default()
                             );
                             return Err(anyhow!("Failed to parse UserLeftPlatformEvent: {}", e));
+                        }
+                    }
+                }
+                PlatformEventType::TokenAirdrop => {
+                    info!("Processing TokenAirdrop event");
+                    match serde_json::from_value::<event_utils::MoveObjectFields<TokenAirdropEvent>>(event.data.clone()) {
+                        Ok(wrapper) => {
+                            let airdrop_event = wrapper.into_inner();
+                            self.process_token_airdrop_event(&airdrop_event, Some(&event))
+                                .await?;
+                        }
+                        Err(e) => {
+                            error!("Failed to parse TokenAirdropEvent: {}", e);
+                            error!(
+                                "Event data: {}",
+                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
+                            );
+                            return Err(anyhow!("Failed to parse TokenAirdropEvent: {}", e));
                         }
                     }
                 }

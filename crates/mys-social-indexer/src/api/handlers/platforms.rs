@@ -1029,7 +1029,7 @@ pub async fn get_platform_members(
         .left_join(
             profiles::table.on(
                 diesel::dsl::sql::<diesel::sql_types::Bool>(
-                    "profiles.owner_address = platform_memberships.profile_id OR profiles.username = platform_memberships.profile_id OR profiles.profile_id = platform_memberships.profile_id",
+                    "profiles.owner_address = platform_memberships.wallet_address",
                 )
             ),
         )
@@ -1057,12 +1057,12 @@ pub async fn get_platform_members(
         .left_join(
             profiles::table.on(
                 diesel::dsl::sql::<diesel::sql_types::Bool>(
-                    "profiles.owner_address = platform_memberships.profile_id OR profiles.username = platform_memberships.profile_id OR profiles.profile_id = platform_memberships.profile_id",
+                    "profiles.owner_address = platform_memberships.wallet_address",
                 )
             ),
         )
         .select((
-            platform_memberships::profile_id,
+            platform_memberships::wallet_address,
             profiles::owner_address.nullable(),
             profiles::username.nullable(),
             profiles::display_name.nullable(),
@@ -1093,10 +1093,10 @@ pub async fn get_platform_members(
         Ok(members_data) => {
             let members: Vec<PlatformMember> = members_data
                 .into_iter()
-                .map(|(profile_id, wallet_address, username, display_name, profile_photo, joined_at)| {
+                .map(|(wallet_addr, owner_address, username, display_name, profile_photo, joined_at)| {
                     PlatformMember {
-                        profile_id: profile_id.clone(),
-                        wallet_address: wallet_address.unwrap_or_else(|| profile_id.clone()),
+                        profile_id: wallet_addr.clone(), // wallet_address is stored here
+                        wallet_address: owner_address.unwrap_or_else(|| wallet_addr.clone()),
                         username: username.unwrap_or_else(|| "unknown".to_string()),
                         fullname: display_name,
                         profile_photo,
@@ -1197,8 +1197,8 @@ pub async fn check_platform_membership(
         );
     }
 
-    // profile_id in platform_memberships table stores wallet address (owner_address)
-    let profile_address = wallet_address;
+    // wallet_address in platform_memberships table stores wallet address
+    let wallet_addr = wallet_address;
 
     // Check if platform exists
     let platform_exists = match platforms::table
@@ -1232,7 +1232,7 @@ pub async fn check_platform_membership(
     // Check membership in platform_memberships table and get joined_at date
     let membership_result = platform_memberships::table
         .filter(platform_memberships::platform_id.eq(&platform_id))
-        .filter(platform_memberships::profile_id.eq(&profile_address))
+        .filter(platform_memberships::wallet_address.eq(&wallet_addr))
         .select(platform_memberships::joined_at)
         .first::<chrono::NaiveDateTime>(&mut conn)
         .await;
@@ -1240,8 +1240,8 @@ pub async fn check_platform_membership(
     match membership_result {
         Ok(joined_at) => {
             debug!(
-                "Found membership: profile {} is a member of platform {}",
-                profile_address, platform_id
+                "Found membership: wallet {} is a member of platform {}",
+                wallet_addr, platform_id
             );
             (
                 StatusCode::OK,
@@ -1253,8 +1253,8 @@ pub async fn check_platform_membership(
         }
         Err(diesel::result::Error::NotFound) => {
             debug!(
-                "No membership found: profile {} is not a member of platform {}",
-                profile_address, platform_id
+                "No membership found: wallet {} is not a member of platform {}",
+                wallet_addr, platform_id
             );
             (
                 StatusCode::OK,
@@ -1353,8 +1353,8 @@ pub async fn get_profile_platforms(
         );
     }
 
-    // profile_id in platform_memberships table stores wallet address (owner_address)
-    let profile_address = wallet_address;
+    // wallet_address in platform_memberships table stores wallet address
+    let wallet_addr = wallet_address;
 
     // Prepare search pattern if provided
     let search_pattern = query.search.as_ref().and_then(|s| {
@@ -1368,7 +1368,7 @@ pub async fn get_profile_platforms(
 
     // Build count query
     let mut count_query = platform_memberships::table
-        .filter(platform_memberships::profile_id.eq(&profile_address))
+        .filter(platform_memberships::wallet_address.eq(&wallet_addr))
         .inner_join(platforms::table.on(platforms::platform_id.eq(platform_memberships::platform_id)))
         .into_boxed();
 
@@ -1395,7 +1395,7 @@ pub async fn get_profile_platforms(
 
     // Build main query - join platform_memberships with platforms
     let mut platforms_query = platform_memberships::table
-        .filter(platform_memberships::profile_id.eq(&profile_address))
+        .filter(platform_memberships::wallet_address.eq(&wallet_addr))
         .inner_join(platforms::table.on(platforms::platform_id.eq(platform_memberships::platform_id)))
         .select((
             platforms::id,

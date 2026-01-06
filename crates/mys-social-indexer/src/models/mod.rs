@@ -30,11 +30,12 @@ pub use blocking::*;
 pub use mydata::*;
 pub use platform::{
     ModeratorAddedEvent, ModeratorRemovedEvent, NewPlatform, NewPlatformMembership,
-    NewPlatformModerator, Platform, PlatformApprovalChangedEvent, PlatformCreatedEvent,
-    PlatformModerator, PlatformStatus, PlatformUpdatedEvent, PlatformWithDetails, UpdatePlatform,
-    UserJoinedPlatformEvent, UserLeftPlatformEvent, PLATFORM_STATUS_ALPHA, PLATFORM_STATUS_BETA,
-    PLATFORM_STATUS_DEVELOPMENT, PLATFORM_STATUS_LIVE, PLATFORM_STATUS_MAINTENANCE,
-    PLATFORM_STATUS_SHUTDOWN, PLATFORM_STATUS_SUNSET,
+    NewPlatformModerator, NewPlatformTokenAirdrop, Platform, PlatformApprovalChangedEvent,
+    PlatformCreatedEvent, PlatformModerator, PlatformStatus, PlatformTokenAirdrop,
+    PlatformUpdatedEvent, PlatformWithDetails, TokenAirdropEvent, TreasuryFundedEvent,
+    UpdatePlatform, UserJoinedPlatformEvent, UserLeftPlatformEvent, PLATFORM_STATUS_ALPHA,
+    PLATFORM_STATUS_BETA, PLATFORM_STATUS_DEVELOPMENT, PLATFORM_STATUS_LIVE,
+    PLATFORM_STATUS_MAINTENANCE, PLATFORM_STATUS_SHUTDOWN, PLATFORM_STATUS_SUNSET,
 };
 pub use poc::*;
 pub use post::*;

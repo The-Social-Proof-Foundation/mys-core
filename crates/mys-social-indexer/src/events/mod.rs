@@ -27,7 +27,7 @@ pub mod subscription_events;
 
 // Re-export all profile events
 pub use profile_events::{
-    ProfileCreatedEvent, ProfileFollowEvent, ProfileJoinedPlatformEvent, ProfileUpdatedEvent,
+    ProfileCreatedEvent, ProfileUpdatedEvent,
     UsernameRegisteredEvent, UsernameUpdatedEvent, TokensVestedEvent, TokensClaimedEvent,
     ProfileOfferCreatedEvent, ProfileOfferAcceptedEvent, ProfileOfferRejectedEvent,
     ProfileSaleFeeEvent, BadgeAssignedEvent, BadgeRevokedEvent,

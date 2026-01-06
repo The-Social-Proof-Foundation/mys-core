@@ -351,18 +351,6 @@ pub struct UsernameRegisteredEvent {
     pub registered_at: u64,
 }
 
-/// Event emitted when a profile follows another profile
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProfileFollowEvent {
-    /// ID of the follower profile
-    pub follower_id: String,
-    /// ID of the profile being followed
-    pub following_id: String,
-    /// Timestamp of the follow action
-    #[serde(default, deserialize_with = "deserialize_optional_number_from_string")]
-    pub followed_at: Option<u64>,
-}
-
 /// Event emitted when a profile joins a platform
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProfileJoinedPlatformEvent {

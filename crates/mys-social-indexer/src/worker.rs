@@ -18,7 +18,7 @@ use crate::events::{
     ProfileCreatedEvent, ProfileUpdatedEvent, UsernameUpdatedEvent, UsernameRegisteredEvent, 
     PlatformCreatedEvent, ContentCreatedEvent, ContentInteractionEvent,
     EntityBlockedEvent, IPRegisteredEvent, LicenseGrantedEvent, ProofCreatedEvent,
-    FeeModelCreatedEvent, FeesDistributedEvent, ProfileFollowEvent, ProfileJoinedPlatformEvent,
+    FeeModelCreatedEvent, FeesDistributedEvent,
     FollowEvent, UnfollowEvent,
     PlatformBlockedProfileEvent, PlatformUnblockedProfileEvent, UserJoinedPlatformEvent, UserLeftPlatformEvent,
     SpotBetPlacedEvent as SpotBetPlacedEvt,
@@ -593,65 +593,6 @@ impl SocialIndexerWorker {
     // Private data update functionality has been removed
     // All sensitive fields are now stored directly in the profile
     
-    /// Process a profile follow event
-    async fn process_profile_follow(&self, event: &ProfileFollowEvent) -> Result<()> {
-        let mut conn = self.get_connection().await?;
-        
-        // Check if relationship already exists to avoid duplicates
-        let exists = diesel::select(diesel::dsl::exists(
-            schema::social_graph_relationships::table
-                .filter(schema::social_graph_relationships::follower_address.eq(&event.follower_id))
-                .filter(schema::social_graph_relationships::following_address.eq(&event.following_id))
-        ))
-        .get_result::<bool>(&mut conn)
-        .await?;
-        
-        if exists {
-            info!("Profile follow relationship already exists: {} -> {}", event.follower_id, event.following_id);
-            return Ok(());
-        }
-        
-        // Create new follow relationship using existing social_graph_relationships table
-        let relationship = crate::models::social_graph::NewSocialGraphRelationship {
-            follower_address: event.follower_id.clone(),
-            following_address: event.following_id.clone(),
-            created_at: if let Some(timestamp) = event.followed_at {
-                chrono::DateTime::from_timestamp(timestamp as i64, 0)
-                    .unwrap_or(chrono::Utc::now())
-                    .naive_utc()
-            } else {
-                chrono::Utc::now().naive_utc()
-            },
-        };
-        
-        // Insert the follow relationship
-        diesel::insert_into(schema::social_graph_relationships::table)
-            .values(&relationship)
-            .execute(&mut conn)
-            .await?;
-            
-        // Log the event
-        let event_log = crate::models::social_graph::NewSocialGraphEvent {
-            event_type: "profile_follow".to_string(),
-            follower_address: event.follower_id.clone(),
-            following_address: event.following_id.clone(),
-            created_at: relationship.created_at,
-            event_id: None, // ProfileFollowEvent doesn't have blockchain event ID
-            raw_event_data: Some(serde_json::to_value(event)?),
-        };
-        
-        diesel::insert_into(schema::social_graph_events::table)
-            .values(&event_log)
-            .execute(&mut conn)
-            .await?;
-            
-        // Count updates are now handled automatically by database triggers
-        // when the relationship is inserted into social_graph_relationships
-            
-        info!("Processed profile follow: {} -> {}", event.follower_id, event.following_id);
-        Ok(())
-    }
-    
     /// Process a platform created event
     async fn process_platform_created(&self, event: &PlatformCreatedEvent) -> Result<()> {
         let mut conn = self.get_connection().await?;
@@ -1116,71 +1057,76 @@ impl SocialIndexerWorker {
     /// Process a user joined platform event
     async fn process_user_joined_platform(&self, event: &UserJoinedPlatformEvent, event_id: Option<String>) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        let now = Utc::now().naive_utc();
         
-        // Create a profile event for platform join
-        let platform_join_event = crate::events::profile_event_types::PlatformJoinedEvent {
-            profile_id: event.profile_id.clone(),
-            platform_id: event.platform_id.clone(),
-            timestamp: Utc::now().timestamp() as u64,
-        };
+        // Look up profile_id from wallet_address
+        let profile_id_opt = schema::profiles::table
+            .filter(schema::profiles::owner_address.eq(&event.wallet_address))
+            .select(schema::profiles::profile_id)
+            .first::<String>(&mut conn)
+            .await
+            .ok();
         
-        let profile_event = crate::models::profile_events::NewProfileEvent::from_platform_joined(
-            &platform_join_event,
-            event_id
-        );
-        
-        // Insert the profile event record
-        diesel::insert_into(schema::profile_events::table)
-            .values(&profile_event)
-            .execute(&mut conn)
-            .await?;
+        // Create profile event if profile exists
+        if let Some(profile_id) = profile_id_opt {
+            let platform_join_event = crate::events::profile_event_types::PlatformJoinedEvent {
+                profile_id: profile_id.clone(),
+                platform_id: event.platform_id.clone(),
+                timestamp: Utc::now().timestamp_millis() as u64,
+            };
             
-        info!("Processed user joined platform: platform={}, profile={}", 
-              event.platform_id, event.profile_id);
+            let profile_event = crate::models::profile_events::NewProfileEvent::from_platform_joined(
+                &platform_join_event,
+                event_id
+            );
+            
+            diesel::insert_into(schema::profile_events::table)
+                .values(&profile_event)
+                .execute(&mut conn)
+                .await?;
+                
+            info!("Processed user joined platform: platform={}, wallet={}, profile={}", 
+                  event.platform_id, event.wallet_address, profile_id);
+        } else {
+            debug!("No profile found for wallet {}, skipping profile event creation", event.wallet_address);
+        }
         Ok(())
     }
     
     /// Process a user left platform event
     async fn process_user_left_platform(&self, event: &UserLeftPlatformEvent, event_id: Option<String>) -> Result<()> {
         let mut conn = self.get_connection().await?;
-        let now = Utc::now().naive_utc();
         
-        // Create a profile event for platform leave
-        let platform_left_event = crate::events::profile_event_types::PlatformLeftEvent {
-            profile_id: event.profile_id.clone(),
-            platform_id: event.platform_id.clone(),
-            timestamp: Utc::now().timestamp() as u64,
-        };
+        // Look up profile_id from wallet_address
+        let profile_id_opt = schema::profiles::table
+            .filter(schema::profiles::owner_address.eq(&event.wallet_address))
+            .select(schema::profiles::profile_id)
+            .first::<String>(&mut conn)
+            .await
+            .ok();
         
-        let profile_event = crate::models::profile_events::NewProfileEvent::from_platform_left(
-            &platform_left_event,
-            event_id
-        );
-        
-        // Insert the profile event record
-        diesel::insert_into(schema::profile_events::table)
-            .values(&profile_event)
-            .execute(&mut conn)
-            .await?;
+        // Create profile event if profile exists
+        if let Some(profile_id) = profile_id_opt {
+            let platform_left_event = crate::events::profile_event_types::PlatformLeftEvent {
+                profile_id: profile_id.clone(),
+                platform_id: event.platform_id.clone(),
+                timestamp: Utc::now().timestamp_millis() as u64,
+            };
             
-        // Delete the platform membership record
-        let deleted_count = diesel::delete(schema::platform_memberships::table)
-            .filter(schema::platform_memberships::platform_id.eq(&event.platform_id))
-            .filter(schema::platform_memberships::profile_id.eq(&event.profile_id))
-            .execute(&mut conn)
-            .await?;
+            let profile_event = crate::models::profile_events::NewProfileEvent::from_platform_left(
+                &platform_left_event,
+                event_id
+            );
             
-        if deleted_count > 0 {
-            info!("Deleted platform membership: platform={}, profile={}", 
-                  event.platform_id, event.profile_id);
+            diesel::insert_into(schema::profile_events::table)
+                .values(&profile_event)
+                .execute(&mut conn)
+                .await?;
+                
+            info!("Processed user left platform: platform={}, wallet={}, profile={}", 
+                  event.platform_id, event.wallet_address, profile_id);
         } else {
-            warn!("No platform membership found to delete: platform={}, profile={}", 
-                  event.platform_id, event.profile_id);
+            debug!("No profile found for wallet {}, skipping profile event creation", event.wallet_address);
         }
-        
-        info!("Processed user left platform: platform={}, profile={}", 
-              event.platform_id, event.profile_id);
         Ok(())
     }
 }
@@ -1335,13 +1281,7 @@ impl Worker for SocialIndexerWorker {
                     },
                     // Private data update functionality has been removed
                     // All sensitive fields are now stored directly in the profile
-                    t if t.starts_with(MODULE_PREFIX_SOCIAL_GRAPH) && t.ends_with("ProfileFollowEvent") => {
-                        if let Ok(event) = parse_event::<ProfileFollowEvent>(event) {
-                            if let Err(e) = self.process_profile_follow(&event).await {
-                                error!("Failed to process ProfileFollowEvent: {}", e);
-                            }
-                        }
-                    },
+                    // ProfileFollowEvent has been removed - FollowEvent/UnfollowEvent are handled by SocialGraphEventHandler
                     
                     // Social Graph events from social_graph module
                     t if t.starts_with(MODULE_PREFIX_SOCIAL_GRAPH) && t.ends_with("FollowEvent") => {
