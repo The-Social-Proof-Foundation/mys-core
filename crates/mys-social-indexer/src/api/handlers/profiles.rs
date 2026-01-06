@@ -15,6 +15,7 @@ use crate::db::DbPool;
 use crate::models::Profile;
 use crate::models::profile_extras::ProfileBadge;
 use crate::schema::{profiles, profile_badges};
+use crate::api::handlers::social_proof_token::get_reservation_pool_info_for_profiles;
 
 #[derive(Debug, Deserialize)]
 pub struct ProfileQuery {
@@ -64,19 +65,45 @@ pub async fn latest_profiles(
         .await;
 
     match profiles_result {
-        Ok(profiles) => (
-            StatusCode::OK,
-            Json(serde_json::json!({
-                "profiles": profiles,
-                "pagination": {
-                    "total": total_count,
-                    "limit": limit,
-                    "offset": offset,
-                    "page": page,
-                    "total_pages": total_pages
-                }
-            })),
-        ),
+        Ok(profiles) => {
+            // Get reservation pool info for all profiles
+            let wallet_addresses: Vec<String> = profiles.iter()
+                .map(|p| p.owner_address.clone())
+                .collect();
+
+            let reservation_info = get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            // Build profiles with reservation pool info
+            let profiles_with_reservation: Vec<serde_json::Value> = profiles.into_iter()
+                .map(|profile| {
+                    let res_info = reservation_info.get(&profile.owner_address)
+                        .cloned()
+                        .unwrap_or_default();
+                    
+                    let mut profile_json = serde_json::to_value(&profile).unwrap_or(serde_json::json!({}));
+                    if let Some(obj) = profile_json.as_object_mut() {
+                        obj.insert("reservation_pool".to_string(), serde_json::to_value(res_info).unwrap_or(serde_json::json!(null)));
+                    }
+                    profile_json
+                })
+                .collect();
+
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "profiles": profiles_with_reservation,
+                    "pagination": {
+                        "total": total_count,
+                        "limit": limit,
+                        "offset": offset,
+                        "page": page,
+                        "total_pages": total_pages
+                    }
+                })),
+            )
+        },
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({

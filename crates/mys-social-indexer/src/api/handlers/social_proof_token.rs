@@ -13,6 +13,7 @@ use diesel::sql_types::*;
 use diesel::OptionalExtension;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::error;
 
@@ -228,7 +229,7 @@ pub async fn get_spt_pool_by_id(
     let query = diesel::sql_query(
         r#"
         SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
-        FROM social_proof_token_pools p
+        FROM spt_pools p
         LEFT JOIN LATERAL (
             SELECT price
             FROM spt_price_history
@@ -292,7 +293,7 @@ pub async fn list_spt_pools(
             diesel::sql_query(&format!(
                 r#"
                 SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
-                FROM social_proof_token_pools p
+                FROM spt_pools p
                 LEFT JOIN LATERAL (
                     SELECT price
                     FROM spt_price_history
@@ -303,7 +304,7 @@ pub async fn list_spt_pools(
                 WHERE p.token_type = $1
                   AND p.owner = $2
                   AND p.time = (
-                    SELECT MAX(time) FROM social_proof_token_pools sub
+                    SELECT MAX(time) FROM spt_pools sub
                     WHERE sub.pool_id = p.pool_id
                   )
                 ORDER BY {} {}
@@ -323,7 +324,7 @@ pub async fn list_spt_pools(
             diesel::sql_query(&format!(
                 r#"
                 SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
-                FROM social_proof_token_pools p
+                FROM spt_pools p
                 LEFT JOIN LATERAL (
                     SELECT price
                     FROM spt_price_history
@@ -333,7 +334,7 @@ pub async fn list_spt_pools(
                 ) ph ON true
                 WHERE p.token_type = $1
                   AND p.time = (
-                    SELECT MAX(time) FROM social_proof_token_pools sub
+                    SELECT MAX(time) FROM spt_pools sub
                     WHERE sub.pool_id = p.pool_id
                   )
                 ORDER BY {} {}
@@ -352,7 +353,7 @@ pub async fn list_spt_pools(
             diesel::sql_query(&format!(
                 r#"
                 SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
-                FROM social_proof_token_pools p
+                FROM spt_pools p
                 LEFT JOIN LATERAL (
                     SELECT price
                     FROM spt_price_history
@@ -362,7 +363,7 @@ pub async fn list_spt_pools(
                 ) ph ON true
                 WHERE p.owner = $1
                   AND p.time = (
-                    SELECT MAX(time) FROM social_proof_token_pools sub
+                    SELECT MAX(time) FROM spt_pools sub
                     WHERE sub.pool_id = p.pool_id
                   )
                 ORDER BY {} {}
@@ -381,7 +382,7 @@ pub async fn list_spt_pools(
             diesel::sql_query(&format!(
                 r#"
                 SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
-                FROM social_proof_token_pools p
+                FROM spt_pools p
                 LEFT JOIN LATERAL (
                     SELECT price
                     FROM spt_price_history
@@ -390,7 +391,7 @@ pub async fn list_spt_pools(
                     LIMIT 1
                 ) ph ON true
                 WHERE p.time = (
-                    SELECT MAX(time) FROM social_proof_token_pools sub
+                    SELECT MAX(time) FROM spt_pools sub
                     WHERE sub.pool_id = p.pool_id
                 )
                 ORDER BY {} {}
@@ -413,7 +414,7 @@ pub async fn list_spt_pools(
     let total_count = diesel::sql_query(
         "
         SELECT COUNT(DISTINCT pool_id) as count
-        FROM social_proof_token_pools p
+        FROM spt_pools p
     ",
     )
     .get_result::<CountResult>(&mut conn)
@@ -451,7 +452,7 @@ pub async fn get_spt_pool_by_associated_id(
     let query = diesel::sql_query(
         r#"
         SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
-        FROM social_proof_token_pools p
+        FROM spt_pools p
         LEFT JOIN LATERAL (
             SELECT price
             FROM spt_price_history
@@ -942,14 +943,13 @@ pub async fn get_spt_reservations_by_pool(
     };
 
     // Get reservations - latest per reserver
-    // Note: Column name is reservatior_address (typo in migration) not reserver_address
     let reservations = diesel::sql_query(
         r#"
         WITH latest_reservations AS (
-            SELECT DISTINCT ON (reservatior_address) *
+            SELECT DISTINCT ON (reserver_address) *
             FROM spt_reservations
             WHERE pool_id = $1
-            ORDER BY reservatior_address, time DESC
+            ORDER BY reserver_address, time DESC
         )
         SELECT *
         FROM latest_reservations
@@ -969,14 +969,13 @@ pub async fn get_spt_reservations_by_pool(
     })?;
 
     // Count total for pagination
-    // Note: Column name is reservatior_address (typo in migration) not reserver_address
     let total_count = diesel::sql_query(
         r#"
         WITH latest_reservations AS (
-            SELECT DISTINCT ON (reservatior_address) *
+            SELECT DISTINCT ON (reserver_address) *
             FROM spt_reservations
             WHERE pool_id = $1
-            ORDER BY reservatior_address, time DESC
+            ORDER BY reserver_address, time DESC
         )
         SELECT COUNT(*) as count
         FROM latest_reservations
@@ -1028,7 +1027,7 @@ pub async fn get_user_spt_holdings(
         pool_info AS (
             SELECT DISTINCT ON (pool_id) p.*, 
                    COALESCE(ph.price, p.base_price) as current_price
-            FROM social_proof_token_pools p
+            FROM spt_pools p
             LEFT JOIN LATERAL (
                 SELECT price
                 FROM spt_price_history
@@ -1175,7 +1174,7 @@ pub async fn get_top_performing_tokens(
                 p.token_type,
                 SUM(t.mys_amount) OVER (PARTITION BY ph.pool_id) as current_volume
             FROM spt_price_history ph
-            JOIN social_proof_token_pools p ON ph.pool_id = p.pool_id
+            JOIN spt_pools p ON ph.pool_id = p.pool_id
             LEFT JOIN spt_transactions t ON ph.pool_id = t.pool_id 
                                         AND t.time > NOW() - INTERVAL '{}'
             WHERE ph.time = (
@@ -1303,7 +1302,7 @@ pub async fn get_user_portfolio_performance(
         ),
         pool_info AS (
             SELECT DISTINCT ON (pool_id) pool_id, name, symbol
-            FROM social_proof_token_pools
+            FROM spt_pools
             ORDER BY pool_id, time DESC
         )
         SELECT 
@@ -1524,7 +1523,7 @@ pub async fn get_creator_revenue_streams(
         r#"
         WITH token_pools AS (
             SELECT DISTINCT ON (pool_id) *
-            FROM social_proof_token_pools
+            FROM spt_pools
             WHERE owner = $1
             ORDER BY pool_id, time DESC
         ),
@@ -1631,7 +1630,7 @@ pub async fn get_creator_revenue_streams(
         ),
         creator_pools AS (
             SELECT DISTINCT pool_id
-            FROM social_proof_token_pools
+            FROM spt_pools
             WHERE owner = $1
         ),
         period_revenues AS (
@@ -1779,7 +1778,7 @@ pub async fn get_market_sentiment(
                 SUM(CASE WHEN t.transaction_type = 'SELL' THEN t.mys_amount ELSE 0 END) as sell_volume,
                 SUM(t.mys_amount) as current_volume
             FROM spt_transactions t
-            JOIN social_proof_token_pools p ON t.pool_id = p.pool_id
+            JOIN spt_pools p ON t.pool_id = p.pool_id
             WHERE t.time > NOW() - INTERVAL '24 hours'
             GROUP BY p.token_type
         ),
@@ -1788,7 +1787,7 @@ pub async fn get_market_sentiment(
                 p.token_type,
                 SUM(t.mys_amount) as previous_volume
             FROM spt_transactions t
-            JOIN social_proof_token_pools p ON t.pool_id = p.pool_id
+            JOIN spt_pools p ON t.pool_id = p.pool_id
             WHERE t.time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
             GROUP BY p.token_type
         )
@@ -1864,7 +1863,7 @@ pub async fn get_token_liquidity_profile(
     let pool_query = diesel::sql_query(
         r#"
         SELECT name, symbol
-        FROM social_proof_token_pools
+        FROM spt_pools
         WHERE pool_id = $1
         ORDER BY time DESC
         LIMIT 1
@@ -2149,4 +2148,128 @@ pub async fn get_spt_configuration(State(db): State<Arc<Database>>) -> Response 
                 .into_response()
         }
     }
+}
+
+// ============================================================================
+// RESERVATION POOL INFO FOR PROFILES
+// ============================================================================
+
+/// Reservation pool information for a profile
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReservationPoolInfo {
+    pub claimed_percentage: f64,
+    pub is_active: bool,
+    pub total_reserved: i64,
+    pub required_threshold: i64,
+    pub pool_id: Option<String>,
+}
+
+impl Default for ReservationPoolInfo {
+    fn default() -> Self {
+        Self {
+            claimed_percentage: 0.0,
+            is_active: false,
+            total_reserved: 0,
+            required_threshold: 0,
+            pool_id: None,
+        }
+    }
+}
+
+/// Get reservation pool information for multiple profiles by wallet address
+/// Returns a HashMap mapping owner_address -> ReservationPoolInfo
+pub async fn get_reservation_pool_info_for_profiles(
+    wallet_addresses: Vec<String>,
+    conn: &mut diesel_async::AsyncPgConnection,
+) -> Result<HashMap<String, ReservationPoolInfo>, diesel::result::Error> {
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+
+    if wallet_addresses.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    // Get latest exchange config for profile_threshold
+    let profile_threshold = crate::schema::spt_exchange_config::table
+        .order_by(crate::schema::spt_exchange_config::time.desc())
+        .select(crate::schema::spt_exchange_config::profile_threshold)
+        .first::<i64>(conn)
+        .await
+        .unwrap_or(10000); // Fallback to 10000 if config doesn't exist
+
+    // Build associated_id values: 'profile_' || owner_address
+    let associated_ids: Vec<String> = wallet_addresses
+        .iter()
+        .map(|addr| format!("profile_{}", addr))
+        .collect();
+
+    // Query for latest reservation pools using raw SQL for better performance
+    let query = diesel::sql_query(
+        r#"
+        WITH latest_pools AS (
+            SELECT DISTINCT ON (associated_id) 
+                associated_id,
+                pool_id,
+                total_reserved,
+                required_threshold,
+                status,
+                time
+            FROM spt_reservation_pools
+            WHERE associated_id = ANY($1::TEXT[])
+            ORDER BY associated_id, time DESC
+        )
+        SELECT 
+            associated_id,
+            pool_id,
+            total_reserved,
+            required_threshold,
+            status
+        FROM latest_pools
+        "#,
+    )
+    .bind::<diesel::sql_types::Array<diesel::sql_types::Text>, _>(&associated_ids);
+
+    #[derive(QueryableByName)]
+    struct PoolRow {
+        #[diesel(sql_type = Text)]
+        associated_id: String,
+        #[diesel(sql_type = Text)]
+        pool_id: String,
+        #[diesel(sql_type = BigInt)]
+        total_reserved: i64,
+        #[diesel(sql_type = BigInt)]
+        required_threshold: i64,
+        #[diesel(sql_type = Text)]
+        status: String,
+    }
+
+    let pools: Vec<PoolRow> = query.load::<PoolRow>(conn).await?;
+
+    // Build HashMap: extract owner_address from associated_id and calculate percentage
+    let mut result = HashMap::new();
+    for pool in pools {
+        // Extract owner_address from associated_id (remove 'profile_' prefix)
+        if let Some(owner_address) = pool.associated_id.strip_prefix("profile_") {
+            let claimed_percentage = if profile_threshold > 0 {
+                (pool.total_reserved as f64 / profile_threshold as f64) * 100.0
+            } else {
+                0.0
+            };
+
+            let is_active = pool.status == "active" && pool.total_reserved < pool.required_threshold;
+
+            result.insert(
+                owner_address.to_string(),
+                ReservationPoolInfo {
+                    claimed_percentage: claimed_percentage.min(100.0).max(0.0),
+                    is_active,
+                    total_reserved: pool.total_reserved,
+                    required_threshold: pool.required_threshold,
+                    pool_id: Some(pool.pool_id),
+                },
+            );
+        }
+    }
+
+    Ok(result)
 }

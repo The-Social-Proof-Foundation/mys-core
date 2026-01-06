@@ -96,6 +96,10 @@ pub struct EnrichedBlockedProfile {
     pub blocked_at: NaiveDateTime,          // When last blocked
     pub first_blocked_at: NaiveDateTime,    // When first blocked
     pub total_block_count: i32,             // Times blocked
+
+    // Reservation Pool Info
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reservation_pool: Option<crate::api::handlers::social_proof_token::ReservationPoolInfo>,
 }
 
 impl From<BlockedProfile> for EnrichedBlockedProfile {
@@ -110,6 +114,7 @@ impl From<BlockedProfile> for EnrichedBlockedProfile {
             blocked_at: blocked_profile.last_blocked_at,
             first_blocked_at: blocked_profile.first_blocked_at,
             total_block_count: blocked_profile.total_block_count,
+            reservation_pool: None, // Will be populated by the handler
         }
     }
 }

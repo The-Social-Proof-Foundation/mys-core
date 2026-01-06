@@ -17,6 +17,7 @@ use tracing::{debug, error};
 use crate::db::DbPool;
 use crate::models::social_graph::{FollowDetail, FollowsQuery};
 use crate::schema::{profiles, social_graph_relationships};
+use crate::api::handlers::social_proof_token::get_reservation_pool_info_for_profiles;
 
 // ==============================================================================
 // CHART DATA STRUCTURES
@@ -262,6 +263,17 @@ pub async fn get_following(
                 String::new()
             };
 
+            // Collect wallet addresses for reservation pool lookup
+            let wallet_addresses: Vec<String> = follows
+                .iter()
+                .map(|(_, _, owner_address, _, _, _)| owner_address.clone())
+                .collect();
+
+            // Get reservation pool info for all profiles
+            let reservation_info = get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
             for (id, followed_profile_id, owner_address, username, display_name, profile_photo) in
                 follows
             {
@@ -317,6 +329,9 @@ pub async fn get_following(
                     (false, false)
                 };
 
+                // Get reservation pool info for this profile
+                let res_info = reservation_info.get(&owner_address).cloned();
+
                 follows_detail.push(FollowDetail {
                     id,
                     profile_id: followed_profile_id,
@@ -326,6 +341,7 @@ pub async fn get_following(
                     profile_photo,
                     follows_back,
                     is_following,
+                    reservation_pool: res_info,
                 });
             }
 
@@ -543,6 +559,17 @@ pub async fn get_followers(
                 String::new()
             };
 
+            // Collect wallet addresses for reservation pool lookup
+            let wallet_addresses: Vec<String> = follows
+                .iter()
+                .map(|(_, _, owner_address, _, _, _)| owner_address.clone())
+                .collect();
+
+            // Get reservation pool info for all profiles
+            let reservation_info = get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
             for (id, follower_profile_id, owner_address, username, display_name, profile_photo) in
                 follows
             {
@@ -598,6 +625,9 @@ pub async fn get_followers(
                     (false, false)
                 };
 
+                // Get reservation pool info for this profile
+                let res_info = reservation_info.get(&owner_address).cloned();
+
                 follows_detail.push(FollowDetail {
                     id,
                     profile_id: follower_profile_id,
@@ -607,6 +637,7 @@ pub async fn get_followers(
                     profile_photo,
                     follows_back,
                     is_following,
+                    reservation_pool: res_info,
                 });
             }
 

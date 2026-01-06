@@ -926,6 +926,8 @@ pub struct PlatformMember {
     pub fullname: Option<String>,
     pub profile_photo: Option<String>,
     pub joined_at: NaiveDateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reservation_pool: Option<crate::api::handlers::social_proof_token::ReservationPoolInfo>,
 }
 
 /// Platform moderator with profile information
@@ -1091,16 +1093,35 @@ pub async fn get_platform_members(
 
     match members_result {
         Ok(members_data) => {
-            let members: Vec<PlatformMember> = members_data
+            let members_vec: Vec<(String, Option<String>, Option<String>, Option<String>, Option<String>, NaiveDateTime)> = members_data;
+            
+            // Get wallet addresses for reservation pool lookup
+            let wallet_addresses: Vec<String> = members_vec
+                .iter()
+                .map(|(wallet_addr, owner_address, _, _, _, _)| {
+                    owner_address.clone().unwrap_or_else(|| wallet_addr.clone())
+                })
+                .collect();
+
+            // Get reservation pool info
+            let reservation_info = crate::api::handlers::social_proof_token::get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            let members: Vec<PlatformMember> = members_vec
                 .into_iter()
                 .map(|(wallet_addr, owner_address, username, display_name, profile_photo, joined_at)| {
+                    let wallet_addr_final = owner_address.unwrap_or_else(|| wallet_addr.clone());
+                    let res_info = reservation_info.get(&wallet_addr_final).cloned();
+                    
                     PlatformMember {
                         profile_id: wallet_addr.clone(), // wallet_address is stored here
-                        wallet_address: owner_address.unwrap_or_else(|| wallet_addr.clone()),
+                        wallet_address: wallet_addr_final,
                         username: username.unwrap_or_else(|| "unknown".to_string()),
                         fullname: display_name,
                         profile_photo,
                         joined_at,
+                        reservation_pool: res_info,
                     }
                 })
                 .collect();

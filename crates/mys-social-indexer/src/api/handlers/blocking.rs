@@ -15,6 +15,7 @@ use crate::models::blocking::{
     PaginationMetadata,
 };
 use crate::schema::{blocked_profiles, profiles};
+use crate::api::handlers::social_proof_token::get_reservation_pool_info_for_profiles;
 
 /// Response type for blocked platforms list
 #[derive(Debug, Serialize)]
@@ -132,10 +133,25 @@ pub async fn get_blocked_profiles(
         };
 
     // Convert directly from BlockedProfile to EnrichedBlockedProfile (uses From trait)
-    let enriched_blocked_profiles: Vec<EnrichedBlockedProfile> = blocked_profiles
+    let mut enriched_blocked_profiles: Vec<EnrichedBlockedProfile> = blocked_profiles
         .into_iter()
         .map(|blocked_profile| blocked_profile.into())
         .collect();
+
+    // Get reservation pool info for all blocked profiles
+    let wallet_addresses: Vec<String> = enriched_blocked_profiles
+        .iter()
+        .map(|p| p.wallet_address.clone())
+        .collect();
+
+    let reservation_info = get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+        .await
+        .unwrap_or_default();
+
+    // Add reservation pool info to each profile
+    for profile in &mut enriched_blocked_profiles {
+        profile.reservation_pool = reservation_info.get(&profile.wallet_address).cloned();
+    }
 
     let total_count = enriched_blocked_profiles.len() as i64;
 

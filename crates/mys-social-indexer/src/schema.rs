@@ -652,9 +652,9 @@ table! {
 // SOCIAL PROOF TOKEN TABLES
 // ===========================================================================
 
-// Define social_proof_token_pools table
+// Define spt_pools table
 table! {
-    social_proof_token_pools (id, time) {
+    spt_pools (id, time) {
         id -> Int4,
         pool_id -> Varchar,
         token_type -> Int2,
@@ -1684,7 +1684,7 @@ allow_tables_to_appear_in_same_query!(
     mydata_registry,
     mydata_config,
     // Social Proof Token tables
-    social_proof_token_pools,
+    spt_pools,
     spt_holdings,
     spt_transactions,
     spt_reservation_pools,

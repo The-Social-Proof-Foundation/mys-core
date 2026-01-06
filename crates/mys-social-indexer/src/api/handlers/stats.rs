@@ -44,7 +44,7 @@ pub async fn get_system_stats(
     })?;
 
     // Count social proof tokens
-    let social_proof_tokens = schema::social_proof_token_pools::table
+    let social_proof_tokens = schema::spt_pools::table
         .count()
         .get_result::<i64>(&mut conn)
         .await

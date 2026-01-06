@@ -20,7 +20,7 @@ pub const TRANSACTION_TYPE_SELL: &str = "SELL";
 
 /// SocialProofTokenPool represents a token pool in the database
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, QueryableByName)]
-#[diesel(table_name = crate::schema::social_proof_token_pools)]
+#[diesel(table_name = crate::schema::spt_pools)]
 #[diesel(primary_key(pool_id, time))]
 pub struct SocialProofTokenPool {
     #[diesel(sql_type = diesel::sql_types::Integer)]
@@ -53,7 +53,7 @@ pub struct SocialProofTokenPool {
 
 /// NewSocialProofTokenPool is used for inserting a new token pool
 #[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = crate::schema::social_proof_token_pools)]
+#[diesel(table_name = crate::schema::spt_pools)]
 pub struct NewSocialProofTokenPool {
     pub pool_id: String,
     pub token_type: i16,

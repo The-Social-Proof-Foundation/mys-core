@@ -69,6 +69,9 @@ pub struct FollowDetail {
     pub follows_back: bool,
     // Whether the requesting profile is following this profile
     pub is_following: bool,
+    // Reservation pool information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reservation_pool: Option<crate::api::handlers::social_proof_token::ReservationPoolInfo>,
 }
 
 /// Query parameters for paginating followers/following lists

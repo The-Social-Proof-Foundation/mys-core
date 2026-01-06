@@ -66,7 +66,7 @@ impl SocialProofTokenHandler {
 
         // Insert into database
         let mut conn = self.base.get_connection().await?;
-        diesel::insert_into(schema::social_proof_token_pools::table)
+        diesel::insert_into(schema::spt_pools::table)
             .values(&token_pool)
             .execute(&mut conn)
             .await?;
@@ -95,9 +95,9 @@ impl SocialProofTokenHandler {
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
 
         // Get the latest token pool to update supply and price
-        let latest_pool = schema::social_proof_token_pools::table
-            .filter(schema::social_proof_token_pools::pool_id.eq(&buy_event.id))
-            .order_by(schema::social_proof_token_pools::time.desc())
+        let latest_pool = schema::spt_pools::table
+            .filter(schema::spt_pools::pool_id.eq(&buy_event.id))
+            .order_by(schema::spt_pools::time.desc())
             .first::<SocialProofTokenPool>(&mut conn)
             .await
             .map_err(|e| anyhow!("Failed to get latest token pool: {}", e))?;
@@ -151,7 +151,7 @@ impl SocialProofTokenHandler {
             .await?;
 
         // Insert updated token pool
-        diesel::insert_into(schema::social_proof_token_pools::table)
+        diesel::insert_into(schema::spt_pools::table)
             .values(&new_token_pool)
             .execute(&mut conn)
             .await?;
@@ -201,9 +201,9 @@ impl SocialProofTokenHandler {
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
 
         // Get the latest token pool to update supply and price
-        let latest_pool = schema::social_proof_token_pools::table
-            .filter(schema::social_proof_token_pools::pool_id.eq(&sell_event.id))
-            .order_by(schema::social_proof_token_pools::time.desc())
+        let latest_pool = schema::spt_pools::table
+            .filter(schema::spt_pools::pool_id.eq(&sell_event.id))
+            .order_by(schema::spt_pools::time.desc())
             .first::<SocialProofTokenPool>(&mut conn)
             .await
             .map_err(|e| anyhow!("Failed to get latest token pool for sell event: {}", e))?;
@@ -261,7 +261,7 @@ impl SocialProofTokenHandler {
             .await?;
 
         // Insert updated token pool with reduced supply
-        diesel::insert_into(schema::social_proof_token_pools::table)
+        diesel::insert_into(schema::spt_pools::table)
             .values(&new_token_pool)
             .execute(&mut conn)
             .await?;
@@ -311,9 +311,9 @@ impl SocialProofTokenHandler {
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
 
         // Get the latest token pool to update supply and price
-        let latest_pool = schema::social_proof_token_pools::table
-            .filter(schema::social_proof_token_pools::pool_id.eq(&buy_event.pool_id))
-            .order_by(schema::social_proof_token_pools::time.desc())
+        let latest_pool = schema::spt_pools::table
+            .filter(schema::spt_pools::pool_id.eq(&buy_event.pool_id))
+            .order_by(schema::spt_pools::time.desc())
             .first::<SocialProofTokenPool>(&mut conn)
             .await
             .map_err(|e| anyhow!("Failed to get latest token pool: {}", e))?;
@@ -367,7 +367,7 @@ impl SocialProofTokenHandler {
             .await?;
 
         // Insert updated token pool
-        diesel::insert_into(schema::social_proof_token_pools::table)
+        diesel::insert_into(schema::spt_pools::table)
             .values(&new_token_pool)
             .execute(&mut conn)
             .await?;
@@ -396,9 +396,9 @@ impl SocialProofTokenHandler {
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
 
         // Get the latest token pool to update supply and price
-        let latest_pool = schema::social_proof_token_pools::table
-            .filter(schema::social_proof_token_pools::pool_id.eq(&sell_event.pool_id))
-            .order_by(schema::social_proof_token_pools::time.desc())
+        let latest_pool = schema::spt_pools::table
+            .filter(schema::spt_pools::pool_id.eq(&sell_event.pool_id))
+            .order_by(schema::spt_pools::time.desc())
             .first::<SocialProofTokenPool>(&mut conn)
             .await
             .map_err(|e| anyhow!("Failed to get latest token pool for sell event: {}", e))?;
@@ -456,7 +456,7 @@ impl SocialProofTokenHandler {
             .await?;
 
         // Insert updated token pool with reduced supply
-        diesel::insert_into(schema::social_proof_token_pools::table)
+        diesel::insert_into(schema::spt_pools::table)
             .values(&new_token_pool)
             .execute(&mut conn)
             .await?;
@@ -965,7 +965,7 @@ impl SocialProofTokenHandler {
         token_pool.time = datetime;
 
         // Insert into database
-        diesel::insert_into(schema::social_proof_token_pools::table)
+        diesel::insert_into(schema::spt_pools::table)
             .values(&token_pool)
             .execute(&mut conn)
             .await?;
@@ -1019,9 +1019,9 @@ impl SocialProofTokenHandler {
             .await?;
 
         // Get the latest token pool to update supply
-        let latest_pool = schema::social_proof_token_pools::table
-            .filter(schema::social_proof_token_pools::pool_id.eq(&tokens_added_event.pool_id))
-            .order_by(schema::social_proof_token_pools::time.desc())
+        let latest_pool = schema::spt_pools::table
+            .filter(schema::spt_pools::pool_id.eq(&tokens_added_event.pool_id))
+            .order_by(schema::spt_pools::time.desc())
             .first::<SocialProofTokenPool>(&mut conn)
             .await
             .optional()?;
@@ -1044,7 +1044,7 @@ impl SocialProofTokenHandler {
                 transaction_id: event.tx_digest.clone(),
             };
 
-            diesel::insert_into(schema::social_proof_token_pools::table)
+            diesel::insert_into(schema::spt_pools::table)
                 .values(&updated_pool)
                 .execute(&mut conn)
                 .await?;
@@ -1154,7 +1154,7 @@ impl SocialProofTokenHandler {
         token_pool.time = datetime;
 
         // Insert into database
-        diesel::insert_into(schema::social_proof_token_pools::table)
+        diesel::insert_into(schema::spt_pools::table)
             .values(&token_pool)
             .execute(&mut conn)
             .await?;

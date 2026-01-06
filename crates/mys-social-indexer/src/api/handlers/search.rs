@@ -12,6 +12,7 @@ use std::sync::Arc;
 use tracing::error;
 
 use crate::db::Database;
+use crate::api::handlers::social_proof_token::get_reservation_pool_info_for_profiles;
 
 // Search query parameters
 #[derive(Debug, Deserialize)]
@@ -183,7 +184,7 @@ pub async fn global_search(
             created_at as timestamp,
             NULL::JSONB as metadata,
             3 as priority
-        FROM social_proof_token_pools
+        FROM spt_pools
         WHERE (
             LOWER(COALESCE(pool_id, '')) LIKE LOWER($1) OR
             LOWER(COALESCE(name, '')) LIKE LOWER($1) OR
@@ -192,8 +193,8 @@ pub async fn global_search(
             LOWER(COALESCE(associated_id, '')) LIKE LOWER($1)
         )
         AND time = (
-            SELECT MAX(time) FROM social_proof_token_pools sub
-            WHERE sub.pool_id = social_proof_token_pools.pool_id
+            SELECT MAX(time) FROM spt_pools sub
+            WHERE sub.pool_id = spt_pools.pool_id
         )
         AND ($4::TEXT[] IS NULL OR $4 = '{}' OR 'spt-token' = ANY($4))
         
@@ -358,7 +359,7 @@ pub async fn global_search(
 
             -- Social Proof Token search
             SELECT pool_id as id
-            FROM social_proof_token_pools
+            FROM spt_pools
             WHERE (
                 LOWER(COALESCE(pool_id, '')) LIKE LOWER($1) OR
                 LOWER(COALESCE(name, '')) LIKE LOWER($1) OR
@@ -368,8 +369,8 @@ pub async fn global_search(
             )
             AND ($2::TEXT[] IS NULL OR $2 = '{}' OR 'spt-token' = ANY($2))
             AND time = (
-                SELECT MAX(time) FROM social_proof_token_pools sub
-                WHERE sub.pool_id = social_proof_token_pools.pool_id
+                SELECT MAX(time) FROM spt_pools sub
+                WHERE sub.pool_id = spt_pools.pool_id
             )
 
             UNION ALL
@@ -441,7 +442,7 @@ pub async fn global_search(
         })?;
 
     // Convert query results to SearchResultItem objects
-    let results: Vec<SearchResultItem> = search_results
+    let mut results: Vec<SearchResultItem> = search_results
         .into_iter()
         .map(|row| SearchResultItem {
             id: row.id,
@@ -455,6 +456,39 @@ pub async fn global_search(
             metadata: row.metadata,
         })
         .collect();
+
+    // Add reservation pool info for profile results
+    let profile_wallet_addresses: Vec<String> = results
+        .iter()
+        .filter(|item| item.entity_type == "profile")
+        .map(|item| item.id.clone())
+        .collect();
+
+    if !profile_wallet_addresses.is_empty() {
+        let reservation_info = get_reservation_pool_info_for_profiles(profile_wallet_addresses, &mut conn)
+            .await
+            .unwrap_or_default();
+
+        // Add reservation pool info to profile results
+        for result in &mut results {
+            if result.entity_type == "profile" {
+                if let Some(res_info) = reservation_info.get(&result.id) {
+                    let mut metadata = result.metadata.clone().unwrap_or(serde_json::json!({}));
+                    if let Some(obj) = metadata.as_object_mut() {
+                        obj.insert("reservation_pool".to_string(), serde_json::to_value(res_info).unwrap_or(serde_json::json!(null)));
+                    }
+                    result.metadata = Some(metadata);
+                } else {
+                    // Add null reservation_pool if no pool exists
+                    let mut metadata = result.metadata.clone().unwrap_or(serde_json::json!({}));
+                    if let Some(obj) = metadata.as_object_mut() {
+                        obj.insert("reservation_pool".to_string(), serde_json::json!(null));
+                    }
+                    result.metadata = Some(metadata);
+                }
+            }
+        }
+    }
 
     let total = count_result.count;
 
