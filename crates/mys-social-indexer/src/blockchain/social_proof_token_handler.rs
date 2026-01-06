@@ -511,7 +511,6 @@ impl SocialProofTokenHandler {
         };
 
         // 2. Create individual reservation record with the correct pool_id
-        // Note: Pool records should only be created by ReservationPoolCreatedEvent, not here
         let mut reservation_record =
             reservation_event.into_reservation_model(timestamp, event.tx_digest.clone())?;
         reservation_record.pool_id = pool_id.clone(); // Use the actual pool_id from the database
@@ -521,6 +520,34 @@ impl SocialProofTokenHandler {
             .values(&reservation_record)
             .execute(&mut conn)
             .await?;
+
+        // 3. Update pool state with new total_reserved (insert new time-series entry)
+        // Note: Pool records are only created by ReservationPoolCreatedEvent, but we update state here
+        if let Some(existing_pool) = existing_pool {
+            let updated_status = if reservation_event.threshold_met {
+                "threshold_met".to_string()
+            } else {
+                existing_pool.status.clone()
+            };
+
+            let updated_pool = NewSptReservationPool {
+                pool_id: existing_pool.pool_id.clone(),
+                associated_id: existing_pool.associated_id.clone(),
+                owner: existing_pool.owner.clone(),
+                token_type: existing_pool.token_type,
+                total_reserved: reservation_event.total_reserved,
+                required_threshold: existing_pool.required_threshold,
+                status: updated_status,
+                created_at: existing_pool.created_at,
+                time: datetime,
+                transaction_id: event.tx_digest.clone(),
+            };
+
+            diesel::insert_into(schema::spt_reservation_pools::table)
+                .values(&updated_pool)
+                .execute(&mut conn)
+                .await?;
+        }
 
         // Write to relay outbox for notifications - notify associated post/profile owner
         // Extract owner from associated_id (e.g., "post_0x123" -> get post owner, "profile_0x456" -> get profile owner)
@@ -623,7 +650,6 @@ impl SocialProofTokenHandler {
         };
 
         // 2. Record the withdrawal as a new reservation entry with the correct pool_id
-        // Note: Pool records should only be created by ReservationPoolCreatedEvent, not here
         let mut withdrawal_record =
             withdrawal_event.into_reservation_model(timestamp, event.tx_digest.clone())?;
         withdrawal_record.pool_id = pool_id.clone(); // Use the actual pool_id from the database
@@ -633,6 +659,35 @@ impl SocialProofTokenHandler {
             .values(&withdrawal_record)
             .execute(&mut conn)
             .await?;
+
+        // 3. Update pool state with new total_reserved (insert new time-series entry)
+        // Note: Pool records are only created by ReservationPoolCreatedEvent, but we update state here
+        if let Some(existing_pool) = existing_pool {
+            // Update status: if total_reserved drops below threshold, reset to active
+            let updated_status = if withdrawal_event.total_reserved >= existing_pool.required_threshold {
+                existing_pool.status.clone() // Keep existing status if still above threshold
+            } else {
+                "active".to_string() // Reset to active if below threshold after withdrawal
+            };
+
+            let updated_pool = NewSptReservationPool {
+                pool_id: existing_pool.pool_id.clone(),
+                associated_id: existing_pool.associated_id.clone(),
+                owner: existing_pool.owner.clone(),
+                token_type: existing_pool.token_type,
+                total_reserved: withdrawal_event.total_reserved,
+                required_threshold: existing_pool.required_threshold,
+                status: updated_status,
+                created_at: existing_pool.created_at,
+                time: datetime,
+                transaction_id: event.tx_digest.clone(),
+            };
+
+            diesel::insert_into(schema::spt_reservation_pools::table)
+                .values(&updated_pool)
+                .execute(&mut conn)
+                .await?;
+        }
 
         info!(
             "Successfully processed reservation withdrawal for pool: {}, reserver: {}, amount: {}, remaining total: {}",
