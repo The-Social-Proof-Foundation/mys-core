@@ -3,6 +3,7 @@
 
 use crate::events::event_utils::{
     deserialize_u64_from_string, deserialize_optional_u64_from_string,
+    deserialize_i64_from_string,
     parse_i64_from_string_or_number, parse_u64_from_string_or_number,
     parse_optional_u64_from_string_or_number,
 };
@@ -809,7 +810,9 @@ pub struct SocialProofInitPoolEvent {
     pub symbol: String,
     pub token_type: i16,
     pub associated_id: String,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub base_price: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub quadratic_coefficient: i64,
 }
 
@@ -890,12 +893,19 @@ impl SocialProofInitPoolEvent {
 pub struct SocialProofBuyEvent {
     pub pool_id: String,
     pub buyer: String,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub amount: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub mys_amount: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub fee_amount: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub creator_fee: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub platform_fee: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub treasury_fee: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub price: i64,
 }
 
@@ -1100,12 +1110,19 @@ impl SocialProofBuyEvent {
 pub struct SocialProofSellEvent {
     pub pool_id: String,
     pub seller: String,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub amount: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub mys_amount: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub fee_amount: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub creator_fee: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub platform_fee: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub treasury_fee: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub price: i64,
 }
 
@@ -1311,9 +1328,12 @@ pub struct SocialProofReservationCreatedEvent {
     pub associated_id: String,
     pub token_type: i16,
     pub reserver: String,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub amount: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub total_reserved: i64,
     pub threshold_met: bool,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub reserved_at: i64,
 }
 
@@ -1387,8 +1407,11 @@ pub struct SocialProofReservationWithdrawnEvent {
     pub associated_id: String,
     pub token_type: i16,
     pub reserver: String,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub amount: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub total_reserved: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub withdrawn_at: i64,
 }
 
@@ -1459,8 +1482,11 @@ pub struct SocialProofThresholdMetEvent {
     pub associated_id: String,
     pub token_type: i16,
     pub owner: String,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub total_reserved: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub required_threshold: i64,
+    #[serde(deserialize_with = "deserialize_i64_from_string")]
     pub timestamp: i64,
 }
 
