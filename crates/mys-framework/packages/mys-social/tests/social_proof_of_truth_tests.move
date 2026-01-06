@@ -118,7 +118,8 @@ module social_contracts::social_proof_of_truth_tests {
                 ADMIN,
                 ADMIN,
                 ADMIN,
-                0,
+                0,    // max_single_bet
+                10000, // max_bets_per_record
                 test_scenario::ctx(&mut scen)
             );
             test_scenario::return_to_sender(&scen, admin_cap);
@@ -137,7 +138,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 0, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 0, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
         };
@@ -239,7 +240,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
         };
@@ -349,7 +350,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
         };
@@ -424,7 +425,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
         };
@@ -469,7 +470,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
         };
@@ -550,6 +551,104 @@ module social_contracts::social_proof_of_truth_tests {
             spot::withdraw_spot_bet(&spot_cfg, &mut rec, &post_ref, 0, test_scenario::ctx(&mut scen));
             test_scenario::return_shared(spot_cfg);
             test_scenario::return_shared(rec);
+            test_scenario::return_shared(post_ref);
+        };
+
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = spot::ETooManyBets)]
+    fun test_spot_bet_limit_enforcement() {
+        let mut scen = setup_env();
+
+        // Configure SPoT with low bet limit for testing
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
+            let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, 3, test_scenario::ctx(&mut scen)); // max_bets_per_record = 3
+            test_scenario::return_to_sender(&scen, admin_cap);
+            test_scenario::return_shared(cfg);
+        };
+
+        // Create post
+        test_scenario::next_tx(&mut scen, CREATOR);
+        let post_id_addr = {
+            let ctx = test_scenario::ctx(&mut scen);
+            create_test_post(CREATOR, ctx)
+        };
+
+        // Create SPoT record
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let oracle_admin_cap = test_scenario::take_from_sender<spot::SpotOracleAdminCap>(&scen);
+            let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let mut p = test_scenario::take_shared<Post>(&scen);
+            let mut betting_options = vector::empty<String>();
+            vector::push_back(&mut betting_options, string::utf8(b"Yes"));
+            vector::push_back(&mut betting_options, string::utf8(b"No"));
+            spot::create_spot_record_for_post(
+                &oracle_admin_cap,
+                &cfg,
+                &mut p,
+                betting_options,
+                option::none(),
+                option::some(0),
+                test_scenario::ctx(&mut scen)
+            );
+            test_scenario::return_to_sender(&scen, oracle_admin_cap);
+            test_scenario::return_shared(cfg);
+            test_scenario::return_shared(p);
+        };
+
+        // Place 3 bets (at limit)
+        test_scenario::next_tx(&mut scen, USER1);
+        {
+            let mut spot_rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let post_ref = test_scenario::take_shared<Post>(&scen);
+            let coin1 = test_scenario::take_from_sender<Coin<MYS>>(&scen);
+            spot::place_spot_bet(&spot_cfg, &mut spot_rec, &post_ref, coin1, 0, SCALING, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(spot_cfg);
+            test_scenario::return_shared(spot_rec);
+            test_scenario::return_shared(post_ref);
+        };
+
+        test_scenario::next_tx(&mut scen, USER2);
+        {
+            let mut spot_rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let post_ref = test_scenario::take_shared<Post>(&scen);
+            let coin2 = test_scenario::take_from_sender<Coin<MYS>>(&scen);
+            spot::place_spot_bet(&spot_cfg, &mut spot_rec, &post_ref, coin2, 0, SCALING, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(spot_cfg);
+            test_scenario::return_shared(spot_rec);
+            test_scenario::return_shared(post_ref);
+        };
+
+        test_scenario::next_tx(&mut scen, CREATOR);
+        {
+            let mut spot_rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let post_ref = test_scenario::take_shared<Post>(&scen);
+            let coin3 = test_scenario::take_from_sender<Coin<MYS>>(&scen);
+            spot::place_spot_bet(&spot_cfg, &mut spot_rec, &post_ref, coin3, 0, SCALING, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(spot_cfg);
+            test_scenario::return_shared(spot_rec);
+            test_scenario::return_shared(post_ref);
+        };
+
+        // Try to place 4th bet - should fail with ETooManyBets
+        test_scenario::next_tx(&mut scen, USER1);
+        {
+            let mut spot_rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
+            let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let post_ref = test_scenario::take_shared<Post>(&scen);
+            let coin4 = test_scenario::take_from_sender<Coin<MYS>>(&scen);
+            spot::place_spot_bet(&spot_cfg, &mut spot_rec, &post_ref, coin4, 0, SCALING, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(spot_cfg);
+            test_scenario::return_shared(spot_rec);
             test_scenario::return_shared(post_ref);
         };
 

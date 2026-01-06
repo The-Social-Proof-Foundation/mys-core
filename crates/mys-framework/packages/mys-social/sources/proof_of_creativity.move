@@ -39,6 +39,7 @@ module social_contracts::proof_of_creativity {
     const EInvalidReasoning: u64 = 19;
     const EInvalidEvidenceUrls: u64 = 20;
     const EDisabled: u64 = 21;
+    const ETooManyVotes: u64 = 22;
 
     /// Media type constants
     const MEDIA_TYPE_IMAGE: u8 = 1;
@@ -64,6 +65,7 @@ module social_contracts::proof_of_creativity {
     const DEFAULT_MIN_VOTE_STAKE: u64 = 1_000_000_000; // 1 MYS minimum to vote
     const DEFAULT_MAX_VOTE_STAKE: u64 = 100_000_000_000; // 100 MYS maximum per vote
     const DEFAULT_VOTING_DURATION_EPOCHS: u64 = 7; // 7 epochs voting period
+    const DEFAULT_MAX_VOTES_PER_DISPUTE: u64 = 10000; // Default maximum votes allowed per dispute
     
     /// Validation constants
     const MAX_REASONING_LENGTH: u64 = 5000; // Max characters for reasoning
@@ -99,6 +101,8 @@ module social_contracts::proof_of_creativity {
         max_reasoning_length: u64,
         /// Maximum number of evidence URLs allowed
         max_evidence_urls: u64,
+        /// Maximum number of votes allowed per dispute
+        max_votes_per_dispute: u64,
         /// Governance registry ID for PoC disputes
         dispute_governance_id: ID,
         /// Version for upgrades
@@ -257,6 +261,7 @@ module social_contracts::proof_of_creativity {
         voting_duration_epochs: u64,
         max_reasoning_length: u64,
         max_evidence_urls: u64,
+        max_votes_per_dispute: u64,
         timestamp: u64,
     }
 
@@ -288,6 +293,7 @@ module social_contracts::proof_of_creativity {
                 voting_duration_epochs: DEFAULT_VOTING_DURATION_EPOCHS,
                 max_reasoning_length: MAX_REASONING_LENGTH,
                 max_evidence_urls: MAX_EVIDENCE_URLS,
+                max_votes_per_dispute: DEFAULT_MAX_VOTES_PER_DISPUTE,
                 dispute_governance_id: object::id_from_address(@0x0), // Placeholder for future governance
                 version: upgrade::current_version(),
             }
@@ -322,6 +328,7 @@ module social_contracts::proof_of_creativity {
         voting_duration_epochs: u64,
         max_reasoning_length: u64,
         max_evidence_urls: u64,
+        max_votes_per_dispute: u64,
         ctx: &mut TxContext
     ) {
         // Admin capability verification is handled by type system
@@ -339,6 +346,7 @@ module social_contracts::proof_of_creativity {
         // Validate reasoning and evidence URL parameters
         assert!(max_reasoning_length > 0, EInvalidThreshold);
         assert!(max_evidence_urls > 0, EInvalidThreshold);
+        assert!(max_votes_per_dispute > 0, EInvalidThreshold);
 
         // Update configuration
         config.oracle_address = oracle_address;
@@ -353,6 +361,7 @@ module social_contracts::proof_of_creativity {
         config.voting_duration_epochs = voting_duration_epochs;
         config.max_reasoning_length = max_reasoning_length;
         config.max_evidence_urls = max_evidence_urls;
+        config.max_votes_per_dispute = max_votes_per_dispute;
 
         // Emit configuration update event
         event::emit(PoCConfigUpdatedEvent {
@@ -367,6 +376,7 @@ module social_contracts::proof_of_creativity {
             voting_duration_epochs,
             max_reasoning_length,
             max_evidence_urls,
+            max_votes_per_dispute,
             timestamp: tx_context::epoch_timestamp_ms(ctx),
         });
     }
@@ -631,6 +641,10 @@ module social_contracts::proof_of_creativity {
         
         // Validate vote choice
         assert!(vote_choice == VOTE_UPHOLD || vote_choice == VOTE_OVERTURN, EUnauthorized);
+        
+        // Check vote limit
+        let current_votes = vector::length(&dispute.votes);
+        assert!(current_votes < config.max_votes_per_dispute, ETooManyVotes);
         
         // Validate stake amount is within bounds
         assert!(stake_amount >= config.min_vote_stake && stake_amount <= config.max_vote_stake, EInvalidStakeAmount);
@@ -984,6 +998,10 @@ module social_contracts::proof_of_creativity {
     #[test_only]
     /// Initialize the PoC system for testing
     public fun test_init(ctx: &mut TxContext) {
-        bootstrap_init(ctx)
+        let sender = tx_context::sender(ctx);
+        bootstrap_init(ctx);
+        
+        // Create and transfer admin capabilities to the transaction sender
+        transfer::public_transfer(PoCAdminCap { id: object::new(ctx) }, sender);
     }
 } 

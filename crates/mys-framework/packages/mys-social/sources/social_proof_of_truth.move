@@ -45,6 +45,7 @@ module social_contracts::social_proof_of_truth {
     const EBetNotFound: u64 = 13;
     const EAlreadyInitialized: u64 = 14;
     const EDuplicateOption: u64 = 15;
+    const ETooManyBets: u64 = 16;
 
     /// Status
     const STATUS_OPEN: u8 = 1;
@@ -66,6 +67,7 @@ module social_contracts::social_proof_of_truth {
     const DEFAULT_PAYOUT_DELAY_EPOCHS: u64 = 0;
     const DEFAULT_FEE_BPS: u64 = 100; // 1%
     const DEFAULT_FEE_SPLIT_PLATFORM_BPS: u64 = 5000; // 50% of fee to platform
+    const DEFAULT_MAX_BETS_PER_RECORD: u64 = 10000; // Default maximum bets allowed per SPoT record
 
     /// Maximum u64 value for overflow protection
     const MAX_U64: u64 = 18446744073709551615;
@@ -97,6 +99,7 @@ module social_contracts::social_proof_of_truth {
         chain_treasury: address,
         oracle_address: address,
         max_single_bet: u64,
+        max_bets_per_record: u64,
         version: u64,
     }
 
@@ -174,6 +177,7 @@ module social_contracts::social_proof_of_truth {
         chain_treasury: address,
         oracle_address: address,
         max_single_bet: u64,
+        max_bets_per_record: u64,
         timestamp: u64,
     }
 
@@ -246,6 +250,7 @@ module social_contracts::social_proof_of_truth {
             chain_treasury: admin,
             oracle_address: admin,
             max_single_bet: 0,
+            max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
             version: upgrade::current_version(),
         });
     }
@@ -283,6 +288,7 @@ module social_contracts::social_proof_of_truth {
             chain_treasury: sender,
             oracle_address: sender,
             max_single_bet: 0,
+            max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
             version: upgrade::current_version(),
         });
         
@@ -306,6 +312,7 @@ module social_contracts::social_proof_of_truth {
         chain_treasury: address,
         oracle_address: address,
         max_single_bet: u64,
+        max_bets_per_record: u64,
         ctx: &mut TxContext
     ) {
         // Basic bounds
@@ -323,6 +330,7 @@ module social_contracts::social_proof_of_truth {
         config.chain_treasury = chain_treasury;
         config.oracle_address = oracle_address;
         config.max_single_bet = max_single_bet;
+        config.max_bets_per_record = max_bets_per_record;
         
         // Emit config updated event
         event::emit(SpotConfigUpdatedEvent {
@@ -338,6 +346,7 @@ module social_contracts::social_proof_of_truth {
             chain_treasury,
             oracle_address,
             max_single_bet,
+            max_bets_per_record,
             timestamp: tx_context::epoch_timestamp_ms(ctx),
         });
     }
@@ -514,6 +523,10 @@ module social_contracts::social_proof_of_truth {
         assert!(amount > 0, EInvalidAmount);
         if (spot_config.max_single_bet > 0) { assert!(amount <= spot_config.max_single_bet, EInvalidAmount); };
         assert!(coin::value(&payment) >= amount, EInvalidAmount);
+        
+        // Check bet limit
+        let current_bets = vector::length(&record.bets);
+        assert!(current_bets < spot_config.max_bets_per_record, ETooManyBets);
         
         // Validate option_id exists
         let options_len = vector::length(&record.betting_options);

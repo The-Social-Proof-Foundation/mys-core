@@ -59,28 +59,17 @@ module social_contracts::profile {
 
     /// Reserved usernames that cannot be registered
     const RESERVED_NAMES: vector<vector<u8>> = vector[
-        b"admin", 
-        b"administrator", 
-        b"owner", 
-        b"mod", 
-        b"moderator", 
-        b"staff", 
-        b"support", 
-        b"myso", 
-        b"mysocial", 
-        b"system", 
-        b"root", 
-        b"official",
-        // Inappropriate names
-        b"fuck",
-        b"shit",
-        b"ass",
-        b"piss",
-        b"cunt",
-        b"asshole",
-        b"dick",
-        b"pussy",
-        b"sex"
+        b"admin",
+        b"administrator",
+        b"mod",
+        b"moderator",
+        b"staff",
+        b"support",
+        b"myso",
+        b"mysocial",
+        b"system",
+        b"root",
+        b"foundation",
     ];
 
     /// Field names for dynamic fields

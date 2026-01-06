@@ -86,6 +86,12 @@ module social_contracts::social_proof_tokens {
     const EUserNotJoinedPlatform: u64 = 24;
     /// User is blocked by the platform
     const EUserBlockedByPlatform: u64 = 25;
+    /// Reservation pool already converted to token
+    const EReservationPoolConverted: u64 = 27;
+    /// User already owns tokens for this pool
+    const EAlreadyOwnsTokens: u64 = 28;
+    /// Too many reservers for conversion (DoS prevention)
+    const ETooManyReservers: u64 = 29;
 
     // === Constants ===
     // Token types
@@ -113,6 +119,7 @@ module social_contracts::social_proof_tokens {
     const DEFAULT_POST_THRESHOLD: u64 = 1_000_000_000_000; // 1,000 MYS in smallest units (9 decimals)
     const DEFAULT_PROFILE_THRESHOLD: u64 = 10_000_000_000_000; // 10,000 MYS in smallest units (9 decimals)
     const DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS: u64 = 2000; // 20% (1/5 of threshold)
+    const DEFAULT_MAX_RESERVERS_PER_POOL: u64 = 1000;
 
     // Maximum u64 value for overflow protection
     const MAX_U64: u64 = 18446744073709551615;
@@ -150,21 +157,16 @@ module social_contracts::social_proof_tokens {
         profile_threshold: u64,
         /// Maximum percentage any individual can reserve towards a single post/profile
         max_individual_reservation_bps: u64,
+        /// Maximum number of unique reservers allowed per pool (DoS protection)
+        max_reservers_per_pool: u64,
         /// Emergency kill switch - when true, all trading is halted
         trading_halted: bool,
-        /// Allow auto-initialization of post token pools by package-restricted callers
-        allow_auto_pool_init: bool,
-        /// Throttle: max auto-inits per epoch (0 = unlimited)
-        auto_init_max_per_epoch: u64,
-        /// Internal counter epoch and count (for throttling)
-        auto_init_epoch: u64,
-        auto_init_count_in_epoch: u64,
     }
 
     /// Registry of all tokens in the exchange
     public struct TokenRegistry has key {
         id: UID,
-        /// Table from token ID to token info
+        /// Table keyed by associated_id (post/profile ID), not pool ID, to token info
         tokens: Table<address, TokenInfo>,
         /// Table from profile/post ID to reservation pool info
         reservation_pools: Table<address, ReservationPool>,
@@ -173,7 +175,8 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Reservation pool for a specific post or profile
-    public struct ReservationPool has store, copy, drop {
+    /// Note: reservers vector is only stored in ReservationPoolObject, not in registry
+    public struct ReservationPool has store, drop {
         /// Associated profile or post ID
         associated_id: address,
         /// Token type (1=profile, 2=post)
@@ -184,24 +187,12 @@ module social_contracts::social_proof_tokens {
         total_reserved: u64,
         /// Required threshold to enable auction creation
         required_threshold: u64,
-        /// List of all reservers (for efficient iteration)
-        reservers: vector<address>,
         /// Creation timestamp
         created_at: u64,
     }
 
-    /// Individual reservation information
-    public struct ReservationInfo has store, copy, drop {
-        /// Reserver's address
-        reserver: address,
-        /// Amount reserved in MYS
-        amount: u64,
-        /// Timestamp when reservation was created
-        reserved_at: u64,
-    }
-
     /// Information about a token
-    public struct TokenInfo has store, copy, drop {
+    public struct TokenInfo has store, drop {
         /// The token ID (object ID of the pool)
         id: address,
         /// Type of token (1=profile, 2=post)
@@ -255,12 +246,16 @@ module social_contracts::social_proof_tokens {
     /// Reservation pool for collecting MYS reservations towards posts/profiles
     public struct ReservationPoolObject has key {
         id: UID,
-        /// Reservation pool info
+        /// Reservation pool info (without reservers - kept separately below)
         info: ReservationPool,
         /// MYS balance reserved in this pool
         mys_balance: Balance<MYS>,
         /// Mapping of reservers' addresses to their reservation amounts
         reservations: Table<address, u64>,
+        /// List of all reservers (for efficient iteration) - only in object, not in registry
+        reservers: vector<address>,
+        /// Flag indicating if this pool has been converted to a token
+        converted: bool,
         /// Version for upgrades
         version: u64,
     }
@@ -280,14 +275,6 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Event emitted when a post pool is auto-initialized by SPoT flow
-    public struct PostPoolAutoInitializedEvent has copy, drop {
-        post_id: address,
-        owner: address,
-        base_price: u64,
-        quadratic_coefficient: u64,
-        by: address,
-    }
-
     /// Event emitted when tokens are bought
     public struct TokenBoughtEvent has copy, drop {
         id: address,
@@ -388,6 +375,7 @@ module social_contracts::social_proof_tokens {
         post_threshold: u64,
         profile_threshold: u64,
         max_individual_reservation_bps: u64,
+        max_reservers_per_pool: u64,
     }
 
     /// Event emitted when tokens are purchased by someone who already has a social token
@@ -427,7 +415,7 @@ module social_contracts::social_proof_tokens {
 
     /// Bootstrap initialization function - creates the social proof tokens configuration and registry
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
-        // Create and share social proof tokens config with proper treasury and trading enabled
+        // Create and share social proof tokens config with proper treasury
         transfer::share_object(
             SocialProofTokensConfig {
                 id: object::new(ctx),
@@ -443,11 +431,8 @@ module social_contracts::social_proof_tokens {
                 post_threshold: DEFAULT_POST_THRESHOLD,
                 profile_threshold: DEFAULT_PROFILE_THRESHOLD,
                 max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
+                max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
                 trading_halted: true, // Auto-enabled by bootstrap during bootstrap
-                allow_auto_pool_init: false,
-                auto_init_max_per_epoch: 0,
-                auto_init_epoch: 0,
-                auto_init_count_in_epoch: 0,
             }
         );
         
@@ -480,10 +465,42 @@ module social_contracts::social_proof_tokens {
         post_threshold: u64,
         profile_threshold: u64,
         max_individual_reservation_bps: u64,
+        max_reservers_per_pool: u64,
         ctx: &mut TxContext
     ) {
         // Verify curve parameters are valid
         assert!(base_price > 0 && quadratic_coefficient > 0, EInvalidCurveParams);
+        
+        // Validate fee configurations to prevent division by zero and overflow
+        // Calculate totals before updating to validate
+        let total_fee_bps = trading_creator_fee_bps + trading_platform_fee_bps + trading_treasury_fee_bps;
+        let reservation_total_fee_bps = reservation_creator_fee_bps + reservation_platform_fee_bps + reservation_treasury_fee_bps;
+        
+        // Ensure fee totals are valid (prevent division by zero and overflow)
+        assert!(total_fee_bps > 0 && total_fee_bps <= 10000, EInvalidFeeConfig);
+        assert!(reservation_total_fee_bps > 0 && reservation_total_fee_bps <= 10000, EInvalidFeeConfig);
+        
+        // Validate individual fee components don't exceed 100%
+        
+        // Validate max_hold_percent_bps (should be <= 10000, i.e., <= 100%)
+        assert!(max_hold_percent_bps > 0 && max_hold_percent_bps <= 10000, EInvalidFeeConfig);
+        
+        // Validate thresholds (must be positive)
+        assert!(post_threshold > 0, EInvalidFeeConfig);
+        assert!(profile_threshold > 0, EInvalidFeeConfig);
+        
+        // Validate max_individual_reservation_bps (should be <= 10000, i.e., <= 100%)
+        assert!(max_individual_reservation_bps > 0 && max_individual_reservation_bps <= 10000, EInvalidFeeConfig);
+        
+        // Validate max_reservers_per_pool (DoS protection limit)
+        assert!(max_reservers_per_pool > 0 && max_reservers_per_pool <= 50000, EInvalidFeeConfig);
+        
+        assert!(trading_creator_fee_bps <= 10000, EInvalidFeeConfig);
+        assert!(trading_platform_fee_bps <= 10000, EInvalidFeeConfig);
+        assert!(trading_treasury_fee_bps <= 10000, EInvalidFeeConfig);
+        assert!(reservation_creator_fee_bps <= 10000, EInvalidFeeConfig);
+        assert!(reservation_platform_fee_bps <= 10000, EInvalidFeeConfig);
+        assert!(reservation_treasury_fee_bps <= 10000, EInvalidFeeConfig);
         
         // Update trading fee config
         config.trading_creator_fee_bps = trading_creator_fee_bps;
@@ -506,8 +523,9 @@ module social_contracts::social_proof_tokens {
         config.post_threshold = post_threshold;
         config.profile_threshold = profile_threshold;
         config.max_individual_reservation_bps = max_individual_reservation_bps;
+        config.max_reservers_per_pool = max_reservers_per_pool;
         
-        // Calculate totals for event emission (backwards compatibility with indexers)
+        // Calculate totals for event emission
         let total_fee_bps = calculate_total_fee_bps(config);
         let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
         
@@ -529,6 +547,7 @@ module social_contracts::social_proof_tokens {
             post_threshold,
             profile_threshold,
             max_individual_reservation_bps,
+            max_reservers_per_pool,
         });
     }
 
@@ -568,16 +587,53 @@ module social_contracts::social_proof_tokens {
         config.reservation_creator_fee_bps + config.reservation_platform_fee_bps + config.reservation_treasury_fee_bps
     }
 
+    /// Validate trading fee config before use
+    public(package) fun validate_trading_fees(config: &SocialProofTokensConfig) {
+        let total_fee_bps = calculate_total_fee_bps(config);
+        assert!(total_fee_bps > 0 && total_fee_bps <= 10000, EInvalidFeeConfig);
+    }
+
+    /// Validate reservation fee config before use
+    public(package) fun validate_reservation_fees(config: &SocialProofTokensConfig) {
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        assert!(reservation_total_fee_bps > 0 && reservation_total_fee_bps <= 10000, EInvalidFeeConfig);
+    }
+
+    /// Calculate fee amount with overflow protection
+    /// amount * fee_bps can overflow before division, so check first
+    public(package) fun calculate_fee_amount_safe(amount: u64, fee_bps: u64): u64 {
+        // Overflow protection: amount * fee_bps can overflow before division
+        if (amount == 0 || fee_bps == 0) {
+            return 0
+        };
+        assert!(amount <= MAX_U64 / fee_bps, EOverflow);
+        (amount * fee_bps) / 10000
+    }
+
+    /// Calculate component fee from total fee amount
+    /// component_fee = (fee_amount * component_bps) / total_bps
+    /// With overflow protection
+    public(package) fun calculate_component_fee_safe(fee_amount: u64, component_bps: u64, total_bps: u64): u64 {
+        if (fee_amount == 0 || component_bps == 0 || total_bps == 0) {
+            return 0
+        };
+        // Overflow protection: fee_amount * component_bps can overflow
+        assert!(fee_amount <= MAX_U64 / component_bps, EOverflow);
+        (fee_amount * component_bps) / total_bps
+    }
+
     // === Reservation Functions ===
 
     /// Reserve MYS tokens towards a post to support social proof token creation
     /// Anyone can call this function - the post owner is stored in the reservation pool
-    public entry fun reserve_towards_post(
+    /// Reserve MYS tokens towards a post to support social proof token creation
+    /// Non-platform version: platform fees go to ecosystem treasury
+    #[allow(lint(self_transfer))]
+    public fun reserve_towards_post(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
         reservation_pool_object: &mut ReservationPoolObject,
         treasury: &EcosystemTreasury,
-        platform: &mut social_contracts::platform::Platform,
         post: &Post,
         payment: Coin<MYS>,
         amount: u64,
@@ -585,6 +641,9 @@ module social_contracts::social_proof_tokens {
     ) {
         // Check if trading is halted
         assert!(!config.trading_halted, ETradingHalted);
+        
+        // Prevent reservations after conversion to token
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
         
         let reserver = tx_context::sender(ctx);
         // Get post ID and owner from reservation pool
@@ -601,8 +660,154 @@ module social_contracts::social_proof_tokens {
         // Ensure reserver has enough funds
         assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
         
-        // Calculate and distribute fees
+        // Calculate and distribute fees (non-platform version)
         let (mut remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = distribute_reservation_fees_with_post(
+            config,
+            reservation_pool_object,
+            post,
+            amount,
+            payment,
+            treasury,
+            ctx
+        );
+        
+        // Net amount after fees
+        let net_amount = amount - fee_amount;
+        
+        // Check individual reservation limit (based on net amount)
+        let max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / 10000;
+        let current_reservation = if (table::contains(&reservation_pool_object.reservations, reserver)) {
+            *table::borrow(&reservation_pool_object.reservations, reserver)
+        } else {
+            0
+        };
+        assert!(current_reservation + net_amount <= max_individual_reservation, EExceededMaxHold);
+        
+        // Extract net reservation payment
+        let reservation_payment = coin::split(&mut remaining_payment, net_amount, ctx);
+        balance::join(&mut reservation_pool_object.mys_balance, coin::into_balance(reservation_payment));
+        
+        // Update reserver's balance in the pool (store net amount)
+        if (table::contains(&reservation_pool_object.reservations, reserver)) {
+            let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
+            assert!(*reservation_balance <= MAX_U64 - net_amount, EOverflow);
+            *reservation_balance = *reservation_balance + net_amount;
+        } else {
+            // DoS protection: limit number of unique reservers per pool
+            let current_reservers_count = vector::length(&reservation_pool_object.reservers);
+            assert!(current_reservers_count < config.max_reservers_per_pool, ETooManyReservers);
+            
+            table::add(&mut reservation_pool_object.reservations, reserver, net_amount);
+            // Add to reservers list for tracking
+            vector::push_back(&mut reservation_pool_object.reservers, reserver);
+        };
+
+        // Update total reserved (with net amount)
+
+        assert!(reservation_pool_object.info.total_reserved <= MAX_U64 - net_amount, EOverflow);
+        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + net_amount;
+
+        // Update registry
+        if (table::contains(&registry.reservation_pools, post_id)) {
+            let registry_pool = table::borrow_mut(&mut registry.reservation_pools, post_id);
+            registry_pool.total_reserved = reservation_pool_object.info.total_reserved;
+        } else {
+            // Create registry entry if it doesn't exist
+            let reservation_pool = ReservationPool {
+                associated_id: post_id,
+                token_type: TOKEN_TYPE_POST,
+                owner: post_owner,
+                total_reserved: reservation_pool_object.info.total_reserved,
+                required_threshold: config.post_threshold,
+                created_at: now,
+            };
+            table::add(&mut registry.reservation_pools, post_id, reservation_pool);
+        };
+        
+        // Check if threshold was just met
+        let threshold_met = reservation_pool_object.info.total_reserved >= config.post_threshold;
+        let was_threshold_met = (reservation_pool_object.info.total_reserved - net_amount) >= config.post_threshold;
+        
+        // Emit threshold met event if this reservation pushed us over the threshold
+        if (threshold_met && !was_threshold_met) {
+            event::emit(ThresholdMetEvent {
+                associated_id: post_id,
+                token_type: TOKEN_TYPE_POST,
+                owner: post_owner,
+                total_reserved: reservation_pool_object.info.total_reserved,
+                required_threshold: config.post_threshold,
+                timestamp: now,
+            });
+        };
+        
+        // Return excess payment
+        if (coin::value(&remaining_payment) > 0) {
+            transfer::public_transfer(remaining_payment, reserver);
+        } else {
+            coin::destroy_zero(remaining_payment);
+        };
+        
+        // Emit reservation created event
+        event::emit(ReservationCreatedEvent {
+            associated_id: post_id,
+            token_type: TOKEN_TYPE_POST,
+            reserver,
+            amount,
+            total_reserved: reservation_pool_object.info.total_reserved,
+            threshold_met,
+            reserved_at: now,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+        });
+    }
+
+    /// Reserve MYS tokens towards a post to support social proof token creation
+    /// Platform version: platform fees go to platform treasury, includes platform validation
+    #[allow(lint(self_transfer))]
+    public fun reserve_towards_post_with_platform(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        post: &Post,
+        payment: Coin<MYS>,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
+        // Prevent reservations after conversion to token
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
+        
+        let reserver = tx_context::sender(ctx);
+        // Get post ID and owner from reservation pool
+        let post_id = reservation_pool_object.info.associated_id;
+        let post_owner = reservation_pool_object.info.owner;
+        let now = tx_context::epoch(ctx);
+        
+        // Verify reservation pool is for a post
+        assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_POST, EInvalidTokenType);
+        
+        // Verify post matches reservation pool
+        assert!(post::get_id_address(post) == post_id, EInvalidID);
+        
+        // Ensure reserver has enough funds
+        assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
+        
+        // Platform validation
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        assert!(platform::has_joined_platform(platform, reserver), EUserNotJoinedPlatform);
+        assert!(!block_list::is_blocked(block_list_registry, platform_id, reserver), EUserBlockedByPlatform);
+        
+        // Calculate and distribute fees (platform version)
+        let (mut remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = distribute_reservation_fees_with_post_and_platform(
             config,
             reservation_pool_object,
             post,
@@ -635,13 +840,16 @@ module social_contracts::social_proof_tokens {
             assert!(*reservation_balance <= MAX_U64 - net_amount, EOverflow);
             *reservation_balance = *reservation_balance + net_amount;
         } else {
+            // DoS protection: limit number of unique reservers per pool
+            let current_reservers_count = vector::length(&reservation_pool_object.reservers);
+            assert!(current_reservers_count < config.max_reservers_per_pool, ETooManyReservers);
+            
             table::add(&mut reservation_pool_object.reservations, reserver, net_amount);
             // Add to reservers list for tracking
-            vector::push_back(&mut reservation_pool_object.info.reservers, reserver);
+            vector::push_back(&mut reservation_pool_object.reservers, reserver);
         };
 
         // Update total reserved (with net amount)
-
         assert!(reservation_pool_object.info.total_reserved <= MAX_U64 - net_amount, EOverflow);
         reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + net_amount;
 
@@ -657,7 +865,6 @@ module social_contracts::social_proof_tokens {
                 owner: post_owner,
                 total_reserved: reservation_pool_object.info.total_reserved,
                 required_threshold: config.post_threshold,
-                reservers: reservation_pool_object.info.reservers,
                 created_at: now,
             };
             table::add(&mut registry.reservation_pools, post_id, reservation_pool);
@@ -703,19 +910,23 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Reserve MYS tokens towards a profile to support social proof token creation
+    /// Non-platform version: platform fees go to ecosystem treasury
     /// Anyone can call this function - the profile owner is stored in the reservation pool
-    public entry fun reserve_towards_profile(
+    #[allow(lint(self_transfer))]
+    public fun reserve_towards_profile(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
         reservation_pool_object: &mut ReservationPoolObject,
         treasury: &EcosystemTreasury,
-        platform: &mut social_contracts::platform::Platform,
         payment: Coin<MYS>,
         amount: u64,
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
         assert!(!config.trading_halted, ETradingHalted);
+        
+        // Prevent reservations after conversion to token
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
         
         let reserver = tx_context::sender(ctx);
         // Get profile ID and owner from reservation pool
@@ -729,8 +940,150 @@ module social_contracts::social_proof_tokens {
         // Ensure reserver has enough funds
         assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
         
-        // Calculate and distribute fees (no PoC for profiles)
+        // Calculate and distribute fees (non-platform version, no PoC for profiles)
         let (mut remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = distribute_reservation_fees_no_poc(
+            config,
+            reservation_pool_object,
+            amount,
+            payment,
+            treasury,
+            ctx
+        );
+        
+        // Net amount after fees
+        let net_amount = amount - fee_amount;
+        
+        // Check individual reservation limit (based on net amount)
+        let max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / 10000;
+        let current_reservation = if (table::contains(&reservation_pool_object.reservations, reserver)) {
+            *table::borrow(&reservation_pool_object.reservations, reserver)
+        } else {
+            0
+        };
+        assert!(current_reservation + net_amount <= max_individual_reservation, EExceededMaxHold);
+        
+        // Extract net reservation payment
+        let reservation_payment = coin::split(&mut remaining_payment, net_amount, ctx);
+        balance::join(&mut reservation_pool_object.mys_balance, coin::into_balance(reservation_payment));
+
+        // Update reserver's balance in the pool (store net amount)
+        if (table::contains(&reservation_pool_object.reservations, reserver)) {
+            let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
+            assert!(*reservation_balance <= MAX_U64 - net_amount, EOverflow);
+            *reservation_balance = *reservation_balance + net_amount;
+        } else {
+            // DoS protection: limit number of unique reservers per pool
+            let current_reservers_count = vector::length(&reservation_pool_object.reservers);
+            assert!(current_reservers_count < config.max_reservers_per_pool, ETooManyReservers);
+            
+            table::add(&mut reservation_pool_object.reservations, reserver, net_amount);
+            // Add to reservers list for tracking
+            vector::push_back(&mut reservation_pool_object.reservers, reserver);
+        };
+
+        // Update total reserved (with net amount)
+
+        assert!(reservation_pool_object.info.total_reserved <= MAX_U64 - net_amount, EOverflow);
+        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + net_amount;
+
+        // Update registry
+        if (table::contains(&registry.reservation_pools, profile_id)) {
+            let registry_pool = table::borrow_mut(&mut registry.reservation_pools, profile_id);
+            registry_pool.total_reserved = reservation_pool_object.info.total_reserved;
+        } else {
+            // Create registry entry if it doesn't exist
+            let reservation_pool = ReservationPool {
+                associated_id: profile_id,
+                token_type: TOKEN_TYPE_PROFILE,
+                owner: profile_owner,
+                total_reserved: reservation_pool_object.info.total_reserved,
+                required_threshold: config.profile_threshold,
+                created_at: now,
+            };
+            table::add(&mut registry.reservation_pools, profile_id, reservation_pool);
+        };
+        
+        // Check if threshold was just met
+        let threshold_met = reservation_pool_object.info.total_reserved >= config.profile_threshold;
+        let was_threshold_met = (reservation_pool_object.info.total_reserved - net_amount) >= config.profile_threshold;
+        
+        // Emit threshold met event if this reservation pushed us over the threshold
+        if (threshold_met && !was_threshold_met) {
+            event::emit(ThresholdMetEvent {
+                associated_id: profile_id,
+                token_type: TOKEN_TYPE_PROFILE,
+                owner: profile_owner,
+                total_reserved: reservation_pool_object.info.total_reserved,
+                required_threshold: config.profile_threshold,
+                timestamp: now,
+            });
+        };
+        
+        // Return excess payment
+        if (coin::value(&remaining_payment) > 0) {
+            transfer::public_transfer(remaining_payment, reserver);
+        } else {
+            coin::destroy_zero(remaining_payment);
+        };
+        
+        // Emit reservation created event
+        event::emit(ReservationCreatedEvent {
+            associated_id: profile_id,
+            token_type: TOKEN_TYPE_PROFILE,
+            reserver,
+            amount,
+            total_reserved: reservation_pool_object.info.total_reserved,
+            threshold_met,
+            reserved_at: now,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+        });
+    }
+
+    /// Reserve MYS tokens towards a profile to support social proof token creation
+    /// Platform version: platform fees go to platform treasury, includes platform validation
+    /// Anyone can call this function - the profile owner is stored in the reservation pool
+    #[allow(lint(self_transfer))]
+    public fun reserve_towards_profile_with_platform(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        payment: Coin<MYS>,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
+        // Prevent reservations after conversion to token
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
+        
+        let reserver = tx_context::sender(ctx);
+        // Get profile ID and owner from reservation pool
+        let profile_id = reservation_pool_object.info.associated_id;
+        let profile_owner = reservation_pool_object.info.owner;
+        let now = tx_context::epoch(ctx);
+        
+        // Verify reservation pool is for a profile
+        assert!(reservation_pool_object.info.token_type == TOKEN_TYPE_PROFILE, EInvalidTokenType);
+        
+        // Ensure reserver has enough funds
+        assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
+        
+        // Platform validation
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        assert!(platform::has_joined_platform(platform, reserver), EUserNotJoinedPlatform);
+        assert!(!block_list::is_blocked(block_list_registry, platform_id, reserver), EUserBlockedByPlatform);
+        
+        // Calculate and distribute fees (platform version, no PoC for profiles)
+        let (mut remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = distribute_reservation_fees_no_poc_with_platform(
             config,
             reservation_pool_object,
             amount,
@@ -762,13 +1115,16 @@ module social_contracts::social_proof_tokens {
             assert!(*reservation_balance <= MAX_U64 - net_amount, EOverflow);
             *reservation_balance = *reservation_balance + net_amount;
         } else {
+            // DoS protection: limit number of unique reservers per pool
+            let current_reservers_count = vector::length(&reservation_pool_object.reservers);
+            assert!(current_reservers_count < config.max_reservers_per_pool, ETooManyReservers);
+            
             table::add(&mut reservation_pool_object.reservations, reserver, net_amount);
             // Add to reservers list for tracking
-            vector::push_back(&mut reservation_pool_object.info.reservers, reserver);
+            vector::push_back(&mut reservation_pool_object.reservers, reserver);
         };
 
         // Update total reserved (with net amount)
-
         assert!(reservation_pool_object.info.total_reserved <= MAX_U64 - net_amount, EOverflow);
         reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved + net_amount;
 
@@ -784,7 +1140,6 @@ module social_contracts::social_proof_tokens {
                 owner: profile_owner,
                 total_reserved: reservation_pool_object.info.total_reserved,
                 required_threshold: config.profile_threshold,
-                reservers: reservation_pool_object.info.reservers,
                 created_at: now,
             };
             table::add(&mut registry.reservation_pools, profile_id, reservation_pool);
@@ -830,12 +1185,13 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Withdraw MYS reservation from a post or profile
-    public entry fun withdraw_reservation(
+    /// Non-platform version: platform fees go to ecosystem treasury
+    #[allow(lint(self_transfer))]
+    public fun withdraw_reservation(
         registry: &mut TokenRegistry,
-        config: &SocialProofTokensConfig,
+        _config: &SocialProofTokensConfig,
         reservation_pool_object: &mut ReservationPoolObject,
-        treasury: &EcosystemTreasury,
-        platform: &mut social_contracts::platform::Platform,
+        _treasury: &EcosystemTreasury,
         amount: u64,
         ctx: &mut TxContext
     ) {
@@ -843,48 +1199,151 @@ module social_contracts::social_proof_tokens {
         let associated_id = reservation_pool_object.info.associated_id;
         let now = tx_context::epoch(ctx);
         
+        // Prevent withdrawals after conversion to token
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
+        
+        // Validate amount is positive
+        assert!(amount > 0, EInsufficientFunds);
+        
         // Verify reserver has a reservation
         assert!(table::contains(&reservation_pool_object.reservations, reserver), ENoTokensOwned);
         
         let current_reservation = *table::borrow(&reservation_pool_object.reservations, reserver);
+        
+        // Model A: Fee only on deposit, so amount is net withdrawal amount (no fee on withdraw)
+        // Ensure user has enough net reservation balance (we store net amounts)
         assert!(current_reservation >= amount, EInsufficientLiquidity);
         
-        // Calculate fees on withdrawal amount
-        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
-        let fee_amount = (amount * reservation_total_fee_bps) / 10000;
-        let creator_fee = (fee_amount * config.reservation_creator_fee_bps) / reservation_total_fee_bps;
-        let platform_fee = (fee_amount * config.reservation_platform_fee_bps) / reservation_total_fee_bps;
-        let treasury_fee = fee_amount - creator_fee - platform_fee;
-        
-        // Net amount after fees
-        let net_amount = amount - fee_amount;
-        
-        // Ensure pool has enough liquidity for refund + all fees
+        // Ensure pool has enough liquidity for net refund (pool contains net deposits)
         assert!(balance::value(&reservation_pool_object.mys_balance) >= amount, EInsufficientLiquidity);
         
-        // Update reserver's balance
+        // Update reserver's balance (subtract net amount, since reservations store net)
         if (current_reservation == amount) {
             // Remove reserver completely
             table::remove(&mut reservation_pool_object.reservations, reserver);
             
             // Remove from reservers list
             let mut i = 0;
-            let len = vector::length(&reservation_pool_object.info.reservers);
+            let len = vector::length(&reservation_pool_object.reservers);
             while (i < len) {
-                if (*vector::borrow(&reservation_pool_object.info.reservers, i) == reserver) {
-                    vector::remove(&mut reservation_pool_object.info.reservers, i);
+                if (*vector::borrow(&reservation_pool_object.reservers, i) == reserver) {
+                    vector::remove(&mut reservation_pool_object.reservers, i);
                     break
                 };
                 i = i + 1;
             };
         } else {
-            // Reduce reservation amount
+            // Reduce reservation amount by net amount (since we store net)
             let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
             *reservation_balance = *reservation_balance - amount;
         };
         
-        // Update total reserved
+        // Update total reserved (subtract net amount, since we track net)
         reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved - amount;
+        
+        // Update registry
+        if (table::contains(&registry.reservation_pools, associated_id)) {
+            let registry_pool = table::borrow_mut(&mut registry.reservation_pools, associated_id);
+            registry_pool.total_reserved = reservation_pool_object.info.total_reserved;
+        };
+        
+        // Transfer net amount to reserver (no fees on withdrawal in Model A)
+        let refund_balance = balance::split(&mut reservation_pool_object.mys_balance, amount);
+        let refund_coin = coin::from_balance(refund_balance, ctx);
+        transfer::public_transfer(refund_coin, reserver);
+        
+        // Emit reservation withdrawn event
+        // Model A: No fees on withdrawal, so all fee fields are 0
+        event::emit(ReservationWithdrawnEvent {
+            associated_id,
+            token_type: reservation_pool_object.info.token_type,
+            reserver,
+            amount,
+            total_reserved: reservation_pool_object.info.total_reserved,
+            withdrawn_at: now,
+            fee_amount: 0,
+            creator_fee: 0,
+            platform_fee: 0,
+            treasury_fee: 0,
+        });
+    }
+
+    /// Withdraw MYS reservation from a post or profile
+    /// Platform version: platform fees go to platform treasury
+    #[allow(lint(self_transfer))]
+    public fun withdraw_reservation_with_platform(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        reservation_pool_object: &mut ReservationPoolObject,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        block_list_registry: &BlockListRegistry,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let reserver = tx_context::sender(ctx);
+        let associated_id = reservation_pool_object.info.associated_id;
+        let now = tx_context::epoch(ctx);
+        
+        // Prevent withdrawals after conversion to token
+        assert!(!reservation_pool_object.converted, EReservationPoolConverted);
+        
+        // Validate amount is positive
+        assert!(amount > 0, EInsufficientFunds);
+        
+        // Platform validation
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        assert!(platform::has_joined_platform(platform, reserver), EUserNotJoinedPlatform);
+        assert!(!block_list::is_blocked(block_list_registry, platform_id, reserver), EUserBlockedByPlatform);
+        
+        // Verify reserver has a reservation
+        assert!(table::contains(&reservation_pool_object.reservations, reserver), ENoTokensOwned);
+        
+        let current_reservation = *table::borrow(&reservation_pool_object.reservations, reserver);
+        
+        // amount is gross withdrawal amount; calculate fees to get net amount
+        // Validate fees and calculate with overflow protection
+        validate_reservation_fees(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+        
+        // Net amount after fees (this is what we subtract from reservation tracking, since we store net)
+        let net_amount = amount - fee_amount;
+        
+        // Ensure user has enough net reservation balance (we store net amounts)
+        assert!(current_reservation >= net_amount, EInsufficientLiquidity);
+        
+        // Ensure pool has enough liquidity for gross refund + all fees
+        assert!(balance::value(&reservation_pool_object.mys_balance) >= amount, EInsufficientLiquidity);
+        
+        // Update reserver's balance (subtract net amount, since reservations store net)
+        if (current_reservation == net_amount) {
+            // Remove reserver completely
+            table::remove(&mut reservation_pool_object.reservations, reserver);
+            
+            // Remove from reservers list
+            let mut i = 0;
+            let len = vector::length(&reservation_pool_object.reservers);
+            while (i < len) {
+                if (*vector::borrow(&reservation_pool_object.reservers, i) == reserver) {
+                    vector::remove(&mut reservation_pool_object.reservers, i);
+                    break
+                };
+                i = i + 1;
+            };
+        } else {
+            // Reduce reservation amount by net amount (since we store net)
+            let reservation_balance = table::borrow_mut(&mut reservation_pool_object.reservations, reserver);
+            *reservation_balance = *reservation_balance - net_amount;
+        };
+        
+        // Update total reserved (subtract net amount, since we track net)
+        reservation_pool_object.info.total_reserved = reservation_pool_object.info.total_reserved - net_amount;
         
         // Update registry
         if (table::contains(&registry.reservation_pools, associated_id)) {
@@ -900,7 +1359,7 @@ module social_contracts::social_proof_tokens {
                 transfer::public_transfer(creator_fee_coin, reservation_pool_object.info.owner);
             };
             
-            // Send platform fee - add to platform treasury
+            // Send platform fee to platform treasury
             if (platform_fee > 0) {
                 let mut platform_fee_coin = coin::from_balance(balance::split(&mut reservation_pool_object.mys_balance, platform_fee), ctx);
                 social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
@@ -919,7 +1378,7 @@ module social_contracts::social_proof_tokens {
         let refund_coin = coin::from_balance(refund_balance, ctx);
         transfer::public_transfer(refund_coin, reserver);
         
-        // Emit reservation withdrawn event
+        // Emit reservation withdrawn event with actual fee amounts
         event::emit(ReservationWithdrawnEvent {
             associated_id,
             token_type: reservation_pool_object.info.token_type,
@@ -934,62 +1393,143 @@ module social_contracts::social_proof_tokens {
         });
     }
 
-    /// Create a new reservation pool for a post or profile
-    public entry fun create_reservation_pool(
+    /// Create a new reservation pool for a post
+    public entry fun create_reservation_pool_for_post(
         registry: &mut TokenRegistry,
         config: &SocialProofTokensConfig,
-        associated_id: address,
-        token_type: u8,
-        owner: address,
+        post: &Post,
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
         assert!(!config.trading_halted, ETradingHalted);
         
-        // Verify caller is the owner
-        assert!(tx_context::sender(ctx) == owner, ENotAuthorized);
+        let caller = tx_context::sender(ctx);
+        let associated_id = post::get_id_address(post);
+        let owner = post::get_post_owner(post);
+        
+        // Verify caller is the actual post owner
+        assert!(caller == owner, ENotAuthorized);
+        
+        // Verify post ID matches
+        assert!(associated_id == post::get_id_address(post), EInvalidID);
         
         // Check if reservation pool already exists
         assert!(!table::contains(&registry.reservation_pools, associated_id), ETokenAlreadyExists);
         
         let now = tx_context::epoch(ctx);
-        let required_threshold = if (token_type == TOKEN_TYPE_POST) {
-            config.post_threshold
-        } else if (token_type == TOKEN_TYPE_PROFILE) {
-            config.profile_threshold
-        } else {
-            abort EInvalidTokenType
-        };
+        let required_threshold = config.post_threshold;
         
-        // Create reservation pool info
+        // Create reservation pool info (without reservers vector - only in ReservationPoolObject)
         let reservation_pool = ReservationPool {
             associated_id,
-            token_type,
+            token_type: TOKEN_TYPE_POST,
             owner,
             total_reserved: 0,
             required_threshold,
-            reservers: vector::empty(),
             created_at: now,
         };
         
-        // Add to registry
-        table::add(&mut registry.reservation_pools, associated_id, reservation_pool);
-        
-        // Create reservation pool object
+        // Create reservation pool object first (before moving reservation_pool)
         let reservation_pool_object = ReservationPoolObject {
             id: object::new(ctx),
             info: reservation_pool,
             mys_balance: balance::zero(),
             reservations: table::new(ctx),
+            reservers: vector::empty(),
+            converted: false,
             version: upgrade::current_version(),
         };
+        
+        // Add to registry (reconstruct ReservationPool from object's info since original was moved)
+        let pool_info = ReservationPool {
+            associated_id: reservation_pool_object.info.associated_id,
+            token_type: reservation_pool_object.info.token_type,
+            owner: reservation_pool_object.info.owner,
+            total_reserved: reservation_pool_object.info.total_reserved,
+            required_threshold: reservation_pool_object.info.required_threshold,
+            created_at: reservation_pool_object.info.created_at,
+        };
+        table::add(&mut registry.reservation_pools, associated_id, pool_info);
         
         let pool_object_id = object::uid_to_address(&reservation_pool_object.id);
         
         // Emit reservation pool created event
         event::emit(ReservationPoolCreatedEvent {
             associated_id,
-            token_type,
+            token_type: TOKEN_TYPE_POST,
+            owner,
+            required_threshold,
+            pool_object_id,
+            created_at: now,
+        });
+        
+        transfer::share_object(reservation_pool_object);
+    }
+
+    /// Create a new reservation pool for a profile
+    public entry fun create_reservation_pool_for_profile(
+        registry: &mut TokenRegistry,
+        config: &SocialProofTokensConfig,
+        profile: &Profile,
+        ctx: &mut TxContext
+    ) {
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
+        let caller = tx_context::sender(ctx);
+        let associated_id = profile::get_id_address(profile);
+        let owner = profile::owner(profile);
+        
+        // Verify caller is the actual profile owner
+        assert!(caller == owner, ENotAuthorized);
+        
+        // Verify profile ID matches
+        assert!(associated_id == profile::get_id_address(profile), EInvalidID);
+        
+        // Check if reservation pool already exists
+        assert!(!table::contains(&registry.reservation_pools, associated_id), ETokenAlreadyExists);
+        
+        let now = tx_context::epoch(ctx);
+        let required_threshold = config.profile_threshold;
+        
+        // Create reservation pool info (without reservers vector - only in ReservationPoolObject)
+        let reservation_pool = ReservationPool {
+            associated_id,
+            token_type: TOKEN_TYPE_PROFILE,
+            owner,
+            total_reserved: 0,
+            required_threshold,
+            created_at: now,
+        };
+        
+        // Create reservation pool object first (before moving reservation_pool)
+        let reservation_pool_object = ReservationPoolObject {
+            id: object::new(ctx),
+            info: reservation_pool,
+            mys_balance: balance::zero(),
+            reservations: table::new(ctx),
+            reservers: vector::empty(),
+            converted: false,
+            version: upgrade::current_version(),
+        };
+        
+        // Add to registry (reconstruct ReservationPool from object's info since original was moved)
+        let pool_info = ReservationPool {
+            associated_id: reservation_pool_object.info.associated_id,
+            token_type: reservation_pool_object.info.token_type,
+            owner: reservation_pool_object.info.owner,
+            total_reserved: reservation_pool_object.info.total_reserved,
+            required_threshold: reservation_pool_object.info.required_threshold,
+            created_at: reservation_pool_object.info.created_at,
+        };
+        table::add(&mut registry.reservation_pools, associated_id, pool_info);
+        
+        let pool_object_id = object::uid_to_address(&reservation_pool_object.id);
+        
+        // Emit reservation pool created event
+        event::emit(ReservationPoolCreatedEvent {
+            associated_id,
+            token_type: TOKEN_TYPE_PROFILE,
             owner,
             required_threshold,
             pool_object_id,
@@ -1039,8 +1579,10 @@ module social_contracts::social_proof_tokens {
         // Use the same scaling formula as the old auction system
         let total_reserved = reservation_pool_object.info.total_reserved;
         let sqrt_reserved = math::sqrt(total_reserved);
-        let cbrt_reserved = math::sqrt(sqrt_reserved); // approximation of cube root
-        let mut scale_factor = sqrt_reserved * cbrt_reserved; // reserved^0.75
+        let fourth_root_reserved = math::sqrt(sqrt_reserved); // fourth root: sqrt(sqrt(x)) = x^(1/4)
+        // Overflow protection: check before multiplication
+        assert!(sqrt_reserved == 0 || sqrt_reserved <= MAX_U64 / fourth_root_reserved, EOverflow);
+        let mut scale_factor = sqrt_reserved * fourth_root_reserved; // reserved^0.75
         
         // Divide the scale factor to make each token worth more than 1 MYS
         scale_factor = scale_factor / 1000;
@@ -1089,9 +1631,23 @@ module social_contracts::social_proof_tokens {
         let mut updated_token_info = token_info;
         updated_token_info.id = pool_address;
         
+        // Create a copy of token info for the pool (since TokenInfo doesn't have copy, we'll reconstruct)
+        let pool_token_info = TokenInfo {
+            id: updated_token_info.id,
+            token_type: updated_token_info.token_type,
+            owner: updated_token_info.owner,
+            associated_id: updated_token_info.associated_id,
+            symbol: updated_token_info.symbol,
+            name: updated_token_info.name,
+            circulating_supply: updated_token_info.circulating_supply,
+            base_price: updated_token_info.base_price,
+            quadratic_coefficient: updated_token_info.quadratic_coefficient,
+            created_at: updated_token_info.created_at,
+        };
+        
         let mut token_pool = TokenPool {
             id: pool_id,
-            info: updated_token_info,
+            info: pool_token_info,
             mys_balance: balance::zero(),
             holders: table::new(ctx),
             poc_redirect_to: option::none(),
@@ -1100,20 +1656,36 @@ module social_contracts::social_proof_tokens {
         };
         
         // Distribute tokens to reservers proportionally
-        let reservers = &reservation_pool_object.info.reservers;
+        // Limit number of reservers to prevent DoS via gas exhaustion
+        let reservers = &reservation_pool_object.reservers;
         let num_reservers = vector::length(reservers);
+        assert!(num_reservers <= config.max_reservers_per_pool, ETooManyReservers);
         
+        let mut distributed_total = 0;
         let mut i = 0;
         while (i < num_reservers) {
             let reserver = *vector::borrow(reservers, i);
             let reservation_amount = *table::borrow(&reservation_pool_object.reservations, reserver);
             
             // Calculate token amount based on reserver's proportion of total reservation
+            // Overflow protection: check before multiplication
+            assert!(reservation_amount <= MAX_U64 / initial_token_supply, EOverflow);
             let token_amount = (reservation_amount * initial_token_supply) / total_reserved;
             
             if (token_amount > 0) {
                 // Update holder's balance in the pool
-                table::add(&mut token_pool.holders, reserver, token_amount);
+                // Handle duplicate reservers: if already exists, add to existing balance
+                if (table::contains(&token_pool.holders, reserver)) {
+                    let existing_balance = table::borrow_mut(&mut token_pool.holders, reserver);
+                    assert!(*existing_balance <= MAX_U64 - token_amount, EOverflow);
+                    *existing_balance = *existing_balance + token_amount;
+                } else {
+                    table::add(&mut token_pool.holders, reserver, token_amount);
+                };
+                
+                // Track distributed tokens to ensure accurate circulating supply
+                assert!(distributed_total <= MAX_U64 - token_amount, EOverflow);
+                distributed_total = distributed_total + token_amount;
                 
                 // Create social token for the reserver
                 let social_token = SocialToken {
@@ -1130,26 +1702,50 @@ module social_contracts::social_proof_tokens {
             i = i + 1;
         };
         
+        // Handle rounding remainder: allocate any undistributed tokens to the owner
+        let remainder = initial_token_supply - distributed_total;
+        if (remainder > 0) {
+            // Allocate remainder to the owner
+            if (table::contains(&token_pool.holders, reservation_pool_object.info.owner)) {
+                let owner_balance = table::borrow_mut(&mut token_pool.holders, reservation_pool_object.info.owner);
+                assert!(*owner_balance <= MAX_U64 - remainder, EOverflow);
+                *owner_balance = *owner_balance + remainder;
+            } else {
+                table::add(&mut token_pool.holders, reservation_pool_object.info.owner, remainder);
+            };
+            distributed_total = distributed_total + remainder;
+        };
+        
+        // Update circulating supply to match actually distributed tokens
+        token_pool.info.circulating_supply = distributed_total;
+        updated_token_info.circulating_supply = distributed_total;
+        
         // Transfer all reserved MYS to the token pool as initial liquidity
         balance::join(&mut token_pool.mys_balance, balance::withdraw_all(&mut reservation_pool_object.mys_balance));
         
-        // Clear the reservation pool since it's now converted to a token
+        // Mark reservation pool as converted and clear total reserved
+        reservation_pool_object.converted = true;
         reservation_pool_object.info.total_reserved = 0;
-        // Note: We keep the reservations table for reference but it's no longer active
         
-        // Add to registry
+        // Update registry reservation pool entry to reflect conversion
+        if (table::contains(&registry.reservation_pools, associated_id)) {
+            let registry_pool = table::borrow_mut(&mut registry.reservation_pools, associated_id);
+            registry_pool.total_reserved = 0;
+        };
+        
+        // Add to registry (use updated_token_info which has the correct circulating_supply)
         table::add(&mut registry.tokens, associated_id, updated_token_info);
         
-        // Emit token created event
+        // Emit token created event (use token_pool.info which has the final state)
         event::emit(TokenPoolCreatedEvent {
             id: pool_address,
-            token_type: updated_token_info.token_type,
-            owner: updated_token_info.owner,
-            associated_id: updated_token_info.associated_id,
-            symbol: updated_token_info.symbol,
-            name: updated_token_info.name,
-            base_price: updated_token_info.base_price,
-            quadratic_coefficient: updated_token_info.quadratic_coefficient,
+            token_type: token_pool.info.token_type,
+            owner: token_pool.info.owner,
+            associated_id: token_pool.info.associated_id,
+            symbol: token_pool.info.symbol,
+            name: token_pool.info.name,
+            base_price: token_pool.info.base_price,
+            quadratic_coefficient: token_pool.info.quadratic_coefficient,
         });
         
         // Share the token pool
@@ -1187,7 +1783,10 @@ module social_contracts::social_proof_tokens {
         };
         
         let redirect_percentage = if (option::is_some(post::get_revenue_redirect_percentage(post))) {
-            option::some(*option::borrow(post::get_revenue_redirect_percentage(post)))
+            let percentage = *option::borrow(post::get_revenue_redirect_percentage(post));
+            // Validate PoC redirect percentage is in valid range (0-100 percent)
+            assert!(percentage <= 100, EInvalidFeeConfig);
+            option::some(percentage)
         } else {
             option::none()
         };
@@ -1208,6 +1807,8 @@ module social_contracts::social_proof_tokens {
 
     /// Calculate PoC revenue split - shared utility for consistent logic
     fun calculate_poc_split(amount: u64, redirect_percentage: u64): (u64, u64) {
+        // Validate redirect percentage to prevent underflow
+        assert!(redirect_percentage <= 100, EInvalidFeeConfig);
         let redirected_amount = (amount * redirect_percentage) / 100;
         let remaining_amount = amount - redirected_amount;
         (redirected_amount, remaining_amount)
@@ -1300,6 +1901,8 @@ module social_contracts::social_proof_tokens {
     ): (u64, u64) {
         if (option::is_some(post::get_revenue_redirect_to(post)) && option::is_some(post::get_revenue_redirect_percentage(post))) {
             let redirect_percentage = *option::borrow(post::get_revenue_redirect_percentage(post));
+            // Validate at use-site to prevent underflow (Post may contain invalid data)
+            assert!(redirect_percentage <= 100, EInvalidFeeConfig);
             calculate_poc_split(amount, redirect_percentage)
         } else {
             (0, amount)
@@ -1356,7 +1959,7 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Calculate and distribute all reservation fees (for post reservations with PoC)
-    /// Reuses the same fee calculation and distribution pattern as trading fees
+    /// Non-platform version: routes platform fees to ecosystem treasury
     public(package) fun distribute_reservation_fees_with_post(
         config: &SocialProofTokensConfig,
         reservation_pool: &ReservationPoolObject,
@@ -1364,14 +1967,14 @@ module social_contracts::social_proof_tokens {
         amount: u64,
         mut payment: Coin<MYS>,
         treasury: &EcosystemTreasury,
-        platform: &mut social_contracts::platform::Platform,
         ctx: &mut TxContext
     ): (Coin<MYS>, u64, u64, u64, u64) {
-        // Calculate fees (same pattern as trading fees)
+        // Validate fees and calculate with overflow protection
+        validate_reservation_fees(config);
         let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
-        let fee_amount = (amount * reservation_total_fee_bps) / 10000;
-        let creator_fee = (fee_amount * config.reservation_creator_fee_bps) / reservation_total_fee_bps;
-        let platform_fee = (fee_amount * config.reservation_platform_fee_bps) / reservation_total_fee_bps;
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
         let treasury_fee = fee_amount - creator_fee - platform_fee;
         
         // Distribute fees (same pattern as trading fees)
@@ -1381,7 +1984,51 @@ module social_contracts::social_proof_tokens {
                 distribute_reservation_creator_fee(reservation_pool, post, creator_fee, &mut payment, ctx);
             };
             
-            // Send platform fee - add to platform treasury
+            // Send platform fee to ecosystem treasury (no platform involved)
+            if (platform_fee > 0) {
+                let platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
+                transfer::public_transfer(platform_fee_coin, profile::get_treasury_address(treasury));
+            };
+            
+            // Send treasury fee
+            if (treasury_fee > 0) {
+                let treasury_fee_coin = coin::split(&mut payment, treasury_fee, ctx);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
+            };
+        };
+        
+        // Return remaining payment and fee amounts
+        (payment, fee_amount, creator_fee, platform_fee, treasury_fee)
+    }
+
+    /// Calculate and distribute all reservation fees (for post reservations with PoC)
+    /// Platform version: routes platform fees to platform treasury
+    public(package) fun distribute_reservation_fees_with_post_and_platform(
+        config: &SocialProofTokensConfig,
+        reservation_pool: &ReservationPoolObject,
+        post: &Post,
+        amount: u64,
+        mut payment: Coin<MYS>,
+        treasury: &EcosystemTreasury,
+        platform: &mut social_contracts::platform::Platform,
+        ctx: &mut TxContext
+    ): (Coin<MYS>, u64, u64, u64, u64) {
+        // Validate fees and calculate with overflow protection
+        validate_reservation_fees(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+        
+        // Distribute fees (same pattern as trading fees)
+        if (fee_amount > 0) {
+            // Send creator fee with PoC redirection support
+            if (creator_fee > 0) {
+                distribute_reservation_creator_fee(reservation_pool, post, creator_fee, &mut payment, ctx);
+            };
+            
+            // Send platform fee to platform treasury
             if (platform_fee > 0) {
                 let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
                 social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
@@ -1400,21 +2047,21 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Calculate and distribute all reservation fees (for profile reservations without PoC)
-    /// Reuses the same fee calculation and distribution pattern as trading fees
+    /// Non-platform version: routes platform fees to ecosystem treasury
     public(package) fun distribute_reservation_fees_no_poc(
         config: &SocialProofTokensConfig,
         reservation_pool: &ReservationPoolObject,
         amount: u64,
         mut payment: Coin<MYS>,
         treasury: &EcosystemTreasury,
-        platform: &mut social_contracts::platform::Platform,
         ctx: &mut TxContext
     ): (Coin<MYS>, u64, u64, u64, u64) {
-        // Calculate fees (same pattern as trading fees)
+        // Validate fees and calculate with overflow protection
+        validate_reservation_fees(config);
         let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
-        let fee_amount = (amount * reservation_total_fee_bps) / 10000;
-        let creator_fee = (fee_amount * config.reservation_creator_fee_bps) / reservation_total_fee_bps;
-        let platform_fee = (fee_amount * config.reservation_platform_fee_bps) / reservation_total_fee_bps;
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
         let treasury_fee = fee_amount - creator_fee - platform_fee;
         
         // Distribute fees (same pattern as trading fees)
@@ -1424,7 +2071,50 @@ module social_contracts::social_proof_tokens {
                 distribute_reservation_creator_fee_no_poc(reservation_pool, creator_fee, &mut payment, ctx);
             };
             
-            // Send platform fee - add to platform treasury
+            // Send platform fee to ecosystem treasury (no platform involved)
+            if (platform_fee > 0) {
+                let platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
+                transfer::public_transfer(platform_fee_coin, profile::get_treasury_address(treasury));
+            };
+            
+            // Send treasury fee
+            if (treasury_fee > 0) {
+                let treasury_fee_coin = coin::split(&mut payment, treasury_fee, ctx);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
+            };
+        };
+        
+        // Return remaining payment and fee amounts
+        (payment, fee_amount, creator_fee, platform_fee, treasury_fee)
+    }
+
+    /// Calculate and distribute all reservation fees (for profile reservations without PoC)
+    /// Platform version: routes platform fees to platform treasury
+    public(package) fun distribute_reservation_fees_no_poc_with_platform(
+        config: &SocialProofTokensConfig,
+        reservation_pool: &ReservationPoolObject,
+        amount: u64,
+        mut payment: Coin<MYS>,
+        treasury: &EcosystemTreasury,
+        platform: &mut social_contracts::platform::Platform,
+        ctx: &mut TxContext
+    ): (Coin<MYS>, u64, u64, u64, u64) {
+        // Validate fees and calculate with overflow protection
+        validate_reservation_fees(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.reservation_creator_fee_bps, reservation_total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.reservation_platform_fee_bps, reservation_total_fee_bps);
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+        
+        // Distribute fees (same pattern as trading fees)
+        if (fee_amount > 0) {
+            // Send creator fee without PoC redirection
+            if (creator_fee > 0) {
+                distribute_reservation_creator_fee_no_poc(reservation_pool, creator_fee, &mut payment, ctx);
+            };
+            
+            // Send platform fee to platform treasury
             if (platform_fee > 0) {
                 let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
                 social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
@@ -1445,16 +2135,16 @@ module social_contracts::social_proof_tokens {
     // === Trading Functions ===
 
     /// Buy tokens from the pool - first purchase
+    /// Non-platform version: platform fees go to ecosystem treasury
     /// This function handles buying tokens for first-time buyers of a specific token
-    public entry fun buy_tokens(
+    #[allow(lint(self_transfer))]
+    public fun buy_tokens(
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
         config: &SocialProofTokensConfig,
         treasury: &EcosystemTreasury,
-        platform_registry: &PlatformRegistry,
         profile_registry: &UsernameRegistry,
         block_list_registry: &BlockListRegistry,
-        platform: &mut social_contracts::platform::Platform,
         mut payment: Coin<MYS>,
         amount: u64,
         ctx: &mut TxContext
@@ -1470,17 +2160,6 @@ module social_contracts::social_proof_tokens {
         // Look up the buyer's profile ID
         let profile_id_option = profile::lookup_profile_by_owner(profile_registry, buyer);
         assert!(option::is_some(&profile_id_option), ENotAuthorized);
-        
-        // Check if platform is approved
-        let platform_id = object::uid_to_address(platform::id(platform));
-        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
-        
-        // Check if user has joined the platform (by wallet address)
-        assert!(platform::has_joined_platform(platform, buyer), EUserNotJoinedPlatform);
-        
-        // Check if the user is blocked by the platform
-        let platform_address = object::uid_to_address(platform::id(platform));
-        assert!(!block_list::is_blocked(block_list_registry, platform_address, buyer), EUserBlockedByPlatform);
         
         // Prevent self-trading for token owners
         assert!(buyer != pool.info.owner, ESelfTrading);
@@ -1499,11 +2178,12 @@ module social_contracts::social_proof_tokens {
         // Ensure buyer has enough funds
         assert!(coin::value(&payment) >= price, EInsufficientFunds);
         
-        // Calculate fees
+        // Validate fees and calculate with overflow protection
+        validate_trading_fees(config);
         let total_fee_bps = calculate_total_fee_bps(config);
-        let fee_amount = (price * total_fee_bps) / 10000;
-        let creator_fee = (fee_amount * config.trading_creator_fee_bps) / total_fee_bps;
-        let platform_fee = (fee_amount * config.trading_platform_fee_bps) / total_fee_bps;
+        let fee_amount = calculate_fee_amount_safe(price, total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
         let treasury_fee = fee_amount - creator_fee - platform_fee;
         
         // Calculate the net amount to the liquidity pool
@@ -1516,13 +2196,10 @@ module social_contracts::social_proof_tokens {
                 distribute_creator_fee(pool, creator_fee, &mut payment, ctx);
             };
             
-            // Send platform fee - add to platform treasury
+            // Send platform fee to ecosystem treasury (no platform involved)
             if (platform_fee > 0) {
-                let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
-                // Add to platform treasury
-                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
-                // Destroy the emptied coin
-                coin::destroy_zero(platform_fee_coin);
+                let platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
+                transfer::public_transfer(platform_fee_coin, profile::get_treasury_address(treasury));
             };
             
             // Send treasury fee
@@ -1543,19 +2220,26 @@ module social_contracts::social_proof_tokens {
             coin::destroy_zero(payment);
         };
         
-        // Update holder's balance
-        let max_hold = (pool.info.circulating_supply + amount) * config.max_hold_percent_bps / 10000;
+        // Update holder's balance with overflow protection
+        // First check addition overflow
+        assert!(pool.info.circulating_supply <= MAX_U64 - amount, EOverflow);
+        let new_supply = pool.info.circulating_supply + amount;
+        
+        // Then check multiplication overflow for max_hold calculation
+        assert!(new_supply == 0 || new_supply <= MAX_U64 / config.max_hold_percent_bps, EOverflow);
+        let max_hold = (new_supply * config.max_hold_percent_bps) / 10000;
         let current_hold = if (table::contains(&pool.holders, buyer)) {
             *table::borrow(&pool.holders, buyer)
         } else {
             0
         };
         
-        // Check max holding limit
+        // Check max holding limit with overflow protection
+        assert!(current_hold <= MAX_U64 - amount, EOverflow);
         assert!(current_hold + amount <= max_hold, EExceededMaxHold);
         
-        // Check that this is the first purchase
-        assert!(current_hold == 0, ETokenAlreadyExists);
+        // Check that this is the first purchase (user must not already own tokens)
+        assert!(current_hold == 0, EAlreadyOwnsTokens);
         
         // Update holder's balance
         table::add(&mut pool.holders, buyer, amount);
@@ -1595,9 +2279,11 @@ module social_contracts::social_proof_tokens {
         });
     }
 
-    /// Buy more tokens when you already have a social token
-    /// This function allows users to add to their existing token holdings using MYS Coin
-    public entry fun buy_more_tokens(
+    /// Buy tokens from the pool - first purchase
+    /// Platform version: platform fees go to platform treasury, includes platform validation
+    /// This function handles buying tokens for first-time buyers of a specific token
+    #[allow(lint(self_transfer))]
+    public fun buy_tokens_with_platform(
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
         config: &SocialProofTokensConfig,
@@ -1608,7 +2294,6 @@ module social_contracts::social_proof_tokens {
         platform: &mut social_contracts::platform::Platform,
         mut payment: Coin<MYS>,
         amount: u64,
-        social_token: &mut SocialToken,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
@@ -1623,25 +2308,17 @@ module social_contracts::social_proof_tokens {
         let profile_id_option = profile::lookup_profile_by_owner(profile_registry, buyer);
         assert!(option::is_some(&profile_id_option), ENotAuthorized);
         
-        // Check if platform is approved
+        // Platform validation
         let platform_id = object::uid_to_address(platform::id(platform));
         assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
-        
-        // Check if user has joined the platform (by wallet address)
         assert!(platform::has_joined_platform(platform, buyer), EUserNotJoinedPlatform);
-        
-        // Check if the user is blocked by the platform
-        let platform_address = object::uid_to_address(platform::id(platform));
-        assert!(!block_list::is_blocked(block_list_registry, platform_address, buyer), EUserBlockedByPlatform);
+        assert!(!block_list::is_blocked(block_list_registry, platform_id, buyer), EUserBlockedByPlatform);
         
         // Prevent self-trading for token owners
         assert!(buyer != pool.info.owner, ESelfTrading);
         
         // Check if token owner is blocked by the buyer
         assert!(!block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
-        
-        // Verify social token matches the pool
-        assert!(social_token.pool_id == object::uid_to_address(&pool.id), EInvalidID);
         
         // Calculate the price for the tokens based on quadratic curve
         let (price, _) = calculate_buy_price(
@@ -1654,11 +2331,12 @@ module social_contracts::social_proof_tokens {
         // Ensure buyer has enough funds
         assert!(coin::value(&payment) >= price, EInsufficientFunds);
         
-        // Calculate fees
+        // Validate fees and calculate with overflow protection
+        validate_trading_fees(config);
         let total_fee_bps = calculate_total_fee_bps(config);
-        let fee_amount = (price * total_fee_bps) / 10000;
-        let creator_fee = (fee_amount * config.trading_creator_fee_bps) / total_fee_bps;
-        let platform_fee = (fee_amount * config.trading_platform_fee_bps) / total_fee_bps;
+        let fee_amount = calculate_fee_amount_safe(price, total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
         let treasury_fee = fee_amount - creator_fee - platform_fee;
         
         // Calculate the net amount to the liquidity pool
@@ -1671,12 +2349,10 @@ module social_contracts::social_proof_tokens {
                 distribute_creator_fee(pool, creator_fee, &mut payment, ctx);
             };
             
-            // Send platform fee - add to platform treasury
+            // Send platform fee to platform treasury
             if (platform_fee > 0) {
                 let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
-                // Add to platform treasury
                 social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
-                // Destroy the emptied coin
                 coin::destroy_zero(platform_fee_coin);
             };
             
@@ -1698,15 +2374,170 @@ module social_contracts::social_proof_tokens {
             coin::destroy_zero(payment);
         };
         
-        // Update holder's balance
-        let max_hold = (pool.info.circulating_supply + amount) * config.max_hold_percent_bps / 10000;
+        // Update holder's balance with overflow protection
+        // First check addition overflow
+        assert!(pool.info.circulating_supply <= MAX_U64 - amount, EOverflow);
+        let new_supply = pool.info.circulating_supply + amount;
+        
+        // Then check multiplication overflow for max_hold calculation
+        assert!(new_supply == 0 || new_supply <= MAX_U64 / config.max_hold_percent_bps, EOverflow);
+        let max_hold = (new_supply * config.max_hold_percent_bps) / 10000;
         let current_hold = if (table::contains(&pool.holders, buyer)) {
             *table::borrow(&pool.holders, buyer)
         } else {
             0
         };
         
-        // Check max holding limit
+        // Check max holding limit with overflow protection
+        assert!(current_hold <= MAX_U64 - amount, EOverflow);
+        assert!(current_hold + amount <= max_hold, EExceededMaxHold);
+        
+        // Check that this is the first purchase (user must not already own tokens)
+        assert!(current_hold == 0, EAlreadyOwnsTokens);
+        
+        // Update holder's balance
+        table::add(&mut pool.holders, buyer, amount);
+
+        // Update circulating supply
+        assert!(pool.info.circulating_supply <= MAX_U64 - amount, EOverflow);
+        pool.info.circulating_supply = pool.info.circulating_supply + amount;
+        
+        // Mint new social token for the user
+        let social_token = SocialToken {
+            id: object::new(ctx),
+            pool_id: object::uid_to_address(&pool.id),
+            token_type: pool.info.token_type,
+            amount,
+        };
+        transfer::public_transfer(social_token, buyer);
+        
+        // Calculate the new price after purchase
+        let new_price = calculate_token_price(
+            pool.info.base_price,
+            pool.info.quadratic_coefficient,
+            pool.info.circulating_supply
+        );
+        
+        // Emit buy event
+        event::emit(TokenBoughtEvent {
+            id: object::uid_to_address(&pool.id),
+            buyer,
+            amount,
+            mys_amount: price,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+            new_price,
+        });
+    }
+
+    /// Buy more tokens when you already have a social token
+    /// Non-platform version: platform fees go to ecosystem treasury
+    /// This function allows users to add to their existing token holdings using MYS Coin
+    #[allow(lint(self_transfer))]
+    public fun buy_more_tokens(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        mut payment: Coin<MYS>,
+        amount: u64,
+        social_token: &mut SocialToken,
+        ctx: &mut TxContext
+    ) {
+        // Check version compatibility
+        assert!(pool.version == upgrade::current_version(), EWrongVersion);
+        
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
+        let buyer = tx_context::sender(ctx);
+        
+        // Look up the buyer's profile ID
+        let profile_id_option = profile::lookup_profile_by_owner(profile_registry, buyer);
+        assert!(option::is_some(&profile_id_option), ENotAuthorized);
+        
+        // Prevent self-trading for token owners
+        assert!(buyer != pool.info.owner, ESelfTrading);
+        
+        // Check if token owner is blocked by the buyer
+        assert!(!block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
+        
+        // Verify social token matches the pool
+        assert!(social_token.pool_id == object::uid_to_address(&pool.id), EInvalidID);
+        
+        // Calculate the price for the tokens based on quadratic curve
+        let (price, _) = calculate_buy_price(
+            pool.info.base_price,
+            pool.info.quadratic_coefficient,
+            pool.info.circulating_supply,
+            amount
+        );
+        
+        // Ensure buyer has enough funds
+        assert!(coin::value(&payment) >= price, EInsufficientFunds);
+        
+        // Validate fees and calculate with overflow protection
+        validate_trading_fees(config);
+        let total_fee_bps = calculate_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(price, total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+        
+        // Calculate the net amount to the liquidity pool
+        let net_amount = price - fee_amount;
+        
+        // Extract payment and distribute fees with PoC redirection support
+        if (fee_amount > 0) {
+            // Send creator fee with PoC redirection support
+            if (creator_fee > 0) {
+                distribute_creator_fee(pool, creator_fee, &mut payment, ctx);
+            };
+            
+            // Send platform fee to ecosystem treasury (no platform involved)
+            if (platform_fee > 0) {
+                let platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
+                transfer::public_transfer(platform_fee_coin, profile::get_treasury_address(treasury));
+            };
+            
+            // Send treasury fee
+            if (treasury_fee > 0) {
+                let treasury_fee_coin = coin::split(&mut payment, treasury_fee, ctx);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
+            };
+        };
+        
+        // Add remaining payment to pool
+        let pool_payment = coin::split(&mut payment, net_amount, ctx);
+        balance::join(&mut pool.mys_balance, coin::into_balance(pool_payment));
+        
+        // Refund any excess payment
+        if (coin::value(&payment) > 0) {
+            transfer::public_transfer(payment, buyer);
+        } else {
+            coin::destroy_zero(payment);
+        };
+        
+        // Update holder's balance with overflow protection
+        // First check addition overflow
+        assert!(pool.info.circulating_supply <= MAX_U64 - amount, EOverflow);
+        let new_supply = pool.info.circulating_supply + amount;
+        
+        // Then check multiplication overflow for max_hold calculation
+        assert!(new_supply == 0 || new_supply <= MAX_U64 / config.max_hold_percent_bps, EOverflow);
+        let max_hold = (new_supply * config.max_hold_percent_bps) / 10000;
+        let current_hold = if (table::contains(&pool.holders, buyer)) {
+            *table::borrow(&pool.holders, buyer)
+        } else {
+            0
+        };
+        
+        // Check max holding limit with overflow protection
+        assert!(current_hold <= MAX_U64 - amount, EOverflow);
         assert!(current_hold + amount <= max_hold, EExceededMaxHold);
         
         // Update holder's balance
@@ -1719,7 +2550,6 @@ module social_contracts::social_proof_tokens {
         };
 
         // Update circulating supply
-
         assert!(pool.info.circulating_supply <= MAX_U64 - amount, EOverflow);
         pool.info.circulating_supply = pool.info.circulating_supply + amount;
 
@@ -1749,8 +2579,11 @@ module social_contracts::social_proof_tokens {
         });
     }
 
-    /// Sell tokens back to the pool
-    public entry fun sell_tokens(
+    /// Buy more tokens when you already have a social token
+    /// Platform version: platform fees go to platform treasury, includes platform validation
+    /// This function allows users to add to their existing token holdings using MYS Coin
+    #[allow(lint(self_transfer))]
+    public fun buy_more_tokens_with_platform(
         _registry: &TokenRegistry,
         pool: &mut TokenPool,
         config: &SocialProofTokensConfig,
@@ -1759,6 +2592,158 @@ module social_contracts::social_proof_tokens {
         profile_registry: &UsernameRegistry,
         block_list_registry: &BlockListRegistry,
         platform: &mut social_contracts::platform::Platform,
+        mut payment: Coin<MYS>,
+        amount: u64,
+        social_token: &mut SocialToken,
+        ctx: &mut TxContext
+    ) {
+        // Check version compatibility
+        assert!(pool.version == upgrade::current_version(), EWrongVersion);
+        
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
+        let buyer = tx_context::sender(ctx);
+        
+        // Look up the buyer's profile ID
+        let profile_id_option = profile::lookup_profile_by_owner(profile_registry, buyer);
+        assert!(option::is_some(&profile_id_option), ENotAuthorized);
+        
+        // Platform validation
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        assert!(platform::has_joined_platform(platform, buyer), EUserNotJoinedPlatform);
+        assert!(!block_list::is_blocked(block_list_registry, platform_id, buyer), EUserBlockedByPlatform);
+        
+        // Prevent self-trading for token owners
+        assert!(buyer != pool.info.owner, ESelfTrading);
+        
+        // Check if token owner is blocked by the buyer
+        assert!(!block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
+        
+        // Verify social token matches the pool
+        assert!(social_token.pool_id == object::uid_to_address(&pool.id), EInvalidID);
+        
+        // Calculate the price for the tokens based on quadratic curve
+        let (price, _) = calculate_buy_price(
+            pool.info.base_price,
+            pool.info.quadratic_coefficient,
+            pool.info.circulating_supply,
+            amount
+        );
+        
+        // Ensure buyer has enough funds
+        assert!(coin::value(&payment) >= price, EInsufficientFunds);
+        
+        // Validate fees and calculate with overflow protection
+        validate_trading_fees(config);
+        let total_fee_bps = calculate_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(price, total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+        
+        // Calculate the net amount to the liquidity pool
+        let net_amount = price - fee_amount;
+        
+        // Extract payment and distribute fees with PoC redirection support
+        if (fee_amount > 0) {
+            // Send creator fee with PoC redirection support
+            if (creator_fee > 0) {
+                distribute_creator_fee(pool, creator_fee, &mut payment, ctx);
+            };
+            
+            // Send platform fee to platform treasury
+            if (platform_fee > 0) {
+                let mut platform_fee_coin = coin::split(&mut payment, platform_fee, ctx);
+                social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
+                coin::destroy_zero(platform_fee_coin);
+            };
+            
+            // Send treasury fee
+            if (treasury_fee > 0) {
+                let treasury_fee_coin = coin::split(&mut payment, treasury_fee, ctx);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
+            };
+        };
+        
+        // Add remaining payment to pool
+        let pool_payment = coin::split(&mut payment, net_amount, ctx);
+        balance::join(&mut pool.mys_balance, coin::into_balance(pool_payment));
+        
+        // Refund any excess payment
+        if (coin::value(&payment) > 0) {
+            transfer::public_transfer(payment, buyer);
+        } else {
+            coin::destroy_zero(payment);
+        };
+        
+        // Update holder's balance with overflow protection
+        // First check addition overflow
+        assert!(pool.info.circulating_supply <= MAX_U64 - amount, EOverflow);
+        let new_supply = pool.info.circulating_supply + amount;
+        
+        // Then check multiplication overflow for max_hold calculation
+        assert!(new_supply == 0 || new_supply <= MAX_U64 / config.max_hold_percent_bps, EOverflow);
+        let max_hold = (new_supply * config.max_hold_percent_bps) / 10000;
+        let current_hold = if (table::contains(&pool.holders, buyer)) {
+            *table::borrow(&pool.holders, buyer)
+        } else {
+            0
+        };
+        
+        // Check max holding limit with overflow protection
+        assert!(current_hold <= MAX_U64 - amount, EOverflow);
+        assert!(current_hold + amount <= max_hold, EExceededMaxHold);
+        
+        // Update holder's balance
+        if (table::contains(&pool.holders, buyer)) {
+            let holder_balance = table::borrow_mut(&mut pool.holders, buyer);
+            assert!(*holder_balance <= MAX_U64 - amount, EOverflow);
+            *holder_balance = *holder_balance + amount;
+        } else {
+            table::add(&mut pool.holders, buyer, amount);
+        };
+
+        // Update circulating supply
+        assert!(pool.info.circulating_supply <= MAX_U64 - amount, EOverflow);
+        pool.info.circulating_supply = pool.info.circulating_supply + amount;
+
+        // Update the user's social token
+        assert!(social_token.amount <= MAX_U64 - amount, EOverflow);
+        social_token.amount = social_token.amount + amount;
+        
+        // Calculate the new price after purchase
+        let new_price = calculate_token_price(
+            pool.info.base_price,
+            pool.info.quadratic_coefficient,
+            pool.info.circulating_supply
+        );
+        
+        // Emit buy event
+        event::emit(TokenBoughtEvent {
+            id: object::uid_to_address(&pool.id),
+            buyer,
+            amount,
+            mys_amount: price,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+            new_price,
+        });
+    }
+
+    /// Sell tokens back to the pool
+    /// Non-platform version: platform fees go to ecosystem treasury
+    #[allow(lint(self_transfer))]
+    public fun sell_tokens(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        _block_list_registry: &BlockListRegistry,
         social_token: &mut SocialToken,
         amount: u64,
         ctx: &mut TxContext
@@ -1776,17 +2761,6 @@ module social_contracts::social_proof_tokens {
         let profile_id_option = profile::lookup_profile_by_owner(profile_registry, seller);
         assert!(option::is_some(&profile_id_option), ENotAuthorized);
         
-        // Check if platform is approved
-        let platform_id = object::uid_to_address(platform::id(platform));
-        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
-        
-        // Check if user has joined the platform (by wallet address)
-        assert!(platform::has_joined_platform(platform, seller), EUserNotJoinedPlatform);
-        
-        // Check if the user is blocked by the platform
-        let platform_address = object::uid_to_address(platform::id(platform));
-        assert!(!block_list::is_blocked(block_list_registry, platform_address, seller), EUserBlockedByPlatform);
-        
         // Verify social token matches the pool
         assert!(social_token.pool_id == pool_id, EInvalidID);
         assert!(social_token.amount >= amount, EInsufficientLiquidity);
@@ -1799,11 +2773,12 @@ module social_contracts::social_proof_tokens {
             amount
         );
         
-        // Calculate fees
+        // Validate fees and calculate with overflow protection
+        validate_trading_fees(config);
         let total_fee_bps = calculate_total_fee_bps(config);
-        let fee_amount = (refund_amount * total_fee_bps) / 10000;
-        let creator_fee = (fee_amount * config.trading_creator_fee_bps) / total_fee_bps;
-        let platform_fee = (fee_amount * config.trading_platform_fee_bps) / total_fee_bps;
+        let fee_amount = calculate_fee_amount_safe(refund_amount, total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
         let treasury_fee = fee_amount - creator_fee - platform_fee;
         
         // Calculate net refund
@@ -1841,12 +2816,138 @@ module social_contracts::social_proof_tokens {
                 distribute_creator_fee_from_pool(pool, creator_fee, ctx);
             };
             
-            // Send fee to platform - add to platform treasury
+            // Send platform fee to ecosystem treasury (no platform involved)
+            if (platform_fee > 0) {
+                let platform_fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, platform_fee), ctx);
+                transfer::public_transfer(platform_fee_coin, profile::get_treasury_address(treasury));
+            };
+            
+            // Send fee to treasury
+            if (treasury_fee > 0) {
+                let treasury_fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, treasury_fee), ctx);
+                transfer::public_transfer(treasury_fee_coin, profile::get_treasury_address(treasury));
+            };
+        };
+        
+        // Transfer refund to seller
+        let refund_coin = coin::from_balance(refund_balance, ctx);
+        transfer::public_transfer(refund_coin, seller);
+        
+        // Calculate the new price after sale
+        let new_price = calculate_token_price(
+            pool.info.base_price,
+            pool.info.quadratic_coefficient,
+            pool.info.circulating_supply
+        );
+        
+        // Emit sell event
+        event::emit(TokenSoldEvent {
+            id: pool_id,
+            seller,
+            amount,
+            mys_amount: refund_amount,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+            new_price,
+        });
+    }
+
+    /// Sell tokens back to the pool
+    /// Platform version: platform fees go to platform treasury, includes platform validation
+    #[allow(lint(self_transfer))]
+    public fun sell_tokens_with_platform(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        platform_registry: &PlatformRegistry,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        platform: &mut social_contracts::platform::Platform,
+        social_token: &mut SocialToken,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        // Check version compatibility
+        assert!(pool.version == upgrade::current_version(), EWrongVersion);
+        
+        // Check if trading is halted
+        assert!(!config.trading_halted, ETradingHalted);
+        
+        let seller = tx_context::sender(ctx);
+        let pool_id = object::uid_to_address(&pool.id);
+        
+        // Look up the seller's profile ID
+        let profile_id_option = profile::lookup_profile_by_owner(profile_registry, seller);
+        assert!(option::is_some(&profile_id_option), ENotAuthorized);
+        
+        // Platform validation
+        let platform_id = object::uid_to_address(platform::id(platform));
+        assert!(platform::is_approved(platform_registry, platform_id), ENotAuthorized);
+        assert!(platform::has_joined_platform(platform, seller), EUserNotJoinedPlatform);
+        assert!(!block_list::is_blocked(block_list_registry, platform_id, seller), EUserBlockedByPlatform);
+        
+        // Verify social token matches the pool
+        assert!(social_token.pool_id == pool_id, EInvalidID);
+        assert!(social_token.amount >= amount, EInsufficientLiquidity);
+        
+        // Calculate the sell price based on quadratic curve
+        let (refund_amount, _) = calculate_sell_price(
+            pool.info.base_price,
+            pool.info.quadratic_coefficient,
+            pool.info.circulating_supply,
+            amount
+        );
+        
+        // Validate fees and calculate with overflow protection
+        validate_trading_fees(config);
+        let total_fee_bps = calculate_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(refund_amount, total_fee_bps);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+        
+        // Calculate net refund
+        let net_refund = refund_amount - fee_amount;
+        
+        // Ensure pool has enough liquidity for refund + all fees
+        assert!(balance::value(&pool.mys_balance) >= refund_amount, EInsufficientLiquidity);
+        
+        // Verify seller has tokens in the pool
+        assert!(table::contains(&pool.holders, seller), ENoTokensOwned);
+        
+        // Update holder balance
+        let holder_balance = table::borrow_mut(&mut pool.holders, seller);
+        if (*holder_balance == amount) {
+            // Remove holder completely if selling all tokens
+            table::remove(&mut pool.holders, seller);
+        } else {
+            // Reduce balance
+            *holder_balance = *holder_balance - amount;
+        };
+        
+        // Update user's social token
+        social_token.amount = social_token.amount - amount;
+        
+        // Update circulating supply
+        pool.info.circulating_supply = pool.info.circulating_supply - amount;
+        
+        // Extract net refund from pool
+        let refund_balance = balance::split(&mut pool.mys_balance, net_refund);
+        
+        // Process and distribute fees with PoC redirection support
+        if (fee_amount > 0) {
+            // Send fee to creator with PoC redirection support
+            if (creator_fee > 0) {
+                distribute_creator_fee_from_pool(pool, creator_fee, ctx);
+            };
+            
+            // Send platform fee to platform treasury
             if (platform_fee > 0) {
                 let mut platform_fee_coin = coin::from_balance(balance::split(&mut pool.mys_balance, platform_fee), ctx);
-                // Add to platform treasury
                 social_contracts::platform::add_to_treasury(platform, &mut platform_fee_coin, platform_fee, ctx);
-                // Destroy the emptied coin
                 coin::destroy_zero(platform_fee_coin);
             };
             
@@ -1891,11 +2992,24 @@ module social_contracts::social_proof_tokens {
         quadratic_coefficient: u64,
         supply: u64
     ): u64 {
+        // Overflow protection: check before squaring
+        assert!(supply == 0 || supply <= MAX_U64 / supply, EOverflow);
         let squared_supply = supply * supply;
-        base_price + (quadratic_coefficient * squared_supply / 10000)
+        
+        // Overflow protection: check before multiplying by coefficient
+        assert!(squared_supply == 0 || squared_supply <= MAX_U64 / quadratic_coefficient, EOverflow);
+        let product = quadratic_coefficient * squared_supply / 10000;
+        
+        // Overflow protection: check before adding base_price
+        assert!(product <= MAX_U64 - base_price, EOverflow);
+        base_price + product
     }
 
-    /// Calculate price to buy a specific amount of tokens
+    /// Calculate price to buy a specific amount of tokens using closed-form sum
+    /// Price = base_price + (quadratic_coefficient * supply^2)
+    /// Sum from i=current_supply to current_supply+amount-1 of price(i)
+    /// = amount * base_price + (quadratic_coefficient / 10000) * sum(i^2)
+    /// where sum(i^2) from n to n+k-1 = sum_squares(n+k-1) - sum_squares(n-1)
     /// Returns (total price, average price per token)
     public fun calculate_buy_price(
         base_price: u64,
@@ -1903,28 +3017,65 @@ module social_contracts::social_proof_tokens {
         current_supply: u64,
         amount: u64
     ): (u64, u64) {
-        let mut total_price = 0;
-        let mut current = current_supply;
-        let mut i = 0;
-        
-        // Integrate the price curve over the purchase amount
-        while (i < amount) {
-            let token_price = calculate_token_price(base_price, quadratic_coefficient, current);
-            total_price = total_price + token_price;
-            current = current + 1;
-            i = i + 1;
+        if (amount == 0) {
+            return (0, 0)
         };
         
-        let avg_price = if (amount > 0) {
-            total_price / amount
-        } else {
-            0
-        };
+        // Base price component
+        assert!(amount <= MAX_U64 / base_price, EOverflow);
+        let base_component = amount * base_price;
         
+        // Sum of squares: sum(i^2) from current_supply to current_supply+amount-1
+        let end_supply = current_supply + amount - 1;
+        let start_supply_minus_one = if (current_supply == 0) { 0 } else { current_supply - 1 };
+        
+        // Calculate sum_squares(end_supply) - sum_squares(start_supply_minus_one)
+        let sum_squares_end = calculate_sum_squares(end_supply);
+        let sum_squares_start = calculate_sum_squares(start_supply_minus_one);
+        
+        // Overflow protection
+        assert!(sum_squares_end >= sum_squares_start, EOverflow);
+        let sum_squares_range = sum_squares_end - sum_squares_start;
+        
+        // Multiply by coefficient and divide by 10000
+        assert!(sum_squares_range <= MAX_U64 / quadratic_coefficient, EOverflow);
+        let quadratic_component = (sum_squares_range * quadratic_coefficient) / 10000;
+        
+        // Total price
+        assert!(base_component <= MAX_U64 - quadratic_component, EOverflow);
+        let total_price = base_component + quadratic_component;
+        
+        let avg_price = total_price / amount;
         (total_price, avg_price)
     }
 
-    /// Calculate refund amount when selling tokens
+    /// Helper: Calculate sum of squares from 1 to n: n(n+1)(2n+1)/6
+    fun calculate_sum_squares(n: u64): u64 {
+        if (n == 0) {
+            return 0
+        };
+        
+        // Early guard: prevent n == MAX_U64 case where n + 1 overflows
+        assert!(n < MAX_U64, EOverflow);
+        
+        // Overflow protection for intermediate calculations
+        // n * (n+1) can overflow, so check first
+        assert!(n <= MAX_U64 / (n + 1), EOverflow);
+        let n_times_n_plus_one = n * (n + 1);
+        
+        // (2n+1) can overflow
+        assert!(n <= (MAX_U64 - 1) / 2, EOverflow);
+        let two_n_plus_one = 2 * n + 1;
+        
+        // n(n+1) * (2n+1) can overflow
+        assert!(n_times_n_plus_one <= MAX_U64 / two_n_plus_one, EOverflow);
+        let numerator = n_times_n_plus_one * two_n_plus_one;
+        
+        numerator / 6
+    }
+
+    /// Calculate refund amount when selling tokens using closed-form sum
+    /// Selling reduces supply, so we sum from current_supply-amount to current_supply-1
     /// Returns (total refund, average price per token)
     public fun calculate_sell_price(
         base_price: u64,
@@ -1932,31 +3083,43 @@ module social_contracts::social_proof_tokens {
         current_supply: u64,
         amount: u64
     ): (u64, u64) {
-        let mut total_refund = 0;
-        let mut current = current_supply;
-        let mut i = 0;
-        
-        // Integrate the price curve over the sell amount
-        while (i < amount) {
-            current = current - 1;
-            let token_price = calculate_token_price(base_price, quadratic_coefficient, current);
-            total_refund = total_refund + token_price;
-            i = i + 1;
+        if (amount == 0) {
+            return (0, 0)
         };
         
-        let avg_price = if (amount > 0) {
-            total_refund / amount
-        } else {
-            0
-        };
+        // Prevent underflow: ensure we have enough supply to sell
+        assert!(current_supply >= amount, EInsufficientLiquidity);
         
+        // Selling reduces supply, so we sum from current_supply-amount to current_supply-1
+        let start_supply = current_supply - amount;
+        let end_supply = current_supply - 1;
+        
+        // Base price component
+        assert!(amount <= MAX_U64 / base_price, EOverflow);
+        let base_component = amount * base_price;
+        
+        // Sum of squares from start_supply to end_supply
+        let sum_squares_end = calculate_sum_squares(end_supply);
+        let sum_squares_start = if (start_supply == 0) { 0 } else { calculate_sum_squares(start_supply - 1) };
+        
+        assert!(sum_squares_end >= sum_squares_start, EOverflow);
+        let sum_squares_range = sum_squares_end - sum_squares_start;
+        
+        assert!(sum_squares_range <= MAX_U64 / quadratic_coefficient, EOverflow);
+        let quadratic_component = (sum_squares_range * quadratic_coefficient) / 10000;
+        
+        assert!(base_component <= MAX_U64 - quadratic_component, EOverflow);
+        let total_refund = base_component + quadratic_component;
+        
+        let avg_price = total_refund / amount;
         (total_refund, avg_price)
     }
 
-    /// Get token info from registry
-    public fun get_token_info(registry: &TokenRegistry, id: address): TokenInfo {
+    /// Get token info from registry by associated_id (post/profile ID), not pool ID
+    /// Returns a reference since TokenInfo no longer has copy ability
+    public fun get_token_info(registry: &TokenRegistry, id: address): &TokenInfo {
         assert!(table::contains(&registry.tokens, id), ETokenNotFound);
-        *table::borrow(&registry.tokens, id)
+        table::borrow(&registry.tokens, id)
     }
 
     /// Check if a token exists in the registry
@@ -2009,13 +3172,49 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Set PoC redirection data for a token pool (called by PoC system)
-    public fun set_poc_redirection(
+    /// Set PoC redirection for a token pool (package-only, requires auth via entry function)
+    public(package) fun set_poc_redirection(
         pool: &mut TokenPool,
         redirect_to: Option<address>,
         redirect_percentage: Option<u64>
     ) {
+        // Validate PoC redirect percentage is in valid range (0-100 percent) if provided
+        if (option::is_some(&redirect_percentage)) {
+            let percentage = *option::borrow(&redirect_percentage);
+            assert!(percentage <= 100, EInvalidFeeConfig);
+        };
         pool.poc_redirect_to = redirect_to;
         pool.poc_redirect_percentage = redirect_percentage;
+    }
+    
+    /// Entry function to set PoC redirection (requires pool owner)
+    public entry fun set_poc_redirection_entry(
+        registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        redirect_to: Option<address>,
+        redirect_percentage: Option<u64>,
+        ctx: &mut TxContext
+    ) {
+        let caller = tx_context::sender(ctx);
+        let token_info = get_token_info(registry, pool.info.associated_id);
+        
+        // Require caller to be pool owner
+        assert!(caller == token_info.owner, ENotAuthorized);
+        
+        set_poc_redirection(pool, redirect_to, redirect_percentage);
+    }
+    
+    /// Admin entry function to set PoC redirection (requires admin cap)
+    public entry fun set_poc_redirection_admin(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        _admin_cap: &SocialProofTokensAdminCap,
+        redirect_to: Option<address>,
+        redirect_percentage: Option<u64>,
+        _ctx: &mut TxContext
+    ) {
+        // Admin can set redirection for any pool
+        set_poc_redirection(pool, redirect_to, redirect_percentage);
     }
 
     /// Clear PoC redirection data from a token pool (called by PoC system)
@@ -2056,11 +3255,8 @@ module social_contracts::social_proof_tokens {
                 post_threshold: DEFAULT_POST_THRESHOLD,
                 profile_threshold: DEFAULT_PROFILE_THRESHOLD,
                 max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
+                max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
                 trading_halted: false,
-                allow_auto_pool_init: true,
-                auto_init_max_per_epoch: 1000,
-                auto_init_epoch: 0,
-                auto_init_count_in_epoch: 0,
             }
         );
         
@@ -2246,93 +3442,5 @@ module social_contracts::social_proof_tokens {
         SocialProofTokensAdminCap {
             id: object::new(ctx)
         }
-    }
-
-    /// Ensure a post token pool exists; if missing and allowed, create a minimal pool.
-    /// Guardrails:
-    /// - Requires config.allow_auto_pool_init = true
-        /// - Respects post.enable_spt opt-in flag
-    /// - Throttles by epoch via auto_init_max_per_epoch
-    /// - Package visibility prevents arbitrary external calls
-    public(package) fun ensure_post_token_pool(
-        registry: &mut TokenRegistry,
-        config: &mut SocialProofTokensConfig,
-        post: &mut social_contracts::post::Post,
-        ctx: &mut TxContext
-    ): Option<TokenPool> {
-        // If token already exists, no-op
-        let post_id = social_contracts::post::get_id_address(post);
-        if (table::contains(&registry.tokens, post_id)) {
-            return option::none<TokenPool>()
-        };
-
-        // Trading halted check
-        assert!(!config.trading_halted, ETradingHalted);
-
-        // Global opt-in
-        assert!(config.allow_auto_pool_init, ENotAuthorized);
-
-        // Per-post opt-in
-        assert!(social_contracts::post::is_spt_enabled(post), ENotAuthorized);
-
-        // Epoch throttle (best-effort): limit creations within same epoch
-        let now_epoch = tx_context::epoch(ctx);
-        if (config.auto_init_max_per_epoch > 0) {
-            if (config.auto_init_epoch == now_epoch) {
-                assert!(config.auto_init_count_in_epoch + 1 <= config.auto_init_max_per_epoch, ETradingHalted);
-                config.auto_init_count_in_epoch = config.auto_init_count_in_epoch + 1;
-            } else {
-                config.auto_init_epoch = now_epoch;
-                config.auto_init_count_in_epoch = 1;
-            };
-        };
-
-        // Create minimal pool (initial supply = 1, no liquidity)
-        let owner = social_contracts::post::get_post_owner(post);
-        let token_info = TokenInfo {
-            id: @0x0,
-            token_type: TOKEN_TYPE_POST,
-            owner,
-            associated_id: post_id,
-            symbol: string::utf8(b"PPOST"),
-            name: string::utf8(b"Post Token"),
-            circulating_supply: 1,
-            base_price: config.base_price,
-            quadratic_coefficient: config.quadratic_coefficient,
-            created_at: now_epoch,
-        };
-
-        let pool_id = object::new(ctx);
-        let pool_address = object::uid_to_address(&pool_id);
-        let mut updated_token_info = token_info;
-        updated_token_info.id = pool_address;
-
-        let pool = TokenPool {
-            id: pool_id,
-            info: updated_token_info,
-            mys_balance: balance::zero(),
-            holders: table::new(ctx),
-            poc_redirect_to: option::none(),
-            poc_redirect_percentage: option::none(),
-            version: upgrade::current_version(),
-        };
-
-        // Register token for associated post id
-        table::add(&mut registry.tokens, post_id, updated_token_info);
-        
-        // Store SPT pool ID in post
-        social_contracts::post::set_spt_id(post, pool_address);
-
-        // Emit audit event
-        event::emit(PostPoolAutoInitializedEvent {
-            post_id,
-            owner,
-            base_price: config.base_price,
-            quadratic_coefficient: config.quadratic_coefficient,
-            by: tx_context::sender(ctx),
-        });
-
-        // Return the unshared pool to caller so it can be used in-tx and shared after
-        option::some(pool)
     }
 } 
