@@ -136,10 +136,27 @@ pub async fn get_profile_by_address(
         .await;
 
     match profile_result {
-        Ok(profile) => (
-            StatusCode::OK,
-            Json(serde_json::to_value(profile).unwrap_or_default()),
-        ),
+        Ok(profile) => {
+            // Get reservation pool info for this profile
+            let wallet_addresses = vec![profile.owner_address.clone()];
+            let reservation_info = get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+            
+            let res_info = reservation_info.get(&profile.owner_address)
+                .cloned()
+                .unwrap_or_default();
+            
+            let mut profile_json = serde_json::to_value(&profile).unwrap_or(serde_json::json!({}));
+            if let Some(obj) = profile_json.as_object_mut() {
+                obj.insert("reservation_pool".to_string(), serde_json::to_value(res_info).unwrap_or(serde_json::json!(null)));
+            }
+            
+            (
+                StatusCode::OK,
+                Json(profile_json),
+            )
+        },
         Err(diesel::result::Error::NotFound) => (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({
@@ -178,10 +195,27 @@ pub async fn get_profile_by_username(
         .await;
 
     match profile_result {
-        Ok(profile) => (
-            StatusCode::OK,
-            Json(serde_json::to_value(profile).unwrap_or_default()),
-        ),
+        Ok(profile) => {
+            // Get reservation pool info for this profile
+            let wallet_addresses = vec![profile.owner_address.clone()];
+            let reservation_info = get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+            
+            let res_info = reservation_info.get(&profile.owner_address)
+                .cloned()
+                .unwrap_or_default();
+            
+            let mut profile_json = serde_json::to_value(&profile).unwrap_or(serde_json::json!({}));
+            if let Some(obj) = profile_json.as_object_mut() {
+                obj.insert("reservation_pool".to_string(), serde_json::to_value(res_info).unwrap_or(serde_json::json!(null)));
+            }
+            
+            (
+                StatusCode::OK,
+                Json(profile_json),
+            )
+        },
         Err(diesel::result::Error::NotFound) => (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({
