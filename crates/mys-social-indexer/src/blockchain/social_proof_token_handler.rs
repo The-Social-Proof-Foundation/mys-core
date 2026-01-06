@@ -511,6 +511,7 @@ impl SocialProofTokenHandler {
         };
 
         // 2. Create individual reservation record with the correct pool_id
+        // Note: Pool records should only be created by ReservationPoolCreatedEvent, not here
         let mut reservation_record =
             reservation_event.into_reservation_model(timestamp, event.tx_digest.clone())?;
         reservation_record.pool_id = pool_id.clone(); // Use the actual pool_id from the database
@@ -520,63 +521,6 @@ impl SocialProofTokenHandler {
             .values(&reservation_record)
             .execute(&mut conn)
             .await?;
-
-        if let Some(existing) = existing_pool {
-            // Update existing pool
-            let updated_pool = NewSptReservationPool {
-                pool_id: existing.pool_id.clone(),
-                associated_id: existing.associated_id.clone(),
-                owner: existing.owner.clone(),
-                token_type: existing.token_type,
-                total_reserved: reservation_event.total_reserved,
-                required_threshold: existing.required_threshold,
-                status: if reservation_event.threshold_met {
-                    "threshold_met".to_string()
-                } else {
-                    existing.status
-                },
-                created_at: existing.created_at,
-                time: datetime,
-                transaction_id: event.tx_digest.clone(),
-            };
-
-            diesel::insert_into(schema::spt_reservation_pools::table)
-                .values(&updated_pool)
-                .execute(&mut conn)
-                .await?;
-        } else {
-            // Create new pool
-            let required_threshold = if reservation_event.associated_id.starts_with("post_") {
-                1000
-            } else {
-                10000
-            };
-            let new_pool = NewSptReservationPool {
-                pool_id: pool_id.clone(),
-                associated_id: reservation_event.associated_id.clone(),
-                owner: reservation_event.reserver.clone(),
-                token_type: if reservation_event.associated_id.starts_with("post_") {
-                    2
-                } else {
-                    1
-                },
-                total_reserved: reservation_event.total_reserved,
-                required_threshold,
-                status: if reservation_event.threshold_met {
-                    "threshold_met".to_string()
-                } else {
-                    "active".to_string()
-                },
-                created_at: timestamp,
-                time: datetime,
-                transaction_id: event.tx_digest.clone(),
-            };
-
-            diesel::insert_into(schema::spt_reservation_pools::table)
-                .values(&new_pool)
-                .execute(&mut conn)
-                .await?;
-        }
 
         // Write to relay outbox for notifications - notify associated post/profile owner
         // Extract owner from associated_id (e.g., "post_0x123" -> get post owner, "profile_0x456" -> get profile owner)
@@ -679,6 +623,7 @@ impl SocialProofTokenHandler {
         };
 
         // 2. Record the withdrawal as a new reservation entry with the correct pool_id
+        // Note: Pool records should only be created by ReservationPoolCreatedEvent, not here
         let mut withdrawal_record =
             withdrawal_event.into_reservation_model(timestamp, event.tx_digest.clone())?;
         withdrawal_record.pool_id = pool_id.clone(); // Use the actual pool_id from the database
@@ -689,75 +634,10 @@ impl SocialProofTokenHandler {
             .execute(&mut conn)
             .await?;
 
-        if let Some(existing) = existing_pool {
-            // Create updated pool record with new total_reserved amount
-            let updated_pool = NewSptReservationPool {
-                pool_id: existing.pool_id.clone(),
-                associated_id: existing.associated_id.clone(),
-                owner: existing.owner.clone(),
-                token_type: existing.token_type,
-                total_reserved: withdrawal_event.total_reserved,
-                required_threshold: existing.required_threshold,
-                status: if withdrawal_event.total_reserved >= existing.required_threshold {
-                    existing.status // Keep existing status if still above threshold
-                } else {
-                    "active".to_string() // Reset to active if below threshold after withdrawal
-                },
-                created_at: existing.created_at,
-                time: datetime,
-                transaction_id: event.tx_digest.clone(),
-            };
-
-            diesel::insert_into(schema::spt_reservation_pools::table)
-                .values(&updated_pool)
-                .execute(&mut conn)
-                .await?;
-
-            info!(
-                "Successfully processed reservation withdrawal for pool: {}, reserver: {}, amount: {}, remaining total: {}",
-                pool_id, withdrawal_event.reserver, withdrawal_event.amount, withdrawal_event.total_reserved
-            );
-        } else {
-            warn!(
-                "Reservation pool not found for withdrawal event: {}, pool_id: {}",
-                event.event_id, pool_id
-            );
-
-            // This shouldn't happen in normal operation, but we'll create a minimal pool record
-            // to maintain data consistency
-            let required_threshold = if withdrawal_event.associated_id.starts_with("post_") {
-                1000
-            } else {
-                10000
-            };
-
-            let minimal_pool = NewSptReservationPool {
-                pool_id: pool_id.clone(),
-                associated_id: withdrawal_event.associated_id.clone(),
-                owner: "unknown".to_string(), // We don't have this info from the withdrawal event
-                token_type: if withdrawal_event.associated_id.starts_with("post_") {
-                    2
-                } else {
-                    1
-                },
-                total_reserved: withdrawal_event.total_reserved,
-                required_threshold,
-                status: "active".to_string(),
-                created_at: timestamp,
-                time: datetime,
-                transaction_id: event.tx_digest.clone(),
-            };
-
-            diesel::insert_into(schema::spt_reservation_pools::table)
-                .values(&minimal_pool)
-                .execute(&mut conn)
-                .await?;
-
-            warn!(
-                "Created minimal reservation pool record for missing pool: {}",
-                pool_id
-            );
-        }
+        info!(
+            "Successfully processed reservation withdrawal for pool: {}, reserver: {}, amount: {}, remaining total: {}",
+            pool_id, withdrawal_event.reserver, withdrawal_event.amount, withdrawal_event.total_reserved
+        );
 
         // 3. Update progress tracking
         self.update_progress().await?;
