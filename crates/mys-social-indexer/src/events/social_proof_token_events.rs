@@ -1,7 +1,11 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::events::event_utils::{deserialize_u64_from_string, deserialize_optional_u64_from_string};
+use crate::events::event_utils::{
+    deserialize_u64_from_string, deserialize_optional_u64_from_string,
+    parse_i64_from_string_or_number, parse_u64_from_string_or_number,
+    parse_optional_u64_from_string_or_number,
+};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -439,8 +443,9 @@ impl TryFrom<Value> for ReservationPoolCreatedEvent {
                 .to_string(),
             token_type: obj
                 .get("token_type")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid token_type"))? as u8,
+                .ok_or_else(|| anyhow!("Missing token_type"))
+                .and_then(|v| parse_u64_from_string_or_number(v))
+                .map(|n| n as u8)?,
             owner: obj
                 .get("owner")
                 .and_then(|v| v.as_str())
@@ -448,8 +453,8 @@ impl TryFrom<Value> for ReservationPoolCreatedEvent {
                 .to_string(),
             required_threshold: obj
                 .get("required_threshold")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid required_threshold"))?,
+                .ok_or_else(|| anyhow!("Missing required_threshold"))
+                .and_then(|v| parse_u64_from_string_or_number(v))?,
             pool_object_id: obj
                 .get("pool_object_id")
                 .and_then(|v| v.as_str())
@@ -457,8 +462,8 @@ impl TryFrom<Value> for ReservationPoolCreatedEvent {
                 .to_string(),
             created_at: obj
                 .get("created_at")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid created_at"))?,
+                .ok_or_else(|| anyhow!("Missing created_at"))
+                .and_then(|v| parse_u64_from_string_or_number(v))?,
         })
     }
 }
@@ -682,16 +687,7 @@ impl TryFrom<Value> for PocRedirectionUpdatedEvent {
                     }
                 })
                 .unwrap_or(None),
-            redirect_percentage: obj
-                .get("redirect_percentage")
-                .map(|v| {
-                    if v.is_null() {
-                        None
-                    } else {
-                        v.as_u64()
-                    }
-                })
-                .unwrap_or(None),
+            redirect_percentage: parse_optional_u64_from_string_or_number(obj.get("redirect_percentage"))?,
             updated_by: obj
                 .get("updated_by")
                 .and_then(|v| v.as_str())
@@ -699,8 +695,8 @@ impl TryFrom<Value> for PocRedirectionUpdatedEvent {
                 .to_string(),
             timestamp: obj
                 .get("timestamp")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| anyhow!("Missing or invalid timestamp"))?,
+                .ok_or_else(|| anyhow!("Missing timestamp"))
+                .and_then(|v| parse_u64_from_string_or_number(v))?,
         })
     }
 }
@@ -848,9 +844,9 @@ impl TryFrom<Value> for SocialProofInitPoolEvent {
                 .to_string(),
             token_type: obj
                 .get("token_type")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid token_type"))?
-                as i16,
+                .ok_or_else(|| anyhow!("Missing token_type"))
+                .and_then(|v| parse_i64_from_string_or_number(v))
+                .map(|n| n as i16)?,
             associated_id: obj
                 .get("associated_id")
                 .and_then(|v| v.as_str())
@@ -858,12 +854,12 @@ impl TryFrom<Value> for SocialProofInitPoolEvent {
                 .to_string(),
             base_price: obj
                 .get("base_price")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid base_price"))?,
+                .ok_or_else(|| anyhow!("Missing base_price"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             quadratic_coefficient: obj
                 .get("quadratic_coefficient")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid quadratic_coefficient"))?,
+                .ok_or_else(|| anyhow!("Missing quadratic_coefficient"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
         })
     }
 }
@@ -924,32 +920,32 @@ impl TryFrom<Value> for SocialProofBuyEvent {
                 .to_string(),
             amount: obj
                 .get("amount")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid amount"))?,
+                .ok_or_else(|| anyhow!("Missing amount"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             mys_amount: obj
                 .get("mys_amount")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid mys_amount"))?,
+                .ok_or_else(|| anyhow!("Missing mys_amount"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             fee_amount: obj
                 .get("fee_amount")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid fee_amount"))?,
+                .ok_or_else(|| anyhow!("Missing fee_amount"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             creator_fee: obj
                 .get("creator_fee")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid creator_fee"))?,
+                .ok_or_else(|| anyhow!("Missing creator_fee"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             platform_fee: obj
                 .get("platform_fee")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid platform_fee"))?,
+                .ok_or_else(|| anyhow!("Missing platform_fee"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             treasury_fee: obj
                 .get("treasury_fee")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid treasury_fee"))?,
+                .ok_or_else(|| anyhow!("Missing treasury_fee"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             price: obj
                 .get("price")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid price"))?,
+                .ok_or_else(|| anyhow!("Missing price"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
         })
     }
 }
@@ -1134,32 +1130,32 @@ impl TryFrom<Value> for SocialProofSellEvent {
                 .to_string(),
             amount: obj
                 .get("amount")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid amount"))?,
+                .ok_or_else(|| anyhow!("Missing amount"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             mys_amount: obj
                 .get("mys_amount")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid mys_amount"))?,
+                .ok_or_else(|| anyhow!("Missing mys_amount"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             fee_amount: obj
                 .get("fee_amount")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid fee_amount"))?,
+                .ok_or_else(|| anyhow!("Missing fee_amount"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             creator_fee: obj
                 .get("creator_fee")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid creator_fee"))?,
+                .ok_or_else(|| anyhow!("Missing creator_fee"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             platform_fee: obj
                 .get("platform_fee")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid platform_fee"))?,
+                .ok_or_else(|| anyhow!("Missing platform_fee"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             treasury_fee: obj
                 .get("treasury_fee")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid treasury_fee"))?,
+                .ok_or_else(|| anyhow!("Missing treasury_fee"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             price: obj
                 .get("price")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid price"))?,
+                .ok_or_else(|| anyhow!("Missing price"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
         })
     }
 }
@@ -1337,9 +1333,9 @@ impl TryFrom<Value> for SocialProofReservationCreatedEvent {
                 .to_string(),
             token_type: obj
                 .get("token_type")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid token_type"))?
-                as i16,
+                .ok_or_else(|| anyhow!("Missing token_type"))
+                .and_then(|v| parse_i64_from_string_or_number(v))
+                .map(|n| n as i16)?,
             reserver: obj
                 .get("reserver")
                 .and_then(|v| v.as_str())
@@ -1347,20 +1343,20 @@ impl TryFrom<Value> for SocialProofReservationCreatedEvent {
                 .to_string(),
             amount: obj
                 .get("amount")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid amount"))?,
+                .ok_or_else(|| anyhow!("Missing amount"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             total_reserved: obj
                 .get("total_reserved")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid total_reserved"))?,
+                .ok_or_else(|| anyhow!("Missing total_reserved"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             threshold_met: obj
                 .get("threshold_met")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false),
             reserved_at: obj
                 .get("reserved_at")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid reserved_at"))?,
+                .ok_or_else(|| anyhow!("Missing reserved_at"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
         })
     }
 }
@@ -1412,9 +1408,9 @@ impl TryFrom<Value> for SocialProofReservationWithdrawnEvent {
                 .to_string(),
             token_type: obj
                 .get("token_type")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid token_type"))?
-                as i16,
+                .ok_or_else(|| anyhow!("Missing token_type"))
+                .and_then(|v| parse_i64_from_string_or_number(v))
+                .map(|n| n as i16)?,
             reserver: obj
                 .get("reserver")
                 .and_then(|v| v.as_str())
@@ -1422,16 +1418,16 @@ impl TryFrom<Value> for SocialProofReservationWithdrawnEvent {
                 .to_string(),
             amount: obj
                 .get("amount")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid amount"))?,
+                .ok_or_else(|| anyhow!("Missing amount"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             total_reserved: obj
                 .get("total_reserved")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid total_reserved"))?,
+                .ok_or_else(|| anyhow!("Missing total_reserved"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             withdrawn_at: obj
                 .get("withdrawn_at")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid withdrawn_at"))?,
+                .ok_or_else(|| anyhow!("Missing withdrawn_at"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
         })
     }
 }
@@ -1484,9 +1480,9 @@ impl TryFrom<Value> for SocialProofThresholdMetEvent {
                 .to_string(),
             token_type: obj
                 .get("token_type")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid token_type"))?
-                as i16,
+                .ok_or_else(|| anyhow!("Missing token_type"))
+                .and_then(|v| parse_i64_from_string_or_number(v))
+                .map(|n| n as i16)?,
             owner: obj
                 .get("owner")
                 .and_then(|v| v.as_str())
@@ -1494,16 +1490,16 @@ impl TryFrom<Value> for SocialProofThresholdMetEvent {
                 .to_string(),
             total_reserved: obj
                 .get("total_reserved")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid total_reserved"))?,
+                .ok_or_else(|| anyhow!("Missing total_reserved"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             required_threshold: obj
                 .get("required_threshold")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid required_threshold"))?,
+                .ok_or_else(|| anyhow!("Missing required_threshold"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
             timestamp: obj
                 .get("timestamp")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("Missing or invalid timestamp"))?,
+                .ok_or_else(|| anyhow!("Missing timestamp"))
+                .and_then(|v| parse_i64_from_string_or_number(v))?,
         })
     }
 }

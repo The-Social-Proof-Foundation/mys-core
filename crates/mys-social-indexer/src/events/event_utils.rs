@@ -248,6 +248,80 @@ where
     }
 }
 
+/// Helper function to parse i64 from a JSON Value that may be a string or number
+/// Used in TryFrom<Value> implementations when parsing blockchain events
+/// Handles both string (parse) and numeric (direct conversion) cases
+pub fn parse_i64_from_string_or_number(value: &Value) -> Result<i64> {
+    if let Some(s) = value.as_str() {
+        s.parse::<i64>()
+            .map_err(|e| anyhow!("Failed to parse i64 from string '{}': {}", s, e))
+    } else if let Some(n) = value.as_i64() {
+        Ok(n)
+    } else if let Some(n) = value.as_u64() {
+        // Handle u64 that fits in i64
+        if n <= i64::MAX as u64 {
+            Ok(n as i64)
+        } else {
+            Err(anyhow!("u64 value {} exceeds i64::MAX", n))
+        }
+    } else {
+        Err(anyhow!("Value is neither a string nor a number"))
+    }
+}
+
+/// Helper function to parse u64 from a JSON Value that may be a string or number
+/// Used in TryFrom<Value> implementations when parsing blockchain events
+/// Handles both string (parse) and numeric (direct conversion) cases
+pub fn parse_u64_from_string_or_number(value: &Value) -> Result<u64> {
+    if let Some(s) = value.as_str() {
+        s.parse::<u64>()
+            .map_err(|e| anyhow!("Failed to parse u64 from string '{}': {}", s, e))
+    } else if let Some(n) = value.as_u64() {
+        Ok(n)
+    } else if let Some(n) = value.as_i64() {
+        // Handle i64 that fits in u64 (non-negative)
+        if n >= 0 {
+            Ok(n as u64)
+        } else {
+            Err(anyhow!("i64 value {} is negative, cannot convert to u64", n))
+        }
+    } else {
+        Err(anyhow!("Value is neither a string nor a number"))
+    }
+}
+
+/// Helper function to parse optional u64 from a JSON Value that may be a string, number, or null
+/// Used in TryFrom<Value> implementations when parsing blockchain events
+/// Handles string (parse), numeric (direct conversion), null (None), and missing (None) cases
+pub fn parse_optional_u64_from_string_or_number(value: Option<&Value>) -> Result<Option<u64>> {
+    match value {
+        Some(v) => {
+            if v.is_null() {
+                Ok(None)
+            } else if let Some(s) = v.as_str() {
+                if s.is_empty() {
+                    Ok(None)
+                } else {
+                    s.parse::<u64>()
+                        .map(Some)
+                        .map_err(|e| anyhow!("Failed to parse u64 from string '{}': {}", s, e))
+                }
+            } else if let Some(n) = v.as_u64() {
+                Ok(Some(n))
+            } else if let Some(n) = v.as_i64() {
+                if n >= 0 {
+                    Ok(Some(n as u64))
+                } else {
+                    Err(anyhow!("i64 value {} is negative, cannot convert to u64", n))
+                }
+            } else {
+                Err(anyhow!("Value is neither a string nor a number"))
+            }
+        }
+        None => Ok(None),
+    }
+}
+
 /// Wrapper struct for deserializing Move object events that have nested structure
 /// Handles the common pattern: { "content": { "fields": { ... } } }
 /// Also supports fallback to { "fields": { ... } } or direct access
