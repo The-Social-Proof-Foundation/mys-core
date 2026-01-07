@@ -14,7 +14,7 @@ use mys_types::{
     move_package::MovePackage,
     object::{Object, OBJECT_START_VERSION},
     BRIDGE_PACKAGE_ID, ORDERBOOK_PACKAGE_ID, MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID,
-    MYS_SOCIAL_PACKAGE_ID, MYS_SYSTEM_PACKAGE_ID, MYDATA_PACKAGE_ID, MYUSD_PACKAGE_ID,
+    MYS_SOCIAL_PACKAGE_ID, MYS_SYSTEM_PACKAGE_ID, MYDATA_PACKAGE_ID,
 };
 use serde::{Deserialize, Serialize};
 use std::fmt::Formatter;
@@ -135,12 +135,6 @@ impl BuiltInFramework {
                 MYS_SYSTEM_PACKAGE_ID,
                 "MysSystem",
                 "mys-system",
-                [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
-            ),
-            (
-                MYUSD_PACKAGE_ID,
-                "MyUSD",
-                "myusd",
                 [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
             ),
             (

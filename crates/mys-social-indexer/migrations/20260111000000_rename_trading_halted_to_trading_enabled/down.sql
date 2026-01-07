@@ -35,25 +35,51 @@ ON spt_exchange_config(trading_halted);
 -- 2. REVERT social_proof_tokens_config TABLE
 -- ============================================================================
 
--- Add old column trading_halted
-ALTER TABLE social_proof_tokens_config 
-ADD COLUMN trading_halted BOOLEAN;
+-- Check if social_proof_tokens_config table exists before attempting revert
+DO $$
+BEGIN
+    -- Only revert if table exists and has trading_enabled column
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'social_proof_tokens_config'
+    ) THEN
+        -- Check if table has trading_enabled column (was migrated)
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = 'social_proof_tokens_config' 
+            AND column_name = 'trading_enabled'
+        ) THEN
+            -- Add old column trading_halted
+            ALTER TABLE social_proof_tokens_config 
+            ADD COLUMN trading_halted BOOLEAN;
 
--- Invert values back: trading_halted = NOT trading_enabled
-UPDATE social_proof_tokens_config 
-SET trading_halted = NOT trading_enabled;
+            -- Invert values back: trading_halted = NOT trading_enabled
+            UPDATE social_proof_tokens_config 
+            SET trading_halted = NOT trading_enabled;
 
--- Make trading_halted NOT NULL (after data migration)
-ALTER TABLE social_proof_tokens_config 
-ALTER COLUMN trading_halted SET NOT NULL;
+            -- Make trading_halted NOT NULL (after data migration)
+            ALTER TABLE social_proof_tokens_config 
+            ALTER COLUMN trading_halted SET NOT NULL;
 
--- Set default value
-ALTER TABLE social_proof_tokens_config 
-ALTER COLUMN trading_halted SET DEFAULT false;
+            -- Set default value
+            ALTER TABLE social_proof_tokens_config 
+            ALTER COLUMN trading_halted SET DEFAULT false;
 
--- Drop new column
-ALTER TABLE social_proof_tokens_config 
-DROP COLUMN trading_enabled;
+            -- Drop new column
+            ALTER TABLE social_proof_tokens_config 
+            DROP COLUMN trading_enabled;
+
+            -- Restore old index
+            DROP INDEX IF EXISTS idx_social_proof_tokens_config_trading_enabled;
+            CREATE INDEX IF NOT EXISTS idx_social_proof_tokens_config_trading_halted 
+            ON social_proof_tokens_config(trading_halted);
+        END IF;
+        -- If table exists but doesn't have trading_enabled, it was created fresh (skip revert)
+    END IF;
+    -- If table doesn't exist, skip revert (nothing to revert)
+END $$;
 
 -- ============================================================================
 -- 3. REVERT get_current_exchange_config() FUNCTION

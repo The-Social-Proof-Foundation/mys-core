@@ -3643,12 +3643,6 @@ order_id
 tick_level
 	public fun
 	0xb0c::order_query
-MYUSD
-	public struct
-	0x75d6::myusd
-init
-	fun
-	0x75d6::myusd
 BridgeTreasury
 	public struct
 	0xb::treasury

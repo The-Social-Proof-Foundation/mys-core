@@ -121,7 +121,6 @@ built_in_pkgs! {
     BRIDGE_ADDRESS / BRIDGE_PACKAGE_ID = 0xb;
     ORDERBOOK_ADDRESS / ORDERBOOK_PACKAGE_ID = 0x0b0c;
     MYS_SOCIAL_ADDRESS / MYS_SOCIAL_PACKAGE_ID = 0x50c1;
-    MYUSD_ADDRESS / MYUSD_PACKAGE_ID = 0x75d6;
     MYDATA_ADDRESS / MYDATA_PACKAGE_ID = 0xda7a;
 }
 
@@ -199,7 +198,6 @@ pub fn resolve_address(addr: &str) -> Option<AccountAddress> {
         "mys_system" => Some(MYS_SYSTEM_ADDRESS),
         "mys_social" => Some(MYS_SOCIAL_ADDRESS),
         "mydata" => Some(MYDATA_ADDRESS),
-        "myusd" => Some(MYUSD_ADDRESS),
         "bridge" => Some(BRIDGE_ADDRESS),
         _ => None,
     }

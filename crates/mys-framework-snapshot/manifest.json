@@ -1638,11 +1638,6 @@
         "id": "0x0000000000000000000000000000000000000000000000000000000000000003"
       },
       {
-        "name": "MyUSD",
-        "path": "crates/mys-framework/packages/myusd",
-        "id": "0x00000000000000000000000000000000000000000000000000000000000075d6"
-      },
-      {
         "name": "MyData",
         "path": "crates/mys-framework/packages/mydata",
         "id": "0x000000000000000000000000000000000000000000000000000000000000da7a"
@@ -1681,11 +1676,6 @@
         "name": "MysSystem",
         "path": "crates/mys-framework/packages/mys-system",
         "id": "0x0000000000000000000000000000000000000000000000000000000000000003"
-      },
-      {
-        "name": "MyUSD",
-        "path": "crates/mys-framework/packages/myusd",
-        "id": "0x00000000000000000000000000000000000000000000000000000000000075d6"
       },
       {
         "name": "mydata",
