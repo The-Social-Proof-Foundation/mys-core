@@ -863,10 +863,24 @@ impl SocialProofTokenHandler {
 
         let mut conn = self.base.get_connection().await?;
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
+        let timestamp = (event.timestamp_ms / 1000) as u64;
+
+        // Fetch the latest config from database to use as fallback for missing values
+        let latest_config = diesel::sql_query(
+            "SELECT id, updated_by, post_threshold, profile_threshold, max_individual_reservation_bps, \
+             total_fee_bps, creator_fee_bps, platform_fee_bps, treasury_fee_bps, base_price, \
+             quadratic_coefficient, max_hold_percent_bps, trading_enabled, \
+             updated_at, time, transaction_id \
+             FROM spt_exchange_config ORDER BY time DESC LIMIT 1"
+        )
+        .get_result::<SptExchangeConfig>(&mut conn)
+        .await
+        .ok(); // Use None if no previous config exists
 
         let mut config = config_event.into_exchange_config_model(
-            (event.timestamp_ms / 1000) as u64,
+            timestamp,
             event.tx_digest.clone(),
+            latest_config.as_ref(),
         )?;
         config.time = datetime;
 
@@ -1031,7 +1045,7 @@ impl SocialProofTokenHandler {
         let latest_config = diesel::sql_query(
             "SELECT id, updated_by, post_threshold, profile_threshold, max_individual_reservation_bps, \
              total_fee_bps, creator_fee_bps, platform_fee_bps, treasury_fee_bps, base_price, \
-             quadratic_coefficient, max_hold_percent_bps, trading_halted, \
+             quadratic_coefficient, max_hold_percent_bps, trading_enabled, \
              updated_at, time, transaction_id \
              FROM spt_exchange_config ORDER BY time DESC LIMIT 1"
         )
@@ -1057,8 +1071,8 @@ impl SocialProofTokenHandler {
         self.update_progress().await?;
 
         warn!(
-            "Emergency kill switch {} by admin: {}, reason: {}",
-            if kill_switch_event.trading_halted { "ACTIVATED" } else { "DEACTIVATED" },
+            "Trading {} by admin: {}, reason: {}",
+            if kill_switch_event.trading_enabled { "ENABLED" } else { "DISABLED" },
             kill_switch_event.admin,
             kill_switch_event.reason
         );

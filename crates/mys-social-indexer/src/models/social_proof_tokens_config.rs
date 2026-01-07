@@ -12,7 +12,7 @@ use crate::schema::social_proof_tokens_config;
 #[diesel(table_name = social_proof_tokens_config)]
 pub struct SocialProofTokensConfig {
     pub id: i32,
-    pub trading_halted: bool,
+    pub trading_enabled: bool,
     pub admin_address: String,
     pub reason: String,
     pub timestamp_ms: i64,
@@ -24,7 +24,7 @@ pub struct SocialProofTokensConfig {
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = social_proof_tokens_config)]
 pub struct NewSocialProofTokensConfig {
-    pub trading_halted: bool,
+    pub trading_enabled: bool,
     pub admin_address: String,
     pub reason: String,
     pub timestamp_ms: i64,
@@ -36,7 +36,7 @@ pub struct NewSocialProofTokensConfig {
 #[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
 #[diesel(table_name = social_proof_tokens_config)]
 pub struct UpdateSocialProofTokensConfig {
-    pub trading_halted: Option<bool>,
+    pub trading_enabled: Option<bool>,
     pub admin_address: Option<String>,
     pub reason: Option<String>,
     pub timestamp_ms: Option<i64>,

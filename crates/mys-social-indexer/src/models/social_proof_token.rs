@@ -375,7 +375,7 @@ pub struct SptExchangeConfig {
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub max_hold_percent_bps: i64,
     #[diesel(sql_type = diesel::sql_types::Bool)]
-    pub trading_halted: bool,
+    pub trading_enabled: bool,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub updated_at: i64,
     #[diesel(sql_type = diesel::sql_types::Timestamptz)]
@@ -399,7 +399,7 @@ pub struct NewSptExchangeConfig {
     pub base_price: i64,
     pub quadratic_coefficient: i64,
     pub max_hold_percent_bps: i64,
-    pub trading_halted: bool,
+    pub trading_enabled: bool,
     pub updated_at: i64,
     pub time: DateTime<Utc>,
     pub transaction_id: String,

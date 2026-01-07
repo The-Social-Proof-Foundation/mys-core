@@ -2035,7 +2035,7 @@ pub struct SptConfigInfo {
     pub max_hold_percent_bps: i64,
 
     #[diesel(sql_type = Bool)]
-    pub trading_halted: bool,
+    pub trading_enabled: bool,
 
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
@@ -2076,7 +2076,7 @@ pub async fn get_spt_configuration(State(db): State<Arc<Database>>) -> Response 
             base_price,
             quadratic_coefficient,
             max_hold_percent_bps,
-            trading_halted,
+            trading_enabled,
             updated_at,
             time,
             transaction_id

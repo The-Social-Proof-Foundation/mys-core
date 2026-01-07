@@ -762,7 +762,7 @@ table! {
         base_price -> Int8,
         quadratic_coefficient -> Int8,
         max_hold_percent_bps -> Int8,
-        trading_halted -> Bool,
+        trading_enabled -> Bool,
         updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
@@ -1234,7 +1234,7 @@ table! {
 table! {
     social_proof_tokens_config (id) {
         id -> Int4,
-        trading_halted -> Bool,
+        trading_enabled -> Bool,
         admin_address -> Varchar,
         reason -> Varchar,
         timestamp_ms -> Int8,

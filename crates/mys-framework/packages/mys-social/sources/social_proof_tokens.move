@@ -159,8 +159,8 @@ module social_contracts::social_proof_tokens {
         max_individual_reservation_bps: u64,
         /// Maximum number of unique reservers allowed per pool (DoS protection)
         max_reservers_per_pool: u64,
-        /// Emergency kill switch - when true, all trading is halted
-        trading_halted: bool,
+        /// Emergency kill switch - when false, all trading is halted
+        trading_enabled: bool,
     }
 
     /// Registry of all tokens in the exchange
@@ -389,8 +389,8 @@ module social_contracts::social_proof_tokens {
     public struct EmergencyKillSwitchEvent has copy, drop {
         /// Admin who activated/deactivated the kill switch
         admin: address,
-        /// New state of trading (true = halted, false = active)
-        trading_halted: bool,
+        /// New state of trading (true = enabled, false = halted)
+        trading_enabled: bool,
         /// Timestamp of the action
         timestamp: u64,
         /// Reason for the action (optional)
@@ -432,7 +432,7 @@ module social_contracts::social_proof_tokens {
                 profile_threshold: DEFAULT_PROFILE_THRESHOLD,
                 max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
                 max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
-                trading_halted: true, // Auto-enabled by bootstrap during bootstrap
+                trading_enabled: false, // Trading disabled by default during bootstrap
             }
         );
         
@@ -552,29 +552,29 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Emergency kill switch function - only callable by admin
-    /// This function can immediately halt all trading on the platform
+    /// This function can immediately enable or halt all trading on the platform
     public entry fun toggle_emergency_kill_switch(
         _admin_cap: &SocialProofTokensAdminCap,
         config: &mut SocialProofTokensConfig,
-        halt_trading: bool,
+        enable_trading: bool,
         reason: vector<u8>,
         ctx: &mut TxContext
     ) {
-        // Update the trading halted status
-        config.trading_halted = halt_trading;
+        // Update the trading enabled status
+        config.trading_enabled = enable_trading;
         
         // Emit event for audit trail
         event::emit(EmergencyKillSwitchEvent {
             admin: tx_context::sender(ctx),
-            trading_halted: halt_trading,
+            trading_enabled: enable_trading,
             timestamp: tx_context::epoch(ctx),
             reason: string::utf8(reason),
         });
     }
 
-    /// Check if trading is currently halted
-    public fun is_trading_halted(config: &SocialProofTokensConfig): bool {
-        config.trading_halted
+    /// Check if trading is currently enabled
+    public fun is_trading_enabled(config: &SocialProofTokensConfig): bool {
+        config.trading_enabled
     }
 
     /// Calculate total trading fee from component fees
@@ -640,7 +640,7 @@ module social_contracts::social_proof_tokens {
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         // Prevent reservations after conversion to token
         assert!(!reservation_pool_object.converted, EReservationPoolConverted);
@@ -780,7 +780,7 @@ module social_contracts::social_proof_tokens {
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         // Prevent reservations after conversion to token
         assert!(!reservation_pool_object.converted, EReservationPoolConverted);
@@ -923,7 +923,7 @@ module social_contracts::social_proof_tokens {
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         // Prevent reservations after conversion to token
         assert!(!reservation_pool_object.converted, EReservationPoolConverted);
@@ -1059,7 +1059,7 @@ module social_contracts::social_proof_tokens {
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         // Prevent reservations after conversion to token
         assert!(!reservation_pool_object.converted, EReservationPoolConverted);
@@ -1401,7 +1401,7 @@ module social_contracts::social_proof_tokens {
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         let caller = tx_context::sender(ctx);
         let associated_id = post::get_id_address(post);
@@ -1474,7 +1474,7 @@ module social_contracts::social_proof_tokens {
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         let caller = tx_context::sender(ctx);
         let associated_id = profile::get_id_address(profile);
@@ -1561,7 +1561,7 @@ module social_contracts::social_proof_tokens {
         ctx: &mut TxContext
     ) {
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         let caller = tx_context::sender(ctx);
         let associated_id = reservation_pool_object.info.associated_id;
@@ -2153,7 +2153,7 @@ module social_contracts::social_proof_tokens {
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
         
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         let buyer = tx_context::sender(ctx);
         
@@ -2300,7 +2300,7 @@ module social_contracts::social_proof_tokens {
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
         
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         let buyer = tx_context::sender(ctx);
         
@@ -2452,7 +2452,7 @@ module social_contracts::social_proof_tokens {
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
         
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         let buyer = tx_context::sender(ctx);
         
@@ -2601,7 +2601,7 @@ module social_contracts::social_proof_tokens {
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
         
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         let buyer = tx_context::sender(ctx);
         
@@ -2752,7 +2752,7 @@ module social_contracts::social_proof_tokens {
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
         
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         let seller = tx_context::sender(ctx);
         let pool_id = object::uid_to_address(&pool.id);
@@ -2874,7 +2874,7 @@ module social_contracts::social_proof_tokens {
         assert!(pool.version == upgrade::current_version(), EWrongVersion);
         
         // Check if trading is halted
-        assert!(!config.trading_halted, ETradingHalted);
+        assert!(config.trading_enabled, ETradingHalted);
         
         let seller = tx_context::sender(ctx);
         let pool_id = object::uid_to_address(&pool.id);
@@ -3256,7 +3256,7 @@ module social_contracts::social_proof_tokens {
                 profile_threshold: DEFAULT_PROFILE_THRESHOLD,
                 max_individual_reservation_bps: DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
                 max_reservers_per_pool: DEFAULT_MAX_RESERVERS_PER_POOL,
-                trading_halted: false,
+                trading_enabled: true,
             }
         );
         

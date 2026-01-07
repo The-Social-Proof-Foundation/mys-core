@@ -775,10 +775,12 @@ impl TryFrom<Value> for ConfigUpdatedEvent {
 impl ConfigUpdatedEvent {
     /// Convert the event to an exchange config model
     /// Note: Treasury address is no longer stored in config, it's tracked separately in ecosystem_treasury table
+    /// Uses values from event when present, falls back to latest DB config if missing
     pub fn into_exchange_config_model(
         &self,
         timestamp: u64,
         transaction_id: String,
+        latest_config: Option<&SptExchangeConfig>,
     ) -> Result<NewSptExchangeConfig> {
         Ok(NewSptExchangeConfig {
             updated_by: self.updated_by.clone(),
@@ -792,7 +794,9 @@ impl ConfigUpdatedEvent {
             base_price: self.base_price as i64,
             quadratic_coefficient: self.quadratic_coefficient as i64,
             max_hold_percent_bps: self.max_hold_percent_bps as i64,
-            trading_halted: false, // Will be set from actual event data
+            trading_enabled: latest_config
+                .map(|c| c.trading_enabled)
+                .unwrap_or(true), // Preserve existing trading_enabled value, default to true if no config exists
             updated_at: self.timestamp as i64,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
@@ -1592,7 +1596,7 @@ impl PostPoolAutoInitializedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmergencyKillSwitchEvent {
     pub admin: String,
-    pub trading_halted: bool,
+    pub trading_enabled: bool,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
     pub reason: String,
@@ -1655,10 +1659,10 @@ impl TryFrom<Value> for EmergencyKillSwitchEvent {
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow!("Missing or invalid admin"))?
                 .to_string(),
-            trading_halted: obj
-                .get("trading_halted")
+            trading_enabled: obj
+                .get("trading_enabled")
                 .and_then(|v| v.as_bool())
-                .ok_or_else(|| anyhow!("Missing or invalid trading_halted"))?,
+                .ok_or_else(|| anyhow!("Missing or invalid trading_enabled"))?,
             timestamp: parse_optional_u64("timestamp")?
                 .ok_or_else(|| anyhow!("Missing timestamp"))?,
             reason: obj
@@ -1738,7 +1742,7 @@ impl EmergencyKillSwitchEvent {
                 self.max_hold_percent_bps,
                 latest_config.map(|c| c.max_hold_percent_bps).unwrap_or(0),
             ),
-            trading_halted: self.trading_halted, // Always use event value for trading_halted
+            trading_enabled: self.trading_enabled, // Always use event value for trading_enabled
             updated_at: self.timestamp as i64,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
