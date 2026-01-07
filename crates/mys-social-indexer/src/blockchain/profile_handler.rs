@@ -283,10 +283,12 @@ impl ProfileEventListener {
                 schema::profiles::primary_language.eq(&new_profile.primary_language),
                 schema::profiles::relationship_status.eq(&new_profile.relationship_status),
                 schema::profiles::x_username.eq(&new_profile.x_username),
-                schema::profiles::mastodon_username.eq(&new_profile.mastodon_username),
                 schema::profiles::facebook_username.eq(&new_profile.facebook_username),
                 schema::profiles::reddit_username.eq(&new_profile.reddit_username),
                 schema::profiles::github_username.eq(&new_profile.github_username),
+                schema::profiles::instagram_username.eq(&new_profile.instagram_username),
+                schema::profiles::linkedin_username.eq(&new_profile.linkedin_username),
+                schema::profiles::twitch_username.eq(&new_profile.twitch_username),
             ))
             .execute(&mut conn)
             .await?;
@@ -414,10 +416,6 @@ impl ProfileEventListener {
                     .x_username
                     .as_ref()
                     .or(existing_profile.x_username.as_ref())),
-                schema::profiles::mastodon_username.eq(event
-                    .mastodon_username
-                    .as_ref()
-                    .or(existing_profile.mastodon_username.as_ref())),
                 schema::profiles::facebook_username.eq(event
                     .facebook_username
                     .as_ref()
@@ -434,6 +432,14 @@ impl ProfileEventListener {
                     .instagram_username
                     .as_ref()
                     .or(existing_profile.instagram_username.as_ref())),
+                schema::profiles::linkedin_username.eq(event
+                    .linkedin_username
+                    .as_ref()
+                    .or(existing_profile.linkedin_username.as_ref())),
+                schema::profiles::twitch_username.eq(event
+                    .twitch_username
+                    .as_ref()
+                    .or(existing_profile.twitch_username.as_ref())),
                 schema::profiles::min_offer_amount.eq(event
                     .min_offer_amount
                     .map(|v| v as i64)

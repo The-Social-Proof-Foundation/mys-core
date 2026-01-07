@@ -129,6 +129,7 @@ module social_contracts::profile_tests {
                 option::none<string::String>(),
                 option::none<string::String>(),
                 option::none<string::String>(),
+                option::none<string::String>(),
                 option::none<u64>(),
                 test_scenario::ctx(&mut scenario)
             );
@@ -195,6 +196,7 @@ module social_contracts::profile_tests {
                 string::utf8(b"Hacked bio"),
                 b"https://example.com/hacked.png",
                 b"https://example.com/hacked_cover.png",
+                option::none<string::String>(),
                 option::none<string::String>(),
                 option::none<string::String>(),
                 option::none<string::String>(),
@@ -848,6 +850,7 @@ module social_contracts::profile_tests {
                 string::utf8(b"This is User1's profile"),
                 b"https://example.com/image.png",
                 b"",
+                option::none<string::String>(),
                 option::none<string::String>(),
                 option::none<string::String>(),
                 option::none<string::String>(),

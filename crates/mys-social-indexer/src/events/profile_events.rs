@@ -192,11 +192,12 @@ impl ProfileCreatedEvent {
             primary_language: None,
             relationship_status: None,
             x_username: None,
-            mastodon_username: None,
             facebook_username: None,
             reddit_username: None,
             github_username: None,
             instagram_username: None,
+            linkedin_username: None,
+            twitch_username: None,
             social_proof_token_address: None,
             reservation_pool_address: None, // Will be set when reservation pool is created
             selected_badge_id: None, // Will be set when badge is selected
@@ -288,9 +289,6 @@ pub struct ProfileUpdatedEvent {
     pub x_username: Option<String>,
 
     #[serde(default)]
-    pub mastodon_username: Option<String>,
-
-    #[serde(default)]
     pub facebook_username: Option<String>,
 
     #[serde(default)]
@@ -301,6 +299,12 @@ pub struct ProfileUpdatedEvent {
 
     #[serde(default)]
     pub instagram_username: Option<String>,
+
+    #[serde(default)]
+    pub linkedin_username: Option<String>,
+
+    #[serde(default)]
+    pub twitch_username: Option<String>,
 
     #[serde(default)]
     pub min_offer_amount: Option<u64>,

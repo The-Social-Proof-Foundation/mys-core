@@ -233,11 +233,12 @@ impl SocialIndexerWorker {
             primary_language: event.primary_language.clone(),
             relationship_status: event.relationship_status.clone(),
             x_username: event.x_username.clone(),
-            mastodon_username: event.mastodon_username.clone(),
             facebook_username: event.facebook_username.clone(),
             reddit_username: event.reddit_username.clone(),
             github_username: event.github_username.clone(),
             instagram_username: event.instagram_username.clone(),
+            linkedin_username: event.linkedin_username.clone(),
+            twitch_username: event.twitch_username.clone(),
             social_proof_token_address: event.social_proof_token_address.clone(),
             selected_badge_id: event.selected_badge_id.clone(),
             paid_messaging_enabled: None, // Not updated via ProfileUpdatedEvent

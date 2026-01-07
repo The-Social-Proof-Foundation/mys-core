@@ -374,6 +374,10 @@ pub enum MysClientCommands {
         /// Also publish transitive dependencies that have not already been published.
         #[clap(long)]
         with_unpublished_dependencies: bool,
+
+        /// Object ID of UpgradeAdminCap to include in transaction (allows bypassing publish restrictions)
+        #[clap(long)]
+        admin_cap: Option<ObjectID>,
     },
 
     /// Split a coin object into multiple coins.
@@ -1017,6 +1021,7 @@ impl MysClientCommands {
                 skip_dependency_verification,
                 verify_deps,
                 with_unpublished_dependencies,
+                admin_cap,
                 opts,
             } => {
                 if build_config.test_mode {
@@ -1085,6 +1090,7 @@ impl MysClientCommands {
                         sender,
                         compiled_modules,
                         dependencies.published.into_values().collect(),
+                        admin_cap,
                     )
                     .await?;
                 let result = dry_run_or_execute_or_serialize(

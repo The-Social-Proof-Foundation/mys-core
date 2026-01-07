@@ -42,11 +42,12 @@ pub struct Profile {
     pub primary_language: Option<String>,
     pub relationship_status: Option<String>,
     pub x_username: Option<String>,
-    pub mastodon_username: Option<String>,
     pub facebook_username: Option<String>,
     pub reddit_username: Option<String>,
     pub github_username: Option<String>,
     pub instagram_username: Option<String>,
+    pub linkedin_username: Option<String>,
+    pub twitch_username: Option<String>,
     // Social proof token address
     pub social_proof_token_address: Option<String>,
     // Reservation pool object address
@@ -100,11 +101,12 @@ pub struct NewProfile {
     pub primary_language: Option<String>,
     pub relationship_status: Option<String>,
     pub x_username: Option<String>,
-    pub mastodon_username: Option<String>,
     pub facebook_username: Option<String>,
     pub reddit_username: Option<String>,
     pub github_username: Option<String>,
     pub instagram_username: Option<String>,
+    pub linkedin_username: Option<String>,
+    pub twitch_username: Option<String>,
     // Social proof token address
     pub social_proof_token_address: Option<String>,
     // Reservation pool object address
@@ -147,11 +149,12 @@ pub struct UpdateProfile {
     pub primary_language: Option<String>,
     pub relationship_status: Option<String>,
     pub x_username: Option<String>,
-    pub mastodon_username: Option<String>,
     pub facebook_username: Option<String>,
     pub reddit_username: Option<String>,
     pub github_username: Option<String>,
     pub instagram_username: Option<String>,
+    pub linkedin_username: Option<String>,
+    pub twitch_username: Option<String>,
     // Social proof token address
     pub social_proof_token_address: Option<String>,
     // Selected badge ID - the badge currently selected for display

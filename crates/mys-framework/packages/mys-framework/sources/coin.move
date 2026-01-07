@@ -265,8 +265,8 @@ public fun create_currency<T: drop>(
 
 /// Create a new currency with admin authorization
 /// Requires CoinCreationAdminCap - only the admin can create new coins.
-public fun create_currency_with_admin<T: drop>(
-    witness: T,
+/// Uniqueness is enforced by admin discretion (only CoinCreationAdminCap holder can create).
+public fun create_currency_with_admin<T>(
     decimals: u8,
     symbol: vector<u8>,
     name: vector<u8>,
@@ -276,13 +276,12 @@ public fun create_currency_with_admin<T: drop>(
     ctx: &mut TxContext,
 ): (TreasuryCap<T>, CoinMetadata<T>) {
     // Admin cap proves authorization
-    // Make sure there's only one instance of the type T
-    assert!(mys::types::is_one_time_witness(&witness), EBadWitness);
+    // Uniqueness is enforced by admin discretion (only CoinCreationAdminCap holder can create)
 
     (
         TreasuryCap {
             id: object::new(ctx),
-            total_supply: balance::create_supply(witness),
+            total_supply: balance::create_supply_without_witness(),
         },
         CoinMetadata {
             id: object::new(ctx),
@@ -304,8 +303,7 @@ public fun create_currency_with_admin<T: drop>(
 /// be denied. Note however, that this doesn't affect per-address entries of the deny list and
 /// will not change the result of the "contains" APIs.
 /// Requires CoinCreationAdminCap.
-public fun create_regulated_currency_v2<T: drop>(
-    witness: T,
+public fun create_regulated_currency_v2<T>(
     decimals: u8,
     symbol: vector<u8>,
     name: vector<u8>,
@@ -316,7 +314,6 @@ public fun create_regulated_currency_v2<T: drop>(
     ctx: &mut TxContext,
 ): (TreasuryCap<T>, DenyCapV2<T>, CoinMetadata<T>) {
     let (treasury_cap, metadata) = create_currency_with_admin(
-        witness,
         decimals,
         symbol,
         name,
@@ -692,8 +689,7 @@ public struct DenyCap<phantom T> has key, store {
         note = b"For new coins, use `create_regulated_currency_v2`. To migrate existing regulated currencies, migrate with `migrate_regulated_currency_to_v2`",
     ),
 ]
-public fun create_regulated_currency<T: drop>(
-    witness: T,
+public fun create_regulated_currency<T>(
     decimals: u8,
     symbol: vector<u8>,
     name: vector<u8>,
@@ -703,7 +699,6 @@ public fun create_regulated_currency<T: drop>(
     ctx: &mut TxContext,
 ): (TreasuryCap<T>, DenyCap<T>, CoinMetadata<T>) {
     let (treasury_cap, metadata) = create_currency_with_admin(
-        witness,
         decimals,
         symbol,
         name,

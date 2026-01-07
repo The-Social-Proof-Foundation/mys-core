@@ -190,6 +190,9 @@ pub async fn get_following(
         Some("alphabetical") => {
             following_query = following_query.order(profiles::username.asc());
         }
+        Some("followers_count") => {
+            following_query = following_query.order(profiles::followers_count.desc());
+        }
         _ => {
             // Default: latest
             following_query = following_query.order(social_graph_relationships::created_at.desc());
@@ -485,6 +488,9 @@ pub async fn get_followers(
         }
         Some("alphabetical") => {
             followers_query = followers_query.order(profiles::username.asc());
+        }
+        Some("followers_count") => {
+            followers_query = followers_query.order(profiles::followers_count.desc());
         }
         _ => {
             // Default: latest

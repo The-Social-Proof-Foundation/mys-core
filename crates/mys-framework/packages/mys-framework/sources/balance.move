@@ -48,6 +48,12 @@ public fun create_supply<T: drop>(_: T): Supply<T> {
     Supply { value: 0 }
 }
 
+/// Create a new supply for type T without requiring a witness parameter.
+/// Used when creating currencies without the one-time witness pattern.
+public(package) fun create_supply_without_witness<T>(): Supply<T> {
+    Supply { value: 0 }
+}
+
 /// Increase supply by `value` and create a new `Balance<T>` with this value.
 public fun increase_supply<T>(self: &mut Supply<T>, value: u64): Balance<T> {
     assert!(value < (18446744073709551615u64 - self.value), EOverflow);

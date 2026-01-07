@@ -149,6 +149,7 @@ pub async fn init_package(
                 ObjectID::from_hex_literal("0x1").unwrap(),
                 ObjectID::from_hex_literal("0x2").unwrap(),
             ],
+            None, // admin_cap - not needed for this test
         )
         .await?;
 

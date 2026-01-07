@@ -42,11 +42,12 @@ table! {
         primary_language -> Nullable<Text>,
         relationship_status -> Nullable<Text>,
         x_username -> Nullable<Text>,
-        mastodon_username -> Nullable<Text>,
         facebook_username -> Nullable<Text>,
         reddit_username -> Nullable<Text>,
         github_username -> Nullable<Text>,
         instagram_username -> Nullable<Text>,
+        linkedin_username -> Nullable<Text>,
+        twitch_username -> Nullable<Text>,
         // Social proof token address
         social_proof_token_address -> Nullable<Varchar>,
         // Reservation pool object address

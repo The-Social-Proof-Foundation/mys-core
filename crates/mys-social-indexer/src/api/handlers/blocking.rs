@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use axum::Json;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tracing::{debug, error};
 
 use crate::db::DbPool;
@@ -35,6 +35,15 @@ pub struct PlatformBlockInfo {
 #[derive(Debug, Serialize)]
 pub struct BlockCheckResponse {
     pub is_blocked: bool,
+}
+
+/// Query parameters for listing blocked platforms
+#[derive(Debug, Deserialize)]
+pub struct BlockedPlatformsQuery {
+    /// Optional sort: latest | earliest | alphabetical
+    pub sort: Option<String>,
+    /// Optional search by platform_id
+    pub search: Option<String>,
 }
 
 /// Get profiles blocked by a user with rich profile information and pagination
@@ -90,47 +99,102 @@ pub async fn get_blocked_profiles(
 
     debug!("Using blocker wallet address: {}", wallet_address);
 
-    // Build fast query with dynamic search and sorting
-    let mut query_builder = blocked_profiles::table
-        .filter(blocked_profiles::blocker_address.eq(&wallet_address))
-        .into_boxed();
+    // Check if we need to join with profiles table for followers_count sorting
+    let sort_option = query.sort.as_ref().map(|s| s.to_lowercase());
+    let needs_profile_join = sort_option.as_deref() == Some("followers_count");
 
-    // Apply search if provided
-    if let Some(ref term) = query.search {
-        if !term.trim().is_empty() {
-            let pattern = format!("%{}%", term.trim());
-            query_builder = query_builder.filter(
-                blocked_profiles::blocked_username
-                    .ilike(pattern.clone())
-                    .or(blocked_profiles::blocked_display_name.ilike(pattern.clone()))
-                    .or(blocked_profiles::blocked_address.ilike(pattern.clone())),
-            );
-        }
-    }
+    // Execute query - handle joined and non-joined cases separately due to Diesel type system
+    let blocked_profiles: Vec<BlockedProfile> = if needs_profile_join {
+        // Build query with join for followers_count sorting
+        use diesel::dsl::sql;
+        
+        // Handle search and no-search cases separately to avoid Diesel type system issues
+        let query_builder = if let Some(ref term) = query.search {
+            if !term.trim().is_empty() {
+                let pattern = format!("%{}%", term.trim());
+                blocked_profiles::table
+                    .filter(blocked_profiles::blocker_address.eq(&wallet_address))
+                    .filter(
+                        blocked_profiles::blocked_username
+                            .ilike(pattern.clone())
+                            .or(blocked_profiles::blocked_display_name.ilike(pattern.clone()))
+                            .or(blocked_profiles::blocked_address.ilike(pattern.clone()))
+                    )
+                    .inner_join(
+                        profiles::table.on(blocked_profiles::blocked_address.eq(profiles::owner_address))
+                    )
+                    .order(sql::<diesel::sql_types::Integer>("profiles.followers_count DESC"))
+                    .select(BlockedProfile::as_select())
+                    .into_boxed()
+            } else {
+                blocked_profiles::table
+                    .filter(blocked_profiles::blocker_address.eq(&wallet_address))
+                    .inner_join(
+                        profiles::table.on(blocked_profiles::blocked_address.eq(profiles::owner_address))
+                    )
+                    .order(sql::<diesel::sql_types::Integer>("profiles.followers_count DESC"))
+                    .select(BlockedProfile::as_select())
+                    .into_boxed()
+            }
+        } else {
+            blocked_profiles::table
+                .filter(blocked_profiles::blocker_address.eq(&wallet_address))
+                .inner_join(
+                    profiles::table.on(blocked_profiles::blocked_address.eq(profiles::owner_address))
+                )
+                .order(sql::<diesel::sql_types::Integer>("profiles.followers_count DESC"))
+                .select(BlockedProfile::as_select())
+                .into_boxed()
+        };
 
-    // Apply sort option
-    match query.sort.as_ref().map(|s| s.to_lowercase()).as_deref() {
-        Some("earliest") => {
-            query_builder = query_builder.order(blocked_profiles::last_blocked_at.asc());
-        }
-        Some("alphabetical") => {
-            query_builder = query_builder.order(blocked_profiles::blocked_username.asc());
-        }
-        _ => {
-            // Default to latest
-            query_builder = query_builder.order(blocked_profiles::last_blocked_at.desc());
-        }
-    }
-
-    // Execute
-    let blocked_profiles: Vec<BlockedProfile> =
         match query_builder.load::<BlockedProfile>(&mut conn).await {
             Ok(results) => results,
             Err(e) => {
                 error!("Failed to query blocked profiles: {}", e);
                 return Err(StatusCode::INTERNAL_SERVER_ERROR);
             }
-        };
+        }
+    } else {
+        // Build query without join for other sort options
+        let mut query_builder = blocked_profiles::table
+            .filter(blocked_profiles::blocker_address.eq(&wallet_address))
+            .into_boxed();
+
+        // Apply search if provided
+        if let Some(ref term) = query.search {
+            if !term.trim().is_empty() {
+                let pattern = format!("%{}%", term.trim());
+                query_builder = query_builder.filter(
+                    blocked_profiles::blocked_username
+                        .ilike(pattern.clone())
+                        .or(blocked_profiles::blocked_display_name.ilike(pattern.clone()))
+                        .or(blocked_profiles::blocked_address.ilike(pattern.clone())),
+                );
+            }
+        }
+
+        // Apply sort option
+        match sort_option.as_deref() {
+            Some("earliest") => {
+                query_builder = query_builder.order(blocked_profiles::last_blocked_at.asc());
+            }
+            Some("alphabetical") => {
+                query_builder = query_builder.order(blocked_profiles::blocked_username.asc());
+            }
+            _ => {
+                // Default to latest
+                query_builder = query_builder.order(blocked_profiles::last_blocked_at.desc());
+            }
+        }
+
+        match query_builder.load::<BlockedProfile>(&mut conn).await {
+            Ok(results) => results,
+            Err(e) => {
+                error!("Failed to query blocked profiles: {}", e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        }
+    };
 
     // Convert directly from BlockedProfile to EnrichedBlockedProfile (uses From trait)
     let mut enriched_blocked_profiles: Vec<EnrichedBlockedProfile> = blocked_profiles
@@ -267,6 +331,7 @@ pub async fn check_profile_blocked(
 /// Accepts wallet address (owner_address) as input
 pub async fn get_blocked_platforms(
     Path(wallet_address): Path<String>,
+    Query(query): Query<BlockedPlatformsQuery>,
     State(pool): State<DbPool>,
 ) -> Result<Json<BlockedPlatformsResponse>, StatusCode> {
     debug!("Getting platforms blocked by wallet_address: {}", wallet_address);
@@ -370,10 +435,40 @@ pub async fn get_blocked_platforms(
         }
     };
 
-    let total = blocked_platforms.len() as i64;
+    // Apply search filter if provided
+    let mut filtered_platforms = if let Some(ref term) = query.search {
+        if !term.trim().is_empty() {
+            let search_term = term.trim().to_lowercase();
+            blocked_platforms
+                .into_iter()
+                .filter(|platform| platform.platform_id.to_lowercase().contains(&search_term))
+                .collect()
+        } else {
+            blocked_platforms
+        }
+    } else {
+        blocked_platforms
+    };
+
+    // Apply sort option
+    let sort_option = query.sort.as_ref().map(|s| s.to_lowercase());
+    match sort_option.as_deref() {
+        Some("earliest") => {
+            filtered_platforms.sort_by(|a, b| a.blocked_at.cmp(&b.blocked_at));
+        }
+        Some("alphabetical") => {
+            filtered_platforms.sort_by(|a, b| a.platform_id.cmp(&b.platform_id));
+        }
+        _ => {
+            // Default: latest (newest first)
+            filtered_platforms.sort_by(|a, b| b.blocked_at.cmp(&a.blocked_at));
+        }
+    }
+
+    let total = filtered_platforms.len() as i64;
 
     Ok(Json(BlockedPlatformsResponse {
-        blocked_platforms,
+        blocked_platforms: filtered_platforms,
         total,
     }))
 }

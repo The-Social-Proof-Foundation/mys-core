@@ -580,9 +580,17 @@ impl TransactionBuilder {
         sender: MysAddress,
         modules: Vec<Vec<u8>>,
         dep_ids: Vec<ObjectID>,
+        admin_cap: Option<ObjectID>,
     ) -> Result<TransactionKind, anyhow::Error> {
         let pt = {
             let mut builder = ProgrammableTransactionBuilder::new();
+            
+            // If admin_cap is provided, add it as an input object to enable publish bypass
+            if let Some(cap_id) = admin_cap {
+                let cap_ref = self.get_object_ref(cap_id).await?;
+                builder.obj(ObjectArg::ImmOrOwnedObject(cap_ref))?;
+            }
+            
             let upgrade_cap = builder.publish_upgradeable(modules, dep_ids);
             builder.transfer_arg(sender, upgrade_cap);
             builder.finish()

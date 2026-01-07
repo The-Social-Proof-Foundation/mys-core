@@ -31,7 +31,6 @@ module social_contracts::profile {
     const EProfileAlreadyExists: u64 = 0;
     const EUnauthorized: u64 = 1;
     const EInvalidUsername: u64 = 2;
-    const EProfileCreateFailed: u64 = 3;
     const EReservedName: u64 = 4;
     const EUsernameNotAvailable: u64 = 5;
     // New error codes for profile offers
@@ -72,9 +71,7 @@ module social_contracts::profile {
         b"foundation",
     ];
 
-    /// Field names for dynamic fields
-    const USERNAME_FIELD: vector<u8> = b"username";
-    // Field name for offers
+    // Field name for offers dynamic field
     const OFFERS_FIELD: vector<u8> = b"profile_offers";
 
     /// Admin capability for Ecosystem Treasury management
@@ -117,22 +114,22 @@ module social_contracts::profile {
         created_at: u64,
         /// Profile owner address
         owner: address,
-        /// X/Twitter username as encrypted string (optional)
-        x_username: Option<String>,
-        /// Mastodon username as encrypted string (optional)
-        mastodon_username: Option<String>,
+        /// Username for the profile (required, immutable after creation)
+        username: String,
         /// Facebook username as encrypted string (optional)
         facebook_username: Option<String>,
-        /// Reddit username as encrypted string (optional)
-        reddit_username: Option<String>,
         /// GitHub username as encrypted string (optional)
         github_username: Option<String>,
         /// Instagram username as encrypted string (optional)
         instagram_username: Option<String>,
-        /// Last updated timestamp for profile data
-        last_updated: u64,
-        /// Total amount of tips received
-        tips_received: u64,
+        /// LinkedIn username as encrypted string (optional)
+        linkedin_username: Option<String>,
+        /// Reddit username as encrypted string (optional)
+        reddit_username: Option<String>,
+        /// Twitch username as encrypted string (optional)
+        twitch_username: Option<String>,
+        /// X/Twitter username as encrypted string (optional)
+        x_username: Option<String>,
         /// Minimum offer amount in MYSO tokens the owner is willing to accept (optional)
         min_offer_amount: Option<u64>,
         /// Collection of badges assigned to the profile
@@ -246,7 +243,7 @@ module social_contracts::profile {
     public struct ProfileCreatedEvent has copy, drop {
         profile_id: address,
         display_name: String,
-        username: Option<String>,
+        username: String,
         bio: String,
         profile_picture: Option<String>,
         cover_photo: Option<String>,
@@ -258,19 +255,20 @@ module social_contracts::profile {
     public struct ProfileUpdatedEvent has copy, drop {
         profile_id: address,
         display_name: Option<String>,
-        username: Option<String>,
+        username: String,
         bio: String,
         profile_picture: Option<String>,
         cover_photo: Option<String>,
         owner: address,
         updated_at: u64,
         // Social media usernames
-        x_username: Option<String>,
-        mastodon_username: Option<String>,
         facebook_username: Option<String>,
-        reddit_username: Option<String>,
         github_username: Option<String>,
         instagram_username: Option<String>,
+        linkedin_username: Option<String>,
+        reddit_username: Option<String>,
+        twitch_username: Option<String>,
+        x_username: Option<String>,
         min_offer_amount: Option<u64>,
     }
 
@@ -510,7 +508,7 @@ module social_contracts::profile {
             option::none()
         };
         
-        let mut profile = Profile {
+        let profile = Profile {
             id: object::new(ctx),
             display_name: display_name_option,
             bio,
@@ -518,14 +516,14 @@ module social_contracts::profile {
             cover_photo,
             created_at: now,
             owner,
-            x_username: option::none(),
-            mastodon_username: option::none(),
+            username,
             facebook_username: option::none(),
-            reddit_username: option::none(),
             github_username: option::none(),
             instagram_username: option::none(),
-            last_updated: now,
-            tips_received: 0,
+            linkedin_username: option::none(),
+            reddit_username: option::none(),
+            twitch_username: option::none(),
+            x_username: option::none(),
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
             selected_badge_id: option::none(),
@@ -536,13 +534,6 @@ module social_contracts::profile {
         
         // Get the profile ID
         let profile_id = object::uid_to_address(&profile.id);
-        
-        // Store the username directly on the profile
-        if (dynamic_field::exists_(&profile.id, USERNAME_FIELD)) {
-            // This should never happen but we check as a safeguard
-            abort EProfileCreateFailed
-        };
-        dynamic_field::add(&mut profile.id, USERNAME_FIELD, username);
         
         // Add to registry mappings
         table::add(&mut registry.usernames, username, profile_id);
@@ -576,7 +567,7 @@ module social_contracts::profile {
         event::emit(ProfileCreatedEvent {
             profile_id,
             display_name: display_name_value,
-            username: option::some(username),
+            username: profile.username,
             bio: profile.bio,
             profile_picture: profile_picture_string,
             cover_photo: cover_photo_string,
@@ -625,11 +616,7 @@ module social_contracts::profile {
         event::emit(ProfileUpdatedEvent {
             profile_id,
             display_name: profile.display_name,
-            username: if (dynamic_field::exists_(&profile.id, USERNAME_FIELD)) {
-                option::some(*dynamic_field::borrow<vector<u8>, String>(&profile.id, USERNAME_FIELD))
-            } else {
-                option::none()
-            },
+            username: profile.username,
             bio: profile.bio,
             profile_picture: if (option::is_some(&profile.profile_picture)) {
                 let url = option::borrow(&profile.profile_picture);
@@ -646,12 +633,13 @@ module social_contracts::profile {
             owner: new_owner,
             updated_at: tx_context::epoch(ctx),
             // Social media usernames
-            x_username: profile.x_username,
-            mastodon_username: profile.mastodon_username,
             facebook_username: profile.facebook_username,
-            reddit_username: profile.reddit_username,
             github_username: profile.github_username,
             instagram_username: profile.instagram_username,
+            linkedin_username: profile.linkedin_username,
+            reddit_username: profile.reddit_username,
+            twitch_username: profile.twitch_username,
+            x_username: profile.x_username,
             min_offer_amount: profile.min_offer_amount,
         });
         
@@ -668,12 +656,13 @@ module social_contracts::profile {
         new_profile_picture_url: vector<u8>,
         new_cover_photo_url: vector<u8>,
         // Social media usernames (all optional)
-        x_username: Option<String>,
-        mastodon_username: Option<String>,
         facebook_username: Option<String>,
-        reddit_username: Option<String>,
         github_username: Option<String>,
         instagram_username: Option<String>,
+        linkedin_username: Option<String>,
+        reddit_username: Option<String>,
+        twitch_username: Option<String>,
+        x_username: Option<String>,
         min_offer_amount: Option<u64>,
         ctx: &mut TxContext
     ) {
@@ -700,20 +689,8 @@ module social_contracts::profile {
         };
 
         // Update social media usernames if provided
-        if (option::is_some(&x_username)) {
-            profile.x_username = x_username;
-        };
-        
-        if (option::is_some(&mastodon_username)) {
-            profile.mastodon_username = mastodon_username;
-        };
-        
         if (option::is_some(&facebook_username)) {
             profile.facebook_username = facebook_username;
-        };
-        
-        if (option::is_some(&reddit_username)) {
-            profile.reddit_username = reddit_username;
         };
         
         if (option::is_some(&github_username)) {
@@ -724,18 +701,24 @@ module social_contracts::profile {
             profile.instagram_username = instagram_username;
         };
 
-        if (option::is_some(&min_offer_amount)) {
-            profile.min_offer_amount = min_offer_amount;
+        if (option::is_some(&linkedin_username)) {
+            profile.linkedin_username = linkedin_username;
         };
         
-        // Update the last updated timestamp
-        profile.last_updated = now;
+        if (option::is_some(&reddit_username)) {
+            profile.reddit_username = reddit_username;
+        };
 
-        // Get current username
-        let username_option = if (dynamic_field::exists_(&profile.id, USERNAME_FIELD)) {
-            option::some(*dynamic_field::borrow<vector<u8>, String>(&profile.id, USERNAME_FIELD))
-        } else {
-            option::none()
+        if (option::is_some(&twitch_username)) {
+            profile.twitch_username = twitch_username;
+        };
+        
+        if (option::is_some(&x_username)) {
+            profile.x_username = x_username;
+        };
+
+        if (option::is_some(&min_offer_amount)) {
+            profile.min_offer_amount = min_offer_amount;
         };
 
         // Convert URL to String for events
@@ -758,19 +741,20 @@ module social_contracts::profile {
         event::emit(ProfileUpdatedEvent {
             profile_id: object::uid_to_address(&profile.id),
             display_name: profile.display_name,
-            username: username_option,
+            username: profile.username,
             bio: profile.bio,
             profile_picture: profile_picture_string,
             cover_photo: cover_photo_string,
             owner: profile.owner,
             updated_at: now,
             // Social media usernames
-            x_username: profile.x_username,
-            mastodon_username: profile.mastodon_username,
             facebook_username: profile.facebook_username,
-            reddit_username: profile.reddit_username,
             github_username: profile.github_username,
             instagram_username: profile.instagram_username,
+            linkedin_username: profile.linkedin_username,
+            reddit_username: profile.reddit_username,
+            twitch_username: profile.twitch_username,
+            x_username: profile.x_username,
             min_offer_amount: profile.min_offer_amount,
         });
     }
@@ -807,18 +791,9 @@ module social_contracts::profile {
         &profile.id
     }
 
-    /// Get the last update timestamp for profile data
-    public fun last_updated(profile: &Profile): u64 {
-        profile.last_updated
-    }
-
     /// Get the username string for a profile
-    public fun username(profile: &Profile): Option<String> {
-        if (dynamic_field::exists_(&profile.id, USERNAME_FIELD)) {
-            option::some(*dynamic_field::borrow<vector<u8>, String>(&profile.id, USERNAME_FIELD))
-        } else {
-            option::none()
-        }
+    public fun username(profile: &Profile): String {
+        profile.username
     }
     
     /// Lookup profile ID by username in the registry
@@ -847,18 +822,6 @@ module social_contracts::profile {
     /// Get the owner of a profile
     public fun get_owner(profile: &Profile): address {
         profile.owner
-    }
-
-    /// Get the tips received for a profile
-    public fun get_tips_received(profile: &Profile): u64 {
-        profile.tips_received
-    }
-
-    /// Add tips received (called by post/comment module when tipping)
-    public(package) fun add_tips_received(profile: &mut Profile, amount: u64): u64 {
-        assert!(profile.tips_received <= MAX_U64 - amount, EOverflow);
-        profile.tips_received = profile.tips_received + amount;
-        profile.tips_received
     }
 
     /// Create a subscription service for this profile (creates separate service object)
@@ -1024,11 +987,7 @@ module social_contracts::profile {
         event::emit(ProfileUpdatedEvent {
             profile_id,
             display_name: profile.display_name,
-            username: if (dynamic_field::exists_(&profile.id, USERNAME_FIELD)) {
-                option::some(*dynamic_field::borrow<vector<u8>, String>(&profile.id, USERNAME_FIELD))
-            } else {
-                option::none()
-            },
+            username: profile.username,
             bio: profile.bio,
             profile_picture: if (option::is_some(&profile.profile_picture)) {
                 let url = option::borrow(&profile.profile_picture);
@@ -1045,12 +1004,13 @@ module social_contracts::profile {
             owner: offeror,
             updated_at: now,
             // Social media usernames
-            x_username: profile.x_username,
-            mastodon_username: profile.mastodon_username,
             facebook_username: profile.facebook_username,
-            reddit_username: profile.reddit_username,
             github_username: profile.github_username,
             instagram_username: profile.instagram_username,
+            linkedin_username: profile.linkedin_username,
+            reddit_username: profile.reddit_username,
+            twitch_username: profile.twitch_username,
+            x_username: profile.x_username,
             min_offer_amount: profile.min_offer_amount,
         });
         
@@ -1272,14 +1232,14 @@ module social_contracts::profile {
             cover_photo: option::none(),
             created_at: epoch,
             owner,
-            x_username: option::none(),
-            mastodon_username: option::none(),
+            username,
             facebook_username: option::none(),
-            reddit_username: option::none(),
             github_username: option::none(),
             instagram_username: option::none(),
-            last_updated: epoch,
-            tips_received: 0,
+            linkedin_username: option::none(),
+            reddit_username: option::none(),
+            twitch_username: option::none(),
+            x_username: option::none(),
             min_offer_amount: option::none(),
             badges: vector::empty<ProfileBadge>(),
             selected_badge_id: option::none(),

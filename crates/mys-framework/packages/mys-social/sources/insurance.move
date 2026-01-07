@@ -289,15 +289,18 @@ module social_contracts::insurance {
 
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
         let admin = tx_context::sender(ctx);
-        // Use init_config with default values to create config and transfer admin cap
-        init_config(
-            DEFAULT_MIN_COVERAGE_BPS,
-            DEFAULT_MAX_COVERAGE_BPS,
-            DEFAULT_MAX_DURATION_MS,
-            DEFAULT_FEE_BPS,
-            admin,
-            ctx
-        );
+        // Create and share the InsuranceConfig object with default values
+        // Admin cap will be transferred separately in bootstrap.move
+        transfer::share_object(InsuranceConfig {
+            id: object::new(ctx),
+            paused: true,
+            min_coverage_bps: DEFAULT_MIN_COVERAGE_BPS,
+            max_coverage_bps: DEFAULT_MAX_COVERAGE_BPS,
+            max_duration_ms: DEFAULT_MAX_DURATION_MS,
+            fee_bps: DEFAULT_FEE_BPS,
+            treasury: admin,
+            version: DEFAULT_VERSION,
+        });
     }
 
     /// Create an underwriter vault
