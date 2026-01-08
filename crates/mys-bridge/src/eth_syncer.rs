@@ -101,6 +101,7 @@ where
         let mut last_block_number = 0;
         let mut interval = time::interval(FINALIZED_BLOCK_QUERY_INTERVAL);
         interval.set_missed_tick_behavior(time::MissedTickBehavior::Skip);
+        let mut consecutive_failures = 0;
         loop {
             interval.tick().await;
             // TODO: allow to pass custom initial interval
@@ -108,9 +109,27 @@ where
                 eth_client.get_last_finalized_block_id(),
                 time::Duration::from_secs(600)
             ) else {
-                error!("Failed to get last finalized block from eth client after retry");
+                consecutive_failures += 1;
+                error!(
+                    consecutive_failures,
+                    "Failed to get last finalized block from eth client after retry"
+                );
+                // If we've failed too many times, send the last known block to unblock listeners
+                // This prevents the event listener from being stuck forever
+                if consecutive_failures >= 10 && last_block_number > 0 {
+                    tracing::warn!(
+                        last_known_block = last_block_number,
+                        consecutive_failures,
+                        "Sending last known finalized block to unblock event listeners after {} consecutive failures",
+                        consecutive_failures
+                    );
+                    // Send the last known block to unblock waiting listeners
+                    // They will check if it's >= start_block and continue
+                    let _ = last_finalized_block_sender.send(last_block_number);
+                }
                 continue;
             };
+            consecutive_failures = 0; // Reset on success
             tracing::debug!("Last finalized block: {}", new_value);
             metrics.last_finalized_eth_block.set(new_value as i64);
 
@@ -154,10 +173,38 @@ where
         loop {
             // If no more known blocks, wait for the next finalized block.
             if !more_blocks {
-                last_finalized_block_receiver
-                    .changed()
-                    .await
-                    .expect("last_finalized_block channel sender is closed");
+                // Add timeout to prevent infinite wait if finalized block query is stuck
+                match tokio::time::timeout(Duration::from_secs(30), last_finalized_block_receiver.changed()).await {
+                    Ok(Ok(_)) => {},
+                    Ok(Err(_)) => {
+                        error!("last_finalized_block channel sender is closed");
+                        break;
+                    },
+                    Err(_) => {
+                        tracing::warn!(
+                            contract_address = ?contract_address,
+                            "Timeout waiting for finalized block update - checking current finalized block directly"
+                        );
+                        // Try to get finalized block directly to unblock
+                        if let Ok(Ok(current_finalized)) = retry_with_max_elapsed_time!(
+                            eth_client.get_last_finalized_block_id(),
+                            Duration::from_secs(10)
+                        ) {
+                            let current_receiver_value = *last_finalized_block_receiver.borrow();
+                            if current_finalized > current_receiver_value {
+                                // The finalized block has advanced but wasn't sent via channel
+                                // Force a check by reading the current value
+                                info!(
+                                    contract_address = ?contract_address,
+                                    current_finalized,
+                                    last_receiver_value = current_receiver_value,
+                                    "Finalized block advanced but wasn't notified via channel - continuing with current value"
+                                );
+                            }
+                        }
+                        // Continue loop to check current finalized block value
+                    }
+                }
             }
             let new_finalized_block = *last_finalized_block_receiver.borrow();
             if new_finalized_block < start_block {
