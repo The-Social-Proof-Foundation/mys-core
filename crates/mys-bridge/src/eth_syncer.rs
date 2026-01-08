@@ -172,6 +172,8 @@ where
         let mut more_blocks = false;
         loop {
             // If no more known blocks, wait for the next finalized block.
+            let mut use_direct_query = false;
+            let mut direct_query_value = None;
             if !more_blocks {
                 // Add timeout to prevent infinite wait if finalized block query is stuck
                 match tokio::time::timeout(Duration::from_secs(30), last_finalized_block_receiver.changed()).await {
@@ -191,22 +193,34 @@ where
                             Duration::from_secs(10)
                         ) {
                             let current_receiver_value = *last_finalized_block_receiver.borrow();
-                            if current_finalized > current_receiver_value {
-                                // The finalized block has advanced but wasn't sent via channel
-                                // Force a check by reading the current value
-                                info!(
-                                    contract_address = ?contract_address,
-                                    current_finalized,
-                                    last_receiver_value = current_receiver_value,
-                                    "Finalized block advanced but wasn't notified via channel - continuing with current value"
-                                );
+                            if current_finalized >= current_receiver_value {
+                                // Use the directly queried value if it's >= receiver value
+                                use_direct_query = true;
+                                direct_query_value = Some(current_finalized);
+                                if current_finalized > current_receiver_value {
+                                    info!(
+                                        contract_address = ?contract_address,
+                                        current_finalized,
+                                        last_receiver_value = current_receiver_value,
+                                        "Finalized block advanced but wasn't notified via channel - using directly queried value"
+                                    );
+                                } else {
+                                    info!(
+                                        contract_address = ?contract_address,
+                                        current_finalized,
+                                        "Using directly queried finalized block value (same as receiver)"
+                                    );
+                                }
                             }
                         }
-                        // Continue loop to check current finalized block value
                     }
                 }
             }
-            let new_finalized_block = *last_finalized_block_receiver.borrow();
+            let new_finalized_block = if use_direct_query {
+                direct_query_value.unwrap()
+            } else {
+                *last_finalized_block_receiver.borrow()
+            };
             if new_finalized_block < start_block {
                 tracing::info!(
                     contract_address=?contract_address,

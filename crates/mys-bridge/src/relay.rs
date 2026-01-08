@@ -315,59 +315,24 @@ where
 
         let token_id = message.parsed_payload.token_type;
         
-        // Map EVM token ID to MySocial token ID for TypeTag lookup
-        // The message still contains the original token_id, but we need to map it
-        // for TypeTag lookup since MySocial uses different token IDs
-        let mys_token_id_for_claim = if relay_key.source_chain == 12 { // EVM chain ID
-            // Use same mapping as transaction builder
-            if token_id == 5 {
-                0 // Map EVM token ID 5 → MySocial token ID 0
-            } else {
-                token_id
-            }
-        } else {
-            token_id
-        };
-        
-        if relay_key.source_chain == 12 && token_id != mys_token_id_for_claim {
-            warn!(
-                evm_token_id = token_id,
-                mys_token_id = mys_token_id_for_claim,
-                "Token ID mapping: Message has token_id={} but using TypeTag for token_id={}",
-                token_id, mys_token_id_for_claim
-            );
-        }
+        // Use token_id directly as-is from the bridge message
+        // Token IDs should match across chains - no mapping needed
         
         // For EVM → MySocial transfers, target_address is the MySocial recipient address
         let recipient_address = MysAddress::from_bytes(&message.parsed_payload.target_address)
             .map_err(|e| BridgeError::Generic(format!("Failed to parse recipient address: {:?}", e)))?;
         
         let amount = message.parsed_payload.amount;
-        let is_mys_token = mys_token_id_for_claim == 0;
         
         info!(
             ?relay_key,
             token_id,
-            is_mys_token,
             recipient_address = ?recipient_address,
             amount,
             source_chain = relay_key.source_chain,
             seq_num = relay_key.seq_num,
             "Preparing to claim tokens from treasury and transfer to recipient"
         );
-        
-        if is_mys_token {
-            info!(
-                ?relay_key,
-                "Claiming MYS tokens - will unlock from native_mys_locked balance (requires treasury to be bootstrapped)"
-            );
-        } else {
-            info!(
-                ?relay_key,
-                token_id,
-                "Claiming foreign token - will mint new tokens (requires token type to be registered with TreasuryCap)"
-            );
-        }
 
         // Get bridge object ref
         let bridge_object_arg = self
@@ -392,51 +357,39 @@ where
         let source_chain = builder.pure(relay_key.source_chain).unwrap();
         let seq_num = builder.pure(relay_key.seq_num).unwrap();
 
-        // Call the appropriate claim function based on token type
-        if mys_token_id_for_claim == 0 {
-            // MYS token (ID 0) - use claim_and_transfer_mys_token
-            builder.programmable_move_call(
-                BRIDGE_PACKAGE_ID,
-                ident_str!("bridge").to_owned(),
-                ident_str!("claim_and_transfer_mys_token").to_owned(),
-                vec![], // No type arguments for MYS
-                vec![arg_bridge, arg_clock, source_chain, seq_num],
-            );
-        } else {
-            // Other tokens - use claim_and_transfer_token<T>
-            let token_type_tags = (*self.mys_token_type_tags.load()).clone();
-            
-            // Log registered token IDs for debugging
-            let registered_token_ids: Vec<u8> = token_type_tags.keys().copied().collect();
-            debug!(
-                ?relay_key,
-                original_token_id = token_id,
-                mapped_token_id = mys_token_id_for_claim,
-                registered_token_ids = ?registered_token_ids,
-                "Looking up TypeTag for token ID"
-            );
-            
-            let type_tag = token_type_tags
-                .get(&mys_token_id_for_claim)
-                .ok_or_else(|| {
-                    let registered_ids: Vec<u8> = token_type_tags.keys().copied().collect();
-                    BridgeError::Generic(format!(
-                        "Token ID {} (mapped from EVM token ID {}) is not registered on MySocial bridge. \
-                         Registered token IDs: {:?}. \
-                         This token must be registered on MySocial bridge's treasury before claiming can proceed.",
-                        mys_token_id_for_claim, token_id, registered_ids
-                    ))
-                })?
-                .clone();
+        // Use claim_and_transfer_token<T> for all tokens, including token_id 0
+        // All tokens must have a TypeTag registered in the treasury
+        let token_type_tags = (*self.mys_token_type_tags.load()).clone();
+        
+        // Log registered token IDs for debugging
+        let registered_token_ids: Vec<u8> = token_type_tags.keys().copied().collect();
+        debug!(
+            ?relay_key,
+            token_id,
+            registered_token_ids = ?registered_token_ids,
+            "Looking up TypeTag for token ID"
+        );
+        
+        let type_tag = token_type_tags
+            .get(&token_id)
+            .ok_or_else(|| {
+                let registered_ids: Vec<u8> = token_type_tags.keys().copied().collect();
+                BridgeError::Generic(format!(
+                    "Token ID {} is not registered on MySocial bridge. \
+                     Registered token IDs: {:?}. \
+                     This token must be registered on MySocial bridge's treasury before claiming can proceed.",
+                    token_id, registered_ids
+                ))
+            })?
+            .clone();
 
-            builder.programmable_move_call(
-                BRIDGE_PACKAGE_ID,
-                ident_str!("bridge").to_owned(),
-                ident_str!("claim_and_transfer_token").to_owned(),
-                vec![type_tag],
-                vec![arg_bridge, arg_clock, source_chain, seq_num],
-            );
-        }
+        builder.programmable_move_call(
+            BRIDGE_PACKAGE_ID,
+            ident_str!("bridge").to_owned(),
+            ident_str!("claim_and_transfer_token").to_owned(),
+            vec![type_tag],
+            vec![arg_bridge, arg_clock, source_chain, seq_num],
+        );
 
         let pt = builder.finish();
 
@@ -542,14 +495,13 @@ where
                     recipient = ?recipient_address,
                     token_id,
                     amount,
-                    is_mys_token,
                     "Token transfer limit exceeded - tokens were not transferred. \
                      This can happen if the bridge limiter has reached its daily/hourly limit for this route."
                 );
                 Err(BridgeError::Generic(format!(
-                    "Token transfer limit exceeded for relay: {:?} (token_id={}, amount={}, is_mys={}). \
+                    "Token transfer limit exceeded for relay: {:?} (token_id={}, amount={}). \
                      Tokens were not transferred to recipient. Check bridge limiter configuration.",
-                    relay_key, token_id, amount, is_mys_token
+                    relay_key, token_id, amount
                 )))
             }
             (_, _, Some(_)) => {
@@ -566,8 +518,8 @@ where
             (None, None, None) => {
                 // No relevant events - this is an error
                 // This could happen if:
-                // - For MYS: Treasury not bootstrapped (ENativeMysNotBootstrapped) or insufficient balance
-                // - For other tokens: Token type not registered or TreasuryCap missing
+                // - Token type not registered in treasury or TreasuryCap missing
+                // - Insufficient balance in treasury
                 // - Move abort occurred but transaction still succeeded (shouldn't happen, but log it)
                 error!(
                     ?relay_key,
@@ -575,23 +527,20 @@ where
                     recipient = ?recipient_address,
                     token_id,
                     amount,
-                    is_mys_token,
                     all_events = ?events.data.iter().map(|e| &e.type_).collect::<Vec<_>>(),
                     "Transaction succeeded but no TokenTransferClaimed, TokenTransferLimitExceed, or TokenTransferAlreadyClaimed event found. \
                      Possible causes: \
-                     - For MYS tokens: Treasury not bootstrapped (native_mys_bootstrapped=false) or insufficient native_mys_locked balance \
-                     - For foreign tokens: Token type not registered in treasury or TreasuryCap missing \
+                     - Token type not registered in treasury or TreasuryCap missing \
+                     - Insufficient balance in treasury \
                      - Move abort occurred (check transaction effects for abort codes)"
                 );
                 Err(BridgeError::Generic(format!(
-                    "Claim transaction succeeded but no transfer occurred for relay: {:?} (token_id={}, amount={}, is_mys={}). \
+                    "Claim transaction succeeded but no transfer occurred for relay: {:?} (token_id={}, amount={}). \
                      Expected TokenTransferClaimed event but found events: {:?}. \
-                     For MYS tokens, verify treasury is bootstrapped with 50M MYS. \
-                     For foreign tokens, verify token type is registered with TreasuryCap.",
+                     Verify token type is registered in treasury with TreasuryCap and has sufficient balance.",
                     relay_key,
                     token_id,
                     amount,
-                    is_mys_token,
                     events.data.iter().map(|e| &e.type_).collect::<Vec<_>>()
                 )))
             }

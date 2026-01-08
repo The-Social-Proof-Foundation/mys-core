@@ -97,41 +97,6 @@ pub fn build_mys_transaction(
     }
 }
 
-/// Map EVM token ID to MySocial token ID
-/// 
-/// **TEMPORARY WORKAROUND**: This function exists to handle a token ID mismatch issue
-/// where the same token has different IDs on EVM vs MySocial chains.
-/// 
-/// **WARNING**: This is a hardcoded workaround and should be removed once the token ID
-/// registration on MySocial is corrected. The proper solution is to ensure token IDs
-/// are consistent across chains, not to map them in code.
-/// 
-/// **TODO**: Remove this function and its usage once the MySocial bridge configuration
-/// is fixed to use consistent token IDs. This mapping should not be necessary in production.
-/// 
-/// # Arguments
-/// * `evm_token_id` - The token ID from the EVM bridge event
-/// 
-/// # Returns
-/// The corresponding MySocial token ID, or the same ID if no mapping exists
-fn map_evm_to_mys_token_id(evm_token_id: u8) -> u8 {
-    match evm_token_id {
-        // TEMPORARY: Token ID 5 on EVM incorrectly maps to token ID 0 on MySocial
-        // This is a workaround for a configuration mismatch on MySocial side
-        // TODO: Remove this mapping once MySocial token registration is corrected
-        5 => {
-            tracing::warn!(
-                evm_token_id = 5,
-                mys_token_id = 0,
-                "Applying temporary token ID mapping (5 -> 0). This is a workaround and should be removed."
-            );
-            0
-        },
-        // For other tokens, assume IDs match (no mapping needed)
-        _ => evm_token_id,
-    }
-}
-
 fn build_token_bridge_approve_transaction(
     client_address: MysAddress,
     gas_object_ref: &ObjectRef,
@@ -143,9 +108,6 @@ fn build_token_bridge_approve_transaction(
 ) -> BridgeResult<TransactionData> {
     let (bridge_action, sigs) = action.into_inner().into_data_and_sig();
     let mut builder = ProgrammableTransactionBuilder::new();
-
-    // Check if this is an EthToMysBridgeAction to determine if token ID mapping is needed
-    let is_eth_to_mys = matches!(bridge_action, BridgeAction::EthToMysBridgeAction(_));
 
     let (source_chain, seq_num, sender, target_chain, target, token_type, amount) =
         match bridge_action {
@@ -163,16 +125,13 @@ fn build_token_bridge_approve_transaction(
             }
             BridgeAction::EthToMysBridgeAction(a) => {
                 let bridge_event = a.eth_bridge_event;
-                // CRITICAL: Use original token_id for bridge message to match signatures
-                // Signatures were created over the original message with token_id=5
-                // The mapping to MySocial token_id=0 only happens when looking up TypeTag for claim
                 (
                     bridge_event.eth_chain_id,
                     bridge_event.nonce,
                     bridge_event.eth_address.to_fixed_bytes().to_vec(),
                     bridge_event.mys_chain_id,
                     bridge_event.mys_address.to_vec(),
-                    bridge_event.token_id, // Use original token_id to match signed message
+                    bridge_event.token_id,
                     bridge_event.mys_adjusted_amount,
                 )
             }
@@ -237,51 +196,17 @@ fn build_token_bridge_approve_transaction(
     );
 
     if claim {
-        // ⚠️ CRITICAL ISSUE: Token ID Mismatch Between EVM and MySocial ⚠️
-        // 
-        // The bridge message contains token_id=5 (from EVM), but MySocial expects token_id=0.
-        // We cannot change the message's token_id because it's already signed.
-        // 
-        // TEMPORARY WORKAROUND: Map EVM token ID to MySocial token ID for TypeTag lookup only.
-        // This allows us to find the correct TypeTag, but the Move code will still fail because
-        // it checks: treasury::token_id<T>(&inner.treasury) == token_payload.token_type()
-        // 
-        // The REAL FIX required on MySocial side:
-        // Token ID 5 must be registered in the MySocial bridge treasury with the SAME TypeTag
-        // as token ID 0. This will allow the message (with token_id=5) to match the TypeTag
-        // (for token_id=0) during claim_token_internal validation.
-        //
-        // Until this is fixed, claims will fail with MoveAbort error code 3 (EUnexpectedTokenType).
-        let mys_token_id_for_claim = if is_eth_to_mys {
-            map_evm_to_mys_token_id(token_type)
-        } else {
-            token_type // No mapping needed for other action types
-        };
-        
-        // WARNING: This mapping will cause claim_token_internal to fail with error code 3
-        // because the message has token_id=5 but we're using TypeTag for token_id=0.
-        // The MySocial bridge treasury must be configured to map token_id=5 to the same
-        // TypeTag as token_id=0 for this to work.
-        if is_eth_to_mys && token_type != mys_token_id_for_claim {
-            tracing::warn!(
-                evm_token_id = token_type,
-                mys_token_id = mys_token_id_for_claim,
-                "⚠️ Token ID mismatch: Message has token_id={} but using TypeTag for token_id={}. \
-                 This will cause MoveAbort error code 3 (EUnexpectedTokenType) unless token_id {} \
-                 is registered in MySocial treasury with the same TypeTag as token_id {}.",
-                token_type, mys_token_id_for_claim, token_type, mys_token_id_for_claim
-            );
-        }
-        
+        // Use token_id directly as-is from the bridge message
+        // Token IDs should match across chains - no mapping needed
         let type_tag = mys_token_type_tags
-            .get(&mys_token_id_for_claim)
+            .get(&token_type)
             .ok_or_else(|| {
                 let registered_ids: Vec<u8> = mys_token_type_tags.keys().copied().collect();
                 BridgeError::Generic(format!(
-                    "UnknownTokenId({}): Token ID {} (mapped from EVM token ID {}) is not registered on MySocial bridge. \
+                    "UnknownTokenId({}): Token ID {} is not registered on MySocial bridge. \
                      Registered token IDs: {:?}. \
                      This token must be registered on MySocial bridge's treasury before bridging can proceed.",
-                    mys_token_id_for_claim, mys_token_id_for_claim, token_type, registered_ids
+                    token_type, token_type, registered_ids
                 ))
             })?;
         builder.programmable_move_call(
