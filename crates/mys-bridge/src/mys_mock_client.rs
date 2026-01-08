@@ -300,4 +300,19 @@ impl MysClientInner for MysMockClient {
                 )
             })
     }
+
+    async fn get_gas_object_once(
+        &self,
+        gas_object_id: ObjectID,
+    ) -> Result<(GasCoin, ObjectRef, Owner), BridgeError> {
+        self.get_object_info
+            .lock()
+            .unwrap()
+            .get(&gas_object_id)
+            .cloned()
+            .ok_or_else(|| BridgeError::Generic(format!(
+                "No preset gas object info found for gas_object_id: {:?}",
+                gas_object_id
+            )))
+    }
 }

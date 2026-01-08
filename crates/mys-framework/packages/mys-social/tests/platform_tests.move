@@ -163,9 +163,9 @@ module social_contracts::platform_tests {
             // Verify badge count
             assert!(profile::badge_count(&user_profile) == 1, 2);
             
-            // Verify badge details - badge ID now includes platform ID bytes, so get it from the badge
-            let badge = vector::borrow(&badges, 0);
-            let badge_id = profile::badge_id(badge);
+            // Verify badge details - get badge data and extract badge_id
+            let badge_data = *vector::borrow(&badges, 0);
+            let badge_id = profile::badge_data_id(&badge_data);
             assert!(profile::has_badge(&user_profile, &badge_id), 3);
             
             let badge_opt = profile::get_badge(&user_profile, &badge_id);
@@ -220,8 +220,8 @@ module social_contracts::platform_tests {
             // Verify badge was assigned and get the actual badge ID
             assert!(profile::badge_count(&user_profile) == 1, 1);
             let badges = profile::get_profile_badges(&user_profile);
-            let badge = vector::borrow(&badges, 0);
-            let badge_id = profile::badge_id(badge);
+            let badge_data = *vector::borrow(&badges, 0);
+            let badge_id = profile::badge_data_id(&badge_data);
             assert!(profile::has_badge(&user_profile, &badge_id), 2);
             
             // Now revoke the badge
@@ -531,8 +531,8 @@ module social_contracts::platform_tests {
             assert!(profile::badge_count(&profile) == 1, 2);
             // Badge ID format changed - get the actual badge ID from the badges
             let badges = profile::get_profile_badges(&profile);
-            let badge = vector::borrow(&badges, 0);
-            let badge_id = profile::badge_id(badge);
+            let badge_data = *vector::borrow(&badges, 0);
+            let badge_id = profile::badge_data_id(&badge_data);
             assert!(profile::has_badge(&profile, &badge_id), 3);
             
             test_scenario::return_to_sender(&scenario, profile);

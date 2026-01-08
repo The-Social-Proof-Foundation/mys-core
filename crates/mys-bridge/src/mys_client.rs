@@ -95,6 +95,13 @@ where
         }
     }
 
+    pub async fn get_gas_object_once(
+        &self,
+        gas_object_id: ObjectID,
+    ) -> BridgeResult<(GasCoin, ObjectRef, Owner)> {
+        self.inner.get_gas_object_once(gas_object_id).await
+    }
+
     // TODO assert chain identifier
     async fn describe(&self) -> anyhow::Result<()> {
         let chain_id = self.inner.get_chain_identifier().await?;
@@ -437,6 +444,12 @@ pub trait MysClientInner: Send + Sync {
         &self,
         gas_object_id: ObjectID,
     ) -> (GasCoin, ObjectRef, Owner);
+
+    /// Try to get gas object once (no retry loop). Returns error if object not found.
+    async fn get_gas_object_once(
+        &self,
+        gas_object_id: ObjectID,
+    ) -> Result<(GasCoin, ObjectRef, Owner), BridgeError>;
 }
 
 #[async_trait]
@@ -578,6 +591,30 @@ impl MysClientInner for MysSdkClient {
                     tokio::time::sleep(Duration::from_secs(5)).await;
                 }
             }
+        }
+    }
+
+    async fn get_gas_object_once(
+        &self,
+        gas_object_id: ObjectID,
+    ) -> Result<(GasCoin, ObjectRef, Owner), BridgeError> {
+        match self
+            .read_api()
+            .get_object_with_options(
+                gas_object_id,
+                MysObjectDataOptions::default().with_owner().with_content(),
+            )
+            .await
+            .map_err(|e| BridgeError::Generic(format!("Failed to query gas object: {:?}", e)))?
+            .data
+        {
+            Some(gas_obj) => {
+                let owner = gas_obj.owner.clone().expect("Owner is requested");
+                let gas_coin = GasCoin::try_from(&gas_obj)
+                    .map_err(|e| BridgeError::Generic(format!("{} is not a gas coin: {:?}", gas_object_id, e)))?;
+                Ok((gas_coin, gas_obj.object_ref(), owner))
+            }
+            None => Err(BridgeError::Generic(format!("Gas object {} not found", gas_object_id))),
         }
     }
 }

@@ -14,7 +14,7 @@ use crate::storage::{BridgeOrchestratorTables, RelayKey, RelayResult};
 use crate::types::{BridgeAction, ParsedTokenTransferMessage};
 use mys_types::base_types::MysAddress;
 use std::sync::Arc;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 // EVM-specific imports
 use ethers::prelude::*;
@@ -314,12 +314,36 @@ where
             })?;
 
         let token_id = message.parsed_payload.token_type;
+        
+        // Map EVM token ID to MySocial token ID for TypeTag lookup
+        // The message still contains the original token_id, but we need to map it
+        // for TypeTag lookup since MySocial uses different token IDs
+        let mys_token_id_for_claim = if relay_key.source_chain == 12 { // EVM chain ID
+            // Use same mapping as transaction builder
+            if token_id == 5 {
+                0 // Map EVM token ID 5 → MySocial token ID 0
+            } else {
+                token_id
+            }
+        } else {
+            token_id
+        };
+        
+        if relay_key.source_chain == 12 && token_id != mys_token_id_for_claim {
+            warn!(
+                evm_token_id = token_id,
+                mys_token_id = mys_token_id_for_claim,
+                "Token ID mapping: Message has token_id={} but using TypeTag for token_id={}",
+                token_id, mys_token_id_for_claim
+            );
+        }
+        
         // For EVM → MySocial transfers, target_address is the MySocial recipient address
         let recipient_address = MysAddress::from_bytes(&message.parsed_payload.target_address)
             .map_err(|e| BridgeError::Generic(format!("Failed to parse recipient address: {:?}", e)))?;
         
         let amount = message.parsed_payload.amount;
-        let is_mys_token = token_id == 0;
+        let is_mys_token = mys_token_id_for_claim == 0;
         
         info!(
             ?relay_key,
@@ -369,7 +393,7 @@ where
         let seq_num = builder.pure(relay_key.seq_num).unwrap();
 
         // Call the appropriate claim function based on token type
-        if token_id == 0 {
+        if mys_token_id_for_claim == 0 {
             // MYS token (ID 0) - use claim_and_transfer_mys_token
             builder.programmable_move_call(
                 BRIDGE_PACKAGE_ID,
@@ -381,9 +405,28 @@ where
         } else {
             // Other tokens - use claim_and_transfer_token<T>
             let token_type_tags = (*self.mys_token_type_tags.load()).clone();
+            
+            // Log registered token IDs for debugging
+            let registered_token_ids: Vec<u8> = token_type_tags.keys().copied().collect();
+            debug!(
+                ?relay_key,
+                original_token_id = token_id,
+                mapped_token_id = mys_token_id_for_claim,
+                registered_token_ids = ?registered_token_ids,
+                "Looking up TypeTag for token ID"
+            );
+            
             let type_tag = token_type_tags
-                .get(&token_id)
-                .ok_or(BridgeError::UnknownTokenId(token_id))?
+                .get(&mys_token_id_for_claim)
+                .ok_or_else(|| {
+                    let registered_ids: Vec<u8> = token_type_tags.keys().copied().collect();
+                    BridgeError::Generic(format!(
+                        "Token ID {} (mapped from EVM token ID {}) is not registered on MySocial bridge. \
+                         Registered token IDs: {:?}. \
+                         This token must be registered on MySocial bridge's treasury before claiming can proceed.",
+                        mys_token_id_for_claim, token_id, registered_ids
+                    ))
+                })?
                 .clone();
 
             builder.programmable_move_call(

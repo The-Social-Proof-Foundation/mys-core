@@ -146,8 +146,8 @@ module social_contracts::profile {
     }
 
     /// Profile Badge that can be assigned to profiles by platform admins/moderators
-    /// These badges cannot be transferred or sold and stay with the profile
-    public struct ProfileBadge has store, copy, drop {
+    /// These badges cannot be transferred, sold, or copied and stay with the profile
+    public struct ProfileBadge has store, drop {
         /// Unique identifier for the badge (platform ID + badge name)
         badge_id: String,
         /// Name of the badge
@@ -165,6 +165,21 @@ module social_contracts::profile {
         /// Address of the admin/moderator who issued the badge
         issued_by: address,
         /// Badge type/tier (1-100), allows for badge hierarchy
+        badge_type: u8,
+    }
+
+    /// Read-only badge data returned by query functions
+    /// This struct has copy ability to allow returning badge information,
+    /// but the actual ProfileBadge cannot be copied or transferred
+    public struct BadgeData has copy, drop {
+        badge_id: String,
+        name: String,
+        description: String,
+        media_url: String,
+        icon_url: String,
+        platform_id: address,
+        issued_at: u64,
+        issued_by: address,
         badge_type: u8,
     }
 
@@ -237,6 +252,20 @@ module social_contracts::profile {
         selected_by: address,
         /// Timestamp when selected
         selected_at: u64,
+    }
+
+    /// Event emitted when a profile owner removes their own badge
+    public struct BadgeRemovedEvent has copy, drop {
+        /// ID of the profile
+        profile_id: address,
+        /// Badge identifier that was removed
+        badge_id: String,
+        /// Platform ID that issued the badge
+        platform_id: address,
+        /// Owner who removed the badge
+        removed_by: address,
+        /// Timestamp when removed
+        removed_at: u64,
     }
 
     /// Profile created event
@@ -1382,9 +1411,86 @@ module social_contracts::profile {
         assert!(found, EBadgeNotFound);
     }
 
+    /// Remove a badge from a profile - can be called by profile owner
+    /// Users can delete badges they don't want to display
+    /// Note: Badges are tied to profile identity and cannot be transferred separately
+    public entry fun remove_own_badge(
+        profile: &mut Profile,
+        badge_id: String,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        
+        // Verify sender is the profile owner
+        assert!(profile.owner == sender, EUnauthorized);
+        
+        // Search for and remove the badge with the given ID
+        let mut found = false;
+        let mut i = 0;
+        let len = vector::length(&profile.badges);
+        
+        while (i < len) {
+            let badge = vector::borrow(&profile.badges, i);
+            if (string::as_bytes(&badge.badge_id) == string::as_bytes(&badge_id)) {
+                // Get platform_id before removing (needed for event)
+                let platform_id = badge.platform_id;
+                
+                // Remove the badge at this index
+                vector::remove(&mut profile.badges, i);
+                found = true;
+                
+                // If the removed badge was the selected badge, clear the selection
+                if (option::is_some(&profile.selected_badge_id)) {
+                    let selected_id = option::borrow(&profile.selected_badge_id);
+                    if (string::as_bytes(selected_id) == string::as_bytes(&badge_id)) {
+                        profile.selected_badge_id = option::none();
+                    };
+                };
+                
+                // Emit badge removed event (user-initiated, different from revoked)
+                event::emit(BadgeRemovedEvent {
+                    profile_id: object::uid_to_address(&profile.id),
+                    badge_id: badge_id,
+                    platform_id,
+                    removed_by: sender,
+                    removed_at: clock::timestamp_ms(clock),
+                });
+                
+                break
+            };
+            i = i + 1;
+        };
+        
+        // Make sure we found and removed the badge
+        assert!(found, EBadgeNotFound);
+    }
+
     /// Get all badges associated with a profile
-    public fun get_profile_badges(profile: &Profile): vector<ProfileBadge> {
-        profile.badges
+    /// Returns vector of BadgeData for querying badge information
+    /// Note: Badges are tied to this profile and cannot be transferred to other profiles
+    public fun get_profile_badges(profile: &Profile): vector<BadgeData> {
+        let mut result = vector::empty<BadgeData>();
+        let mut i = 0;
+        let len = vector::length(&profile.badges);
+        
+        while (i < len) {
+            let badge = vector::borrow(&profile.badges, i);
+            vector::push_back(&mut result, BadgeData {
+                badge_id: badge.badge_id,
+                name: badge.name,
+                description: badge.description,
+                media_url: badge.media_url,
+                icon_url: badge.icon_url,
+                platform_id: badge.platform_id,
+                issued_at: badge.issued_at,
+                issued_by: badge.issued_by,
+                badge_type: badge.badge_type,
+            });
+            i = i + 1;
+        };
+        
+        result
     }
     
     /// Check if a profile has a specific badge
@@ -1404,14 +1510,25 @@ module social_contracts::profile {
     }
     
     /// Get a specific badge from a profile by badge ID
-    public fun get_badge(profile: &Profile, badge_id: &String): Option<ProfileBadge> {
+    /// Returns BadgeData for querying badge information
+    public fun get_badge(profile: &Profile, badge_id: &String): Option<BadgeData> {
         let mut i = 0;
         let len = vector::length(&profile.badges);
         
         while (i < len) {
             let badge = vector::borrow(&profile.badges, i);
             if (string::as_bytes(&badge.badge_id) == string::as_bytes(badge_id)) {
-                return option::some(*badge)
+                return option::some(BadgeData {
+                    badge_id: badge.badge_id,
+                    name: badge.name,
+                    description: badge.description,
+                    media_url: badge.media_url,
+                    icon_url: badge.icon_url,
+                    platform_id: badge.platform_id,
+                    issued_at: badge.issued_at,
+                    issued_by: badge.issued_by,
+                    badge_type: badge.badge_type,
+                })
             };
             i = i + 1;
         };
@@ -1420,8 +1537,9 @@ module social_contracts::profile {
     }
     
     /// Get badges issued by a specific platform
-    public fun get_platform_badges(profile: &Profile, platform_id: address): vector<ProfileBadge> {
-        let mut result = vector::empty<ProfileBadge>();
+    /// Returns vector of BadgeData for querying badge information
+    public fun get_platform_badges(profile: &Profile, platform_id: address): vector<BadgeData> {
+        let mut result = vector::empty<BadgeData>();
         
         let mut i = 0;
         let len = vector::length(&profile.badges);
@@ -1429,7 +1547,17 @@ module social_contracts::profile {
         while (i < len) {
             let badge = vector::borrow(&profile.badges, i);
             if (badge.platform_id == platform_id) {
-                vector::push_back(&mut result, *badge);
+                vector::push_back(&mut result, BadgeData {
+                    badge_id: badge.badge_id,
+                    name: badge.name,
+                    description: badge.description,
+                    media_url: badge.media_url,
+                    icon_url: badge.icon_url,
+                    platform_id: badge.platform_id,
+                    issued_at: badge.issued_at,
+                    issued_by: badge.issued_by,
+                    badge_type: badge.badge_type,
+                });
             };
             i = i + 1;
         };
@@ -1441,6 +1569,53 @@ module social_contracts::profile {
     /// Get the badge ID from a ProfileBadge
     public fun badge_id(badge: &ProfileBadge): String {
         badge.badge_id
+    }
+
+    // === BadgeData Accessor Functions ===
+
+    /// Get badge_id from BadgeData
+    public fun badge_data_id(data: &BadgeData): String {
+        data.badge_id
+    }
+
+    /// Get name from BadgeData
+    public fun badge_data_name(data: &BadgeData): String {
+        data.name
+    }
+
+    /// Get description from BadgeData
+    public fun badge_data_description(data: &BadgeData): String {
+        data.description
+    }
+
+    /// Get media_url from BadgeData
+    public fun badge_data_media_url(data: &BadgeData): String {
+        data.media_url
+    }
+
+    /// Get icon_url from BadgeData
+    public fun badge_data_icon_url(data: &BadgeData): String {
+        data.icon_url
+    }
+
+    /// Get platform_id from BadgeData
+    public fun badge_data_platform_id(data: &BadgeData): address {
+        data.platform_id
+    }
+
+    /// Get issued_at from BadgeData
+    public fun badge_data_issued_at(data: &BadgeData): u64 {
+        data.issued_at
+    }
+
+    /// Get issued_by from BadgeData
+    public fun badge_data_issued_by(data: &BadgeData): address {
+        data.issued_by
+    }
+
+    /// Get badge_type from BadgeData
+    public fun badge_data_badge_type(data: &BadgeData): u8 {
+        data.badge_type
     }
 
     public fun badge_count(profile: &Profile): u64 {
@@ -1495,7 +1670,8 @@ module social_contracts::profile {
     /// Get the badge that should be displayed for a profile
     /// Returns the selected badge if one is set, otherwise returns the first badge
     /// Returns None if the profile has no badges
-    public fun get_display_badge(profile: &Profile): Option<ProfileBadge> {
+    /// Returns BadgeData for querying badge information
+    public fun get_display_badge(profile: &Profile): Option<BadgeData> {
         let badge_count = vector::length(&profile.badges);
         
         // If no badges exist, return None
@@ -1510,14 +1686,35 @@ module social_contracts::profile {
             while (i < badge_count) {
                 let badge = vector::borrow(&profile.badges, i);
                 if (string::as_bytes(&badge.badge_id) == string::as_bytes(selected_id)) {
-                    return option::some(*badge)
+                    return option::some(BadgeData {
+                        badge_id: badge.badge_id,
+                        name: badge.name,
+                        description: badge.description,
+                        media_url: badge.media_url,
+                        icon_url: badge.icon_url,
+                        platform_id: badge.platform_id,
+                        issued_at: badge.issued_at,
+                        issued_by: badge.issued_by,
+                        badge_type: badge.badge_type,
+                    })
                 };
                 i = i + 1;
             };
         };
         
         // If no badge is selected or selected badge not found, return the first badge
-        option::some(*vector::borrow(&profile.badges, 0))
+        let badge = vector::borrow(&profile.badges, 0);
+        option::some(BadgeData {
+            badge_id: badge.badge_id,
+            name: badge.name,
+            description: badge.description,
+            media_url: badge.media_url,
+            icon_url: badge.icon_url,
+            platform_id: badge.platform_id,
+            issued_at: badge.issued_at,
+            issued_by: badge.issued_by,
+            badge_type: badge.badge_type,
+        })
     }
 
     /// Clear the selected badge (owner only)

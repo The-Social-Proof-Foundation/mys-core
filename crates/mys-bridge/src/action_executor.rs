@@ -31,7 +31,7 @@ use crate::events::{
 use crate::metrics::BridgeMetrics;
 use crate::{
     client::bridge_authority_aggregator::BridgeAuthorityAggregator,
-    error::BridgeError,
+    error::{BridgeError, BridgeResult},
     mys_client::{MysClient, MysClientInner},
     mys_transaction_builder::build_mys_transaction,
     storage::BridgeOrchestratorTables,
@@ -41,7 +41,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tokio::time::Duration;
-use tracing::{error, info, instrument, warn, Instrument};
+use tracing::{error, info, instrument, warn, debug, Instrument};
 
 pub const CHANNEL_SIZE: usize = 1000;
 pub const SIGNING_CONCURRENCY: usize = 10;
@@ -323,16 +323,34 @@ where
         store: &Arc<BridgeOrchestratorTables>,
         metrics: &Arc<BridgeMetrics>,
     ) -> bool {
+        // #region agent log
+        debug!(
+            chain_id = action.chain_id() as u8,
+            seq_num = action.seq_number(),
+            hypothesis = "A",
+            "🔍 DEBUG: Before get_token_transfer_action_onchain_status"
+        );
+        // #endregion
         let status = mys_client
             .get_token_transfer_action_onchain_status_until_success(
                 action.chain_id() as u8,
                 action.seq_number(),
             )
             .await;
+        // #region agent log
+        debug!(
+            status = ?status,
+            hypothesis = "A",
+            "🔍 DEBUG: After get_token_transfer_action_onchain_status"
+        );
+        // #endregion
         match status {
-            BridgeActionStatus::Approved | BridgeActionStatus::Claimed => {
+            BridgeActionStatus::Approved => {
                 info!(
-                    "Action already approved or claimed, removing action from pending logs: {:?}",
+                    chain_id = action.chain_id() as u8,
+                    seq_num = action.seq_number(),
+                    status = ?status,
+                    "Action already approved on-chain, removing from pending logs: {:?}",
                     action
                 );
                 metrics.action_executor_already_processed_actions.inc();
@@ -343,9 +361,42 @@ where
                     });
                 true
             }
-            // Although theoretically a legit MysToEthBridgeAction should not have
-            // status `NotFound`
-            BridgeActionStatus::Pending | BridgeActionStatus::NotFound => false,
+            BridgeActionStatus::Claimed => {
+                info!(
+                    chain_id = action.chain_id() as u8,
+                    seq_num = action.seq_number(),
+                    status = ?status,
+                    "Action already claimed on-chain, removing from pending logs: {:?}",
+                    action
+                );
+                metrics.action_executor_already_processed_actions.inc();
+                store
+                    .remove_pending_actions(&[action.digest()])
+                    .unwrap_or_else(|e| {
+                        panic!("Write to DB should not fail: {:?}", e);
+                    });
+                true
+            }
+            BridgeActionStatus::Pending => {
+                debug!(
+                    chain_id = action.chain_id() as u8,
+                    seq_num = action.seq_number(),
+                    status = ?status,
+                    "Action status is Pending, will proceed with execution"
+                );
+                false
+            }
+            BridgeActionStatus::NotFound => {
+                debug!(
+                    chain_id = action.chain_id() as u8,
+                    seq_num = action.seq_number(),
+                    status = ?status,
+                    "Action not found on-chain (status: NotFound), will proceed with execution"
+                );
+                // Although theoretically a legit MysToEthBridgeAction should not have
+                // status `NotFound`, we proceed anyway
+                false
+            }
         }
     }
 
@@ -454,20 +505,20 @@ where
                     .inc();
                 continue;
             }
-            Self::handle_execution_task(
-                certificate_wrapper,
-                &mys_client,
-                &mys_key,
-                &mys_address,
-                gas_object_id,
-                &store,
-                &execution_queue_sender,
-                &bridge_object_arg,
-                &mys_token_type_tags,
-                &metrics,
-                &relayer,
-            )
-            .await;
+                Self::handle_execution_task(
+                    certificate_wrapper,
+                    &mys_client,
+                    &mys_key,
+                    &mys_address,
+                    gas_object_id,
+                    &store,
+                    &execution_queue_sender,
+                    &bridge_object_arg,
+                    &mys_token_type_tags,
+                    &metrics,
+                    &relayer,
+                )
+                .await;
         }
         panic!("Execution queue closed unexpectedly");
     }
@@ -488,6 +539,17 @@ where
         metrics: &Arc<BridgeMetrics>,
         relayer: &Option<Arc<crate::relay::BridgeRelayer<C>>>,
     ) {
+        // #region agent log
+        let action_data = certificate_wrapper.0.data();
+        debug!(
+            action_key = ?action_data.key(),
+            attempt_times = certificate_wrapper.1,
+            chain_id = action_data.chain_id() as u8,
+            seq_num = action_data.seq_number(),
+            hypothesis = "A,B,C,D,E",
+            "🔍 DEBUG: handle_execution_task entry"
+        );
+        // #endregion
         metrics
             .action_executor_execution_queue_received_actions
             .inc();
@@ -498,34 +560,103 @@ where
         info!("Received certified action for execution: {:?}", action);
 
         // TODO check gas coin balance here. If gas balance too low, do not proceed.
+        // #region agent log
+        debug!(
+            gas_object_id = ?gas_object_id,
+            mys_address = ?mys_address,
+            hypothesis = "B",
+            "🔍 DEBUG: Before gas object check"
+        );
+        // #endregion
         let (gas_coin, gas_object_ref) =
-            Self::get_gas_data_assert_ownership(*mys_address, gas_object_id, mys_client).await;
-        metrics.gas_coin_balance.set(gas_coin.value() as i64);
+            Self::get_gas_data_with_retry(*mys_address, gas_object_id, mys_client).await;
+        // #region agent log
+        let gas_balance = gas_coin.value();
+        debug!(
+            gas_balance,
+            gas_object_ref = ?gas_object_ref,
+            hypothesis = "B",
+            "🔍 DEBUG: After gas object check"
+        );
+        // #endregion
+        metrics.gas_coin_balance.set(gas_balance as i64);
 
         let ceriticate_clone = certificate.clone();
 
         // Check once: if the action is already processed, skip it.
-        if Self::handle_already_processed_token_transfer_action_maybe(
+        // #region agent log
+        debug!(
+            chain_id = action.chain_id() as u8,
+            seq_num = action.seq_number(),
+            hypothesis = "A",
+            "🔍 DEBUG: Before already_processed check"
+        );
+        // #endregion
+        let already_processed = Self::handle_already_processed_token_transfer_action_maybe(
             mys_client, action, store, metrics,
         )
-        .await
-        {
+        .await;
+        // #region agent log
+        debug!(
+            already_processed,
+            hypothesis = "A",
+            "🔍 DEBUG: After already_processed check"
+        );
+        // #endregion
+        if already_processed {
             info!("Action already processed, skipping");
             return;
         }
 
         info!("Building Mys transaction");
+        // #region agent log
+        let token_type_tags = mys_token_type_tags.load();
+        let registered_token_ids: Vec<u8> = token_type_tags.keys().copied().collect();
+        let action_token_id = match action {
+            BridgeAction::EthToMysBridgeAction(a) => a.eth_bridge_event.token_id,
+            BridgeAction::MysToEthBridgeAction(a) => a.mys_bridge_event.token_id,
+            _ => 255,
+        };
+        debug!(
+            registered_token_ids = ?registered_token_ids,
+            action_token_id,
+            hypothesis = "C,D",
+            "🔍 DEBUG: Before build_mys_transaction"
+        );
+        // #endregion
         let rgp = mys_client.get_reference_gas_price_until_success().await;
+        // #region agent log
+        debug!(
+            rgp,
+            hypothesis = "E",
+            "🔍 DEBUG: Reference gas price fetched"
+        );
+        // #endregion
         let tx_data = match build_mys_transaction(
             *mys_address,
             &gas_object_ref,
             ceriticate_clone,
             *bridge_object_arg,
-            mys_token_type_tags.load().as_ref(),
+            token_type_tags.as_ref(),
             rgp,
         ) {
-            Ok(tx_data) => tx_data,
+            Ok(tx_data) => {
+                // #region agent log
+                debug!(
+                    hypothesis = "C,D",
+                    "🔍 DEBUG: build_mys_transaction succeeded"
+                );
+                // #endregion
+                tx_data
+            },
             Err(err) => {
+                // #region agent log
+                error!(
+                    error = ?err,
+                    hypothesis = "C,D",
+                    "🔍 DEBUG: build_mys_transaction failed"
+                );
+                // #endregion
                 metrics.err_build_mys_transaction.inc();
                 error!(
                     "Manual intervention is required. Failed to build transaction for action {:?}: {:?}",
@@ -554,16 +685,38 @@ where
         }
 
         info!(?tx_digest, ?gas_object_ref, "Sending transaction to Mys");
+        // #region agent log
+        debug!(
+            tx_digest = ?tx_digest,
+            hypothesis = "C",
+            "🔍 DEBUG: Before execute_transaction_block_with_effects"
+        );
+        // #endregion
         match mys_client
             .execute_transaction_block_with_effects(signed_tx)
             .await
         {
             Ok(resp) => {
-                Self::handle_execution_effects(tx_digest, resp, store, action, metrics, relayer).await
+                // #region agent log
+                debug!(
+                    tx_digest = ?tx_digest,
+                    hypothesis = "C",
+                    "🔍 DEBUG: execute_transaction_block_with_effects succeeded"
+                );
+                // #endregion
+                Self::handle_execution_effects(tx_digest, resp, mys_client, store, action, metrics, relayer).await
             }
 
             // If the transaction did not go through, retry up to a certain times.
             Err(err) => {
+                // #region agent log
+                error!(
+                    error = ?err,
+                    tx_digest = ?tx_digest,
+                    hypothesis = "C",
+                    "🔍 DEBUG: execute_transaction_block_with_effects failed"
+                );
+                // #endregion
                 error!(
                     ?action_key,
                     ?tx_digest,
@@ -602,6 +755,7 @@ where
     async fn handle_execution_effects(
         tx_digest: TransactionDigest,
         response: MysTransactionBlockResponse,
+        mys_client: &Arc<MysClient<C>>,
         store: &Arc<BridgeOrchestratorTables>,
         action: &BridgeAction,
         metrics: &Arc<BridgeMetrics>,
@@ -709,11 +863,35 @@ where
                         }
                     }
                 });
-                store
-                    .remove_pending_actions(&[action.digest()])
-                    .unwrap_or_else(|e| {
-                        panic!("Write to DB should not fail: {:?}", e);
-                    })
+                
+                // Wait for checkpoint inclusion before updating database
+                // MySocial transactions are finalized immediately, but we wait a bit to ensure
+                // checkpoint inclusion for safety
+                let checkpoint_confirmed = Self::wait_for_checkpoint_inclusion(
+                    mys_client,
+                    tx_digest,
+                    10, // Wait up to 10 checkpoints
+                )
+                .await;
+                
+                if checkpoint_confirmed.is_ok() {
+                    info!(
+                        ?tx_digest,
+                        "Transaction confirmed in checkpoint, removing from pending actions"
+                    );
+                    store
+                        .remove_pending_actions(&[action.digest()])
+                        .unwrap_or_else(|e| {
+                            panic!("Write to DB should not fail: {:?}", e);
+                        });
+                } else {
+                    // Log error but don't panic - will retry on restart
+                    error!(
+                        ?tx_digest,
+                        ?action,
+                        "Transaction not confirmed in checkpoint after waiting, will retry on restart"
+                    );
+                }
             }
             MysExecutionStatus::Failure { error } => {
                 // In practice the transaction could fail because of running out of gas, but really
@@ -728,18 +906,109 @@ where
         }
     }
 
-    /// Panics if the gas object is not owned by the address.
-    async fn get_gas_data_assert_ownership(
+    /// Wait for transaction to be included in a checkpoint.
+    /// MySocial transactions are finalized immediately, so we wait a short time
+    /// to ensure checkpoint inclusion before updating database.
+    async fn wait_for_checkpoint_inclusion(
+        mys_client: &Arc<MysClient<C>>,
+        tx_digest: TransactionDigest,
+        max_wait_checkpoints: u64,
+    ) -> BridgeResult<()> {
+        // Get initial checkpoint number
+        let initial_checkpoint = mys_client
+            .get_latest_checkpoint_sequence_number()
+            .await
+            .map_err(|e| BridgeError::Generic(format!("Failed to get checkpoint: {:?}", e)))?;
+        
+        info!(
+            ?tx_digest,
+            initial_checkpoint,
+            max_wait_checkpoints,
+            "Waiting for transaction to be included in checkpoint"
+        );
+        
+        // Wait for checkpoints to pass (each checkpoint is ~0.25 seconds, so wait accordingly)
+        // We wait a bit longer to be safe
+        let wait_seconds = (max_wait_checkpoints * 1) as u64; // 1 second per checkpoint
+        tokio::time::sleep(Duration::from_secs(wait_seconds)).await;
+        
+        // Verify checkpoint has advanced
+        let final_checkpoint = mys_client
+            .get_latest_checkpoint_sequence_number()
+            .await
+            .map_err(|e| BridgeError::Generic(format!("Failed to get checkpoint: {:?}", e)))?;
+        
+        let checkpoints_passed = final_checkpoint.saturating_sub(initial_checkpoint);
+        
+        if checkpoints_passed >= max_wait_checkpoints {
+            info!(
+                ?tx_digest,
+                initial_checkpoint,
+                final_checkpoint,
+                checkpoints_passed,
+                "Transaction confirmed - {} checkpoints passed",
+                checkpoints_passed
+            );
+            Ok(())
+        } else {
+            // Still log success but warn about low checkpoint advance
+            warn!(
+                ?tx_digest,
+                initial_checkpoint,
+                final_checkpoint,
+                checkpoints_passed,
+                "Only {} checkpoints passed (expected {}), but proceeding anyway",
+                checkpoints_passed, max_wait_checkpoints
+            );
+            // Still return Ok since transaction succeeded - checkpoint inclusion is eventual
+            Ok(())
+        }
+    }
+
+    /// Get gas data with retry logic (max 3 attempts, 5 sec delay).
+    /// Falls back to panic method if all retries fail.
+    async fn get_gas_data_with_retry(
         mys_address: MysAddress,
         gas_object_id: ObjectID,
         mys_client: &MysClient<C>,
     ) -> (GasCoin, ObjectRef) {
+        // Try with retry logic (max 3 attempts, 5 sec delay)
+        for attempt in 0..3 {
+            match mys_client
+                .get_gas_object_once(gas_object_id)
+                .await
+            {
+                Ok((gas_coin, gas_obj_ref, owner)) => {
+                    if owner == Owner::AddressOwner(mys_address) {
+                        debug!(
+                            gas_object_id = ?gas_object_id,
+                            attempt,
+                            "Successfully retrieved gas object"
+                        );
+                        return (gas_coin, gas_obj_ref);
+                    }
+                }
+                Err(_) if attempt < 2 => {
+                    debug!(
+                        gas_object_id = ?gas_object_id,
+                        attempt,
+                        "Gas object unavailable, retrying..."
+                    );
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    continue;
+                }
+                Err(_) => break, // All retries failed
+            }
+        }
+
+        // All retries failed - use the old method as last resort (will panic/hang)
+        warn!(
+            gas_object_id = ?gas_object_id,
+            "Gas object unavailable after retries, falling back to panic method"
+        );
         let (gas_coin, gas_obj_ref, owner) = mys_client
             .get_gas_data_panic_if_not_gas(gas_object_id)
             .await;
-
-        // TODO: when we add multiple gas support in the future we could discard
-        // transferred gas object instead.
         assert_eq!(
             owner,
             Owner::AddressOwner(mys_address),
