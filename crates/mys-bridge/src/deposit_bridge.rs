@@ -402,6 +402,16 @@ where
             // Only check first 10 tokens for performance
             match config_contract.token_address_of(token_id).call().await {
                 Ok(addr) if addr == token_address => {
+                    if token_id != 0 {
+                        warn!(
+                            ?token_address,
+                            token_id,
+                            "⚠️  WARNING: BridgeConfig contract maps token address to token_id={}, but expected token_id=0. \
+                             This is an EVM-side configuration issue. The BridgeConfig contract must be updated to map this \
+                             token address to token_id=0. The bridge will use token_id={} as returned by the contract.",
+                            token_id, token_id
+                        );
+                    }
                     info!(
                         ?token_address,
                         token_id,

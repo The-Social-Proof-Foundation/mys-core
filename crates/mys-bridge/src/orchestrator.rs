@@ -23,7 +23,7 @@ use mys_types::Identifier;
 use mysten_metrics::spawn_logged_monitored_task;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub struct BridgeOrchestrator<C> {
     _mys_client: Arc<MysClient<C>>,
@@ -281,11 +281,24 @@ where
                 match bridge_event.try_into_bridge_action(log.tx_hash, log.log_index_in_tx) {
                     Ok(Some(action)) => {
                         if let BridgeAction::EthToMysBridgeAction(ref eth_action) = action {
+                            let token_id = eth_action.eth_bridge_event.token_id;
+                            if token_id != 0 {
+                                warn!(
+                                    tx_hash = ?log.tx_hash,
+                                    log_index = log.log_index_in_tx,
+                                    token_id,
+                                    "⚠️  WARNING: TokensDeposited event has token_id={}, but expected token_id=0. \
+                                     This indicates the BridgeConfig contract on EVM has incorrect mapping. \
+                                     The BridgeConfig contract must be updated to map the token address to token_id=0. \
+                                     The bridge will process this event with token_id={} as emitted.",
+                                    token_id, token_id
+                                );
+                            }
                             info!(
                                 tx_hash = ?log.tx_hash,
                                 log_index = log.log_index_in_tx,
                                 nonce = eth_action.eth_bridge_event.nonce,
-                                token_id = eth_action.eth_bridge_event.token_id,
+                                token_id,
                                 amount = eth_action.eth_bridge_event.mys_adjusted_amount,
                                 mys_address = ?eth_action.eth_bridge_event.mys_address,
                                 "Created EthToMysBridgeAction from TokensDeposited event"
