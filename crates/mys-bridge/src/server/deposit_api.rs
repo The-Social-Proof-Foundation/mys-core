@@ -91,19 +91,28 @@ pub struct LinkAddressesResponse {
     pub status: String,
 }
 
+/// Error response structure for JSON error responses
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ErrorResponse {
+    pub error: String,
+}
+
 /// Handler for generating deposit address (Option A)
 pub async fn generate_deposit_address(
     State(state): State<Arc<DepositApiState>>,
     Json(req): Json<GenerateDepositRequest>,
-) -> Result<Json<GenerateDepositResponse>, (StatusCode, String)> {
+) -> Result<Json<GenerateDepositResponse>, (StatusCode, Json<ErrorResponse>)> {
     info!(?req.auth_type, "Received deposit address generation request");
 
     // Verify timestamp only if signature is provided
     if req.signature.is_some() {
-        if !verify_timestamp_recent(req.message.timestamp).map_err(to_status_error)? {
+        if !verify_timestamp_recent(req.message.timestamp).map_err(to_status_error_json)? {
             return Err((
                 StatusCode::BAD_REQUEST,
-                "Timestamp too old or invalid".to_string(),
+                Json(ErrorResponse {
+                    error: "Timestamp too old or invalid".to_string(),
+                }),
             ));
         }
     }
@@ -129,12 +138,14 @@ async fn generate_for_mys_user(
     state: Arc<DepositApiState>,
     req: GenerateDepositRequest,
     message_str: String,
-) -> Result<Json<GenerateDepositResponse>, (StatusCode, String)> {
+) -> Result<Json<GenerateDepositResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Parse MySocial address (required for MySocial auth type - used as key for deduplication)
     let source_address = req.source_address.as_ref().ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
-            "source_address is required for MySocial auth type".to_string(),
+            Json(ErrorResponse {
+                error: "source_address is required for MySocial auth type".to_string(),
+            }),
         )
     })?;
     
@@ -142,20 +153,24 @@ async fn generate_for_mys_user(
         MysAddress::from_str(source_address).map_err(|e| {
             (
                 StatusCode::BAD_REQUEST,
-                format!("Invalid MySocial address: {:?}", e),
+                Json(ErrorResponse {
+                    error: format!("Invalid MySocial address: {:?}", e),
+                }),
             )
         })?;
 
     // Optional: Verify MySocial signature if provided (for spam protection)
     if let Some(signature) = &req.signature {
-        verify_mys_signature(&message_str, signature, &mys_address).map_err(to_status_error)?;
+        verify_mys_signature(&message_str, signature, &mys_address).map_err(to_status_error_json)?;
     }
 
     // Parse destination EVM address
     let dest_eth_address = EthAddress::from_str(&req.message.destination_address).map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
-            format!("Invalid destination address: {:?}", e),
+            Json(ErrorResponse {
+                error: format!("Invalid destination address: {:?}", e),
+            }),
         )
     })?;
 
@@ -167,7 +182,7 @@ async fn generate_for_mys_user(
     let existing_registrations = state
         .storage
         .get_deposit_registrations(&DepositAddressKey::from_mys(mys_address))
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
     
     if let Some(registrations) = existing_registrations {
         // Find registration with MySocial deposit chain (2) and matching destination chain
@@ -179,10 +194,12 @@ async fn generate_for_mys_user(
             if existing_reg.deposit_address.len() != 32 {
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!(
-                        "Invalid deposit address length: expected 32 bytes (MySocial address), got {} bytes",
-                        existing_reg.deposit_address.len()
-                    ),
+                    Json(ErrorResponse {
+                        error: format!(
+                            "Invalid deposit address length: expected 32 bytes (MySocial address), got {} bytes",
+                            existing_reg.deposit_address.len()
+                        ),
+                    }),
                 ));
             }
             
@@ -191,7 +208,9 @@ async fn generate_for_mys_user(
                 .map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to parse MySocial deposit address: {:?}", e),
+                        Json(ErrorResponse {
+                            error: format!("Failed to parse MySocial deposit address: {:?}", e),
+                        }),
                     )
                 })?;
             
@@ -218,13 +237,13 @@ async fn generate_for_mys_user(
     let hd_index = state
         .address_manager
         .allocate_next_index(HD_COUNTER_MYS)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     // Derive MySocial deposit address (user sends HERE)
     let (deposit_mys_address, _) = state
         .address_manager
         .derive_mys_deposit_address(hd_index)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     // Store registration
     let registration = DepositRegistration {
@@ -244,7 +263,7 @@ async fn generate_for_mys_user(
     state
         .storage
         .store_deposit_registration(DepositAddressKey::from_mys(mys_address), registration)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     info!(
         ?mys_address,
@@ -273,12 +292,14 @@ async fn generate_for_eth_user(
     state: Arc<DepositApiState>,
     req: GenerateDepositRequest,
     message_str: String,
-) -> Result<Json<GenerateDepositResponse>, (StatusCode, String)> {
+) -> Result<Json<GenerateDepositResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Parse destination MySocial address (this is the user who will receive tokens)
     let dest_mys_address = MysAddress::from_str(&req.message.destination_address).map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
-            format!("Invalid MySocial destination address: {:?}", e),
+            Json(ErrorResponse {
+                error: format!("Invalid MySocial destination address: {:?}", e),
+            }),
         )
     })?;
 
@@ -288,11 +309,13 @@ async fn generate_for_eth_user(
         let mys_address = MysAddress::from_str(source_address).map_err(|e| {
             (
                 StatusCode::BAD_REQUEST,
-                format!("Invalid source MySocial address: {:?}", e),
+                Json(ErrorResponse {
+                    error: format!("Invalid source MySocial address: {:?}", e),
+                }),
             )
         })?;
         
-        verify_mys_signature(&message_str, signature, &mys_address).map_err(to_status_error)?;
+        verify_mys_signature(&message_str, signature, &mys_address).map_err(to_status_error_json)?;
         
         info!(
             ?mys_address,
@@ -311,7 +334,7 @@ async fn generate_for_eth_user(
     let existing_registrations = state
         .storage
         .get_deposit_registrations(&DepositAddressKey::from_mys(dest_mys_address))
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
     
     if let Some(registrations) = existing_registrations {
         // Find registration with EVM deposit chain (12 for Base) and matching destination chain
@@ -323,10 +346,12 @@ async fn generate_for_eth_user(
             if existing_reg.deposit_address.len() != 20 {
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!(
-                        "Invalid deposit address length: expected 20 bytes (EVM address), got {} bytes",
-                        existing_reg.deposit_address.len()
-                    ),
+                    Json(ErrorResponse {
+                        error: format!(
+                            "Invalid deposit address length: expected 20 bytes (EVM address), got {} bytes",
+                            existing_reg.deposit_address.len()
+                        ),
+                    }),
                 ));
             }
             
@@ -355,13 +380,13 @@ async fn generate_for_eth_user(
     let hd_index = state
         .address_manager
         .allocate_next_index(HD_COUNTER_EVM)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     // Derive EVM deposit address (user sends HERE)
     let (deposit_evm_address, _) = state
         .address_manager
         .derive_evm_deposit_address(hd_index)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     // Store registration
     let registration = DepositRegistration {
@@ -381,7 +406,7 @@ async fn generate_for_eth_user(
     state
         .storage
         .store_deposit_registration(DepositAddressKey::from_mys(dest_mys_address), registration)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     info!(
         ?dest_mys_address,
@@ -408,14 +433,16 @@ async fn generate_for_eth_user(
 pub async fn link_addresses(
     State(state): State<Arc<DepositApiState>>,
     Json(req): Json<LinkAddressesRequest>,
-) -> Result<Json<LinkAddressesResponse>, (StatusCode, String)> {
+) -> Result<Json<LinkAddressesResponse>, (StatusCode, Json<ErrorResponse>)> {
     info!("Received address linking request");
 
     // Verify timestamp
-    if !verify_timestamp_recent(req.timestamp).map_err(to_status_error)? {
+    if !verify_timestamp_recent(req.timestamp).map_err(to_status_error_json)? {
         return Err((
             StatusCode::BAD_REQUEST,
-            "Timestamp too old or invalid".to_string(),
+            Json(ErrorResponse {
+                error: "Timestamp too old or invalid".to_string(),
+            }),
         ));
     }
 
@@ -423,49 +450,53 @@ pub async fn link_addresses(
     let mys_address = MysAddress::from_str(&req.mys_address).map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
-            format!("Invalid MySocial address: {:?}", e),
+            Json(ErrorResponse {
+                error: format!("Invalid MySocial address: {:?}", e),
+            }),
         )
     })?;
 
     let eth_address = EthAddress::from_str(&req.eth_address).map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
-            format!("Invalid Ethereum address: {:?}", e),
+            Json(ErrorResponse {
+                error: format!("Invalid Ethereum address: {:?}", e),
+            }),
         )
     })?;
 
     // Verify MySocial signature
     let mys_message = format!("Link to ETH {} at {}", req.eth_address, req.timestamp);
     verify_mys_signature(&mys_message, &req.mys_signature, &mys_address)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     // Verify ETH signature  
     let eth_message = format!("Link to MYS {} at {}", req.mys_address, req.timestamp);
     verify_eth_signature(&eth_message, &req.eth_signature, &eth_address)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     // Allocate indices for both chains
     let mys_hd_index = state
         .address_manager
         .allocate_next_index(HD_COUNTER_MYS)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     let evm_hd_index = state
         .address_manager
         .allocate_next_index(HD_COUNTER_EVM)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     // Derive MySocial deposit address
     let (deposit_mys_address, _) = state
         .address_manager
         .derive_mys_deposit_address(mys_hd_index)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     // Derive EVM deposit address
     let (deposit_evm_address, _) = state
         .address_manager
         .derive_evm_deposit_address(evm_hd_index)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -487,7 +518,7 @@ pub async fn link_addresses(
     state
         .storage
         .store_deposit_registration(DepositAddressKey::from_mys(mys_address), mys_registration)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     // Store EVM deposit registration (routes to linked MySocial address)
     let evm_registration = DepositRegistration {
@@ -504,7 +535,7 @@ pub async fn link_addresses(
     state
         .storage
         .store_deposit_registration(DepositAddressKey::from_evm(eth_address), evm_registration)
-        .map_err(to_status_error)?;
+        .map_err(to_status_error_json)?;
 
     info!(
         ?mys_address,
@@ -527,7 +558,7 @@ pub async fn link_addresses(
 pub async fn query_deposit_addresses(
     State(state): State<Arc<DepositApiState>>,
     axum::extract::Path(address): axum::extract::Path<String>,
-) -> Result<Json<QueryDepositResponse>, (StatusCode, String)> {
+) -> Result<Json<QueryDepositResponse>, (StatusCode, Json<ErrorResponse>)> {
     info!(address, "Querying deposit addresses");
 
     // Try parsing as MySocial address first
@@ -535,7 +566,7 @@ pub async fn query_deposit_addresses(
         let registrations = state
             .storage
             .get_deposit_registrations(&DepositAddressKey::from_mys(mys_addr))
-            .map_err(to_status_error)?
+            .map_err(to_status_error_json)?
             .unwrap_or_default();
 
         return Ok(Json(QueryDepositResponse {
@@ -559,7 +590,7 @@ pub async fn query_deposit_addresses(
         let registrations = state
             .storage
             .get_deposit_registrations(&DepositAddressKey::from_evm(eth_addr))
-            .map_err(to_status_error)?
+            .map_err(to_status_error_json)?
             .unwrap_or_default();
 
         return Ok(Json(QueryDepositResponse {
@@ -580,7 +611,9 @@ pub async fn query_deposit_addresses(
 
     Err((
         StatusCode::BAD_REQUEST,
-        "Invalid address format".to_string(),
+        Json(ErrorResponse {
+            error: "Invalid address format".to_string(),
+        }),
     ))
 }
 
@@ -604,14 +637,16 @@ pub struct RegistrationInfo {
 
 // Helper functions
 
-fn parse_chain_id(chain_name: &str) -> Result<u8, (StatusCode, String)> {
+fn parse_chain_id(chain_name: &str) -> Result<u8, (StatusCode, Json<ErrorResponse>)> {
     match chain_name.to_lowercase().as_str() {
         "mysocial" | "mys" => Ok(2),
         "base" | "base-sepolia" => Ok(12),
         "ethereum" | "eth" => Ok(1),
         _ => Err((
             StatusCode::BAD_REQUEST,
-            format!("Unsupported chain: {}", chain_name),
+            Json(ErrorResponse {
+                error: format!("Unsupported chain: {}", chain_name),
+            }),
         )),
     }
 }
@@ -643,8 +678,13 @@ fn format_address(address_bytes: &[u8], chain_id: u8) -> String {
     }
 }
 
-fn to_status_error(err: BridgeError) -> (StatusCode, String) {
+fn to_status_error_json(err: BridgeError) -> (StatusCode, Json<ErrorResponse>) {
     error!(?err, "API error");
-    (StatusCode::INTERNAL_SERVER_ERROR, format!("{:?}", err))
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse {
+            error: format!("{:?}", err),
+        }),
+    )
 }
 
