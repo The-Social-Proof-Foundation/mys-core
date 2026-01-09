@@ -59,6 +59,34 @@ where
         }
     }
 
+    /// Apply token_id mapping: convert token_id=5 to token_id=0
+    /// This fixes the issue where Ethereum BridgeConfig contract has incorrect token_id mapping
+    fn apply_token_id_mapping(action: &mut BridgeAction) {
+        if let BridgeAction::EthToMysBridgeAction(ref mut eth_action) = action {
+            let original_token_id = eth_action.eth_bridge_event.token_id;
+            if original_token_id == 5 {
+                warn!(
+                    tx_hash = ?eth_action.eth_tx_hash,
+                    event_index = eth_action.eth_event_index,
+                    original_token_id,
+                    "⚠️  WARNING: Mapping token_id={} to token_id=0. \
+                     This indicates the BridgeConfig contract on EVM has incorrect mapping. \
+                     The BridgeConfig contract must be updated to map the token address to token_id=0.",
+                    original_token_id
+                );
+                // Create a new bridge event with corrected token_id
+                let mut corrected_event = eth_action.eth_bridge_event.clone();
+                corrected_event.token_id = 0;
+                // Replace the action with the corrected version
+                *eth_action = crate::types::EthToMysBridgeAction {
+                    eth_tx_hash: eth_action.eth_tx_hash,
+                    eth_event_index: eth_action.eth_event_index,
+                    eth_bridge_event: corrected_event,
+                };
+            }
+        }
+    }
+
     pub async fn run(
         self,
         bridge_action_executor: impl BridgeActionExecutorTrait,
@@ -82,10 +110,14 @@ where
         let store_clone = self.store.clone();
 
         // Re-submit pending actions to executor
-        let actions = store_clone
+        let mut actions = store_clone
             .get_all_pending_actions()
             .into_values()
             .collect::<Vec<_>>();
+        // Apply token_id mapping to any old actions loaded from storage
+        for action in &mut actions {
+            Self::apply_token_id_mapping(action);
+        }
         for action in actions {
             submit_to_executor(&executor_sender, action)
                 .await
@@ -281,46 +313,27 @@ where
                 match bridge_event.try_into_bridge_action(log.tx_hash, log.log_index_in_tx) {
                     Ok(Some(mut action)) => {
                         // Apply token_id mapping: convert token_id=5 to token_id=0
-                        if let BridgeAction::EthToMysBridgeAction(ref mut eth_action) = action {
-                            let original_token_id = eth_action.eth_bridge_event.token_id;
-                            if original_token_id == 5 {
+                        Self::apply_token_id_mapping(&mut action);
+                        
+                        if let BridgeAction::EthToMysBridgeAction(ref eth_action) = action {
+                            let token_id = eth_action.eth_bridge_event.token_id;
+                            if token_id != 0 && token_id != 5 {
                                 warn!(
                                     tx_hash = ?log.tx_hash,
                                     log_index = log.log_index_in_tx,
-                                    original_token_id,
-                                    "⚠️  WARNING: TokensDeposited event has token_id={}, mapping to token_id=0. \
-                                     This indicates the BridgeConfig contract on EVM has incorrect mapping. \
-                                     The BridgeConfig contract must be updated to map the token address to token_id=0.",
-                                    original_token_id
-                                );
-                                // Create a new bridge event with corrected token_id
-                                let mut corrected_event = eth_action.eth_bridge_event.clone();
-                                corrected_event.token_id = 0;
-                                // Replace the action with the corrected version
-                                *eth_action = crate::types::EthToMysBridgeAction {
-                                    eth_tx_hash: eth_action.eth_tx_hash,
-                                    eth_event_index: eth_action.eth_event_index,
-                                    eth_bridge_event: corrected_event,
-                                };
-                            } else if original_token_id != 0 {
-                                warn!(
-                                    tx_hash = ?log.tx_hash,
-                                    log_index = log.log_index_in_tx,
-                                    token_id = original_token_id,
+                                    token_id,
                                     "⚠️  WARNING: TokensDeposited event has token_id={}, but expected token_id=0. \
                                      This indicates the BridgeConfig contract on EVM has incorrect mapping. \
                                      The BridgeConfig contract must be updated to map the token address to token_id=0. \
                                      The bridge will process this event with token_id={} as emitted.",
-                                    original_token_id, original_token_id
+                                    token_id, token_id
                                 );
                             }
-                            let final_token_id = eth_action.eth_bridge_event.token_id;
                             info!(
                                 tx_hash = ?log.tx_hash,
                                 log_index = log.log_index_in_tx,
                                 nonce = eth_action.eth_bridge_event.nonce,
-                                original_token_id = original_token_id,
-                                final_token_id = final_token_id,
+                                token_id,
                                 amount = eth_action.eth_bridge_event.mys_adjusted_amount,
                                 mys_address = ?eth_action.eth_bridge_event.mys_address,
                                 "Created EthToMysBridgeAction from TokensDeposited event"
