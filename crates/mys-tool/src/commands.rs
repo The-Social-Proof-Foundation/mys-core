@@ -87,7 +87,7 @@ pub enum ToolCommand {
         /// prints tabular output ttttable for processing with unix tools. For
         /// instance, to quickly check that all validators agree on the history of an object:
         /// ```text
-        /// $ mys-tool fetch-object --id 0x260efde76ebccf57f4c5e951157f5c361cde822c \
+        /// $ myso-tool fetch-object --id 0x260efde76ebccf57f4c5e951157f5c361cde822c \
         ///      --genesis $HOME/.mys/mys_config/genesis.blob \
         ///      --verbosity concise --concise-no-header
         /// ```

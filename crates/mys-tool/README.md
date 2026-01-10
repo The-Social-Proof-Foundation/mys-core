@@ -1,10 +1,10 @@
-# mys-tool
+# myso-tool
 
-`mys-tool` contains assorted debugging utilities for MySocial.
+`myso-tool` contains assorted debugging utilities for MySocial.
 
-You can build and run `mys-tool` from source with:
+You can build and run `myso-tool` from source with:
 ```sh
-cargo run --bin mys-tool -- <args>
+cargo run --bin myso-tool -- <args>
 ```
 
 ## `anemo` tools
@@ -21,12 +21,12 @@ Example command to ping an anemo server:
 ```sh
 SERVER_NAME="mys"; \
 ADDRESS="1.2.3.4:5678"; \
-cargo run --bin mys-tool -- anemo ping --server-name "$SERVER_NAME" "$ADDRESS"
+cargo run --bin myso-tool -- anemo ping --server-name "$SERVER_NAME" "$ADDRESS"
 ```
 
 ### call
 
-`mys-tool` has been preconfigured to support RPC calls using [RON (Rusty Object Notation)](https://crates.io/crates/ron) for the following servivces:
+`myso-tool` has been preconfigured to support RPC calls using [RON (Rusty Object Notation)](https://crates.io/crates/ron) for the following servivces:
 - Narwhal: `PrimaryToPrimary` and `WorkerToWorker`
 - MySocial: `Discovery` and `StateSync`
 
@@ -38,6 +38,6 @@ ADDRESS="1.2.3.4:5678"; \
 SERVICE_NAME="StateSync"; \
 METHOD_NAME="GetCheckpointSummary"; \
 REQUEST="BySequenceNumber(123)"; \
-cargo run --bin mys-tool -- \
+cargo run --bin myso-tool -- \
     anemo call --server-name "$SERVER_NAME" "$ADDRESS" "$SERVICE_NAME" "$METHOD_NAME" "$REQUEST"
 ```

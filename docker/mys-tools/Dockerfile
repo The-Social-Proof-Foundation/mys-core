@@ -24,7 +24,7 @@ RUN cargo build --profile ${PROFILE} \
     --bin mys-bridge-cli \
     --bin mys \
     --bin mys-cluster-test \
-    --bin mys-tool
+    --bin myso-tool
 
 # Production Image
 FROM debian:bullseye-slim AS runtime
@@ -41,7 +41,7 @@ COPY --from=builder /mys/target/release/orderbook-indexer /usr/local/bin
 COPY --from=builder /mys/target/release/mys-bridge-cli /usr/local/bin
 COPY --from=builder /mys/target/release/mys /usr/local/bin
 COPY --from=builder /mys/target/release/mys-cluster-test /usr/local/bin
-COPY --from=builder /mys/target/release/mys-tool /usr/local/bin
+COPY --from=builder /mys/target/release/myso-tool /usr/local/bin
 
 ARG BUILD_DATE
 ARG GIT_REVISION

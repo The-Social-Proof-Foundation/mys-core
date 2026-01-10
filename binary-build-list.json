@@ -2,7 +2,7 @@
     "release_binaries": [
         "mys",
         "mys-node",
-        "mys-tool",
+        "myso-tool",
         "mys-faucet",
         "mys-data-ingestion",
         "mys-bridge",

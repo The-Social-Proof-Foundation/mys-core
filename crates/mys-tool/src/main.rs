@@ -12,7 +12,7 @@ bin_version::bin_version!();
 
 #[derive(Parser)]
 #[command(
-    name = "mys-tool",
+    name = "myso-tool",
     about = "Debugging utilities for mys",
     rename_all = "kebab-case",
     author,
