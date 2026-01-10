@@ -46,6 +46,7 @@ module social_contracts::social_proof_of_truth {
     const EAlreadyInitialized: u64 = 14;
     const EDuplicateOption: u64 = 15;
     const ETooManyBets: u64 = 16;
+    const EWrongVersion: u64 = 17;
 
     /// Status
     const STATUS_OPEN: u8 = 1;
@@ -833,5 +834,55 @@ module social_contracts::social_proof_of_truth {
             reasoning,
             evidence_urls: evidence_urls_vec,
         });
+    }
+
+    /// Migration function for SpotConfig
+    public entry fun migrate_config(
+        config: &mut SpotConfig,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(config.version < current_version, EWrongVersion);
+        
+        // Remember old version and update to new version
+        let old_version = config.version;
+        config.version = current_version;
+        
+        // Emit event for object migration
+        let config_id = object::id(config);
+        upgrade::emit_migration_event(
+            config_id,
+            string::utf8(b"SpotConfig"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    /// Migration function for SpotRecord
+    public entry fun migrate_record(
+        record: &mut SpotRecord,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(record.version < current_version, EWrongVersion);
+        
+        // Remember old version and update to new version
+        let old_version = record.version;
+        record.version = current_version;
+        
+        // Emit event for object migration
+        let record_id = object::id(record);
+        upgrade::emit_migration_event(
+            record_id,
+            string::utf8(b"SpotRecord"),
+            old_version,
+            tx_context::sender(ctx)
+        );
     }
 }

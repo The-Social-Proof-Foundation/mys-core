@@ -22,6 +22,7 @@ module social_contracts::insurance {
     use mys::mys::MYS;
 
     use social_contracts::social_proof_of_truth as spot;
+    use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     /// Errors
     const ENotAdmin: u64 = 1;
@@ -40,6 +41,7 @@ module social_contracts::insurance {
     const EExposureLimit: u64 = 14;
     const EInsufficientPremium: u64 = 15;
     const EExposureInvariantBroken: u64 = 16;
+    const EWrongVersion: u64 = 17;
 
     /// Status
     const STATUS_ACTIVE: u8 = 1;
@@ -795,5 +797,55 @@ module social_contracts::insurance {
         } else {
             table::add(&mut exposure.reserved_by_option, option_id, amount);
         };
+    }
+
+    /// Migration function for InsuranceConfig
+    public entry fun migrate_config(
+        config: &mut InsuranceConfig,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(config.version < current_version, EWrongVersion);
+        
+        // Remember old version and update to new version
+        let old_version = config.version;
+        config.version = current_version;
+        
+        // Emit event for object migration
+        let config_id = object::id(config);
+        upgrade::emit_migration_event(
+            config_id,
+            string::utf8(b"InsuranceConfig"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    /// Migration function for UnderwriterVault
+    public entry fun migrate_vault(
+        vault: &mut UnderwriterVault,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(vault.version < current_version, EWrongVersion);
+        
+        // Remember old version and update to new version
+        let old_version = vault.version;
+        vault.version = current_version;
+        
+        // Emit event for object migration
+        let vault_id = object::id(vault);
+        upgrade::emit_migration_event(
+            vault_id,
+            string::utf8(b"UnderwriterVault"),
+            old_version,
+            tx_context::sender(ctx)
+        );
     }
 }

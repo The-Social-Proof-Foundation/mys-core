@@ -23,7 +23,7 @@ module social_contracts::platform {
     
     use social_contracts::profile;
     use social_contracts::governance;
-    use social_contracts::upgrade;
+    use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::block_list;
     use social_contracts::social_graph;
 
@@ -1441,6 +1441,56 @@ module social_contracts::platform {
         PlatformAdminCap {
             id: object::new(ctx)
         }
+    }
+
+    /// Migration function for Platform
+    public entry fun migrate_platform(
+        platform: &mut Platform,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(platform.version < current_version, EWrongVersion);
+        
+        // Remember old version and update to new version
+        let old_version = platform.version;
+        platform.version = current_version;
+        
+        // Emit event for object migration
+        let platform_id = object::id(platform);
+        upgrade::emit_migration_event(
+            platform_id,
+            string::utf8(b"Platform"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
+    /// Migration function for PlatformRegistry
+    public entry fun migrate_registry(
+        registry: &mut PlatformRegistry,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(registry.version < current_version, EWrongVersion);
+        
+        // Remember old version and update to new version
+        let old_version = registry.version;
+        registry.version = current_version;
+        
+        // Emit event for object migration
+        let registry_id = object::id(registry);
+        upgrade::emit_migration_event(
+            registry_id,
+            string::utf8(b"PlatformRegistry"),
+            old_version,
+            tx_context::sender(ctx)
+        );
     }
     
     #[test_only]

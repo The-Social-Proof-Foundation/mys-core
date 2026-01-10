@@ -24,7 +24,7 @@ module social_contracts::message {
 
     use social_contracts::profile::{Self, Profile, EcosystemTreasury};
     use social_contracts::platform::{Self, Platform};
-    use social_contracts::upgrade;
+    use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     // === Error Codes ===
     
@@ -1385,6 +1385,32 @@ module social_contracts::message {
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
         bootstrap_init(ctx);
+    }
+
+    /// Migration function for Registry
+    public entry fun migrate_registry(
+        registry: &mut Registry,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        // Note: Registry uses u32 for version, so we need to cast
+        assert!((registry.version as u64) < current_version, E_WRONG_VERSION);
+        
+        // Remember old version and update to new version
+        let old_version = registry.version;
+        registry.version = (current_version as u32);
+        
+        // Emit event for object migration
+        let registry_id = object::id(registry);
+        upgrade::emit_migration_event(
+            registry_id,
+            string::utf8(b"Registry"),
+            old_version as u64,
+            tx_context::sender(ctx)
+        );
     }
 }
 

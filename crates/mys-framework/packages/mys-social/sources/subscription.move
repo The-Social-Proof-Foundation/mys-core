@@ -6,6 +6,8 @@
 
 #[allow(duplicate_alias)]
 module social_contracts::subscription {
+    use std::string;
+    
     use mys::{
         object::{Self, UID, ID},
         tx_context::{Self, TxContext},
@@ -16,7 +18,7 @@ module social_contracts::subscription {
         event
     };
     use mys::mys::MYS;
-    use social_contracts::upgrade;
+    use social_contracts::upgrade::{Self, UpgradeAdminCap};
     
     /// Error codes
     const EInvalidFee: u64 = 12;
@@ -542,5 +544,30 @@ module social_contracts::subscription {
         let ProfileSubscription { id, renewal_balance, .. } = subscription;
         balance::destroy_zero(renewal_balance);
         object::delete(id);
+    }
+
+    /// Migration function for ProfileSubscriptionService
+    public entry fun migrate_service(
+        service: &mut ProfileSubscriptionService,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(service.version < current_version, EWrongVersion);
+        
+        // Remember old version and update to new version
+        let old_version = service.version;
+        service.version = current_version;
+        
+        // Emit event for object migration
+        let service_id = object::id(service);
+        upgrade::emit_migration_event(
+            service_id,
+            string::utf8(b"ProfileSubscriptionService"),
+            old_version,
+            tx_context::sender(ctx)
+        );
     }
 }
