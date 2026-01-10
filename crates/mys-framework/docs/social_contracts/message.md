@@ -94,7 +94,6 @@ Features: idempotency, message ordering, replay protection, access control, rate
 <b>use</b> <a href="../mys/group_ops.md#mys_group_ops">mys::group_ops</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
 <b>use</b> <a href="../mys/hmac.md#mys_hmac">mys::hmac</a>;
-<b>use</b> <a href="../mys/math.md#mys_math">mys::math</a>;
 <b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/package.md#mys_package">mys::package</a>;
@@ -108,10 +107,8 @@ Features: idempotency, message ordering, replay protection, access control, rate
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
 <b>use</b> <a href="../social_contracts/platform.md#social_contracts_platform">social_contracts::platform</a>;
-<b>use</b> <a href="../social_contracts/post.md#social_contracts_post">social_contracts::post</a>;
 <b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
 <b>use</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_contracts::social_graph</a>;
-<b>use</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens">social_contracts::social_proof_tokens</a>;
 <b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
@@ -121,8 +118,6 @@ Features: idempotency, message ordering, replay protection, access control, rate
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
-<b>use</b> <a href="../std/u128.md#std_u128">std::u128</a>;
-<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
@@ -3102,7 +3097,7 @@ Send a paid message to a profile owner
 Reply to a paid message and trigger payment release if conditions are met
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_reply_to_paid_message">reply_to_paid_message</a>(registry: &<a href="../social_contracts/message.md#social_contracts_message_Registry">social_contracts::message::Registry</a>, conv: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Conversation">social_contracts::message::Conversation</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, spt_config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, paid_msg_seq: u64, kind: u8, digest_hash: vector&lt;u8&gt;, media_batch_hash: vector&lt;u8&gt;, key_ref: vector&lt;u8&gt;, client_ts: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_reply_to_paid_message">reply_to_paid_message</a>(registry: &<a href="../social_contracts/message.md#social_contracts_message_Registry">social_contracts::message::Registry</a>, conv: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Conversation">social_contracts::message::Conversation</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, paid_msg_seq: u64, kind: u8, digest_hash: vector&lt;u8&gt;, media_batch_hash: vector&lt;u8&gt;, key_ref: vector&lt;u8&gt;, client_ts: u64, char_count: u32, dedupe_key: vector&lt;u8&gt;, nonce: u128, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3115,7 +3110,7 @@ Reply to a paid message and trigger payment release if conditions are met
     registry: &<a href="../social_contracts/message.md#social_contracts_message_Registry">Registry</a>,
     conv: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Conversation">Conversation</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
-    spt_config: &SocialProofTokensConfig,
+    treasury: &EcosystemTreasury,
     paid_msg_seq: u64,
     kind: u8,
     digest_hash: vector&lt;u8&gt;,
@@ -3191,7 +3186,7 @@ Reply to a paid message and trigger payment release if conditions are met
         reply_char_count: char_count,
     });
     // Automatically claim the payment
-    <a href="../social_contracts/message.md#social_contracts_message_claim_payment_internal">claim_payment_internal</a>(conv, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, spt_config, paid_msg_seq, ctx);
+    <a href="../social_contracts/message.md#social_contracts_message_claim_payment_internal">claim_payment_internal</a>(conv, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, treasury, paid_msg_seq, ctx);
 }
 </code></pre>
 
@@ -3206,7 +3201,7 @@ Reply to a paid message and trigger payment release if conditions are met
 Claim payment from a replied paid message (internal helper)
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_claim_payment_internal">claim_payment_internal</a>(conv: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Conversation">social_contracts::message::Conversation</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, spt_config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, paid_msg_seq: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_claim_payment_internal">claim_payment_internal</a>(conv: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Conversation">social_contracts::message::Conversation</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, paid_msg_seq: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3218,7 +3213,7 @@ Claim payment from a replied paid message (internal helper)
 <pre><code><b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_claim_payment_internal">claim_payment_internal</a>(
     conv: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Conversation">Conversation</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
-    spt_config: &SocialProofTokensConfig,
+    treasury: &EcosystemTreasury,
     paid_msg_seq: u64,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -3241,7 +3236,7 @@ Claim payment from a replied paid message (internal helper)
     // Treasury fee
     <b>if</b> (treasury_fee &gt; 0) {
         <b>let</b> treasury_fee_coin = coin::split(&<b>mut</b> escrow_coin, treasury_fee, ctx);
-        transfer::public_transfer(treasury_fee_coin, spt::get_ecosystem_treasury(spt_config));
+        transfer::public_transfer(treasury_fee_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
     };
     // Net amount to recipient
     transfer::public_transfer(escrow_coin, escrow.recipient);

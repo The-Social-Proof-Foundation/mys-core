@@ -229,6 +229,11 @@ Global configuration for SPoT
 <dd>
 </dd>
 <dt>
+<code>max_bets_per_record: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>version: u64</code>
 </dt>
 <dd>
@@ -650,6 +655,11 @@ Events
 <dd>
 </dd>
 <dt>
+<code>max_bets_per_record: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>timestamp: u64</code>
 </dt>
 <dd>
@@ -798,6 +808,15 @@ Config defaults
 
 
 
+<a name="social_contracts_social_proof_of_truth_DEFAULT_MAX_BETS_PER_RECORD"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_BETS_PER_RECORD">DEFAULT_MAX_BETS_PER_RECORD</a>: u64 = 10000;
+</code></pre>
+
+
+
 <a name="social_contracts_social_proof_of_truth_DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS"></a>
 
 
@@ -939,6 +958,15 @@ Errors
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooEarly">ETooEarly</a>: u64 = 4;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_ETooManyBets"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooManyBets">ETooManyBets</a>: u64 = 16;
 </code></pre>
 
 
@@ -1389,6 +1417,7 @@ Status
         chain_treasury: admin,
         oracle_address: admin,
         max_single_bet: 0,
+        max_bets_per_record: <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_DEFAULT_MAX_BETS_PER_RECORD">DEFAULT_MAX_BETS_PER_RECORD</a>,
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     });
 }
@@ -1459,7 +1488,7 @@ Create a SpotOracleAdminCap for bootstrap (package visibility only)
 Update SPoT configuration (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, confidence_threshold_bps: u64, resolution_window_epochs: u64, max_resolution_window_epochs: u64, payout_delay_epochs: u64, fee_bps: u64, fee_split_bps_platform: u64, platform_treasury: <b>address</b>, chain_treasury: <b>address</b>, oracle_address: <b>address</b>, max_single_bet: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_update_spot_config">update_spot_config</a>(_: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotAdminCap">social_contracts::social_proof_of_truth::SpotAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, enable_flag: bool, confidence_threshold_bps: u64, resolution_window_epochs: u64, max_resolution_window_epochs: u64, payout_delay_epochs: u64, fee_bps: u64, fee_split_bps_platform: u64, platform_treasury: <b>address</b>, chain_treasury: <b>address</b>, oracle_address: <b>address</b>, max_single_bet: u64, max_bets_per_record: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1482,6 +1511,7 @@ Update SPoT configuration (admin only)
     chain_treasury: <b>address</b>,
     oracle_address: <b>address</b>,
     max_single_bet: u64,
+    max_bets_per_record: u64,
     ctx: &<b>mut</b> TxContext
 ) {
     // Basic bounds
@@ -1498,6 +1528,7 @@ Update SPoT configuration (admin only)
     config.chain_treasury = chain_treasury;
     config.oracle_address = oracle_address;
     config.max_single_bet = max_single_bet;
+    config.max_bets_per_record = max_bets_per_record;
     // Emit config updated event
     event::emit(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfigUpdatedEvent">SpotConfigUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
@@ -1512,6 +1543,7 @@ Update SPoT configuration (admin only)
         chain_treasury,
         oracle_address,
         max_single_bet,
+        max_bets_per_record,
         timestamp: tx_context::epoch_timestamp_ms(ctx),
     });
 }
@@ -1731,6 +1763,9 @@ Place bet - all funds go to escrow
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
     <b>if</b> (spot_config.max_single_bet &gt; 0) { <b>assert</b>!(amount &lt;= spot_config.max_single_bet, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>); };
     <b>assert</b>!(coin::value(&payment) &gt;= amount, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidAmount">EInvalidAmount</a>);
+    // Check bet limit
+    <b>let</b> current_bets = vector::length(&record.bets);
+    <b>assert</b>!(current_bets &lt; spot_config.max_bets_per_record, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_ETooManyBets">ETooManyBets</a>);
     // Validate option_id exists
     <b>let</b> options_len = vector::length(&record.betting_options);
     <b>assert</b>!((option_id <b>as</b> u64) &lt; options_len, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EInvalidOptionId">EInvalidOptionId</a>);

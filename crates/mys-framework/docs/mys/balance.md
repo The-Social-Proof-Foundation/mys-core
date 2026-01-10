@@ -13,6 +13,7 @@ custom coins with <code><a href="../mys/balance.md#mys_balance_Supply">Supply</a
 -  [Function `value`](#mys_balance_value)
 -  [Function `supply_value`](#mys_balance_supply_value)
 -  [Function `create_supply`](#mys_balance_create_supply)
+-  [Function `create_supply_without_witness`](#mys_balance_create_supply_without_witness)
 -  [Function `increase_supply`](#mys_balance_increase_supply)
 -  [Function `decrease_supply`](#mys_balance_decrease_supply)
 -  [Function `zero`](#mys_balance_zero)
@@ -222,6 +223,32 @@ Create a new supply for type T.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../mys/balance.md#mys_balance_create_supply">create_supply</a>&lt;T: drop&gt;(_: T): <a href="../mys/balance.md#mys_balance_Supply">Supply</a>&lt;T&gt; {
+    <a href="../mys/balance.md#mys_balance_Supply">Supply</a> { <a href="../mys/balance.md#mys_balance_value">value</a>: 0 }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="mys_balance_create_supply_without_witness"></a>
+
+## Function `create_supply_without_witness`
+
+Create a new supply for type T without requiring a witness parameter.
+Used when creating currencies without the one-time witness pattern.
+
+
+<pre><code><b>public</b>(<a href="../mys/package.md#mys_package">package</a>) <b>fun</b> <a href="../mys/balance.md#mys_balance_create_supply_without_witness">create_supply_without_witness</a>&lt;T&gt;(): <a href="../mys/balance.md#mys_balance_Supply">mys::balance::Supply</a>&lt;T&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(<a href="../mys/package.md#mys_package">package</a>) <b>fun</b> <a href="../mys/balance.md#mys_balance_create_supply_without_witness">create_supply_without_witness</a>&lt;T&gt;(): <a href="../mys/balance.md#mys_balance_Supply">Supply</a>&lt;T&gt; {
     <a href="../mys/balance.md#mys_balance_Supply">Supply</a> { <a href="../mys/balance.md#mys_balance_value">value</a>: 0 }
 }
 </code></pre>

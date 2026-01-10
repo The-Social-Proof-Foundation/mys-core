@@ -25,27 +25,16 @@ Manages social relationships between users (following/followers)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
-<b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
-<b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
-<b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
-<b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
-<b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
-<b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
 <b>use</b> <a href="../mys/dynamic_field.md#mys_dynamic_field">mys::dynamic_field</a>;
-<b>use</b> <a href="../mys/dynamic_object_field.md#mys_dynamic_object_field">mys::dynamic_object_field</a>;
 <b>use</b> <a href="../mys/event.md#mys_event">mys::event</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
-<b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/package.md#mys_package">mys::package</a>;
 <b>use</b> <a href="../mys/table.md#mys_table">mys::table</a>;
 <b>use</b> <a href="../mys/transfer.md#mys_transfer">mys::transfer</a>;
 <b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
-<b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
-<b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
-<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -62,7 +51,8 @@ Manages social relationships between users (following/followers)
 
 ## Struct `SocialGraph`
 
-Global social graph object that tracks relationships between users
+Global social graph object that tracks relationships between wallet addresses
+Uses wallet-level architecture - no profile required
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a> <b>has</b> key
@@ -84,13 +74,13 @@ Global social graph object that tracks relationships between users
 <code>following: <a href="../mys/table.md#mys_table_Table">mys::table::Table</a>&lt;<b>address</b>, <a href="../mys/vec_set.md#mys_vec_set_VecSet">mys::vec_set::VecSet</a>&lt;<b>address</b>&gt;&gt;</code>
 </dt>
 <dd>
- Table mapping profile IDs to sets of profiles they are following
+ Table mapping wallet addresses to sets of addresses they are following
 </dd>
 <dt>
 <code>followers: <a href="../mys/table.md#mys_table_Table">mys::table::Table</a>&lt;<b>address</b>, <a href="../mys/vec_set.md#mys_vec_set_VecSet">mys::vec_set::VecSet</a>&lt;<b>address</b>&gt;&gt;</code>
 </dt>
 <dd>
- Table mapping profile IDs to sets of profiles following them
+ Table mapping wallet addresses to sets of addresses following them
 </dd>
 <dt>
 <code><a href="../social_contracts/social_graph.md#social_contracts_social_graph_version">version</a>: u64</code>
@@ -107,7 +97,7 @@ Global social graph object that tracks relationships between users
 
 ## Struct `FollowEvent`
 
-Follow event
+Follow event - emitted when a wallet address follows another wallet address
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_FollowEvent">FollowEvent</a> <b>has</b> <b>copy</b>, drop
@@ -124,11 +114,13 @@ Follow event
 <code>follower: <b>address</b></code>
 </dt>
 <dd>
+ Wallet address of the follower
 </dd>
 <dt>
 <code>following: <b>address</b></code>
 </dt>
 <dd>
+ Wallet address being followed
 </dd>
 </dl>
 
@@ -139,7 +131,7 @@ Follow event
 
 ## Struct `UnfollowEvent`
 
-Unfollow event
+Unfollow event - emitted when a wallet address unfollows another wallet address
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_UnfollowEvent">UnfollowEvent</a> <b>has</b> <b>copy</b>, drop
@@ -156,11 +148,13 @@ Unfollow event
 <code>follower: <b>address</b></code>
 </dt>
 <dd>
+ Wallet address of the unfollower
 </dd>
 <dt>
 <code>unfollowed: <b>address</b></code>
 </dt>
 <dd>
+ Wallet address being unfollowed
 </dd>
 </dl>
 
@@ -196,15 +190,6 @@ Error codes
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_ENotFollowing">ENotFollowing</a>: u64 = 1;
-</code></pre>
-
-
-
-<a name="social_contracts_social_graph_EProfileNotFound"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_EProfileNotFound">EProfileNotFound</a>: u64 = 3;
 </code></pre>
 
 
@@ -254,10 +239,11 @@ Bootstrap initialization function - creates the social graph shared object
 
 ## Function `follow`
 
-Follow a profile by address
+Follow a wallet address
+Uses wallet-level architecture - no profile required
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_follow">follow</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, following_profile_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_follow">follow</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, following_address: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -268,40 +254,34 @@ Follow a profile by address
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_follow">follow</a>(
     <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>,
-    registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">profile::UsernameRegistry</a>,
-    following_profile_id: <b>address</b>,
+    following_address: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check <a href="../social_contracts/social_graph.md#social_contracts_social_graph_version">version</a> compatibility
     <b>assert</b>!(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.<a href="../social_contracts/social_graph.md#social_contracts_social_graph_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_graph.md#social_contracts_social_graph_EWrongVersion">EWrongVersion</a>);
     <b>let</b> sender = tx_context::sender(ctx);
-    // Look up the caller's <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID from registry
-    <b>let</b> <b>mut</b> caller_profile_id_opt = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(registry, sender);
-    <b>assert</b>!(option::is_some(&caller_profile_id_opt), <a href="../social_contracts/social_graph.md#social_contracts_social_graph_EProfileNotFound">EProfileNotFound</a>);
-    // Extract follower <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID
-    <b>let</b> follower_profile_id = option::extract(&<b>mut</b> caller_profile_id_opt);
     // Cannot <a href="../social_contracts/social_graph.md#social_contracts_social_graph_follow">follow</a> self
-    <b>assert</b>!(follower_profile_id != following_profile_id, <a href="../social_contracts/social_graph.md#social_contracts_social_graph_ECannotFollowSelf">ECannotFollowSelf</a>);
-    // Initialize follower's following set <b>if</b> it doesn't exist
-    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_profile_id)) {
-        table::add(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_profile_id, vec_set::empty());
+    <b>assert</b>!(sender != following_address, <a href="../social_contracts/social_graph.md#social_contracts_social_graph_ECannotFollowSelf">ECannotFollowSelf</a>);
+    // Initialize follower's following set <b>if</b> it doesn't exist (lazy initialization)
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, sender)) {
+        table::add(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, sender, vec_set::empty());
     };
-    // Initialize followed's followers set <b>if</b> it doesn't exist
-    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_profile_id)) {
-        table::add(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_profile_id, vec_set::empty());
+    // Initialize followed's followers set <b>if</b> it doesn't exist (lazy initialization)
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_address)) {
+        table::add(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_address, vec_set::empty());
     };
     // Get mutable references to the sets
-    <b>let</b> follower_following = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_profile_id);
-    <b>let</b> following_followers = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_profile_id);
+    <b>let</b> follower_following = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, sender);
+    <b>let</b> following_followers = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_address);
     // Check <b>if</b> already following
-    <b>assert</b>!(!vec_set::contains(follower_following, &following_profile_id), <a href="../social_contracts/social_graph.md#social_contracts_social_graph_EAlreadyFollowing">EAlreadyFollowing</a>);
+    <b>assert</b>!(!vec_set::contains(follower_following, &following_address), <a href="../social_contracts/social_graph.md#social_contracts_social_graph_EAlreadyFollowing">EAlreadyFollowing</a>);
     // Add to sets
-    vec_set::insert(follower_following, following_profile_id);
-    vec_set::insert(following_followers, follower_profile_id);
+    vec_set::insert(follower_following, following_address);
+    vec_set::insert(following_followers, sender);
     // Emit <a href="../social_contracts/social_graph.md#social_contracts_social_graph_follow">follow</a> event
     event::emit(<a href="../social_contracts/social_graph.md#social_contracts_social_graph_FollowEvent">FollowEvent</a> {
-        follower: follower_profile_id,
-        following: following_profile_id,
+        follower: sender,
+        following: following_address,
     });
 }
 </code></pre>
@@ -314,10 +294,11 @@ Follow a profile by address
 
 ## Function `unfollow`
 
-Unfollow a profile by address
+Unfollow a wallet address
+Uses wallet-level architecture - no profile required
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow">unfollow</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, following_profile_id: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow">unfollow</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, following_address: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -328,33 +309,33 @@ Unfollow a profile by address
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow">unfollow</a>(
     <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>,
-    registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">profile::UsernameRegistry</a>,
-    following_profile_id: <b>address</b>,
+    following_address: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check <a href="../social_contracts/social_graph.md#social_contracts_social_graph_version">version</a> compatibility
     <b>assert</b>!(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.<a href="../social_contracts/social_graph.md#social_contracts_social_graph_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/social_graph.md#social_contracts_social_graph_EWrongVersion">EWrongVersion</a>);
     <b>let</b> sender = tx_context::sender(ctx);
-    // Look up the caller's <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID from registry
-    <b>let</b> <b>mut</b> caller_profile_id_opt = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(registry, sender);
-    <b>assert</b>!(option::is_some(&caller_profile_id_opt), <a href="../social_contracts/social_graph.md#social_contracts_social_graph_EProfileNotFound">EProfileNotFound</a>);
-    // Extract follower <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID
-    <b>let</b> follower_profile_id = option::extract(&<b>mut</b> caller_profile_id_opt);
     // Check <b>if</b> following sets exist
-    <b>assert</b>!(table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_profile_id), <a href="../social_contracts/social_graph.md#social_contracts_social_graph_ENotFollowing">ENotFollowing</a>);
-    <b>assert</b>!(table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_profile_id), <a href="../social_contracts/social_graph.md#social_contracts_social_graph_ENotFollowing">ENotFollowing</a>);
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, sender)) {
+        <b>abort</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_ENotFollowing">ENotFollowing</a>
+    };
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_address)) {
+        <b>abort</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_ENotFollowing">ENotFollowing</a>
+    };
     // Get mutable references to the sets
-    <b>let</b> follower_following = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_profile_id);
-    <b>let</b> following_followers = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_profile_id);
+    <b>let</b> follower_following = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, sender);
+    <b>let</b> following_followers = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_address);
     // Check <b>if</b> following
-    <b>assert</b>!(vec_set::contains(follower_following, &following_profile_id), <a href="../social_contracts/social_graph.md#social_contracts_social_graph_ENotFollowing">ENotFollowing</a>);
+    <b>if</b> (!vec_set::contains(follower_following, &following_address)) {
+        <b>abort</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_ENotFollowing">ENotFollowing</a>
+    };
     // Remove from sets
-    vec_set::remove(follower_following, &following_profile_id);
-    vec_set::remove(following_followers, &follower_profile_id);
+    vec_set::remove(follower_following, &following_address);
+    vec_set::remove(following_followers, &sender);
     // Emit <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow">unfollow</a> event
     event::emit(<a href="../social_contracts/social_graph.md#social_contracts_social_graph_UnfollowEvent">UnfollowEvent</a> {
-        follower: follower_profile_id,
-        unfollowed: following_profile_id,
+        follower: sender,
+        unfollowed: following_address,
     });
 }
 </code></pre>
@@ -367,12 +348,12 @@ Unfollow a profile by address
 
 ## Function `unfollow_internal`
 
-Internal unfollow function that accepts explicit profile IDs
+Internal unfollow function that accepts explicit wallet addresses
 Used for bidirectional unfollow during blocking operations
 Returns true if unfollow occurred, false if not following
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">unfollow_internal</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, follower_profile_id: <b>address</b>, following_profile_id: <b>address</b>): bool
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">unfollow_internal</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, follower_address: <b>address</b>, following_address: <b>address</b>): bool
 </code></pre>
 
 
@@ -383,31 +364,31 @@ Returns true if unfollow occurred, false if not following
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow_internal">unfollow_internal</a>(
     <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>,
-    follower_profile_id: <b>address</b>,
-    following_profile_id: <b>address</b>
+    follower_address: <b>address</b>,
+    following_address: <b>address</b>
 ): bool {
     // Check <b>if</b> following relationship exists
-    <b>if</b> (!<a href="../social_contracts/social_graph.md#social_contracts_social_graph_is_following">is_following</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, follower_profile_id, following_profile_id)) {
+    <b>if</b> (!<a href="../social_contracts/social_graph.md#social_contracts_social_graph_is_following">is_following</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>, follower_address, following_address)) {
         <b>return</b> <b>false</b>  // Not following, nothing to do
     };
     // Check <b>if</b> following sets exist (defensive)
-    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_profile_id)) {
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_address)) {
         <b>return</b> <b>false</b>
     };
-    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_profile_id)) {
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_address)) {
         <b>return</b> <b>false</b>
     };
     // Get mutable references to the sets
-    <b>let</b> follower_following = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_profile_id);
-    <b>let</b> following_followers = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_profile_id);
+    <b>let</b> follower_following = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_address);
+    <b>let</b> following_followers = table::borrow_mut(&<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, following_address);
     // Remove <b>if</b> present (defensive check)
-    <b>if</b> (vec_set::contains(follower_following, &following_profile_id)) {
-        vec_set::remove(follower_following, &following_profile_id);
-        vec_set::remove(following_followers, &follower_profile_id);
+    <b>if</b> (vec_set::contains(follower_following, &following_address)) {
+        vec_set::remove(follower_following, &following_address);
+        vec_set::remove(following_followers, &follower_address);
         // Emit <a href="../social_contracts/social_graph.md#social_contracts_social_graph_unfollow">unfollow</a> event
         event::emit(<a href="../social_contracts/social_graph.md#social_contracts_social_graph_UnfollowEvent">UnfollowEvent</a> {
-            follower: follower_profile_id,
-            unfollowed: following_profile_id,
+            follower: follower_address,
+            unfollowed: following_address,
         });
         <b>return</b> <b>true</b>
     };
@@ -517,10 +498,10 @@ Get the version of the social graph
 
 ## Function `is_following`
 
-Check if a profile is following another profile
+Check if a wallet address is following another wallet address
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_is_following">is_following</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, follower_id: <b>address</b>, following_id: <b>address</b>): bool
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_is_following">is_following</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, follower_address: <b>address</b>, following_address: <b>address</b>): bool
 </code></pre>
 
 
@@ -529,12 +510,12 @@ Check if a profile is following another profile
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_is_following">is_following</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>, follower_id: <b>address</b>, following_id: <b>address</b>): bool {
-    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_id)) {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_is_following">is_following</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>, follower_address: <b>address</b>, following_address: <b>address</b>): bool {
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_address)) {
         <b>return</b> <b>false</b>
     };
-    <b>let</b> follower_following = table::borrow(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_id);
-    vec_set::contains(follower_following, &following_id)
+    <b>let</b> follower_following = table::borrow(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, follower_address);
+    vec_set::contains(follower_following, &following_address)
 }
 </code></pre>
 
@@ -546,10 +527,10 @@ Check if a profile is following another profile
 
 ## Function `following_count`
 
-Get the number of profiles a user is following
+Get the number of wallet addresses a user is following
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_following_count">following_count</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, profile_id: <b>address</b>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_following_count">following_count</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, wallet_address: <b>address</b>): u64
 </code></pre>
 
 
@@ -558,11 +539,11 @@ Get the number of profiles a user is following
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_following_count">following_count</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>, profile_id: <b>address</b>): u64 {
-    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, profile_id)) {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_following_count">following_count</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>, wallet_address: <b>address</b>): u64 {
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, wallet_address)) {
         <b>return</b> 0
     };
-    <b>let</b> following = table::borrow(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, profile_id);
+    <b>let</b> following = table::borrow(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, wallet_address);
     vec_set::size(following)
 }
 </code></pre>
@@ -575,10 +556,10 @@ Get the number of profiles a user is following
 
 ## Function `follower_count`
 
-Get the number of followers a profile has
+Get the number of followers a wallet address has
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_follower_count">follower_count</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, profile_id: <b>address</b>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_follower_count">follower_count</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, wallet_address: <b>address</b>): u64
 </code></pre>
 
 
@@ -587,11 +568,11 @@ Get the number of followers a profile has
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_follower_count">follower_count</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>, profile_id: <b>address</b>): u64 {
-    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, profile_id)) {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_follower_count">follower_count</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>, wallet_address: <b>address</b>): u64 {
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, wallet_address)) {
         <b>return</b> 0
     };
-    <b>let</b> followers = table::borrow(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, profile_id);
+    <b>let</b> followers = table::borrow(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, wallet_address);
     vec_set::size(followers)
 }
 </code></pre>
@@ -604,10 +585,10 @@ Get the number of followers a profile has
 
 ## Function `get_following`
 
-Get the list of profiles a user is following
+Get the list of wallet addresses a user is following
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_get_following">get_following</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, profile_id: <b>address</b>): vector&lt;<b>address</b>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_get_following">get_following</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, wallet_address: <b>address</b>): vector&lt;<b>address</b>&gt;
 </code></pre>
 
 
@@ -616,11 +597,11 @@ Get the list of profiles a user is following
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_get_following">get_following</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>, profile_id: <b>address</b>): vector&lt;<b>address</b>&gt; {
-    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, profile_id)) {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_get_following">get_following</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>, wallet_address: <b>address</b>): vector&lt;<b>address</b>&gt; {
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, wallet_address)) {
         <b>return</b> vector::empty()
     };
-    <b>let</b> following = table::borrow(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, profile_id);
+    <b>let</b> following = table::borrow(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.following, wallet_address);
     vec_set::into_keys(*following)
 }
 </code></pre>
@@ -633,10 +614,10 @@ Get the list of profiles a user is following
 
 ## Function `get_followers`
 
-Get the list of followers for a profile
+Get the list of followers for a wallet address
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_get_followers">get_followers</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, profile_id: <b>address</b>): vector&lt;<b>address</b>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_get_followers">get_followers</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, wallet_address: <b>address</b>): vector&lt;<b>address</b>&gt;
 </code></pre>
 
 
@@ -645,11 +626,11 @@ Get the list of followers for a profile
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_get_followers">get_followers</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>, profile_id: <b>address</b>): vector&lt;<b>address</b>&gt; {
-    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, profile_id)) {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_get_followers">get_followers</a>(<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">SocialGraph</a>, wallet_address: <b>address</b>): vector&lt;<b>address</b>&gt; {
+    <b>if</b> (!table::contains(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, wallet_address)) {
         <b>return</b> vector::empty()
     };
-    <b>let</b> followers = table::borrow(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, profile_id);
+    <b>let</b> followers = table::borrow(&<a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>.followers, wallet_address);
     vec_set::into_keys(*followers)
 }
 </code></pre>

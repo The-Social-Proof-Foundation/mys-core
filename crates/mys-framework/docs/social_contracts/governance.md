@@ -81,7 +81,6 @@ Implements proposal submission, voting, and execution processes
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
 <b>use</b> <a href="../mys/bls12381.md#mys_bls12381">mys::bls12381</a>;
-<b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
 <b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
@@ -100,8 +99,6 @@ Implements proposal submission, voting, and execution processes
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
-<b>use</b> <a href="../social_contracts/profile.md#social_contracts_profile">social_contracts::profile</a>;
-<b>use</b> <a href="../social_contracts/subscription.md#social_contracts_subscription">social_contracts::subscription</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
@@ -183,11 +180,6 @@ Governance registry that keeps track of all delegates and proposals
 </dd>
 <dt>
 <code>proposal_submission_cost: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>min_on_chain_age_days: u64</code>
 </dt>
 <dd>
 </dd>
@@ -286,11 +278,6 @@ Delegate struct representing a member of the delegate council
 <dd>
 </dd>
 <dt>
-<code>profile_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a></code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>upvotes: u64</code>
 </dt>
 <dd>
@@ -354,11 +341,6 @@ Nominee struct representing a user nominated but not yet active
 <dl>
 <dt>
 <code><b>address</b>: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>profile_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a></code>
 </dt>
 <dd>
 </dd>
@@ -529,11 +511,6 @@ Event emitted when a new delegate is elected
 <dd>
 </dd>
 <dt>
-<code>profile_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a></code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>term_start: u64</code>
 </dt>
 <dd>
@@ -572,11 +549,6 @@ Event emitted when a user is nominated to become a delegate in a future term
 <dl>
 <dt>
 <code>nominee_address: <b>address</b></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>profile_id: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a></code>
 </dt>
 <dd>
 </dd>
@@ -1219,11 +1191,6 @@ Event emitted when governance parameters are updated
 <dd>
 </dd>
 <dt>
-<code>min_on_chain_age_days: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>max_votes_per_user: u64</code>
 </dt>
 <dd>
@@ -1293,11 +1260,6 @@ This event matches the GovernanceRegistryEvent structure expected by the indexer
 </dd>
 <dt>
 <code>proposal_submission_cost: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>min_on_chain_age_days: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1701,7 +1663,6 @@ This function has the same logic as init() but can be called by bootstrap
         delegate_count: 3, // Larger council <b>for</b> ecosystem decisions
         delegate_term_epochs: 90, // 3 months <b>for</b> ecosystem delegates
         proposal_submission_cost: 100_000_000, // 100 MYS <b>for</b> ecosystem proposals
-        min_on_chain_age_days: 30, // 1 month minimum <b>for</b> ecosystem voting
         max_votes_per_user: 10, // Up to 10 votes per user
         quadratic_base_cost: 10_000_000, // 10 MYS per additional vote
         voting_period_epochs: 7, // 7 epochs <b>for</b> ecosystem votes
@@ -1728,7 +1689,6 @@ This function has the same logic as init() but can be called by bootstrap
         delegate_count: ecosystem_registry.delegate_count,
         delegate_term_epochs: ecosystem_registry.delegate_term_epochs,
         proposal_submission_cost: ecosystem_registry.proposal_submission_cost,
-        min_on_chain_age_days: ecosystem_registry.min_on_chain_age_days,
         max_votes_per_user: ecosystem_registry.max_votes_per_user,
         quadratic_base_cost: ecosystem_registry.quadratic_base_cost,
         voting_period_epochs: ecosystem_registry.voting_period_epochs,
@@ -1745,7 +1705,6 @@ This function has the same logic as init() but can be called by bootstrap
         delegate_count: 2, // Smaller council <b>for</b> proof of creativity
         delegate_term_epochs: 180, // 3 months <b>for</b> proof of creativity delegates
         proposal_submission_cost: 25_000_000, // 25 MYS <b>for</b> proof of creativity
-        min_on_chain_age_days: 1, // 1 day minimum <b>for</b> proof of creativity voting
         max_votes_per_user: 3, // Up to 3 votes per user
         quadratic_base_cost: 2_500_000, // 2.5 MYS per additional vote
         voting_period_epochs: 1, // 1 epoch <b>for</b> proof of creativity votes
@@ -1772,7 +1731,6 @@ This function has the same logic as init() but can be called by bootstrap
         delegate_count: proof_of_creativity_registry.delegate_count,
         delegate_term_epochs: proof_of_creativity_registry.delegate_term_epochs,
         proposal_submission_cost: proof_of_creativity_registry.proposal_submission_cost,
-        min_on_chain_age_days: proof_of_creativity_registry.min_on_chain_age_days,
         max_votes_per_user: proof_of_creativity_registry.max_votes_per_user,
         quadratic_base_cost: proof_of_creativity_registry.quadratic_base_cost,
         voting_period_epochs: proof_of_creativity_registry.voting_period_epochs,
@@ -1826,7 +1784,7 @@ Update governance parameters (internal function)
 This function does not perform authorization checks - callers must verify permissions
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters_internal">update_governance_parameters_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters_internal">update_governance_parameters_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1840,7 +1798,6 @@ This function does not perform authorization checks - callers must verify permis
     delegate_count: u64,
     delegate_term_epochs: u64,
     proposal_submission_cost: u64,
-    min_on_chain_age_days: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
     voting_period_epochs: u64,
@@ -1853,7 +1810,6 @@ This function does not perform authorization checks - callers must verify permis
     <b>assert</b>!(delegate_count &gt; 1, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
     <b>assert</b>!(delegate_term_epochs &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
     // proposal_submission_cost can be 0
-    // min_on_chain_age_days can be 0
     <b>assert</b>!(max_votes_per_user &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
     // quadratic_base_cost can be 0 (<b>if</b> voting is free)
     <b>assert</b>!(voting_period_epochs &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
@@ -1862,7 +1818,6 @@ This function does not perform authorization checks - callers must verify permis
     registry.delegate_count = delegate_count;
     registry.delegate_term_epochs = delegate_term_epochs;
     registry.proposal_submission_cost = proposal_submission_cost;
-    registry.min_on_chain_age_days = min_on_chain_age_days;
     registry.max_votes_per_user = max_votes_per_user;
     registry.quadratic_base_cost = quadratic_base_cost;
     registry.voting_period_epochs = voting_period_epochs;
@@ -1874,7 +1829,6 @@ This function does not perform authorization checks - callers must verify permis
         delegate_count,
         delegate_term_epochs,
         proposal_submission_cost,
-        min_on_chain_age_days,
         max_votes_per_user,
         quadratic_base_cost,
         voting_period_epochs,
@@ -1897,7 +1851,7 @@ Can only be called by the platform module (which verifies platform ownership)
 This function is package-private to prevent direct calls that bypass platform ownership verification
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_platform_governance_parameters">update_platform_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, platform_developer: <b>address</b>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_platform_governance_parameters">update_platform_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, platform_developer: <b>address</b>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1912,7 +1866,6 @@ This function is package-private to prevent direct calls that bypass platform ow
     delegate_count: u64,
     delegate_term_epochs: u64,
     proposal_submission_cost: u64,
-    min_on_chain_age_days: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
     voting_period_epochs: u64,
@@ -1930,7 +1883,6 @@ This function is package-private to prevent direct calls that bypass platform ow
         delegate_count,
         delegate_term_epochs,
         proposal_submission_cost,
-        min_on_chain_age_days,
         max_votes_per_user,
         quadratic_base_cost,
         voting_period_epochs,
@@ -1952,7 +1904,7 @@ Update governance parameters for ecosystem/proof-of-creativity registries
 Can only be called by governance admin
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">social_contracts::governance::GovernanceAdminCap</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">social_contracts::governance::GovernanceAdminCap</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1967,7 +1919,6 @@ Can only be called by governance admin
     delegate_count: u64,
     delegate_term_epochs: u64,
     proposal_submission_cost: u64,
-    min_on_chain_age_days: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
     voting_period_epochs: u64,
@@ -1982,7 +1933,6 @@ Can only be called by governance admin
         delegate_count,
         delegate_term_epochs,
         proposal_submission_cost,
-        min_on_chain_age_days,
         max_votes_per_user,
         quadratic_base_cost,
         voting_period_epochs,
@@ -2001,10 +1951,10 @@ Can only be called by governance admin
 ## Function `nominate_delegate`
 
 Nominate self as a delegate
-Requires the caller to have a valid profile
+Uses wallet-level architecture - no profile required
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_nominate_delegate">nominate_delegate</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, profile_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_nominate_delegate">nominate_delegate</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2015,7 +1965,6 @@ Requires the caller to have a valid profile
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_nominate_delegate">nominate_delegate</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
-    profile_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">profile::UsernameRegistry</a>,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
@@ -2025,15 +1974,9 @@ Requires the caller to have a valid profile
     // Check <b>if</b> already a delegate or nominee delegate
     <b>assert</b>!(!table::contains(&registry.delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_EAlreadyDelegate">EAlreadyDelegate</a>);
     <b>assert</b>!(!table::contains(&registry.nominated_delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_EAlreadyNominated">EAlreadyNominated</a>);
-    <b>let</b> <b>mut</b> profile_id_opt = <a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(profile_registry, caller);
-    <b>assert</b>!(option::is_some(&profile_id_opt), <a href="../social_contracts/governance.md#social_contracts_governance_EUnauthorized">EUnauthorized</a>);
-    // Get <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> ID
-    <b>let</b> profile_id_addr = option::extract(&<b>mut</b> profile_id_opt);
-    <b>let</b> profile_id = object::id_from_address(profile_id_addr);
     <b>let</b> scheduled_term_start_epoch = ((current_epoch / registry.delegate_term_epochs) + 1) * registry.delegate_term_epochs;
     <b>let</b> nominated_delegate = <a href="../social_contracts/governance.md#social_contracts_governance_NominatedDelegate">NominatedDelegate</a> {
         <b>address</b>: caller,
-        profile_id,
         scheduled_term_start_epoch,
         upvotes: 0,
         downvotes: 0,
@@ -2044,7 +1987,6 @@ Requires the caller to have a valid profile
     table::add(&<b>mut</b> registry.voters, caller, table::new&lt;<b>address</b>, bool&gt;(ctx));
     event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_DelegateNominatedEvent">DelegateNominatedEvent</a> {
         nominee_address: caller,
-        profile_id,
         scheduled_term_start_epoch,
         registry_type: registry.registry_type,
     });
@@ -2233,7 +2175,6 @@ Updates delegate panel at the end of a delegate term cycle.
     };
     // --- Gather Candidates Data ---
     <b>let</b> <b>mut</b> candidate_addresses = vector::empty&lt;<b>address</b>&gt;();
-    <b>let</b> <b>mut</b> candidate_profile_ids = vector::empty&lt;ID&gt;();
     <b>let</b> <b>mut</b> candidate_upvotes = vector::empty&lt;u64&gt;();
     <b>let</b> <b>mut</b> candidate_downvotes = vector::empty&lt;u64&gt;();
     <b>let</b> <b>mut</b> candidate_net_votes = vector::empty&lt;u64&gt;(); // For sorting calculations
@@ -2250,7 +2191,6 @@ Updates delegate panel at the end of a delegate term cycle.
         <b>if</b> (table::contains(&registry.delegates, addr)) { // Check existence before borrow
             <b>let</b> delegate: &<a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a> = table::borrow(&registry.delegates, addr);
             vector::push_back(&<b>mut</b> candidate_addresses, addr);
-            vector::push_back(&<b>mut</b> candidate_profile_ids, delegate.profile_id);
             vector::push_back(&<b>mut</b> candidate_upvotes, delegate.upvotes);
             vector::push_back(&<b>mut</b> candidate_downvotes, delegate.downvotes);
             vector::push_back(&<b>mut</b> candidate_is_incumbent, <b>true</b>); // Mark <b>as</b> incumbent
@@ -2286,7 +2226,6 @@ Updates delegate panel at the end of a delegate term cycle.
         <b>if</b> (table::contains(&registry.nominated_delegates, addr)) { // Check existence
             <b>let</b> nominee: &<a href="../social_contracts/governance.md#social_contracts_governance_NominatedDelegate">NominatedDelegate</a> = table::borrow(&registry.nominated_delegates, addr);
             vector::push_back(&<b>mut</b> candidate_addresses, addr);
-            vector::push_back(&<b>mut</b> candidate_profile_ids, nominee.profile_id);
             vector::push_back(&<b>mut</b> candidate_upvotes, nominee.upvotes);
             vector::push_back(&<b>mut</b> candidate_downvotes, nominee.downvotes);
             vector::push_back(&<b>mut</b> candidate_is_incumbent, <b>false</b>); // Mark <b>as</b> non-incumbent
@@ -2335,10 +2274,6 @@ Updates delegate panel at the end of a delegate term cycle.
                 <b>let</b> temp_addr = *vector::borrow(&candidate_addresses, a);
                 *vector::borrow_mut(&<b>mut</b> candidate_addresses, a) = *vector::borrow(&candidate_addresses, b);
                 *vector::borrow_mut(&<b>mut</b> candidate_addresses, b) = temp_addr;
-                // Swap <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> IDs
-                <b>let</b> temp_id = *vector::borrow(&candidate_profile_ids, a);
-                *vector::borrow_mut(&<b>mut</b> candidate_profile_ids, a) = *vector::borrow(&candidate_profile_ids, b);
-                *vector::borrow_mut(&<b>mut</b> candidate_profile_ids, b) = temp_id;
                 // Swap upvotes
                 <b>let</b> temp_up = *vector::borrow(&candidate_upvotes, a);
                 *vector::borrow_mut(&<b>mut</b> candidate_upvotes, a) = *vector::borrow(&candidate_upvotes, b);
@@ -2373,7 +2308,7 @@ Updates delegate panel at the end of a delegate term cycle.
         // Check <b>if</b> it exists before removing (might have been removed <b>if</b> somehow duplicated)
         <b>if</b> (table::contains(&registry.delegates, addr)) {
              <b>let</b> old_delegate = table::remove(&<b>mut</b> registry.delegates, addr);
-             <b>let</b> <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a> { <b>address</b>: _, profile_id: _, upvotes: _, downvotes: _, proposals_reviewed: _, proposals_submitted: _, sided_winning_proposals: _, sided_losing_proposals: _, term_start: _, term_end: _ } = old_delegate;
+             <b>let</b> <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a> { <b>address</b>: _, upvotes: _, downvotes: _, proposals_reviewed: _, proposals_submitted: _, sided_winning_proposals: _, sided_losing_proposals: _, term_start: _, term_end: _ } = old_delegate;
         };
         k = k + 1;
     };
@@ -2383,7 +2318,7 @@ Updates delegate panel at the end of a delegate term cycle.
         <b>let</b> addr = *vector::borrow(&nominee_keys_vec, l);
         <b>if</b> (table::contains(&registry.nominated_delegates, addr)) {
             <b>let</b> old_nominee = table::remove(&<b>mut</b> registry.nominated_delegates, addr);
-            <b>let</b> <a href="../social_contracts/governance.md#social_contracts_governance_NominatedDelegate">NominatedDelegate</a> { <b>address</b>: _, profile_id: _, scheduled_term_start_epoch: _, upvotes: _, downvotes: _ } = old_nominee;
+            <b>let</b> <a href="../social_contracts/governance.md#social_contracts_governance_NominatedDelegate">NominatedDelegate</a> { <b>address</b>: _, scheduled_term_start_epoch: _, upvotes: _, downvotes: _ } = old_nominee;
          };
          l = l + 1;
     };
@@ -2392,14 +2327,12 @@ Updates delegate panel at the end of a delegate term cycle.
     <b>let</b> <b>mut</b> m = 0;
     <b>while</b> (m &lt; final_winner_count) {
         <b>let</b> winner_addr = *vector::borrow(&candidate_addresses, m);
-        <b>let</b> winner_profile_id = *vector::borrow(&candidate_profile_ids, m);
         <b>let</b> winner_upvotes = *vector::borrow(&candidate_upvotes, m);
         <b>let</b> winner_downvotes = *vector::borrow(&candidate_downvotes, m);
         <b>let</b> term_start = current_epoch;
         <b>let</b> term_end = term_start + delegate_term_epochs;
         <b>let</b> new_delegate = <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a> {
             <b>address</b>: winner_addr,
-            profile_id: winner_profile_id,
             upvotes: winner_upvotes,
             downvotes: winner_downvotes,
             proposals_reviewed: 0, // Reset counters
@@ -2415,7 +2348,6 @@ Updates delegate panel at the end of a delegate term cycle.
         vec_set::insert(&<b>mut</b> registry.delegate_addresses, winner_addr);
         event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_DelegateElectedEvent">DelegateElectedEvent</a> {
             delegate_address: winner_addr,
-            profile_id: winner_profile_id,
             term_start: term_start,
             term_end: term_end,
             registry_type: registry.registry_type,
@@ -2424,7 +2356,6 @@ Updates delegate panel at the end of a delegate term cycle.
     };
     // Destroy helper vectors used <b>for</b> candidate data
     vector::destroy_empty(candidate_addresses);
-    vector::destroy_empty(candidate_profile_ids);
     vector::destroy_empty(candidate_upvotes);
     vector::destroy_empty(candidate_downvotes);
     vector::destroy_empty(candidate_net_votes);
@@ -2461,7 +2392,7 @@ Handles proposal types: ecosystem and proof of creativity
     proposal_type: u8,
     title: String,
     description: String,
-    disputed_id: Option&lt;ID&gt;, // Optional ID <b>for</b> disputes (<a href="../social_contracts/profile.md#social_contracts_profile">profile</a> or content)
+    disputed_id: Option&lt;ID&gt;, // Optional ID <b>for</b> disputes (content only)
     reference_id: Option&lt;ID&gt;, // Optional reference
     metadata_json: Option&lt;String&gt;,
     coin: &<b>mut</b> Coin&lt;MYS&gt;,
@@ -3638,7 +3569,7 @@ Get number of delegates
 Get delegate information
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_get_delegate_info">get_delegate_info</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, addr: <b>address</b>): (<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, u64, u64, u64, u64, u64, u64, u64, u64)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_get_delegate_info">get_delegate_info</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, addr: <b>address</b>): (u64, u64, u64, u64, u64, u64, u64, u64)
 </code></pre>
 
 
@@ -3650,11 +3581,10 @@ Get delegate information
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_get_delegate_info">get_delegate_info</a>(
     registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
     addr: <b>address</b>
-): (ID, u64, u64, u64, u64, u64, u64, u64, u64) {
+): (u64, u64, u64, u64, u64, u64, u64, u64) {
     <b>assert</b>!(table::contains(&registry.delegates, addr), <a href="../social_contracts/governance.md#social_contracts_governance_ENotDelegate">ENotDelegate</a>);
     <b>let</b> delegate = table::borrow(&registry.delegates, addr);
     (
-        delegate.profile_id,
         delegate.upvotes,
         delegate.downvotes,
         delegate.proposals_reviewed,
@@ -3834,7 +3764,7 @@ Check if delegate term has expired
 Get governance parameters
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_get_governance_parameters">get_governance_parameters</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>): (u64, u64, u64, u64, u64, u64, u64, u64)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_get_governance_parameters">get_governance_parameters</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>): (u64, u64, u64, u64, u64, u64, u64)
 </code></pre>
 
 
@@ -3845,12 +3775,11 @@ Get governance parameters
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_get_governance_parameters">get_governance_parameters</a>(
     registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>
-): (u64, u64, u64, u64, u64, u64, u64, u64) {
+): (u64, u64, u64, u64, u64, u64, u64) {
     (
         registry.delegate_count,
         registry.delegate_term_epochs,
         registry.proposal_submission_cost,
-        registry.min_on_chain_age_days,
         registry.max_votes_per_user,
         registry.quadratic_base_cost,
         registry.voting_period_epochs,
@@ -3911,7 +3840,7 @@ Create a platform-specific governance registry when a platform is approved
 This function can only be called by the platform toggle_platform_approval function
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>
 </code></pre>
 
 
@@ -3924,7 +3853,6 @@ This function can only be called by the platform toggle_platform_approval functi
     delegate_count: u64,
     delegate_term_epochs: u64,
     proposal_submission_cost: u64,
-    min_on_chain_age_days: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
     voting_period_epochs: u64,
@@ -3940,7 +3868,6 @@ This function can only be called by the platform toggle_platform_approval functi
         delegate_count,
         delegate_term_epochs,
         proposal_submission_cost,
-        min_on_chain_age_days,
         max_votes_per_user,
         quadratic_base_cost,
         voting_period_epochs,
@@ -3967,7 +3894,6 @@ This function can only be called by the platform toggle_platform_approval functi
         delegate_count: platform_registry.delegate_count,
         delegate_term_epochs: platform_registry.delegate_term_epochs,
         proposal_submission_cost: platform_registry.proposal_submission_cost,
-        min_on_chain_age_days: platform_registry.min_on_chain_age_days,
         max_votes_per_user: platform_registry.max_votes_per_user,
         quadratic_base_cost: platform_registry.quadratic_base_cost,
         voting_period_epochs: platform_registry.voting_period_epochs,

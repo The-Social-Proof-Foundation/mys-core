@@ -15,6 +15,7 @@ Manages social media platforms and their timelines
 -  [Struct `ModeratorAddedEvent`](#social_contracts_platform_ModeratorAddedEvent)
 -  [Struct `ModeratorRemovedEvent`](#social_contracts_platform_ModeratorRemovedEvent)
 -  [Struct `PlatformApprovalChangedEvent`](#social_contracts_platform_PlatformApprovalChangedEvent)
+-  [Struct `PlatformDeletedEvent`](#social_contracts_platform_PlatformDeletedEvent)
 -  [Struct `UserJoinedPlatformEvent`](#social_contracts_platform_UserJoinedPlatformEvent)
 -  [Struct `UserLeftPlatformEvent`](#social_contracts_platform_UserLeftPlatformEvent)
 -  [Struct `TokenAirdropEvent`](#social_contracts_platform_TokenAirdropEvent)
@@ -33,6 +34,7 @@ Manages social media platforms and their timelines
 -  [Function `block_wallet`](#social_contracts_platform_block_wallet)
 -  [Function `unblock_wallet`](#social_contracts_platform_unblock_wallet)
 -  [Function `toggle_platform_approval`](#social_contracts_platform_toggle_platform_approval)
+-  [Function `delete_platform`](#social_contracts_platform_delete_platform)
 -  [Function `new_status`](#social_contracts_platform_new_status)
 -  [Function `status_value`](#social_contracts_platform_status_value)
 -  [Function `is_valid_category`](#social_contracts_platform_is_valid_category)
@@ -758,6 +760,58 @@ Platform approval status changed event
 
 </details>
 
+<a name="social_contracts_platform_PlatformDeletedEvent"></a>
+
+## Struct `PlatformDeletedEvent`
+
+Platform deleted event
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformDeletedEvent">PlatformDeletedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>platform_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>deleted_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_platform_UserJoinedPlatformEvent"></a>
 
 ## Struct `UserJoinedPlatformEvent`
@@ -1306,6 +1360,15 @@ Platform category constants
 
 
 
+<a name="social_contracts_platform_EPlatformApproved"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EPlatformApproved">EPlatformApproved</a>: u64 = 16;
+</code></pre>
+
+
+
 <a name="social_contracts_platform_EUnauthorized"></a>
 
 Error codes
@@ -1631,11 +1694,6 @@ Create a new platform and transfer to developer
         } <b>else</b> {
             50_000_000 // Default value
         };
-        <b>let</b> min_on_chain_age_days = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.min_on_chain_age_days)) {
-            *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.min_on_chain_age_days)
-        } <b>else</b> {
-            7 // Default value
-        };
         <b>let</b> max_votes_per_user = <b>if</b> (option::is_some(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.max_votes_per_user)) {
             *option::borrow(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.max_votes_per_user)
         } <b>else</b> {
@@ -1661,7 +1719,6 @@ Create a new platform and transfer to developer
             delegate_count,
             delegate_term_epochs,
             proposal_submission_cost,
-            min_on_chain_age_days,
             max_votes_per_user,
             quadratic_base_cost,
             voting_period_epochs,
@@ -2039,7 +2096,7 @@ Allows platform developers/moderators to block wallets using the platform addres
 This enables platforms (shared objects) to block user wallets
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_block_wallet">block_wallet</a>(block_list_registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, blocked_wallet_address: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_block_wallet">block_wallet</a>(block_list_registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_contracts::social_graph::SocialGraph</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, blocked_wallet_address: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2051,7 +2108,6 @@ This enables platforms (shared objects) to block user wallets
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_block_wallet">block_wallet</a>(
     block_list_registry: &<b>mut</b> <a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
     <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>: &<b>mut</b> <a href="../social_contracts/social_graph.md#social_contracts_social_graph_SocialGraph">social_graph::SocialGraph</a>,
-    username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">profile::UsernameRegistry</a>,
     <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
     blocked_wallet_address: <b>address</b>,
     ctx: &<b>mut</b> TxContext
@@ -2067,10 +2123,8 @@ This enables platforms (shared objects) to block user wallets
     <a href="../social_contracts/block_list.md#social_contracts_block_list_block_wallet_internal">block_list::block_wallet_internal</a>(
         block_list_registry,
         <a href="../social_contracts/social_graph.md#social_contracts_social_graph">social_graph</a>,
-        username_registry,
         platform_address,
-        blocked_wallet_address,
-        ctx
+        blocked_wallet_address
     );
 }
 </code></pre>
@@ -2162,6 +2216,87 @@ Optional reasoning can be provided to explain the decision
         platform_id,
         approved: new_approval,
         changed_by: tx_context::sender(ctx),
+        reasoning,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_delete_platform"></a>
+
+## Function `delete_platform`
+
+Delete a platform (requires PlatformAdminCap only)
+Can only delete platforms that are NOT approved
+Optional reasoning can be provided to explain the deletion
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_delete_platform">delete_platform</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>, reasoning: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_delete_platform">delete_platform</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a>,
+    reasoning: Option&lt;String&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    // Check version compatibility
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(registry.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    // Admin capability verification is handled by type system
+    <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+    <b>let</b> platform_name = <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
+    <b>let</b> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> = <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
+    // Verify the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> exists in the registry
+    <b>assert</b>!(table::contains(&registry.platform_approvals, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is NOT approved (can only delete unapproved platforms)
+    <b>let</b> <a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a> = *table::borrow(&registry.platform_approvals, platform_id);
+    <b>assert</b>!(!<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EPlatformApproved">EPlatformApproved</a>);
+    // Validate reasoning length <b>if</b> provided
+    <b>if</b> (option::is_some(&reasoning)) {
+        <b>let</b> reasoning_val = option::borrow(&reasoning);
+        <b>assert</b>!(string::length(reasoning_val) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_REASONING_LENGTH">MAX_REASONING_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EInvalidReasoning">EInvalidReasoning</a>);
+    };
+    // Remove from platforms_by_name table
+    <b>if</b> (table::contains(&registry.platforms_by_name, platform_name)) {
+        table::remove(&<b>mut</b> registry.platforms_by_name, platform_name);
+    };
+    // Remove from platforms_by_developer table
+    <b>if</b> (table::contains(&registry.platforms_by_developer, <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>)) {
+        <b>let</b> developer_platforms = table::borrow_mut(&<b>mut</b> registry.platforms_by_developer, <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>);
+        <b>let</b> <b>mut</b> i = 0;
+        <b>let</b> len = vector::length(developer_platforms);
+        <b>while</b> (i &lt; len) {
+            <b>if</b> (*vector::borrow(developer_platforms, i) == platform_id) {
+                vector::remove(developer_platforms, i);
+                <b>break</b>
+            };
+            i = i + 1;
+        };
+        // If <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> <b>has</b> no more platforms, remove the <b>entry</b>
+        <b>if</b> (vector::length(developer_platforms) == 0) {
+            table::remove(&<b>mut</b> registry.platforms_by_developer, <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>);
+        };
+    };
+    // Remove from platform_approvals table
+    table::remove(&<b>mut</b> registry.platform_approvals, platform_id);
+    // Emit <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> deleted event
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_PlatformDeletedEvent">PlatformDeletedEvent</a> {
+        platform_id,
+        <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: platform_name,
+        <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>,
+        deleted_by: tx_context::sender(ctx),
+        timestamp: tx_context::epoch_timestamp_ms(ctx),
         reasoning,
     });
 }
@@ -3096,7 +3231,7 @@ Update governance parameters for this platform's governance registry
 Can only be called by the platform developer
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_update_platform_governance">update_platform_governance</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, min_on_chain_age_days: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_update_platform_governance">update_platform_governance</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3111,7 +3246,6 @@ Can only be called by the platform developer
     delegate_count: u64,
     delegate_term_epochs: u64,
     proposal_submission_cost: u64,
-    min_on_chain_age_days: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
     voting_period_epochs: u64,
@@ -3135,7 +3269,6 @@ Can only be called by the platform developer
         delegate_count,
         delegate_term_epochs,
         proposal_submission_cost,
-        min_on_chain_age_days,
         max_votes_per_user,
         quadratic_base_cost,
         voting_period_epochs,

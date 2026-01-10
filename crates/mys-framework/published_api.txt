@@ -1411,6 +1411,9 @@ supply_value
 create_supply
 	public fun
 	0x2::balance
+create_supply_without_witness
+	public(package) fun
+	0x2::balance
 increase_supply
 	public fun
 	0x2::balance
@@ -4735,6 +4738,93 @@ emit_migration_event
 create_upgrade_admin_cap
 	public(package) fun
 	0x50c1::upgrade
+SocialGraph
+	public struct
+	0x50c1::social_graph
+FollowEvent
+	public struct
+	0x50c1::social_graph
+UnfollowEvent
+	public struct
+	0x50c1::social_graph
+bootstrap_init
+	public(package) fun
+	0x50c1::social_graph
+follow
+	public entry fun
+	0x50c1::social_graph
+unfollow
+	public entry fun
+	0x50c1::social_graph
+unfollow_internal
+	public(package) fun
+	0x50c1::social_graph
+migrate_social_graph
+	public entry fun
+	0x50c1::social_graph
+borrow_version_mut
+	public(package) fun
+	0x50c1::social_graph
+version
+	public fun
+	0x50c1::social_graph
+is_following
+	public fun
+	0x50c1::social_graph
+following_count
+	public fun
+	0x50c1::social_graph
+follower_count
+	public fun
+	0x50c1::social_graph
+get_following
+	public fun
+	0x50c1::social_graph
+get_followers
+	public fun
+	0x50c1::social_graph
+BlockListRegistry
+	public struct
+	0x50c1::block_list
+UserBlockEvent
+	public struct
+	0x50c1::block_list
+UserUnblockEvent
+	public struct
+	0x50c1::block_list
+bootstrap_init
+	public(package) fun
+	0x50c1::block_list
+block_wallet_internal
+	public(package) fun
+	0x50c1::block_list
+block_wallet
+	public entry fun
+	0x50c1::block_list
+unblock_wallet_internal
+	public(package) fun
+	0x50c1::block_list
+unblock_wallet
+	public entry fun
+	0x50c1::block_list
+is_blocked
+	public fun
+	0x50c1::block_list
+blocked_count
+	public fun
+	0x50c1::block_list
+get_blocked_wallets
+	public fun
+	0x50c1::block_list
+registry_version
+	public fun
+	0x50c1::block_list
+borrow_registry_version_mut
+	public(package) fun
+	0x50c1::block_list
+migrate_block_list_registry
+	public entry fun
+	0x50c1::block_list
 ProfileSubscriptionService
 	public struct
 	0x50c1::subscription
@@ -4813,6 +4903,9 @@ subscription_auto_renew
 subscription_renewal_balance
 	public fun
 	0x50c1::subscription
+EcosystemTreasuryAdminCap
+	public struct
+	0x50c1::profile
 EcosystemTreasury
 	public struct
 	0x50c1::profile
@@ -4825,6 +4918,9 @@ Profile
 ProfileBadge
 	public struct
 	0x50c1::profile
+BadgeData
+	public struct
+	0x50c1::profile
 VestingWallet
 	public struct
 	0x50c1::profile
@@ -4835,6 +4931,9 @@ BadgeRevokedEvent
 	public struct
 	0x50c1::profile
 BadgeSelectedEvent
+	public struct
+	0x50c1::profile
+BadgeRemovedEvent
 	public struct
 	0x50c1::profile
 ProfileCreatedEvent
@@ -4868,6 +4967,9 @@ VestingWalletDeletedEvent
 	public struct
 	0x50c1::profile
 PaidMessagingSettingsUpdatedEvent
+	public struct
+	0x50c1::profile
+EcosystemTreasuryUpdatedEvent
 	public struct
 	0x50c1::profile
 bootstrap_init
@@ -4912,9 +5014,6 @@ owner
 id
 	public fun
 	0x50c1::profile
-last_updated
-	public fun
-	0x50c1::profile
 username
 	public fun
 	0x50c1::profile
@@ -4929,12 +5028,6 @@ get_id_address
 	0x50c1::profile
 get_owner
 	public fun
-	0x50c1::profile
-get_tips_received
-	public fun
-	0x50c1::profile
-add_tips_received
-	public(package) fun
 	0x50c1::profile
 create_subscription_service
 	public entry fun
@@ -4960,6 +5053,18 @@ has_offers
 get_treasury_address
 	public fun
 	0x50c1::profile
+update_treasury_address
+	public entry fun
+	0x50c1::profile
+treasury_version
+	public fun
+	0x50c1::profile
+migrate_ecosystem_treasury
+	public entry fun
+	0x50c1::profile
+create_ecosystem_treasury_admin_cap
+	public(package) fun
+	0x50c1::profile
 version
 	public fun
 	0x50c1::profile
@@ -4981,6 +5086,9 @@ add_badge_to_profile
 remove_badge_from_profile
 	public(package) fun
 	0x50c1::profile
+remove_own_badge
+	public entry fun
+	0x50c1::profile
 get_profile_badges
 	public fun
 	0x50c1::profile
@@ -4994,6 +5102,33 @@ get_platform_badges
 	public fun
 	0x50c1::profile
 badge_id
+	public fun
+	0x50c1::profile
+badge_data_id
+	public fun
+	0x50c1::profile
+badge_data_name
+	public fun
+	0x50c1::profile
+badge_data_description
+	public fun
+	0x50c1::profile
+badge_data_media_url
+	public fun
+	0x50c1::profile
+badge_data_icon_url
+	public fun
+	0x50c1::profile
+badge_data_platform_id
+	public fun
+	0x50c1::profile
+badge_data_issued_at
+	public fun
+	0x50c1::profile
+badge_data_issued_by
+	public fun
+	0x50c1::profile
+badge_data_badge_type
 	public fun
 	0x50c1::profile
 badge_count
@@ -5062,123 +5197,6 @@ requires_paid_message
 get_min_message_cost
 	public fun
 	0x50c1::profile
-SocialGraph
-	public struct
-	0x50c1::social_graph
-FollowEvent
-	public struct
-	0x50c1::social_graph
-UnfollowEvent
-	public struct
-	0x50c1::social_graph
-bootstrap_init
-	public(package) fun
-	0x50c1::social_graph
-follow
-	public entry fun
-	0x50c1::social_graph
-unfollow
-	public entry fun
-	0x50c1::social_graph
-unfollow_internal
-	public(package) fun
-	0x50c1::social_graph
-migrate_social_graph
-	public entry fun
-	0x50c1::social_graph
-borrow_version_mut
-	public(package) fun
-	0x50c1::social_graph
-version
-	public fun
-	0x50c1::social_graph
-is_following
-	public fun
-	0x50c1::social_graph
-following_count
-	public fun
-	0x50c1::social_graph
-follower_count
-	public fun
-	0x50c1::social_graph
-get_following
-	public fun
-	0x50c1::social_graph
-get_followers
-	public fun
-	0x50c1::social_graph
-BlockList
-	public struct
-	0x50c1::block_list
-BlockListRegistry
-	public struct
-	0x50c1::block_list
-UserBlockEvent
-	public struct
-	0x50c1::block_list
-UserUnblockEvent
-	public struct
-	0x50c1::block_list
-BlockListCreatedEvent
-	public struct
-	0x50c1::block_list
-create_block_list
-	fun
-	0x50c1::block_list
-create_block_list_for_sender
-	public entry fun
-	0x50c1::block_list
-bootstrap_init
-	public(package) fun
-	0x50c1::block_list
-get_blocked_wallets_key
-	fun
-	0x50c1::block_list
-block_wallet_internal
-	public(package) fun
-	0x50c1::block_list
-block_wallet
-	public entry fun
-	0x50c1::block_list
-unblock_wallet_internal
-	public(package) fun
-	0x50c1::block_list
-unblock_wallet
-	public entry fun
-	0x50c1::block_list
-has_block_list
-	public fun
-	0x50c1::block_list
-find_block_list_id
-	public fun
-	0x50c1::block_list
-is_blocked
-	public fun
-	0x50c1::block_list
-blocked_count
-	public fun
-	0x50c1::block_list
-get_blocked_wallets
-	public fun
-	0x50c1::block_list
-version
-	public fun
-	0x50c1::block_list
-borrow_version_mut
-	public(package) fun
-	0x50c1::block_list
-registry_version
-	public fun
-	0x50c1::block_list
-borrow_registry_version_mut
-	public(package) fun
-	0x50c1::block_list
-migrate_block_list
-	public entry fun
-	0x50c1::block_list
-migrate_block_list_registry
-	public entry fun
-	0x50c1::block_list
 GovernanceAdminCap
 	public struct
 	0x50c1::governance
@@ -5389,6 +5407,9 @@ ModeratorRemovedEvent
 PlatformApprovalChangedEvent
 	public struct
 	0x50c1::platform
+PlatformDeletedEvent
+	public struct
+	0x50c1::platform
 UserJoinedPlatformEvent
 	public struct
 	0x50c1::platform
@@ -5438,6 +5459,9 @@ unblock_wallet
 	public fun
 	0x50c1::platform
 toggle_platform_approval
+	public fun
+	0x50c1::platform
+delete_platform
 	public fun
 	0x50c1::platform
 new_status
@@ -5887,9 +5911,6 @@ TokenRegistry
 ReservationPool
 	public struct
 	0x50c1::social_proof_tokens
-ReservationInfo
-	public struct
-	0x50c1::social_proof_tokens
 TokenInfo
 	public struct
 	0x50c1::social_proof_tokens
@@ -5903,9 +5924,6 @@ ReservationPoolObject
 	public struct
 	0x50c1::social_proof_tokens
 TokenPoolCreatedEvent
-	public struct
-	0x50c1::social_proof_tokens
-PostPoolAutoInitializedEvent
 	public struct
 	0x50c1::social_proof_tokens
 TokenBoughtEvent
@@ -5947,19 +5965,49 @@ update_social_proof_tokens_config
 toggle_emergency_kill_switch
 	public entry fun
 	0x50c1::social_proof_tokens
-is_trading_halted
+is_trading_enabled
 	public fun
 	0x50c1::social_proof_tokens
+calculate_total_fee_bps
+	public(package) fun
+	0x50c1::social_proof_tokens
+calculate_reservation_total_fee_bps
+	public(package) fun
+	0x50c1::social_proof_tokens
+validate_trading_fees
+	public(package) fun
+	0x50c1::social_proof_tokens
+validate_reservation_fees
+	public(package) fun
+	0x50c1::social_proof_tokens
+calculate_fee_amount_safe
+	public(package) fun
+	0x50c1::social_proof_tokens
+calculate_component_fee_safe
+	public(package) fun
+	0x50c1::social_proof_tokens
 reserve_towards_post
-	public entry fun
+	public fun
+	0x50c1::social_proof_tokens
+reserve_towards_post_with_platform
+	public fun
 	0x50c1::social_proof_tokens
 reserve_towards_profile
-	public entry fun
+	public fun
+	0x50c1::social_proof_tokens
+reserve_towards_profile_with_platform
+	public fun
 	0x50c1::social_proof_tokens
 withdraw_reservation
+	public fun
+	0x50c1::social_proof_tokens
+withdraw_reservation_with_platform
+	public fun
+	0x50c1::social_proof_tokens
+create_reservation_pool_for_post
 	public entry fun
 	0x50c1::social_proof_tokens
-create_reservation_pool
+create_reservation_pool_for_profile
 	public entry fun
 	0x50c1::social_proof_tokens
 can_create_auction
@@ -5983,20 +6031,53 @@ distribute_creator_fee
 distribute_creator_fee_from_pool
 	fun
 	0x50c1::social_proof_tokens
+apply_post_poc_redirection
+	public(package) fun
+	0x50c1::social_proof_tokens
+distribute_reservation_creator_fee
+	public(package) fun
+	0x50c1::social_proof_tokens
+distribute_reservation_creator_fee_no_poc
+	public(package) fun
+	0x50c1::social_proof_tokens
+distribute_reservation_fees_with_post
+	public(package) fun
+	0x50c1::social_proof_tokens
+distribute_reservation_fees_with_post_and_platform
+	public(package) fun
+	0x50c1::social_proof_tokens
+distribute_reservation_fees_no_poc
+	public(package) fun
+	0x50c1::social_proof_tokens
+distribute_reservation_fees_no_poc_with_platform
+	public(package) fun
+	0x50c1::social_proof_tokens
 buy_tokens
-	public entry fun
+	public fun
+	0x50c1::social_proof_tokens
+buy_tokens_with_platform
+	public fun
 	0x50c1::social_proof_tokens
 buy_more_tokens
-	public entry fun
+	public fun
+	0x50c1::social_proof_tokens
+buy_more_tokens_with_platform
+	public fun
 	0x50c1::social_proof_tokens
 sell_tokens
-	public entry fun
+	public fun
+	0x50c1::social_proof_tokens
+sell_tokens_with_platform
+	public fun
 	0x50c1::social_proof_tokens
 calculate_token_price
 	public fun
 	0x50c1::social_proof_tokens
 calculate_buy_price
 	public fun
+	0x50c1::social_proof_tokens
+calculate_sum_squares
+	fun
 	0x50c1::social_proof_tokens
 calculate_sell_price
 	public fun
@@ -6029,13 +6110,16 @@ get_pool_associated_id
 	public fun
 	0x50c1::social_proof_tokens
 set_poc_redirection
-	public fun
+	public(package) fun
+	0x50c1::social_proof_tokens
+set_poc_redirection_entry
+	public entry fun
+	0x50c1::social_proof_tokens
+set_poc_redirection_admin
+	public entry fun
 	0x50c1::social_proof_tokens
 clear_poc_redirection
 	public(package) fun
-	0x50c1::social_proof_tokens
-get_ecosystem_treasury
-	public fun
 	0x50c1::social_proof_tokens
 registry_version
 	public fun
@@ -6065,9 +6149,6 @@ migrate_reservation_pool
 	public entry fun
 	0x50c1::social_proof_tokens
 create_social_proof_tokens_admin_cap
-	public(package) fun
-	0x50c1::social_proof_tokens
-ensure_post_token_pool
 	public(package) fun
 	0x50c1::social_proof_tokens
 SpotAdminCap
@@ -6683,6 +6764,12 @@ CoverageCancelledEvent
 	public struct
 	0x50c1::insurance
 CoverageClaimedEvent
+	public struct
+	0x50c1::insurance
+ConfigUpdatedEvent
+	public struct
+	0x50c1::insurance
+PolicyExpiredEvent
 	public struct
 	0x50c1::insurance
 init_config
