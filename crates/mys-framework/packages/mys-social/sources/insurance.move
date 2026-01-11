@@ -8,6 +8,7 @@
 module social_contracts::insurance {
     use std::option::{Self, Option};
     use std::vector;
+    use std::string;
 
     use mys::{
         object::{Self, UID, ID},

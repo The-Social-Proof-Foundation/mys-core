@@ -8,6 +8,7 @@
 #[allow(unused_const, duplicate_alias)]
 module social_contracts::message {
     use std::option::{Self, Option};
+    use std::string;
     
     use mys::{
         object::{Self, UID},
