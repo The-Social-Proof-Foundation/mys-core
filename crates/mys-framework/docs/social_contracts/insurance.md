@@ -43,6 +43,8 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Function `set_user_exposure`](#social_contracts_insurance_set_user_exposure)
 -  [Function `get_option_reserved`](#social_contracts_insurance_get_option_reserved)
 -  [Function `set_option_reserved`](#social_contracts_insurance_set_option_reserved)
+-  [Function `migrate_config`](#social_contracts_insurance_migrate_config)
+-  [Function `migrate_vault`](#social_contracts_insurance_migrate_vault)
 
 
 <pre><code><b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
@@ -1010,6 +1012,15 @@ Errors
 
 
 <pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EPolicyNotActive">EPolicyNotActive</a>: u64 = 9;
+</code></pre>
+
+
+
+<a name="social_contracts_insurance_EWrongVersion"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>: u64 = 17;
 </code></pre>
 
 
@@ -2066,6 +2077,90 @@ Expire policy and release reserves
     } <b>else</b> {
         table::add(&<b>mut</b> exposure.reserved_by_option, option_id, amount);
     };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_migrate_config"></a>
+
+## Function `migrate_config`
+
+Migration function for InsuranceConfig
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_migrate_config">migrate_config</a>(config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_migrate_config">migrate_config</a>(
+    config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new version &gt; current version)
+    <b>assert</b>!(config.version &lt; current_version, <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
+    // Remember old version and update to new version
+    <b>let</b> old_version = config.version;
+    config.version = current_version;
+    // Emit event <b>for</b> object migration
+    <b>let</b> config_id = object::id(config);
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        config_id,
+        string::utf8(b"<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_insurance_migrate_vault"></a>
+
+## Function `migrate_vault`
+
+Migration function for UnderwriterVault
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_migrate_vault">migrate_vault</a>(vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_migrate_vault">migrate_vault</a>(
+    vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new version &gt; current version)
+    <b>assert</b>!(vault.version &lt; current_version, <a href="../social_contracts/insurance.md#social_contracts_insurance_EWrongVersion">EWrongVersion</a>);
+    // Remember old version and update to new version
+    <b>let</b> old_version = vault.version;
+    vault.version = current_version;
+    // Emit event <b>for</b> object migration
+    <b>let</b> vault_id = object::id(vault);
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        vault_id,
+        string::utf8(b"<a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
 }
 </code></pre>
 

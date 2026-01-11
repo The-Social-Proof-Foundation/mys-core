@@ -72,6 +72,7 @@ Features: idempotency, message ordering, replay protection, access control, rate
 -  [Function `reply_to_paid_message`](#social_contracts_message_reply_to_paid_message)
 -  [Function `claim_payment_internal`](#social_contracts_message_claim_payment_internal)
 -  [Function `refund_paid_message`](#social_contracts_message_refund_paid_message)
+-  [Function `migrate_registry`](#social_contracts_message_migrate_registry)
 
 
 <pre><code><b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
@@ -3311,6 +3312,49 @@ Refund an expired or unclaimed paid message payment
         refunded_epoch: current_epoch,
         reason: 0, // 0 = expired
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_message_migrate_registry"></a>
+
+## Function `migrate_registry`
+
+Migration function for Registry
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_migrate_registry">migrate_registry</a>(registry: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Registry">social_contracts::message::Registry</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_migrate_registry">migrate_registry</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Registry">Registry</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new version &gt; current version)
+    // Note: <a href="../social_contracts/message.md#social_contracts_message_Registry">Registry</a> uses u32 <b>for</b> version, so we need to cast
+    <b>assert</b>!((registry.version <b>as</b> u64) &lt; current_version, <a href="../social_contracts/message.md#social_contracts_message_E_WRONG_VERSION">E_WRONG_VERSION</a>);
+    // Remember old version and update to new version
+    <b>let</b> old_version = registry.version;
+    registry.version = (current_version <b>as</b> u32);
+    // Emit event <b>for</b> object migration
+    <b>let</b> registry_id = object::id(registry);
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        registry_id,
+        string::utf8(b"<a href="../social_contracts/message.md#social_contracts_message_Registry">Registry</a>"),
+        old_version <b>as</b> u64,
+        tx_context::sender(ctx)
+    );
 }
 </code></pre>
 

@@ -46,6 +46,8 @@ with the same fee structure as payouts. Time-based resolution windows are option
 -  [Function `finalize_via_dao`](#social_contracts_social_proof_of_truth_finalize_via_dao)
 -  [Function `refund_unresolved`](#social_contracts_social_proof_of_truth_refund_unresolved)
 -  [Function `finalize_resolution_and_payout`](#social_contracts_social_proof_of_truth_finalize_resolution_and_payout)
+-  [Function `migrate_config`](#social_contracts_social_proof_of_truth_migrate_config)
+-  [Function `migrate_record`](#social_contracts_social_proof_of_truth_migrate_record)
 
 
 <pre><code><b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
@@ -985,6 +987,15 @@ Errors
 
 
 <pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongStatus">EWrongStatus</a>: u64 = 6;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_of_truth_EWrongVersion"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongVersion">EWrongVersion</a>: u64 = 17;
 </code></pre>
 
 
@@ -2124,6 +2135,90 @@ If max_resolution_window_epochs is None, this function cannot be called (must be
         reasoning,
         evidence_urls: evidence_urls_vec,
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_migrate_config"></a>
+
+## Function `migrate_config`
+
+Migration function for SpotConfig
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_migrate_config">migrate_config</a>(config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_migrate_config">migrate_config</a>(
+    config: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new version &gt; current version)
+    <b>assert</b>!(config.version &lt; current_version, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongVersion">EWrongVersion</a>);
+    // Remember old version and update to new version
+    <b>let</b> old_version = config.version;
+    config.version = current_version;
+    // Emit event <b>for</b> object migration
+    <b>let</b> config_id = object::id(config);
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        config_id,
+        string::utf8(b"<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">SpotConfig</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_of_truth_migrate_record"></a>
+
+## Function `migrate_record`
+
+Migration function for SpotRecord
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_migrate_record">migrate_record</a>(record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_migrate_record">migrate_record</a>(
+    record: &<b>mut</b> <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new version &gt; current version)
+    <b>assert</b>!(record.version &lt; current_version, <a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_EWrongVersion">EWrongVersion</a>);
+    // Remember old version and update to new version
+    <b>let</b> old_version = record.version;
+    record.version = current_version;
+    // Emit event <b>for</b> object migration
+    <b>let</b> record_id = object::id(record);
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        record_id,
+        string::utf8(b"<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">SpotRecord</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
 }
 </code></pre>
 

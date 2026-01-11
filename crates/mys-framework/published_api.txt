@@ -4903,6 +4903,9 @@ subscription_auto_renew
 subscription_renewal_balance
 	public fun
 	0x50c1::subscription
+migrate_service
+	public entry fun
+	0x50c1::subscription
 EcosystemTreasuryAdminCap
 	public struct
 	0x50c1::profile
@@ -5580,6 +5583,12 @@ remove_moderator_unregister
 	0x50c1::platform
 create_platform_admin_cap
 	public(package) fun
+	0x50c1::platform
+migrate_platform
+	public entry fun
+	0x50c1::platform
+migrate_registry
+	public entry fun
 	0x50c1::platform
 PoCBadge
 	public struct
@@ -6259,6 +6268,12 @@ refund_unresolved
 finalize_resolution_and_payout
 	fun
 	0x50c1::social_proof_of_truth
+migrate_config
+	public entry fun
+	0x50c1::social_proof_of_truth
+migrate_record
+	public entry fun
+	0x50c1::social_proof_of_truth
 PoCAdminCap
 	public struct
 	0x50c1::proof_of_creativity
@@ -6730,6 +6745,9 @@ claim_payment_internal
 refund_paid_message
 	public entry fun
 	0x50c1::message
+migrate_registry
+	public entry fun
+	0x50c1::message
 InsuranceAdminCap
 	public struct
 	0x50c1::insurance
@@ -6837,6 +6855,12 @@ get_option_reserved
 	0x50c1::insurance
 set_option_reserved
 	fun
+	0x50c1::insurance
+migrate_config
+	public entry fun
+	0x50c1::insurance
+migrate_vault
+	public entry fun
 	0x50c1::insurance
 claim_all_admin_capabilities
 	public entry fun

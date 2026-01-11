@@ -74,6 +74,8 @@ Manages social media platforms and their timelines
 -  [Function `add_moderator_register`](#social_contracts_platform_add_moderator_register)
 -  [Function `remove_moderator_unregister`](#social_contracts_platform_remove_moderator_unregister)
 -  [Function `create_platform_admin_cap`](#social_contracts_platform_create_platform_admin_cap)
+-  [Function `migrate_platform`](#social_contracts_platform_migrate_platform)
+-  [Function `migrate_registry`](#social_contracts_platform_migrate_registry)
 
 
 <pre><code><b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
@@ -3580,6 +3582,90 @@ This function is only callable by other modules in the same package
     <a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a> {
         <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: object::new(ctx)
     }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_migrate_platform"></a>
+
+## Function `migrate_platform`
+
+Migration function for Platform
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_migrate_platform">migrate_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_migrate_platform">migrate_platform</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new version &gt; current version)
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version &lt; current_version, <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    // Remember old version and update to new version
+    <b>let</b> old_version = <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version;
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version = current_version;
+    // Emit event <b>for</b> object migration
+    <b>let</b> platform_id = object::id(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        platform_id,
+        string::utf8(b"<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_migrate_registry"></a>
+
+## Function `migrate_registry`
+
+Migration function for PlatformRegistry
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_migrate_registry">migrate_registry</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_migrate_registry">migrate_registry</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new version &gt; current version)
+    <b>assert</b>!(registry.version &lt; current_version, <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    // Remember old version and update to new version
+    <b>let</b> old_version = registry.version;
+    registry.version = current_version;
+    // Emit event <b>for</b> object migration
+    <b>let</b> registry_id = object::id(registry);
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        registry_id,
+        string::utf8(b"<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
 }
 </code></pre>
 

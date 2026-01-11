@@ -33,6 +33,7 @@ Handles subscription services for profiles & MyData
 -  [Function `subscription_expires_at`](#social_contracts_subscription_subscription_expires_at)
 -  [Function `subscription_auto_renew`](#social_contracts_subscription_subscription_auto_renew)
 -  [Function `subscription_renewal_balance`](#social_contracts_subscription_subscription_renewal_balance)
+-  [Function `migrate_service`](#social_contracts_subscription_migrate_service)
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
@@ -1290,6 +1291,48 @@ Cancel subscription and get refund of unused renewal balance
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_subscription_renewal_balance">subscription_renewal_balance</a>(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>): u64 {
     balance::value(&<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.renewal_balance)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_migrate_service"></a>
+
+## Function `migrate_service`
+
+Migration function for ProfileSubscriptionService
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_migrate_service">migrate_service</a>(service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_migrate_service">migrate_service</a>(
+    service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new version &gt; current version)
+    <b>assert</b>!(service.version &lt; current_version, <a href="../social_contracts/subscription.md#social_contracts_subscription_EWrongVersion">EWrongVersion</a>);
+    // Remember old version and update to new version
+    <b>let</b> old_version = service.version;
+    service.version = current_version;
+    // Emit event <b>for</b> object migration
+    <b>let</b> service_id = object::id(service);
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        service_id,
+        string::utf8(b"<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
 }
 </code></pre>
 
