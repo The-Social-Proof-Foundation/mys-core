@@ -71,23 +71,23 @@ title: Module `mys_system::stake_subsidy`
  Count of the number of times stake subsidies have been distributed.
 </dd>
 <dt>
-<code>current_distribution_amount: u64</code>
+<code>current_apy_bps: u64</code>
 </dt>
 <dd>
- The amount of stake subsidy to be drawn down per distribution.
+ The current stake subsidy APY in basis points.
  This amount decays and decreases over time.
 </dd>
 <dt>
 <code>stake_subsidy_period_length: u64</code>
 </dt>
 <dd>
- Number of distributions to occur before the distribution amount decays.
+ Number of distributions to occur before the APY decays.
 </dd>
 <dt>
 <code>stake_subsidy_decrease_rate: u16</code>
 </dt>
 <dd>
- The rate at which the distribution amount decays at the end of each
+ The rate at which the APY decays at the end of each
  period. Expressed in basis points.
 </dd>
 <dt>
@@ -124,13 +124,31 @@ title: Module `mys_system::stake_subsidy`
 
 
 
+<a name="mys_system_stake_subsidy_ESubsidyInitialApyTooLarge"></a>
+
+
+
+<pre><code><b>const</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_ESubsidyInitialApyTooLarge">ESubsidyInitialApyTooLarge</a>: u64 = 1;
+</code></pre>
+
+
+
+<a name="mys_system_stake_subsidy_YEAR_IN_MS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_YEAR_IN_MS">YEAR_IN_MS</a>: u64 = 31536000000;
+</code></pre>
+
+
+
 <a name="mys_system_stake_subsidy_create"></a>
 
 ## Function `create`
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_create">create</a>(balance: <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, initial_distribution_amount: u64, stake_subsidy_period_length: u64, stake_subsidy_decrease_rate: u16, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_StakeSubsidy">mys_system::stake_subsidy::StakeSubsidy</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_create">create</a>(balance: <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, initial_apy_bps: u64, stake_subsidy_period_length: u64, stake_subsidy_decrease_rate: u16, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_StakeSubsidy">mys_system::stake_subsidy::StakeSubsidy</a>
 </code></pre>
 
 
@@ -141,7 +159,7 @@ title: Module `mys_system::stake_subsidy`
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_create">create</a>(
     balance: Balance&lt;MYS&gt;,
-    initial_distribution_amount: u64,
+    initial_apy_bps: u64,
     stake_subsidy_period_length: u64,
     stake_subsidy_decrease_rate: u16,
     ctx: &<b>mut</b> TxContext,
@@ -151,10 +169,14 @@ title: Module `mys_system::stake_subsidy`
         stake_subsidy_decrease_rate &lt;= <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_BASIS_POINT_DENOMINATOR">BASIS_POINT_DENOMINATOR</a> <b>as</b> u16,
         <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_ESubsidyDecreaseRateTooLarge">ESubsidyDecreaseRateTooLarge</a>,
     );
+    <b>assert</b>!(
+        initial_apy_bps &lt;= <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_BASIS_POINT_DENOMINATOR">BASIS_POINT_DENOMINATOR</a> <b>as</b> u64,
+        <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_ESubsidyInitialApyTooLarge">ESubsidyInitialApyTooLarge</a>,
+    );
     <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_StakeSubsidy">StakeSubsidy</a> {
         balance,
         distribution_counter: 0,
-        current_distribution_amount: initial_distribution_amount,
+        current_apy_bps: initial_apy_bps,
         stake_subsidy_period_length,
         stake_subsidy_decrease_rate,
         extra_fields: bag::new(ctx),
@@ -173,7 +195,7 @@ title: Module `mys_system::stake_subsidy`
 Advance the epoch counter and draw down the subsidy for the epoch.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_advance_epoch">advance_epoch</a>(self: &<b>mut</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_StakeSubsidy">mys_system::stake_subsidy::StakeSubsidy</a>): <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_advance_epoch">advance_epoch</a>(self: &<b>mut</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_StakeSubsidy">mys_system::stake_subsidy::StakeSubsidy</a>, total_staked_mist: u64, epoch_duration_ms: u64): <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;
 </code></pre>
 
 
@@ -182,19 +204,28 @@ Advance the epoch counter and draw down the subsidy for the epoch.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_advance_epoch">advance_epoch</a>(self: &<b>mut</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_StakeSubsidy">StakeSubsidy</a>): Balance&lt;MYS&gt; {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_advance_epoch">advance_epoch</a>(
+    self: &<b>mut</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_StakeSubsidy">StakeSubsidy</a>,
+    total_staked_mist: u64,
+    epoch_duration_ms: u64,
+): Balance&lt;MYS&gt; {
+    <b>let</b> epoch_subsidy_amount = calculate_epoch_subsidy_amount(
+        self.current_apy_bps,
+        total_staked_mist,
+        epoch_duration_ms,
+    );
     // Take the minimum of the reward amount and the remaining balance in
     // order to ensure we don't overdraft the remaining stake subsidy
     // balance
-    <b>let</b> to_withdraw = self.current_distribution_amount.min(self.balance.value());
+    <b>let</b> to_withdraw = epoch_subsidy_amount.min(self.balance.value());
     // Drawn down the subsidy <b>for</b> this epoch.
     <b>let</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a> = self.balance.split(to_withdraw);
     self.distribution_counter = self.distribution_counter + 1;
     // Decrease the subsidy amount only when the current period ends.
     <b>if</b> (self.distribution_counter % self.stake_subsidy_period_length == 0) {
-        <b>let</b> decrease_amount = self.current_distribution_amount <b>as</b> u128
+        <b>let</b> decrease_amount = self.current_apy_bps <b>as</b> u128
             * (self.stake_subsidy_decrease_rate <b>as</b> u128) / <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_BASIS_POINT_DENOMINATOR">BASIS_POINT_DENOMINATOR</a>;
-        self.current_distribution_amount = self.current_distribution_amount - (decrease_amount <b>as</b> u64)
+        self.current_apy_bps = self.current_apy_bps - (decrease_amount <b>as</b> u64)
     };
     <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a>
 }
@@ -211,7 +242,7 @@ Advance the epoch counter and draw down the subsidy for the epoch.
 Returns the amount of stake subsidy to be added at the end of the current epoch.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_current_epoch_subsidy_amount">current_epoch_subsidy_amount</a>(self: &<a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_StakeSubsidy">mys_system::stake_subsidy::StakeSubsidy</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_current_epoch_subsidy_amount">current_epoch_subsidy_amount</a>(self: &<a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_StakeSubsidy">mys_system::stake_subsidy::StakeSubsidy</a>, total_staked_mist: u64, epoch_duration_ms: u64): u64
 </code></pre>
 
 
@@ -220,8 +251,16 @@ Returns the amount of stake subsidy to be added at the end of the current epoch.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_current_epoch_subsidy_amount">current_epoch_subsidy_amount</a>(self: &<a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_StakeSubsidy">StakeSubsidy</a>): u64 {
-    self.current_distribution_amount.min(self.balance.value())
+<pre><code><b>public</b> <b>fun</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_current_epoch_subsidy_amount">current_epoch_subsidy_amount</a>(
+    self: &<a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_StakeSubsidy">StakeSubsidy</a>,
+    total_staked_mist: u64,
+    epoch_duration_ms: u64,
+): u64 {
+    calculate_epoch_subsidy_amount(
+        self.current_apy_bps,
+        total_staked_mist,
+        epoch_duration_ms,
+    ).min(self.balance.value())
 }
 </code></pre>
 

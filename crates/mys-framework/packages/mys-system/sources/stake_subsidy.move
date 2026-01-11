@@ -15,14 +15,14 @@ module mys_system::stake_subsidy {
         /// Count of the number of times stake subsidies have been distributed.
         distribution_counter: u64,
 
-        /// The amount of stake subsidy to be drawn down per distribution.
+        /// The current APY (in basis points) used to compute stake subsidies.
         /// This amount decays and decreases over time.
-        current_distribution_amount: u64,
+        current_apy_bps: u64,
 
-        /// Number of distributions to occur before the distribution amount decays.
+        /// Number of distributions to occur before the APY decays.
         stake_subsidy_period_length: u64,
 
-        /// The rate at which the distribution amount decays at the end of each
+        /// The rate at which the APY decays at the end of each
         /// period. Expressed in basis points.
         stake_subsidy_decrease_rate: u16,
 
@@ -33,10 +33,13 @@ module mys_system::stake_subsidy {
     const BASIS_POINT_DENOMINATOR: u128 = 10000;
 
     const ESubsidyDecreaseRateTooLarge: u64 = 0;
+    const ESubsidyInitialApyTooLarge: u64 = 1;
+
+    const YEAR_IN_MS: u64 = 365 * 24 * 60 * 60 * 1000;
 
     public(package) fun create(
         balance: Balance<MYS>,
-        initial_distribution_amount: u64,
+        initial_apy_bps: u64,
         stake_subsidy_period_length: u64,
         stake_subsidy_decrease_rate: u16,
         ctx: &mut TxContext,
@@ -46,11 +49,15 @@ module mys_system::stake_subsidy {
             stake_subsidy_decrease_rate <= BASIS_POINT_DENOMINATOR as u16,
             ESubsidyDecreaseRateTooLarge,
         );
+        assert!(
+            initial_apy_bps <= BASIS_POINT_DENOMINATOR as u64,
+            ESubsidyInitialApyTooLarge,
+        );
 
         StakeSubsidy {
             balance,
             distribution_counter: 0,
-            current_distribution_amount: initial_distribution_amount,
+            current_apy_bps: initial_apy_bps,
             stake_subsidy_period_length,
             stake_subsidy_decrease_rate,
             extra_fields: bag::new(ctx),
@@ -58,11 +65,21 @@ module mys_system::stake_subsidy {
     }
 
     /// Advance the epoch counter and draw down the subsidy for the epoch.
-    public(package) fun advance_epoch(self: &mut StakeSubsidy): Balance<MYS> {
+    public(package) fun advance_epoch(
+        self: &mut StakeSubsidy,
+        total_staked_mist: u64,
+        epoch_duration_ms: u64,
+    ): Balance<MYS> {
+        let epoch_subsidy_amount = calculate_epoch_subsidy_amount(
+            self.current_apy_bps,
+            total_staked_mist,
+            epoch_duration_ms,
+        );
+
         // Take the minimum of the reward amount and the remaining balance in
         // order to ensure we don't overdraft the remaining stake subsidy
         // balance
-        let to_withdraw = self.current_distribution_amount.min(self.balance.value());
+        let to_withdraw = epoch_subsidy_amount.min(self.balance.value());
 
         // Drawn down the subsidy for this epoch.
         let stake_subsidy = self.balance.split(to_withdraw);
@@ -70,17 +87,42 @@ module mys_system::stake_subsidy {
 
         // Decrease the subsidy amount only when the current period ends.
         if (self.distribution_counter % self.stake_subsidy_period_length == 0) {
-            let decrease_amount = self.current_distribution_amount as u128
+            let decrease_amount = self.current_apy_bps as u128
                 * (self.stake_subsidy_decrease_rate as u128) / BASIS_POINT_DENOMINATOR;
-            self.current_distribution_amount = self.current_distribution_amount - (decrease_amount as u64)
+            self.current_apy_bps = self.current_apy_bps - (decrease_amount as u64)
         };
 
         stake_subsidy
     }
 
     /// Returns the amount of stake subsidy to be added at the end of the current epoch.
-    public fun current_epoch_subsidy_amount(self: &StakeSubsidy): u64 {
-        self.current_distribution_amount.min(self.balance.value())
+    public fun current_epoch_subsidy_amount(
+        self: &StakeSubsidy,
+        total_staked_mist: u64,
+        epoch_duration_ms: u64,
+    ): u64 {
+        calculate_epoch_subsidy_amount(
+            self.current_apy_bps,
+            total_staked_mist,
+            epoch_duration_ms,
+        ).min(self.balance.value())
+    }
+
+    fun calculate_epoch_subsidy_amount(
+        current_apy_bps: u64,
+        total_staked_mist: u64,
+        epoch_duration_ms: u64,
+    ): u64 {
+        if (total_staked_mist == 0 || epoch_duration_ms == 0) {
+            return 0
+        };
+
+        let epochs_per_year = (YEAR_IN_MS / epoch_duration_ms).max(1);
+        let yearly_rewards = total_staked_mist as u128
+            * (current_apy_bps as u128)
+            / BASIS_POINT_DENOMINATOR;
+        let per_epoch_rewards = yearly_rewards / (epochs_per_year as u128);
+        per_epoch_rewards as u64
     }
 
     /// Returns the number of distributions that have occurred.

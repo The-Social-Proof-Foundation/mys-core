@@ -884,12 +884,18 @@ module mys_system::mys_system_state_inner {
                 let first_safe_mode_epoch = 560;
                 let safe_mode_epoch_count = old_epoch - first_safe_mode_epoch;
                 safe_mode_epoch_count.do!(|_| {
-                    stake_subsidy.join(self.stake_subsidy.advance_epoch());
+                    stake_subsidy.join(self.stake_subsidy.advance_epoch(
+                        total_validators_stake,
+                        self.parameters.epoch_duration_ms,
+                    ));
                 });
                 // done with catchup for safe mode epochs. distribution counter is now >540, we won't hit this again
                 // fall through to the normal logic, which will add subsidies for the current epoch
             };
-            stake_subsidy.join(self.stake_subsidy.advance_epoch());
+            stake_subsidy.join(self.stake_subsidy.advance_epoch(
+                total_validators_stake,
+                self.parameters.epoch_duration_ms,
+            ));
         };
 
         let stake_subsidy_amount = stake_subsidy.value();

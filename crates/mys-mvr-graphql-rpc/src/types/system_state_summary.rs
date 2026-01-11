@@ -81,8 +81,8 @@ impl SystemStateSummary {
         Some(StakeSubsidy {
             balance: Some(BigInt::from(self.native.stake_subsidy_balance)),
             distribution_counter: Some(self.native.stake_subsidy_distribution_counter),
-            current_distribution_amount: Some(BigInt::from(
-                self.native.stake_subsidy_current_distribution_amount,
+            current_apy_bps: Some(BigInt::from(
+                self.native.stake_subsidy_current_apy_bps,
             )),
             period_length: Some(self.native.stake_subsidy_period_length),
             decrease_rate: Some(self.native.stake_subsidy_decrease_rate as u64),

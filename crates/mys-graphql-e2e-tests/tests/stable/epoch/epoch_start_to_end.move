@@ -56,7 +56,7 @@
     }
     systemStakeSubsidy {
       balance
-      currentDistributionAmount
+      currentApyBps
     }
     checkpoints(last: 1) {
       nodes {
@@ -114,7 +114,7 @@
     }
     systemStakeSubsidy {
       balance
-      currentDistributionAmount
+      currentApyBps
     }
     checkpoints(last: 1) {
       nodes {
@@ -166,7 +166,7 @@
     }
     systemStakeSubsidy {
       balance
-      currentDistributionAmount
+      currentApyBps
     }
     checkpoints(last: 1) {
       nodes {

@@ -293,7 +293,7 @@ impl Builder {
             chain_start_timestamp_ms,
             epoch_duration_ms,
             stake_subsidy_start_epoch,
-            stake_subsidy_initial_distribution_amount,
+            stake_subsidy_initial_apy_bps,
             stake_subsidy_period_length,
             stake_subsidy_decrease_rate,
             max_validator_count,
@@ -422,8 +422,8 @@ impl Builder {
 
         assert_eq!(system_state.stake_subsidy.distribution_counter, 0);
         assert_eq!(
-            system_state.stake_subsidy.current_distribution_amount,
-            stake_subsidy_initial_distribution_amount,
+            system_state.stake_subsidy.current_apy_bps,
+            stake_subsidy_initial_apy_bps,
         );
         assert_eq!(
             system_state.stake_subsidy.stake_subsidy_period_length,

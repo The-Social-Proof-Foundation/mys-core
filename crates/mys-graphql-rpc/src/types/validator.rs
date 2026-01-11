@@ -375,7 +375,7 @@ impl Validator {
     /// The APY of this validator in basis points.
     /// To get the APY in percentage, divide by 100.
     async fn apy(&self, ctx: &Context<'_>) -> Result<Option<u64>, Error> {
-        // Get the system state to access necessary values for APY calculation
+        // Get the system state to access necessary values for APY calculation.
         let system_state = ctx
             .data_unchecked::<Db>()
             .inner
@@ -383,19 +383,7 @@ impl Validator {
             .await
             .map_err(|_| Error::Internal("Failed to fetch latest Mys system state".to_string()))?;
 
-        // Calculate APY using the same approach as in system_state_summary.rs
-        // Use total_stake instead of circulating_supply to show actual staking return
-        let epochs_per_year = (365_u64 * 24 * 60 * 60 * 1000) / system_state.epoch_duration_ms;
-        let yearly_subsidy = system_state
-            .stake_subsidy_current_distribution_amount
-            .saturating_mul(epochs_per_year);
-        let apy_bps = if system_state.total_stake > 0 {
-            yearly_subsidy.saturating_mul(10_000) / system_state.total_stake
-        } else {
-            0
-        };
-
-        Ok(Some(apy_bps))
+        Ok(Some(system_state.stake_subsidy_current_apy_bps))
     }
 }
 

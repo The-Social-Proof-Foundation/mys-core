@@ -129,16 +129,16 @@ pub struct MysSystemStateSummary {
     #[schemars(with = "BigInt<u64>")]
     #[serde_as(as = "Readable<BigInt<u64>, _>")]
     pub stake_subsidy_distribution_counter: u64,
-    /// The amount of stake subsidy to be drawn down per epoch.
+    /// The current stake subsidy APY (in basis points).
     /// This amount decays and decreases over time.
     #[schemars(with = "BigInt<u64>")]
     #[serde_as(as = "Readable<BigInt<u64>, _>")]
-    pub stake_subsidy_current_distribution_amount: u64,
-    /// Number of distributions to occur before the distribution amount decays.
+    pub stake_subsidy_current_apy_bps: u64,
+    /// Number of distributions to occur before the APY decays.
     #[schemars(with = "BigInt<u64>")]
     #[serde_as(as = "Readable<BigInt<u64>, _>")]
     pub stake_subsidy_period_length: u64,
-    /// The rate at which the distribution amount decays at the end of each
+    /// The rate at which the APY decays at the end of each
     /// period. Expressed in basis points.
     pub stake_subsidy_decrease_rate: u16,
 
@@ -349,7 +349,7 @@ impl Default for MysSystemStateSummary {
             validator_low_stake_grace_period: 0,
             stake_subsidy_balance: 0,
             stake_subsidy_distribution_counter: 0,
-            stake_subsidy_current_distribution_amount: 0,
+            stake_subsidy_current_apy_bps: 0,
             stake_subsidy_period_length: 0,
             stake_subsidy_decrease_rate: 0,
             total_stake: 0,

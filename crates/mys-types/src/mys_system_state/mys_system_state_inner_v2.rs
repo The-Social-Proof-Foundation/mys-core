@@ -250,7 +250,7 @@ impl MysSystemStateTrait for MysSystemStateInnerV2 {
                 StakeSubsidyV1 {
                     balance: stake_subsidy_balance,
                     distribution_counter: stake_subsidy_distribution_counter,
-                    current_distribution_amount: stake_subsidy_current_distribution_amount,
+                    current_apy_bps: stake_subsidy_current_apy_bps,
                     stake_subsidy_period_length,
                     stake_subsidy_decrease_rate,
                     extra_fields: _,
@@ -282,7 +282,7 @@ impl MysSystemStateTrait for MysSystemStateInnerV2 {
             epoch_duration_ms,
             stake_subsidy_distribution_counter,
             stake_subsidy_balance: stake_subsidy_balance.value(),
-            stake_subsidy_current_distribution_amount,
+            stake_subsidy_current_apy_bps,
             total_stake,
             active_validators: active_validators
                 .into_iter()

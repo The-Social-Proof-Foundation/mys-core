@@ -351,7 +351,7 @@ pub struct GenesisChainParameters {
 
     // Stake Subsidy parameters
     pub stake_subsidy_start_epoch: u64,
-    pub stake_subsidy_initial_distribution_amount: u64,
+    pub stake_subsidy_initial_apy_bps: u64,
     pub stake_subsidy_period_length: u64,
     pub stake_subsidy_decrease_rate: u16,
 
@@ -384,18 +384,18 @@ pub struct GenesisCeremonyParameters {
     #[serde(default)]
     pub stake_subsidy_start_epoch: u64,
 
-    /// The amount of stake subsidy to be drawn down per distribution.
-    /// This amount decays and decreases over time.
+    /// The initial stake subsidy APY, expressed in basis points.
+    /// This value decays and decreases over time.
     #[serde(
-        default = "GenesisCeremonyParameters::default_initial_stake_subsidy_distribution_amount"
+        default = "GenesisCeremonyParameters::default_initial_stake_subsidy_apy_bps"
     )]
-    pub stake_subsidy_initial_distribution_amount: u64,
+    pub stake_subsidy_initial_apy_bps: u64,
 
-    /// Number of distributions to occur before the distribution amount decays.
+    /// Number of distributions to occur before the APY decays.
     #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_period_length")]
     pub stake_subsidy_period_length: u64,
 
-    /// The rate at which the distribution amount decays at the end of each
+    /// The rate at which the APY decays at the end of each
     /// period. Expressed in basis points.
     #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_decrease_rate")]
     pub stake_subsidy_decrease_rate: u16,
@@ -410,8 +410,7 @@ impl GenesisCeremonyParameters {
             allow_insertion_of_extra_objects: true,
             stake_subsidy_start_epoch: 0,
             epoch_duration_ms: Self::default_epoch_duration_ms(),
-            stake_subsidy_initial_distribution_amount:
-                Self::default_initial_stake_subsidy_distribution_amount(),
+            stake_subsidy_initial_apy_bps: Self::default_initial_stake_subsidy_apy_bps(),
             stake_subsidy_period_length: Self::default_stake_subsidy_period_length(),
             stake_subsidy_decrease_rate: Self::default_stake_subsidy_decrease_rate(),
         }
@@ -433,9 +432,9 @@ impl GenesisCeremonyParameters {
         24 * 60 * 60 * 1000
     }
 
-    fn default_initial_stake_subsidy_distribution_amount() -> u64 {
-        // 1M Mys
-        1_000_000 * mys_types::gas_coin::MIST_PER_MYS
+    fn default_initial_stake_subsidy_apy_bps() -> u64 {
+        // 20% in basis points.
+        2000
     }
 
     fn default_stake_subsidy_period_length() -> u64 {
@@ -454,8 +453,8 @@ impl GenesisCeremonyParameters {
             stake_subsidy_start_epoch: self.stake_subsidy_start_epoch,
             chain_start_timestamp_ms: self.chain_start_timestamp_ms,
             epoch_duration_ms: self.epoch_duration_ms,
-            stake_subsidy_initial_distribution_amount: self
-                .stake_subsidy_initial_distribution_amount,
+            stake_subsidy_initial_apy_bps: self
+                .stake_subsidy_initial_apy_bps,
             stake_subsidy_period_length: self.stake_subsidy_period_length,
             stake_subsidy_decrease_rate: self.stake_subsidy_decrease_rate,
             max_validator_count: mys_types::governance::MAX_VALIDATOR_COUNT,
