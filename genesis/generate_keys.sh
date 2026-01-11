@@ -279,7 +279,7 @@ cat > "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1767182400000 # $(( $(date +%s) * 1000 ))
+  chain_start_timestamp_ms: 1768118400000 # $(( $(date +%s) * 1000 ))
 
   # Protocol version
   protocol_version: 75  # Latest version
@@ -303,7 +303,7 @@ parameters:
 
   # Number of epochs before decreasing the subsidy amount
   # Default: 15 epochs
-  stake_subsidy_period_length: 30
+  stake_subsidy_period_length: 6
 
   # Rate at which subsidy decreases at end of each period (in basis points)
   # 40 basis points = 0.40%
