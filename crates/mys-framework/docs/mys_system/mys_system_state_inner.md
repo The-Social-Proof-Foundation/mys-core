@@ -2166,12 +2166,18 @@ gas coins.
             <b>let</b> first_safe_mode_epoch = 560;
             <b>let</b> safe_mode_epoch_count = old_epoch - first_safe_mode_epoch;
             safe_mode_epoch_count.do!(|_| {
-                <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a>.join(self.<a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a>.<a href="../mys_system/mys_system_state_inner.md#mys_system_mys_system_state_inner_advance_epoch">advance_epoch</a>());
+                <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a>.join(self.<a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a>.<a href="../mys_system/mys_system_state_inner.md#mys_system_mys_system_state_inner_advance_epoch">advance_epoch</a>(
+                    total_validators_stake,
+                    self.parameters.epoch_duration_ms,
+                ));
             });
             // done with catchup <b>for</b> safe mode epochs. distribution counter is now &gt;540, we won't hit this again
             // fall through to the normal logic, which will add subsidies <b>for</b> the current <a href="../mys_system/mys_system_state_inner.md#mys_system_mys_system_state_inner_epoch">epoch</a>
         };
-        <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a>.join(self.<a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a>.<a href="../mys_system/mys_system_state_inner.md#mys_system_mys_system_state_inner_advance_epoch">advance_epoch</a>());
+        <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a>.join(self.<a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a>.<a href="../mys_system/mys_system_state_inner.md#mys_system_mys_system_state_inner_advance_epoch">advance_epoch</a>(
+            total_validators_stake,
+            self.parameters.epoch_duration_ms,
+        ));
     };
     <b>let</b> stake_subsidy_amount = <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a>.value();
     computation_reward.join(<a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a>);

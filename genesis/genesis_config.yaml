@@ -24,7 +24,18 @@ parameters:
 
   # Initial stake subsidy distribution amount per epoch (in MIST)
   # Default: 31,537 MySo = 31,537,208,455,986 MIST
-  stake_subsidy_initial_distribution_amount: 31537208455986
+  # stake_subsidy_initial_distribution_amount: 31537208455986
+  stake_subsidy_initial_apy_bps: 2000
+
+  # Maximum APY cap (in basis points). Effective APY will never exceed this.
+  stake_subsidy_max_apy_bps: 2000
+
+  # Minimum APY floor (in basis points). Effective APY will never go below this.
+  stake_subsidy_min_apy_bps: 100
+
+  # Target duration for subsidy pool in years (e.g., 10).
+  # Used to calculate stake-aware APY reduction to ensure pool sustainability.
+  stake_subsidy_intended_duration_years: 1
 
   # Number of epochs before decreasing the subsidy amount
   # Default: 15 epochs
@@ -32,7 +43,7 @@ parameters:
 
   # Rate at which subsidy decreases at end of each period (in basis points)
   # 40 basis points = 0.40%
-  stake_subsidy_decrease_rate: 40
+  stake_subsidy_decrease_rate: 150
 
 # Accounts to add tokens to
 accounts:
@@ -59,7 +70,7 @@ validator_config_info:
     consensus_address: "/ip4/69.10.63.78/tcp/59050/http"
     gas_price: 1
     commission_rate: 250
-    stake: 1000000000000000  # 1 million MySo in MIST units
+    stake: 1000000000000000
   # Validator 2 (dynamic ports)
   - name: "MySo Validator 2"
     network_address: "/ip4/69.10.63.78/tcp/59110/http"
@@ -69,7 +80,7 @@ validator_config_info:
     consensus_address: "/ip4/69.10.63.78/tcp/59150/http"
     gas_price: 1
     commission_rate: 250
-    stake: 1000000000000000  # 1 million MySo in MIST units
+    stake: 1000000000000000
   # Validator 3 (dynamic ports)
   - name: "MySo Validator 3"
     network_address: "/ip4/69.10.63.78/tcp/59210/http"
@@ -79,4 +90,4 @@ validator_config_info:
     consensus_address: "/ip4/69.10.63.78/tcp/59250/http"
     gas_price: 1
     commission_rate: 250
-    stake: 1000000000000000  # 1 million MySo in MIST units
+    stake: 1000000000000000

@@ -192,7 +192,7 @@ title: Module `mys_system::genesis`
 <dd>
 </dd>
 <dt>
-<code>stake_subsidy_initial_distribution_amount: u64</code>
+<code>stake_subsidy_initial_apy_bps: u64</code>
 </dt>
 <dd>
 </dd>
@@ -203,6 +203,21 @@ title: Module `mys_system::genesis`
 </dd>
 <dt>
 <code>stake_subsidy_decrease_rate: u16</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>stake_subsidy_max_apy_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>stake_subsidy_min_apy_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>stake_subsidy_intended_duration_years: u64</code>
 </dt>
 <dd>
 </dd>
@@ -433,9 +448,12 @@ all the information we need in the system.
     );
     <b>let</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">stake_subsidy</a> = <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy_create">stake_subsidy::create</a>(
         subsidy_fund,
-        genesis_chain_parameters.stake_subsidy_initial_distribution_amount,
+        genesis_chain_parameters.stake_subsidy_initial_apy_bps,
         genesis_chain_parameters.stake_subsidy_period_length,
         genesis_chain_parameters.stake_subsidy_decrease_rate,
+        genesis_chain_parameters.stake_subsidy_max_apy_bps,
+        genesis_chain_parameters.stake_subsidy_min_apy_bps,
+        genesis_chain_parameters.stake_subsidy_intended_duration_years,
         ctx,
     );
     mys_system::create(

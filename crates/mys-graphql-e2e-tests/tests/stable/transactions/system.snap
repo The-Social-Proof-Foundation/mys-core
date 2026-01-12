@@ -1133,7 +1133,7 @@ Response: {
                                 "value": "9949700000000000000"
                               },
                               "distribution_counter": "0",
-                              "current_distribution_amount": "1000000000000000",
+                              "current_apy_bps": "2000",
                               "stake_subsidy_period_length": "10",
                               "stake_subsidy_decrease_rate": 1000,
                               "extra_fields": {

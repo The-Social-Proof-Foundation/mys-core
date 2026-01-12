@@ -517,7 +517,7 @@ query ValidatorDashboardData {
     systemStakeSubsidy {
       balance
       distributionCounter
-      currentDistributionAmount
+      currentApyBps
       periodLength
       decreaseRate
     }

@@ -8090,9 +8090,12 @@
           "safeModeStorageRebates",
           "safeModeStorageRewards",
           "stakeSubsidyBalance",
-          "stakeSubsidyCurrentDistributionAmount",
+          "stakeSubsidyCurrentApyBps",
           "stakeSubsidyDecreaseRate",
           "stakeSubsidyDistributionCounter",
+          "stakeSubsidyIntendedDurationYears",
+          "stakeSubsidyMaxApyBps",
+          "stakeSubsidyMinApyBps",
           "stakeSubsidyPeriodLength",
           "stakeSubsidyStartEpoch",
           "stakingPoolMappingsId",
@@ -8272,8 +8275,8 @@
               }
             ]
           },
-          "stakeSubsidyCurrentDistributionAmount": {
-            "description": "The amount of stake subsidy to be drawn down per epoch. This amount decays and decreases over time.",
+          "stakeSubsidyCurrentApyBps": {
+            "description": "The current stake subsidy APY in basis points. This amount decays and decreases over time.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/BigInt_for_uint64"
@@ -8281,7 +8284,7 @@
             ]
           },
           "stakeSubsidyDecreaseRate": {
-            "description": "The rate at which the distribution amount decays at the end of each period. Expressed in basis points.",
+            "description": "The rate at which the APY decays at the end of each period. Expressed in basis points.",
             "type": "integer",
             "format": "uint16",
             "minimum": 0.0
@@ -8295,7 +8298,31 @@
             ]
           },
           "stakeSubsidyPeriodLength": {
-            "description": "Number of distributions to occur before the distribution amount decays.",
+            "description": "Number of distributions to occur before the APY decays.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BigInt_for_uint64"
+              }
+            ]
+          },
+          "stakeSubsidyMaxApyBps": {
+            "description": "Maximum APY cap (in basis points). Effective APY will never exceed this.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BigInt_for_uint64"
+              }
+            ]
+          },
+          "stakeSubsidyMinApyBps": {
+            "description": "Minimum APY floor (in basis points). Effective APY will never go below this.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BigInt_for_uint64"
+              }
+            ]
+          },
+          "stakeSubsidyIntendedDurationYears": {
+            "description": "Target duration for subsidy pool in years (e.g., 10). Used to calculate stake-aware APY reduction to ensure pool sustainability.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/BigInt_for_uint64"

@@ -250,9 +250,12 @@ impl MysSystemStateTrait for MysSystemStateInnerV2 {
                 StakeSubsidyV1 {
                     balance: stake_subsidy_balance,
                     distribution_counter: stake_subsidy_distribution_counter,
-                    current_distribution_amount: stake_subsidy_current_distribution_amount,
+                    current_apy_bps: stake_subsidy_current_apy_bps,
                     stake_subsidy_period_length,
                     stake_subsidy_decrease_rate,
+                    max_apy_bps: stake_subsidy_max_apy_bps,
+                    min_apy_bps: stake_subsidy_min_apy_bps,
+                    intended_duration_years: stake_subsidy_intended_duration_years,
                     extra_fields: _,
                 },
             safe_mode,
@@ -282,7 +285,7 @@ impl MysSystemStateTrait for MysSystemStateInnerV2 {
             epoch_duration_ms,
             stake_subsidy_distribution_counter,
             stake_subsidy_balance: stake_subsidy_balance.value(),
-            stake_subsidy_current_distribution_amount,
+            stake_subsidy_current_apy_bps,
             total_stake,
             active_validators: active_validators
                 .into_iter()
@@ -312,6 +315,9 @@ impl MysSystemStateTrait for MysSystemStateInnerV2 {
             validator_low_stake_grace_period,
             stake_subsidy_period_length,
             stake_subsidy_decrease_rate,
+            stake_subsidy_max_apy_bps,
+            stake_subsidy_min_apy_bps,
+            stake_subsidy_intended_duration_years,
         }
     }
 }

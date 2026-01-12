@@ -42,9 +42,12 @@ module mys_system::genesis {
 
         // Stake Subsidy parameters
         stake_subsidy_start_epoch: u64,
-        stake_subsidy_initial_distribution_amount: u64,
+        stake_subsidy_initial_apy_bps: u64,
         stake_subsidy_period_length: u64,
         stake_subsidy_decrease_rate: u16,
+        stake_subsidy_max_apy_bps: u64,
+        stake_subsidy_min_apy_bps: u64,
+        stake_subsidy_intended_duration_years: u64,
 
         // Validator committee parameters
         max_validator_count: u64,
@@ -176,9 +179,12 @@ module mys_system::genesis {
 
         let stake_subsidy = stake_subsidy::create(
             subsidy_fund,
-            genesis_chain_parameters.stake_subsidy_initial_distribution_amount,
+            genesis_chain_parameters.stake_subsidy_initial_apy_bps,
             genesis_chain_parameters.stake_subsidy_period_length,
             genesis_chain_parameters.stake_subsidy_decrease_rate,
+            genesis_chain_parameters.stake_subsidy_max_apy_bps,
+            genesis_chain_parameters.stake_subsidy_min_apy_bps,
+            genesis_chain_parameters.stake_subsidy_intended_duration_years,
             ctx,
         );
 
