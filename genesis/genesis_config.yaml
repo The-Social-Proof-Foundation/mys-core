@@ -15,7 +15,7 @@ parameters:
   # Epoch duration in milliseconds (default: 24 hours)
   # 1 hour = 3,600,000 ms
   # 24 hours = 86,400,000 ms
-  epoch_duration_ms: 60000  # 4 hours for testnet (faster epochs)
+  epoch_duration_ms: 14400000  # 4 hours for testnet (faster epochs)
 
   # Stake subsidy parameters
   #
