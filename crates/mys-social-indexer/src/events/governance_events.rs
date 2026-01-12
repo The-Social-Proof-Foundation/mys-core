@@ -30,19 +30,20 @@ pub async fn process_governance_registry_created_event(
     // Parse the event
     let registry_event = parse_json_event::<GovernanceRegistryCreatedEvent>(event)?;
 
-    // Check if a platform with this governance_registry_id already exists
-    // If it does, it means the platform handler already created the registry entry,
-    // so we can skip this event to avoid duplicates.
-    let platform_exists = crate::schema::platforms::table
-        .filter(crate::schema::platforms::governance_registry_id.eq(&registry_event.registry_id))
+    // Check if a registry with this registry_id already exists
+    // If it does, we can skip this event to avoid duplicates.
+    // Note: We check by registry_id, not by platform, because GovernanceRegistryCreatedEvent
+    // can be emitted independently of platform creation.
+    let registry_exists = crate::schema::governance_registries::table
+        .filter(crate::schema::governance_registries::registry_id.eq(&registry_event.registry_id))
         .count()
         .get_result::<i64>(conn)
         .await
         .unwrap_or(0) > 0;
 
-    if platform_exists {
+    if registry_exists {
         debug!(
-            "Skipping GovernanceRegistryCreatedEvent for registry_id {} because a platform with this registry already exists.",
+            "Skipping GovernanceRegistryCreatedEvent for registry_id {} because a registry with this ID already exists.",
             registry_event.registry_id
         );
         return Ok(());
