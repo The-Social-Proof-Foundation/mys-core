@@ -39,7 +39,7 @@ parameters:
 
   # Number of epochs before decreasing the subsidy amount
   # Default: 15 epochs
-  stake_subsidy_period_length: 10
+  stake_subsidy_period_length: 6
 
   # Rate at which subsidy decreases at end of each period (in basis points)
   # 40 basis points = 0.40%
