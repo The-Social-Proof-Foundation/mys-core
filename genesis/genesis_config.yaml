@@ -63,31 +63,31 @@ accounts:
 validator_config_info:
   # Validator 1 (dynamic ports)
   - name: "MySo Validator 1"
-    network_address: "/ip4/127.0.0.1/tcp/59010/http"
-    p2p_address: "/ip4/127.0.0.1/udp/59020"
-    narwhal_primary_address: "/ip4/127.0.0.1/udp/59030"
-    narwhal_worker_address: "/ip4/127.0.0.1/udp/59040"
-    consensus_address: "/ip4/127.0.0.1/tcp/59050/http"
+    network_address: "/ip4/69.10.63.78/tcp/59010/http"
+    p2p_address: "/ip4/69.10.63.78/udp/59020"
+    narwhal_primary_address: "/ip4/69.10.63.78/udp/59030"
+    narwhal_worker_address: "/ip4/69.10.63.78/udp/59040"
+    consensus_address: "/ip4/69.10.63.78/tcp/59050/http"
     gas_price: 1
     commission_rate: 250
     stake: 1000000000000000
   # Validator 2 (dynamic ports)
   - name: "MySo Validator 2"
-    network_address: "/ip4/127.0.0.1/tcp/59110/http"
-    p2p_address: "/ip4/127.0.0.1/udp/59120"
-    narwhal_primary_address: "/ip4/127.0.0.1/udp/59130"
-    narwhal_worker_address: "/ip4/127.0.0.1/udp/59140"
-    consensus_address: "/ip4/127.0.0.1/tcp/59150/http"
+    network_address: "/ip4/69.10.63.78/tcp/59110/http"
+    p2p_address: "/ip4/69.10.63.78/udp/59120"
+    narwhal_primary_address: "/ip4/69.10.63.78/udp/59130"
+    narwhal_worker_address: "/ip4/69.10.63.78/udp/59140"
+    consensus_address: "/ip4/69.10.63.78/tcp/59150/http"
     gas_price: 1
     commission_rate: 250
     stake: 1000000000000000
   # Validator 3 (dynamic ports)
   - name: "MySo Validator 3"
-    network_address: "/ip4/127.0.0.1/tcp/59210/http"
-    p2p_address: "/ip4/127.0.0.1/udp/59220"
-    narwhal_primary_address: "/ip4/127.0.0.1/udp/59230"
-    narwhal_worker_address: "/ip4/127.0.0.1/udp/59240"
-    consensus_address: "/ip4/127.0.0.1/tcp/59250/http"
+    network_address: "/ip4/69.10.63.78/tcp/59210/http"
+    p2p_address: "/ip4/69.10.63.78/udp/59220"
+    narwhal_primary_address: "/ip4/69.10.63.78/udp/59230"
+    narwhal_worker_address: "/ip4/69.10.63.78/udp/59240"
+    consensus_address: "/ip4/69.10.63.78/tcp/59250/http"
     gas_price: 1
     commission_rate: 250
     stake: 1000000000000000
