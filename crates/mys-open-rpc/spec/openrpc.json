@@ -8093,6 +8093,9 @@
           "stakeSubsidyCurrentApyBps",
           "stakeSubsidyDecreaseRate",
           "stakeSubsidyDistributionCounter",
+          "stakeSubsidyIntendedDurationYears",
+          "stakeSubsidyMaxApyBps",
+          "stakeSubsidyMinApyBps",
           "stakeSubsidyPeriodLength",
           "stakeSubsidyStartEpoch",
           "stakingPoolMappingsId",
@@ -8296,6 +8299,30 @@
           },
           "stakeSubsidyPeriodLength": {
             "description": "Number of distributions to occur before the APY decays.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BigInt_for_uint64"
+              }
+            ]
+          },
+          "stakeSubsidyMaxApyBps": {
+            "description": "Maximum APY cap (in basis points). Effective APY will never exceed this.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BigInt_for_uint64"
+              }
+            ]
+          },
+          "stakeSubsidyMinApyBps": {
+            "description": "Minimum APY floor (in basis points). Effective APY will never go below this.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BigInt_for_uint64"
+              }
+            ]
+          },
+          "stakeSubsidyIntendedDurationYears": {
+            "description": "Target duration for subsidy pool in years (e.g., 10). Used to calculate stake-aware APY reduction to ensure pool sustainability.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/BigInt_for_uint64"

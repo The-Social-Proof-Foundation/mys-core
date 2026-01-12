@@ -354,6 +354,9 @@ pub struct GenesisChainParameters {
     pub stake_subsidy_initial_apy_bps: u64,
     pub stake_subsidy_period_length: u64,
     pub stake_subsidy_decrease_rate: u16,
+    pub stake_subsidy_max_apy_bps: u64,
+    pub stake_subsidy_min_apy_bps: u64,
+    pub stake_subsidy_intended_duration_years: u64,
 
     // Validator committee parameters
     pub max_validator_count: u64,
@@ -399,6 +402,19 @@ pub struct GenesisCeremonyParameters {
     /// period. Expressed in basis points.
     #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_decrease_rate")]
     pub stake_subsidy_decrease_rate: u16,
+
+    /// Maximum APY cap (in basis points). Effective APY will never exceed this.
+    #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_max_apy_bps")]
+    pub stake_subsidy_max_apy_bps: u64,
+
+    /// Minimum APY floor (in basis points). Effective APY will never go below this.
+    #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_min_apy_bps")]
+    pub stake_subsidy_min_apy_bps: u64,
+
+    /// Target duration for subsidy pool in years (e.g., 10).
+    /// Used to calculate stake-aware APY reduction to ensure pool sustainability.
+    #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_intended_duration_years")]
+    pub stake_subsidy_intended_duration_years: u64,
     // Most other parameters (e.g. initial gas schedule) should be derived from protocol_version.
 }
 
@@ -413,6 +429,9 @@ impl GenesisCeremonyParameters {
             stake_subsidy_initial_apy_bps: Self::default_initial_stake_subsidy_apy_bps(),
             stake_subsidy_period_length: Self::default_stake_subsidy_period_length(),
             stake_subsidy_decrease_rate: Self::default_stake_subsidy_decrease_rate(),
+            stake_subsidy_max_apy_bps: Self::default_stake_subsidy_max_apy_bps(),
+            stake_subsidy_min_apy_bps: Self::default_stake_subsidy_min_apy_bps(),
+            stake_subsidy_intended_duration_years: Self::default_stake_subsidy_intended_duration_years(),
         }
     }
 
@@ -447,6 +466,21 @@ impl GenesisCeremonyParameters {
         1000
     }
 
+    fn default_stake_subsidy_max_apy_bps() -> u64 {
+        // 100% in basis points (maximum allowed)
+        10000
+    }
+
+    fn default_stake_subsidy_min_apy_bps() -> u64 {
+        // 0% in basis points (minimum floor)
+        0
+    }
+
+    fn default_stake_subsidy_intended_duration_years() -> u64 {
+        // 10 years default duration
+        10
+    }
+
     pub fn to_genesis_chain_parameters(&self) -> GenesisChainParameters {
         GenesisChainParameters {
             protocol_version: self.protocol_version.as_u64(),
@@ -457,6 +491,9 @@ impl GenesisCeremonyParameters {
                 .stake_subsidy_initial_apy_bps,
             stake_subsidy_period_length: self.stake_subsidy_period_length,
             stake_subsidy_decrease_rate: self.stake_subsidy_decrease_rate,
+            stake_subsidy_max_apy_bps: self.stake_subsidy_max_apy_bps,
+            stake_subsidy_min_apy_bps: self.stake_subsidy_min_apy_bps,
+            stake_subsidy_intended_duration_years: self.stake_subsidy_intended_duration_years,
             max_validator_count: mys_types::governance::MAX_VALIDATOR_COUNT,
             min_validator_joining_stake: mys_types::governance::MIN_VALIDATOR_JOINING_STAKE_MIST,
             validator_low_stake_threshold:

@@ -253,6 +253,9 @@ impl MysSystemStateTrait for MysSystemStateInnerV2 {
                     current_apy_bps: stake_subsidy_current_apy_bps,
                     stake_subsidy_period_length,
                     stake_subsidy_decrease_rate,
+                    max_apy_bps: stake_subsidy_max_apy_bps,
+                    min_apy_bps: stake_subsidy_min_apy_bps,
+                    intended_duration_years: stake_subsidy_intended_duration_years,
                     extra_fields: _,
                 },
             safe_mode,
@@ -312,6 +315,9 @@ impl MysSystemStateTrait for MysSystemStateInnerV2 {
             validator_low_stake_grace_period,
             stake_subsidy_period_length,
             stake_subsidy_decrease_rate,
+            stake_subsidy_max_apy_bps,
+            stake_subsidy_min_apy_bps,
+            stake_subsidy_intended_duration_years,
         }
     }
 }

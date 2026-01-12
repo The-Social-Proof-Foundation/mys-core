@@ -493,6 +493,16 @@ pub struct StakeSubsidyV1 {
     /// period. Expressed in basis points.
     pub stake_subsidy_decrease_rate: u16,
 
+    /// Maximum APY cap (in basis points). Effective APY will never exceed this.
+    pub max_apy_bps: u64,
+
+    /// Minimum APY floor (in basis points). Effective APY will never go below this.
+    pub min_apy_bps: u64,
+
+    /// Target duration for subsidy pool in years (e.g., 10).
+    /// Used to calculate stake-aware APY reduction to ensure pool sustainability.
+    pub intended_duration_years: u64,
+
     pub extra_fields: Bag,
 }
 
@@ -672,6 +682,9 @@ impl MysSystemStateTrait for MysSystemStateInnerV1 {
                     current_apy_bps: stake_subsidy_current_apy_bps,
                     stake_subsidy_period_length,
                     stake_subsidy_decrease_rate,
+                    max_apy_bps: stake_subsidy_max_apy_bps,
+                    min_apy_bps: stake_subsidy_min_apy_bps,
+                    intended_duration_years: stake_subsidy_intended_duration_years,
                     extra_fields: _,
                 },
             safe_mode,
@@ -731,6 +744,9 @@ impl MysSystemStateTrait for MysSystemStateInnerV1 {
             validator_low_stake_grace_period,
             stake_subsidy_period_length,
             stake_subsidy_decrease_rate,
+            stake_subsidy_max_apy_bps,
+            stake_subsidy_min_apy_bps,
+            stake_subsidy_intended_duration_years,
         }
     }
 }

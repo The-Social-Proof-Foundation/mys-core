@@ -27,6 +27,16 @@ pub(crate) struct StakeSubsidy {
     /// period, expressed in basis points.
     pub decrease_rate: Option<u64>,
 
+    /// Maximum APY cap (in basis points). Effective APY will never exceed this.
+    pub max_apy_bps: Option<BigInt>,
+
+    /// Minimum APY floor (in basis points). Effective APY will never go below this.
+    pub min_apy_bps: Option<BigInt>,
+
+    /// Target duration for subsidy pool in years (e.g., 10).
+    /// Used to calculate stake-aware APY reduction to ensure pool sustainability.
+    pub intended_duration_years: Option<BigInt>,
+
     /// The annual percentage yield from the stake subsidy in basis points.
     /// To get the APY in percentage, divide by 100.
     pub apy: Option<u64>,

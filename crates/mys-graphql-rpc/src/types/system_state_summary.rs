@@ -86,6 +86,11 @@ impl SystemStateSummary {
             )),
             period_length: Some(self.native.stake_subsidy_period_length),
             decrease_rate: Some(self.native.stake_subsidy_decrease_rate as u64),
+            max_apy_bps: Some(BigInt::from(self.native.stake_subsidy_max_apy_bps)),
+            min_apy_bps: Some(BigInt::from(self.native.stake_subsidy_min_apy_bps)),
+            intended_duration_years: Some(BigInt::from(
+                self.native.stake_subsidy_intended_duration_years,
+            )),
             apy: Some(self.native.stake_subsidy_current_apy_bps),
         })
     }

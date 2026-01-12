@@ -31,7 +31,9 @@
       currentApyBps
       periodLength
       decreaseRate
-
+      maxApyBps
+      minApyBps
+      intendedDurationYears
     }
   }
 }

@@ -142,6 +142,22 @@ pub struct MysSystemStateSummary {
     /// period. Expressed in basis points.
     pub stake_subsidy_decrease_rate: u16,
 
+    /// Maximum APY cap (in basis points). Effective APY will never exceed this.
+    #[schemars(with = "BigInt<u64>")]
+    #[serde_as(as = "Readable<BigInt<u64>, _>")]
+    pub stake_subsidy_max_apy_bps: u64,
+
+    /// Minimum APY floor (in basis points). Effective APY will never go below this.
+    #[schemars(with = "BigInt<u64>")]
+    #[serde_as(as = "Readable<BigInt<u64>, _>")]
+    pub stake_subsidy_min_apy_bps: u64,
+
+    /// Target duration for subsidy pool in years (e.g., 10).
+    /// Used to calculate stake-aware APY reduction to ensure pool sustainability.
+    #[schemars(with = "BigInt<u64>")]
+    #[serde_as(as = "Readable<BigInt<u64>, _>")]
+    pub stake_subsidy_intended_duration_years: u64,
+
     // Validator set
     /// Total amount of stake from all active validators at the beginning of the epoch.
     #[schemars(with = "BigInt<u64>")]
@@ -352,6 +368,9 @@ impl Default for MysSystemStateSummary {
             stake_subsidy_current_apy_bps: 0,
             stake_subsidy_period_length: 0,
             stake_subsidy_decrease_rate: 0,
+            stake_subsidy_max_apy_bps: 10000, // 100% default
+            stake_subsidy_min_apy_bps: 0,
+            stake_subsidy_intended_duration_years: 10,
             total_stake: 0,
             active_validators: vec![],
             pending_active_validators_id: ObjectID::ZERO,

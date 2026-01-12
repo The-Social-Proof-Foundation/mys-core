@@ -15,7 +15,7 @@ parameters:
   # Epoch duration in milliseconds (default: 24 hours)
   # 1 hour = 3,600,000 ms
   # 24 hours = 86,400,000 ms
-  epoch_duration_ms: 14400000  # 4 hours for testnet (faster epochs)
+  epoch_duration_ms: 60000  # 4 hours for testnet (faster epochs)
 
   # Stake subsidy parameters
   #
@@ -24,15 +24,26 @@ parameters:
 
   # Initial stake subsidy distribution amount per epoch (in MIST)
   # Default: 31,537 MySo = 31,537,208,455,986 MIST
-  stake_subsidy_initial_distribution_amount: 31537208455986
+  # stake_subsidy_initial_distribution_amount: 31537208455986
+  stake_subsidy_initial_apy_bps: 2000
+
+  # Maximum APY cap (in basis points). Effective APY will never exceed this.
+  stake_subsidy_max_apy_bps: 2000
+
+  # Minimum APY floor (in basis points). Effective APY will never go below this.
+  stake_subsidy_min_apy_bps: 100
+
+  # Target duration for subsidy pool in years (e.g., 10).
+  # Used to calculate stake-aware APY reduction to ensure pool sustainability.
+  stake_subsidy_intended_duration_years: 1
 
   # Number of epochs before decreasing the subsidy amount
   # Default: 15 epochs
-  stake_subsidy_period_length: 30
+  stake_subsidy_period_length: 10
 
   # Rate at which subsidy decreases at end of each period (in basis points)
   # 40 basis points = 0.40%
-  stake_subsidy_decrease_rate: 40
+  stake_subsidy_decrease_rate: 150
 
 # Accounts to add tokens to
 accounts:
@@ -52,31 +63,31 @@ accounts:
 validator_config_info:
   # Validator 1 (dynamic ports)
   - name: "MySo Validator 1"
-    network_address: "/ip4/69.10.63.78/tcp/59010/http"
-    p2p_address: "/ip4/69.10.63.78/udp/59020"
-    narwhal_primary_address: "/ip4/69.10.63.78/udp/59030"
-    narwhal_worker_address: "/ip4/69.10.63.78/udp/59040"
-    consensus_address: "/ip4/69.10.63.78/tcp/59050/http"
+    network_address: "/ip4/127.0.0.1/tcp/59010/http"
+    p2p_address: "/ip4/127.0.0.1/udp/59020"
+    narwhal_primary_address: "/ip4/127.0.0.1/udp/59030"
+    narwhal_worker_address: "/ip4/127.0.0.1/udp/59040"
+    consensus_address: "/ip4/127.0.0.1/tcp/59050/http"
     gas_price: 1
     commission_rate: 250
-    stake: 1000000000000000  # 1 million MySo in MIST units
+    stake: 1000000000000000
   # Validator 2 (dynamic ports)
   - name: "MySo Validator 2"
-    network_address: "/ip4/69.10.63.78/tcp/59110/http"
-    p2p_address: "/ip4/69.10.63.78/udp/59120"
-    narwhal_primary_address: "/ip4/69.10.63.78/udp/59130"
-    narwhal_worker_address: "/ip4/69.10.63.78/udp/59140"
-    consensus_address: "/ip4/69.10.63.78/tcp/59150/http"
+    network_address: "/ip4/127.0.0.1/tcp/59110/http"
+    p2p_address: "/ip4/127.0.0.1/udp/59120"
+    narwhal_primary_address: "/ip4/127.0.0.1/udp/59130"
+    narwhal_worker_address: "/ip4/127.0.0.1/udp/59140"
+    consensus_address: "/ip4/127.0.0.1/tcp/59150/http"
     gas_price: 1
     commission_rate: 250
-    stake: 1000000000000000  # 1 million MySo in MIST units
+    stake: 1000000000000000
   # Validator 3 (dynamic ports)
   - name: "MySo Validator 3"
-    network_address: "/ip4/69.10.63.78/tcp/59210/http"
-    p2p_address: "/ip4/69.10.63.78/udp/59220"
-    narwhal_primary_address: "/ip4/69.10.63.78/udp/59230"
-    narwhal_worker_address: "/ip4/69.10.63.78/udp/59240"
-    consensus_address: "/ip4/69.10.63.78/tcp/59250/http"
+    network_address: "/ip4/127.0.0.1/tcp/59210/http"
+    p2p_address: "/ip4/127.0.0.1/udp/59220"
+    narwhal_primary_address: "/ip4/127.0.0.1/udp/59230"
+    narwhal_worker_address: "/ip4/127.0.0.1/udp/59240"
+    consensus_address: "/ip4/127.0.0.1/tcp/59250/http"
     gas_price: 1
     commission_rate: 250
-    stake: 1000000000000000  # 1 million MySo in MIST units
+    stake: 1000000000000000
