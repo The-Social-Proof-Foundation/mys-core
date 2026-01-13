@@ -4,6 +4,7 @@
 
 use anyhow::anyhow;
 use anyhow::Result;
+use bcs;
 use diesel::{
     dsl::sql, sql_types::Bool, ExpressionMethods, JoinOnDsl, NullableExpressionMethods,
     OptionalExtension, QueryDsl, SelectableHelper, TextExpressionMethods,
@@ -285,18 +286,33 @@ impl IndexerReader {
     }
 
     pub async fn get_latest_mys_system_state(&self) -> Result<MysSystemStateSummary, IndexerError> {
-        let object_store = ConnectionAsObjectStore::from_pool(&self.pool)
+        // Try to read from objects table using BCS deserialization first
+        let pool = self.pool.clone();
+        let object_store = ConnectionAsObjectStore::from_pool(&pool)
             .await
             .map_err(|e| IndexerError::PgPoolConnectionError(e.to_string()))?;
 
-        let system_state = tokio::task::spawn_blocking(move || {
+        let bcs_result = tokio::task::spawn_blocking(move || {
             mys_types::mys_system_state::get_mys_system_state(&object_store)
+                .map(|state| state.into_mys_system_state_summary())
         })
         .await
-        .unwrap()?
-        .into_mys_system_state_summary();
+        .unwrap();
 
-        Ok(system_state)
+        match bcs_result {
+            Ok(system_state) => Ok(system_state),
+            Err(e) => {
+                // BCS deserialization failed (likely corrupted/truncated data)
+                // Fall back to reading from epochs table JSON column
+                warn!(
+                    error = %e,
+                    "Failed to read system state from objects table (BCS), falling back to JSON column"
+                );
+                
+                let latest_epoch = self.get_latest_epoch_info_from_db().await?;
+                latest_epoch.get_json_system_state_summary()
+            }
+        }
     }
 
     pub async fn get_validator_from_table(
@@ -1467,6 +1483,8 @@ impl ConnectionAsObjectStore {
         version: Option<VersionNumber>,
     ) -> Result<Option<StoredObject>, IndexerError> {
         use diesel::RunQueryDsl;
+        use diesel::ExpressionMethods;
+        use diesel::QueryDsl;
 
         let mut guard = self.inner.lock().unwrap();
         let connection: &mut diesel_async::async_connection_wrapper::AsyncConnectionWrapper<_> =
@@ -1477,12 +1495,35 @@ impl ConnectionAsObjectStore {
             .into_boxed();
         if let Some(version) = version {
             query = query.filter(objects::object_version.eq(version.value() as i64))
+        } else {
+            // Order by version descending to ensure we get the latest version
+            // (defensive, even though PRIMARY KEY should prevent duplicates)
+            query = query.order_by(objects::object_version.desc())
         }
 
-        query
+        let stored_object = query
             .first::<StoredObject>(connection)
             .optional()
-            .map_err(Into::into)
+            .map_err(IndexerError::from)?;
+        
+        // Validate BCS data integrity when reading
+        if let Some(ref stored) = stored_object {
+            if let Err(e) = bcs::from_bytes::<mys_types::object::Object>(&stored.serialized_object) {
+                let object_id_str = ObjectID::from_bytes(&stored.object_id)
+                    .map(|id| id.to_string())
+                    .unwrap_or_else(|_| format!("invalid_bytes_{:?}", &stored.object_id[..std::cmp::min(8, stored.object_id.len())]));
+                warn!(
+                    object_id = %object_id_str,
+                    object_version = stored.object_version,
+                    serialized_len = stored.serialized_object.len(),
+                    error = %e,
+                    "Corrupted BCS data detected when reading object from database"
+                );
+                // Don't fail here - let the caller handle it, but log the issue
+            }
+        }
+        
+        Ok(stored_object)
     }
 
     fn get_object_from_history(

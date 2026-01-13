@@ -354,8 +354,10 @@ impl SimpleFaucet {
         let wal = WriteAheadLog::open(wal_path);
         let mut pending = vec![];
 
-        let (producer, consumer) = mpsc::channel(coins.len());
-        let (batch_producer, batch_consumer) = mpsc::channel(coins.len());
+        // Ensure channel buffer is at least 1 (mpsc::channel requires buffer > 0)
+        let channel_buffer = coins.len().max(1);
+        let (producer, consumer) = mpsc::channel(channel_buffer);
+        let (batch_producer, batch_consumer) = mpsc::channel(channel_buffer);
 
         let (sender, mut receiver) =
             mpsc::channel::<(Uuid, MysAddress, Vec<u64>)>(config.max_request_queue_length as usize);
