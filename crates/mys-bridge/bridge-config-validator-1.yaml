@@ -82,7 +82,7 @@ relay:
   max-retries: 3
   retry-delay-seconds: 30
   mys:
-    gas-budget: 100000000 # 0.1 MySo
+    gas-budget: 10000000 # 0.01 MySo
   evm:
     enabled: true
     max-gas-price-gwei: 10
