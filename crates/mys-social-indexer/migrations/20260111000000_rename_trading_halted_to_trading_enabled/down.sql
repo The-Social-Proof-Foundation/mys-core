@@ -3,6 +3,14 @@
 BEGIN;
 
 -- ============================================================================
+-- 0. DROP FUNCTION (must be dropped before changing return type)
+-- ============================================================================
+
+-- Drop the function first since PostgreSQL doesn't allow changing return types
+-- with CREATE OR REPLACE. We'll recreate it after table migrations complete.
+DROP FUNCTION IF EXISTS get_current_exchange_config() CASCADE;
+
+-- ============================================================================
 -- 1. REVERT spt_exchange_config TABLE
 -- ============================================================================
 
