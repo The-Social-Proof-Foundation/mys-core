@@ -269,19 +269,41 @@ impl PlatformEventHandler {
                         reasoning: None,
                     };
 
-                    // Insert platform event
-                    info!("📝 Inserting into platform_events table for platform_id: {}", event.platform_id);
-                    let platform_event_result = diesel::insert_into(schema::platform_events::table)
-                        .values(&platform_event)
-                        .execute(&mut conn)
-                        .await;
-                    match platform_event_result {
-                        Ok(rows) => {
-                            info!("✅ Successfully inserted into platform_events: {} rows affected", rows);
+                    // Check if event with this event_id already exists
+                    let should_insert = if let Some(ref eid) = platform_event.event_id {
+                        let existing_count = schema::platform_events::table
+                            .filter(schema::platform_events::event_id.eq(eid))
+                            .count()
+                            .get_result::<i64>(&mut conn)
+                            .await
+                            .unwrap_or(0);
+                        
+                        if existing_count > 0 {
+                            info!("Platform event with event_id {} already exists, skipping duplicate insert", eid);
+                            false
+                        } else {
+                            true
                         }
-                        Err(e) => {
-                            error!("❌ Failed to insert into platform_events: {}", e);
-                            return Err(e);
+                    } else {
+                        // If event_id is None, insert anyway (no way to deduplicate)
+                        true
+                    };
+
+                    // Insert platform event only if it doesn't already exist
+                    if should_insert {
+                        info!("📝 Inserting into platform_events table for platform_id: {}", event.platform_id);
+                        let platform_event_result = diesel::insert_into(schema::platform_events::table)
+                            .values(&platform_event)
+                            .execute(&mut conn)
+                            .await;
+                        match platform_event_result {
+                            Ok(rows) => {
+                                info!("✅ Successfully inserted into platform_events: {} rows affected", rows);
+                            }
+                            Err(e) => {
+                                error!("❌ Failed to insert into platform_events: {}", e);
+                                return Err(e);
+                            }
                         }
                     }
 
