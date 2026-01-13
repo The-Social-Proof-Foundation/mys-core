@@ -50,7 +50,7 @@ use std::{
     time::Duration,
 };
 use tokio::task::JoinHandle;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 pub async fn run_bridge_node(
     config: BridgeNodeConfig,
@@ -619,6 +619,9 @@ async fn start_client_components(
 
 /// Query supported ERC20 token addresses from BridgeConfig contract
 /// Returns a list of non-zero token addresses
+/// 
+/// This function will fail fast on real errors (network issues, wrong config address, etc.)
+/// but will continue querying when encountering contract reverts (expected for unconfigured tokens)
 async fn get_supported_token_addresses(
     config_address: EthAddress,
     provider: &Arc<Provider<MeteredEthHttpProvier>>,
@@ -633,7 +636,8 @@ async fn get_supported_token_addresses(
     // Query token IDs 0-20 (reasonable range for bridge tokens)
     // Token ID 0 is typically native token (ETH/MYS)
     // Token IDs 1+ are ERC20 tokens
-    for token_id in 1u8..=20 {
+    // Start from token_id 0 to include native token
+    for token_id in 0u8..=20 {
         match config.token_address_of(token_id).call().await {
             Ok(addr) if addr != EthAddress::zero() => {
                 info!("Found token ID {}: {}", token_id, addr);
@@ -641,11 +645,38 @@ async fn get_supported_token_addresses(
             }
             Ok(_) => {
                 // Zero address means token ID not configured
-                break;
+                // If we've found some tokens and hit a zero address, likely no more tokens
+                if !supported_tokens.is_empty() {
+                    info!("Token ID {} returns zero address, stopping query (found {} tokens)", token_id, supported_tokens.len());
+                    break;
+                }
+                // Continue querying if we haven't found any tokens yet
+                debug!("Token ID {} returns zero address, continuing query", token_id);
             }
             Err(e) => {
-                warn!("Failed to query token ID {}: {:?}, stopping query", token_id, e);
-                break;
+                // Check if this is a contract revert (expected) or a real error (should fail)
+                let error_msg = format!("{:?}", e);
+                let is_revert = error_msg.contains("reverted") || 
+                               error_msg.contains("execution reverted") ||
+                               error_msg.contains("Contract call reverted");
+                
+                if is_revert {
+                    // Contract revert is expected for unconfigured tokens - continue querying
+                    debug!("Token ID {} reverted (likely unconfigured): {:?}", token_id, e);
+                    // Continue to next token ID
+                } else {
+                    // Real error (network issues, wrong config address, etc.) - fail fast
+                    error!(
+                        "Failed to query token ID {} from BridgeConfig at {}: {:?}. \
+                         This indicates a configuration or connectivity issue. Bridge node will fail to prevent wasted queries.",
+                        token_id, config_address, e
+                    );
+                    return Err(crate::error::BridgeError::ProviderError(format!(
+                        "Failed to query BridgeConfig contract at {}: {:?}. \
+                         Check that the contract address is correct and the RPC endpoint is accessible.",
+                        config_address, e
+                    )));
+                }
             }
         }
     }
