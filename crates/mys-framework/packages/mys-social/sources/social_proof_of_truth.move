@@ -62,7 +62,7 @@ module social_contracts::social_proof_of_truth {
 
     /// Config defaults
     const DEFAULT_CONFIDENCE_THRESHOLD_BPS: u64 = 7000; // 70%
-    const DEFAULT_ENABLE: bool = true;
+    const DEFAULT_ENABLE: bool = false;
     const DEFAULT_RESOLUTION_WINDOW_EPOCHS: u64 = 72; // depends on epoch length
     const DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS: u64 = 144;
     const DEFAULT_PAYOUT_DELAY_EPOCHS: u64 = 0;

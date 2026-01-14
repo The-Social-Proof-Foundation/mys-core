@@ -69,6 +69,19 @@ pub async fn get_current_treasury_address(
     Ok(treasury.treasury_address)
 }
 
+/// Get the current treasury details (full record) from the ecosystem_treasury table
+pub async fn get_current_treasury_details(
+    conn: &mut DbConnection,
+) -> Result<EcosystemTreasury> {
+    let treasury = schema::ecosystem_treasury::table
+        .order_by(schema::ecosystem_treasury::time.desc())
+        .first::<EcosystemTreasury>(conn)
+        .await
+        .map_err(|e| anyhow!("Failed to query current treasury details: {}", e))?;
+
+    Ok(treasury)
+}
+
 /// Get treasury update history
 pub async fn get_treasury_history(
     conn: &mut DbConnection,

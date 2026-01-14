@@ -103,4 +103,4 @@ pub use social_proof_of_truth::*;
 // Insurance types
 pub use insurance::*;
 // Treasury types
-pub use treasury::{EcosystemTreasury, NewEcosystemTreasury, get_current_treasury_address, get_treasury_history};
+pub use treasury::{EcosystemTreasury, NewEcosystemTreasury, get_current_treasury_address, get_current_treasury_details, get_treasury_history};

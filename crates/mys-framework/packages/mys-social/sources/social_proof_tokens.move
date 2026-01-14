@@ -134,6 +134,8 @@ module social_contracts::social_proof_tokens {
     /// Global social proof tokens configuration
     public struct SocialProofTokensConfig has key {
         id: UID,
+        /// Version for upgrades
+        version: u64,
         /// Creator fee percentage in basis points (for trading)
         trading_creator_fee_bps: u64,
         /// Platform fee percentage in basis points (for trading)
@@ -419,6 +421,7 @@ module social_contracts::social_proof_tokens {
         transfer::share_object(
             SocialProofTokensConfig {
                 id: object::new(ctx),
+                version: upgrade::current_version(),
                 trading_creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
                 trading_platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
                 trading_treasury_fee_bps: DEFAULT_TRADING_TREASURY_FEE_BPS,
@@ -3243,6 +3246,7 @@ module social_contracts::social_proof_tokens {
         transfer::share_object(
             SocialProofTokensConfig {
                 id: object::new(ctx),
+                version: upgrade::current_version(),
                 trading_creator_fee_bps: DEFAULT_TRADING_CREATOR_FEE_BPS,
                 trading_platform_fee_bps: DEFAULT_TRADING_PLATFORM_FEE_BPS,
                 trading_treasury_fee_bps: DEFAULT_TRADING_TREASURY_FEE_BPS,
@@ -3355,6 +3359,16 @@ module social_contracts::social_proof_tokens {
         &mut pool.version
     }
 
+    /// Get the version of the social proof tokens config
+    public fun config_version(config: &SocialProofTokensConfig): u64 {
+        config.version
+    }
+
+    /// Get a mutable reference to the config version (for upgrade module)
+    public(package) fun borrow_config_version_mut(config: &mut SocialProofTokensConfig): &mut u64 {
+        &mut config.version
+    }
+
     /// Migration function for TokenRegistry
     public entry fun migrate_token_registry(
         registry: &mut TokenRegistry,
@@ -3429,6 +3443,33 @@ module social_contracts::social_proof_tokens {
         upgrade::emit_migration_event(
             pool_id,
             string::utf8(b"ReservationPoolObject"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+        
+        // Any migration logic can be added here for future upgrades
+    }
+
+    /// Migration function for SocialProofTokensConfig
+    public entry fun migrate_social_proof_tokens_config(
+        config: &mut SocialProofTokensConfig,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(config.version < current_version, EWrongVersion);
+        
+        // Remember old version and update to new version
+        let old_version = config.version;
+        config.version = current_version;
+        
+        // Emit event for object migration
+        let config_id = object::id(config);
+        upgrade::emit_migration_event(
+            config_id,
+            string::utf8(b"SocialProofTokensConfig"),
             old_version,
             tx_context::sender(ctx)
         );
