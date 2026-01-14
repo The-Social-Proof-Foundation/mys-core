@@ -109,10 +109,14 @@ pub async fn get_following(
 
     // Resolve the input parameter to both profile_id and owner_address
     // The input could be either a profile_id or owner_address (wallet address)
+    // Normalize to lowercase for case-insensitive matching
+    let normalized_input = wallet_address.to_lowercase();
+    let escaped_input = normalized_input.replace("'", "''");
     let profile_info = match profiles::table
         .filter(
-            profiles::owner_address.eq(&wallet_address)
-                .or(profiles::profile_id.eq(Some(&wallet_address)))
+            diesel::dsl::sql::<diesel::sql_types::Bool>(
+                &format!("LOWER(profiles.owner_address) = LOWER('{}') OR (profiles.profile_id IS NOT NULL AND LOWER(profiles.profile_id) = LOWER('{}'))", escaped_input, escaped_input)
+            )
         )
         .select((
             profiles::profile_id.nullable(),
@@ -408,10 +412,14 @@ pub async fn get_followers(
 
     // Resolve the input parameter to both profile_id and owner_address
     // The input could be either a profile_id or owner_address (wallet address)
+    // Normalize to lowercase for case-insensitive matching
+    let normalized_input = wallet_address.to_lowercase();
+    let escaped_input = normalized_input.replace("'", "''");
     let profile_info = match profiles::table
         .filter(
-            profiles::owner_address.eq(&wallet_address)
-                .or(profiles::profile_id.eq(Some(&wallet_address)))
+            diesel::dsl::sql::<diesel::sql_types::Bool>(
+                &format!("LOWER(profiles.owner_address) = LOWER('{}') OR (profiles.profile_id IS NOT NULL AND LOWER(profiles.profile_id) = LOWER('{}'))", escaped_input, escaped_input)
+            )
         )
         .select((
             profiles::profile_id.nullable(),
