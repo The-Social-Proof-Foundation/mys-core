@@ -23,8 +23,8 @@ use crate::events::social_proof_token_events::{
 };
 use crate::models::indexer::NewIndexerProgress;
 use crate::models::social_proof_token::{
-    NewSocialProofTokenPool, NewSptReservationPool, SocialProofTokenPool, SptExchangeConfig,
-    SptReservationPool,
+    NewSocialProofTokenPool, NewSptExchangeConfig, NewSptReservationPool, SocialProofTokenPool,
+    SptExchangeConfig, SptReservationPool,
 };
 use crate::schema;
 
@@ -49,6 +49,7 @@ impl SocialProofTokenHandler {
     fn extract_event_fields(data: &serde_json::Value) -> Result<serde_json::Value> {
         crate::events::event_utils::extract_event_fields(data)
     }
+
 
     /// Process initialization pool events
     async fn process_init_pool_event(&mut self, event: &BlockchainEvent) -> Result<()> {
@@ -1038,10 +1039,10 @@ impl SocialProofTokenHandler {
             .map_err(|e| anyhow!("Failed to parse EmergencyKillSwitchEvent: {}", e))?;
 
         let mut conn = self.base.get_connection().await?;
-        let timestamp = (event.timestamp_ms / 1000) as i64;
         let datetime = Self::timestamp_to_datetime(event.timestamp_ms);
 
-        // Fetch the latest config from database to use as fallback for missing values
+        // Fetch the latest config from database - this should have all current values
+        // from ConfigUpdatedEvent, so we can preserve them and only update trading_enabled
         let latest_config = diesel::sql_query(
             "SELECT id, updated_by, post_threshold, profile_threshold, max_individual_reservation_bps, \
              total_fee_bps, creator_fee_bps, platform_fee_bps, treasury_fee_bps, base_price, \
@@ -1050,22 +1051,51 @@ impl SocialProofTokenHandler {
              FROM spt_exchange_config ORDER BY time DESC LIMIT 1"
         )
         .get_result::<SptExchangeConfig>(&mut conn)
-        .await
-        .ok(); // Use None if no previous config exists
+        .await;
 
-        // Log the kill switch event to exchange config table
-        // Use latest config as fallback for any missing values in the event
-        let mut config = kill_switch_event.into_exchange_config_model(
-            timestamp as u64,
-            event.tx_digest.clone(),
-            latest_config.as_ref(),
-        )?;
-        config.time = datetime;
+        match latest_config {
+            Ok(db_config) => {
+                // We have a config in the DB - use all its values and only update trading_enabled from event
+                info!("Using latest DB config values and updating trading_enabled from event");
+                
+                let mut config = NewSptExchangeConfig {
+                    updated_by: kill_switch_event.admin.clone(),
+                    post_threshold: db_config.post_threshold,
+                    profile_threshold: db_config.profile_threshold,
+                    max_individual_reservation_bps: db_config.max_individual_reservation_bps,
+                    total_fee_bps: db_config.total_fee_bps,
+                    creator_fee_bps: db_config.creator_fee_bps,
+                    platform_fee_bps: db_config.platform_fee_bps,
+                    treasury_fee_bps: db_config.treasury_fee_bps,
+                    base_price: db_config.base_price,
+                    quadratic_coefficient: db_config.quadratic_coefficient,
+                    max_hold_percent_bps: db_config.max_hold_percent_bps,
+                    trading_enabled: kill_switch_event.trading_enabled, // Use event value
+                    updated_at: kill_switch_event.timestamp as i64,
+                    time: datetime,
+                    transaction_id: event.tx_digest.clone(),
+                };
 
-        diesel::insert_into(schema::spt_exchange_config::table)
-            .values(&config)
-            .execute(&mut conn)
-            .await?;
+                // Insert into database (hypertable, so always insert, never update)
+                diesel::insert_into(schema::spt_exchange_config::table)
+                    .values(&config)
+                    .execute(&mut conn)
+                    .await?;
+            }
+            Err(diesel::result::Error::NotFound) => {
+                // No config exists in DB - this is an error because we can't create a valid config
+                // without knowing the other values
+                error!("No existing SPT config found in database. Cannot process kill switch event without config values.");
+                return Err(anyhow!(
+                    "Cannot process kill switch event: no existing config found in database. \
+                     A ConfigUpdatedEvent must be processed first to establish config values."
+                ));
+            }
+            Err(e) => {
+                error!("Database error fetching config: {}", e);
+                return Err(anyhow!("Database error: {}", e));
+            }
+        }
 
         // Update progress tracking
         self.update_progress().await?;
