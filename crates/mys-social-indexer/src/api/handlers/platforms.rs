@@ -72,6 +72,10 @@ pub async fn get_platforms(
     let mut count_query = platforms::table.into_boxed();
     let mut platforms_query = platforms::table.into_boxed();
 
+    // Filter out deleted platforms
+    count_query = count_query.filter(platforms::deleted_at.is_null());
+    platforms_query = platforms_query.filter(platforms::deleted_at.is_null());
+
     // Apply category filters if provided
     if let Some(ref primary_cat) = query.primary_category {
         count_query = count_query.filter(platforms::primary_category.eq(primary_cat));
@@ -219,9 +223,10 @@ pub async fn get_platform_by_id(
         }
     };
 
-    // Get the platform
+    // Get the platform (excluding deleted platforms)
     let platform_result = platforms::table
         .filter(platforms::platform_id.eq(&platform_id))
+        .filter(platforms::deleted_at.is_null())
         .first::<Platform>(&mut conn)
         .await;
 
@@ -545,9 +550,11 @@ pub async fn get_approved_platforms(
     // Build base query with approval and category filters
     let mut count_query = platforms::table
         .filter(platforms::is_approved.eq(true))
+        .filter(platforms::deleted_at.is_null())
         .into_boxed();
     let mut platforms_query = platforms::table
         .filter(platforms::is_approved.eq(true))
+        .filter(platforms::deleted_at.is_null())
         .into_boxed();
 
     // Apply category filters if provided
@@ -1390,7 +1397,10 @@ pub async fn get_profile_platforms(
     // Build count query
     let mut count_query = platform_memberships::table
         .filter(platform_memberships::wallet_address.eq(&wallet_addr))
-        .inner_join(platforms::table.on(platforms::platform_id.eq(platform_memberships::platform_id)))
+        .inner_join(platforms::table.on(
+            platforms::platform_id.eq(platform_memberships::platform_id)
+                .and(platforms::deleted_at.is_null())
+        ))
         .into_boxed();
 
     // Apply search filter to count query if provided
@@ -1417,7 +1427,10 @@ pub async fn get_profile_platforms(
     // Build main query - join platform_memberships with platforms
     let mut platforms_query = platform_memberships::table
         .filter(platform_memberships::wallet_address.eq(&wallet_addr))
-        .inner_join(platforms::table.on(platforms::platform_id.eq(platform_memberships::platform_id)))
+        .inner_join(platforms::table.on(
+            platforms::platform_id.eq(platform_memberships::platform_id)
+                .and(platforms::deleted_at.is_null())
+        ))
         .select((
             platforms::id,
             platforms::platform_id,
