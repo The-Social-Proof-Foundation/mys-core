@@ -223,25 +223,61 @@ pub async fn get_blocked_profiles(
     }))
 }
 
+/// Resolve input (profile_id, username, or wallet address) to (profile_id, owner_address)
+/// Returns (Option<profile_id>, owner_address)
+async fn resolve_profile_input(
+    conn: &mut diesel_async::pooled_connection::deadpool::Object<diesel_async::AsyncPgConnection>,
+    input: &str,
+) -> Result<(Option<String>, String), diesel::result::Error> {
+    // Normalize to lowercase for case-insensitive matching
+    let normalized_input = input.to_lowercase();
+    let escaped_input = normalized_input.replace("'", "''");
+    
+    // Try to find profile first by owner_address, profile_id, or username
+    let profile_info_result = profiles::table
+        .filter(
+            diesel::dsl::sql::<diesel::sql_types::Bool>(
+                &format!("LOWER(profiles.owner_address) = LOWER('{}') OR (profiles.profile_id IS NOT NULL AND LOWER(profiles.profile_id) = LOWER('{}')) OR LOWER(profiles.username) = LOWER('{}')", escaped_input, escaped_input, escaped_input)
+            )
+        )
+        .select((
+            profiles::profile_id.nullable(),
+            profiles::owner_address,
+        ))
+        .first::<(Option<String>, String)>(conn)
+        .await;
+    
+    match profile_info_result {
+        Ok((profile_id, owner_address)) => {
+            Ok((profile_id, owner_address))
+        }
+        Err(diesel::result::Error::NotFound) => {
+            // Profile not found, use input as wallet address fallback
+            Ok((None, input.to_string()))
+        }
+        Err(e) => Err(e),
+    }
+}
+
 /// Check if a profile is blocked by another profile
-/// Accepts wallet addresses (owner_address) as input
+/// Accepts profile_id, username, or wallet addresses as input
 pub async fn check_profile_blocked(
-    Path((blocker_wallet, blocked_wallet)): Path<(String, String)>,
+    Path((blocker_input, blocked_input)): Path<(String, String)>,
     State(pool): State<DbPool>,
 ) -> Result<Json<BlockCheckResponse>, StatusCode> {
     debug!(
-        "Checking if wallet {} is blocked by {}",
-        blocked_wallet, blocker_wallet
+        "Checking if {} is blocked by {}",
+        blocked_input, blocker_input
     );
 
     // Input validation
-    if blocker_wallet.trim().is_empty() || blocked_wallet.trim().is_empty() {
-        debug!("Invalid wallet addresses: empty string");
+    if blocker_input.trim().is_empty() || blocked_input.trim().is_empty() {
+        debug!("Invalid inputs: empty string");
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    if blocker_wallet.len() > 256 || blocked_wallet.len() > 256 {
-        debug!("Invalid wallet addresses: too long");
+    if blocker_input.len() > 256 || blocked_input.len() > 256 {
+        debug!("Invalid inputs: too long");
         return Err(StatusCode::BAD_REQUEST);
     }
 
@@ -253,17 +289,45 @@ pub async fn check_profile_blocked(
         }
     };
 
-    // Note: Profile existence checks removed - this endpoint works with wallet addresses only
-    // The blocked_profiles table stores wallet addresses, so profiles are not required
+    // Resolve both inputs to profile_id and owner_address
+    let (blocker_profile_id, blocker_owner_address) = match resolve_profile_input(&mut conn, &blocker_input).await {
+        Ok(resolved) => resolved,
+        Err(e) => {
+            error!("Failed to resolve blocker input: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let (blocked_profile_id, blocked_owner_address) = match resolve_profile_input(&mut conn, &blocked_input).await {
+        Ok(resolved) => resolved,
+        Err(e) => {
+            error!("Failed to resolve blocked input: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
     debug!(
-        "Checking blocking relationship: blocker={}, blocked={}",
-        blocker_wallet, blocked_wallet
+        "Checking blocking relationship: blocker={} (profile_id: {:?}), blocked={} (profile_id: {:?})",
+        blocker_owner_address, blocker_profile_id, blocked_owner_address, blocked_profile_id
     );
 
     // Check production blocking system (blocked_profiles table)
+    // Check both wallet addresses and profile_ids
     let is_blocked = match blocked_profiles::table
-        .filter(blocked_profiles::blocker_address.eq(&blocker_wallet))
-        .filter(blocked_profiles::blocked_address.eq(&blocked_wallet))
+        .filter(
+            blocked_profiles::blocker_address
+                .eq(&blocker_owner_address)
+                .or(blocked_profiles::blocker_address.eq(
+                    blocker_profile_id.as_ref().unwrap_or(&blocker_owner_address)
+                ))
+                .and(
+                    blocked_profiles::blocked_address
+                        .eq(&blocked_owner_address)
+                        .or(blocked_profiles::blocked_address.eq(
+                            blocked_profile_id.as_ref().unwrap_or(&blocked_owner_address)
+                        ))
+                )
+        )
         .select(blocked_profiles::id)
         .first::<i32>(&mut conn)
         .await
@@ -432,23 +496,23 @@ pub async fn get_blocked_platforms(
 }
 
 /// Check if a profile has been blocked by a platform (platform-to-profile blocking)
-/// Accepts wallet address (owner_address) as input
+/// Accepts profile_id, username, or wallet address as input
 pub async fn check_platform_blocked(
-    Path((wallet_address, platform_id)): Path<(String, String)>,
+    Path((profile_input, platform_id)): Path<(String, String)>,
     State(pool): State<DbPool>,
 ) -> Result<Json<BlockCheckResponse>, StatusCode> {
     debug!(
-        "Checking if profile {} has been blocked by platform {}",
-        wallet_address, platform_id
+        "Checking if {} has been blocked by platform {}",
+        profile_input, platform_id
     );
 
     // Input validation
-    if wallet_address.trim().is_empty() || platform_id.trim().is_empty() {
+    if profile_input.trim().is_empty() || platform_id.trim().is_empty() {
         debug!("Invalid IDs: empty string");
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    if wallet_address.len() > 256 || platform_id.len() > 256 {
+    if profile_input.len() > 256 || platform_id.len() > 256 {
         debug!("Invalid IDs: too long");
         return Err(StatusCode::BAD_REQUEST);
     }
@@ -461,21 +525,12 @@ pub async fn check_platform_blocked(
         }
     };
 
-    // Resolve wallet address to profile_id for profile_events query
-    let profile_id = match profiles::table
-        .filter(profiles::owner_address.eq(&wallet_address))
-        .select(profiles::profile_id.nullable())
-        .first::<Option<String>>(&mut conn)
-        .await
-    {
-        Ok(Some(pid)) => pid,
-        Ok(None) => {
-            debug!("Profile found but no profile_id for wallet_address: {}", wallet_address);
-            return Ok(Json(BlockCheckResponse { is_blocked: false }));
-        }
-        Err(_) => {
-            debug!("Profile not found with wallet_address: {}", wallet_address);
-            return Ok(Json(BlockCheckResponse { is_blocked: false }));
+    // Resolve input to profile_id and owner_address
+    let (profile_id_opt, owner_address) = match resolve_profile_input(&mut conn, &profile_input).await {
+        Ok(resolved) => resolved,
+        Err(e) => {
+            error!("Failed to resolve profile input: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
 
@@ -483,18 +538,56 @@ pub async fn check_platform_blocked(
     // We need to find if there's a BlockAdded event without a corresponding BlockRemoved event
     use crate::schema::profile_events;
 
-    let is_blocked = match profile_events::table
-        .filter(profile_events::profile_id.eq(&profile_id))
-        .filter(profile_events::event_type.eq_any(vec!["BlockAdded", "BlockRemoved"]))
-        .select((
-            profile_events::event_type,
-            profile_events::event_data,
-            profile_events::created_at,
-        ))
-        .order(profile_events::created_at.asc())
-        .load::<(String, serde_json::Value, chrono::NaiveDateTime)>(&mut conn)
-        .await
-    {
+    // Try to query events by profile_id if available, otherwise fallback to checking all events
+    // and filtering by wallet address in event_data
+    let events_result = if let Some(ref profile_id) = profile_id_opt {
+        // Query by profile_id
+        profile_events::table
+            .filter(profile_events::profile_id.eq(profile_id))
+            .filter(profile_events::event_type.eq_any(vec!["BlockAdded", "BlockRemoved"]))
+            .select((
+                profile_events::event_type,
+                profile_events::event_data,
+                profile_events::created_at,
+            ))
+            .order(profile_events::created_at.asc())
+            .load::<(String, serde_json::Value, chrono::NaiveDateTime)>(&mut conn)
+            .await
+    } else {
+        // Fallback: load all BlockAdded/BlockRemoved events and filter by wallet address in event_data
+        // This handles wallet-only addresses that don't have a profile_id
+        profile_events::table
+            .filter(profile_events::event_type.eq_any(vec!["BlockAdded", "BlockRemoved"]))
+            .select((
+                profile_events::event_type,
+                profile_events::event_data,
+                profile_events::created_at,
+            ))
+            .order(profile_events::created_at.asc())
+            .load::<(String, serde_json::Value, chrono::NaiveDateTime)>(&mut conn)
+            .await
+            .map(|events| {
+                // Filter events where event_data contains the wallet address
+                events
+                    .into_iter()
+                    .filter(|(_, event_data, _)| {
+                        // Check if event_data contains wallet address or owner_address
+                        event_data
+                            .get("wallet_address")
+                            .and_then(|v| v.as_str())
+                            .map(|addr| addr.to_lowercase() == owner_address.to_lowercase())
+                            .unwrap_or(false)
+                            || event_data
+                                .get("owner_address")
+                                .and_then(|v| v.as_str())
+                                .map(|addr| addr.to_lowercase() == owner_address.to_lowercase())
+                                .unwrap_or(false)
+                    })
+                    .collect()
+            })
+    };
+
+    let is_blocked = match events_result {
         Ok(events) => {
             // Filter events for this specific platform and track the final state
             let mut is_currently_blocked = false;
