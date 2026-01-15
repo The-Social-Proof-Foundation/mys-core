@@ -10,6 +10,7 @@ use axum::{
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 
 use crate::db::DbPool;
 use crate::models::Profile;
@@ -131,7 +132,7 @@ pub async fn get_profile_by_address(
     };
 
     let profile_result = profiles::table
-        .filter(profiles::owner_address.eq(address))
+        .filter(profiles::owner_address.eq(&address))
         .first::<Profile>(&mut conn)
         .await;
 
@@ -157,12 +158,118 @@ pub async fn get_profile_by_address(
                 Json(profile_json),
             )
         },
-        Err(diesel::result::Error::NotFound) => (
-            StatusCode::NOT_FOUND,
-            Json(serde_json::json!({
-                "error": "Profile not found"
-            })),
-        ),
+        Err(diesel::result::Error::NotFound) => {
+            // Profile not found, check wallet_social_graph for wallet-only address
+            debug!("Profile not found for address: {}, checking wallet_social_graph", address);
+            use crate::schema::wallet_social_graph;
+            let wallet_result = wallet_social_graph::table
+                .filter(wallet_social_graph::wallet_address.eq(&address))
+                .first::<crate::models::WalletSocialGraph>(&mut conn)
+                .await;
+            
+            match wallet_result {
+                Ok(wallet_social) => {
+                    // Return minimal profile-like structure with wallet social counts
+                    let mut response = serde_json::Map::new();
+                    response.insert("id".to_string(), serde_json::Value::Null);
+                    response.insert("owner_address".to_string(), serde_json::Value::String(address.clone()));
+                    response.insert("profile_id".to_string(), serde_json::Value::Null);
+                    response.insert("username".to_string(), serde_json::Value::Null);
+                    response.insert("display_name".to_string(), serde_json::Value::Null);
+                    response.insert("bio".to_string(), serde_json::Value::Null);
+                    response.insert("profile_photo".to_string(), serde_json::Value::Null);
+                    response.insert("website".to_string(), serde_json::Value::Null);
+                    response.insert("cover_photo".to_string(), serde_json::Value::Null);
+                    response.insert("followers_count".to_string(), serde_json::Value::Number(wallet_social.followers_count.into()));
+                    response.insert("following_count".to_string(), serde_json::Value::Number(wallet_social.following_count.into()));
+                    response.insert("blocked_count".to_string(), serde_json::Value::Number(wallet_social.blocked_count.into()));
+                    response.insert("post_count".to_string(), serde_json::Value::Number(0.into()));
+                    response.insert("min_offer_amount".to_string(), serde_json::Value::Null);
+                    response.insert("created_at".to_string(), serde_json::Value::String(wallet_social.created_at.format("%Y-%m-%d %H:%M:%S").to_string()));
+                    response.insert("updated_at".to_string(), serde_json::Value::String(wallet_social.updated_at.format("%Y-%m-%d %H:%M:%S").to_string()));
+                    // Sensitive fields - all null
+                    response.insert("birthdate".to_string(), serde_json::Value::Null);
+                    response.insert("current_location".to_string(), serde_json::Value::Null);
+                    response.insert("raised_location".to_string(), serde_json::Value::Null);
+                    response.insert("phone".to_string(), serde_json::Value::Null);
+                    response.insert("email".to_string(), serde_json::Value::Null);
+                    response.insert("gender".to_string(), serde_json::Value::Null);
+                    response.insert("political_view".to_string(), serde_json::Value::Null);
+                    response.insert("religion".to_string(), serde_json::Value::Null);
+                    response.insert("education".to_string(), serde_json::Value::Null);
+                    response.insert("primary_language".to_string(), serde_json::Value::Null);
+                    response.insert("relationship_status".to_string(), serde_json::Value::Null);
+                    response.insert("x_username".to_string(), serde_json::Value::Null);
+                    response.insert("facebook_username".to_string(), serde_json::Value::Null);
+                    response.insert("reddit_username".to_string(), serde_json::Value::Null);
+                    response.insert("github_username".to_string(), serde_json::Value::Null);
+                    response.insert("instagram_username".to_string(), serde_json::Value::Null);
+                    response.insert("linkedin_username".to_string(), serde_json::Value::Null);
+                    response.insert("twitch_username".to_string(), serde_json::Value::Null);
+                    response.insert("social_proof_token_address".to_string(), serde_json::Value::Null);
+                    response.insert("reservation_pool_address".to_string(), serde_json::Value::Null);
+                    response.insert("selected_badge_id".to_string(), serde_json::Value::Null);
+                    response.insert("paid_messaging_enabled".to_string(), serde_json::Value::Bool(false));
+                    response.insert("paid_messaging_min_cost".to_string(), serde_json::Value::Null);
+                    response.insert("reservation_pool".to_string(), serde_json::Value::Null);
+                    
+                    (
+                        StatusCode::OK,
+                        Json(serde_json::Value::Object(response)),
+                    )
+                }
+                Err(_) => {
+                    // No wallet social graph entry either - return minimal structure with zero counts
+                    let mut response = serde_json::Map::new();
+                    response.insert("id".to_string(), serde_json::Value::Null);
+                    response.insert("owner_address".to_string(), serde_json::Value::String(address.clone()));
+                    response.insert("profile_id".to_string(), serde_json::Value::Null);
+                    response.insert("username".to_string(), serde_json::Value::Null);
+                    response.insert("display_name".to_string(), serde_json::Value::Null);
+                    response.insert("bio".to_string(), serde_json::Value::Null);
+                    response.insert("profile_photo".to_string(), serde_json::Value::Null);
+                    response.insert("website".to_string(), serde_json::Value::Null);
+                    response.insert("cover_photo".to_string(), serde_json::Value::Null);
+                    response.insert("followers_count".to_string(), serde_json::Value::Number(0.into()));
+                    response.insert("following_count".to_string(), serde_json::Value::Number(0.into()));
+                    response.insert("blocked_count".to_string(), serde_json::Value::Number(0.into()));
+                    response.insert("post_count".to_string(), serde_json::Value::Number(0.into()));
+                    response.insert("min_offer_amount".to_string(), serde_json::Value::Null);
+                    response.insert("created_at".to_string(), serde_json::Value::Null);
+                    response.insert("updated_at".to_string(), serde_json::Value::Null);
+                    // All other fields null
+                    response.insert("birthdate".to_string(), serde_json::Value::Null);
+                    response.insert("current_location".to_string(), serde_json::Value::Null);
+                    response.insert("raised_location".to_string(), serde_json::Value::Null);
+                    response.insert("phone".to_string(), serde_json::Value::Null);
+                    response.insert("email".to_string(), serde_json::Value::Null);
+                    response.insert("gender".to_string(), serde_json::Value::Null);
+                    response.insert("political_view".to_string(), serde_json::Value::Null);
+                    response.insert("religion".to_string(), serde_json::Value::Null);
+                    response.insert("education".to_string(), serde_json::Value::Null);
+                    response.insert("primary_language".to_string(), serde_json::Value::Null);
+                    response.insert("relationship_status".to_string(), serde_json::Value::Null);
+                    response.insert("x_username".to_string(), serde_json::Value::Null);
+                    response.insert("facebook_username".to_string(), serde_json::Value::Null);
+                    response.insert("reddit_username".to_string(), serde_json::Value::Null);
+                    response.insert("github_username".to_string(), serde_json::Value::Null);
+                    response.insert("instagram_username".to_string(), serde_json::Value::Null);
+                    response.insert("linkedin_username".to_string(), serde_json::Value::Null);
+                    response.insert("twitch_username".to_string(), serde_json::Value::Null);
+                    response.insert("social_proof_token_address".to_string(), serde_json::Value::Null);
+                    response.insert("reservation_pool_address".to_string(), serde_json::Value::Null);
+                    response.insert("selected_badge_id".to_string(), serde_json::Value::Null);
+                    response.insert("paid_messaging_enabled".to_string(), serde_json::Value::Bool(false));
+                    response.insert("paid_messaging_min_cost".to_string(), serde_json::Value::Null);
+                    response.insert("reservation_pool".to_string(), serde_json::Value::Null);
+                    
+                    (
+                        StatusCode::OK,
+                        Json(serde_json::Value::Object(response)),
+                    )
+                }
+            }
+        },
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({

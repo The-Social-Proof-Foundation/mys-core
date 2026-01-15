@@ -78,25 +78,8 @@ pub async fn get_blocked_profiles(
         }
     };
 
-    // Verify profile exists
-    let profile_exists = match profiles::table
-        .filter(profiles::owner_address.eq(&wallet_address))
-        .count()
-        .get_result::<i64>(&mut conn)
-        .await
-    {
-        Ok(count) => count > 0,
-        Err(e) => {
-            error!("Failed to check profile: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
-
-    if !profile_exists {
-        debug!("Profile not found with wallet_address: {}", wallet_address);
-        return Err(StatusCode::NOT_FOUND);
-    }
-
+    // Note: Profile existence check removed - blocked_profiles table works with wallet addresses
+    // Wallet-only addresses are supported via wallet_social_graph table
     debug!("Using blocker wallet address: {}", wallet_address);
 
     // Check if we need to join with profiles table for followers_count sorting
@@ -120,29 +103,29 @@ pub async fn get_blocked_profiles(
                             .or(blocked_profiles::blocked_display_name.ilike(pattern.clone()))
                             .or(blocked_profiles::blocked_address.ilike(pattern.clone()))
                     )
-                    .inner_join(
+                    .left_join(
                         profiles::table.on(blocked_profiles::blocked_address.eq(profiles::owner_address))
                     )
-                    .order(sql::<diesel::sql_types::Integer>("profiles.followers_count DESC"))
+                    .order(sql::<diesel::sql_types::Integer>("COALESCE(profiles.followers_count, 0) DESC"))
                     .select(BlockedProfile::as_select())
                     .into_boxed()
             } else {
                 blocked_profiles::table
                     .filter(blocked_profiles::blocker_address.eq(&wallet_address))
-                    .inner_join(
+                    .left_join(
                         profiles::table.on(blocked_profiles::blocked_address.eq(profiles::owner_address))
                     )
-                    .order(sql::<diesel::sql_types::Integer>("profiles.followers_count DESC"))
+                    .order(sql::<diesel::sql_types::Integer>("COALESCE(profiles.followers_count, 0) DESC"))
                     .select(BlockedProfile::as_select())
                     .into_boxed()
             }
         } else {
             blocked_profiles::table
                 .filter(blocked_profiles::blocker_address.eq(&wallet_address))
-                .inner_join(
+                .left_join(
                     profiles::table.on(blocked_profiles::blocked_address.eq(profiles::owner_address))
                 )
-                .order(sql::<diesel::sql_types::Integer>("profiles.followers_count DESC"))
+                .order(sql::<diesel::sql_types::Integer>("COALESCE(profiles.followers_count, 0) DESC"))
                 .select(BlockedProfile::as_select())
                 .into_boxed()
         };
@@ -270,33 +253,8 @@ pub async fn check_profile_blocked(
         }
     };
 
-    // Verify both profiles exist
-    let blocker_exists = profiles::table
-        .filter(profiles::owner_address.eq(&blocker_wallet))
-        .count()
-        .get_result::<i64>(&mut conn)
-        .await
-        .unwrap_or(0)
-        > 0;
-
-    if !blocker_exists {
-        debug!("Blocker profile not found: {}", blocker_wallet);
-        return Ok(Json(BlockCheckResponse { is_blocked: false }));
-    }
-
-    let blocked_exists = profiles::table
-        .filter(profiles::owner_address.eq(&blocked_wallet))
-        .count()
-        .get_result::<i64>(&mut conn)
-        .await
-        .unwrap_or(0)
-        > 0;
-
-    if !blocked_exists {
-        debug!("Blocked profile not found: {}", blocked_wallet);
-        return Ok(Json(BlockCheckResponse { is_blocked: false }));
-    }
-
+    // Note: Profile existence checks removed - this endpoint works with wallet addresses only
+    // The blocked_profiles table stores wallet addresses, so profiles are not required
     debug!(
         "Checking blocking relationship: blocker={}, blocked={}",
         blocker_wallet, blocked_wallet
