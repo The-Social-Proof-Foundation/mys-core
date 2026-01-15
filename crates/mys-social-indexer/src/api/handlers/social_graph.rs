@@ -820,16 +820,17 @@ pub async fn get_follow_stats(
         .select((
             profiles::followers_count,
             profiles::following_count,
+            profiles::blocked_count,
             profiles::username,
             profiles::display_name.nullable(),
             profiles::profile_photo.nullable(),
             profiles::profile_id.nullable(),
         ))
-        .first::<(i32, i32, String, Option<String>, Option<String>, Option<String>)>(&mut conn)
+        .first::<(i32, i32, i32, String, Option<String>, Option<String>, Option<String>)>(&mut conn)
         .await;
 
     match profile_result {
-        Ok((followers, following, username, display_name, profile_photo, profile_id)) => (
+        Ok((followers, following, blocked, username, display_name, profile_photo, profile_id)) => (
             StatusCode::OK,
             Json(serde_json::json!({
                 "profile_id": profile_id,
@@ -838,17 +839,66 @@ pub async fn get_follow_stats(
                 "display_name": display_name,
                 "profile_photo": profile_photo,
                 "followers_count": followers,
-                "following_count": following
+                "following_count": following,
+                "blocked_count": blocked
             })),
         ),
         Err(diesel::result::Error::NotFound) => {
-            debug!("Profile not found with wallet_address: {}", wallet_address);
-            (
-                StatusCode::NOT_FOUND,
-                Json(serde_json::json!({
-                    "error": "Profile not found"
-                })),
-            )
+            debug!("Profile not found with wallet_address: {}, checking wallet_social_graph", wallet_address);
+            // Profile doesn't exist, check wallet_social_graph
+            use crate::schema::wallet_social_graph;
+            let wallet_result = wallet_social_graph::table
+                .filter(wallet_social_graph::wallet_address.eq(&wallet_address))
+                .select((
+                    wallet_social_graph::followers_count,
+                    wallet_social_graph::following_count,
+                    wallet_social_graph::blocked_count,
+                ))
+                .first::<(i32, i32, i32)>(&mut conn)
+                .await;
+            
+            match wallet_result {
+                Ok((followers, following, blocked)) => {
+                    let mut response = serde_json::Map::new();
+                    response.insert("profile_id".to_string(), serde_json::Value::Null);
+                    response.insert("wallet_address".to_string(), serde_json::Value::String(wallet_address.clone()));
+                    response.insert("username".to_string(), serde_json::Value::Null);
+                    response.insert("display_name".to_string(), serde_json::Value::Null);
+                    response.insert("profile_photo".to_string(), serde_json::Value::Null);
+                    response.insert("followers_count".to_string(), serde_json::Value::Number(followers.into()));
+                    response.insert("following_count".to_string(), serde_json::Value::Number(following.into()));
+                    response.insert("blocked_count".to_string(), serde_json::Value::Number(blocked.into()));
+                    (
+                        StatusCode::OK,
+                        Json(serde_json::Value::Object(response)),
+                    )
+                }
+                Err(diesel::result::Error::NotFound) => {
+                    // No counts found, return zeros
+                    let mut response = serde_json::Map::new();
+                    response.insert("profile_id".to_string(), serde_json::Value::Null);
+                    response.insert("wallet_address".to_string(), serde_json::Value::String(wallet_address.clone()));
+                    response.insert("username".to_string(), serde_json::Value::Null);
+                    response.insert("display_name".to_string(), serde_json::Value::Null);
+                    response.insert("profile_photo".to_string(), serde_json::Value::Null);
+                    response.insert("followers_count".to_string(), serde_json::Value::Number(0.into()));
+                    response.insert("following_count".to_string(), serde_json::Value::Number(0.into()));
+                    response.insert("blocked_count".to_string(), serde_json::Value::Number(0.into()));
+                    (
+                        StatusCode::OK,
+                        Json(serde_json::Value::Object(response)),
+                    )
+                }
+                Err(e) => {
+                    error!("Failed to fetch wallet social graph stats: {}", e);
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({
+                            "error": format!("Failed to fetch wallet social graph stats: {}", e)
+                        })),
+                    )
+                }
+            }
         }
         Err(e) => {
             error!("Failed to fetch profile stats: {}", e);

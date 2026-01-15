@@ -88,6 +88,18 @@ table! {
     }
 }
 
+// Define wallet_social_graph table for tracking counts for wallet addresses without profiles
+table! {
+    wallet_social_graph (wallet_address) {
+        wallet_address -> Varchar,
+        followers_count -> Integer,
+        following_count -> Integer,
+        blocked_count -> Integer,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
 // Define indexer progress table
 table! {
     indexer_progress (id) {
@@ -1649,6 +1661,7 @@ allow_tables_to_appear_in_same_query!(
     profiles,
     social_graph_relationships,
     social_graph_events,
+    wallet_social_graph,
     indexer_progress,
     platforms,
     platform_moderators,

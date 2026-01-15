@@ -14,6 +14,7 @@ pub mod profile_events;
 pub mod profile_extras;
 pub mod revenue;
 pub mod social_graph;
+pub mod wallet_social_graph;
 pub mod social_proof_of_truth;
 pub mod social_proof_token;
 pub mod social_proof_tokens_config;
@@ -25,6 +26,7 @@ pub use indexer::*;
 pub use profile::*;
 pub use profile_extras::*;
 pub use social_graph::*;
+pub use wallet_social_graph::*;
 // Explicitly import what we need from platform and avoid ambiguous re-exports
 pub use blocking::*;
 pub use mydata::*;

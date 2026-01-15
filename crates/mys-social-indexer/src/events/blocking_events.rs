@@ -407,16 +407,8 @@ pub async fn process_profile_block_event(
                 // Continue anyway - the relationship deletion will still work
             }
 
-            // Increment blocker's blocked_count if this is a new active block relationship
-            if !existed_before {
-                use crate::schema::profiles;
-                let _ = diesel::update(
-                    profiles::table.filter(profiles::owner_address.eq(&block_event.blocker)),
-                )
-                .set(profiles::blocked_count.eq(profiles::blocked_count + 1))
-                .execute(conn)
-                .await;
-            }
+            // Note: blocked_count is now automatically updated by database triggers
+            // when blocked_profiles table is updated (see update_blocked_count trigger)
 
             // Remove follow relationships in BOTH directions when blocking
             // This ensures blocking automatically unfollows in both directions:
@@ -750,16 +742,8 @@ pub async fn process_profile_unblock_event(
                 warn!("Failed to write unblock event to outbox: {}", e);
             }
 
-            // Decrement blocker's blocked_count only if an active relationship was removed
-            if deleted_rows > 0 {
-                use crate::schema::profiles;
-                let _ = diesel::update(
-                    profiles::table.filter(profiles::owner_address.eq(&unblock_event.blocker)),
-                )
-                .set(profiles::blocked_count.eq(profiles::blocked_count - 1))
-                .execute(conn)
-                .await;
-            }
+            // Note: blocked_count is now automatically updated by database triggers
+            // when blocked_profiles table is updated (see update_blocked_count trigger)
         }
         (Err(e), _) => {
             error!("Failed to insert into blocked_events table: {}", e);
