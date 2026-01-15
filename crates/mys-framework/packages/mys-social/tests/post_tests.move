@@ -28,6 +28,7 @@ module social_contracts::post_tests {
     const PLATFORM_DEVELOPER: address = @0xCAFE;
     const PLATFORM_MODERATOR: address = @0xBEEF;
     const REGULAR_USER: address = @0x5;
+    const TEST_PLATFORM_ID: address = @0x1; // Use USER1's address as test platform ID
     
     /// Test basic string operations for post content
     #[test]
@@ -462,6 +463,7 @@ module social_contracts::post_tests {
             post::test_create_post(
                 USER1,
                 profile_id_addr,
+                TEST_PLATFORM_ID,
                 string::utf8(TEST_CONTENT),
                 test_scenario::ctx(&mut scenario)
             );
@@ -540,6 +542,7 @@ module social_contracts::post_tests {
             post::test_create_post(
                 USER1,
                 profile_id_addr,
+                TEST_PLATFORM_ID,
                 string::utf8(TEST_CONTENT),
                 test_scenario::ctx(&mut scenario)
             );
@@ -663,6 +666,7 @@ module social_contracts::post_tests {
             post::test_create_post(
                 USER1,
                 profile_id_addr,
+                TEST_PLATFORM_ID,
                 string::utf8(TEST_CONTENT),
                 test_scenario::ctx(&mut scenario)
             );
@@ -750,6 +754,7 @@ module social_contracts::post_tests {
             post::test_create_post(
                 USER1,
                 profile_id_addr,
+                TEST_PLATFORM_ID,
                 string::utf8(TEST_CONTENT),
                 test_scenario::ctx(&mut scenario)
             );
@@ -864,6 +869,7 @@ module social_contracts::post_tests {
             post::test_create_post(
                 USER1,
                 profile_id_addr,
+                TEST_PLATFORM_ID,
                 string::utf8(TEST_CONTENT),
                 test_scenario::ctx(&mut scenario)
             );
@@ -904,6 +910,7 @@ module social_contracts::post_tests {
             let (post_id, promotion_id) = post::create_test_promoted_post(
                 USER1,
                 USER1, // profile_id same as owner for test
+                TEST_PLATFORM_ID,
                 string::utf8(b"This is a promoted post!"),
                 10000, // 0.01 MYS per view
                 promotion_budget,

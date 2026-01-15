@@ -29,7 +29,7 @@ module social_contracts::message {
 
     // === Error Codes ===
     
-    const E_PAUSED: u64 = 1;
+    const E_DISABLED: u64 = 1;
     const E_NOT_MEMBER: u64 = 2;
     const E_NOT_ADMIN: u64 = 3;
     const E_ALREADY_MEMBER: u64 = 4;
@@ -82,7 +82,7 @@ module social_contracts::message {
         id: UID,
         admin: address,
         relayer: address,
-        paused: bool,
+        enabled: bool,
         version: u32,
         // Rate limit defaults (tumbling window)
         rl_window_secs: u64,
@@ -240,8 +240,8 @@ module social_contracts::message {
         reason: u8,
     }
 
-    public struct Paused has copy, drop {
-        on: bool,
+    public struct Enabled has copy, drop {
+        enabled: bool,
     }
 
     public struct VersionSet has copy, drop {
@@ -313,7 +313,7 @@ module social_contracts::message {
             id: object::new(ctx),
             admin,
             relayer: admin, // Default to admin, can be changed later
-            paused: false,
+            enabled: true,
             version: 1,
             // Default rate limits (can be changed by admin)
             rl_window_secs: 60,          // 60 second windows
@@ -341,15 +341,15 @@ module social_contracts::message {
         });
     }
 
-    /// Pause/unpause the protocol (admin only)
-    public entry fun pause(
+    /// Enable/disable the protocol (admin only)
+    public entry fun set_enabled(
         registry: &mut Registry,
-        on: bool,
+        enabled: bool,
         ctx: &mut TxContext
     ) {
         assert!(tx_context::sender(ctx) == registry.admin, E_NOT_ADMIN);
-        registry.paused = on;
-        event::emit(Paused { on });
+        registry.enabled = enabled;
+        event::emit(Enabled { enabled });
     }
 
     /// Update protocol version (admin only)
@@ -393,7 +393,7 @@ module social_contracts::message {
         meta_hash: vector<u8>,
         ctx: &mut TxContext
     ) {
-        assert!(!registry.paused, E_PAUSED);
+        assert!(registry.enabled, E_DISABLED);
         let sender = tx_context::sender(ctx);
 
         let mut conv = Conversation {
@@ -599,7 +599,7 @@ module social_contracts::message {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(!registry.paused, E_PAUSED);
+        assert!(registry.enabled, E_DISABLED);
         // Note: Conversation doesn't have version field - this would require structural change
         // For now, we rely on Registry version check which is checked at creation
         let sender = tx_context::sender(ctx);
@@ -1086,7 +1086,7 @@ module social_contracts::message {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(!registry.paused, E_PAUSED);
+        assert!(registry.enabled, E_DISABLED);
         let sender = tx_context::sender(ctx);
         let recipient = profile::get_owner(recipient_profile);
         
@@ -1200,7 +1200,7 @@ module social_contracts::message {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(!registry.paused, E_PAUSED);
+        assert!(registry.enabled, E_DISABLED);
         let sender = tx_context::sender(ctx);
         assert!(table::contains(&conv.members, sender), E_NOT_MEMBER);
 

@@ -20,12 +20,11 @@ use crate::schema::{
 pub struct InsuranceConfig {
     pub id: i32,
     pub updated_by: String,
-    pub paused: bool,
+    pub enable_flag: bool,
     pub min_coverage_bps: i64,
     pub max_coverage_bps: i64,
     pub max_duration_ms: i64,
     pub fee_bps: i64,
-    pub treasury: String,
     pub version: i64,
     pub timestamp_ms: i64,
     pub time: DateTime<Utc>,
@@ -36,12 +35,11 @@ pub struct InsuranceConfig {
 #[diesel(table_name = insurance_config)]
 pub struct NewInsuranceConfig {
     pub updated_by: String,
-    pub paused: bool,
+    pub enable_flag: bool,
     pub min_coverage_bps: i64,
     pub max_coverage_bps: i64,
     pub max_duration_ms: i64,
     pub fee_bps: i64,
-    pub treasury: String,
     pub version: i64,
     pub timestamp_ms: i64,
     pub time: DateTime<Utc>,

@@ -906,8 +906,8 @@ impl SocialProofOfTruthEventHandler {
         // Fetch the latest config from database to use as fallback for missing values
         let latest_config = diesel::sql_query(
             "SELECT id, updated_by, enable_flag, confidence_threshold_bps, resolution_window_epochs, \
-             max_resolution_window_epochs, payout_delay_epochs, fee_bps, fee_split_bps_platform, \
-             platform_treasury, chain_treasury, oracle_address, max_single_bet, timestamp_ms, \
+             max_resolution_window_epochs, payout_delay_ms, fee_bps, fee_split_bps_platform, \
+             oracle_address, max_single_bet, version, timestamp_ms, \
              time, transaction_id \
              FROM spot_config ORDER BY time DESC LIMIT 1"
         )

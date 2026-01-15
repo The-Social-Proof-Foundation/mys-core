@@ -26,6 +26,7 @@ module social_contracts::social_proof_of_truth {
 
     use social_contracts::post::{Self, Post};
     use social_contracts::platform::{Self, Platform};
+    use social_contracts::profile::{Self, EcosystemTreasury};
     use social_contracts::block_list::BlockListRegistry;
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
@@ -65,7 +66,7 @@ module social_contracts::social_proof_of_truth {
     const DEFAULT_ENABLE: bool = false;
     const DEFAULT_RESOLUTION_WINDOW_EPOCHS: u64 = 72; // depends on epoch length
     const DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS: u64 = 144;
-    const DEFAULT_PAYOUT_DELAY_EPOCHS: u64 = 0;
+    const DEFAULT_PAYOUT_DELAY_MS: u64 = 0;
     const DEFAULT_FEE_BPS: u64 = 100; // 1%
     const DEFAULT_FEE_SPLIT_PLATFORM_BPS: u64 = 5000; // 50% of fee to platform
     const DEFAULT_MAX_BETS_PER_RECORD: u64 = 10000; // Default maximum bets allowed per SPoT record
@@ -93,11 +94,9 @@ module social_contracts::social_proof_of_truth {
         confidence_threshold_bps: u64,
         resolution_window_epochs: u64,
         max_resolution_window_epochs: u64,
-        payout_delay_epochs: u64,
+        payout_delay_ms: u64,
         fee_bps: u64,
         fee_split_bps_platform: u64,
-        platform_treasury: address,
-        chain_treasury: address,
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
@@ -127,6 +126,8 @@ module social_contracts::social_proof_of_truth {
         resolution_window_epochs: Option<u64>,
         max_resolution_window_epochs: Option<u64>,
         last_resolution_epoch: u64,
+        resolution_timestamp_ms: u64,
+        pending_payouts: Table<address, u64>,
         version: u64,
     }
 
@@ -171,11 +172,9 @@ module social_contracts::social_proof_of_truth {
         confidence_threshold_bps: u64,
         resolution_window_epochs: u64,
         max_resolution_window_epochs: u64,
-        payout_delay_epochs: u64,
+        payout_delay_ms: u64,
         fee_bps: u64,
         fee_split_bps_platform: u64,
-        platform_treasury: address,
-        chain_treasury: address,
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
@@ -244,11 +243,9 @@ module social_contracts::social_proof_of_truth {
             confidence_threshold_bps: DEFAULT_CONFIDENCE_THRESHOLD_BPS,
             resolution_window_epochs: DEFAULT_RESOLUTION_WINDOW_EPOCHS,
             max_resolution_window_epochs: DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS,
-            payout_delay_epochs: DEFAULT_PAYOUT_DELAY_EPOCHS,
+            payout_delay_ms: DEFAULT_PAYOUT_DELAY_MS,
             fee_bps: DEFAULT_FEE_BPS,
             fee_split_bps_platform: DEFAULT_FEE_SPLIT_PLATFORM_BPS,
-            platform_treasury: admin,
-            chain_treasury: admin,
             oracle_address: admin,
             max_single_bet: 0,
             max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
@@ -282,11 +279,9 @@ module social_contracts::social_proof_of_truth {
             confidence_threshold_bps: DEFAULT_CONFIDENCE_THRESHOLD_BPS,
             resolution_window_epochs: DEFAULT_RESOLUTION_WINDOW_EPOCHS,
             max_resolution_window_epochs: DEFAULT_MAX_RESOLUTION_WINDOW_EPOCHS,
-            payout_delay_epochs: DEFAULT_PAYOUT_DELAY_EPOCHS,
+            payout_delay_ms: DEFAULT_PAYOUT_DELAY_MS,
             fee_bps: DEFAULT_FEE_BPS,
             fee_split_bps_platform: DEFAULT_FEE_SPLIT_PLATFORM_BPS,
-            platform_treasury: sender,
-            chain_treasury: sender,
             oracle_address: sender,
             max_single_bet: 0,
             max_bets_per_record: DEFAULT_MAX_BETS_PER_RECORD,
@@ -306,11 +301,9 @@ module social_contracts::social_proof_of_truth {
         confidence_threshold_bps: u64,
         resolution_window_epochs: u64,
         max_resolution_window_epochs: u64,
-        payout_delay_epochs: u64,
+        payout_delay_ms: u64,
         fee_bps: u64,
         fee_split_bps_platform: u64,
-        platform_treasury: address,
-        chain_treasury: address,
         oracle_address: address,
         max_single_bet: u64,
         max_bets_per_record: u64,
@@ -324,11 +317,9 @@ module social_contracts::social_proof_of_truth {
         config.confidence_threshold_bps = confidence_threshold_bps;
         config.resolution_window_epochs = resolution_window_epochs;
         config.max_resolution_window_epochs = max_resolution_window_epochs;
-        config.payout_delay_epochs = payout_delay_epochs;
+        config.payout_delay_ms = payout_delay_ms;
         config.fee_bps = fee_bps;
         config.fee_split_bps_platform = fee_split_bps_platform;
-        config.platform_treasury = platform_treasury;
-        config.chain_treasury = chain_treasury;
         config.oracle_address = oracle_address;
         config.max_single_bet = max_single_bet;
         config.max_bets_per_record = max_bets_per_record;
@@ -340,11 +331,9 @@ module social_contracts::social_proof_of_truth {
             confidence_threshold_bps,
             resolution_window_epochs,
             max_resolution_window_epochs,
-            payout_delay_epochs,
+            payout_delay_ms,
             fee_bps,
             fee_split_bps_platform,
-            platform_treasury,
-            chain_treasury,
             oracle_address,
             max_single_bet,
             max_bets_per_record,
@@ -399,6 +388,8 @@ module social_contracts::social_proof_of_truth {
             resolution_window_epochs,
             max_resolution_window_epochs,
             last_resolution_epoch: 0,
+            resolution_timestamp_ms: 0,
+            pending_payouts: table::new(ctx),
             version: upgrade::current_version(),
         };
         let record_id = object::uid_to_address(&record.id);
@@ -431,6 +422,8 @@ module social_contracts::social_proof_of_truth {
         spot_config: &SpotConfig,
         record: &mut SpotRecord,
         post: &Post,
+        platform: &mut Platform,
+        treasury: &EcosystemTreasury,
         bet_index: u64,
         ctx: &mut TxContext
     ) {
@@ -453,14 +446,25 @@ module social_contracts::social_proof_of_truth {
         };
         let refund_amount = bet.amount - fee;
         
-        // Split fee between platform and chain treasuries
+        // Split fee between platform and ecosystem treasury
         if (fee > 0) {
             let platform_part = (fee * spot_config.fee_split_bps_platform) / 10000;
-            let chain_part = fee - platform_part;
+            let treasury_part = fee - platform_part;
             let mut fee_coin = coin::from_balance(balance::split(&mut record.escrow, fee), ctx);
-            let platform_coin = coin::split(&mut fee_coin, platform_part, ctx);
-            transfer::public_transfer(platform_coin, spot_config.platform_treasury);
-            transfer::public_transfer(fee_coin, spot_config.chain_treasury);
+            
+            // Send platform fee to platform treasury
+            if (platform_part > 0) {
+                let mut platform_coin = coin::split(&mut fee_coin, platform_part, ctx);
+                platform::add_to_treasury(platform, &mut platform_coin, platform_part, ctx);
+                coin::destroy_zero(platform_coin);
+            };
+            
+            // Send ecosystem treasury fee
+            if (treasury_part > 0) {
+                transfer::public_transfer(fee_coin, profile::get_treasury_address(treasury));
+            } else {
+                coin::destroy_zero(fee_coin);
+            };
         };
         
         // Refund remaining amount to user
@@ -599,6 +603,8 @@ module social_contracts::social_proof_of_truth {
         spot_config: &SpotConfig,
         record: &mut SpotRecord,
         post: &Post,
+        platform: &mut Platform,
+        treasury: &EcosystemTreasury,
         outcome_option_id: u8,
         confidence_bps: u64,
         reasoning: String,
@@ -642,7 +648,7 @@ module social_contracts::social_proof_of_truth {
 
         // Resolve outcome - outcome_option_id is the winning option
         // Convert required vector to Option for internal function
-        finalize_resolution_and_payout(spot_config, record, post, outcome_option_id, reasoning, option::some(evidence_urls), ctx);
+        finalize_resolution_and_payout(spot_config, record, post, platform, treasury, outcome_option_id, reasoning, option::some(evidence_urls), ctx);
     }
 
     /// DAO finalization (YES/NO/DRAW/UNAPPLICABLE)
@@ -651,6 +657,8 @@ module social_contracts::social_proof_of_truth {
         spot_config: &SpotConfig,
         record: &mut SpotRecord,
         post: &Post,
+        platform: &mut Platform,
+        treasury: &EcosystemTreasury,
         outcome: u8,
         mut reasoning: Option<String>,
         evidence_urls: Option<vector<String>>,
@@ -681,7 +689,7 @@ module social_contracts::social_proof_of_truth {
             string::utf8(b"DAO resolution based on community discussion")
         };
         
-        finalize_resolution_and_payout(spot_config, record, post, outcome, final_reasoning, evidence_urls, ctx);
+        finalize_resolution_and_payout(spot_config, record, post, platform, treasury, outcome, final_reasoning, evidence_urls, ctx);
     }
 
     /// Refund all escrow if unresolved beyond max window
@@ -727,6 +735,8 @@ module social_contracts::social_proof_of_truth {
         spot_config: &SpotConfig,
         record: &mut SpotRecord,
         post: &Post,
+        platform: &mut Platform,
+        treasury: &EcosystemTreasury,
         outcome: u8, // Winning option_id, or OUTCOME_DRAW/OUTCOME_UNAPPLICABLE
         reasoning: String,
         evidence_urls: Option<vector<String>>,
@@ -762,6 +772,7 @@ module social_contracts::social_proof_of_truth {
             record.status = STATUS_RESOLVED;
             record.outcome = option::some(outcome);
             record.last_resolution_epoch = tx_context::epoch(ctx);
+            record.resolution_timestamp_ms = tx_context::epoch_timestamp_ms(ctx);
             // Convert Option to vector for event (use empty vector if None)
             let evidence_urls_vec = if (option::is_some(&evidence_urls)) {
                 *option::borrow(&evidence_urls)
@@ -791,17 +802,29 @@ module social_contracts::social_proof_of_truth {
         if (spot_config.fee_bps > 0) { fee = (total_escrow * spot_config.fee_bps) / 10000; };
         let distributable = total_escrow - fee;
 
-        // Split fee 50/50 (configurable)
+        // Split fee between platform and ecosystem treasury (configurable)
         if (fee > 0) {
             let platform_part = (fee * spot_config.fee_split_bps_platform) / 10000;
-            let chain_part = fee - platform_part;
+            let treasury_part = fee - platform_part;
             let mut fee_coin = coin::from_balance(balance::split(&mut record.escrow, fee), ctx);
-            let platform_coin = coin::split(&mut fee_coin, platform_part, ctx);
-            transfer::public_transfer(platform_coin, spot_config.platform_treasury);
-            transfer::public_transfer(fee_coin, spot_config.chain_treasury);
+            
+            // Send platform fee to platform treasury
+            if (platform_part > 0) {
+                let mut platform_coin = coin::split(&mut fee_coin, platform_part, ctx);
+                platform::add_to_treasury(platform, &mut platform_coin, platform_part, ctx);
+                coin::destroy_zero(platform_coin);
+            };
+            
+            // Send ecosystem treasury fee
+            if (treasury_part > 0) {
+                transfer::public_transfer(fee_coin, profile::get_treasury_address(treasury));
+            } else {
+                coin::destroy_zero(fee_coin);
+            };
         };
 
-        // Distribute to winners pro-rata of winning option escrow
+        // Calculate and store pending payouts for winners (pro-rata of winning option escrow)
+        // Payouts will be claimable after payout_delay_ms
         let mut i = 0; let len = vector::length(&record.bets);
         while (i < len) {
             let bet = vector::borrow(&record.bets, i);
@@ -809,9 +832,14 @@ module social_contracts::social_proof_of_truth {
             if (winner && winning_total > 0 && bet.amount > 0) {
                 let payout = (((bet.amount as u128) * (distributable as u128)) / (winning_total as u128)) as u64;
                 if (payout > 0) {
-                    let c = coin::from_balance(balance::split(&mut record.escrow, payout), ctx);
-                    transfer::public_transfer(c, bet.user);
-                    event::emit(SpotPayoutEvent { post_id: record.post_id, user: bet.user, amount: payout });
+                    // Store payout in pending_payouts table (funds remain in escrow)
+                    if (table::contains(&record.pending_payouts, bet.user)) {
+                        let current_payout = *table::borrow(&record.pending_payouts, bet.user);
+                        let payout_ref = table::borrow_mut(&mut record.pending_payouts, bet.user);
+                        *payout_ref = current_payout + payout;
+                    } else {
+                        table::add(&mut record.pending_payouts, bet.user, payout);
+                    };
                 };
             };
             i = i + 1;
@@ -820,6 +848,7 @@ module social_contracts::social_proof_of_truth {
         record.status = STATUS_RESOLVED;
         record.outcome = option::some(outcome);
         record.last_resolution_epoch = tx_context::epoch(ctx);
+        record.resolution_timestamp_ms = tx_context::epoch_timestamp_ms(ctx);
         // Convert Option to vector for event (use empty vector if None)
         let evidence_urls_vec = if (option::is_some(&evidence_urls)) {
             *option::borrow(&evidence_urls)
@@ -833,6 +862,44 @@ module social_contracts::social_proof_of_truth {
             fee_taken: fee,
             reasoning,
             evidence_urls: evidence_urls_vec,
+        });
+    }
+
+    /// Claim payout after delay period has passed
+    /// Users can claim their winnings after payout_delay_ms has elapsed since resolution
+    public entry fun claim_payout(
+        spot_config: &SpotConfig,
+        record: &mut SpotRecord,
+        post: &Post,
+        ctx: &mut TxContext
+    ) {
+        assert!(spot_config.enable_flag, EDisabled);
+        assert!(record.status == STATUS_RESOLVED, EWrongStatus);
+        assert!(option::is_some(&record.outcome), ENotOracle);
+        
+        let user = tx_context::sender(ctx);
+        assert!(table::contains(&record.pending_payouts, user), EBetNotFound);
+        
+        let pending_amount = *table::borrow(&record.pending_payouts, user);
+        assert!(pending_amount > 0, EInvalidAmount);
+        
+        // Check if delay period has passed
+        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        assert!(record.resolution_timestamp_ms > 0, EInvalidAmount); // Must be resolved
+        assert!(current_time >= record.resolution_timestamp_ms + spot_config.payout_delay_ms, ETooEarly);
+        
+        // Transfer payout from escrow
+        let payout_coin = coin::from_balance(balance::split(&mut record.escrow, pending_amount), ctx);
+        transfer::public_transfer(payout_coin, user);
+        
+        // Remove from pending payouts
+        table::remove(&mut record.pending_payouts, user);
+        
+        // Emit payout event
+        event::emit(SpotPayoutEvent {
+            post_id: post::get_id_address(post),
+            user,
+            amount: pending_amount,
         });
     }
 

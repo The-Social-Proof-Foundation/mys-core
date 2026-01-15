@@ -127,19 +127,17 @@ pub struct SpotConfigUpdatedEvent {
     #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
     pub max_resolution_window_epochs: Option<u64>,
     #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
-    pub payout_delay_epochs: Option<u64>,
+    pub payout_delay_ms: Option<u64>,
     #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
     pub fee_bps: Option<u64>,
     #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
     pub fee_split_bps_platform: Option<u64>,
     #[serde(default)]
-    pub platform_treasury: Option<String>,
-    #[serde(default)]
-    pub chain_treasury: Option<String>,
-    #[serde(default)]
     pub oracle_address: Option<String>,
     #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
     pub max_single_bet: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub version: Option<u64>,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
@@ -178,9 +176,9 @@ impl SpotConfigUpdatedEvent {
                 self.max_resolution_window_epochs,
                 latest_config.map(|c| c.max_resolution_window_epochs).unwrap_or(0),
             ),
-            payout_delay_epochs: get_value(
-                self.payout_delay_epochs,
-                latest_config.map(|c| c.payout_delay_epochs).unwrap_or(0),
+            payout_delay_ms: get_value(
+                self.payout_delay_ms,
+                latest_config.map(|c| c.payout_delay_ms).unwrap_or(0),
             ),
             fee_bps: get_value(
                 self.fee_bps,
@@ -190,14 +188,6 @@ impl SpotConfigUpdatedEvent {
                 self.fee_split_bps_platform,
                 latest_config.map(|c| c.fee_split_bps_platform).unwrap_or(0),
             ),
-            platform_treasury: get_string_value(
-                self.platform_treasury.clone(),
-                latest_config.map(|c| c.platform_treasury.as_str()).unwrap_or(""),
-            ),
-            chain_treasury: get_string_value(
-                self.chain_treasury.clone(),
-                latest_config.map(|c| c.chain_treasury.as_str()).unwrap_or(""),
-            ),
             oracle_address: get_string_value(
                 self.oracle_address.clone(),
                 latest_config.map(|c| c.oracle_address.as_str()).unwrap_or(""),
@@ -205,6 +195,10 @@ impl SpotConfigUpdatedEvent {
             max_single_bet: get_value(
                 self.max_single_bet,
                 latest_config.map(|c| c.max_single_bet).unwrap_or(0),
+            ),
+            version: get_value(
+                self.version,
+                latest_config.map(|c| c.version).unwrap_or(0),
             ),
             timestamp_ms: timestamp_ms as i64,
             time,

@@ -46,7 +46,7 @@ pub struct InsuranceConfigInfo {
     #[diesel(sql_type = Text)]
     pub updated_by: String,
     #[diesel(sql_type = Bool)]
-    pub paused: bool,
+    pub enable_flag: bool,
     #[diesel(sql_type = BigInt)]
     pub min_coverage_bps: i64,
     #[diesel(sql_type = BigInt)]
@@ -55,8 +55,6 @@ pub struct InsuranceConfigInfo {
     pub max_duration_ms: i64,
     #[diesel(sql_type = BigInt)]
     pub fee_bps: i64,
-    #[diesel(sql_type = Text)]
-    pub treasury: String,
     #[diesel(sql_type = BigInt)]
     pub version: i64,
     #[diesel(sql_type = BigInt)]
@@ -79,8 +77,8 @@ pub async fn get_insurance_configuration(State(pool): State<DbPool>) -> impl Int
         }
     };
     let sql = "
-        SELECT updated_by, paused, min_coverage_bps, max_coverage_bps, max_duration_ms,
-               fee_bps, treasury, version, timestamp_ms, time, transaction_id
+        SELECT updated_by, enable_flag, min_coverage_bps, max_coverage_bps, max_duration_ms,
+               fee_bps, version, timestamp_ms, time, transaction_id
         FROM insurance_config
         ORDER BY time DESC
         LIMIT 1

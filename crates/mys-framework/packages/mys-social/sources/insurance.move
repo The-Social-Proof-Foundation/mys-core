@@ -24,10 +24,11 @@ module social_contracts::insurance {
 
     use social_contracts::social_proof_of_truth as spot;
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
+    use social_contracts::profile::{Self, EcosystemTreasury};
 
     /// Errors
     const ENotAdmin: u64 = 1;
-    const EPaused: u64 = 2;
+    const EDisabled: u64 = 2;
     const EInvalidCoverage: u64 = 3;
     const EInvalidDuration: u64 = 4;
     const EInvalidAmount: u64 = 5;
@@ -66,12 +67,11 @@ module social_contracts::insurance {
 
     public struct InsuranceConfig has key {
         id: UID,
-        paused: bool,
+        enable_flag: bool,
         min_coverage_bps: u64,
         max_coverage_bps: u64,
         max_duration_ms: u64,
         fee_bps: u64,
-        treasury: address,
         version: u64,
     }
 
@@ -116,7 +116,6 @@ module social_contracts::insurance {
         max_coverage_bps: u64,
         max_duration_ms: u64,
         fee_bps: u64,
-        treasury: address,
     }
 
     public struct UnderwriterVaultCreatedEvent has copy, drop {
@@ -167,12 +166,11 @@ module social_contracts::insurance {
 
     public struct ConfigUpdatedEvent has copy, drop {
         updated_by: address,
-        paused: bool,
+        enable_flag: bool,
         min_coverage_bps: u64,
         max_coverage_bps: u64,
         max_duration_ms: u64,
         fee_bps: u64,
-        treasury: address,
         timestamp: u64,
     }
 
@@ -192,7 +190,6 @@ module social_contracts::insurance {
         max_coverage_bps: u64,
         max_duration_ms: u64,
         fee_bps: u64,
-        treasury: address,
         ctx: &mut TxContext
     ) {
         assert!(min_coverage_bps > 0, EInvalidCoverage);
@@ -204,12 +201,11 @@ module social_contracts::insurance {
         let admin = tx_context::sender(ctx);
         transfer::share_object(InsuranceConfig {
             id: object::new(ctx),
-            paused: true,
+            enable_flag: false,
             min_coverage_bps,
             max_coverage_bps,
             max_duration_ms,
             fee_bps,
-            treasury,
             version: DEFAULT_VERSION,
         });
         transfer::public_transfer(InsuranceAdminCap { id: object::new(ctx) }, admin);
@@ -220,7 +216,6 @@ module social_contracts::insurance {
             max_coverage_bps,
             max_duration_ms,
             fee_bps,
-            treasury,
         });
     }
 
@@ -232,7 +227,6 @@ module social_contracts::insurance {
         max_coverage_bps: u64,
         max_duration_ms: u64,
         fee_bps: u64,
-        treasury: address,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -246,42 +240,39 @@ module social_contracts::insurance {
         config.max_coverage_bps = max_coverage_bps;
         config.max_duration_ms = max_duration_ms;
         config.fee_bps = fee_bps;
-        config.treasury = treasury;
 
         let updated_by = tx_context::sender(ctx);
         let timestamp = clock::timestamp_ms(clock);
         event::emit(ConfigUpdatedEvent {
             updated_by,
-            paused: config.paused,
+            enable_flag: config.enable_flag,
             min_coverage_bps,
             max_coverage_bps,
             max_duration_ms,
             fee_bps,
-            treasury,
             timestamp,
         });
     }
 
-    /// Emergency pause toggle (admin only)
-    public entry fun set_paused(
+    /// Emergency enable/disable toggle (admin only)
+    public entry fun set_enable_flag(
         _: &InsuranceAdminCap,
         config: &mut InsuranceConfig,
-        paused: bool,
+        enable_flag: bool,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        config.paused = paused;
+        config.enable_flag = enable_flag;
 
         let updated_by = tx_context::sender(ctx);
         let timestamp = clock::timestamp_ms(clock);
         event::emit(ConfigUpdatedEvent {
             updated_by,
-            paused: config.paused,
+            enable_flag: config.enable_flag,
             min_coverage_bps: config.min_coverage_bps,
             max_coverage_bps: config.max_coverage_bps,
             max_duration_ms: config.max_duration_ms,
             fee_bps: config.fee_bps,
-            treasury: config.treasury,
             timestamp,
         });
     }
@@ -291,17 +282,15 @@ module social_contracts::insurance {
     }
 
     public(package) fun bootstrap_init(ctx: &mut TxContext) {
-        let admin = tx_context::sender(ctx);
         // Create and share the InsuranceConfig object with default values
         // Admin cap will be transferred separately in bootstrap.move
         transfer::share_object(InsuranceConfig {
             id: object::new(ctx),
-            paused: true,
+            enable_flag: false,
             min_coverage_bps: DEFAULT_MIN_COVERAGE_BPS,
             max_coverage_bps: DEFAULT_MAX_COVERAGE_BPS,
             max_duration_ms: DEFAULT_MAX_DURATION_MS,
             fee_bps: DEFAULT_FEE_BPS,
-            treasury: admin,
             version: DEFAULT_VERSION,
         });
     }
@@ -348,7 +337,7 @@ module social_contracts::insurance {
         payment: Coin<MYS>,
         ctx: &mut TxContext
     ) {
-        assert!(!config.paused, EPaused);
+        assert!(config.enable_flag, EDisabled);
         let deposit_amount = coin::value(&payment);
         assert!(deposit_amount > 0, EInvalidAmount);
         balance::join(&mut vault.capital, coin::into_balance(payment));
@@ -366,7 +355,7 @@ module social_contracts::insurance {
         amount: u64,
         ctx: &mut TxContext
     ) {
-        assert!(!config.paused, EPaused);
+        assert!(config.enable_flag, EDisabled);
         assert!(tx_context::sender(ctx) == vault.underwriter, ENotAdmin);
         assert!(amount > 0, EInvalidAmount);
 
@@ -428,7 +417,7 @@ module social_contracts::insurance {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(!config.paused, EPaused);
+        assert!(config.enable_flag, EDisabled);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(spot::is_open(record), EMarketClosed);
         assert!(coverage_bps >= config.min_coverage_bps, EInvalidCoverage);
@@ -508,13 +497,14 @@ module social_contracts::insurance {
     public entry fun cancel_coverage(
         config: &InsuranceConfig,
         spot_config: &spot::SpotConfig,
+        treasury: &EcosystemTreasury,
         vault: &mut UnderwriterVault,
         record: &spot::SpotRecord,
         policy: &mut CoveragePolicy,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(!config.paused, EPaused);
+        assert!(config.enable_flag, EDisabled);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(spot::is_open(record), EMarketClosed);
         assert!(policy.status == STATUS_ACTIVE, EPolicyNotActive);
@@ -540,7 +530,7 @@ module social_contracts::insurance {
         if (fee > 0) {
             let fee_balance = balance::split(&mut vault.capital, fee);
             let fee_coin = coin::from_balance(fee_balance, ctx);
-            transfer::public_transfer(fee_coin, config.treasury);
+            transfer::public_transfer(fee_coin, profile::get_treasury_address(treasury));
         };
 
         if (net_refund > 0) {
@@ -576,7 +566,7 @@ module social_contracts::insurance {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(!config.paused, EPaused);
+        assert!(config.enable_flag, EDisabled);
         assert!(spot::is_enabled(spot_config), EMarketClosed);
         assert!(policy.status == STATUS_ACTIVE, EPolicyNotActive);
         assert!(tx_context::sender(ctx) == policy.insured, ENotPolicyOwner);

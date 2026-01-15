@@ -13,7 +13,7 @@ module social_contracts::mydata_tests {
     use mys::test_utils;
     use mys::object;
     
-    use social_contracts::mydata::{Self, MyData, MyDataRegistry, MyDataConfig};
+    use social_contracts::mydata::{Self, MyData, MyDataRegistry, MyDataConfig, MyDataAdminCap};
     use social_contracts::profile::{Self, Profile, UsernameRegistry};
     
     // Test addresses

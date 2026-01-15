@@ -18,13 +18,15 @@ module social_contracts::insurance_tests {
     use social_contracts::social_proof_of_truth as spot;
     use social_contracts::social_proof_tokens as spt;
     use social_contracts::post::{Self, Post};
-    use social_contracts::platform::{Self, PlatformRegistry};
+    use social_contracts::platform::{Self, Platform, PlatformRegistry};
     use social_contracts::block_list;
+    use social_contracts::profile::{Self, EcosystemTreasury};
 
     const ADMIN: address = @0xA0;
     const CREATOR: address = @0xC1;
     const UNDERWRITER: address = @0xB1;
     const USER1: address = @0x01;
+    const TEST_PLATFORM_ID: address = @0x01; // Use USER1's address as test platform ID
 
     const SCALING: u64 = 1_000_000_000; // 1e9
     const DAY_MS: u64 = 86_400_000;
@@ -44,7 +46,19 @@ module social_contracts::insurance_tests {
         { post::test_init(test_scenario::ctx(&mut scen)); };
 
         test_scenario::next_tx(&mut scen, ADMIN);
+        { profile::init_for_testing(test_scenario::ctx(&mut scen)); };
+
+        test_scenario::next_tx(&mut scen, ADMIN);
         { spot::test_init(test_scenario::ctx(&mut scen)); };
+
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
+            let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 100, 5000, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
+            test_scenario::return_to_sender(&scen, admin_cap);
+            test_scenario::return_shared(cfg);
+        };
 
         test_scenario::next_tx(&mut scen, ADMIN);
         {
@@ -93,7 +107,7 @@ module social_contracts::insurance_tests {
     }
 
     fun create_test_post(owner: address, ctx: &mut tx_context::TxContext): address {
-        post::test_create_post_with_spot(owner, owner, string::utf8(b"truth?"), ctx)
+        post::test_create_post_with_spot(owner, owner, TEST_PLATFORM_ID, string::utf8(b"truth?"), ctx)
     }
 
     // === Helper Functions ===
@@ -107,7 +121,6 @@ module social_contracts::insurance_tests {
                 9000,
                 7 * DAY_MS,
                 50,
-                ADMIN,
                 test_scenario::ctx(&mut scen)
             );
         };
@@ -119,13 +132,13 @@ module social_contracts::insurance_tests {
         {
             insurance::create_vault(25, 5000, 0, 0, test_scenario::ctx(scenario));
         };
-        // Unpause the config before depositing capital
+        // Enable the config before depositing capital
         test_scenario::next_tx(scenario, ADMIN);
         {
             let admin_cap = test_scenario::take_from_sender<insurance::InsuranceAdminCap>(scenario);
             let mut config = test_scenario::take_shared<insurance::InsuranceConfig>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
-            insurance::set_paused(&admin_cap, &mut config, false, &clock, test_scenario::ctx(scenario));
+            insurance::set_enable_flag(&admin_cap, &mut config, true, &clock, test_scenario::ctx(scenario));
             test_scenario::return_shared(config);
             test_scenario::return_shared(clock);
             test_scenario::return_to_sender(scenario, admin_cap);
@@ -199,7 +212,6 @@ module social_contracts::insurance_tests {
                 9000,
                 7 * DAY_MS,
                 50,
-                ADMIN,
                 test_scenario::ctx(&mut scen)
             );
         };
@@ -258,13 +270,13 @@ module social_contracts::insurance_tests {
             insurance::create_vault(25, 5000, 0, 0, test_scenario::ctx(&mut scen));
         };
 
-        // Unpause the config before depositing capital
+        // Enable the config before depositing capital
         test_scenario::next_tx(&mut scen, ADMIN);
         {
             let admin_cap = test_scenario::take_from_sender<insurance::InsuranceAdminCap>(&scen);
             let mut config = test_scenario::take_shared<insurance::InsuranceConfig>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
-            insurance::set_paused(&admin_cap, &mut config, false, &clock, test_scenario::ctx(&mut scen));
+            insurance::set_enable_flag(&admin_cap, &mut config, true, &clock, test_scenario::ctx(&mut scen));
             test_scenario::return_shared(config);
             test_scenario::return_shared(clock);
             test_scenario::return_to_sender(&scen, admin_cap);
@@ -316,6 +328,8 @@ module social_contracts::insurance_tests {
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
+            let mut platform = test_scenario::take_shared<Platform>(&scen);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
             let mut evidence_urls = vector::empty<string::String>();
             vector::push_back(&mut evidence_urls, string::utf8(b"https://example.com/evidence"));
             spot::oracle_resolve(
@@ -323,6 +337,8 @@ module social_contracts::insurance_tests {
                 &cfg,
                 &mut rec,
                 &post_ref,
+                &mut platform,
+                &treasury,
                 1,
                 9000,
                 string::utf8(b"Test resolution"),
@@ -333,6 +349,8 @@ module social_contracts::insurance_tests {
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(rec);
             test_scenario::return_shared(post_ref);
+            test_scenario::return_shared(platform);
+            test_scenario::return_shared(treasury);
         };
 
         test_scenario::next_tx(&mut scen, USER1);
@@ -418,9 +436,11 @@ module social_contracts::insurance_tests {
             let mut policy = test_scenario::take_from_sender_by_id<insurance::CoveragePolicy>(&scen, policy_id);
 
             let spot_config = test_scenario::take_shared<spot::SpotConfig>(&scen);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
             insurance::cancel_coverage(
                 &config,
                 &spot_config,
+                &treasury,
                 &mut vault,
                 &record,
                 &mut policy,
@@ -428,6 +448,7 @@ module social_contracts::insurance_tests {
                 test_scenario::ctx(&mut scen)
             );
             test_scenario::return_shared(spot_config);
+            test_scenario::return_shared(treasury);
 
             test_scenario::return_shared(config);
             test_scenario::return_shared(vault);

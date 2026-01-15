@@ -28,7 +28,7 @@ module social_contracts::mydata {
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     // === Default constants for config initialization ===
-    const DEFAULT_ENABLE: bool = true;
+    const DEFAULT_ENABLE: bool = false;
 
     // === Error codes ===
     const EUnauthorized: u64 = 1;
@@ -870,10 +870,20 @@ module social_contracts::mydata {
 
     #[test_only]
     public fun test_init(ctx: &mut TxContext) {
-        // Create and share MyData config
+        let sender = tx_context::sender(ctx);
+        
+        // Create and transfer admin capability to the transaction sender
+        transfer::public_transfer(
+            MyDataAdminCap {
+                id: object::new(ctx),
+            },
+            sender
+        );
+        
+        // Create and share MyData config (enabled by default for tests)
         transfer::share_object(MyDataConfig {
             id: object::new(ctx),
-            enable_flag: DEFAULT_ENABLE,
+            enable_flag: true, // Enable by default for tests
             max_tags: MAX_TAGS,
             max_subscription_days: MAX_SUBSCRIPTION_DAYS,
             max_free_access_grants: MAX_FREE_ACCESS_GRANTS,

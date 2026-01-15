@@ -18,13 +18,14 @@ module social_contracts::social_proof_of_truth_tests {
     use social_contracts::post::{Self, Post};
     use social_contracts::platform::{Self, Platform, PlatformRegistry};
     use social_contracts::block_list::{Self, BlockListRegistry};
-    use social_contracts::profile;
+    use social_contracts::profile::{Self, EcosystemTreasury};
 
     // Test addresses
     const ADMIN: address = @0xA0;
     const CREATOR: address = @0xC1;
     const USER1: address = @0x01;
     const USER2: address = @0x02;
+    const TEST_PLATFORM_ID: address = @0x01; // Use USER1's address as test platform ID
 
     const SCALING: u64 = 1000000000; // 1e9
 
@@ -43,6 +44,9 @@ module social_contracts::social_proof_of_truth_tests {
 
         test_scenario::next_tx(&mut scen, ADMIN);
         { post::test_init(test_scenario::ctx(&mut scen)); };
+
+        test_scenario::next_tx(&mut scen, ADMIN);
+        { profile::init_for_testing(test_scenario::ctx(&mut scen)); };
 
         test_scenario::next_tx(&mut scen, ADMIN);
         { spot::test_init(test_scenario::ctx(&mut scen)); };
@@ -91,7 +95,7 @@ module social_contracts::social_proof_of_truth_tests {
     /// Create a simple post without platform/profile constraints (test helper in post module)
     /// Creates post with SPoT enabled for SPoT tests
     fun create_test_post(owner: address, ctx: &mut tx_context::TxContext): address {
-        post::test_create_post_with_spot(owner, owner, string::utf8(b"truth?"), ctx)
+        post::test_create_post_with_spot(owner, owner, TEST_PLATFORM_ID, string::utf8(b"truth?"), ctx)
     }
 
     // --- Tests ---
@@ -112,12 +116,10 @@ module social_contracts::social_proof_of_truth_tests {
                 7000, // confidence_threshold
                 0,    // resolution_window_epochs (immediate)
                 0,    // max_resolution_window_epochs (immediate)
-                0,    // payout_delay_epochs
+                0,    // payout_delay_ms
                 50,   // fee_bps 0.5%
                 5000, // platform split
-                ADMIN,
-                ADMIN,
-                ADMIN,
+                ADMIN, // oracle_address
                 0,    // max_single_bet
                 10000, // max_bets_per_record
                 test_scenario::ctx(&mut scen)
@@ -138,7 +140,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 0, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 0, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
         };
@@ -209,17 +211,23 @@ module social_contracts::social_proof_of_truth_tests {
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let mut evidence_urls = vector::empty<String>();
             vector::push_back(&mut evidence_urls, string::utf8(b"https://example.com/evidence1"));
+            let mut platform = test_scenario::take_shared<Platform>(&scen);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
             spot::oracle_resolve(
                 &oracle_admin_cap,
                 &cfg, 
                 &mut rec, 
-                &post_ref, 
+                &post_ref,
+                &mut platform,
+                &treasury,
                 0, // outcome_option_id 0 = "Yes"
                 9000, 
                 string::utf8(b"Test reasoning: High confidence resolution"),
                 evidence_urls,
                 test_scenario::ctx(&mut scen)
             );
+            test_scenario::return_shared(platform);
+            test_scenario::return_shared(treasury);
             // Resolved
             assert!(spot::get_status(&rec) == 3, 3); // STATUS_RESOLVED
             test_scenario::return_to_sender(&scen, oracle_admin_cap);
@@ -240,7 +248,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
         };
@@ -299,17 +307,23 @@ module social_contracts::social_proof_of_truth_tests {
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let mut evidence_urls = vector::empty<String>();
             vector::push_back(&mut evidence_urls, string::utf8(b"https://example.com/evidence2"));
+            let mut platform = test_scenario::take_shared<Platform>(&scen);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
             spot::oracle_resolve(
                 &oracle_admin_cap,
                 &cfg, 
                 &mut rec, 
-                &post_ref, 
+                &post_ref,
+                &mut platform,
+                &treasury,
                 0, // outcome_option_id 0 = "Yes" (but confidence too low)
                 1000, 
                 string::utf8(b"Test reasoning: Low confidence, requires DAO"),
                 evidence_urls,
                 test_scenario::ctx(&mut scen)
             );
+            test_scenario::return_shared(platform);
+            test_scenario::return_shared(treasury);
             assert!(spot::get_status(&rec) == 2, 3); // DAO_REQUIRED
             test_scenario::return_to_sender(&scen, oracle_admin_cap);
             test_scenario::return_shared(cfg);
@@ -323,15 +337,21 @@ module social_contracts::social_proof_of_truth_tests {
             let cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
+            let mut platform = test_scenario::take_shared<Platform>(&scen);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
             spot::finalize_via_dao(
                 &cfg, 
                 &mut rec, 
-                &post_ref, 
+                &post_ref,
+                &mut platform,
+                &treasury,
                 255, // OUTCOME_DRAW (changed from 3 to 255)
                 option::some(string::utf8(b"DAO consensus: Draw outcome")),
                 option::none(),
                 test_scenario::ctx(&mut scen)
             );
+            test_scenario::return_shared(platform);
+            test_scenario::return_shared(treasury);
             assert!(spot::get_status(&rec) == 3, 4); // RESOLVED
             test_scenario::return_shared(cfg);
             test_scenario::return_shared(rec);
@@ -350,7 +370,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
         };
@@ -425,7 +445,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
         };
@@ -470,7 +490,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 9000, 0, 0, 0, 5000, 5000, ADMIN, 0, 10000, test_scenario::ctx(&mut scen));
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
         };
@@ -524,17 +544,23 @@ module social_contracts::social_proof_of_truth_tests {
             let post_ref = test_scenario::take_shared<Post>(&scen);
             let mut evidence_urls = vector::empty<String>();
             vector::push_back(&mut evidence_urls, string::utf8(b"https://example.com/evidence"));
+            let mut platform = test_scenario::take_shared<Platform>(&scen);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
             spot::oracle_resolve(
                 &oracle_admin_cap,
                 &cfg, 
                 &mut rec, 
-                &post_ref, 
+                &post_ref,
+                &mut platform,
+                &treasury,
                 0,
                 1000, // Low confidence
                 string::utf8(b"Low confidence resolution"),
                 evidence_urls,
                 test_scenario::ctx(&mut scen)
             );
+            test_scenario::return_shared(platform);
+            test_scenario::return_shared(treasury);
             assert!(spot::get_status(&rec) == 2, 1); // DAO_REQUIRED
             test_scenario::return_to_sender(&scen, oracle_admin_cap);
             test_scenario::return_shared(cfg);
@@ -548,7 +574,11 @@ module social_contracts::social_proof_of_truth_tests {
             let spot_cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
             let mut rec = test_scenario::take_shared<spot::SpotRecord>(&scen);
             let post_ref = test_scenario::take_shared<Post>(&scen);
-            spot::withdraw_spot_bet(&spot_cfg, &mut rec, &post_ref, 0, test_scenario::ctx(&mut scen));
+            let mut platform = test_scenario::take_shared<Platform>(&scen);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
+            spot::withdraw_spot_bet(&spot_cfg, &mut rec, &post_ref, &mut platform, &treasury, 0, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(platform);
+            test_scenario::return_shared(treasury);
             test_scenario::return_shared(spot_cfg);
             test_scenario::return_shared(rec);
             test_scenario::return_shared(post_ref);
@@ -567,7 +597,7 @@ module social_contracts::social_proof_of_truth_tests {
         {
             let admin_cap = test_scenario::take_from_sender<spot::SpotAdminCap>(&scen);
             let mut cfg = test_scenario::take_shared<spot::SpotConfig>(&scen);
-            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 0, 5000, ADMIN, ADMIN, ADMIN, 0, 3, test_scenario::ctx(&mut scen)); // max_bets_per_record = 3
+            spot::update_spot_config(&admin_cap, &mut cfg, true, 7000, 0, 0, 0, 0, 5000, ADMIN, 0, 3, test_scenario::ctx(&mut scen)); // max_bets_per_record = 3
             test_scenario::return_to_sender(&scen, admin_cap);
             test_scenario::return_shared(cfg);
         };

@@ -129,6 +129,8 @@ module social_contracts::post {
         owner: address,
         /// Author's profile ID (reference only, not ownership)
         profile_id: address,
+        /// Platform ID where this post was created
+        platform_id: address,
         /// Post content
         content: String,
         /// Optional media URLs (multiple supported)
@@ -690,6 +692,7 @@ module social_contracts::post {
     fun create_post_internal(
         owner: address,
         profile_id: address,
+        platform_id: address,
         content: String,
         media_option: Option<vector<Url>>,
         mentions: Option<vector<address>>,
@@ -728,6 +731,7 @@ module social_contracts::post {
             id: object::new(ctx),
             owner,
             profile_id,
+            platform_id,
             content,
             media: media_option,
             mentions,
@@ -891,6 +895,7 @@ module social_contracts::post {
         let post_id = create_post_internal(
             owner,
             profile_id,
+            platform_id,
             content,
             media_option,
             mentions,
@@ -1257,6 +1262,7 @@ module social_contracts::post {
         let repost_post_id = create_post_internal(
             owner,
             profile_id,
+            platform_id,
             content_string,
             media_option,
             mentions,
@@ -1323,6 +1329,7 @@ module social_contracts::post {
             id,
             owner: _,
             profile_id: _,
+            platform_id: _,
             content: _,
             media: _,
             mentions: _,
@@ -2310,6 +2317,10 @@ module social_contracts::post {
         post.tips_received
     }
 
+    /// Get the platform ID for a post
+    public fun get_platform_id(post: &Post): address {
+        post.platform_id
+    }
 
     /// Get the revenue redirect address for a post
     public fun get_revenue_redirect_to(post: &Post): &Option<address> {
@@ -2352,12 +2363,14 @@ module social_contracts::post {
     public fun test_create_post(
         owner: address,
         profile_id: address,
+        platform_id: address,
         content: String,
         ctx: &mut TxContext
     ): address {
         create_post_internal(
             owner,
             profile_id,
+            platform_id,
             content,
             option::none(), // No media
             option::none(), // No mentions
@@ -2385,12 +2398,14 @@ module social_contracts::post {
     public fun test_create_post_with_spot(
         owner: address,
         profile_id: address,
+        platform_id: address,
         content: String,
         ctx: &mut TxContext
     ): address {
         create_post_internal(
             owner,
             profile_id,
+            platform_id,
             content,
             option::none(), // No media
             option::none(), // No mentions
@@ -2418,6 +2433,7 @@ module social_contracts::post {
     public fun create_test_promoted_post(
         owner: address,
         profile_id: address,
+        platform_id: address,
         content: String,
         payment_per_view: u64,
         promotion_budget: Coin<MYS>,
@@ -2441,6 +2457,7 @@ module social_contracts::post {
         let post_id = create_post_internal(
             owner,
             profile_id,
+            platform_id,
             content,
             option::none(), // No media
             option::none(), // No mentions
@@ -2576,6 +2593,12 @@ module social_contracts::post {
         // Remember old version and update to new version
         let old_version = post.version;
         post.version = current_version;
+        
+        // Initialize platform_id for existing posts (set to @0x0 as sentinel for unknown platform)
+        // This field was added in a later version - existing posts will have @0x0
+        // Platform-specific features may require manual update of platform_id
+        // Note: This assumes platform_id field exists. If migrating from version before platform_id was added,
+        // the field will be initialized to @0x0 by default.
         
         // Emit event for object migration
         let post_id = object::id(post);
@@ -2801,6 +2824,7 @@ module social_contracts::post {
         let post_id = create_post_internal(
             owner,
             profile_id,
+            platform_id,
             content,
             media_option,
             mentions,

@@ -46,7 +46,7 @@ module social_contracts::message_tests {
     }
 
     #[test]
-    fun test_pause_unpause() {
+    fun test_set_enabled() {
         let mut scenario = test_scenario::begin(ADMIN);
         setup_registry(&mut scenario);
 
@@ -54,8 +54,8 @@ module social_contracts::message_tests {
         {
             let mut registry = test_scenario::take_shared<Registry>(&scenario);
             
-            message::pause(&mut registry, true, test_scenario::ctx(&mut scenario));
-            message::pause(&mut registry, false, test_scenario::ctx(&mut scenario));
+            message::set_enabled(&mut registry, false, test_scenario::ctx(&mut scenario));
+            message::set_enabled(&mut registry, true, test_scenario::ctx(&mut scenario));
             
             test_scenario::return_shared(registry);
         };
@@ -65,14 +65,14 @@ module social_contracts::message_tests {
 
     #[test]
     #[expected_failure(abort_code = message::E_NOT_ADMIN)]
-    fun test_pause_unauthorized() {
+    fun test_set_enabled_unauthorized() {
         let mut scenario = test_scenario::begin(ADMIN);
         setup_registry(&mut scenario);
 
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<Registry>(&scenario);
-            message::pause(&mut registry, true, test_scenario::ctx(&mut scenario));
+            message::set_enabled(&mut registry, false, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
         };
 
@@ -113,15 +113,15 @@ module social_contracts::message_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = message::E_PAUSED)]
-    fun test_create_conversation_when_paused() {
+    #[expected_failure(abort_code = message::E_DISABLED)]
+    fun test_create_conversation_when_disabled() {
         let mut scenario = test_scenario::begin(ADMIN);
         setup_registry(&mut scenario);
 
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
             let mut registry = test_scenario::take_shared<Registry>(&scenario);
-            message::pause(&mut registry, true, test_scenario::ctx(&mut scenario));
+            message::set_enabled(&mut registry, false, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(registry);
         };
 

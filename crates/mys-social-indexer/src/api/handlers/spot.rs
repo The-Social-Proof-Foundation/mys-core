@@ -254,19 +254,17 @@ pub struct SpotConfigInfo {
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub max_resolution_window_epochs: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub payout_delay_epochs: i64,
+    pub payout_delay_ms: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub fee_bps: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub fee_split_bps_platform: i64,
     #[diesel(sql_type = diesel::sql_types::Text)]
-    pub platform_treasury: String,
-    #[diesel(sql_type = diesel::sql_types::Text)]
-    pub chain_treasury: String,
-    #[diesel(sql_type = diesel::sql_types::Text)]
     pub oracle_address: String,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub max_single_bet: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub version: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub timestamp_ms: i64,
     #[diesel(sql_type = diesel::sql_types::Timestamptz)]
@@ -288,8 +286,8 @@ pub async fn get_spot_configuration(State(pool): State<DbPool>) -> impl IntoResp
     };
     let sql = "
         SELECT updated_by, enable_flag, confidence_threshold_bps, resolution_window_epochs,
-               max_resolution_window_epochs, payout_delay_epochs, fee_bps, fee_split_bps_platform,
-               platform_treasury, chain_treasury, oracle_address, max_single_bet, timestamp_ms,
+               max_resolution_window_epochs, payout_delay_ms, fee_bps, fee_split_bps_platform,
+               oracle_address, max_single_bet, version, timestamp_ms,
                time, transaction_id
         FROM spot_config
         ORDER BY time DESC

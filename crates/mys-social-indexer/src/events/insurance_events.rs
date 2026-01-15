@@ -22,19 +22,17 @@ pub struct ConfigInitializedEvent {
     pub max_coverage_bps: u64, 
     pub max_duration_ms: u64,
     pub fee_bps: u64,
-    pub treasury: String,
 }
 
 impl ConfigInitializedEvent {
     pub fn into_config_model(&self, timestamp_ms: u64, tx: String) -> Result<NewInsuranceConfig> {
         Ok(NewInsuranceConfig {
             updated_by: self.admin.clone(),
-            paused: true, // Config is initialized as paused
+            enable_flag: false, // Config is initialized as disabled
             min_coverage_bps: self.min_coverage_bps as i64,
             max_coverage_bps: self.max_coverage_bps as i64,
             max_duration_ms: self.max_duration_ms as i64,
             fee_bps: self.fee_bps as i64,
-            treasury: self.treasury.clone(),
             version: 1,
             timestamp_ms: timestamp_ms as i64,
             time: Utc::now(),
@@ -311,7 +309,7 @@ impl CoverageClaimedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigUpdatedEvent {
     pub updated_by: String,
-    pub paused: bool,
+    pub enable_flag: bool,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub min_coverage_bps: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
@@ -320,7 +318,6 @@ pub struct ConfigUpdatedEvent {
     pub max_duration_ms: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub fee_bps: u64,
-    pub treasury: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
@@ -331,12 +328,11 @@ impl ConfigUpdatedEvent {
     pub fn into_config_model(&self, timestamp_ms: u64, tx: String) -> Result<NewInsuranceConfig> {
         Ok(NewInsuranceConfig {
             updated_by: self.updated_by.clone(),
-            paused: self.paused,
+            enable_flag: self.enable_flag,
             min_coverage_bps: self.min_coverage_bps as i64,
             max_coverage_bps: self.max_coverage_bps as i64,
             max_duration_ms: self.max_duration_ms as i64,
             fee_bps: self.fee_bps as i64,
-            treasury: self.treasury.clone(),
             version: 1, // Increment version if needed, or keep same
             timestamp_ms: timestamp_ms as i64, // Use timestamp_ms from BlockchainEvent (milliseconds)
             time: Utc::now(), // Will be overridden by database trigger
