@@ -4,7 +4,7 @@
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1768557600000
+  chain_start_timestamp_ms: 1768557600000 # 1768552353000
 
   # Protocol version
   protocol_version: 75  # Latest version
@@ -48,15 +48,15 @@ parameters:
 # Accounts to add tokens to
 accounts:
   # Faucet
-  - address: "0xa3eb2ed2db985ea0ce3a6a19267358bac11a94583451e2a51a1938b5591c4890"
+  - address: "0xfe5fd021999e3601d0b0810bdb2b0a871630007f9c55477548ef448f6c48143f"
     gas_amounts:
       - 1000000000000000 # 1,000,000 MySo
   # Social Proof Foundation
-  - address: "0xabef982bb4379c2e12c37f4b644e2fa7de6455a1aca86744b86f1233b6bf1f4b"
+  - address: "0x84555105d9275a1e4fd6966dfb337a07011b6ce661b5261daf573d8b05d9223e"
     gas_amounts:
       - 646200000000000000 # 646,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators - 150 mill from staking subsidy)
   # Core Team
-  - address: "0xa401699b8b13d6a44da44322cec92fbf1e9b300fabb9d67efd7fb002b2437b35"
+  - address: "0x467fa95f1b7c7c46a093f5f1c9986e007ac44e7fadc2e8f889da722706460935"
     gas_amounts:
       - 249000000000000000 # 249,000,000 MySo (25% = 12.5% core + 12.5% marketing - 1 mill faucet)
 
@@ -70,7 +70,7 @@ validator_config_info:
     consensus_address: "/ip4/69.10.63.78/tcp/59050/http"
     gas_price: 1
     commission_rate: 250
-    stake: 1000000000000000
+    stake: 1000000000000000  # 1 million MySo in MIST units
   # Validator 2 (dynamic ports)
   - name: "MySo Validator 2"
     network_address: "/ip4/69.10.63.78/tcp/59110/http"
@@ -80,7 +80,7 @@ validator_config_info:
     consensus_address: "/ip4/69.10.63.78/tcp/59150/http"
     gas_price: 1
     commission_rate: 250
-    stake: 1000000000000000
+    stake: 1000000000000000  # 1 million MySo in MIST units
   # Validator 3 (dynamic ports)
   - name: "MySo Validator 3"
     network_address: "/ip4/69.10.63.78/tcp/59210/http"
@@ -90,4 +90,4 @@ validator_config_info:
     consensus_address: "/ip4/69.10.63.78/tcp/59250/http"
     gas_price: 1
     commission_rate: 250
-    stake: 1000000000000000
+    stake: 1000000000000000  # 1 million MySo in MIST units
