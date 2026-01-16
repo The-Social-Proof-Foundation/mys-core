@@ -279,7 +279,7 @@ cat > "${GENESIS_DIR}/genesis_config.new.yaml" << EOL
 
 parameters:
   # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
-  chain_start_timestamp_ms: 1768118400000 # $(( $(date +%s) * 1000 ))
+  chain_start_timestamp_ms: 1768557600000 # $(( $(date +%s) * 1000 ))
 
   # Protocol version
   protocol_version: 75  # Latest version
@@ -290,7 +290,7 @@ parameters:
   # Epoch duration in milliseconds (default: 24 hours)
   # 1 hour = 3,600,000 ms
   # 24 hours = 86,400,000 ms
-  epoch_duration_ms: 14400000  # 4 hours for testnet (faster epochs)
+  epoch_duration_ms: 7200000  # 2 hours for testnet (faster epochs)
 
   # Stake subsidy parameters
   #
@@ -299,15 +299,26 @@ parameters:
 
   # Initial stake subsidy distribution amount per epoch (in MIST)
   # Default: 31,537 MySo = 31,537,208,455,986 MIST
-  stake_subsidy_initial_distribution_amount: 31537208455986
+  # stake_subsidy_initial_distribution_amount: 31537208455986
+  stake_subsidy_initial_apy_bps: 2000
+
+  # Maximum APY cap (in basis points). Effective APY will never exceed this.
+  stake_subsidy_max_apy_bps: 2500
+
+  # Minimum APY floor (in basis points). Effective APY will never go below this.
+  stake_subsidy_min_apy_bps: 100
+
+  # Target duration for subsidy pool in years (e.g., 10).
+  # Used to calculate stake-aware APY reduction to ensure pool sustainability.
+  stake_subsidy_intended_duration_years: 10
 
   # Number of epochs before decreasing the subsidy amount
   # Default: 15 epochs
-  stake_subsidy_period_length: 6
+  stake_subsidy_period_length: 12
 
   # Rate at which subsidy decreases at end of each period (in basis points)
   # 40 basis points = 0.40%
-  stake_subsidy_decrease_rate: 40
+  stake_subsidy_decrease_rate: 100
 
 # Accounts to add tokens to
 accounts:
