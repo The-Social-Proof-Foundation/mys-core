@@ -13,7 +13,7 @@ We appreciate contributions, but **simple typo fixes (e.g., minor spelling error
 
 Found a small error or typo in the main documentation? Each page on the [docs.mysocial.network](https://docs.mysocial.network/) site includes an **Edit this page** link at the bottom that you can use to edit the page in GitHub. The content is located in the docs/content directory of the MySocial repo, so you can make a PR if you prefer. 
 
-For larger documentation issues, you can [create an issue](https://github.com/MystenLabs/mys/issues/new/choose) in GitHub. To fix the problem yourself, follow the [documentation contribution](./docs/content/references/contribute/contribution-process.mdx) guidelines.
+For larger documentation issues, you can [create an issue](https://github.com/the-social-proof-foundation/mys-core/issues/new/choose) in GitHub. To fix the problem yourself, follow the [documentation contribution](./docs/content/references/contribute/contribution-process.mdx) guidelines.
 
 If you change functionality, update the relevant documentation.
 
@@ -27,11 +27,11 @@ Provide as much detail as possible, including steps to reproduce the issue, expe
 
 ## New MySocial features
 
-If you want to contribute code that creates a feature on MySocial, start with a [MySocial Improvement Proposal](https://github.com/mys-foundation/sips/tree/main) before developing the logic.
+If you want to contribute code that creates a feature on MySocial, start with a [MySocial Improvement Proposal](https://github.com/the-social-proof-foundation/myips/tree/main) before developing the logic.
 
 ## New MySocial Framework Contributions
 
-Want to contribute to the MySocial framework? See [CONTRIBUTING.md](https://github.com/MystenLabs/mys/blob/main/crates/mys-framework/CONTRIBUTING.md) for information related to `mys-framework` crate contributions.
+Want to contribute to the MySocial framework? See [CONTRIBUTING.md](https://github.com/the-social-proof-foundation/mys-core/blob/main/crates/mys-framework/CONTRIBUTING.md) for information related to `mys-framework` crate contributions.
 
 ## Proposing Code Changes
 
