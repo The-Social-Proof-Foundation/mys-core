@@ -26,6 +26,8 @@ module social_contracts::bootstrap {
     
     // Import framework coin module for coin creation admin cap
     use mys::coin::{Self, CoinCreationAdminCap};
+    // Import framework package module for package publishing admin cap
+    use mys::package::{Self, PackagePublishingAdminCap};
     
     /// Claim all admin capabilities (one-time only)
     /// Creates and transfers all admin capabilities to caller, then seals the bootstrap key.
@@ -62,7 +64,8 @@ module social_contracts::bootstrap {
         transfer::public_transfer(social_proof_of_truth::create_spot_oracle_admin_cap(ctx), admin);
         transfer::public_transfer(profile::create_ecosystem_treasury_admin_cap(ctx), admin);
         transfer::public_transfer(insurance::create_insurance_admin_cap(ctx), admin);
-        transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(ctx), admin);
+        transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
+        transfer::public_transfer(package::create_package_publishing_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
 
         // Seal the bootstrap key permanently (prevents any future bootstrap attempts)
         bootstrap_key::finalize_bootstrap(bootstrap_key);

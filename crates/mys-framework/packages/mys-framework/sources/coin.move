@@ -14,6 +14,7 @@ use mys::{
     balance::{Self, Balance, Supply},
     deny_list::DenyList,
     url::{Self, Url},
+    bootstrap_key::BootstrapKey,
 };
 
 // Allows calling `.split_vec(amounts, ctx)` on `coin`
@@ -47,8 +48,10 @@ public struct CoinCreationAdminCap has key, store {
 }
 
 /// Create CoinCreationAdminCap for bootstrap (called by bootstrap module)
+/// Requires BootstrapKey parameter for security - ensures only authorized callers can invoke
 /// Bootstrap module handles BootstrapKey check before calling this
 public fun create_coin_creation_admin_cap_for_bootstrap(
+    _bootstrap_key: &BootstrapKey,
     ctx: &mut TxContext
 ): CoinCreationAdminCap {
     CoinCreationAdminCap {

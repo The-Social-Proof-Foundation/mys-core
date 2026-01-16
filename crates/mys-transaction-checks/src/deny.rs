@@ -104,18 +104,19 @@ fn check_disabled_features(
         return Ok(());
     }
 
-    // Check if sender owns an UpgradeAdminCap (admin bypass)
+    // Check if sender owns an UpgradeAdminCap or PackagePublishingAdminCap (admin bypass)
     let sender = tx_data.sender();
-    let sender_has_admin_cap = has_upgrade_admin_cap(sender, input_object_kinds, object_store);
+    let sender_has_upgrade_admin_cap = has_upgrade_admin_cap(sender, input_object_kinds, object_store);
+    let sender_has_publish_admin_cap = has_package_publishing_admin_cap(sender, input_object_kinds, object_store);
 
     for command in tx_data.kind().iter_commands() {
-        // Allow publish/upgrade if sender owns UpgradeAdminCap, otherwise check the disable flag
+        // Allow publish if sender owns UpgradeAdminCap or PackagePublishingAdminCap, otherwise check the disable flag
         deny_if_true!(
-            publish_disabled && !sender_has_admin_cap && matches!(command, Command::Publish(..)),
+            publish_disabled && !sender_has_upgrade_admin_cap && !sender_has_publish_admin_cap && matches!(command, Command::Publish(..)),
             "Package publish is temporarily disabled"
         );
         deny_if_true!(
-            upgrade_disabled && !sender_has_admin_cap && matches!(command, Command::Upgrade(..)),
+            upgrade_disabled && !sender_has_upgrade_admin_cap && matches!(command, Command::Upgrade(..)),
             "Package upgrade is temporarily disabled"
         );
     }
@@ -144,6 +145,37 @@ fn has_upgrade_admin_cap(
                             // For now, we'll check if it contains "upgrade" and "UpgradeAdminCap" in the type name
                             let type_name = format!("{}", type_tag);
                             if type_name.contains("upgrade") && type_name.contains("UpgradeAdminCap") {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Check if the sender owns a PackagePublishingAdminCap from the mys framework package
+fn has_package_publishing_admin_cap(
+    sender: MysAddress,
+    input_object_kinds: &[InputObjectKind],
+    object_store: &dyn ObjectStore,
+) -> bool {
+    // For each input object, check if it's an owned object that could be a PackagePublishingAdminCap
+    for input_kind in input_object_kinds {
+        if let InputObjectKind::ImmOrOwnedMoveObject((object_id, _, _)) = input_kind {
+            // Try to get the object to check its type and ownership
+            if let Some(object) = object_store.get_object(object_id) {
+                // Check if this object is owned by the sender (must be Address owner)
+                if let Owner::AddressOwner(owner_addr) = object.owner {
+                    if owner_addr == sender {
+                        // Check the type - PackagePublishingAdminCap has type: mys::package::PackagePublishingAdminCap
+                        if let Some(move_object) = object.data.try_as_move() {
+                            let type_tag = move_object.type_();
+                            // Check if the type matches the expected PackagePublishingAdminCap structure
+                            let type_name = format!("{}", type_tag);
+                            if type_name.contains("package") && type_name.contains("PackagePublishingAdminCap") {
                                 return true;
                             }
                         }
