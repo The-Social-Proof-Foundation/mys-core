@@ -68,6 +68,7 @@ tokens and coins. <code><a href="../mys/coin.md#mys_coin_Coin">Coin</a></code> c
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
 <b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
 <b>use</b> <a href="../mys/dynamic_field.md#mys_dynamic_field">mys::dynamic_field</a>;
@@ -444,10 +445,11 @@ Trying to split a coin more times than its balance allows.
 ## Function `create_coin_creation_admin_cap_for_bootstrap`
 
 Create CoinCreationAdminCap for bootstrap (called by bootstrap module)
+Requires BootstrapKey parameter for security - ensures only authorized callers can invoke
 Bootstrap module handles BootstrapKey check before calling this
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap_for_bootstrap">create_coin_creation_admin_cap_for_bootstrap</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">mys::coin::CoinCreationAdminCap</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap_for_bootstrap">create_coin_creation_admin_cap_for_bootstrap</a>(_bootstrap_key: &<a href="../mys/bootstrap_key.md#mys_bootstrap_key_BootstrapKey">mys::bootstrap_key::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">mys::coin::CoinCreationAdminCap</a>
 </code></pre>
 
 
@@ -457,6 +459,7 @@ Bootstrap module handles BootstrapKey check before calling this
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap_for_bootstrap">create_coin_creation_admin_cap_for_bootstrap</a>(
+    _bootstrap_key: &BootstrapKey,
     ctx: &<b>mut</b> TxContext
 ): <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> {
     <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> {

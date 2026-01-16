@@ -13,6 +13,9 @@ parameters:
   stake_subsidy_initial_apy_bps: 2000
   stake_subsidy_period_length: 10
   stake_subsidy_decrease_rate: 1000
+  stake_subsidy_max_apy_bps: 10000
+  stake_subsidy_min_apy_bps: 0
+  stake_subsidy_intended_duration_years: 10
 accounts:
   - address: "0x73a6b3c33e2d63383de5c6786cbaca231ff789f4c853af6d54cb883d8780adc0"
     gas_amounts:

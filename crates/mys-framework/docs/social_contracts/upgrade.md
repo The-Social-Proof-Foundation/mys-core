@@ -21,6 +21,7 @@ Provides versioning support for all shared objects.
 
 
 <pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/event.md#mys_event">mys::event</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;

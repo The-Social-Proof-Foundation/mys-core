@@ -90,9 +90,12 @@ platform, and ecosystem treasury.
 -  [Function `borrow_pool_version_mut`](#social_contracts_social_proof_tokens_borrow_pool_version_mut)
 -  [Function `reservation_pool_version`](#social_contracts_social_proof_tokens_reservation_pool_version)
 -  [Function `borrow_reservation_pool_version_mut`](#social_contracts_social_proof_tokens_borrow_reservation_pool_version_mut)
+-  [Function `config_version`](#social_contracts_social_proof_tokens_config_version)
+-  [Function `borrow_config_version_mut`](#social_contracts_social_proof_tokens_borrow_config_version_mut)
 -  [Function `migrate_token_registry`](#social_contracts_social_proof_tokens_migrate_token_registry)
 -  [Function `migrate_token_pool`](#social_contracts_social_proof_tokens_migrate_token_pool)
 -  [Function `migrate_reservation_pool`](#social_contracts_social_proof_tokens_migrate_reservation_pool)
+-  [Function `migrate_social_proof_tokens_config`](#social_contracts_social_proof_tokens_migrate_social_proof_tokens_config)
 -  [Function `create_social_proof_tokens_admin_cap`](#social_contracts_social_proof_tokens_create_social_proof_tokens_admin_cap)
 
 
@@ -106,6 +109,7 @@ platform, and ecosystem treasury.
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
 <b>use</b> <a href="../mys/bls12381.md#mys_bls12381">mys::bls12381</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
@@ -196,6 +200,12 @@ Global social proof tokens configuration
 <code>id: <a href="../mys/object.md#mys_object_UID">mys::object::UID</a></code>
 </dt>
 <dd>
+</dd>
+<dt>
+<code>version: u64</code>
+</dt>
+<dd>
+ Version for upgrades
 </dd>
 <dt>
 <code>trading_creator_fee_bps: u64</code>
@@ -1807,6 +1817,7 @@ Bootstrap initialization function - creates the social proof tokens configuratio
     transfer::share_object(
         <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a> {
             id: object::new(ctx),
+            version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
             trading_creator_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_CREATOR_FEE_BPS">DEFAULT_TRADING_CREATOR_FEE_BPS</a>,
             trading_platform_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_PLATFORM_FEE_BPS">DEFAULT_TRADING_PLATFORM_FEE_BPS</a>,
             trading_treasury_fee_bps: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_DEFAULT_TRADING_TREASURY_FEE_BPS">DEFAULT_TRADING_TREASURY_FEE_BPS</a>,
@@ -5461,6 +5472,56 @@ Get a mutable reference to the reservation pool version (for upgrade module)
 
 </details>
 
+<a name="social_contracts_social_proof_tokens_config_version"></a>
+
+## Function `config_version`
+
+Get the version of the social proof tokens config
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_config_version">config_version</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_config_version">config_version</a>(config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>): u64 {
+    config.version
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_borrow_config_version_mut"></a>
+
+## Function `borrow_config_version_mut`
+
+Get a mutable reference to the config version (for upgrade module)
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_borrow_config_version_mut">borrow_config_version_mut</a>(config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>): &<b>mut</b> u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_borrow_config_version_mut">borrow_config_version_mut</a>(config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>): &<b>mut</b> u64 {
+    &<b>mut</b> config.version
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_tokens_migrate_token_registry"></a>
 
 ## Function `migrate_token_registry`
@@ -5579,6 +5640,49 @@ Migration function for ReservationPoolObject
     <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
         pool_id,
         string::utf8(b"<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationPoolObject">ReservationPoolObject</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+    // Any migration logic can be added here <b>for</b> future upgrades
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_migrate_social_proof_tokens_config"></a>
+
+## Function `migrate_social_proof_tokens_config`
+
+Migration function for SocialProofTokensConfig
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_migrate_social_proof_tokens_config">migrate_social_proof_tokens_config</a>(config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_migrate_social_proof_tokens_config">migrate_social_proof_tokens_config</a>(
+    config: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new version &gt; current version)
+    <b>assert</b>!(config.version &lt; current_version, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EWrongVersion">EWrongVersion</a>);
+    // Remember old version and update to new version
+    <b>let</b> old_version = config.version;
+    config.version = current_version;
+    // Emit event <b>for</b> object migration
+    <b>let</b> config_id = object::id(config);
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        config_id,
+        string::utf8(b"<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>"),
         old_version,
         tx_context::sender(ctx)
     );

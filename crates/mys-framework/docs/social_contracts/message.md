@@ -26,7 +26,7 @@ Features: idempotency, message ordering, replay protection, access control, rate
 -  [Struct `KeyRotated`](#social_contracts_message_KeyRotated)
 -  [Struct `MemberKeySubmitted`](#social_contracts_message_MemberKeySubmitted)
 -  [Struct `Moderation`](#social_contracts_message_Moderation)
--  [Struct `Paused`](#social_contracts_message_Paused)
+-  [Struct `Enabled`](#social_contracts_message_Enabled)
 -  [Struct `VersionSet`](#social_contracts_message_VersionSet)
 -  [Struct `RelayerUpdated`](#social_contracts_message_RelayerUpdated)
 -  [Struct `AdminTransferred`](#social_contracts_message_AdminTransferred)
@@ -38,7 +38,7 @@ Features: idempotency, message ordering, replay protection, access control, rate
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_message_bootstrap_init)
 -  [Function `set_relayer`](#social_contracts_message_set_relayer)
--  [Function `pause`](#social_contracts_message_pause)
+-  [Function `set_enabled`](#social_contracts_message_set_enabled)
 -  [Function `set_version`](#social_contracts_message_set_version)
 -  [Function `transfer_admin`](#social_contracts_message_transfer_admin)
 -  [Function `create_conversation`](#social_contracts_message_create_conversation)
@@ -85,6 +85,7 @@ Features: idempotency, message ordering, replay protection, access control, rate
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
 <b>use</b> <a href="../mys/bls12381.md#mys_bls12381">mys::bls12381</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
@@ -156,7 +157,7 @@ Features: idempotency, message ordering, replay protection, access control, rate
 <dd>
 </dd>
 <dt>
-<code>paused: bool</code>
+<code>enabled: bool</code>
 </dt>
 <dd>
 </dd>
@@ -988,13 +989,13 @@ Features: idempotency, message ordering, replay protection, access control, rate
 
 </details>
 
-<a name="social_contracts_message_Paused"></a>
+<a name="social_contracts_message_Enabled"></a>
 
-## Struct `Paused`
+## Struct `Enabled`
 
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/message.md#social_contracts_message_Paused">Paused</a> <b>has</b> <b>copy</b>, drop
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/message.md#social_contracts_message_Enabled">Enabled</a> <b>has</b> <b>copy</b>, drop
 </code></pre>
 
 
@@ -1005,7 +1006,7 @@ Features: idempotency, message ordering, replay protection, access control, rate
 
 <dl>
 <dt>
-<code>on: bool</code>
+<code>enabled: bool</code>
 </dt>
 <dd>
 </dd>
@@ -1421,6 +1422,15 @@ Features: idempotency, message ordering, replay protection, access control, rate
 
 
 
+<a name="social_contracts_message_E_DISABLED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/message.md#social_contracts_message_E_DISABLED">E_DISABLED</a>: u64 = 1;
+</code></pre>
+
+
+
 <a name="social_contracts_message_E_FORBIDDEN"></a>
 
 
@@ -1489,15 +1499,6 @@ Features: idempotency, message ordering, replay protection, access control, rate
 
 
 <pre><code><b>const</b> <a href="../social_contracts/message.md#social_contracts_message_E_NO_MSG">E_NO_MSG</a>: u64 = 8;
-</code></pre>
-
-
-
-<a name="social_contracts_message_E_PAUSED"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/message.md#social_contracts_message_E_PAUSED">E_PAUSED</a>: u64 = 1;
 </code></pre>
 
 
@@ -1677,7 +1678,7 @@ Bootstrap initialization - creates the messaging registry (called during genesis
         id: object::new(ctx),
         admin,
         relayer: admin, // Default to admin, can be changed later
-        paused: <b>false</b>,
+        enabled: <b>true</b>,
         version: 1,
         // Default rate limits (can be changed by admin)
         rl_window_secs: 60,          // 60 second windows
@@ -1729,14 +1730,14 @@ Update relayer address (admin only)
 
 </details>
 
-<a name="social_contracts_message_pause"></a>
+<a name="social_contracts_message_set_enabled"></a>
 
-## Function `pause`
+## Function `set_enabled`
 
-Pause/unpause the protocol (admin only)
+Enable/disable the protocol (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_pause">pause</a>(registry: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Registry">social_contracts::message::Registry</a>, on: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_set_enabled">set_enabled</a>(registry: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Registry">social_contracts::message::Registry</a>, enabled: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1745,14 +1746,14 @@ Pause/unpause the protocol (admin only)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_pause">pause</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/message.md#social_contracts_message_set_enabled">set_enabled</a>(
     registry: &<b>mut</b> <a href="../social_contracts/message.md#social_contracts_message_Registry">Registry</a>,
-    on: bool,
+    enabled: bool,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(tx_context::sender(ctx) == registry.admin, <a href="../social_contracts/message.md#social_contracts_message_E_NOT_ADMIN">E_NOT_ADMIN</a>);
-    registry.paused = on;
-    event::emit(<a href="../social_contracts/message.md#social_contracts_message_Paused">Paused</a> { on });
+    registry.enabled = enabled;
+    event::emit(<a href="../social_contracts/message.md#social_contracts_message_Enabled">Enabled</a> { enabled });
 }
 </code></pre>
 
@@ -1852,7 +1853,7 @@ Create a new conversation (shared object, publicly accessible)
     <a href="../social_contracts/message.md#social_contracts_message_meta_hash">meta_hash</a>: vector&lt;u8&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(!registry.paused, <a href="../social_contracts/message.md#social_contracts_message_E_PAUSED">E_PAUSED</a>);
+    <b>assert</b>!(registry.enabled, <a href="../social_contracts/message.md#social_contracts_message_E_DISABLED">E_DISABLED</a>);
     <b>let</b> sender = tx_context::sender(ctx);
     <b>let</b> <b>mut</b> conv = <a href="../social_contracts/message.md#social_contracts_message_Conversation">Conversation</a> {
         id: object::new(ctx),
@@ -2195,7 +2196,7 @@ Send a new message with rate limit enforcement
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(!registry.paused, <a href="../social_contracts/message.md#social_contracts_message_E_PAUSED">E_PAUSED</a>);
+    <b>assert</b>!(registry.enabled, <a href="../social_contracts/message.md#social_contracts_message_E_DISABLED">E_DISABLED</a>);
     // Note: <a href="../social_contracts/message.md#social_contracts_message_Conversation">Conversation</a> doesn't have version field - this would require structural change
     // For now, we rely on <a href="../social_contracts/message.md#social_contracts_message_Registry">Registry</a> version check which is checked at creation
     <b>let</b> sender = tx_context::sender(ctx);
@@ -3006,7 +3007,7 @@ Send a paid message to a profile owner
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(!registry.paused, <a href="../social_contracts/message.md#social_contracts_message_E_PAUSED">E_PAUSED</a>);
+    <b>assert</b>!(registry.enabled, <a href="../social_contracts/message.md#social_contracts_message_E_DISABLED">E_DISABLED</a>);
     <b>let</b> sender = tx_context::sender(ctx);
     <b>let</b> recipient = <a href="../social_contracts/profile.md#social_contracts_profile_get_owner">profile::get_owner</a>(recipient_profile);
     // Check <b>if</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> requires paid messaging
@@ -3124,7 +3125,7 @@ Reply to a paid message and trigger payment release if conditions are met
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(!registry.paused, <a href="../social_contracts/message.md#social_contracts_message_E_PAUSED">E_PAUSED</a>);
+    <b>assert</b>!(registry.enabled, <a href="../social_contracts/message.md#social_contracts_message_E_DISABLED">E_DISABLED</a>);
     <b>let</b> sender = tx_context::sender(ctx);
     <b>assert</b>!(table::contains(&conv.members, sender), <a href="../social_contracts/message.md#social_contracts_message_E_NOT_MEMBER">E_NOT_MEMBER</a>);
     // Verify the paid <a href="../social_contracts/message.md#social_contracts_message">message</a> exists and <b>has</b> escrow

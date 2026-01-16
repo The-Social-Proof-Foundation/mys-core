@@ -23,7 +23,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 -  [Constants](#@Constants_0)
 -  [Function `init_config`](#social_contracts_insurance_init_config)
 -  [Function `set_config`](#social_contracts_insurance_set_config)
--  [Function `set_paused`](#social_contracts_insurance_set_paused)
+-  [Function `set_enable_flag`](#social_contracts_insurance_set_enable_flag)
 -  [Function `create_insurance_admin_cap`](#social_contracts_insurance_create_insurance_admin_cap)
 -  [Function `bootstrap_init`](#social_contracts_insurance_bootstrap_init)
 -  [Function `create_vault`](#social_contracts_insurance_create_vault)
@@ -57,6 +57,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
 <b>use</b> <a href="../mys/bls12381.md#mys_bls12381">mys::bls12381</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
@@ -145,7 +146,7 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 <dd>
 </dd>
 <dt>
-<code>paused: bool</code>
+<code>enable_flag: bool</code>
 </dt>
 <dd>
 </dd>
@@ -166,11 +167,6 @@ Sells coverage against losing outcomes and pays out deterministically on SPoT re
 </dd>
 <dt>
 <code>fee_bps: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>treasury: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -411,11 +407,6 @@ Events
 </dd>
 <dt>
 <code>fee_bps: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>treasury: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -712,7 +703,7 @@ Events
 <dd>
 </dd>
 <dt>
-<code>paused: bool</code>
+<code>enable_flag: bool</code>
 </dt>
 <dd>
 </dd>
@@ -733,11 +724,6 @@ Events
 </dd>
 <dt>
 <code>fee_bps: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>treasury: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -871,6 +857,15 @@ Constants
 
 
 
+<a name="social_contracts_insurance_EDisabled"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>: u64 = 2;
+</code></pre>
+
+
+
 <a name="social_contracts_insurance_EExposureInvariantBroken"></a>
 
 
@@ -989,15 +984,6 @@ Errors
 
 
 
-<a name="social_contracts_insurance_EPaused"></a>
-
-
-
-<pre><code><b>const</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_EPaused">EPaused</a>: u64 = 2;
-</code></pre>
-
-
-
 <a name="social_contracts_insurance_EPolicyExpired"></a>
 
 
@@ -1079,7 +1065,7 @@ Initialize config (package only)
 Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_init_config">init_config</a>(min_coverage_bps: u64, max_coverage_bps: u64, max_duration_ms: u64, fee_bps: u64, treasury: <b>address</b>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_init_config">init_config</a>(min_coverage_bps: u64, max_coverage_bps: u64, max_duration_ms: u64, fee_bps: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1093,7 +1079,6 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
     max_coverage_bps: u64,
     max_duration_ms: u64,
     fee_bps: u64,
-    treasury: <b>address</b>,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(min_coverage_bps &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
@@ -1104,12 +1089,11 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
     <b>let</b> admin = tx_context::sender(ctx);
     transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> {
         id: object::new(ctx),
-        paused: <b>true</b>,
+        enable_flag: <b>false</b>,
         min_coverage_bps,
         max_coverage_bps,
         max_duration_ms,
         fee_bps,
-        treasury,
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
     });
     transfer::public_transfer(<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a> { id: object::new(ctx) }, admin);
@@ -1119,7 +1103,6 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
         max_coverage_bps,
         max_duration_ms,
         fee_bps,
-        treasury,
     });
 }
 </code></pre>
@@ -1135,7 +1118,7 @@ Creates InsuranceConfig and transfers InsuranceAdminCap to caller.
 Update config (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_config">set_config</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, min_coverage_bps: u64, max_coverage_bps: u64, max_duration_ms: u64, fee_bps: u64, treasury: <b>address</b>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_config">set_config</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, min_coverage_bps: u64, max_coverage_bps: u64, max_duration_ms: u64, fee_bps: u64, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1151,7 +1134,6 @@ Update config (admin only)
     max_coverage_bps: u64,
     max_duration_ms: u64,
     fee_bps: u64,
-    treasury: <b>address</b>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -1164,17 +1146,15 @@ Update config (admin only)
     config.max_coverage_bps = max_coverage_bps;
     config.max_duration_ms = max_duration_ms;
     config.fee_bps = fee_bps;
-    config.treasury = treasury;
     <b>let</b> updated_by = tx_context::sender(ctx);
     <b>let</b> timestamp = clock::timestamp_ms(clock);
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
         updated_by,
-        paused: config.paused,
+        enable_flag: config.enable_flag,
         min_coverage_bps,
         max_coverage_bps,
         max_duration_ms,
         fee_bps,
-        treasury,
         timestamp,
     });
 }
@@ -1184,14 +1164,14 @@ Update config (admin only)
 
 </details>
 
-<a name="social_contracts_insurance_set_paused"></a>
+<a name="social_contracts_insurance_set_enable_flag"></a>
 
-## Function `set_paused`
+## Function `set_enable_flag`
 
-Emergency pause toggle (admin only)
+Emergency enable/disable toggle (admin only)
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_paused">set_paused</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, paused: bool, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_enable_flag">set_enable_flag</a>(_: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">social_contracts::insurance::InsuranceAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, enable_flag: bool, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1200,24 +1180,23 @@ Emergency pause toggle (admin only)
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_paused">set_paused</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_set_enable_flag">set_enable_flag</a>(
     _: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceAdminCap">InsuranceAdminCap</a>,
     config: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
-    paused: bool,
+    enable_flag: bool,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    config.paused = paused;
+    config.enable_flag = enable_flag;
     <b>let</b> updated_by = tx_context::sender(ctx);
     <b>let</b> timestamp = clock::timestamp_ms(clock);
     event::emit(<a href="../social_contracts/insurance.md#social_contracts_insurance_ConfigUpdatedEvent">ConfigUpdatedEvent</a> {
         updated_by,
-        paused: config.paused,
+        enable_flag: config.enable_flag,
         min_coverage_bps: config.min_coverage_bps,
         max_coverage_bps: config.max_coverage_bps,
         max_duration_ms: config.max_duration_ms,
         fee_bps: config.fee_bps,
-        treasury: config.treasury,
         timestamp,
     });
 }
@@ -1267,17 +1246,15 @@ Emergency pause toggle (admin only)
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_bootstrap_init">bootstrap_init</a>(ctx: &<b>mut</b> TxContext) {
-    <b>let</b> admin = tx_context::sender(ctx);
     // Create and share the <a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> object with default values
     // Admin cap will be transferred separately in <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a>.<b>move</b>
     transfer::share_object(<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a> {
         id: object::new(ctx),
-        paused: <b>true</b>,
+        enable_flag: <b>false</b>,
         min_coverage_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MIN_COVERAGE_BPS">DEFAULT_MIN_COVERAGE_BPS</a>,
         max_coverage_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_COVERAGE_BPS">DEFAULT_MAX_COVERAGE_BPS</a>,
         max_duration_ms: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_MAX_DURATION_MS">DEFAULT_MAX_DURATION_MS</a>,
         fee_bps: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_FEE_BPS">DEFAULT_FEE_BPS</a>,
-        treasury: admin,
         version: <a href="../social_contracts/insurance.md#social_contracts_insurance_DEFAULT_VERSION">DEFAULT_VERSION</a>,
     });
 }
@@ -1363,7 +1340,7 @@ Deposit capital into vault
     payment: Coin&lt;MYS&gt;,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(!config.paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_EPaused">EPaused</a>);
+    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>let</b> deposit_amount = coin::value(&payment);
     <b>assert</b>!(deposit_amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
     balance::join(&<b>mut</b> vault.capital, coin::into_balance(payment));
@@ -1401,7 +1378,7 @@ Withdraw unreserved capital (underwriter only)
     amount: u64,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(!config.paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_EPaused">EPaused</a>);
+    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(tx_context::sender(ctx) == vault.underwriter, <a href="../social_contracts/insurance.md#social_contracts_insurance_ENotAdmin">ENotAdmin</a>);
     <b>assert</b>!(amount &gt; 0, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidAmount">EInvalidAmount</a>);
     <b>let</b> capital_value = balance::value(&vault.capital);
@@ -1499,7 +1476,7 @@ Buy coverage for a SPoT position
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(!config.paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_EPaused">EPaused</a>);
+    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(spot::is_open(record), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(coverage_bps &gt;= config.min_coverage_bps, <a href="../social_contracts/insurance.md#social_contracts_insurance_EInvalidCoverage">EInvalidCoverage</a>);
@@ -1578,7 +1555,7 @@ Cancel coverage while the market is open
 Cancellation can result in 0 refund due to fee + rounding
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_cancel_coverage">cancel_coverage</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, policy: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">social_contracts::insurance::CoveragePolicy</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_cancel_coverage">cancel_coverage</a>(config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">social_contracts::insurance::InsuranceConfig</a>, spot_config: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotConfig">social_contracts::social_proof_of_truth::SpotConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">social_contracts::insurance::UnderwriterVault</a>, record: &<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_SpotRecord">social_contracts::social_proof_of_truth::SpotRecord</a>, policy: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">social_contracts::insurance::CoveragePolicy</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1590,13 +1567,14 @@ Cancellation can result in 0 refund due to fee + rounding
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_cancel_coverage">cancel_coverage</a>(
     config: &<a href="../social_contracts/insurance.md#social_contracts_insurance_InsuranceConfig">InsuranceConfig</a>,
     spot_config: &spot::SpotConfig,
+    treasury: &EcosystemTreasury,
     vault: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_UnderwriterVault">UnderwriterVault</a>,
     record: &spot::SpotRecord,
     policy: &<b>mut</b> <a href="../social_contracts/insurance.md#social_contracts_insurance_CoveragePolicy">CoveragePolicy</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(!config.paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_EPaused">EPaused</a>);
+    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(spot::is_open(record), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(policy.status == <a href="../social_contracts/insurance.md#social_contracts_insurance_STATUS_ACTIVE">STATUS_ACTIVE</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EPolicyNotActive">EPolicyNotActive</a>);
@@ -1618,7 +1596,7 @@ Cancellation can result in 0 refund due to fee + rounding
     <b>if</b> (fee &gt; 0) {
         <b>let</b> fee_balance = balance::split(&<b>mut</b> vault.capital, fee);
         <b>let</b> fee_coin = coin::from_balance(fee_balance, ctx);
-        transfer::public_transfer(fee_coin, config.treasury);
+        transfer::public_transfer(fee_coin, <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(treasury));
     };
     <b>if</b> (net_refund &gt; 0) {
         <b>let</b> refund_balance = balance::split(&<b>mut</b> vault.capital, net_refund);
@@ -1671,7 +1649,7 @@ This prevents exploitation where user buys insurance then exits bet.
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
-    <b>assert</b>!(!config.paused, <a href="../social_contracts/insurance.md#social_contracts_insurance_EPaused">EPaused</a>);
+    <b>assert</b>!(config.enable_flag, <a href="../social_contracts/insurance.md#social_contracts_insurance_EDisabled">EDisabled</a>);
     <b>assert</b>!(spot::is_enabled(spot_config), <a href="../social_contracts/insurance.md#social_contracts_insurance_EMarketClosed">EMarketClosed</a>);
     <b>assert</b>!(policy.status == <a href="../social_contracts/insurance.md#social_contracts_insurance_STATUS_ACTIVE">STATUS_ACTIVE</a>, <a href="../social_contracts/insurance.md#social_contracts_insurance_EPolicyNotActive">EPolicyNotActive</a>);
     <b>assert</b>!(tx_context::sender(ctx) == policy.insured, <a href="../social_contracts/insurance.md#social_contracts_insurance_ENotPolicyOwner">ENotPolicyOwner</a>);

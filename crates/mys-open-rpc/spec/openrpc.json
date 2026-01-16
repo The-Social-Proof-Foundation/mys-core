@@ -8276,7 +8276,7 @@
             ]
           },
           "stakeSubsidyCurrentApyBps": {
-            "description": "The current stake subsidy APY in basis points. This amount decays and decreases over time.",
+            "description": "The current stake subsidy APY (in basis points). This amount decays and decreases over time.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/BigInt_for_uint64"
@@ -8297,8 +8297,8 @@
               }
             ]
           },
-          "stakeSubsidyPeriodLength": {
-            "description": "Number of distributions to occur before the APY decays.",
+          "stakeSubsidyIntendedDurationYears": {
+            "description": "Target duration for subsidy pool in years (e.g., 10). Used to calculate stake-aware APY reduction to ensure pool sustainability.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/BigInt_for_uint64"
@@ -8321,8 +8321,8 @@
               }
             ]
           },
-          "stakeSubsidyIntendedDurationYears": {
-            "description": "Target duration for subsidy pool in years (e.g., 10). Used to calculate stake-aware APY reduction to ensure pool sustainability.",
+          "stakeSubsidyPeriodLength": {
+            "description": "Number of distributions to occur before the APY decays.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/BigInt_for_uint64"

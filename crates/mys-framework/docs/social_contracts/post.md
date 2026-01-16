@@ -92,6 +92,7 @@ Implements features like comments, reposts, and quotes
 -  [Function `get_id_address`](#social_contracts_post_get_id_address)
 -  [Function `get_reaction_count`](#social_contracts_post_get_reaction_count)
 -  [Function `get_tips_received`](#social_contracts_post_get_tips_received)
+-  [Function `get_platform_id`](#social_contracts_post_get_platform_id)
 -  [Function `get_revenue_redirect_to`](#social_contracts_post_get_revenue_redirect_to)
 -  [Function `get_revenue_redirect_percentage`](#social_contracts_post_get_revenue_redirect_percentage)
 -  [Function `version`](#social_contracts_post_version)
@@ -126,6 +127,7 @@ Implements features like comments, reposts, and quotes
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
 <b>use</b> <a href="../mys/bls12381.md#mys_bls12381">mys::bls12381</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
@@ -252,6 +254,12 @@ Post object that contains content information
 </dt>
 <dd>
  Author's profile ID (reference only, not ownership)
+</dd>
+<dt>
+<code>platform_id: <b>address</b></code>
+</dt>
+<dd>
+ Platform ID where this post was created
 </dd>
 <dt>
 <code>content: <a href="../std/string.md#std_string_String">std::string::String</a></code>
@@ -3137,7 +3145,7 @@ Convert Option<vector<Url>> to Option<vector<String>> for events
 Internal function to create a post and return its ID
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, enable_spt: bool, enable_poc: bool, enable_spot: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <b>address</b>
+<pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(owner: <b>address</b>, profile_id: <b>address</b>, platform_id: <b>address</b>, content: <a href="../std/string.md#std_string_String">std::string::String</a>, media_option: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;&gt;, mentions: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;vector&lt;<b>address</b>&gt;&gt;, metadata_json: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, post_type: <a href="../std/string.md#std_string_String">std::string::String</a>, parent_post_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, <a href="../social_contracts/post.md#social_contracts_post_allow_comments">allow_comments</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reactions">allow_reactions</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_reposts">allow_reposts</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_quotes">allow_quotes</a>: bool, <a href="../social_contracts/post.md#social_contracts_post_allow_tips">allow_tips</a>: bool, revenue_redirect_to: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, revenue_redirect_percentage: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, mydata_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, promotion_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, enable_spt: bool, enable_poc: bool, enable_spot: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <b>address</b>
 </code></pre>
 
 
@@ -3149,6 +3157,7 @@ Internal function to create a post and return its ID
 <pre><code><b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
     owner: <b>address</b>,
     profile_id: <b>address</b>,
+    platform_id: <b>address</b>,
     content: String,
     media_option: Option&lt;vector&lt;Url&gt;&gt;,
     mentions: Option&lt;vector&lt;<b>address</b>&gt;&gt;,
@@ -3185,6 +3194,7 @@ Internal function to create a post and return its ID
         id: object::new(ctx),
         owner,
         profile_id,
+        platform_id,
         content,
         media: media_option,
         mentions,
@@ -3351,6 +3361,7 @@ Create a new post with interaction permissions
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
         owner,
         profile_id,
+        platform_id,
         content,
         media_option,
         mentions,
@@ -3714,6 +3725,7 @@ If content is empty/none, it's treated as a standard repost
     <b>let</b> repost_post_id = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
         owner,
         profile_id,
+        platform_id,
         content_string,
         media_option,
         mentions,
@@ -3797,6 +3809,7 @@ Delete a post owned by the caller
         id,
         owner: _,
         profile_id: _,
+        platform_id: _,
         content: _,
         media: _,
         mentions: _,
@@ -5197,6 +5210,31 @@ Get the tips received for a post
 
 </details>
 
+<a name="social_contracts_post_get_platform_id"></a>
+
+## Function `get_platform_id`
+
+Get the platform ID for a post
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_platform_id">get_platform_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_get_platform_id">get_platform_id</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>): <b>address</b> {
+    <a href="../social_contracts/post.md#social_contracts_post">post</a>.platform_id
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_post_get_revenue_redirect_to"></a>
 
 ## Function `get_revenue_redirect_to`
@@ -5424,6 +5462,11 @@ Migration function for Post
     // Remember old <a href="../social_contracts/post.md#social_contracts_post_version">version</a> and update to new <a href="../social_contracts/post.md#social_contracts_post_version">version</a>
     <b>let</b> old_version = <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a>;
     <a href="../social_contracts/post.md#social_contracts_post">post</a>.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> = current_version;
+    // Initialize platform_id <b>for</b> existing posts (set to @0x0 <b>as</b> sentinel <b>for</b> unknown <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>)
+    // This field was added in a later <a href="../social_contracts/post.md#social_contracts_post_version">version</a> - existing posts will have @0x0
+    // Platform-specific features may require manual update of platform_id
+    // Note: This assumes platform_id field exists. If migrating from <a href="../social_contracts/post.md#social_contracts_post_version">version</a> before platform_id was added,
+    // the field will be initialized to @0x0 by default.
     // Emit event <b>for</b> object migration
     <b>let</b> post_id = object::id(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
@@ -5701,6 +5744,7 @@ Create a promoted post with MYS tokens for viewer payments
     <b>let</b> post_id = <a href="../social_contracts/post.md#social_contracts_post_create_post_internal">create_post_internal</a>(
         owner,
         profile_id,
+        platform_id,
         content,
         media_option,
         mentions,

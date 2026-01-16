@@ -2308,6 +2308,12 @@ UpgradeTicket
 UpgradeReceipt
 	public struct
 	0x2::package
+PackagePublishingAdminCap
+	public struct
+	0x2::package
+create_package_publishing_admin_cap_for_bootstrap
+	public fun
+	0x2::package
 claim
 	public fun
 	0x2::package
@@ -5851,6 +5857,9 @@ get_reaction_count
 get_tips_received
 	public fun
 	0x50c1::post
+get_platform_id
+	public fun
+	0x50c1::post
 get_revenue_redirect_to
 	public fun
 	0x50c1::post
@@ -6157,6 +6166,12 @@ reservation_pool_version
 borrow_reservation_pool_version_mut
 	public(package) fun
 	0x50c1::social_proof_tokens
+config_version
+	public fun
+	0x50c1::social_proof_tokens
+borrow_config_version_mut
+	public(package) fun
+	0x50c1::social_proof_tokens
 migrate_token_registry
 	public entry fun
 	0x50c1::social_proof_tokens
@@ -6164,6 +6179,9 @@ migrate_token_pool
 	public entry fun
 	0x50c1::social_proof_tokens
 migrate_reservation_pool
+	public entry fun
+	0x50c1::social_proof_tokens
+migrate_social_proof_tokens_config
 	public entry fun
 	0x50c1::social_proof_tokens
 create_social_proof_tokens_admin_cap
@@ -6276,6 +6294,9 @@ refund_unresolved
 	0x50c1::social_proof_of_truth
 finalize_resolution_and_payout
 	fun
+	0x50c1::social_proof_of_truth
+claim_payout
+	public entry fun
 	0x50c1::social_proof_of_truth
 migrate_config
 	public entry fun
@@ -6619,7 +6640,7 @@ MemberKeySubmitted
 Moderation
 	public struct
 	0x50c1::message
-Paused
+Enabled
 	public struct
 	0x50c1::message
 VersionSet
@@ -6652,7 +6673,7 @@ bootstrap_init
 set_relayer
 	public entry fun
 	0x50c1::message
-pause
+set_enabled
 	public entry fun
 	0x50c1::message
 set_version
@@ -6805,7 +6826,7 @@ init_config
 set_config
 	public entry fun
 	0x50c1::insurance
-set_paused
+set_enable_flag
 	public entry fun
 	0x50c1::insurance
 create_insurance_admin_cap

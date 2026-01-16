@@ -119,7 +119,8 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     transfer::public_transfer(<a href="../social_contracts/social_proof_of_truth.md#social_contracts_social_proof_of_truth_create_spot_oracle_admin_cap">social_proof_of_truth::create_spot_oracle_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile_create_ecosystem_treasury_admin_cap">profile::create_ecosystem_treasury_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/insurance.md#social_contracts_insurance_create_insurance_admin_cap">insurance::create_insurance_admin_cap</a>(ctx), admin);
-    transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(ctx), admin);
+    transfer::public_transfer(coin::create_coin_creation_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
+    transfer::public_transfer(package::create_package_publishing_admin_cap_for_bootstrap(bootstrap_key, ctx), admin);
     // Seal the <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> key permanently (prevents any future <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">bootstrap</a> attempts)
     bootstrap_key::finalize_bootstrap(bootstrap_key);
 }
