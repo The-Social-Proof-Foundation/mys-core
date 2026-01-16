@@ -310,16 +310,17 @@ pub async fn get_following(
             // Map to FollowDetail struct and calculate relationship status from viewer's perspective
             let mut follows_detail: Vec<FollowDetail> = Vec::new();
 
-            // Get viewer's wallet address if viewer_id is provided
-            let viewer_wallet = if let Some(ref viewer_id) = query.viewer_id {
-                profiles::table
-                    .filter(profiles::profile_id.eq(viewer_id))
-                    .select(profiles::owner_address)
-                    .first::<String>(&mut conn)
-                    .await
-                    .unwrap_or_default()
+            // Resolve viewer_id to both profile_id and wallet_address (handles both profile and wallet-only accounts)
+            let (viewer_profile_id, viewer_wallet_address) = if let Some(ref viewer_id) = query.viewer_id {
+                match resolve_profile_input(&mut conn, viewer_id).await {
+                    Ok((profile_id, wallet_address)) => (profile_id, wallet_address),
+                    Err(e) => {
+                        error!("Failed to resolve viewer_id {}: {}", viewer_id, e);
+                        (None, String::new())
+                    }
+                }
             } else {
-                String::new()
+                (None, String::new())
             };
 
             // Collect wallet addresses for reservation pool lookup
@@ -341,14 +342,15 @@ pub async fn get_following(
                 let username = username_opt.unwrap_or_else(|| "".to_string());
                 
                 // Calculate relationship status from viewer's perspective (if viewer_id provided)
-                let (is_following, follows_back) = if let Some(ref viewer_id) = query.viewer_id {
+                let (is_following, follows_back) = if !viewer_wallet_address.is_empty() {
                     // Check if viewer is following this address
+                    // Use both viewer_profile_id and viewer_wallet_address to handle both profile and wallet-only accounts
                     let viewer_follows_this = social_graph_relationships::table
                         .filter(
-                            (social_graph_relationships::follower_address
-                                .eq(viewer_id)
-                                .or(
-                                    social_graph_relationships::follower_address.eq(&viewer_wallet)
+                            social_graph_relationships::follower_address
+                                .eq(&viewer_wallet_address)
+                                .or(social_graph_relationships::follower_address.eq(
+                                    viewer_profile_id.as_ref().unwrap_or(&viewer_wallet_address)
                                 ))
                             .and(
                                 social_graph_relationships::following_address
@@ -375,9 +377,10 @@ pub async fn get_following(
                                 ))
                             .and(
                                 social_graph_relationships::following_address
-                                    .eq(viewer_id)
-                                    .or(social_graph_relationships::following_address
-                                        .eq(&viewer_wallet)),
+                                    .eq(&viewer_wallet_address)
+                                    .or(social_graph_relationships::following_address.eq(
+                                        viewer_profile_id.as_ref().unwrap_or(&viewer_wallet_address)
+                                    )),
                             ),
                         )
                         .count()
@@ -673,16 +676,17 @@ pub async fn get_followers(
             // Map to FollowDetail struct and calculate relationship status from viewer's perspective
             let mut follows_detail: Vec<FollowDetail> = Vec::new();
 
-            // Get viewer's wallet address if viewer_id is provided
-            let viewer_wallet = if let Some(ref viewer_id) = query.viewer_id {
-                profiles::table
-                    .filter(profiles::profile_id.eq(viewer_id))
-                    .select(profiles::owner_address)
-                    .first::<String>(&mut conn)
-                    .await
-                    .unwrap_or_default()
+            // Resolve viewer_id to both profile_id and wallet_address (handles both profile and wallet-only accounts)
+            let (viewer_profile_id, viewer_wallet_address) = if let Some(ref viewer_id) = query.viewer_id {
+                match resolve_profile_input(&mut conn, viewer_id).await {
+                    Ok((profile_id, wallet_address)) => (profile_id, wallet_address),
+                    Err(e) => {
+                        error!("Failed to resolve viewer_id {}: {}", viewer_id, e);
+                        (None, String::new())
+                    }
+                }
             } else {
-                String::new()
+                (None, String::new())
             };
 
             // Collect wallet addresses for reservation pool lookup
@@ -704,14 +708,15 @@ pub async fn get_followers(
                 let username = username_opt.unwrap_or_else(|| "".to_string());
                 
                 // Calculate relationship status from viewer's perspective (if viewer_id provided)
-                let (is_following, follows_back) = if let Some(ref viewer_id) = query.viewer_id {
+                let (is_following, follows_back) = if !viewer_wallet_address.is_empty() {
                     // Check if viewer is following this address
+                    // Use both viewer_profile_id and viewer_wallet_address to handle both profile and wallet-only accounts
                     let viewer_follows_this = social_graph_relationships::table
                         .filter(
-                            (social_graph_relationships::follower_address
-                                .eq(viewer_id)
-                                .or(
-                                    social_graph_relationships::follower_address.eq(&viewer_wallet)
+                            social_graph_relationships::follower_address
+                                .eq(&viewer_wallet_address)
+                                .or(social_graph_relationships::follower_address.eq(
+                                    viewer_profile_id.as_ref().unwrap_or(&viewer_wallet_address)
                                 ))
                             .and(
                                 social_graph_relationships::following_address
@@ -738,9 +743,10 @@ pub async fn get_followers(
                                 ))
                             .and(
                                 social_graph_relationships::following_address
-                                    .eq(viewer_id)
-                                    .or(social_graph_relationships::following_address
-                                        .eq(&viewer_wallet)),
+                                    .eq(&viewer_wallet_address)
+                                    .or(social_graph_relationships::following_address.eq(
+                                        viewer_profile_id.as_ref().unwrap_or(&viewer_wallet_address)
+                                    )),
                             ),
                         )
                         .count()
