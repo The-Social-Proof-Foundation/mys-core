@@ -136,6 +136,8 @@ pub struct PocConfigUpdatedEvent {
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_evidence_urls: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub max_votes_per_dispute: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
 }
 

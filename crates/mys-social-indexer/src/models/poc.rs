@@ -263,6 +263,8 @@ pub struct PocConfiguration {
     pub max_reasoning_length: i64,
     #[diesel(sql_type = Int8)]
     pub max_evidence_urls: i64,
+    #[diesel(sql_type = Int8)]
+    pub max_votes_per_dispute: i64,
     #[diesel(sql_type = Varchar)]
     pub updated_by: String,
     #[diesel(sql_type = Int8)]
@@ -288,6 +290,7 @@ pub struct NewPocConfiguration {
     pub voting_duration_epochs: i64,
     pub max_reasoning_length: i64,
     pub max_evidence_urls: i64,
+    pub max_votes_per_dispute: i64,
     pub updated_by: String,
     pub updated_at: i64,
     pub transaction_id: String,

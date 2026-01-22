@@ -1105,6 +1105,7 @@ table! {
         voting_duration_epochs -> Int8,
         max_reasoning_length -> Int8,
         max_evidence_urls -> Int8,
+        max_votes_per_dispute -> Int8,
         updated_by -> Varchar,
         updated_at -> Int8,
         transaction_id -> Varchar,
