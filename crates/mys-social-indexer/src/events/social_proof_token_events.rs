@@ -722,6 +722,9 @@ pub struct ConfigUpdatedEvent {
     pub reservation_platform_fee_bps: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub reservation_treasury_fee_bps: u64,
+    // Total reservation fee (sum of component fees, emitted by contract)
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub reservation_total_fee_bps: u64,
     // New field: max_reservers_per_pool
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub max_reservers_per_pool: u64,
@@ -801,6 +804,7 @@ impl TryFrom<Value> for ConfigUpdatedEvent {
             reservation_creator_fee_bps: parse_u64("reservation_creator_fee_bps")?,
             reservation_platform_fee_bps: parse_u64("reservation_platform_fee_bps")?,
             reservation_treasury_fee_bps: parse_u64("reservation_treasury_fee_bps")?,
+            reservation_total_fee_bps: parse_u64("reservation_total_fee_bps")?,
             max_reservers_per_pool: parse_u64("max_reservers_per_pool")?,
             // Old optional fields for backward compatibility
             total_fee_bps: parse_optional_u64("total_fee_bps")?,
