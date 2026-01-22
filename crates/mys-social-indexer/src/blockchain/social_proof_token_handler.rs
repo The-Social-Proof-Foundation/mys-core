@@ -34,6 +34,25 @@ pub struct SocialProofTokenHandler {
 }
 
 impl SocialProofTokenHandler {
+    // Default SPT config values matching the smart contract constants
+    const DEFAULT_TRADING_CREATOR_FEE_BPS: i64 = 100; // 1.0%
+    const DEFAULT_TRADING_PLATFORM_FEE_BPS: i64 = 25; // 0.25%
+    const DEFAULT_TRADING_TREASURY_FEE_BPS: i64 = 25; // 0.25%
+    const DEFAULT_TRADING_TOTAL_FEE_BPS: i64 = 150; // Sum of above
+    
+    const DEFAULT_RESERVATION_CREATOR_FEE_BPS: i64 = 100; // 1.0%
+    const DEFAULT_RESERVATION_PLATFORM_FEE_BPS: i64 = 25; // 0.25%
+    const DEFAULT_RESERVATION_TREASURY_FEE_BPS: i64 = 25; // 0.25%
+    const DEFAULT_RESERVATION_TOTAL_FEE_BPS: i64 = 150; // Sum of above
+    
+    const DEFAULT_BASE_PRICE: i64 = 100_000_000; // 0.1 MYS in smallest units
+    const DEFAULT_QUADRATIC_COEFFICIENT: i64 = 100_000;
+    const DEFAULT_MAX_HOLD_PERCENT_BPS: i64 = 500; // 5%
+    const DEFAULT_POST_THRESHOLD: i64 = 1_000_000_000_000; // 1,000 MYS
+    const DEFAULT_PROFILE_THRESHOLD: i64 = 10_000_000_000_000; // 10,000 MYS
+    const DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS: i64 = 2000; // 20%
+    const DEFAULT_MAX_RESERVERS_PER_POOL: i64 = 1000;
+
     pub fn new(db: Arc<Database>) -> Self {
         Self {
             base: BaseHandler::new("social-proof-token".to_string(), db),
@@ -1094,13 +1113,44 @@ impl SocialProofTokenHandler {
                     .await?;
             }
             Err(diesel::result::Error::NotFound) => {
-                // No config exists in DB - this is an error because we can't create a valid config
-                // without knowing the other values
-                error!("No existing SPT config found in database. Cannot process kill switch event without config values.");
-                return Err(anyhow!(
-                    "Cannot process kill switch event: no existing config found in database. \
-                     A ConfigUpdatedEvent must be processed first to establish config values."
-                ));
+                // No config exists in DB - create a default config with contract defaults
+                info!("No existing SPT config found in database. Creating default config with contract defaults.");
+                
+                let config = NewSptExchangeConfig {
+                    updated_by: kill_switch_event.admin.clone(),
+                    post_threshold: Self::DEFAULT_POST_THRESHOLD,
+                    profile_threshold: Self::DEFAULT_PROFILE_THRESHOLD,
+                    max_individual_reservation_bps: Self::DEFAULT_MAX_INDIVIDUAL_RESERVATION_BPS,
+                    total_fee_bps: Self::DEFAULT_TRADING_TOTAL_FEE_BPS,
+                    creator_fee_bps: Self::DEFAULT_TRADING_CREATOR_FEE_BPS,
+                    platform_fee_bps: Self::DEFAULT_TRADING_PLATFORM_FEE_BPS,
+                    treasury_fee_bps: Self::DEFAULT_TRADING_TREASURY_FEE_BPS,
+                    trading_creator_fee_bps: Self::DEFAULT_TRADING_CREATOR_FEE_BPS,
+                    trading_platform_fee_bps: Self::DEFAULT_TRADING_PLATFORM_FEE_BPS,
+                    trading_treasury_fee_bps: Self::DEFAULT_TRADING_TREASURY_FEE_BPS,
+                    reservation_creator_fee_bps: Self::DEFAULT_RESERVATION_CREATOR_FEE_BPS,
+                    reservation_platform_fee_bps: Self::DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
+                    reservation_treasury_fee_bps: Self::DEFAULT_RESERVATION_TREASURY_FEE_BPS,
+                    max_reservers_per_pool: Self::DEFAULT_MAX_RESERVERS_PER_POOL,
+                    base_price: Self::DEFAULT_BASE_PRICE,
+                    quadratic_coefficient: Self::DEFAULT_QUADRATIC_COEFFICIENT,
+                    max_hold_percent_bps: Self::DEFAULT_MAX_HOLD_PERCENT_BPS,
+                    trading_enabled: kill_switch_event.trading_enabled, // Use event value
+                    updated_at: kill_switch_event.timestamp as i64,
+                    time: datetime,
+                    transaction_id: event.tx_digest.clone(),
+                };
+
+                // Insert into database (hypertable, so always insert, never update)
+                diesel::insert_into(schema::spt_exchange_config::table)
+                    .values(&config)
+                    .execute(&mut conn)
+                    .await?;
+                
+                info!(
+                    "Created default SPT config with trading_enabled={}, using contract defaults",
+                    kill_switch_event.trading_enabled
+                );
             }
             Err(e) => {
                 error!("Database error fetching config: {}", e);
