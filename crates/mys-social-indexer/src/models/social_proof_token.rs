@@ -369,6 +369,20 @@ pub struct SptExchangeConfig {
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub treasury_fee_bps: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub trading_creator_fee_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub trading_platform_fee_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub trading_treasury_fee_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub reservation_creator_fee_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub reservation_platform_fee_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub reservation_treasury_fee_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub max_reservers_per_pool: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub base_price: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub quadratic_coefficient: i64,
@@ -396,6 +410,13 @@ pub struct NewSptExchangeConfig {
     pub creator_fee_bps: i64,
     pub platform_fee_bps: i64,
     pub treasury_fee_bps: i64,
+    pub trading_creator_fee_bps: i64,
+    pub trading_platform_fee_bps: i64,
+    pub trading_treasury_fee_bps: i64,
+    pub reservation_creator_fee_bps: i64,
+    pub reservation_platform_fee_bps: i64,
+    pub reservation_treasury_fee_bps: i64,
+    pub max_reservers_per_pool: i64,
     pub base_price: i64,
     pub quadratic_coefficient: i64,
     pub max_hold_percent_bps: i64,

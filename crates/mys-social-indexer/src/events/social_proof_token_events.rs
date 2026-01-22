@@ -708,14 +708,32 @@ pub struct ConfigUpdatedEvent {
     pub updated_by: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub timestamp: u64,
+    // New separate trading fees (required in new contract)
     #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub total_fee_bps: u64,
+    pub trading_creator_fee_bps: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub creator_fee_bps: u64,
+    pub trading_platform_fee_bps: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub platform_fee_bps: u64,
+    pub trading_treasury_fee_bps: u64,
+    // New separate reservation fees (required in new contract)
     #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub treasury_fee_bps: u64,
+    pub reservation_creator_fee_bps: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub reservation_platform_fee_bps: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub reservation_treasury_fee_bps: u64,
+    // New field: max_reservers_per_pool
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub max_reservers_per_pool: u64,
+    // Old unified fee fields (optional for backward compatibility)
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub total_fee_bps: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub creator_fee_bps: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub platform_fee_bps: Option<u64>,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub treasury_fee_bps: Option<u64>,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub base_price: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
@@ -751,6 +769,24 @@ impl TryFrom<Value> for ConfigUpdatedEvent {
                 .ok_or_else(|| anyhow!("Missing or invalid {}", key))
         };
 
+        // Helper to parse optional u64
+        let parse_optional_u64 = |key: &str| -> Result<Option<u64>> {
+            match obj.get(key) {
+                Some(v) => {
+                    if v.is_null() {
+                        Ok(None)
+                    } else if let Some(s) = v.as_str() {
+                        s.parse::<u64>().map(Some).map_err(|_| anyhow!("Invalid {} value", key))
+                    } else if let Some(n) = v.as_u64() {
+                        Ok(Some(n))
+                    } else {
+                        Ok(None)
+                    }
+                }
+                None => Ok(None),
+            }
+        };
+
         Ok(Self {
             updated_by: obj
                 .get("updated_by")
@@ -758,10 +794,19 @@ impl TryFrom<Value> for ConfigUpdatedEvent {
                 .ok_or_else(|| anyhow!("Missing or invalid updated_by"))?
                 .to_string(),
             timestamp: parse_u64("timestamp")?,
-            total_fee_bps: parse_u64("total_fee_bps")?,
-            creator_fee_bps: parse_u64("creator_fee_bps")?,
-            platform_fee_bps: parse_u64("platform_fee_bps")?,
-            treasury_fee_bps: parse_u64("treasury_fee_bps")?,
+            // New required fields
+            trading_creator_fee_bps: parse_u64("trading_creator_fee_bps")?,
+            trading_platform_fee_bps: parse_u64("trading_platform_fee_bps")?,
+            trading_treasury_fee_bps: parse_u64("trading_treasury_fee_bps")?,
+            reservation_creator_fee_bps: parse_u64("reservation_creator_fee_bps")?,
+            reservation_platform_fee_bps: parse_u64("reservation_platform_fee_bps")?,
+            reservation_treasury_fee_bps: parse_u64("reservation_treasury_fee_bps")?,
+            max_reservers_per_pool: parse_u64("max_reservers_per_pool")?,
+            // Old optional fields for backward compatibility
+            total_fee_bps: parse_optional_u64("total_fee_bps")?,
+            creator_fee_bps: parse_optional_u64("creator_fee_bps")?,
+            platform_fee_bps: parse_optional_u64("platform_fee_bps")?,
+            treasury_fee_bps: parse_optional_u64("treasury_fee_bps")?,
             base_price: parse_u64("base_price")?,
             quadratic_coefficient: parse_u64("quadratic_coefficient")?,
             max_hold_percent_bps: parse_u64("max_hold_percent_bps")?,
@@ -782,15 +827,36 @@ impl ConfigUpdatedEvent {
         transaction_id: String,
         latest_config: Option<&SptExchangeConfig>,
     ) -> Result<NewSptExchangeConfig> {
+        // Use new trading/reservation fees from event (required in new contract)
+        // For old fields, compute total_fee_bps from new fields if not provided
+        let total_fee_bps = self.total_fee_bps.unwrap_or_else(|| {
+            self.trading_creator_fee_bps
+                + self.trading_platform_fee_bps
+                + self.trading_treasury_fee_bps
+        }) as i64;
+        
+        // For backward compatibility, use old fields if new ones are missing (shouldn't happen with new contract)
+        // Otherwise use new fields
+        let creator_fee_bps = self.creator_fee_bps.unwrap_or(self.trading_creator_fee_bps) as i64;
+        let platform_fee_bps = self.platform_fee_bps.unwrap_or(self.trading_platform_fee_bps) as i64;
+        let treasury_fee_bps = self.treasury_fee_bps.unwrap_or(self.trading_treasury_fee_bps) as i64;
+
         Ok(NewSptExchangeConfig {
             updated_by: self.updated_by.clone(),
             post_threshold: self.post_threshold as i64,
             profile_threshold: self.profile_threshold as i64,
             max_individual_reservation_bps: self.max_individual_reservation_bps as i64,
-            total_fee_bps: self.total_fee_bps as i64,
-            creator_fee_bps: self.creator_fee_bps as i64,
-            platform_fee_bps: self.platform_fee_bps as i64,
-            treasury_fee_bps: self.treasury_fee_bps as i64,
+            total_fee_bps,
+            creator_fee_bps,
+            platform_fee_bps,
+            treasury_fee_bps,
+            trading_creator_fee_bps: self.trading_creator_fee_bps as i64,
+            trading_platform_fee_bps: self.trading_platform_fee_bps as i64,
+            trading_treasury_fee_bps: self.trading_treasury_fee_bps as i64,
+            reservation_creator_fee_bps: self.reservation_creator_fee_bps as i64,
+            reservation_platform_fee_bps: self.reservation_platform_fee_bps as i64,
+            reservation_treasury_fee_bps: self.reservation_treasury_fee_bps as i64,
+            max_reservers_per_pool: self.max_reservers_per_pool as i64,
             base_price: self.base_price as i64,
             quadratic_coefficient: self.quadratic_coefficient as i64,
             max_hold_percent_bps: self.max_hold_percent_bps as i64,
@@ -1742,6 +1808,27 @@ impl EmergencyKillSwitchEvent {
                 self.max_hold_percent_bps,
                 latest_config.map(|c| c.max_hold_percent_bps).unwrap_or(0),
             ),
+            trading_creator_fee_bps: latest_config
+                .map(|c| c.trading_creator_fee_bps)
+                .unwrap_or(100), // Default from Move contract
+            trading_platform_fee_bps: latest_config
+                .map(|c| c.trading_platform_fee_bps)
+                .unwrap_or(25), // Default from Move contract
+            trading_treasury_fee_bps: latest_config
+                .map(|c| c.trading_treasury_fee_bps)
+                .unwrap_or(25), // Default from Move contract
+            reservation_creator_fee_bps: latest_config
+                .map(|c| c.reservation_creator_fee_bps)
+                .unwrap_or(100), // Default from Move contract
+            reservation_platform_fee_bps: latest_config
+                .map(|c| c.reservation_platform_fee_bps)
+                .unwrap_or(25), // Default from Move contract
+            reservation_treasury_fee_bps: latest_config
+                .map(|c| c.reservation_treasury_fee_bps)
+                .unwrap_or(25), // Default from Move contract
+            max_reservers_per_pool: latest_config
+                .map(|c| c.max_reservers_per_pool)
+                .unwrap_or(1000), // Default from Move contract
             trading_enabled: self.trading_enabled, // Always use event value for trading_enabled
             updated_at: self.timestamp as i64,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)

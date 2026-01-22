@@ -2026,6 +2026,27 @@ pub struct SptConfigInfo {
     pub treasury_fee_bps: i64,
 
     #[diesel(sql_type = BigInt)]
+    pub trading_creator_fee_bps: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub trading_platform_fee_bps: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub trading_treasury_fee_bps: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub reservation_creator_fee_bps: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub reservation_platform_fee_bps: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub reservation_treasury_fee_bps: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_reservers_per_pool: i64,
+
+    #[diesel(sql_type = BigInt)]
     pub base_price: i64,
 
     #[diesel(sql_type = BigInt)]
@@ -2073,6 +2094,13 @@ pub async fn get_spt_configuration(State(db): State<Arc<Database>>) -> Response 
             creator_fee_bps,
             platform_fee_bps,
             treasury_fee_bps,
+            trading_creator_fee_bps,
+            trading_platform_fee_bps,
+            trading_treasury_fee_bps,
+            reservation_creator_fee_bps,
+            reservation_platform_fee_bps,
+            reservation_treasury_fee_bps,
+            max_reservers_per_pool,
             base_price,
             quadratic_coefficient,
             max_hold_percent_bps,

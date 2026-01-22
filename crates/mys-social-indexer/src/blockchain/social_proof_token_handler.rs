@@ -869,9 +869,11 @@ impl SocialProofTokenHandler {
         // Fetch the latest config from database to use as fallback for missing values
         let latest_config = diesel::sql_query(
             "SELECT id, updated_by, post_threshold, profile_threshold, max_individual_reservation_bps, \
-             total_fee_bps, creator_fee_bps, platform_fee_bps, treasury_fee_bps, base_price, \
-             quadratic_coefficient, max_hold_percent_bps, trading_enabled, \
-             updated_at, time, transaction_id \
+             total_fee_bps, creator_fee_bps, platform_fee_bps, treasury_fee_bps, \
+             trading_creator_fee_bps, trading_platform_fee_bps, trading_treasury_fee_bps, \
+             reservation_creator_fee_bps, reservation_platform_fee_bps, reservation_treasury_fee_bps, \
+             max_reservers_per_pool, base_price, quadratic_coefficient, max_hold_percent_bps, \
+             trading_enabled, updated_at, time, transaction_id \
              FROM spt_exchange_config ORDER BY time DESC LIMIT 1"
         )
         .get_result::<SptExchangeConfig>(&mut conn)
@@ -883,7 +885,7 @@ impl SocialProofTokenHandler {
             event.tx_digest.clone(),
             latest_config.as_ref(),
         )?;
-        config.time = datetime;
+        config.time = datetime; // Need mut here to set time field
 
         diesel::insert_into(schema::spt_exchange_config::table)
             .values(&config)
@@ -1045,9 +1047,11 @@ impl SocialProofTokenHandler {
         // from ConfigUpdatedEvent, so we can preserve them and only update trading_enabled
         let latest_config = diesel::sql_query(
             "SELECT id, updated_by, post_threshold, profile_threshold, max_individual_reservation_bps, \
-             total_fee_bps, creator_fee_bps, platform_fee_bps, treasury_fee_bps, base_price, \
-             quadratic_coefficient, max_hold_percent_bps, trading_enabled, \
-             updated_at, time, transaction_id \
+             total_fee_bps, creator_fee_bps, platform_fee_bps, treasury_fee_bps, \
+             trading_creator_fee_bps, trading_platform_fee_bps, trading_treasury_fee_bps, \
+             reservation_creator_fee_bps, reservation_platform_fee_bps, reservation_treasury_fee_bps, \
+             max_reservers_per_pool, base_price, quadratic_coefficient, max_hold_percent_bps, \
+             trading_enabled, updated_at, time, transaction_id \
              FROM spt_exchange_config ORDER BY time DESC LIMIT 1"
         )
         .get_result::<SptExchangeConfig>(&mut conn)
@@ -1058,7 +1062,7 @@ impl SocialProofTokenHandler {
                 // We have a config in the DB - use all its values and only update trading_enabled from event
                 info!("Using latest DB config values and updating trading_enabled from event");
                 
-                let mut config = NewSptExchangeConfig {
+                let config = NewSptExchangeConfig {
                     updated_by: kill_switch_event.admin.clone(),
                     post_threshold: db_config.post_threshold,
                     profile_threshold: db_config.profile_threshold,
@@ -1067,6 +1071,13 @@ impl SocialProofTokenHandler {
                     creator_fee_bps: db_config.creator_fee_bps,
                     platform_fee_bps: db_config.platform_fee_bps,
                     treasury_fee_bps: db_config.treasury_fee_bps,
+                    trading_creator_fee_bps: db_config.trading_creator_fee_bps,
+                    trading_platform_fee_bps: db_config.trading_platform_fee_bps,
+                    trading_treasury_fee_bps: db_config.trading_treasury_fee_bps,
+                    reservation_creator_fee_bps: db_config.reservation_creator_fee_bps,
+                    reservation_platform_fee_bps: db_config.reservation_platform_fee_bps,
+                    reservation_treasury_fee_bps: db_config.reservation_treasury_fee_bps,
+                    max_reservers_per_pool: db_config.max_reservers_per_pool,
                     base_price: db_config.base_price,
                     quadratic_coefficient: db_config.quadratic_coefficient,
                     max_hold_percent_bps: db_config.max_hold_percent_bps,

@@ -16,7 +16,7 @@ use std::sync::Arc;
 use tracing::{error, warn};
 
 use crate::db::Database;
-use crate::models::{get_current_treasury_address, get_current_treasury_details, get_treasury_history};
+use crate::models::{get_current_treasury_details, get_treasury_history};
 
 /// Get current ecosystem treasury details
 /// Returns full treasury information including address, updated_by, timestamp, time, transaction_id, and balance

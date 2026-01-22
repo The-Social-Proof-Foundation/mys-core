@@ -128,7 +128,7 @@ pub async fn get_following(
         .await;
     
     // Determine if we have a profile or need to use wallet-only fallback
-    let (resolved_profile_id, resolved_owner_address, has_profile) = match profile_info_result {
+    let (resolved_profile_id, resolved_owner_address, _has_profile) = match profile_info_result {
         Ok(info) => {
             let (profile_id, owner_address) = info;
             (profile_id, owner_address, true)
@@ -494,7 +494,7 @@ pub async fn get_followers(
         .await;
     
     // Determine if we have a profile or need to use wallet-only fallback
-    let (resolved_profile_id, resolved_owner_address, has_profile) = match profile_info_result {
+    let (resolved_profile_id, resolved_owner_address, _has_profile) = match profile_info_result {
         Ok(info) => {
             let (profile_id, owner_address) = info;
             (profile_id, owner_address, true)

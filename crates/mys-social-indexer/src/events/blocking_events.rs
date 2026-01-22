@@ -318,17 +318,18 @@ pub async fn process_profile_block_event(
     let blocked_profile_photo_clone = blocked_profile_photo.clone();
 
     // Before upsert, check if an active block record already exists (to maintain accurate blocked_count)
-    let existed_before = {
-        use diesel::dsl::exists;
-        diesel::select(exists(
-            blocked_profiles::table
-                .filter(blocked_profiles::blocker_address.eq(&block_event.blocker))
-                .filter(blocked_profiles::blocked_address.eq(&block_event.blocked)),
-        ))
-        .get_result::<bool>(conn)
-        .await
-        .unwrap_or(false)
-    };
+    // NOTE: Currently unused but kept for potential future use in maintaining accurate blocked_count
+    // let _existed_before = {
+    //     use diesel::dsl::exists;
+    //     diesel::select(exists(
+    //         blocked_profiles::table
+    //             .filter(blocked_profiles::blocker_address.eq(&block_event.blocker))
+    //             .filter(blocked_profiles::blocked_address.eq(&block_event.blocked)),
+    //     ))
+    //     .get_result::<bool>(conn)
+    //     .await
+    //     .unwrap_or(false)
+    // };
 
     // 3. Insert or update blocked_profiles for current state with rich data
     let new_blocked_profile = NewBlockedProfile::new(
