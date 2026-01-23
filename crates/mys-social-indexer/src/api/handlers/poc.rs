@@ -227,6 +227,9 @@ pub struct PocConfigInfo {
     #[diesel(sql_type = BigInt)]
     pub max_evidence_urls: i64,
 
+    #[diesel(sql_type = Nullable<Text>)]
+    pub oracle_address: Option<String>,
+
     #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
 }
@@ -637,7 +640,7 @@ pub async fn get_poc_configuration(State(pool): State<DbPool>) -> Response {
     let query = "
         SELECT image_threshold, video_threshold, audio_threshold, revenue_redirect_percentage,
                dispute_cost, dispute_protocol_fee, min_vote_stake, max_vote_stake,
-               voting_duration_epochs, max_reasoning_length, max_evidence_urls, updated_at
+               voting_duration_epochs, max_reasoning_length, max_evidence_urls, oracle_address, updated_at
         FROM poc_configuration
         ORDER BY updated_at DESC
         LIMIT 1
@@ -666,6 +669,7 @@ pub async fn get_poc_configuration(State(pool): State<DbPool>) -> Response {
                     voting_duration_epochs: 7,
                     max_reasoning_length: 5000,
                     max_evidence_urls: 10,
+                    oracle_address: None,
                     updated_at: 0,
                 };
                 Json(default_config).into_response()

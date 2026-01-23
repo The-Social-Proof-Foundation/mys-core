@@ -43,7 +43,7 @@ impl SocialProofTokenHandler {
     const DEFAULT_RESERVATION_CREATOR_FEE_BPS: i64 = 100; // 1.0%
     const DEFAULT_RESERVATION_PLATFORM_FEE_BPS: i64 = 25; // 0.25%
     const DEFAULT_RESERVATION_TREASURY_FEE_BPS: i64 = 25; // 0.25%
-    const DEFAULT_RESERVATION_TOTAL_FEE_BPS: i64 = 150; // Sum of above
+    // const DEFAULT_RESERVATION_TOTAL_FEE_BPS: i64 = 150; // Sum of above
     
     const DEFAULT_BASE_PRICE: i64 = 100_000_000; // 0.1 MYS in smallest units
     const DEFAULT_QUADRATIC_COEFFICIENT: i64 = 100_000;

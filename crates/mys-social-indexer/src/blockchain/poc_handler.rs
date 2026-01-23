@@ -255,13 +255,27 @@ impl PocEventHandler {
         let parsed = Self::parse_event::<PocConfigUpdatedEvent>(&event.data)?;
         validate_config_updated_event(&parsed)?;
 
+        let mut conn = self.get_connection().await?;
+
+        // Fetch the latest config from database to preserve oracle_address
+        let latest_config = diesel::sql_query(
+            "SELECT id, image_threshold, video_threshold, audio_threshold, revenue_redirect_percentage, \
+             dispute_cost, dispute_protocol_fee, min_vote_stake, max_vote_stake, voting_duration_epochs, \
+             max_reasoning_length, max_evidence_urls, max_votes_per_dispute, oracle_address, \
+             updated_by, updated_at, transaction_id, time \
+             FROM poc_configuration ORDER BY time DESC LIMIT 1"
+        )
+        .get_result::<crate::models::poc::PocConfiguration>(&mut conn)
+        .await
+        .ok(); // Use None if no previous config exists
+
         // Use timestamp_ms from BlockchainEvent (in milliseconds) for correct timestamp
+        // Preserve oracle_address from latest config if available
         let mut model = parsed
-            .into_model(event.timestamp_ms)
+            .into_model(event.timestamp_ms, latest_config.as_ref())
             .map_err(|e| anyhow!("Failed to convert PocConfigUpdatedEvent: {}", e))?;
         model.transaction_id = event.tx_digest.clone();
 
-        let mut conn = self.get_connection().await?;
         diesel::insert_into(schema::poc_configuration::table)
             .values(&model)
             .execute(&mut conn)
