@@ -251,11 +251,13 @@ module social_contracts::proof_of_creativity {
     /// Event emitted when PoC configuration is updated
     public struct PoCConfigUpdatedEvent has copy, drop {
         updated_by: address,
+        oracle_address: address,
         image_threshold: u64,
         video_threshold: u64,
         audio_threshold: u64,
         revenue_redirect_percentage: u64,
         dispute_cost: u64,
+        dispute_protocol_fee: u64,
         min_vote_stake: u64,
         max_vote_stake: u64,
         voting_duration_epochs: u64,
@@ -366,11 +368,13 @@ module social_contracts::proof_of_creativity {
         // Emit configuration update event
         event::emit(PoCConfigUpdatedEvent {
             updated_by: tx_context::sender(ctx),
+            oracle_address,
             image_threshold,
             video_threshold,
             audio_threshold,
             revenue_redirect_percentage,
             dispute_cost,
+            dispute_protocol_fee,
             min_vote_stake,
             max_vote_stake,
             voting_duration_epochs,

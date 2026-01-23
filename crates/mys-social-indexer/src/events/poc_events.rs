@@ -138,26 +138,22 @@ impl VotingRewardClaimedEvent {
 // Model conversion impl for PocConfigUpdatedEvent
 impl PocConfigUpdatedEvent {
     /// Convert to database model using timestamp_ms from BlockchainEvent (in milliseconds)
-    /// Preserves oracle_address from latest_config if available (since it's not in the event)
-    pub fn into_model(
-        &self,
-        timestamp_ms: u64,
-        latest_config: Option<&crate::models::poc::PocConfiguration>,
-    ) -> Result<NewPocConfiguration> {
+    /// Uses oracle_address and dispute_protocol_fee directly from the event
+    pub fn into_model(&self, timestamp_ms: u64) -> Result<NewPocConfiguration> {
         Ok(NewPocConfiguration {
             image_threshold: self.image_threshold as i64,
             video_threshold: self.video_threshold as i64,
             audio_threshold: self.audio_threshold as i64,
             revenue_redirect_percentage: self.revenue_redirect_percentage as i64,
             dispute_cost: self.dispute_cost as i64,
-            dispute_protocol_fee: 0, // Not included in this event, will use default
+            dispute_protocol_fee: self.dispute_protocol_fee as i64,
             min_vote_stake: self.min_vote_stake as i64,
             max_vote_stake: self.max_vote_stake as i64,
             voting_duration_epochs: self.voting_duration_epochs as i64,
             max_reasoning_length: self.max_reasoning_length as i64,
             max_evidence_urls: self.max_evidence_urls as i64,
             max_votes_per_dispute: self.max_votes_per_dispute as i64,
-            oracle_address: latest_config.and_then(|c| c.oracle_address.clone()),
+            oracle_address: Some(self.oracle_address.clone()),
             updated_by: self.updated_by.clone(),
             updated_at: timestamp_ms as i64, // Use timestamp_ms from BlockchainEvent (milliseconds)
             transaction_id: "".to_string(), // Will be set by handler

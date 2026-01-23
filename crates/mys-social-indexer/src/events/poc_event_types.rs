@@ -115,6 +115,7 @@ pub struct VotingRewardClaimedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PocConfigUpdatedEvent {
     pub updated_by: String,
+    pub oracle_address: String,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub image_threshold: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
@@ -125,6 +126,8 @@ pub struct PocConfigUpdatedEvent {
     pub revenue_redirect_percentage: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub dispute_cost: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub dispute_protocol_fee: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub min_vote_stake: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
