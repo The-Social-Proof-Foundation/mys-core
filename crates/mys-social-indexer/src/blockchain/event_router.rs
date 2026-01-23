@@ -433,8 +433,11 @@ impl EventPattern {
     }
 
     /// Create pattern for PoC events
-    pub fn poc_events(_package_address: &str) -> EventPattern {
-        EventPattern::Contains("::poc::".to_string())
+    pub fn poc_events(_package_address: &str) -> Vec<EventPattern> {
+        vec![
+            EventPattern::Contains("::poc::".to_string()),
+            EventPattern::Contains("::proof_of_creativity::".to_string()),
+        ]
     }
 
     /// Create pattern for Insurance events
@@ -483,8 +486,11 @@ mod tests {
         assert!(spot.matches("0x123::social_proof_of_truth::SpotBetPlacedEvent"));
 
         // Test PoC events (module match via substring)
-        let poc = EventPattern::poc_events(package_addr);
-        assert!(poc.matches("0x123::poc::PocBadgeIssuedEvent"));
+        let poc_patterns = EventPattern::poc_events(package_addr);
+        // Test that ::poc:: pattern matches
+        assert!(poc_patterns.iter().any(|p| p.matches("0x123::poc::PocBadgeIssuedEvent")));
+        // Test that ::proof_of_creativity:: pattern matches
+        assert!(poc_patterns.iter().any(|p| p.matches("0x123::proof_of_creativity::PoCConfigUpdatedEvent")));
     }
 
     #[tokio::test]

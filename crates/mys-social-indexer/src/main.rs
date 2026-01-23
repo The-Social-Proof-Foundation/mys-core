@@ -172,7 +172,7 @@ async fn main() -> Result<()> {
     let spot_rx = event_router.register_handler("spot-handler".to_string(), spot_patterns, 1000);
 
     // Proof of Creativity handler
-    let poc_patterns = vec![EventPattern::poc_events(package_address)];
+    let poc_patterns = EventPattern::poc_events(package_address);
     let poc_rx = event_router.register_handler("poc-handler".to_string(), poc_patterns, 1000);
 
     // Insurance handler
