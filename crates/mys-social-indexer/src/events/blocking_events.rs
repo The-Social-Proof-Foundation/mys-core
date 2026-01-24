@@ -8,13 +8,14 @@ use serde_json;
 use tracing::{error, info, warn};
 
 use crate::db::DbConnection;
+use crate::events::platform_events::PlatformEventType;
 use crate::events::profile_event_types::{BlockAddedEvent, BlockRemovedEvent};
 use crate::models::blocking::{NewBlockedEvent, NewBlockedProfile};
 use crate::models::blocking::{UserBlockEvent, UserUnblockEvent};
 use crate::models::profile::NewProfile;
 use crate::models::profile_events::NewProfileEvent;
-use crate::models::platform::NewPlatformBlockedProfile;
-use crate::schema::{blocked_events, blocked_profiles, platform_blocked_profiles, profile_events, profiles};
+use crate::models::platform::{NewPlatformBlockedProfile, NewPlatformEvent};
+use crate::schema::{blocked_events, blocked_profiles, platform_blocked_profiles, platform_events, profile_events, profiles};
 
 
 /// Ensure a profile exists for the given wallet address.
@@ -910,6 +911,36 @@ pub async fn process_platform_wallet_block_event(
                     error!("Failed to insert platform block event into profile_events: {}", e);
                 }
             }
+
+            // Create platform_events entry for platform events endpoint
+            let platform_event_data = serde_json::json!({
+                "platform_id": platform_id,
+                "profile_id": blocked_wallet_address,
+                "blocked_by": platform_id
+            });
+
+            let platform_event = NewPlatformEvent {
+                event_type: PlatformEventType::ProfileBlocked.to_str().to_string(),
+                platform_id: platform_id.to_string(),
+                event_data: platform_event_data,
+                event_id: None,
+                created_at: now,
+                reasoning: None,
+            };
+
+            let platform_event_result = diesel::insert_into(platform_events::table)
+                .values(&platform_event)
+                .execute(conn)
+                .await;
+
+            match platform_event_result {
+                Ok(_) => {
+                    info!("Successfully created platform_events record for platform block event");
+                }
+                Err(e) => {
+                    error!("Failed to insert platform block event into platform_events: {}", e);
+                }
+            }
         }
         (Err(e), _) => {
             error!("Failed to insert into blocked_events table: {}", e);
@@ -997,6 +1028,36 @@ pub async fn process_platform_wallet_unblock_event(
                 }
                 Err(e) => {
                     error!("Failed to insert platform unblock event into profile_events: {}", e);
+                }
+            }
+
+            // Create platform_events entry for platform events endpoint
+            let platform_event_data = serde_json::json!({
+                "platform_id": platform_id,
+                "profile_id": unblocked_wallet_address,
+                "unblocked_by": platform_id
+            });
+
+            let platform_event = NewPlatformEvent {
+                event_type: PlatformEventType::ProfileUnblocked.to_str().to_string(),
+                platform_id: platform_id.to_string(),
+                event_data: platform_event_data,
+                event_id: None,
+                created_at: now,
+                reasoning: None,
+            };
+
+            let platform_event_result = diesel::insert_into(platform_events::table)
+                .values(&platform_event)
+                .execute(conn)
+                .await;
+
+            match platform_event_result {
+                Ok(_) => {
+                    info!("Successfully created platform_events record for platform unblock event");
+                }
+                Err(e) => {
+                    error!("Failed to insert platform unblock event into platform_events: {}", e);
                 }
             }
         }
