@@ -436,6 +436,8 @@ module social_contracts::post {
         commenter_tip_percentage: u64,
         /// Percentage of tip that goes to reposter (remainder to original post owner)
         repost_tip_percentage: u64,
+        /// Version for upgrades
+        version: u64,
     }
 
     /// Event emitted when post parameters are updated
@@ -665,6 +667,7 @@ module social_contracts::post {
                 max_reaction_length: MAX_REACTION_LENGTH,
                 commenter_tip_percentage: COMMENTER_TIP_PERCENTAGE,
                 repost_tip_percentage: REPOST_TIP_PERCENTAGE,
+                version: upgrade::current_version(),
             }
         );
     }
@@ -2347,6 +2350,7 @@ module social_contracts::post {
                 max_reaction_length: MAX_REACTION_LENGTH,
                 commenter_tip_percentage: COMMENTER_TIP_PERCENTAGE,
                 repost_tip_percentage: REPOST_TIP_PERCENTAGE,
+                version: upgrade::current_version(),
             }
         );
         
@@ -2666,7 +2670,30 @@ module social_contracts::post {
         // Any migration logic can be added here for future upgrades
     }
 
-
+    /// Migration function for PostConfig
+    public entry fun migrate_post_config(
+        config: &mut PostConfig,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(config.version < current_version, EWrongVersion);
+        
+        // Remember old version and update to new version
+        let old_version = config.version;
+        config.version = current_version;
+        
+        // Emit event for object migration
+        let config_id = object::id(config);
+        upgrade::emit_migration_event(
+            config_id,
+            string::utf8(b"PostConfig"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
 
     /// Update post parameters (admin only)
     public fun update_post_parameters(
@@ -3133,6 +3160,7 @@ module social_contracts::post {
                 max_reaction_length: MAX_REACTION_LENGTH,
                 commenter_tip_percentage: COMMENTER_TIP_PERCENTAGE,
                 repost_tip_percentage: REPOST_TIP_PERCENTAGE,
+                version: upgrade::current_version(),
             }
         );
     }

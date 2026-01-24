@@ -649,6 +649,7 @@ pub struct PostConfig {
     pub max_reaction_length: i64,
     pub commenter_tip_percentage: i64,
     pub repost_tip_percentage: i64,
+    pub version: i64,
     pub updated_at: i64,
     pub time: DateTime<Utc>,
     pub transaction_id: String,
@@ -667,6 +668,7 @@ pub struct NewPostConfig {
     pub max_reaction_length: i64,
     pub commenter_tip_percentage: i64,
     pub repost_tip_percentage: i64,
+    pub version: i64,
     pub updated_at: i64,
     pub transaction_id: String,
 }

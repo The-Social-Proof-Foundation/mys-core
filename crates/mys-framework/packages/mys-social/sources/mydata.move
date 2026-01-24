@@ -866,6 +866,31 @@ module social_contracts::mydata {
         );
     }
 
+    /// Migration function for MyDataConfig
+    public entry fun migrate_config(
+        config: &mut MyDataConfig,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext
+    ) {
+        let current_version = upgrade::current_version();
+        
+        // Verify this is an upgrade (new version > current version)
+        assert!(config.version < current_version, EInvalidInput);
+        
+        // Remember old version and update to new version
+        let old_version = config.version;
+        config.version = current_version;
+        
+        // Emit event for object migration
+        let config_id = object::id(config);
+        upgrade::emit_migration_event(
+            config_id,
+            string::utf8(b"MyDataConfig"),
+            old_version,
+            tx_context::sender(ctx)
+        );
+    }
+
     // === Test Functions ===
 
     #[test_only]

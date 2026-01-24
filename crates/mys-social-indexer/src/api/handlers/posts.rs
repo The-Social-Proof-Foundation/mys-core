@@ -1536,6 +1536,9 @@ pub struct PostConfigInfo {
     pub repost_tip_percentage: i64,
 
     #[diesel(sql_type = BigInt)]
+    pub version: i64,
+
+    #[diesel(sql_type = BigInt)]
     pub updated_at: i64,
 
     #[diesel(sql_type = Timestamptz)]
@@ -1572,6 +1575,7 @@ pub async fn get_post_configuration(State(pool): State<DbPool>) -> Response {
             max_reaction_length,
             commenter_tip_percentage,
             repost_tip_percentage,
+            version,
             updated_at,
             time,
             transaction_id
@@ -1601,6 +1605,7 @@ pub async fn get_post_configuration(State(pool): State<DbPool>) -> Response {
                     max_reaction_length: 20, // MAX_REACTION_LENGTH
                     commenter_tip_percentage: 80, // COMMENTER_TIP_PERCENTAGE
                     repost_tip_percentage: 50, // REPOST_TIP_PERCENTAGE
+                    version: 0, // Default version for initial config
                     updated_at: 0, // No update timestamp for defaults
                     time: chrono::DateTime::from_timestamp(0, 0).unwrap(), // Epoch time (not serialized)
                     transaction_id: "".to_string(),

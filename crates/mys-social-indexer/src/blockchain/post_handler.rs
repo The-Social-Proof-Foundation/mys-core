@@ -658,6 +658,28 @@ impl PostEventHandler {
 
         info!("Processing post parameters updated event");
 
+        // Fetch the latest config from database to use as fallback for version
+        let latest_config = diesel::sql_query(
+            "SELECT id, updated_by, max_content_length, max_media_urls, max_mentions, \
+             max_metadata_size, max_description_length, max_reaction_length, \
+             commenter_tip_percentage, repost_tip_percentage, version, updated_at, \
+             time, transaction_id \
+             FROM post_config ORDER BY time DESC LIMIT 1"
+        )
+        .get_result::<crate::models::post::PostConfig>(&mut conn)
+        .await
+        .ok(); // Use None if no previous config exists
+
+        // Determine version: use event version if present, otherwise increment latest version, or default to 0
+        let version = event.version
+            .map(|v| v as i64)
+            .unwrap_or_else(|| {
+                latest_config
+                    .as_ref()
+                    .map(|c| c.version + 1)
+                    .unwrap_or(0)
+            });
+
         // Insert new config record with updated parameters
         // Use timestamp_ms from BlockchainEvent (already in milliseconds)
         // The database trigger will convert it: to_timestamp(updated_at / 1000)
@@ -671,6 +693,7 @@ impl PostEventHandler {
             max_reaction_length: event.max_reaction_length as i64,
             commenter_tip_percentage: event.commenter_tip_percentage as i64,
             repost_tip_percentage: event.repost_tip_percentage as i64,
+            version,
             updated_at: timestamp_ms as i64,
             transaction_id: tx_id.to_string(),
         };
@@ -681,8 +704,8 @@ impl PostEventHandler {
             .await?;
 
         info!(
-            "Post parameters updated by: {}, max_content_length={}, max_media_urls={}, updated_at={}",
-            event.updated_by, event.max_content_length, event.max_media_urls, timestamp_ms
+            "Post parameters updated by: {}, max_content_length={}, max_media_urls={}, version={}, updated_at={}",
+            event.updated_by, event.max_content_length, event.max_media_urls, version, timestamp_ms
         );
 
         Ok(())
@@ -2083,6 +2106,28 @@ async fn handle_post_parameters_updated(
 
     let mut conn = db.get_connection().await?;
 
+    // Fetch the latest config from database to use as fallback for version
+    let latest_config = diesel::sql_query(
+        "SELECT id, updated_by, max_content_length, max_media_urls, max_mentions, \
+         max_metadata_size, max_description_length, max_reaction_length, \
+         commenter_tip_percentage, repost_tip_percentage, version, updated_at, \
+         time, transaction_id \
+         FROM post_config ORDER BY time DESC LIMIT 1"
+    )
+    .get_result::<crate::models::post::PostConfig>(&mut conn)
+    .await
+    .ok(); // Use None if no previous config exists
+
+    // Determine version: use event version if present, otherwise increment latest version, or default to 0
+    let version = parsed_event.version
+        .map(|v| v as i64)
+        .unwrap_or_else(|| {
+            latest_config
+                .as_ref()
+                .map(|c| c.version + 1)
+                .unwrap_or(0)
+        });
+
     // Insert new config record with updated parameters
     // Note: parsed_event.timestamp is in milliseconds (blockchain standard)
     // The database trigger will convert it: to_timestamp(updated_at / 1000)
@@ -2096,6 +2141,7 @@ async fn handle_post_parameters_updated(
         max_reaction_length: parsed_event.max_reaction_length as i64,
         commenter_tip_percentage: parsed_event.commenter_tip_percentage as i64,
         repost_tip_percentage: parsed_event.repost_tip_percentage as i64,
+        version,
         updated_at: parsed_event.timestamp as i64,
         transaction_id: transaction_id.to_string(),
     };
@@ -2106,8 +2152,8 @@ async fn handle_post_parameters_updated(
         .await?;
 
     info!(
-        "Post parameters updated by: {}, max_content_length={}, max_media_urls={}, updated_at={}",
-        parsed_event.updated_by, parsed_event.max_content_length, parsed_event.max_media_urls, parsed_event.timestamp
+        "Post parameters updated by: {}, max_content_length={}, max_media_urls={}, version={}, updated_at={}",
+        parsed_event.updated_by, parsed_event.max_content_length, parsed_event.max_media_urls, version, parsed_event.timestamp
     );
 
     Ok(())

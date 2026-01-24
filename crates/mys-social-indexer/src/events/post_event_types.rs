@@ -280,6 +280,8 @@ pub struct PostParametersUpdatedEvent {
     pub commenter_tip_percentage: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub repost_tip_percentage: u64,
+    #[serde(default, deserialize_with = "deserialize_optional_u64_from_string")]
+    pub version: Option<u64>,
 }
 
 

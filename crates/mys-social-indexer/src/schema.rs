@@ -1357,6 +1357,7 @@ table! {
         max_reaction_length -> Int8,
         commenter_tip_percentage -> Int8,
         repost_tip_percentage -> Int8,
+        version -> Int8,
         updated_at -> Int8,
         time -> Timestamptz,
         transaction_id -> Varchar,
