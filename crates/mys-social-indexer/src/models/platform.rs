@@ -231,7 +231,7 @@ pub struct NewPlatformModerator {
 pub struct PlatformBlockedProfile {
     pub id: i32,
     pub platform_id: String,
-    pub profile_id: String,
+    pub wallet_address: String,
     pub blocked_by: String,
     pub created_at: NaiveDateTime,
 }
@@ -241,7 +241,7 @@ pub struct PlatformBlockedProfile {
 #[diesel(table_name = platform_blocked_profiles)]
 pub struct NewPlatformBlockedProfile {
     pub platform_id: String,
-    pub profile_id: String,
+    pub wallet_address: String,
     pub blocked_by: String,
     pub created_at: NaiveDateTime,
 }

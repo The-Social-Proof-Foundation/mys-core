@@ -818,7 +818,7 @@ pub async fn get_platform_blocked_profiles(
         .filter(platform_blocked_profiles::platform_id.eq(&platform_id))
         .left_join(
             profiles::table.on(
-                profiles::owner_address.eq(platform_blocked_profiles::profile_id),
+                profiles::owner_address.eq(platform_blocked_profiles::wallet_address),
             ),
         )
         .into_boxed();
@@ -842,18 +842,18 @@ pub async fn get_platform_blocked_profiles(
 
     // Build query for fetching blocked profiles
     // Get blocked profiles with profile information using LEFT JOIN
-    // Join platform_blocked_profiles with profiles on profile_id = owner_address
+    // Join platform_blocked_profiles with profiles on wallet_address = owner_address
     let mut blocked_profiles_query = platform_blocked_profiles::table
         .filter(platform_blocked_profiles::platform_id.eq(&platform_id))
         .left_join(
             profiles::table.on(
-                profiles::owner_address.eq(platform_blocked_profiles::profile_id),
+                profiles::owner_address.eq(platform_blocked_profiles::wallet_address),
             ),
         )
         .select((
             platform_blocked_profiles::id,
             platform_blocked_profiles::platform_id,
-            platform_blocked_profiles::profile_id,
+            platform_blocked_profiles::wallet_address,
             platform_blocked_profiles::blocked_by,
             platform_blocked_profiles::created_at,
             profiles::username.nullable(),
@@ -883,17 +883,17 @@ pub async fn get_platform_blocked_profiles(
         Ok(blocked_data) => {
             let blocked_profiles: Vec<BlockedProfileWithProfile> = blocked_data
                 .into_iter()
-                .map(|(id, platform_id, profile_id, blocked_by, created_at, username, fullname, profile_photo, wallet_address)| {
+                .map(|(id, platform_id, wallet_addr, blocked_by, created_at, username, fullname, profile_photo, owner_address)| {
                     BlockedProfileWithProfile {
                         id,
                         platform_id,
-                        profile_id: profile_id.clone(),
+                        profile_id: wallet_addr.clone(), // Keep for backward compatibility, but it's actually wallet_address
                         blocked_by,
                         created_at,
                         username,
                         fullname,
                         profile_photo,
-                        wallet_address: wallet_address.or(Some(profile_id)),
+                        wallet_address: owner_address.or(Some(wallet_addr)),
                     }
                 })
                 .collect();

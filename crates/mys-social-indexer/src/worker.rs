@@ -20,7 +20,7 @@ use crate::events::{
     EntityBlockedEvent, IPRegisteredEvent, LicenseGrantedEvent, ProofCreatedEvent,
     FeeModelCreatedEvent, FeesDistributedEvent,
     FollowEvent, UnfollowEvent,
-    PlatformBlockedProfileEvent, PlatformUnblockedProfileEvent, UserJoinedPlatformEvent, UserLeftPlatformEvent,
+    UserJoinedPlatformEvent, UserLeftPlatformEvent,
     SpotBetPlacedEvent as SpotBetPlacedEvt,
     SpotResolvedEvent as SpotResolvedEvt,
     SpotDaoRequiredEvent as SpotDaoRequiredEvt,
@@ -1014,46 +1014,6 @@ impl SocialIndexerWorker {
         Ok(())
     }
 
-    /// Process a platform blocked profile event
-    async fn process_platform_blocked_profile(&self, event: &PlatformBlockedProfileEvent) -> Result<()> {
-        let mut conn = self.get_connection().await?;
-        let now = Utc::now().naive_utc();
-        
-        // Create new blocked profile record
-        let new_blocked_profile = NewPlatformBlockedProfile {
-            platform_id: event.platform_id.clone(),
-            profile_id: event.profile_id.clone(),
-            blocked_by: event.blocked_by.clone(),
-            created_at: now,
-        };
-        
-        // Insert the blocked profile record
-        diesel::insert_into(schema::platform_blocked_profiles::table)
-            .values(&new_blocked_profile)
-            .execute(&mut conn)
-            .await?;
-            
-        info!("Processed platform blocked profile: platform={}, profile={}", 
-              event.platform_id, event.profile_id);
-        Ok(())
-    }
-    
-    /// Process a platform unblocked profile event
-    async fn process_platform_unblocked_profile(&self, event: &PlatformUnblockedProfileEvent) -> Result<()> {
-        let mut conn = self.get_connection().await?;
-        let now = Utc::now().naive_utc();
-        
-        // Delete the blocked profile record
-        diesel::delete(schema::platform_blocked_profiles::table)
-            .filter(schema::platform_blocked_profiles::platform_id.eq(&event.platform_id))
-            .filter(schema::platform_blocked_profiles::profile_id.eq(&event.profile_id))
-            .execute(&mut conn)
-            .await?;
-            
-        info!("Processed platform unblocked profile: platform={}, profile={}", 
-              event.platform_id, event.profile_id);
-        Ok(())
-    }
     
     /// Process a user joined platform event
     async fn process_user_joined_platform(&self, event: &UserJoinedPlatformEvent, event_id: Option<String>) -> Result<()> {
@@ -1300,17 +1260,9 @@ impl Worker for SocialIndexerWorker {
                     // Platform events
                     t if t.starts_with(MODULE_PREFIX_PLATFORM) => {
                         match type_str {
-                            t if t.ends_with("PlatformBlockedProfileEvent") => {
-                                match parse_event::<PlatformBlockedProfileEvent>(event) {
-                                    Ok(event) => self.process_platform_blocked_profile(&event).await?,
-                                    Err(e) => error!("Failed to parse PlatformBlockedProfileEvent: {}", e),
-                                }
-                            }
-                            t if t.ends_with("PlatformUnblockedProfileEvent") => {
-                                match parse_event::<PlatformUnblockedProfileEvent>(event) {
-                                    Ok(event) => self.process_platform_unblocked_profile(&event).await?,
-                                    Err(e) => error!("Failed to parse PlatformUnblockedProfileEvent: {}", e),
-                                }
+                            // Platform blocking is now handled via UserBlockEvent/UserUnblockEvent from block_list module
+                            t if t.ends_with("PlatformBlockedProfileEvent") | t.ends_with("PlatformUnblockedProfileEvent") => {
+                                warn!("Platform blocking events are now handled via UserBlockEvent/UserUnblockEvent from block_list module. Ignoring deprecated event: {}", event.event_type);
                             }
                             t if t.ends_with("UserJoinedPlatformEvent") => {
                                 match parse_event::<UserJoinedPlatformEvent>(event) {

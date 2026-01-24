@@ -13,10 +13,9 @@ use crate::models::blocking::{NewBlockedEvent, NewBlockedProfile};
 use crate::models::blocking::{UserBlockEvent, UserUnblockEvent};
 use crate::models::profile::NewProfile;
 use crate::models::profile_events::NewProfileEvent;
-use crate::schema::{blocked_events, blocked_profiles, profile_events, profiles};
+use crate::models::platform::NewPlatformBlockedProfile;
+use crate::schema::{blocked_events, blocked_profiles, platform_blocked_profiles, profile_events, profiles};
 
-// Import platform event types
-use crate::models::platform::{PlatformBlockedProfileEvent, PlatformUnblockedProfileEvent};
 
 /// Ensure a profile exists for the given wallet address.
 /// Creates a minimal profile if one doesn't exist, using any provided profile data.
@@ -168,6 +167,7 @@ async fn ensure_profile_exists(
 }
 
 /// Process a profile block event
+/// Detects if blocker is a platform address and routes to appropriate handler
 pub async fn process_profile_block_event(
     conn: &mut DbConnection,
     event_data: &serde_json::Value,
@@ -262,8 +262,41 @@ pub async fn process_profile_block_event(
         return Ok(());
     }
 
+    // Check if blocker is a platform address
+    use crate::schema::platforms;
+    let is_platform = match platforms::table
+        .filter(platforms::platform_id.eq(&block_event.blocker))
+        .select(platforms::platform_id)
+        .first::<String>(conn)
+        .await
+    {
+        Ok(_) => {
+            info!("Detected platform blocking: platform {} blocked wallet {}", block_event.blocker, block_event.blocked);
+            true
+        }
+        Err(diesel::NotFound) => {
+            info!("User-to-user blocking: {} blocked {}", block_event.blocker, block_event.blocked);
+            false
+        }
+        Err(e) => {
+            warn!("Failed to check if blocker is platform: {}, treating as user blocking", e);
+            false
+        }
+    };
+
+    // Route to platform handler if blocker is a platform
+    if is_platform {
+        return process_platform_wallet_block_event(
+            conn,
+            &block_event.blocker,
+            &block_event.blocked,
+            event_data,
+        )
+        .await;
+    }
+
     info!(
-        "Processing profile block event: {} blocked {}",
+        "Processing user-to-user block event: {} blocked {}",
         block_event.blocker, block_event.blocked
     );
 
@@ -592,6 +625,7 @@ pub async fn process_profile_block_event(
 }
 
 /// Process a profile unblock event
+/// Detects if blocker is a platform address and routes to appropriate handler
 pub async fn process_profile_unblock_event(
     conn: &mut DbConnection,
     event_data: &serde_json::Value,
@@ -659,8 +693,41 @@ pub async fn process_profile_unblock_event(
         return Ok(());
     }
 
+    // Check if blocker is a platform address
+    use crate::schema::platforms;
+    let is_platform = match platforms::table
+        .filter(platforms::platform_id.eq(&unblock_event.blocker))
+        .select(platforms::platform_id)
+        .first::<String>(conn)
+        .await
+    {
+        Ok(_) => {
+            info!("Detected platform unblocking: platform {} unblocked wallet {}", unblock_event.blocker, unblock_event.unblocked);
+            true
+        }
+        Err(diesel::NotFound) => {
+            info!("User-to-user unblocking: {} unblocked {}", unblock_event.blocker, unblock_event.unblocked);
+            false
+        }
+        Err(e) => {
+            warn!("Failed to check if blocker is platform: {}, treating as user unblocking", e);
+            false
+        }
+    };
+
+    // Route to platform handler if blocker is a platform
+    if is_platform {
+        return process_platform_wallet_unblock_event(
+            conn,
+            &unblock_event.blocker,
+            &unblock_event.unblocked,
+            event_data,
+        )
+        .await;
+    }
+
     info!(
-        "Processing profile unblock event: {} unblocked {}",
+        "Processing user-to-user unblock event: {} unblocked {}",
         unblock_event.blocker, unblock_event.unblocked
     );
 
@@ -759,230 +826,187 @@ pub async fn process_profile_unblock_event(
     Ok(())
 }
 
-/// Record platform block/unblock events in profile_events instead of using a separate platforms_blocked table
-/// This is now handled through the profile_events table for history tracking
-
-/// Process a platform block event - stores in profile_events table instead
-pub async fn process_platform_block_event(
+/// Process a platform wallet block event (from UserBlockEvent where blocker is a platform)
+/// Stores in platform_blocked_profiles table using wallet_address
+pub async fn process_platform_wallet_block_event(
     conn: &mut DbConnection,
+    platform_id: &str,
+    blocked_wallet_address: &str,
     event_data: &serde_json::Value,
 ) -> Result<()> {
-    // First log the raw event data to see what's coming from the blockchain
     info!(
-        "Processing platform block event (raw data): {:?}",
-        event_data
+        "Processing platform wallet block event: platform {} blocked wallet {}",
+        platform_id, blocked_wallet_address
     );
 
-    // Try to parse the event data
-    let block_event = match serde_json::from_value::<PlatformBlockedProfileEvent>(
-        event_data.clone(),
-    ) {
-        Ok(evt) => {
-            info!(
-                "Successfully parsed blockchain event: platform_id={}, profile_id={}, blocked_by={}",
-                evt.platform_id, evt.profile_id, evt.blocked_by
-            );
-            evt
-        }
-        Err(e) => {
-            // When parsing fails, try to extract fields directly from the raw event
-            info!(
-                "Failed to parse event normally, trying direct extraction: {}",
-                e
-            );
+    let now = chrono::Utc::now().naive_utc();
 
-            // Create an event object using fields directly from the event_data JSON
-            let event_platform_id = event_data
-                .get("platform_id")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string();
-
-            let event_profile_id = event_data
-                .get("profile_id")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string();
-
-            let event_blocked_by = event_data
-                .get("blocked_by")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string();
-
-            info!(
-                "Manually extracted platform_id={}, profile_id={}, blocked_by={}",
-                event_platform_id, event_profile_id, event_blocked_by
-            );
-
-            PlatformBlockedProfileEvent {
-                platform_id: event_platform_id,
-                profile_id: event_profile_id,
-                blocked_by: event_blocked_by,
-            }
-        }
-    };
-
-    // Check if all required fields are present
-    if block_event.platform_id.is_empty()
-        || block_event.profile_id.is_empty()
-        || block_event.blocked_by.is_empty()
-    {
-        info!("Missing required fields in platform block event, skipping");
-        return Ok(());
-    }
-
-    info!(
-        "Processing platform block event: Platform {} blocked profile {} by {}",
-        block_event.platform_id, block_event.profile_id, block_event.blocked_by
+    // 1. Insert into blocked_events for audit trail (same as user blocking)
+    let blocked_event = NewBlockedEvent::new_block_event(
+        None, // event_id - could be extracted from blockchain if available
+        platform_id.to_string(),
+        blocked_wallet_address.to_string(),
+        Some(event_data.clone()),
+        now,
     );
 
-    // Store this in profile_events instead of platforms_blocked
-    let block_timestamp = chrono::Utc::now().timestamp() as u64;
-
-    // Create record in profile_events - we'll use BlockAdded event type
-    // with custom fields for platform blocking
-    let profile_event = NewProfileEvent::from_blockchain_event(
-        "BlockAdded",
-        block_event.profile_id.clone(),
-        serde_json::json!({
-            "platform_id": block_event.platform_id,
-            "blocked_by": block_event.blocked_by,
-            "timestamp": block_timestamp,
-            "is_platform_block": true
-        }),
-        None, // No event ID available
-        Some(block_timestamp),
-    );
-
-    // Insert into profile_events
-    let result = diesel::insert_into(crate::schema::profile_events::table)
-        .values(&profile_event)
+    let event_result = diesel::insert_into(blocked_events::table)
+        .values(&blocked_event)
         .execute(conn)
         .await;
 
-    match result {
-        Ok(_) => {
-            info!("Created profile_events record for platform block event");
-        }
-        Err(e) => {
-            error!(
-                "Failed to insert platform block event into profile_events: {}",
-                e
+    // 2. Insert or update platform_blocked_profiles table using wallet_address
+    let new_platform_blocked = NewPlatformBlockedProfile {
+        platform_id: platform_id.to_string(),
+        wallet_address: blocked_wallet_address.to_string(),
+        blocked_by: platform_id.to_string(), // Platform acts as blocker
+        created_at: now,
+    };
+
+    let platform_block_result = diesel::insert_into(platform_blocked_profiles::table)
+        .values(&new_platform_blocked)
+        .on_conflict((
+            platform_blocked_profiles::platform_id,
+            platform_blocked_profiles::wallet_address,
+        ))
+        .do_update()
+        .set(platform_blocked_profiles::created_at.eq(now))
+        .execute(conn)
+        .await;
+
+    // Log results
+    match (event_result, platform_block_result) {
+        (Ok(_), Ok(_)) => {
+            info!("✅ Successfully wrote platform wallet block event");
+
+            // Create a profile_events entry to track in user history
+            let block_timestamp = chrono::Utc::now().timestamp() as u64;
+
+            // Create block added event for profile_events with platform block metadata
+            let profile_event = NewProfileEvent::from_blockchain_event(
+                "BlockAdded",
+                blocked_wallet_address.to_string(),
+                serde_json::json!({
+                    "platform_id": platform_id,
+                    "blocked_by": platform_id,
+                    "timestamp": block_timestamp,
+                    "is_platform_block": true
+                }),
+                None, // No event ID available
+                Some(block_timestamp),
             );
-            return Err(anyhow::anyhow!("Database error: {}", e));
+
+            // Insert into profile_events
+            let event_result = diesel::insert_into(profile_events::table)
+                .values(&profile_event)
+                .execute(conn)
+                .await;
+
+            match event_result {
+                Ok(_) => {
+                    info!("Successfully created profile_events record for platform block event");
+                }
+                Err(e) => {
+                    error!("Failed to insert platform block event into profile_events: {}", e);
+                }
+            }
+        }
+        (Err(e), _) => {
+            error!("Failed to insert into blocked_events table: {}", e);
+            return Err(anyhow::anyhow!("Failed to write audit event: {}", e));
+        }
+        (_, Err(e)) => {
+            error!("Failed to insert/update platform_blocked_profiles table: {}", e);
+            return Err(anyhow::anyhow!("Failed to update platform blocking state: {}", e));
         }
     }
 
     Ok(())
 }
 
-/// Process a platform unblock event - stores in profile_events table instead
-pub async fn process_platform_unblock_event(
+/// Process a platform wallet unblock event (from UserUnblockEvent where blocker is a platform)
+/// Removes from platform_blocked_profiles table using wallet_address
+pub async fn process_platform_wallet_unblock_event(
     conn: &mut DbConnection,
+    platform_id: &str,
+    unblocked_wallet_address: &str,
     event_data: &serde_json::Value,
 ) -> Result<()> {
-    // First log the raw event data to see what's coming from the blockchain
     info!(
-        "Processing platform unblock event (raw data): {:?}",
-        event_data
+        "Processing platform wallet unblock event: platform {} unblocked wallet {}",
+        platform_id, unblocked_wallet_address
     );
 
-    // Try to parse the event data
-    let unblock_event = match serde_json::from_value::<PlatformUnblockedProfileEvent>(
-        event_data.clone(),
-    ) {
-        Ok(evt) => {
-            info!(
-                "Successfully parsed blockchain event: platform_id={}, profile_id={}, unblocked_by={}",
-                evt.platform_id, evt.profile_id, evt.unblocked_by
-            );
-            evt
-        }
-        Err(e) => {
-            // When parsing fails, try to extract fields directly from the raw event
-            info!(
-                "Failed to parse event normally, trying direct extraction: {}",
-                e
-            );
+    let now = chrono::Utc::now().naive_utc();
 
-            // Create an event object using fields directly from the event_data JSON
-            let event_platform_id = event_data
-                .get("platform_id")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string();
-
-            let event_profile_id = event_data
-                .get("profile_id")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string();
-
-            let event_unblocked_by = event_data
-                .get("unblocked_by")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string();
-
-            info!(
-                "Manually extracted platform_id={}, profile_id={}, unblocked_by={}",
-                event_platform_id, event_profile_id, event_unblocked_by
-            );
-
-            PlatformUnblockedProfileEvent {
-                platform_id: event_platform_id,
-                profile_id: event_profile_id,
-                unblocked_by: event_unblocked_by,
-            }
-        }
-    };
-
-    // Check if all required fields are present
-    if unblock_event.platform_id.is_empty() || unblock_event.profile_id.is_empty() {
-        info!("Missing required fields in platform unblock event, skipping");
-        return Ok(());
-    }
-
-    info!(
-        "Processing platform unblock event: Platform {} unblocked profile {}",
-        unblock_event.platform_id, unblock_event.profile_id
+    // 1. Insert into blocked_events for audit trail
+    let blocked_event = NewBlockedEvent::new_unblock_event(
+        None, // event_id - could be extracted from blockchain if available
+        platform_id.to_string(),
+        unblocked_wallet_address.to_string(),
+        Some(event_data.clone()),
+        now,
     );
 
-    // Store this in profile_events instead of platforms_blocked
-    let unblock_timestamp = chrono::Utc::now().timestamp() as u64;
-
-    // Create record in profile_events - we'll use BlockRemoved event type
-    // with custom fields for platform unblocking
-    let profile_event = NewProfileEvent::from_blockchain_event(
-        "BlockRemoved",
-        unblock_event.profile_id.clone(),
-        serde_json::json!({
-            "platform_id": unblock_event.platform_id,
-            "unblocked_by": unblock_event.unblocked_by,
-            "timestamp": unblock_timestamp,
-            "is_platform_block": true
-        }),
-        None, // No event ID available
-        Some(unblock_timestamp),
-    );
-
-    // Insert into profile_events
-    let result = diesel::insert_into(crate::schema::profile_events::table)
-        .values(&profile_event)
+    let event_result = diesel::insert_into(blocked_events::table)
+        .values(&blocked_event)
         .execute(conn)
         .await;
 
-    match result {
-        Ok(_) => {
-            info!("Created profile_events record for platform unblock event");
-        }
-        Err(e) => {
-            error!(
-                "Failed to insert platform unblock event into profile_events: {}",
-                e
+    // 2. Delete from platform_blocked_profiles for current state
+    let platform_unblock_result = diesel::delete(platform_blocked_profiles::table)
+        .filter(platform_blocked_profiles::platform_id.eq(platform_id))
+        .filter(platform_blocked_profiles::wallet_address.eq(unblocked_wallet_address))
+        .execute(conn)
+        .await;
+
+    // Log results
+    match (event_result, platform_unblock_result) {
+        (Ok(_), Ok(deleted_rows)) => {
+            info!(
+                "✅ Successfully processed platform wallet unblock: {} records deleted",
+                deleted_rows
             );
-            return Err(anyhow::anyhow!("Database error: {}", e));
+
+            // Create a profile_events entry to track in user history
+            let unblock_timestamp = chrono::Utc::now().timestamp() as u64;
+
+            // Create block removed event for profile_events with platform unblock metadata
+            let profile_event = NewProfileEvent::from_blockchain_event(
+                "BlockRemoved",
+                unblocked_wallet_address.to_string(),
+                serde_json::json!({
+                    "platform_id": platform_id,
+                    "unblocked_by": platform_id,
+                    "timestamp": unblock_timestamp,
+                    "is_platform_block": true
+                }),
+                None, // No event ID available
+                Some(unblock_timestamp),
+            );
+
+            // Insert into profile_events
+            let event_result = diesel::insert_into(profile_events::table)
+                .values(&profile_event)
+                .execute(conn)
+                .await;
+
+            match event_result {
+                Ok(_) => {
+                    info!("Successfully created profile_events record for platform unblock event");
+                }
+                Err(e) => {
+                    error!("Failed to insert platform unblock event into profile_events: {}", e);
+                }
+            }
+        }
+        (Err(e), _) => {
+            error!("Failed to insert into blocked_events table: {}", e);
+            return Err(anyhow::anyhow!("Failed to write audit event: {}", e));
+        }
+        (_, Err(e)) => {
+            error!("Failed to delete from platform_blocked_profiles table: {}", e);
+            return Err(anyhow::anyhow!("Failed to update platform blocking state: {}", e));
         }
     }
 

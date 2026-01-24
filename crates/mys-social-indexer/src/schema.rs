@@ -166,7 +166,7 @@ table! {
     platform_blocked_profiles (id) {
         id -> Integer,
         platform_id -> Varchar,
-        profile_id -> Varchar,
+        wallet_address -> Varchar,
         blocked_by -> Varchar,
         created_at -> Timestamp,
     }

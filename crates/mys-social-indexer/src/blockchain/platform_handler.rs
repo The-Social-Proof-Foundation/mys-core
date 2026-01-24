@@ -1107,186 +1107,6 @@ impl PlatformEventHandler {
         Ok(())
     }
 
-    /// Process a profile blocked event
-    async fn process_profile_blocked_event(
-        &self,
-        event: &PlatformBlockedProfileEvent,
-        blockchain_event: Option<&BlockchainEvent>,
-    ) -> Result<()> {
-        debug!("Processing profile blocked event");
-
-        let mut conn = self.get_connection().await?;
-
-        // Start a transaction for atomicity
-        conn.build_transaction()
-            .run(|mut conn| {
-                Box::pin(async move {
-                    // Store event for historical record
-                    let now = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap_or_default();
-
-                    // Get event_id from blockchain_event if available
-                    let event_id = blockchain_event.map(|e| e.event_id.clone());
-
-                    // Create new platform event record
-                    let platform_event = NewPlatformEvent {
-                        event_type: PlatformEventType::ProfileBlocked.to_str().to_string(),
-                        platform_id: event.platform_id.clone(),
-                        event_data: serde_json::to_value(event).unwrap_or_default(),
-                        event_id,
-                        created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
-                            .unwrap_or_else(|| chrono::Utc::now())
-                            .naive_utc(),
-                        reasoning: None,
-                    };
-
-                    // Insert platform event
-                    diesel::insert_into(schema::platform_events::table)
-                        .values(&platform_event)
-                        .execute(&mut conn)
-                        .await?;
-
-                    // Check if this platform-profile relationship already exists
-                    let existing_relationship = schema::platform_blocked_profiles::table
-                        .filter(
-                            schema::platform_blocked_profiles::platform_id.eq(&event.platform_id),
-                        )
-                        .filter(schema::platform_blocked_profiles::profile_id.eq(&event.profile_id))
-                        .first::<PlatformBlockedProfile>(&mut conn)
-                        .await;
-
-                    match existing_relationship {
-                        Ok(_) => {
-                            // Delete the existing record - we'll insert a new one to reset the timestamps
-                            diesel::delete(schema::platform_blocked_profiles::table)
-                                .filter(
-                                    schema::platform_blocked_profiles::platform_id
-                                        .eq(&event.platform_id),
-                                )
-                                .filter(
-                                    schema::platform_blocked_profiles::profile_id
-                                        .eq(&event.profile_id),
-                                )
-                                .execute(&mut conn)
-                                .await?;
-
-                            info!("Deleted existing block relationship to refresh timestamp");
-
-                            // Create new blocked profile relationship below
-                        }
-                        Err(diesel::result::Error::NotFound) => {
-                            // No existing relationship - we'll create a new one
-                        }
-                        Err(e) => {
-                            error!("Error checking for existing block relationship: {}", e);
-                            return Err(e);
-                        }
-                    }
-
-                    // Create new blocked profile relationship
-                    let new_blocked_profile = (
-                        schema::platform_blocked_profiles::platform_id
-                            .eq(event.platform_id.clone()),
-                        schema::platform_blocked_profiles::profile_id.eq(event.profile_id.clone()),
-                        schema::platform_blocked_profiles::blocked_by.eq(event.blocked_by.clone()),
-                        schema::platform_blocked_profiles::created_at.eq(
-                            chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
-                                .unwrap_or_else(|| chrono::Utc::now())
-                                .naive_utc(),
-                        ),
-                    );
-
-                    diesel::insert_into(schema::platform_blocked_profiles::table)
-                        .values(new_blocked_profile)
-                        .execute(&mut conn)
-                        .await?;
-
-                    info!(
-                        "Created new blocked profile relationship: {} on platform {}",
-                        event.profile_id, event.platform_id
-                    );
-
-                    Result::<_, diesel::result::Error>::Ok(())
-                })
-            })
-            .await?;
-
-        info!("Successfully processed profile blocked event");
-
-        Ok(())
-    }
-
-    /// Process a profile unblocked event
-    async fn process_profile_unblocked_event(
-        &self,
-        event: &PlatformUnblockedProfileEvent,
-        blockchain_event: Option<&BlockchainEvent>,
-    ) -> Result<()> {
-        debug!("Processing profile unblocked event");
-
-        let mut conn = self.get_connection().await?;
-
-        // Start a transaction for atomicity
-        conn.build_transaction()
-            .run(|mut conn| {
-                Box::pin(async move {
-                    // Store event for historical record
-                    let now = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap_or_default();
-
-                    // Get event_id from blockchain_event if available
-                    let event_id = blockchain_event.map(|e| e.event_id.clone());
-
-                    // Create new platform event record
-                    let platform_event = NewPlatformEvent {
-                        event_type: PlatformEventType::ProfileUnblocked.to_str().to_string(),
-                        platform_id: event.platform_id.clone(),
-                        event_data: serde_json::to_value(event).unwrap_or_default(),
-                        event_id,
-                        created_at: chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
-                            .unwrap_or_else(|| chrono::Utc::now())
-                            .naive_utc(),
-                        reasoning: None,
-                    };
-
-                    // Insert platform event
-                    diesel::insert_into(schema::platform_events::table)
-                        .values(&platform_event)
-                        .execute(&mut conn)
-                        .await?;
-
-                    // Delete the block relationship entirely instead of updating it
-                    let deleted_count = diesel::delete(schema::platform_blocked_profiles::table)
-                        .filter(
-                            schema::platform_blocked_profiles::platform_id.eq(&event.platform_id),
-                        )
-                        .filter(schema::platform_blocked_profiles::profile_id.eq(&event.profile_id))
-                        .execute(&mut conn)
-                        .await?;
-
-                    if deleted_count > 0 {
-                        info!(
-                            "Deleted block relationship: {} on platform {}",
-                            event.profile_id, event.platform_id
-                        );
-                    } else {
-                        warn!(
-                            "No block relationship found to delete: {} on platform {}",
-                            event.profile_id, event.platform_id
-                        );
-                    }
-
-                    Result::<_, diesel::result::Error>::Ok(())
-                })
-            })
-            .await?;
-
-        info!("Successfully processed profile unblocked event");
-
-        Ok(())
-    }
 
     /// Process a platform approval changed event
     async fn process_platform_approval_changed_event(
@@ -1599,12 +1419,12 @@ impl PlatformEventHandler {
                     }
 
                     // Check if the wallet is blocked by the platform
-                    // Note: platform_blocked_profiles uses profile_id which may be wallet address
+                    // Uses wallet_address for wallet-level blocking as per the smart contract
                     let wallet_is_blocked = schema::platform_blocked_profiles::table
                         .filter(
                             schema::platform_blocked_profiles::platform_id.eq(&event.platform_id),
                         )
-                        .filter(schema::platform_blocked_profiles::profile_id.eq(&event.wallet_address))
+                        .filter(schema::platform_blocked_profiles::wallet_address.eq(&event.wallet_address))
                         .count()
                         .get_result::<i64>(&mut conn)
                         .await
@@ -2236,41 +2056,10 @@ impl PlatformEventHandler {
                         }
                     }
                 }
-                PlatformEventType::ProfileBlocked => {
-                    info!("Processing ProfileBlocked event");
-                    match serde_json::from_value::<event_utils::MoveObjectFields<PlatformBlockedProfileEvent>>(event.data.clone()) {
-                        Ok(wrapper) => {
-                            let platform_event = wrapper.into_inner();
-                            self.process_profile_blocked_event(&platform_event, Some(&event))
-                                .await?;
-                        }
-                        Err(e) => {
-                            error!("Failed to parse PlatformBlockedProfileEvent: {}", e);
-                            error!(
-                                "Event data: {}",
-                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
-                            );
-                            return Err(anyhow!("Failed to parse PlatformBlockedProfileEvent: {}", e));
-                        }
-                    }
-                }
-                PlatformEventType::ProfileUnblocked => {
-                    info!("Processing ProfileUnblocked event");
-                    match serde_json::from_value::<event_utils::MoveObjectFields<PlatformUnblockedProfileEvent>>(event.data.clone()) {
-                        Ok(wrapper) => {
-                            let platform_event = wrapper.into_inner();
-                            self.process_profile_unblocked_event(&platform_event, Some(&event))
-                                .await?;
-                        }
-                        Err(e) => {
-                            error!("Failed to parse PlatformUnblockedProfileEvent: {}", e);
-                            error!(
-                                "Event data: {}",
-                                serde_json::to_string_pretty(&event.data).unwrap_or_default()
-                            );
-                            return Err(anyhow!("Failed to parse PlatformUnblockedProfileEvent: {}", e));
-                        }
-                    }
+                // Platform blocking is now handled via UserBlockEvent/UserUnblockEvent from block_list module
+                // These events are routed through block_list_handler which detects platform blocking
+                PlatformEventType::ProfileBlocked | PlatformEventType::ProfileUnblocked => {
+                    warn!("Platform blocking events are now handled via UserBlockEvent/UserUnblockEvent from block_list module. Ignoring deprecated PlatformBlockedProfileEvent/PlatformUnblockedProfileEvent.");
                 }
                 PlatformEventType::PlatformApprovalChanged => {
                     info!("Processing PlatformApprovalChanged event");
