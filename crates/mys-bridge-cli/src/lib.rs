@@ -44,7 +44,7 @@ use std::sync::Arc;
 use tracing::info;
 use fastcrypto::encoding::Base64;
 
-pub const SEPOLIA_BRIDGE_PROXY_ADDR: &str = "0xE924C53019c5c105fBD126f01A611B830613165D";
+pub const SEPOLIA_BRIDGE_PROXY_ADDR: &str = "0x538f62e8E903DcaAAB6eB2cD1c5b9A8742e66CB1";
 
 #[derive(Parser)]
 #[clap(rename_all = "kebab-case")]
