@@ -581,12 +581,26 @@ impl TransactionBuilder {
         modules: Vec<Vec<u8>>,
         dep_ids: Vec<ObjectID>,
         admin_cap: Option<ObjectID>,
+        publish_admin_cap: Option<ObjectID>,
+        coin_admin_cap: Option<ObjectID>,
     ) -> Result<TransactionKind, anyhow::Error> {
         let pt = {
             let mut builder = ProgrammableTransactionBuilder::new();
             
             // If admin_cap is provided, add it as an input object to enable publish bypass
             if let Some(cap_id) = admin_cap {
+                let cap_ref = self.get_object_ref(cap_id).await?;
+                builder.obj(ObjectArg::ImmOrOwnedObject(cap_ref))?;
+            }
+            
+            // If publish_admin_cap is provided, add it as an input object to enable publish bypass
+            if let Some(cap_id) = publish_admin_cap {
+                let cap_ref = self.get_object_ref(cap_id).await?;
+                builder.obj(ObjectArg::ImmOrOwnedObject(cap_ref))?;
+            }
+            
+            // If coin_admin_cap is provided, add it as an input object to enable coin creation
+            if let Some(cap_id) = coin_admin_cap {
                 let cap_ref = self.get_object_ref(cap_id).await?;
                 builder.obj(ObjectArg::ImmOrOwnedObject(cap_ref))?;
             }

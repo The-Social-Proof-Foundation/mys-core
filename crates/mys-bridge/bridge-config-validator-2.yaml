@@ -20,7 +20,7 @@ approved-governance-actions:
   # The system matches by exact hash, so placeholder values won't match real proposals until updated.
   
   - AddTokensOnEvmAction:
-      nonce: 2
+      nonce: 0
       chain_id: EthCustom
       native: true
       token_ids: [0]

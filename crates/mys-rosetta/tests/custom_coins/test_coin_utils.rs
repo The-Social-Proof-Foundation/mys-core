@@ -150,6 +150,8 @@ pub async fn init_package(
                 ObjectID::from_hex_literal("0x2").unwrap(),
             ],
             None, // admin_cap - not needed for this test
+            None, // publish_admin_cap - not needed for this test
+            None, // coin_admin_cap - not needed for this test
         )
         .await?;
 

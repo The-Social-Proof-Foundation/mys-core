@@ -378,6 +378,14 @@ pub enum MysClientCommands {
         /// Object ID of UpgradeAdminCap to include in transaction (allows bypassing publish restrictions)
         #[clap(long)]
         admin_cap: Option<ObjectID>,
+
+        /// Object ID of PackagePublishingAdminCap to include in transaction (allows bypassing publish restrictions)
+        #[clap(long)]
+        publish_admin_cap: Option<ObjectID>,
+
+        /// Object ID of CoinCreationAdminCap to include in transaction (allows coin creation during publish)
+        #[clap(long)]
+        coin_admin_cap: Option<ObjectID>,
     },
 
     /// Split a coin object into multiple coins.
@@ -1022,6 +1030,8 @@ impl MysClientCommands {
                 verify_deps,
                 with_unpublished_dependencies,
                 admin_cap,
+                publish_admin_cap,
+                coin_admin_cap,
                 opts,
             } => {
                 if build_config.test_mode {
@@ -1091,6 +1101,8 @@ impl MysClientCommands {
                         compiled_modules,
                         dependencies.published.into_values().collect(),
                         admin_cap,
+                        publish_admin_cap,
+                        coin_admin_cap,
                     )
                     .await?;
                 let result = dry_run_or_execute_or_serialize(
