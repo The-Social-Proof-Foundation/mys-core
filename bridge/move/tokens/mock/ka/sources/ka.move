@@ -20,7 +20,7 @@ module bridged_ka::ka {
             DECIMAL,
             b"Ka",
             b"Ka Coin",
-            b"Ka, the opposite of Mys",
+            b"Ka, the opposite of MySo",
             option::none(),
             ctx
         );

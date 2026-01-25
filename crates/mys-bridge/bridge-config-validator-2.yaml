@@ -66,7 +66,7 @@ eth:
   eth-rpc-url: "${ETH_RPC_URL}"
   eth-bridge-proxy-address: "${ETH_BRIDGE_PROXY_ADDRESS}"
   eth-bridge-chain-id: 12
-  eth-contracts-start-block-fallback: 36260929
+  eth-contracts-start-block-fallback: 36767538
 
 deposits:
   enabled: true

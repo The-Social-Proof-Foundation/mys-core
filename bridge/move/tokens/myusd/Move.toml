@@ -1,5 +1,5 @@
 [package]
-name = "BridgedUSDT"
+name = "BridgedMyUSD"
 version = "0.0.1"
 edition = "legacy"
 
@@ -8,4 +8,4 @@ MoveStdlib = { local = "../../../../crates/mys-framework/packages/move-stdlib" }
 MySocial = { local = "../../../../crates/mys-framework/packages/mys-framework" }
 
 [addresses]
-bridged_usdt = "0x0"
+bridged_myusd = "0x0"

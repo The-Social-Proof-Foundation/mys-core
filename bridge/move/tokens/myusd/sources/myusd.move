@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-module bridged_usdt::usdt {
+module bridged_myusd::myusd {
     use std::option;
 
     use mys::coin;
@@ -10,17 +10,17 @@ module bridged_usdt::usdt {
     use mys::tx_context;
     use mys::tx_context::TxContext;
 
-    struct USDT has drop {}
+    struct MYUSD has drop {}
 
     const DECIMAL: u8 = 6;
 
-    fun init(otw: USDT, ctx: &mut TxContext) {
+    fun init(otw: MYUSD, ctx: &mut TxContext) {
         let (treasury_cap, metadata) = coin::create_currency(
             otw,
             DECIMAL,
-            b"USDT",
-            b"Tether",
-            b"Bridged Tether token",
+            b"MyUSD",
+            b"MyUSD",
+            b"The official MySocial USD stablecoin.",
             option::none(),
             ctx
         );
