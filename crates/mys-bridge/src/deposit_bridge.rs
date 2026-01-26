@@ -22,7 +22,7 @@ use mys_types::base_types::{MysAddress};
 use mys_types::bridge::BRIDGE_MODULE_NAME;
 use mys_types::crypto::Signature;
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
-use mys_types::transaction::{ObjectArg, Transaction, TransactionData};
+use mys_types::transaction::{Command, Argument, ObjectArg, Transaction, TransactionData};
 use mys_types::{BRIDGE_PACKAGE_ID, TypeTag, MYS_FRAMEWORK_ADDRESS};
 use shared_crypto::intent::{Intent, IntentMessage};
 use std::collections::HashMap;
@@ -534,10 +534,33 @@ pub async fn handle_mys_deposit(
         ?coin_type,
         is_native_mys,
         amount = event.amount,
+        "Preparing to query coins for MySocial deposit"
+    );
+
+    // Get gas coin (must be different from bridge coin)
+    // Always use MYS for gas
+    let gas_coin_type_str = TypeTag::Struct(Box::new(StructTag {
+        address: MYS_FRAMEWORK_ADDRESS.into(),
+        module: ident_str!("mys").to_owned(),
+        name: ident_str!("MYS").to_owned(),
+        type_params: vec![],
+    }))
+    .to_string();
+
+    // Get bridge object
+    let bridge_object_arg = mys_client
+        .get_mutable_bridge_object_arg_must_succeed()
+        .await;
+
+    // Query coins fresh right before building transaction to avoid stale data
+    // This ensures we get the latest coin state after any previous transactions
+    info!(
+        ?deposit_mys_address,
+        ?coin_type,
+        amount = event.amount,
         "Querying coins for MySocial deposit"
     );
 
-    // Query coins at deposit address matching the coin type
     let mys_sdk_client = mys_client.mys_client();
     let coin_type_str = coin_type.to_string();
     let coins = mys_sdk_client
@@ -571,7 +594,7 @@ pub async fn handle_mys_deposit(
         "Found coin to bridge"
     );
 
-    // Get coin object reference
+    // Get coin object reference immediately after querying to minimize stale data window
     let coin_obj = mys_sdk_client
         .read_api()
         .get_object_with_options(
@@ -590,23 +613,15 @@ pub async fn handle_mys_deposit(
         .data
         .ok_or_else(|| {
             BridgeError::Generic(format!(
-                "Coin object {} not found",
+                "Coin object {} was consumed between query and transaction building. This can happen if the coin was used in another transaction. Please retry the deposit.",
                 coin_to_bridge.coin_object_id
             ))
         })?
         .object_ref();
 
     // Get gas coin (must be different from bridge coin)
-    // Always use MYS for gas
-    let gas_coin_type_str = TypeTag::Struct(Box::new(StructTag {
-        address: MYS_FRAMEWORK_ADDRESS.into(),
-        module: ident_str!("mys").to_owned(),
-        name: ident_str!("MYS").to_owned(),
-        type_params: vec![],
-    }))
-    .to_string();
-
-    let gas_coins = mys_sdk_client
+    // If we only have one coin and it's native MYS, we need to split it first
+    let (gas_obj_ref, needs_split) = match mys_sdk_client
         .coin_read_api()
         .select_coins(
             deposit_mys_address,
@@ -615,43 +630,81 @@ pub async fn handle_mys_deposit(
             vec![coin_to_bridge.coin_object_id], // Exclude the bridge coin
         )
         .await
-        .map_err(|e| {
-            BridgeError::Generic(format!(
-                "Failed to select gas coin: {:?}",
-                e
-            ))
-        })?;
-
-    let gas_obj_ref = gas_coins
-        .first()
-        .ok_or_else(|| {
-            BridgeError::Generic(
-                "No gas coin available (must be different from bridge coin)".to_string(),
-            )
-        })?
-        .object_ref();
-
-    info!(
-        gas_coin_id = ?gas_obj_ref.0,
-        "Selected gas coin"
-    );
-
-    // Get bridge object
-    let bridge_object_arg = mys_client
-        .get_mutable_bridge_object_arg_must_succeed()
-        .await;
+    {
+        Ok(gas_coins) => {
+            let gas_obj_ref = gas_coins
+                .first()
+                .ok_or_else(|| {
+                    BridgeError::Generic(
+                        "No gas coin available (must be different from bridge coin)".to_string(),
+                    )
+                })?
+                .object_ref();
+            info!(
+                gas_coin_id = ?gas_obj_ref.0,
+                "Selected gas coin"
+            );
+            (gas_obj_ref, false)
+        }
+        Err(_) => {
+            // No separate gas coin available - check if we can split the bridge coin
+            if is_native_mys && coin_to_bridge.balance > event.amount {
+                // We have native MYS coin with more than needed - split it for gas
+                info!(
+                    coin_id = ?coin_to_bridge.coin_object_id,
+                    coin_balance = coin_to_bridge.balance,
+                    bridge_amount = event.amount,
+                    "No separate gas coin found, will split coin for gas"
+                );
+                // Use the coin itself as gas, we'll split it in the transaction
+                (coin_obj_ref, true)
+            } else {
+                return Err(BridgeError::Generic(
+                    "No gas coin available and cannot split bridge coin (insufficient balance or not native MYS)".to_string(),
+                ));
+            }
+        }
+    };
 
     // Build transaction
     let mut builder = ProgrammableTransactionBuilder::new();
+    
+    // If we need to split the coin for gas, do it first
+    let arg_token = if needs_split {
+        // Split the exact bridge amount from the gas coin
+        // This creates a new coin with event.amount that we'll use for bridging
+        // The remaining coin stays as the gas coin
+        let split_amount = event.amount;
+        let split_amount_arg = builder.pure(split_amount)
+            .map_err(|e| BridgeError::Generic(format!("Failed to create split amount argument: {:?}", e)))?;
+        
+        // Split coins from the gas coin (which is the bridge coin in this case)
+        // This returns Argument::Result(0) which refers to the first result (the split coin)
+        let split_result = builder.command(Command::SplitCoins(
+            Argument::GasCoin,
+            vec![split_amount_arg],
+        ));
+        
+        info!(
+            split_amount,
+            "Added SplitCoins command to create separate coin for bridging"
+        );
+        
+        // Use the split coin result for bridging
+        // split_result is Argument::Result(0) which refers to the split coin
+        split_result
+    } else {
+        // Use the original coin object for bridging
+        builder.obj(ObjectArg::ImmOrOwnedObject(coin_obj_ref))
+            .map_err(|e| BridgeError::Generic(format!("Failed to create token argument: {:?}", e)))?
+    };
+    
     let arg_target_chain = builder
         .pure(recipient_info.destination_chain as u8)
         .map_err(|e| BridgeError::Generic(format!("Failed to create target_chain argument: {:?}", e)))?;
     let arg_target_address = builder
         .pure(destination_eth_address.as_bytes())
         .map_err(|e| BridgeError::Generic(format!("Failed to create target_address argument: {:?}", e)))?;
-    let arg_token = builder
-        .obj(ObjectArg::ImmOrOwnedObject(coin_obj_ref))
-        .map_err(|e| BridgeError::Generic(format!("Failed to create token argument: {:?}", e)))?;
     let arg_bridge = builder
         .obj(bridge_object_arg)
         .map_err(|e| BridgeError::Generic(format!("Failed to create bridge argument: {:?}", e)))?;

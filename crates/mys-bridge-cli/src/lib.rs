@@ -31,6 +31,7 @@ use mys_types::base_types::MysAddress;
 use mys_types::base_types::{ObjectID, ObjectRef};
 use mys_types::bridge::{BridgeChainId, BRIDGE_MODULE_NAME};
 use mys_types::crypto::{MysKeyPair, Signature};
+use mys_types::object::Owner;
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::transaction::{ObjectArg, Transaction, TransactionData};
 use mys_types::{TypeTag, BRIDGE_PACKAGE_ID};
@@ -713,13 +714,36 @@ async fn deposit_on_mys(
         .first()
         .ok_or(anyhow!("No coin found for address {}", sender))?
         .object_ref();
-    let coin_obj_ref = mys_client
+    
+    // Read coin object with owner information to verify ownership
+    let coin_obj_response = mys_client
         .read_api()
-        .get_object_with_options(coin_object_id, MysObjectDataOptions::default())
-        .await?
+        .get_object_with_options(coin_object_id, MysObjectDataOptions::default().with_owner())
+        .await?;
+    
+    let coin_obj_data = coin_obj_response
         .data
-        .unwrap()
-        .object_ref();
+        .ok_or_else(|| anyhow!("Coin object {} not found", coin_object_id))?;
+    
+    // Extract owner address from coin object
+    let coin_owner_address = coin_obj_data
+        .owner
+        .ok_or_else(|| anyhow!("Coin object {} has no owner information", coin_object_id))?
+        .get_address_owner_address()
+        .map_err(|e| anyhow!("Coin object {} owner is not an address owner: {:?}", coin_object_id, e))?;
+    
+    // Verify coin owner matches the signer address
+    if coin_owner_address != sender {
+        return Err(anyhow!(
+            "Coin ownership mismatch: Coin {} is owned by address {}, but transaction is being signed by address {} (derived from config.mys_key). \
+             Please use the keypair that corresponds to the coin owner address, or transfer the coin to your address first.",
+            coin_object_id,
+            coin_owner_address,
+            sender
+        ));
+    }
+    
+    let coin_obj_ref = coin_obj_data.object_ref();
 
     let mut builder = ProgrammableTransactionBuilder::new();
     let arg_target_chain = builder.pure(target_chain).unwrap();
