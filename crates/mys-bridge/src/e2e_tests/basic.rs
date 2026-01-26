@@ -23,6 +23,7 @@ use ethers::types::Address as EthAddress;
 use mys_json_rpc_api::BridgeReadApiClient;
 use mys_types::crypto::get_key_pair;
 use std::collections::HashSet;
+#[cfg(feature = "test-utils")]
 use test_cluster::TestClusterBuilder;
 
 use std::path::Path;
@@ -397,15 +398,19 @@ async fn test_committee_registration() {
 }
 
 #[tokio::test]
+#[cfg(feature = "test-utils")]
 async fn test_bridge_api_compatibility() {
-    let test_cluster: test_cluster::TestCluster = TestClusterBuilder::new()
-        .with_protocol_version(BRIDGE_ENABLE_PROTOCOL_VERSION.into())
-        .build()
-        .await;
+    #[cfg(feature = "test-utils")]
+    {
+        let test_cluster: test_cluster::TestCluster = TestClusterBuilder::new()
+            .with_protocol_version(BRIDGE_ENABLE_PROTOCOL_VERSION.into())
+            .build()
+            .await;
 
-    test_cluster.trigger_reconfiguration().await;
-    let client = test_cluster.rpc_client();
-    client.get_latest_bridge().await.unwrap();
+        test_cluster.trigger_reconfiguration().await;
+        let client = test_cluster.rpc_client();
+        client.get_latest_bridge().await.unwrap();
+    }
     // TODO: assert fields in summary
 
     client

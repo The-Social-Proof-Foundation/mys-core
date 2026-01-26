@@ -28,6 +28,7 @@ use ethers::types::{
 };
 use fastcrypto::encoding::{Encoding, Hex};
 use fastcrypto::traits::KeyPair;
+#[cfg(feature = "test-utils")]
 use hex_literal::hex;
 use move_core_types::language_storage::TypeTag;
 use mys_config::local_ip_utils;

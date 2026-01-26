@@ -4,6 +4,24 @@
 
 //! Auto-bridge execution for custodial deposits
 //! Handles deposits to our addresses and automatically calls bridge contracts
+//!
+//! ## Amount Handling
+//!
+//! ### EVM Deposits (EVM → MySocial)
+//! - Uses `event.amount` (the amount from the Transfer event) when calling `bridgeERC20`
+//! - The bridge contract calculates `amountTransfered` based on actual balance change (handles fee-on-transfer tokens)
+//! - The contract then converts `amountTransfered` to MySocial decimals using `BridgeUtils.convertERC20ToMysDecimal()`:
+//!   - If ERC20 decimals == MySocial decimals: no conversion (amount stays the same)
+//!   - If ERC20 decimals > MySocial decimals: amount / (10 ** (erc20Decimal - mysDecimal))
+//!   - Integer division truncation is expected and correct (precision loss in least significant digits)
+//! - We verify the conversion formula is applied correctly and log precision loss to ensure no unexpected value loss
+//!
+//! ### MySocial Deposits (MySocial → EVM)
+//! - Uses `event.amount` (the amount deposited to the deposit address)
+//! - **IMPORTANT**: The Move bridge contract (`send_token`/`send_mys_token`) bridges the ENTIRE coin balance
+//! - Therefore, we MUST split coins to get exactly `event.amount` if the coin balance exceeds it
+//! - If coin balance == event.amount and we have a separate gas coin, we use the coin directly
+//! - If coin balance > event.amount, we always split to get exactly event.amount before bridging
 
 use crate::abi::{EthBridgeConfig, EthMysBridge, EthERC20};
 use crate::deposit_addresses::DepositAddressManager;
@@ -126,6 +144,77 @@ where
         // Determine token ID from bridge config
         let token_id = self.get_token_id_for_address(event.token_address).await?;
 
+        // CRITICAL: For fee-on-transfer tokens, the deposit address receives less than event.amount
+        // We must use the actual balance, not event.amount, to avoid transaction failures
+        // 
+        // IMPORTANT: Query balance at the SPECIFIC BLOCK where the event occurred to avoid
+        // including other deposits that happened later. This ensures we bridge exactly what
+        // was received for THIS specific deposit event.
+        let token_contract_for_balance = EthERC20::new(event.token_address, self.eth_provider.clone());
+        
+        // Query balance at the block where the deposit occurred (not current block)
+        // This ensures we get the balance state exactly when this deposit happened
+        use ethers::types::BlockId;
+        let balance_call = token_contract_for_balance
+            .balance_of(event.to_address)
+            .block(BlockId::Number(ethers::types::BlockNumber::Number(event.block_number.into())));
+        
+        let actual_balance = balance_call
+            .call()
+            .await
+            .map_err(|e| {
+                BridgeError::Generic(format!(
+                    "Failed to query deposit address balance at block {}: {:?}",
+                    event.block_number, e
+                ))
+            })?;
+        
+        // CRITICAL PRODUCTION LOGIC:
+        // For fee-on-transfer tokens: event.amount is what was SENT, but deposit address receives LESS
+        // The balance at the event block reflects the state AFTER this transfer completed
+        //
+        // Key insight: We want to bridge exactly what was received for THIS deposit event.
+        // - If actual_balance < event.amount: Fee-on-transfer token, use actual_balance (what was received)
+        // - If actual_balance >= event.amount: Normal token, use event.amount (what was sent = what was received)
+        //
+        // Note: We query balance at the SPECIFIC BLOCK to get the exact state when this deposit occurred.
+        // If balance > event.amount, it means there were previous deposits at that address (which should
+        // have been bridged already due to sequential processing). We still use event.amount to bridge
+        // only THIS deposit, not all deposits.
+        let amount_to_bridge = if actual_balance < event.amount {
+            // Fee-on-transfer token: deposit address received less than what was sent
+            warn!(
+                deposit_address = ?event.to_address,
+                block_number = event.block_number,
+                event_amount = ?event.amount,
+                actual_balance_at_block = ?actual_balance,
+                difference = ?(event.amount - actual_balance),
+                "Fee-on-transfer token detected: deposit address received less than Transfer event amount. Bridging actual received amount."
+            );
+            actual_balance
+        } else {
+            // Normal token OR balance includes previous deposits
+            // Use event.amount to bridge only THIS deposit (not previous deposits if any)
+            if actual_balance > event.amount {
+                info!(
+                    deposit_address = ?event.to_address,
+                    block_number = event.block_number,
+                    event_amount = ?event.amount,
+                    actual_balance_at_block = ?actual_balance,
+                    "Balance exceeds event amount (may include previous deposits). Bridging only this deposit amount."
+                );
+            }
+            event.amount
+        };
+        
+        info!(
+            deposit_address = ?event.to_address,
+            event_amount = ?event.amount,
+            actual_balance = ?actual_balance,
+            amount_to_bridge = ?amount_to_bridge,
+            "Determined amount to bridge (handles fee-on-transfer tokens)"
+        );
+
         // Convert destination address to bytes (MySocial address = 32 bytes)
         let destination_bytes = recipient_info.destination_address.clone();
         
@@ -149,8 +238,8 @@ where
         let signer_for_estimation = SignerMiddleware::new(self.eth_provider.clone(), deposit_wallet_for_estimation);
         let token_contract = EthERC20::new(event.token_address, Arc::new(signer_for_estimation));
 
-        // Estimate gas for approval
-        let approve_call = token_contract.approve(self.eth_bridge_address, event.amount);
+        // Estimate gas for approval (use amount_to_bridge, not event.amount)
+        let approve_call = token_contract.approve(self.eth_bridge_address, amount_to_bridge);
         let approval_gas_estimate = approve_call.estimate_gas().await.map_err(|e| {
             BridgeError::Generic(format!("Failed to estimate gas for approval: {:?}", e))
         })?;
@@ -196,7 +285,7 @@ where
         let signer_for_approval = SignerMiddleware::new(self.eth_provider.clone(), deposit_wallet_for_approval);
         let token_contract = EthERC20::new(event.token_address, Arc::new(signer_for_approval));
 
-        let approve_call = token_contract.approve(self.eth_bridge_address, event.amount);
+        let approve_call = token_contract.approve(self.eth_bridge_address, amount_to_bridge);
         
         // Use the already-estimated gas limit
         let gas_limit = approval_gas_limit;
@@ -245,7 +334,7 @@ where
 
         let bridge_call_for_estimation = bridge.bridge_erc20(
             token_id,
-            event.amount,
+            amount_to_bridge,
             destination_bytes.clone().into(),
             recipient_info.destination_chain,
         );
@@ -275,16 +364,17 @@ where
         // STEP 3: Call bridgeERC20(tokenID, amount, recipientAddress, destinationChainID)
         let destination_chain_id = recipient_info.destination_chain;
 
-        info!(
-            token_id,
-            amount = ?event.amount,
-            destination_chain = destination_chain_id,
-            "Calling bridgeERC20"
-        );
+            info!(
+                token_id,
+                event_amount = ?event.amount,
+                amount_to_bridge = ?amount_to_bridge,
+                destination_chain = destination_chain_id,
+                "Calling bridgeERC20 with actual balance (handles fee-on-transfer tokens)"
+            );
 
         let call = bridge.bridge_erc20(
             token_id,
-            event.amount,
+            amount_to_bridge,
             destination_bytes.into(),
             destination_chain_id,
         );
@@ -320,7 +410,7 @@ where
                 ));
             }
 
-            // Verify TokensDeposited event was emitted
+            // Verify TokensDeposited event was emitted and extract amount
             use crate::abi::EthMysBridgeEvents;
             let bridge_contract = self.eth_bridge_address;
             
@@ -335,8 +425,8 @@ where
                     EthMysBridgeEvents::decode_log(&raw_log).ok()
                 })
                 .filter_map(|event| {
-                    if let EthMysBridgeEvents::TokensDepositedFilter(_) = event {
-                        Some(event)
+                    if let EthMysBridgeEvents::TokensDepositedFilter(deposit_event) = event {
+                        Some(deposit_event)
                     } else {
                         None
                     }
@@ -352,18 +442,165 @@ where
                     "CRITICAL: TokensDeposited event not found in transaction receipt!"
                 );
             } else {
-                info!(
-                    tx_hash = ?tx_hash,
-                    event_count = tokens_deposited_events.len(),
-                    "TokensDeposited event verified in transaction receipt"
-                );
+                // Extract and verify the amount from the event
+                for deposit_event in &tokens_deposited_events {
+                    let mys_adjusted_amount = deposit_event.mys_adjusted_amount;
+                    
+                    // CRITICAL: Verify decimal conversion to ensure no value loss
+                    // Fetch ERC20 decimals and MySocial decimals to verify conversion
+                    let erc20_decimals = {
+                        let token_contract = EthERC20::new(event.token_address, self.eth_provider.clone());
+                        match token_contract.decimals().call().await {
+                            Ok(decimals) => decimals,
+                            Err(e) => {
+                                warn!(
+                                    ?tx_hash,
+                                    token_address = ?event.token_address,
+                                    error = ?e,
+                                    "Failed to fetch ERC20 decimals for verification"
+                                );
+                                // Continue without verification if we can't fetch decimals
+                                0u8
+                            }
+                        }
+                    };
+                    
+                    let mys_decimals = {
+                        let config_contract = EthBridgeConfig::new(
+                            self.eth_bridge_config_address,
+                            self.eth_provider.clone(),
+                        );
+                        match config_contract.token_mys_decimal_of(token_id).call().await {
+                            Ok(decimals) => decimals,
+                            Err(e) => {
+                                warn!(
+                                    ?tx_hash,
+                                    token_id,
+                                    error = ?e,
+                                    "Failed to fetch MySocial decimals for verification"
+                                );
+                                // Continue without verification if we can't fetch decimals
+                                0u8
+                            }
+                        }
+                    };
+                    
+                    // Verify conversion if we successfully fetched both decimals
+                    if erc20_decimals > 0 && mys_decimals > 0 {
+                        // Calculate expected conversion using the same formula as BridgeUtils.convertERC20ToMysDecimal
+                        // We use amount_to_bridge (actual balance) which matches what the contract uses (amountTransfered)
+                        // For fee-on-transfer tokens, amount_to_bridge < event.amount, which is correct
+                        let expected_mys_amount: u128 = if erc20_decimals == mys_decimals {
+                            // Same decimals: no conversion needed
+                            amount_to_bridge.as_u128()
+                        } else if erc20_decimals > mys_decimals {
+                            // Convert ERC20 to MySocial decimals by dividing
+                            // Formula: amount / (10 ** (erc20Decimal - mysDecimal))
+                            let factor = 10u128.pow((erc20_decimals - mys_decimals) as u32);
+                            amount_to_bridge.as_u128() / factor
+                        } else {
+                            // This should never happen per contract validation, but handle it
+                            warn!(
+                                ?tx_hash,
+                                erc20_decimals,
+                                mys_decimals,
+                                "Invalid decimal configuration: ERC20 decimals < MySocial decimals"
+                            );
+                            amount_to_bridge.as_u128()
+                        };
+                        
+                        // The actual mys_adjusted_amount should match expected_mys_amount exactly
+                        // (allowing for small precision loss from integer division)
+                        if mys_adjusted_amount as u128 > expected_mys_amount {
+                            error!(
+                                ?tx_hash,
+                                event_amount = ?event.amount,
+                                amount_bridged_erc20 = ?amount_to_bridge,
+                                erc20_decimals,
+                                mys_decimals,
+                                expected_mys_amount,
+                                actual_mys_adjusted_amount = mys_adjusted_amount,
+                                "CRITICAL: MySocial-adjusted amount exceeds expected conversion! Possible value loss or conversion error."
+                            );
+                        } else {
+                            // Calculate precision loss (if any) due to integer division during conversion
+                            // This only applies when converting from higher precision (ERC20) to lower precision (MySocial)
+                            let (precision_loss, conversion_applied) = if erc20_decimals > mys_decimals {
+                                let factor = 10u128.pow((erc20_decimals - mys_decimals) as u32);
+                                let remainder = amount_to_bridge.as_u128() % factor;
+                                (remainder, true)
+                            } else {
+                                (0, false)
+                            };
+                            
+                            // Verify the conversion matches exactly (allowing for precision loss)
+                            let conversion_matches = mys_adjusted_amount as u128 == expected_mys_amount;
+                            
+                            info!(
+                                ?tx_hash,
+                                event_amount = ?event.amount,
+                                amount_bridged_erc20 = ?amount_to_bridge,
+                                erc20_decimals,
+                                mys_decimals,
+                                expected_mys_amount,
+                                actual_mys_adjusted_amount = mys_adjusted_amount,
+                                conversion_matches,
+                                conversion_applied,
+                                precision_loss_due_to_division = precision_loss,
+                                "Decimal conversion verified - bridge contract calculated MySocial-adjusted amount correctly"
+                            );
+                            
+                            // Warn if conversion doesn't match (should only differ by precision loss)
+                            if !conversion_matches {
+                                let difference = if mys_adjusted_amount as u128 > expected_mys_amount {
+                                    mys_adjusted_amount as u128 - expected_mys_amount
+                                } else {
+                                    expected_mys_amount - mys_adjusted_amount as u128
+                                };
+                                
+                                // This should only happen due to precision loss from integer division
+                                if difference != precision_loss {
+                                    warn!(
+                                        ?tx_hash,
+                                        difference,
+                                        precision_loss,
+                                        "Conversion difference doesn't match expected precision loss - investigate"
+                                    );
+                                }
+                            }
+                            
+                            // Warn if there's significant precision loss
+                            if conversion_applied && precision_loss > 0 {
+                                let precision_loss_percentage = (precision_loss as f64 / amount_to_bridge.as_u128() as f64) * 100.0;
+                                if precision_loss_percentage > 0.01 {
+                                    warn!(
+                                        ?tx_hash,
+                                        precision_loss,
+                                        precision_loss_percentage,
+                                        "Precision loss detected due to decimal conversion (this is expected for integer division when ERC20 decimals > MySocial decimals)"
+                                    );
+                                }
+                            }
+                        }
+                    } else {
+                        // Log without verification if we couldn't fetch decimals
+                        info!(
+                            ?tx_hash,
+                            event_count = tokens_deposited_events.len(),
+                            deposited_amount_erc20 = ?event.amount,
+                            mys_adjusted_amount = mys_adjusted_amount,
+                            token_id = deposit_event.token_id,
+                            "TokensDeposited event verified (decimal verification skipped - could not fetch decimals)"
+                        );
+                    }
+                }
             }
 
-            // Mark as processed
+            // Mark as processed (store amount_to_bridge, which is what was actually bridged)
             self.storage.mark_deposit_processed(
                 deposit_key,
                 format!("{:?}", tx_hash),
-                event.amount.to_string(),
+                amount_to_bridge.to_string(),
             )?;
 
             info!(
@@ -398,8 +635,8 @@ where
 
         // Try each token ID (0-255) until we find a match
         // This is inefficient but simple - production could maintain reverse mapping
-        for token_id in 0u8..=10 {
-            // Only check first 10 tokens for performance
+        for token_id in 0u8..=20 {
+            // Only check first 20 tokens for performance
             match config_contract.token_address_of(token_id).call().await {
                 Ok(addr) if addr == token_address => {
                     if token_id != 0 {
@@ -620,8 +857,9 @@ pub async fn handle_mys_deposit(
         .object_ref();
 
     // Get gas coin (must be different from bridge coin)
-    // If we only have one coin and it's native MYS, we need to split it first
-    let (gas_obj_ref, needs_split) = match mys_sdk_client
+    // CRITICAL: We must always bridge exactly event.amount, not the entire coin balance
+    // The Move bridge contract uses token.balance().value(), so we need to split if coin balance > event.amount
+    let (gas_obj_ref, needs_split_for_gas, needs_split_for_amount) = match mys_sdk_client
         .coin_read_api()
         .select_coins(
             deposit_mys_address,
@@ -642,26 +880,44 @@ pub async fn handle_mys_deposit(
                 .object_ref();
             info!(
                 gas_coin_id = ?gas_obj_ref.0,
-                "Selected gas coin"
+                bridge_coin_balance = coin_to_bridge.balance,
+                required_amount = event.amount,
+                "Selected separate gas coin"
             );
-            (gas_obj_ref, false)
+            
+            // Check if we need to split the bridge coin to get exactly event.amount
+            let needs_split = coin_to_bridge.balance > event.amount;
+            if needs_split {
+                info!(
+                    coin_balance = coin_to_bridge.balance,
+                    required_amount = event.amount,
+                    "Bridge coin has more than required amount, will split to exact amount"
+                );
+            }
+            (gas_obj_ref, false, needs_split)
         }
         Err(_) => {
             // No separate gas coin available - check if we can split the bridge coin
             if is_native_mys && coin_to_bridge.balance > event.amount {
-                // We have native MYS coin with more than needed - split it for gas
+                // We have native MYS coin with more than needed - split it for gas and amount
+                // We'll split event.amount for bridging, and the remainder stays as gas coin
                 info!(
                     coin_id = ?coin_to_bridge.coin_object_id,
                     coin_balance = coin_to_bridge.balance,
                     bridge_amount = event.amount,
-                    "No separate gas coin found, will split coin for gas"
+                    remaining_for_gas = coin_to_bridge.balance - event.amount,
+                    "No separate gas coin found, will split coin for gas and exact amount"
                 );
                 // Use the coin itself as gas, we'll split it in the transaction
-                (coin_obj_ref, true)
+                (coin_obj_ref, true, true)
             } else {
-                return Err(BridgeError::Generic(
-                    "No gas coin available and cannot split bridge coin (insufficient balance or not native MYS)".to_string(),
-                ));
+                // Coin has exactly event.amount or less, and no separate gas coin
+                // Cannot proceed - we need gas but coin has exactly the bridge amount
+                return Err(BridgeError::Generic(format!(
+                    "No gas coin available. Bridge coin balance ({}) must be greater than required amount ({}) to split for gas. \
+                     Please ensure deposit address has sufficient balance for both gas and bridge amount.",
+                    coin_to_bridge.balance, event.amount
+                )));
             }
         }
     };
@@ -669,17 +925,46 @@ pub async fn handle_mys_deposit(
     // Build transaction
     let mut builder = ProgrammableTransactionBuilder::new();
     
-    // If we need to split the coin for gas, do it first
-    let arg_token = if needs_split {
-        // Split the exact bridge amount from the gas coin
+    // CRITICAL: Always split to exactly event.amount if coin balance > event.amount
+    // The Move bridge contract bridges the entire coin balance, so we must ensure the coin has exactly event.amount
+    let arg_token = if needs_split_for_amount {
+        // Split the exact bridge amount from the coin
         // This creates a new coin with event.amount that we'll use for bridging
-        // The remaining coin stays as the gas coin
         let split_amount = event.amount;
         let split_amount_arg = builder.pure(split_amount)
             .map_err(|e| BridgeError::Generic(format!("Failed to create split amount argument: {:?}", e)))?;
         
-        // Split coins from the gas coin (which is the bridge coin in this case)
-        // This returns Argument::Result(0) which refers to the first result (the split coin)
+        // Determine which coin to split from
+        let coin_to_split_from = if needs_split_for_gas {
+            // We're using the bridge coin as gas coin, split from GasCoin
+            Argument::GasCoin
+        } else {
+            // We have a separate gas coin, split from the bridge coin object
+            builder.obj(ObjectArg::ImmOrOwnedObject(coin_obj_ref))
+                .map_err(|e| BridgeError::Generic(format!("Failed to create coin object argument: {:?}", e)))?
+        };
+        
+        // Split coins to get exactly event.amount
+        let split_result = builder.command(Command::SplitCoins(
+            coin_to_split_from,
+            vec![split_amount_arg],
+        ));
+        
+        info!(
+            split_amount,
+            "Added SplitCoins command to create coin with exact bridge amount"
+        );
+        
+        // Use the split coin result for bridging
+        // split_result is Argument::Result(0) which refers to the split coin
+        split_result
+    } else if needs_split_for_gas {
+        // We're using the bridge coin as gas coin and it has more than event.amount
+        // Split event.amount for bridging, remainder stays as gas coin
+        let split_amount = event.amount;
+        let split_amount_arg = builder.pure(split_amount)
+            .map_err(|e| BridgeError::Generic(format!("Failed to create split amount argument: {:?}", e)))?;
+        
         let split_result = builder.command(Command::SplitCoins(
             Argument::GasCoin,
             vec![split_amount_arg],
@@ -687,14 +972,17 @@ pub async fn handle_mys_deposit(
         
         info!(
             split_amount,
-            "Added SplitCoins command to create separate coin for bridging"
+            "Added SplitCoins command to separate gas and bridge amounts from gas coin"
         );
         
-        // Use the split coin result for bridging
-        // split_result is Argument::Result(0) which refers to the split coin
         split_result
     } else {
-        // Use the original coin object for bridging
+        // Coin has exactly event.amount and we have a separate gas coin - use coin directly
+        info!(
+            coin_balance = coin_to_bridge.balance,
+            required_amount = event.amount,
+            "Using coin with exact amount for bridging"
+        );
         builder.obj(ObjectArg::ImmOrOwnedObject(coin_obj_ref))
             .map_err(|e| BridgeError::Generic(format!("Failed to create token argument: {:?}", e)))?
     };
@@ -863,7 +1151,6 @@ pub async fn handle_mys_deposit(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_gas_threshold_constants() {

@@ -309,6 +309,7 @@ mod tests {
     };
     use ethers::types::TxHash;
     use fastcrypto::encoding::{Encoding, Hex};
+    #[cfg(feature = "test-utils")]
     use hex_literal::hex;
     use mys_types::{bridge::TOKEN_ID_ETH, crypto::ToFromBytes};
     use std::str::FromStr;
