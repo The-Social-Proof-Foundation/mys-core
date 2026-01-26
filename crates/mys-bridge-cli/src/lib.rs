@@ -31,7 +31,6 @@ use mys_types::base_types::MysAddress;
 use mys_types::base_types::{ObjectID, ObjectRef};
 use mys_types::bridge::{BridgeChainId, BRIDGE_MODULE_NAME};
 use mys_types::crypto::{MysKeyPair, Signature};
-use mys_types::object::Owner;
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::transaction::{ObjectArg, Transaction, TransactionData};
 use mys_types::{TypeTag, BRIDGE_PACKAGE_ID};
@@ -725,9 +724,10 @@ async fn deposit_on_mys(
         .data
         .ok_or_else(|| anyhow!("Coin object {} not found", coin_object_id))?;
     
-    // Extract owner address from coin object
+    // Extract owner address from coin object (using as_ref to avoid moving coin_obj_data)
     let coin_owner_address = coin_obj_data
         .owner
+        .as_ref()
         .ok_or_else(|| anyhow!("Coin object {} has no owner information", coin_object_id))?
         .get_address_owner_address()
         .map_err(|e| anyhow!("Coin object {} owner is not an address owner: {:?}", coin_object_id, e))?;
