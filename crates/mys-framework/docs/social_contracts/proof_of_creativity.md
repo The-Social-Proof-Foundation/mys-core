@@ -878,6 +878,11 @@ Event emitted when PoC configuration is updated
 <dd>
 </dd>
 <dt>
+<code>oracle_address: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>image_threshold: u64</code>
 </dt>
 <dd>
@@ -899,6 +904,11 @@ Event emitted when PoC configuration is updated
 </dd>
 <dt>
 <code>dispute_cost: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>dispute_protocol_fee: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1430,11 +1440,13 @@ Update PoC configuration (admin only)
     // Emit configuration update event
     event::emit(<a href="../social_contracts/proof_of_creativity.md#social_contracts_proof_of_creativity_PoCConfigUpdatedEvent">PoCConfigUpdatedEvent</a> {
         updated_by: tx_context::sender(ctx),
+        oracle_address,
         image_threshold,
         video_threshold,
         audio_threshold,
         revenue_redirect_percentage,
         dispute_cost,
+        dispute_protocol_fee,
         min_vote_stake,
         max_vote_stake,
         voting_duration_epochs,

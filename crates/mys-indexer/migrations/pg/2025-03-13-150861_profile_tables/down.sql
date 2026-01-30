@@ -1,2 +1,0 @@
-DROP TABLE IF EXISTS profiles;
-DROP TABLE IF EXISTS profile_events;

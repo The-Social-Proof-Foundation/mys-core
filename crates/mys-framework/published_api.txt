@@ -5893,6 +5893,9 @@ migrate_comment
 migrate_repost
 	public fun
 	0x50c1::post
+migrate_post_config
+	public entry fun
+	0x50c1::post
 update_post_parameters
 	public fun
 	0x50c1::post
@@ -6581,6 +6584,9 @@ migrate_mydata
 	public entry fun
 	0x50c1::mydata
 migrate_registry
+	public entry fun
+	0x50c1::mydata
+migrate_config
 	public entry fun
 	0x50c1::mydata
 Registry

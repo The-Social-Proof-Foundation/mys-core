@@ -65,6 +65,7 @@ Can be attached to posts (gated content) or profiles (data monetization)
 -  [Function `borrow_registry_version_mut`](#social_contracts_mydata_borrow_registry_version_mut)
 -  [Function `migrate_mydata`](#social_contracts_mydata_migrate_mydata)
 -  [Function `migrate_registry`](#social_contracts_mydata_migrate_registry)
+-  [Function `migrate_config`](#social_contracts_mydata_migrate_config)
 
 
 <pre><code><b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
@@ -2371,6 +2372,48 @@ Migration function for MyDataRegistry
     <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
         registry_id,
         string::utf8(b"<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataRegistry">MyDataRegistry</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_migrate_config"></a>
+
+## Function `migrate_config`
+
+Migration function for MyDataConfig
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_migrate_config">migrate_config</a>(config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_migrate_config">migrate_config</a>(
+    config: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> &gt; current <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>)
+    <b>assert</b>!(config.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> &lt; current_version, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    // Remember old <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> and update to new <a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>
+    <b>let</b> old_version = config.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>;
+    config.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> = current_version;
+    // Emit event <b>for</b> object migration
+    <b>let</b> config_id = object::id(config);
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        config_id,
+        string::utf8(b"<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>"),
         old_version,
         tx_context::sender(ctx)
     );

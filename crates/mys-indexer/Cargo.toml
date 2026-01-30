@@ -18,8 +18,8 @@ bytes.workspace = true
 chrono.workspace = true
 clap = { workspace = true, features = ["env"] }
 csv.workspace = true
-diesel = { workspace = true, features = ["chrono", "serde_json"] }
-diesel-async = { workspace = true, features = ["bb8", "postgres", "async-connection-wrapper"] }
+diesel = { workspace = true, features = ["postgres", "r2d2", "chrono", "serde_json", "numeric", "64-column-tables"] }
+diesel-async = { workspace = true, features = ["bb8", "postgres", "deadpool", "async-connection-wrapper"] }
 futures.workspace = true
 hex.workspace = true
 indicatif.workspace = true
@@ -75,6 +75,21 @@ diesel_migrations.workspace = true
 cached.workspace = true
 tokio-stream.workspace = true
 dashmap.workspace = true
+
+# Social indexer dependencies
+tokio-postgres = { version = "0.7", features = ["with-chrono-0_4", "with-serde_json-1"] }
+tokio-postgres-rustls = "0.13"
+rustls = { version = "0.23", features = ["aws_lc_rs"] }
+rustls-native-certs = "0.8"
+bigdecimal = { workspace = true, features = ["serde"] }
+uuid = { workspace = true }
+once_cell = { workspace = true }
+dotenv = "0.15.0"
+base64 = "0.21.0"
+tower = { workspace = true }
+tower-http = { workspace = true, features = ["trace", "cors"] }
+hyper = { workspace = true, features = ["full"] }
+reqwest = { workspace = true }
 
 [dev-dependencies]
 mys-keys.workspace = true

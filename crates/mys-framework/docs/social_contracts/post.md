@@ -104,6 +104,7 @@ Implements features like comments, reposts, and quotes
 -  [Function `migrate_post`](#social_contracts_post_migrate_post)
 -  [Function `migrate_comment`](#social_contracts_post_migrate_comment)
 -  [Function `migrate_repost`](#social_contracts_post_migrate_repost)
+-  [Function `migrate_post_config`](#social_contracts_post_migrate_post_config)
 -  [Function `update_post_parameters`](#social_contracts_post_update_post_parameters)
 -  [Function `create_promoted_post`](#social_contracts_post_create_promoted_post)
 -  [Function `confirm_promoted_post_view`](#social_contracts_post_confirm_promoted_post_view)
@@ -809,6 +810,12 @@ Global post feature configuration
 </dt>
 <dd>
  Percentage of tip that goes to reposter (remainder to original post owner)
+</dd>
+<dt>
+<code><a href="../social_contracts/post.md#social_contracts_post_version">version</a>: u64</code>
+</dt>
+<dd>
+ Version for upgrades
 </dd>
 </dl>
 
@@ -3090,6 +3097,7 @@ Bootstrap initialization function - creates the post configuration
             max_reaction_length: <a href="../social_contracts/post.md#social_contracts_post_MAX_REACTION_LENGTH">MAX_REACTION_LENGTH</a>,
             commenter_tip_percentage: <a href="../social_contracts/post.md#social_contracts_post_COMMENTER_TIP_PERCENTAGE">COMMENTER_TIP_PERCENTAGE</a>,
             repost_tip_percentage: <a href="../social_contracts/post.md#social_contracts_post_REPOST_TIP_PERCENTAGE">REPOST_TIP_PERCENTAGE</a>,
+            <a href="../social_contracts/post.md#social_contracts_post_version">version</a>: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
         }
     );
 }
@@ -5562,6 +5570,48 @@ Migration function for Repost
         tx_context::sender(ctx)
     );
     // Any migration logic can be added here <b>for</b> future upgrades
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_migrate_post_config"></a>
+
+## Function `migrate_post_config`
+
+Migration function for PostConfig
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_migrate_post_config">migrate_post_config</a>(config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">social_contracts::post::PostConfig</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_migrate_post_config">migrate_post_config</a>(
+    config: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    // Verify this is an <a href="../social_contracts/upgrade.md#social_contracts_upgrade">upgrade</a> (new <a href="../social_contracts/post.md#social_contracts_post_version">version</a> &gt; current <a href="../social_contracts/post.md#social_contracts_post_version">version</a>)
+    <b>assert</b>!(config.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> &lt; current_version, <a href="../social_contracts/post.md#social_contracts_post_EWrongVersion">EWrongVersion</a>);
+    // Remember old <a href="../social_contracts/post.md#social_contracts_post_version">version</a> and update to new <a href="../social_contracts/post.md#social_contracts_post_version">version</a>
+    <b>let</b> old_version = config.<a href="../social_contracts/post.md#social_contracts_post_version">version</a>;
+    config.<a href="../social_contracts/post.md#social_contracts_post_version">version</a> = current_version;
+    // Emit event <b>for</b> object migration
+    <b>let</b> config_id = object::id(config);
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        config_id,
+        string::utf8(b"<a href="../social_contracts/post.md#social_contracts_post_PostConfig">PostConfig</a>"),
+        old_version,
+        tx_context::sender(ctx)
+    );
 }
 </code></pre>
 

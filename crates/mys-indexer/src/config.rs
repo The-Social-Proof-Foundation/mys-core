@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 use mys_json_rpc::name_service::NameServiceConfig;
 use mys_types::base_types::{MysAddress, ObjectID};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
+use std::{collections::HashMap, net::SocketAddr, path::PathBuf, str::FromStr};
 use strum::IntoEnumIterator;
 use url::Url;
 
@@ -175,6 +175,35 @@ impl Default for IngestionConfig {
     }
 }
 
+/// Configuration for social indexer worker
+#[derive(Args, Debug, Clone, Default)]
+pub struct SocialIndexerConfig {
+    /// Enable the social indexer worker for processing social events
+    #[arg(long, default_value_t = false, env = "ENABLE_SOCIAL_INDEXER")]
+    pub enable_social_indexer: bool,
+
+    /// The MySocial package address to filter events by
+    #[arg(long, env = "MYSOCIAL_PACKAGE_ADDRESS")]
+    pub mysocial_package_address: Option<String>,
+
+    /// Optional separate database URL for social tables (defaults to main database if not provided)
+    #[arg(long, env = "SOCIAL_DATABASE_URL")]
+    pub social_database_url: Option<Url>,
+
+    /// Maximum connections for social database pool
+    #[arg(long, default_value_t = 10, env = "SOCIAL_DB_MAX_CONNECTIONS")]
+    pub social_db_max_connections: u32,
+}
+
+impl SocialIndexerConfig {
+    /// Parse the package address from string to ObjectID
+    pub fn package_address(&self) -> Option<ObjectID> {
+        self.mysocial_package_address.as_ref().and_then(|addr| {
+            ObjectID::from_str(addr).ok()
+        })
+    }
+}
+
 #[derive(Args, Debug, Clone)]
 pub struct BackFillConfig {
     /// Maximum number of concurrent tasks to run.
@@ -208,6 +237,8 @@ pub enum Command {
         pruning_options: PruningOptions,
         #[command(flatten)]
         upload_options: UploadOptions,
+        #[command(flatten)]
+        social_config: SocialIndexerConfig,
         /// If true, the indexer will run in MVR mode. It will only index data to
         /// `objects_snapshot`, `objects_history`, `packages`, `checkpoints`, and `epochs` to
         /// support MVR queries.

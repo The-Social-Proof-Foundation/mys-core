@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::config::{IngestionConfig, RetentionConfig, SnapshotLagConfig, UploadOptions};
+use crate::config::{IngestionConfig, RetentionConfig, SnapshotLagConfig, SocialIndexerConfig, UploadOptions};
 use crate::database::Connection;
 use crate::database::ConnectionPool;
 use crate::db::ConnectionPoolConfig;
@@ -166,6 +166,7 @@ pub async fn start_indexer_writer_for_testing_with_mvr_mode(
                 retention_config,
                 token_clone,
                 mvr_mode,
+                SocialIndexerConfig::default(),
             )
             .await
         })

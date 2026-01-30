@@ -44,6 +44,7 @@ pub mod store;
 pub mod system_package_task;
 pub mod test_utils;
 pub mod types;
+pub mod social;
 
 pub async fn build_json_rpc_server(
     prometheus_registry: &Registry,

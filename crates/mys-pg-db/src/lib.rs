@@ -111,7 +111,12 @@ impl Db {
                       FROM pg_proc INNER JOIN pg_namespace ns ON (pg_proc.pronamespace = ns.oid)
                       WHERE ns.nspname = 'public' AND prokind = 'p')
             LOOP
-                EXECUTE 'DROP PROCEDURE IF EXISTS ' || quote_ident(r.proname) || '(' || r.argtypes || ') CASCADE';
+                BEGIN
+                    EXECUTE 'DROP PROCEDURE IF EXISTS ' || quote_ident(r.proname) || '(' || r.argtypes || ') CASCADE';
+                EXCEPTION WHEN OTHERS THEN
+                    -- Skip procedures that cannot be dropped (e.g., extension-owned)
+                    NULL;
+                END;
             END LOOP;
         END $$;";
         diesel::sql_query(drop_all_procedures)
@@ -122,12 +127,30 @@ impl Db {
         let drop_all_functions = "
         DO $$ DECLARE
             r RECORD;
+            is_extension_owned BOOLEAN;
         BEGIN
-            FOR r IN (SELECT proname, oidvectortypes(proargtypes) as argtypes
-                      FROM pg_proc INNER JOIN pg_namespace ON (pg_proc.pronamespace = pg_namespace.oid)
-                      WHERE pg_namespace.nspname = 'public' AND prokind = 'f')
+            FOR r IN (SELECT proname, oidvectortypes(proargtypes) as argtypes, pg_proc.oid as procoid
+                      FROM pg_proc 
+                      INNER JOIN pg_namespace ON (pg_proc.pronamespace = pg_namespace.oid)
+                      WHERE pg_namespace.nspname = 'public' 
+                        AND prokind = 'f')
             LOOP
-                EXECUTE 'DROP FUNCTION IF EXISTS ' || quote_ident(r.proname) || '(' || r.argtypes || ') CASCADE';
+                -- Check if this function is extension-owned
+                SELECT EXISTS(
+                    SELECT 1 FROM pg_depend 
+                    WHERE pg_depend.objid = r.procoid 
+                    AND pg_depend.deptype = 'e'
+                ) INTO is_extension_owned;
+                
+                -- Only attempt to drop if not extension-owned
+                IF NOT is_extension_owned THEN
+                    BEGIN
+                        EXECUTE 'DROP FUNCTION IF EXISTS ' || quote_ident(r.proname) || '(' || r.argtypes || ') CASCADE';
+                    EXCEPTION WHEN OTHERS THEN
+                        -- Skip functions that cannot be dropped (e.g., extension-owned)
+                        NULL;
+                    END;
+                END IF;
             END LOOP;
         END $$;";
         diesel::sql_query(drop_all_functions)
