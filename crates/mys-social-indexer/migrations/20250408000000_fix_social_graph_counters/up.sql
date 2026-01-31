@@ -24,33 +24,68 @@ BEGIN
 END $$;
 
 -- Update the counts based on actual relationships - matching on profile_id, not owner_address
--- Handle both TEXT and BYTEA profile_id types by casting appropriately
+-- Handle all combinations of TEXT and BYTEA types for both address columns and profile_id
 -- Use dynamic SQL to prevent parse-time type checking
 DO $$
 DECLARE
     profile_id_type text;
+    following_address_type text;
+    follower_address_type text;
+    following_compare_sql text;
+    follower_compare_sql text;
 BEGIN
     -- Check if profile_id column exists and get its type
     SELECT data_type INTO profile_id_type
     FROM information_schema.columns
     WHERE table_name = 'profiles' AND column_name = 'profile_id';
     
+    -- Check address column types in social_graph_relationships table
+    SELECT data_type INTO following_address_type
+    FROM information_schema.columns
+    WHERE table_name = 'social_graph_relationships' AND column_name = 'following_address';
+    
+    SELECT data_type INTO follower_address_type
+    FROM information_schema.columns
+    WHERE table_name = 'social_graph_relationships' AND column_name = 'follower_address';
+    
     -- Only proceed if profile_id column exists
-    IF profile_id_type IS NOT NULL THEN
+    IF profile_id_type IS NOT NULL AND following_address_type IS NOT NULL AND follower_address_type IS NOT NULL THEN
         -- Ensure profile_id is indexed for faster lookups
         EXECUTE 'CREATE INDEX IF NOT EXISTS idx_profiles_profile_id ON profiles(profile_id)';
         
-        IF profile_id_type = 'bytea' THEN
-            -- If BYTEA, encode to hex to match TEXT address format
-            -- Use dynamic SQL to avoid parse-time type checking
-            EXECUTE format('UPDATE profiles p SET followers_count = (SELECT COUNT(*) FROM social_graph_relationships WHERE following_address = encode(p.profile_id::bytea, ''hex'')) WHERE p.profile_id IS NOT NULL');
-            EXECUTE format('UPDATE profiles p SET following_count = (SELECT COUNT(*) FROM social_graph_relationships WHERE follower_address = encode(p.profile_id::bytea, ''hex'')) WHERE p.profile_id IS NOT NULL');
+        -- Build comparison SQL for following_address based on type combination
+        IF following_address_type = 'bytea' AND profile_id_type = 'bytea' THEN
+            -- Both BYTEA: direct comparison
+            following_compare_sql := 'following_address = p.profile_id';
+        ELSIF following_address_type = 'bytea' AND profile_id_type != 'bytea' THEN
+            -- Address BYTEA, profile_id TEXT: decode TEXT to BYTEA
+            following_compare_sql := 'following_address = decode(p.profile_id::text, ''hex'')::bytea';
+        ELSIF following_address_type != 'bytea' AND profile_id_type = 'bytea' THEN
+            -- Address TEXT, profile_id BYTEA: encode BYTEA to TEXT
+            following_compare_sql := 'following_address = encode(p.profile_id::bytea, ''hex'')';
         ELSE
-            -- If TEXT/VARCHAR, cast to text directly
-            -- Use dynamic SQL to avoid parse-time type checking
-            EXECUTE format('UPDATE profiles p SET followers_count = (SELECT COUNT(*) FROM social_graph_relationships WHERE following_address = p.profile_id::text) WHERE p.profile_id IS NOT NULL');
-            EXECUTE format('UPDATE profiles p SET following_count = (SELECT COUNT(*) FROM social_graph_relationships WHERE follower_address = p.profile_id::text) WHERE p.profile_id IS NOT NULL');
+            -- Both TEXT: direct comparison with text cast
+            following_compare_sql := 'following_address = p.profile_id::text';
         END IF;
+        
+        -- Build comparison SQL for follower_address based on type combination
+        IF follower_address_type = 'bytea' AND profile_id_type = 'bytea' THEN
+            -- Both BYTEA: direct comparison
+            follower_compare_sql := 'follower_address = p.profile_id';
+        ELSIF follower_address_type = 'bytea' AND profile_id_type != 'bytea' THEN
+            -- Address BYTEA, profile_id TEXT: decode TEXT to BYTEA
+            follower_compare_sql := 'follower_address = decode(p.profile_id::text, ''hex'')::bytea';
+        ELSIF follower_address_type != 'bytea' AND profile_id_type = 'bytea' THEN
+            -- Address TEXT, profile_id BYTEA: encode BYTEA to TEXT
+            follower_compare_sql := 'follower_address = encode(p.profile_id::bytea, ''hex'')';
+        ELSE
+            -- Both TEXT: direct comparison with text cast
+            follower_compare_sql := 'follower_address = p.profile_id::text';
+        END IF;
+        
+        -- Execute UPDATE statements with dynamically built comparisons
+        EXECUTE format('UPDATE profiles p SET followers_count = (SELECT COUNT(*) FROM social_graph_relationships WHERE %s) WHERE p.profile_id IS NOT NULL', following_compare_sql);
+        EXECUTE format('UPDATE profiles p SET following_count = (SELECT COUNT(*) FROM social_graph_relationships WHERE %s) WHERE p.profile_id IS NOT NULL', follower_compare_sql);
     END IF;
 END $$;
 
