@@ -22,25 +22,34 @@ ALTER TABLE profiles
 -- In a real migration, you would decode the encrypted data and move it
 DO $$ 
 BEGIN
-  UPDATE profiles p
-  SET 
-    birthdate = CASE WHEN ppf.has_birthdate THEN '(encrypted)' ELSE NULL END,
-    current_location = CASE WHEN ppf.has_current_location THEN '(encrypted)' ELSE NULL END,
-    raised_location = CASE WHEN ppf.has_raised_location THEN '(encrypted)' ELSE NULL END,
-    phone = CASE WHEN ppf.has_phone THEN '(encrypted)' ELSE NULL END,
-    email = CASE WHEN ppf.has_email THEN '(encrypted)' ELSE NULL END,
-    gender = CASE WHEN ppf.has_gender THEN '(encrypted)' ELSE NULL END,
-    political_view = CASE WHEN ppf.has_political_view THEN '(encrypted)' ELSE NULL END,
-    education = CASE WHEN ppf.has_education THEN '(encrypted)' ELSE NULL END,
-    primary_language = CASE WHEN ppf.has_primary_language THEN '(encrypted)' ELSE NULL END,
-    relationship_status = CASE WHEN ppf.has_relationship_status THEN '(encrypted)' ELSE NULL END,
-    x_username = CASE WHEN ppf.has_social_usernames THEN '(encrypted)' ELSE NULL END,
-    mastodon_username = CASE WHEN ppf.has_social_usernames THEN '(encrypted)' ELSE NULL END,
-    facebook_username = CASE WHEN ppf.has_social_usernames THEN '(encrypted)' ELSE NULL END,
-    reddit_username = CASE WHEN ppf.has_social_usernames THEN '(encrypted)' ELSE NULL END,
-    github_username = CASE WHEN ppf.has_social_usernames THEN '(encrypted)' ELSE NULL END
-  FROM profile_private_fields ppf
-  WHERE p.id = ppf.profile_id;
+  -- Only migrate data if profiles table has id column and profile_private_fields table exists
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'profiles' AND column_name = 'id'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_name = 'profile_private_fields'
+  ) THEN
+    UPDATE profiles p
+    SET 
+      birthdate = CASE WHEN ppf.has_birthdate THEN '(encrypted)' ELSE NULL END,
+      current_location = CASE WHEN ppf.has_current_location THEN '(encrypted)' ELSE NULL END,
+      raised_location = CASE WHEN ppf.has_raised_location THEN '(encrypted)' ELSE NULL END,
+      phone = CASE WHEN ppf.has_phone THEN '(encrypted)' ELSE NULL END,
+      email = CASE WHEN ppf.has_email THEN '(encrypted)' ELSE NULL END,
+      gender = CASE WHEN ppf.has_gender THEN '(encrypted)' ELSE NULL END,
+      political_view = CASE WHEN ppf.has_political_view THEN '(encrypted)' ELSE NULL END,
+      education = CASE WHEN ppf.has_education THEN '(encrypted)' ELSE NULL END,
+      primary_language = CASE WHEN ppf.has_primary_language THEN '(encrypted)' ELSE NULL END,
+      relationship_status = CASE WHEN ppf.has_relationship_status THEN '(encrypted)' ELSE NULL END,
+      x_username = CASE WHEN ppf.has_social_usernames THEN '(encrypted)' ELSE NULL END,
+      mastodon_username = CASE WHEN ppf.has_social_usernames THEN '(encrypted)' ELSE NULL END,
+      facebook_username = CASE WHEN ppf.has_social_usernames THEN '(encrypted)' ELSE NULL END,
+      reddit_username = CASE WHEN ppf.has_social_usernames THEN '(encrypted)' ELSE NULL END,
+      github_username = CASE WHEN ppf.has_social_usernames THEN '(encrypted)' ELSE NULL END
+    FROM profile_private_fields ppf
+    WHERE p.id = ppf.profile_id;
+  END IF;
 END $$;
 
 -- Drop old tables that are no longer needed
