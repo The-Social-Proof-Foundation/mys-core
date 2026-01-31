@@ -27,19 +27,48 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_profiles_profile_id ON profiles(profile_id);
 
 -- Update the counts based on actual relationships - matching on profile_id, not owner_address
-UPDATE profiles p
-SET followers_count = (
-    SELECT COUNT(*) FROM social_graph_relationships 
-    WHERE following_address = p.profile_id
-)
-WHERE p.profile_id IS NOT NULL;
-
-UPDATE profiles p
-SET following_count = (
-    SELECT COUNT(*) FROM social_graph_relationships 
-    WHERE follower_address = p.profile_id
-)
-WHERE p.profile_id IS NOT NULL;
+-- Handle both TEXT and BYTEA profile_id types by casting appropriately
+DO $$
+DECLARE
+    profile_id_type text;
+BEGIN
+    -- Check the actual column type
+    SELECT data_type INTO profile_id_type
+    FROM information_schema.columns
+    WHERE table_name = 'profiles' AND column_name = 'profile_id';
+    
+    IF profile_id_type = 'bytea' THEN
+        -- If BYTEA, encode to hex to match TEXT address format
+        UPDATE profiles p
+        SET followers_count = (
+            SELECT COUNT(*) FROM social_graph_relationships 
+            WHERE following_address = encode(p.profile_id::bytea, 'hex')
+        )
+        WHERE p.profile_id IS NOT NULL;
+        
+        UPDATE profiles p
+        SET following_count = (
+            SELECT COUNT(*) FROM social_graph_relationships 
+            WHERE follower_address = encode(p.profile_id::bytea, 'hex')
+        )
+        WHERE p.profile_id IS NOT NULL;
+    ELSE
+        -- If TEXT/VARCHAR, cast to text directly
+        UPDATE profiles p
+        SET followers_count = (
+            SELECT COUNT(*) FROM social_graph_relationships 
+            WHERE following_address = p.profile_id::text
+        )
+        WHERE p.profile_id IS NOT NULL;
+        
+        UPDATE profiles p
+        SET following_count = (
+            SELECT COUNT(*) FROM social_graph_relationships 
+            WHERE follower_address = p.profile_id::text
+        )
+        WHERE p.profile_id IS NOT NULL;
+    END IF;
+END $$;
 
 -- Create an index on relationships to improve performance of count lookups
 DROP INDEX IF EXISTS idx_social_graph_relationships_pair;

@@ -1,3 +1,23 @@
+-- Ensure helper function exists to convert profile_id to text format matching addresses
+-- Handles both BYTEA and TEXT types, as well as NULL values
+CREATE OR REPLACE FUNCTION profile_id_to_text(p_profile_id anyelement) 
+RETURNS text AS $$
+BEGIN
+    -- Handle NULL case
+    IF p_profile_id IS NULL THEN
+        RETURN '';
+    END IF;
+    
+    -- Check if profile_id is BYTEA by attempting to encode it
+    -- If it fails, it's TEXT and we can cast directly
+    BEGIN
+        RETURN encode(p_profile_id::bytea, 'hex');
+    EXCEPTION WHEN OTHERS THEN
+        RETURN p_profile_id::text;
+    END;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Backfill wallet_social_graph with existing relationship data for wallet addresses without profiles
 -- This migration aggregates followers_count and following_count from social_graph_relationships
 
@@ -19,7 +39,7 @@ FROM (
     WHERE following_address NOT IN (
         SELECT COALESCE(owner_address, '') FROM profiles WHERE owner_address IS NOT NULL
         UNION
-        SELECT COALESCE(profile_id, '') FROM profiles WHERE profile_id IS NOT NULL
+        SELECT COALESCE(profile_id_to_text(profile_id), '') FROM profiles WHERE profile_id IS NOT NULL
     )
     GROUP BY following_address
     
@@ -34,7 +54,7 @@ FROM (
     WHERE follower_address NOT IN (
         SELECT COALESCE(owner_address, '') FROM profiles WHERE owner_address IS NOT NULL
         UNION
-        SELECT COALESCE(profile_id, '') FROM profiles WHERE profile_id IS NOT NULL
+        SELECT COALESCE(profile_id_to_text(profile_id), '') FROM profiles WHERE profile_id IS NOT NULL
     )
     GROUP BY follower_address
 ) AS counts
