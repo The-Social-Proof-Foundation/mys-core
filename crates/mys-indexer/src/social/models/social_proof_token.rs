@@ -216,6 +216,14 @@ pub struct SptReservation {
     pub amount: i64,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     pub reserved_at: i64,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+    pub fee_amount: Option<i64>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+    pub creator_fee: Option<i64>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+    pub platform_fee: Option<i64>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+    pub treasury_fee: Option<i64>,
     #[diesel(sql_type = diesel::sql_types::Timestamptz)]
     pub time: DateTime<Utc>,
     #[diesel(sql_type = diesel::sql_types::Text)]
@@ -230,6 +238,10 @@ pub struct NewSptReservation {
     pub reserver_address: String,
     pub amount: i64,
     pub reserved_at: i64,
+    pub fee_amount: Option<i64>,
+    pub creator_fee: Option<i64>,
+    pub platform_fee: Option<i64>,
+    pub treasury_fee: Option<i64>,
     pub time: DateTime<Utc>,
     pub transaction_id: String,
 }

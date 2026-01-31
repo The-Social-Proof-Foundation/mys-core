@@ -92,6 +92,10 @@ module social_contracts::social_proof_tokens {
     const EAlreadyOwnsTokens: u64 = 28;
     /// Too many reservers for conversion (DoS prevention)
     const ETooManyReservers: u64 = 29;
+    /// Cannot split token - amount must be positive and less than token amount
+    const ECannotSplit: u64 = 30;
+    /// Cannot merge tokens - tokens must be from the same pool
+    const ECannotMerge: u64 = 31;
 
     // === Constants ===
     // Token types
@@ -413,6 +417,108 @@ module social_contracts::social_proof_tokens {
         updated_by: address,
         /// Timestamp of the update
         timestamp: u64,
+    }
+
+    // === SocialToken Split and Merge Functions ===
+
+    /// Split a SocialToken into two tokens
+    /// Returns a new SocialToken with the specified amount
+    /// The original token's amount is reduced by the split amount
+    public fun split_social_token(
+        token: &mut SocialToken,
+        split_amount: u64,
+        ctx: &mut TxContext
+    ): SocialToken {
+        // Validation
+        assert!(split_amount > 0, ECannotSplit);
+        assert!(token.amount >= split_amount, EInsufficientFunds);
+        assert!(split_amount < token.amount, ECannotSplit);
+        
+        // Update original token
+        token.amount = token.amount - split_amount;
+        
+        // Create new token
+        SocialToken {
+            id: object::new(ctx),
+            pool_id: token.pool_id,
+            token_type: token.token_type,
+            amount: split_amount,
+        }
+    }
+
+    /// Merge two SocialTokens from the same pool
+    /// Consumes the second token and adds its amount to the first
+    /// Both tokens must have the same pool_id and token_type
+    public fun merge_social_tokens(
+        token1: &mut SocialToken,
+        token2: SocialToken
+    ) {
+        // Validation
+        assert!(token1.pool_id == token2.pool_id, ECannotMerge);
+        assert!(token1.token_type == token2.token_type, ECannotMerge);
+        assert!(token1.amount <= MAX_U64 - token2.amount, EOverflow);
+        
+        // Merge amounts
+        token1.amount = token1.amount + token2.amount;
+        
+        // Destroy second token's ID
+        let SocialToken { id, pool_id: _, token_type: _, amount: _ } = token2;
+        object::delete(id);
+    }
+
+    /// Entry function to split a SocialToken
+    public entry fun split_social_token_entry(
+        token: &mut SocialToken,
+        split_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let new_token = split_social_token(token, split_amount, ctx);
+        transfer::public_transfer(new_token, tx_context::sender(ctx));
+    }
+
+    /// Entry function to merge two SocialTokens
+    public entry fun merge_social_tokens_entry(
+        token1: &mut SocialToken,
+        token2: SocialToken,
+        _ctx: &mut TxContext
+    ) {
+        merge_social_tokens(token1, token2);
+    }
+
+    // === Test Helpers ===
+
+    /// Get the amount of a SocialToken (test only)
+    #[test_only]
+    public fun amount(token: &SocialToken): u64 {
+        token.amount
+    }
+
+    /// Get the pool_id of a SocialToken (test only)
+    #[test_only]
+    public fun pool_id(token: &SocialToken): address {
+        token.pool_id
+    }
+
+    /// Get the token_type of a SocialToken (test only)
+    #[test_only]
+    public fun token_type(token: &SocialToken): u8 {
+        token.token_type
+    }
+
+    /// Create a SocialToken for testing
+    #[test_only]
+    public fun create_social_token_for_testing(
+        pool_id: address,
+        token_type: u8,
+        amount: u64,
+        ctx: &mut TxContext
+    ): SocialToken {
+        SocialToken {
+            id: object::new(ctx),
+            pool_id,
+            token_type,
+            amount,
+        }
     }
 
     /// Bootstrap initialization function - creates the social proof tokens configuration and registry

@@ -512,6 +512,14 @@ pub struct ReservationCreatedEvent {
     pub threshold_met: bool,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub reserved_at: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub fee_amount: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub creator_fee: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub platform_fee: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub treasury_fee: u64,
 }
 
 impl ReservationCreatedEvent {
@@ -528,6 +536,10 @@ impl ReservationCreatedEvent {
             reserver_address: self.reserver.clone(),
             amount: self.amount as i64,
             reserved_at: self.reserved_at as i64,
+            fee_amount: Some(self.fee_amount as i64),
+            creator_fee: Some(self.creator_fee as i64),
+            platform_fee: Some(self.platform_fee as i64),
+            treasury_fee: Some(self.treasury_fee as i64),
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,
@@ -580,6 +592,14 @@ pub struct ReservationWithdrawnEvent {
     pub total_reserved: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub withdrawn_at: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub fee_amount: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub creator_fee: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub platform_fee: u64,
+    #[serde(deserialize_with = "deserialize_u64_from_string")]
+    pub treasury_fee: u64,
 }
 
 impl ReservationWithdrawnEvent {
@@ -597,6 +617,10 @@ impl ReservationWithdrawnEvent {
             reserver_address: self.reserver.clone(),
             amount: 0, // This represents the final amount after withdrawal
             reserved_at: self.withdrawn_at as i64,
+            fee_amount: Some(self.fee_amount as i64),
+            creator_fee: Some(self.creator_fee as i64),
+            platform_fee: Some(self.platform_fee as i64),
+            treasury_fee: Some(self.treasury_fee as i64),
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp as i64, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,
@@ -1466,8 +1490,12 @@ impl SocialProofReservationCreatedEvent {
         Ok(NewSptReservation {
             pool_id,
             reserver_address: self.reserver.clone(),
-            amount: self.amount,
-            reserved_at: self.reserved_at,
+            amount: 0, // Represents final amount after withdrawal
+            reserved_at: self.withdrawn_at,
+            fee_amount: None, // Legacy events may not have fee information
+            creator_fee: None,
+            platform_fee: None,
+            treasury_fee: None,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(time, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,
@@ -1543,6 +1571,10 @@ impl SocialProofReservationWithdrawnEvent {
             reserver_address: self.reserver.clone(),
             amount: 0, // Represents final amount after withdrawal
             reserved_at: self.withdrawn_at,
+            fee_amount: None, // Legacy events may not have fee information
+            creator_fee: None,
+            platform_fee: None,
+            treasury_fee: None,
             time: chrono::DateTime::<chrono::Utc>::from_timestamp(time, 0)
                 .unwrap_or_else(|| chrono::Utc::now()),
             transaction_id,

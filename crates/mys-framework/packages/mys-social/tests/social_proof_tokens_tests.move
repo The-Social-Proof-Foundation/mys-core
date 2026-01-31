@@ -1029,4 +1029,272 @@ module social_contracts::token_exchange_tests {
             test_scenario::ctx(scenario)
         )
     }
+
+    // Helper function to create a SocialToken for testing
+    fun create_social_token(
+        pool_id: address,
+        token_type: u8,
+        amount: u64,
+        scenario: &mut Scenario
+    ): SocialToken {
+        social_proof_tokens::create_social_token_for_testing(
+            pool_id,
+            token_type,
+            amount,
+            test_scenario::ctx(scenario)
+        )
+    }
+
+    // === Split and Merge Tests ===
+
+    #[test]
+    fun test_split_social_token_success() {
+        let mut scenario = test_scenario::begin(USER1);
+        
+        // Create a SocialToken with amount 1000
+        let mut token = create_social_token(@0x111111, TOKEN_TYPE_POST, 1000, &mut scenario);
+        
+        // Split into 300 and 700
+        let new_token = social_proof_tokens::split_social_token(&mut token, 300, test_scenario::ctx(&mut scenario));
+        
+        // Verify original token has 700
+        assert!(social_proof_tokens::amount(&token) == 700, 0);
+        assert!(social_proof_tokens::pool_id(&token) == @0x111111, 0);
+        assert!(social_proof_tokens::token_type(&token) == TOKEN_TYPE_POST, 0);
+        
+        // Verify new token has 300
+        assert!(social_proof_tokens::amount(&new_token) == 300, 0);
+        assert!(social_proof_tokens::pool_id(&new_token) == @0x111111, 0);
+        assert!(social_proof_tokens::token_type(&new_token) == TOKEN_TYPE_POST, 0);
+        
+        // Transfer tokens to consume them
+        transfer::public_transfer(token, USER1);
+        transfer::public_transfer(new_token, USER1);
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_proof_tokens::EInsufficientFunds)]
+    fun test_split_social_token_insufficient_funds() {
+        let mut scenario = test_scenario::begin(USER1);
+        
+        // Create a SocialToken with amount 100
+        let mut token = create_social_token(@0x111111, TOKEN_TYPE_POST, 100, &mut scenario);
+        
+        // Try to split 150 (more than available) - this will abort
+        let new_token = social_proof_tokens::split_social_token(&mut token, 150, test_scenario::ctx(&mut scenario));
+        
+        // Transfer tokens to consume them (won't reach here due to abort)
+        transfer::public_transfer(token, USER1);
+        transfer::public_transfer(new_token, USER1);
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_proof_tokens::ECannotSplit)]
+    fun test_split_social_token_zero_amount() {
+        let mut scenario = test_scenario::begin(USER1);
+        
+        // Create a SocialToken with amount 100
+        let mut token = create_social_token(@0x111111, TOKEN_TYPE_POST, 100, &mut scenario);
+        
+        // Try to split 0 - this will abort
+        let new_token = social_proof_tokens::split_social_token(&mut token, 0, test_scenario::ctx(&mut scenario));
+        
+        // Transfer tokens to consume them (won't reach here due to abort)
+        transfer::public_transfer(token, USER1);
+        transfer::public_transfer(new_token, USER1);
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_proof_tokens::ECannotSplit)]
+    fun test_split_social_token_full_amount() {
+        let mut scenario = test_scenario::begin(USER1);
+        
+        // Create a SocialToken with amount 100
+        let mut token = create_social_token(@0x111111, TOKEN_TYPE_POST, 100, &mut scenario);
+        
+        // Try to split 100 (entire amount - must be less than total) - this will abort
+        let new_token = social_proof_tokens::split_social_token(&mut token, 100, test_scenario::ctx(&mut scenario));
+        
+        // Transfer tokens to consume them (won't reach here due to abort)
+        transfer::public_transfer(token, USER1);
+        transfer::public_transfer(new_token, USER1);
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_merge_social_tokens_success() {
+        let mut scenario = test_scenario::begin(USER1);
+        
+        // Create two SocialTokens from same pool with amounts 500 and 300
+        let mut token1 = create_social_token(@0x111111, TOKEN_TYPE_POST, 500, &mut scenario);
+        let token2 = create_social_token(@0x111111, TOKEN_TYPE_POST, 300, &mut scenario);
+        
+        // Merge them
+        social_proof_tokens::merge_social_tokens(&mut token1, token2);
+        
+        // Verify first token has 800
+        assert!(social_proof_tokens::amount(&token1) == 800, 0);
+        assert!(social_proof_tokens::pool_id(&token1) == @0x111111, 0);
+        assert!(social_proof_tokens::token_type(&token1) == TOKEN_TYPE_POST, 0);
+        
+        // Second token is consumed (cannot verify as it's destroyed)
+        
+        // Transfer token to consume it
+        transfer::public_transfer(token1, USER1);
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_proof_tokens::ECannotMerge)]
+    fun test_merge_social_tokens_different_pools() {
+        let mut scenario = test_scenario::begin(USER1);
+        
+        // Create two SocialTokens from different pools
+        let mut token1 = create_social_token(@0x111111, TOKEN_TYPE_POST, 500, &mut scenario);
+        let token2 = create_social_token(@0x222222, TOKEN_TYPE_POST, 300, &mut scenario);
+        
+        // Try to merge them - this will abort
+        // Note: token2 is consumed by merge_social_tokens, so we can't transfer it afterwards
+        social_proof_tokens::merge_social_tokens(&mut token1, token2);
+        
+        // Transfer token1 to consume it (won't reach here due to abort)
+        transfer::public_transfer(token1, USER1);
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_proof_tokens::EOverflow)]
+    fun test_merge_social_tokens_overflow() {
+        let mut scenario = test_scenario::begin(USER1);
+        
+        // Create two SocialTokens with amounts that would overflow
+        // Using MAX_U64 value: 18446744073709551615
+        let mut token1 = create_social_token(@0x111111, TOKEN_TYPE_POST, 18446744073709551615, &mut scenario);
+        let token2 = create_social_token(@0x111111, TOKEN_TYPE_POST, 1, &mut scenario);
+        
+        // Try to merge them (should overflow) - this will abort
+        // Note: token2 is consumed by merge_social_tokens, so we can't transfer it afterwards
+        social_proof_tokens::merge_social_tokens(&mut token1, token2);
+        
+        // Transfer token1 to consume it (won't reach here due to abort)
+        transfer::public_transfer(token1, USER1);
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_split_and_merge_roundtrip() {
+        let mut scenario = test_scenario::begin(USER1);
+        
+        // Create a SocialToken with amount 1000
+        let mut token = create_social_token(@0x111111, TOKEN_TYPE_POST, 1000, &mut scenario);
+        
+        // Split into 300
+        let mut split_token = social_proof_tokens::split_social_token(&mut token, 300, test_scenario::ctx(&mut scenario));
+        
+        // Verify split
+        assert!(social_proof_tokens::amount(&token) == 700, 0);
+        assert!(social_proof_tokens::amount(&split_token) == 300, 0);
+        
+        // Merge back
+        social_proof_tokens::merge_social_tokens(&mut token, split_token);
+        
+        // Verify final amount is 1000
+        assert!(social_proof_tokens::amount(&token) == 1000, 0);
+        
+        // Transfer token to consume it
+        transfer::public_transfer(token, USER1);
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_split_entry_function() {
+        let mut scenario = test_scenario::begin(USER1);
+        
+        // Create a SocialToken owned by USER1
+        let mut token = create_social_token(@0x111111, TOKEN_TYPE_POST, 1000, &mut scenario);
+        transfer::public_transfer(token, USER1);
+        
+        // Split using entry function
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut token = test_scenario::take_from_sender<SocialToken>(&scenario);
+            social_proof_tokens::split_social_token_entry(&mut token, 300, test_scenario::ctx(&mut scenario));
+            // Return the original token (now with amount 700) to sender
+            transfer::public_transfer(token, USER1);
+        };
+        
+        // Verify both tokens: original (700) and new (300)
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            // Take first token - could be either one
+            let token1 = test_scenario::take_from_sender<SocialToken>(&scenario);
+            let amount1 = social_proof_tokens::amount(&token1);
+            
+            // Take second token
+            let token2 = test_scenario::take_from_sender<SocialToken>(&scenario);
+            let amount2 = social_proof_tokens::amount(&token2);
+            
+            // One should be 300, the other should be 700
+            assert!(amount1 == 300 || amount1 == 700, 0);
+            assert!(amount2 == 300 || amount2 == 700, 1);
+            assert!(amount1 != amount2, 2);
+            
+            // Find which is which and verify
+            if (amount1 == 300) {
+                assert!(social_proof_tokens::pool_id(&token1) == @0x111111, 3);
+                assert!(amount2 == 700, 4);
+            } else {
+                assert!(amount1 == 700, 5);
+                assert!(social_proof_tokens::pool_id(&token2) == @0x111111, 6);
+                assert!(amount2 == 300, 7);
+            };
+            
+            // Return both tokens
+            transfer::public_transfer(token1, USER1);
+            transfer::public_transfer(token2, USER1);
+        };
+        
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_merge_entry_function() {
+        let mut scenario = test_scenario::begin(USER1);
+        
+        // Create two SocialTokens owned by USER1
+        let mut token1 = create_social_token(@0x111111, TOKEN_TYPE_POST, 500, &mut scenario);
+        let token2 = create_social_token(@0x111111, TOKEN_TYPE_POST, 300, &mut scenario);
+        transfer::public_transfer(token1, USER1);
+        transfer::public_transfer(token2, USER1);
+        
+        // Merge using entry function
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut token1 = test_scenario::take_from_sender<SocialToken>(&scenario);
+            let token2 = test_scenario::take_from_sender<SocialToken>(&scenario);
+            social_proof_tokens::merge_social_tokens_entry(&mut token1, token2, test_scenario::ctx(&mut scenario));
+            test_scenario::return_to_sender(&scenario, token1);
+        };
+        
+        // Verify tokens are merged
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let token1 = test_scenario::take_from_sender<SocialToken>(&scenario);
+            assert!(social_proof_tokens::amount(&token1) == 800, 0);
+            test_scenario::return_to_sender(&scenario, token1);
+        };
+        
+        test_scenario::end(scenario);
+    }
 } 

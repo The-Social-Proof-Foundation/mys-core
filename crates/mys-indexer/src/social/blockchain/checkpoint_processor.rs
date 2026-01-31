@@ -174,6 +174,7 @@ impl SocialCheckpointProcessor {
             }
             // Social Proof Token events
             "social_proof_tokens" | "spt" => {
+                debug!("Processing SPT event: {}::{}", module, event_name);
                 self.handle_spt_event(conn, event_name, data, event_id).await?;
             }
             // Upgrade/migration events (system events - logged for audit)
@@ -726,6 +727,7 @@ impl SocialCheckpointProcessor {
 
         match event_name {
             "TokenPoolCreatedEvent" | "PoolCreatedEvent" => {
+                info!("Processing TokenPoolCreatedEvent (event_id: {})", event_id);
                 process_token_pool_created_event(conn, data, event_id, timestamp, tx).await?;
             }
             "TokenBoughtEvent" | "BuyEvent" => {

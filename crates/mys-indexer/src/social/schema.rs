@@ -742,6 +742,10 @@ table! {
         reserver_address -> Varchar,
         amount -> Int8,
         reserved_at -> Int8,
+        fee_amount -> Nullable<Int8>,
+        creator_fee -> Nullable<Int8>,
+        platform_fee -> Nullable<Int8>,
+        treasury_fee -> Nullable<Int8>,
         time -> Timestamptz,
         transaction_id -> Varchar,
     }

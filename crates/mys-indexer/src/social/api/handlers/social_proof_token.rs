@@ -837,10 +837,23 @@ pub async fn get_spt_reservation_pools(
 }
 
 /// Get reservation pool by ID
+/// Enhanced reservation pool response with fee breakdowns
+#[derive(Debug, Serialize)]
+pub struct EnhancedReservationPool {
+    #[serde(flatten)]
+    pub pool: SptReservationPool,
+    pub total_fees_paid: i64,
+    pub total_creator_fees: i64,
+    pub total_platform_fees: i64,
+    pub total_treasury_fees: i64,
+    pub reservation_count: i64,
+    pub unique_reservers: i64,
+}
+
 pub async fn get_spt_reservation_pool_by_id(
     State(db): State<Arc<Database>>,
     Path(id): Path<String>,
-) -> Result<Json<ApiResponse<SptReservationPool>>, StatusCode> {
+) -> Result<Json<ApiResponse<EnhancedReservationPool>>, StatusCode> {
     // Get a connection from the pool
     let mut conn = db.get_connection().await.map_err(|e| {
         error!("Database error: {}", e);
@@ -855,8 +868,8 @@ pub async fn get_spt_reservation_pool_by_id(
         id.clone()
     };
 
-    // Try to find by pool_id first, then by associated_id if not found
-    let result = diesel::sql_query(
+    // Get the reservation pool
+    let pool_result = diesel::sql_query(
         r#"
         SELECT *
         FROM spt_reservation_pools
@@ -865,7 +878,7 @@ pub async fn get_spt_reservation_pool_by_id(
         LIMIT 1
         "#,
     )
-    .bind::<diesel::sql_types::Text, _>(pool_id)
+    .bind::<diesel::sql_types::Text, _>(pool_id.clone())
     .get_result::<SptReservationPool>(&mut conn)
     .await
     .optional()
@@ -874,13 +887,70 @@ pub async fn get_spt_reservation_pool_by_id(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    match result {
-        Some(reservation_pool) => Ok(Json(ApiResponse {
-            data: reservation_pool,
-            pagination: None,
-        })),
-        None => Err(StatusCode::NOT_FOUND),
+    let pool = match pool_result {
+        Some(p) => p,
+        None => return Err(StatusCode::NOT_FOUND),
+    };
+
+    // Get fee totals and reservation stats
+    #[derive(Debug, QueryableByName)]
+    #[diesel(check_for_backend(diesel::pg::Pg))]
+    struct FeeStats {
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        total_fees: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        total_creator_fees: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        total_platform_fees: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        total_treasury_fees: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        reservation_count: i64,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        unique_reservers: i64,
     }
+
+    let stats = diesel::sql_query(
+        r#"
+        WITH latest_reservations AS (
+            SELECT DISTINCT ON (reserver_address) *
+            FROM spt_reservations
+            WHERE pool_id = $1
+            ORDER BY reserver_address, time DESC
+        )
+        SELECT 
+            COALESCE(SUM(COALESCE(fee_amount, 0)), 0) as total_fees,
+            COALESCE(SUM(COALESCE(creator_fee, 0)), 0) as total_creator_fees,
+            COALESCE(SUM(COALESCE(platform_fee, 0)), 0) as total_platform_fees,
+            COALESCE(SUM(COALESCE(treasury_fee, 0)), 0) as total_treasury_fees,
+            COUNT(*) as reservation_count,
+            COUNT(DISTINCT reserver_address) as unique_reservers
+        FROM latest_reservations
+        WHERE amount > 0
+        "#,
+    )
+    .bind::<diesel::sql_types::Text, _>(pool.pool_id.clone())
+    .get_result::<FeeStats>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error getting fee stats: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let enhanced = EnhancedReservationPool {
+        pool,
+        total_fees_paid: stats.total_fees,
+        total_creator_fees: stats.total_creator_fees,
+        total_platform_fees: stats.total_platform_fees,
+        total_treasury_fees: stats.total_treasury_fees,
+        reservation_count: stats.reservation_count,
+        unique_reservers: stats.unique_reservers,
+    };
+
+    Ok(Json(ApiResponse {
+        data: enhanced,
+        pagination: None,
+    }))
 }
 
 /// Get reservations for a pool
@@ -1004,11 +1074,41 @@ pub async fn get_spt_reservations_by_pool(
     }))
 }
 
+/// Query parameters for user holdings endpoint
+#[derive(Debug, Deserialize)]
+pub struct UserHoldingsParams {
+    pub include_reservations: Option<bool>,
+}
+
+/// Reservation info for user holdings
+#[derive(Debug, Serialize)]
+pub struct UserReservationInfo {
+    pub pool_id: String,
+    pub associated_id: String,
+    pub amount: i64,
+    pub fee_amount: Option<i64>,
+    pub creator_fee: Option<i64>,
+    pub platform_fee: Option<i64>,
+    pub treasury_fee: Option<i64>,
+    pub reserved_at: i64,
+}
+
+/// Enhanced user token holdings with optional reservations
+#[derive(Debug, Serialize)]
+pub struct EnhancedUserTokenHoldings {
+    pub holder_address: String,
+    pub holdings: Vec<UserTokenHolding>,
+    pub total_value: i64,
+    pub reservations: Option<Vec<UserReservationInfo>>,
+    pub total_reservation_value: Option<i64>,
+}
+
 /// Get token holdings for a user
 pub async fn get_user_spt_holdings(
     State(db): State<Arc<Database>>,
     Path(address): Path<String>,
-) -> Result<Json<ApiResponse<UserTokenHoldings>>, StatusCode> {
+    Query(params): Query<UserHoldingsParams>,
+) -> Result<Json<ApiResponse<EnhancedUserTokenHoldings>>, StatusCode> {
     // Get a connection from the pool
     let mut conn = db.get_connection().await.map_err(|e| {
         error!("Database error: {}", e);
@@ -1072,11 +1172,97 @@ pub async fn get_user_spt_holdings(
         });
     }
 
+    // Get reservations if requested
+    let (reservations, total_reservation_value) = if params.include_reservations.unwrap_or(false) {
+        #[derive(Debug, QueryableByName)]
+        #[diesel(check_for_backend(diesel::pg::Pg))]
+        struct ReservationRow {
+            #[diesel(sql_type = diesel::sql_types::Text)]
+            pool_id: String,
+            #[diesel(sql_type = diesel::sql_types::Text)]
+            associated_id: String,
+            #[diesel(sql_type = diesel::sql_types::BigInt)]
+            amount: i64,
+            #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+            fee_amount: Option<i64>,
+            #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+            creator_fee: Option<i64>,
+            #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+            platform_fee: Option<i64>,
+            #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+            treasury_fee: Option<i64>,
+            #[diesel(sql_type = diesel::sql_types::BigInt)]
+            reserved_at: i64,
+        }
+
+        let reservation_rows = diesel::sql_query(
+            r#"
+            WITH latest_reservations AS (
+                SELECT DISTINCT ON (r.pool_id, r.reserver_address) 
+                    r.pool_id,
+                    r.reserver_address,
+                    r.amount,
+                    r.fee_amount,
+                    r.creator_fee,
+                    r.platform_fee,
+                    r.treasury_fee,
+                    r.reserved_at,
+                    rp.associated_id
+                FROM spt_reservations r
+                LEFT JOIN spt_reservation_pools rp ON r.pool_id = rp.pool_id
+                WHERE r.reserver_address = $1
+                ORDER BY r.pool_id, r.reserver_address, r.time DESC
+            )
+            SELECT 
+                pool_id,
+                COALESCE(associated_id, '') as associated_id,
+                amount,
+                fee_amount,
+                creator_fee,
+                platform_fee,
+                treasury_fee,
+                reserved_at
+            FROM latest_reservations
+            WHERE amount > 0
+            ORDER BY amount DESC
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(address.clone())
+        .load::<ReservationRow>(&mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error getting reservations: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        let reservations: Vec<UserReservationInfo> = reservation_rows
+            .into_iter()
+            .map(|r| UserReservationInfo {
+                pool_id: r.pool_id,
+                associated_id: r.associated_id,
+                amount: r.amount,
+                fee_amount: r.fee_amount,
+                creator_fee: r.creator_fee,
+                platform_fee: r.platform_fee,
+                treasury_fee: r.treasury_fee,
+                reserved_at: r.reserved_at,
+            })
+            .collect();
+
+        let total_reservation_value = reservations.iter().map(|r| r.amount).sum();
+
+        (Some(reservations), Some(total_reservation_value))
+    } else {
+        (None, None)
+    };
+
     // Create the response
-    let result = UserTokenHoldings {
+    let result = EnhancedUserTokenHoldings {
         holder_address: address,
         holdings: user_holdings,
         total_value,
+        reservations,
+        total_reservation_value,
     };
 
     Ok(Json(ApiResponse {
