@@ -763,6 +763,12 @@ impl SocialCheckpointProcessor {
             "SocialProofSellEvent" => {
                 process_social_proof_sell_event(conn, data, event_id, timestamp as i64, tx).await?;
             }
+            "TokensAddedEvent" => {
+                process_tokens_added_event(conn, data, event_id, timestamp, tx).await?;
+            }
+            "PocRedirectionUpdatedEvent" => {
+                process_poc_redirection_updated_event(conn, data, event_id, timestamp, tx).await?;
+            }
             _ => {
                 debug!("Unhandled SPT event: {}", event_name);
             }

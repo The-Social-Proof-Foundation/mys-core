@@ -308,6 +308,12 @@ pub struct PostWithEngagementInfo {
 
     #[diesel(sql_type = Nullable<BigInt>)]
     pub poc_analyzed_at: Option<i64>,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    pub revenue_redirect_to: Option<String>,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub revenue_redirect_percentage: Option<i64>,
 }
 
 // Promoted post information
@@ -417,7 +423,7 @@ pub async fn get_post_by_id(State(pool): State<DbPool>, Path(post_id): Path<Stri
     };
 
     // Use diesel sql_query instead of QueryDsl since there might be schema definition issues
-    let query = "SELECT post_id, owner, profile_id, content, created_at, deleted_at, removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id, enable_spt, enable_poc, enable_spot, poc_id, spot_id, spt_id, poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at FROM posts WHERE post_id = $1";
+    let query = "SELECT post_id, owner, profile_id, content, created_at, deleted_at, removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id, enable_spt, enable_poc, enable_spot, poc_id, spot_id, spt_id, poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at, revenue_redirect_to, revenue_redirect_percentage FROM posts WHERE post_id = $1";
 
     let result = diesel::sql_query(query)
         .bind::<Text, _>(&post_id)
@@ -583,7 +589,8 @@ pub async fn list_posts(State(pool): State<DbPool>, Query(params): Query<PostQue
         SELECT post_id, owner, profile_id, content, created_at, deleted_at, 
                removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id,
                enable_spt, enable_poc, enable_spot, poc_id, spot_id, spt_id,
-               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at,
+               revenue_redirect_to, revenue_redirect_percentage
         FROM posts 
         WHERE deleted_at IS NULL 
         ORDER BY created_at DESC 
@@ -722,7 +729,8 @@ pub async fn get_trending_posts(
         SELECT post_id, owner, profile_id, content, created_at, deleted_at, 
                removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id,
                enable_spt, enable_poc, enable_spot, poc_id, spot_id, spt_id,
-               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at,
+               revenue_redirect_to, revenue_redirect_percentage
         FROM posts 
         WHERE deleted_at IS NULL AND removed_from_platform = false
         ORDER BY (reaction_count + comment_count * 2 + repost_count * 3) DESC, created_at DESC
@@ -878,7 +886,8 @@ pub async fn get_profile_posts(
             ((p.reaction_count + p.comment_count * 2 + p.repost_count * 3 + p.tips_received) / 
              (EXTRACT(EPOCH FROM NOW()) - p.created_at + 3600) * 10000) AS trending_score,
             p.promotion_id, p.enable_spt, p.enable_poc, p.enable_spot, p.poc_id, p.spot_id, p.spt_id,
-            p.poc_reasoning, p.poc_evidence_urls, p.poc_similarity_score, p.poc_media_type, p.poc_oracle_address, p.poc_analyzed_at
+            p.poc_reasoning, p.poc_evidence_urls, p.poc_similarity_score, p.poc_media_type, p.poc_oracle_address, p.poc_analyzed_at,
+            p.revenue_redirect_to, p.revenue_redirect_percentage
         FROM 
             posts p
         WHERE 
@@ -986,6 +995,8 @@ pub async fn get_profile_posts(
                         poc_media_type: p.poc_media_type,
                         poc_oracle_address: p.poc_oracle_address,
                         poc_analyzed_at: p.poc_analyzed_at,
+                        revenue_redirect_to: p.revenue_redirect_to,
+                        revenue_redirect_percentage: p.revenue_redirect_percentage,
                     },
                     engagement_score: p.engagement_score,
                     trending_score: p.trending_score,

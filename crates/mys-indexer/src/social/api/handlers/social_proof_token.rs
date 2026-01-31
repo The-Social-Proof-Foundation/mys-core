@@ -1271,6 +1271,140 @@ pub async fn get_user_spt_holdings(
     }))
 }
 
+/// Get all reserved tokens for a user across all pools
+pub async fn get_user_spt_reservations(
+    State(db): State<Arc<Database>>,
+    Path(address): Path<String>,
+    Query(pagination): Query<PaginationParams>,
+) -> Result<Json<ApiResponse<Vec<UserReservationInfo>>>, StatusCode> {
+    let limit = pagination.get_limit();
+    let offset = pagination.get_offset();
+
+    // Get a connection from the pool
+    let mut conn = db.get_connection().await.map_err(|e| {
+        error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    #[derive(Debug, QueryableByName)]
+    #[diesel(check_for_backend(diesel::pg::Pg))]
+    struct ReservationRow {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        pool_id: String,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        associated_id: String,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        amount: i64,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+        fee_amount: Option<i64>,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+        creator_fee: Option<i64>,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+        platform_fee: Option<i64>,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+        treasury_fee: Option<i64>,
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        reserved_at: i64,
+    }
+
+    // Get reservations - latest per pool for this user
+    let reservation_rows = diesel::sql_query(
+        r#"
+        WITH latest_reservations AS (
+            SELECT DISTINCT ON (r.pool_id, r.reserver_address) 
+                r.pool_id,
+                r.reserver_address,
+                r.amount,
+                r.fee_amount,
+                r.creator_fee,
+                r.platform_fee,
+                r.treasury_fee,
+                r.reserved_at,
+                rp.associated_id
+            FROM spt_reservations r
+            LEFT JOIN spt_reservation_pools rp ON r.pool_id = rp.pool_id
+            WHERE r.reserver_address = $1
+            ORDER BY r.pool_id, r.reserver_address, r.time DESC
+        )
+        SELECT 
+            pool_id,
+            COALESCE(associated_id, '') as associated_id,
+            amount,
+            fee_amount,
+            creator_fee,
+            platform_fee,
+            treasury_fee,
+            reserved_at
+        FROM latest_reservations
+        WHERE amount > 0
+        ORDER BY amount DESC
+        LIMIT $2 OFFSET $3
+        "#,
+    )
+    .bind::<diesel::sql_types::Text, _>(address.clone())
+    .bind::<diesel::sql_types::BigInt, _>(limit)
+    .bind::<diesel::sql_types::BigInt, _>(offset)
+    .load::<ReservationRow>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error getting reservations: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    // Convert to UserReservationInfo
+    let reservations: Vec<UserReservationInfo> = reservation_rows
+        .into_iter()
+        .map(|r| UserReservationInfo {
+            pool_id: r.pool_id,
+            associated_id: r.associated_id,
+            amount: r.amount,
+            fee_amount: r.fee_amount,
+            creator_fee: r.creator_fee,
+            platform_fee: r.platform_fee,
+            treasury_fee: r.treasury_fee,
+            reserved_at: r.reserved_at,
+        })
+        .collect();
+
+    // Count total for pagination
+    let total_count = diesel::sql_query(
+        r#"
+        WITH latest_reservations AS (
+            SELECT DISTINCT ON (r.pool_id, r.reserver_address) 
+                r.pool_id,
+                r.reserver_address,
+                r.amount
+            FROM spt_reservations r
+            WHERE r.reserver_address = $1
+            ORDER BY r.pool_id, r.reserver_address, r.time DESC
+        )
+        SELECT COUNT(*) as count
+        FROM latest_reservations
+        WHERE amount > 0
+        "#,
+    )
+    .bind::<diesel::sql_types::Text, _>(address)
+    .get_result::<CountResult>(&mut conn)
+    .await
+    .map_err(|e| {
+        error!("Database error in count query: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let total = total_count.count;
+    let total_pages = (total + limit - 1) / limit;
+
+    Ok(Json(ApiResponse {
+        data: reservations,
+        pagination: Some(PaginationInfo {
+            page: pagination.get_page(),
+            limit,
+            total,
+            total_pages,
+        }),
+    }))
+}
+
 /// Get popular token pools
 pub async fn get_popular_tokens(
     State(db): State<Arc<Database>>,

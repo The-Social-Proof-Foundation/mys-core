@@ -51,7 +51,7 @@ use crate::social::api::handlers::social_proof_token::{
     get_spt_holdings, get_spt_pool_by_associated_id, get_spt_pool_by_id, get_spt_price_history,
     get_spt_reservation_pool_by_id, get_spt_reservation_pools, get_spt_reservations_by_pool,
     get_spt_transactions, get_token_liquidity_profile, get_top_performing_tokens,
-    get_user_portfolio_performance, get_user_spt_holdings, list_spt_pools,
+    get_user_portfolio_performance, get_user_spt_holdings, get_user_spt_reservations, list_spt_pools,
 };
 // Import search handler
 use crate::social::api::handlers::search::global_search;
@@ -365,6 +365,10 @@ pub fn build_router(db: Arc<Database>) -> Router {
         .route(
             "/social-proof-token/users/:address/holdings",
             get(get_user_spt_holdings),
+        )
+        .route(
+            "/social-proof-token/users/:address/reservations",
+            get(get_user_spt_reservations),
         )
         .route(
             "/social-proof-token/analytics/top-performers",

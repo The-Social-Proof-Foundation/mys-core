@@ -1884,7 +1884,7 @@ use crate::social::db::DbConnection;
 use crate::social::schema::{
     spt_pools, spt_transactions, spt_holdings, spt_price_history,
     spt_reservation_pools, spt_reservations, spt_exchange_config,
-    social_proof_tokens_config, social_proof_tokens_events,
+    social_proof_tokens_config, social_proof_tokens_events, posts,
 };
 
 /// Process a TokenPoolCreatedEvent and insert into the database
@@ -2393,5 +2393,68 @@ pub async fn process_social_proof_sell_event(
 
     tracing::info!("Processed SocialProofSellEvent: {} sold {} in pool {} (event: {})",
         event.seller, event.amount, event.pool_id, event_id);
+    Ok(())
+}
+
+/// Process a TokensAddedEvent and insert into the database
+pub async fn process_tokens_added_event(
+    conn: &mut DbConnection,
+    data: &Value,
+    event_id: &str,
+    timestamp: u64,
+    tx: String,
+) -> Result<()> {
+    let event: TokensAddedEvent = serde_json::from_value(data.clone())
+        .map_err(|e| anyhow!("Failed to parse TokensAddedEvent: {}", e))?;
+
+    // Insert holding record
+    let holding = event.into_holding_model(timestamp, tx.clone())?;
+    diesel::insert_into(spt_holdings::table)
+        .values(&holding)
+        .execute(conn)
+        .await
+        .map_err(|e| anyhow!("Failed to insert SPT holding: {}", e))?;
+
+    // Update pool supply
+    diesel::update(spt_pools::table)
+        .filter(spt_pools::pool_id.eq(&event.pool_id))
+        .set(spt_pools::circulating_supply.eq(
+            spt_pools::circulating_supply + event.amount as i64
+        ))
+        .execute(conn)
+        .await
+        .map_err(|e| anyhow!("Failed to update SPT pool supply: {}", e))?;
+
+    tracing::info!("Processed TokensAddedEvent: {} added {} tokens to pool {} (event: {})",
+        event.owner, event.amount, event.pool_id, event_id);
+    Ok(())
+}
+
+/// Process a PocRedirectionUpdatedEvent and update the database
+pub async fn process_poc_redirection_updated_event(
+    conn: &mut DbConnection,
+    data: &Value,
+    event_id: &str,
+    timestamp: u64,
+    tx: String,
+) -> Result<()> {
+    let event: PocRedirectionUpdatedEvent = PocRedirectionUpdatedEvent::try_from(data.clone())
+        .map_err(|e| anyhow!("Failed to parse PocRedirectionUpdatedEvent: {}", e))?;
+
+    // Update the post's revenue redirection fields
+    diesel::update(posts::table)
+        .filter(posts::post_id.eq(&event.post_id))
+        .set((
+            posts::revenue_redirect_to.eq(event.redirect_to.as_ref()),
+            posts::revenue_redirect_percentage.eq(
+                event.redirect_percentage.map(|p| p as i64),
+            ),
+        ))
+        .execute(conn)
+        .await
+        .map_err(|e| anyhow!("Failed to update post revenue redirection: {}", e))?;
+
+    tracing::info!("Processed PocRedirectionUpdatedEvent: updated redirection for post {} (event: {})",
+        event.post_id, event_id);
     Ok(())
 }

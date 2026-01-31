@@ -379,12 +379,19 @@ Many endpoints support common pagination and filtering parameters:
 - **GET /social-proof-token/configuration** - Get current social proof tokens exchange configuration (thresholds, fees, trading status, etc.)
   - Returns configuration including ecosystem_treasury address
 
-#### Analytics & Insights
-- **GET /social-proof-token/popular** - Get popular token pools
-  - Query: `page` (optional, default: 1), `limit` (optional, default: 20, max: 100)
+#### User Holdings & Reservations
 - **GET /social-proof-token/users/:address/holdings** - Get token holdings for a user
   - Query: `include_reservations` (optional, boolean - if true, includes reservation data with fee breakdowns)
   - Returns enhanced holdings with total_value and optional reservations array
+- **GET /social-proof-token/users/:address/reservations** - Get all reserved tokens for a user across all pools
+  - Query: `page` (optional, default: 1), `limit` (optional, default: 20, max: 100)
+  - Returns paginated list of user's reservations with fee breakdowns
+  - Each reservation includes: `pool_id`, `associated_id`, `amount`, `fee_amount`, `creator_fee`, `platform_fee`, `treasury_fee`, `reserved_at`
+  - Only returns active reservations (amount > 0)
+
+#### Analytics & Insights
+- **GET /social-proof-token/popular** - Get popular token pools
+  - Query: `page` (optional, default: 1), `limit` (optional, default: 20, max: 100)
 - **GET /social-proof-token/analytics/top-performers** - Get tokens with highest price/volume growth in specified period
   - Query: `period` (optional - "day", "week", or "month", default: "day")
 - **GET /social-proof-token/portfolios/:address/performance** - Track user's token portfolio value over time with ROI metrics
