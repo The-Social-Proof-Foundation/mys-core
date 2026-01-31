@@ -22,6 +22,8 @@ BEGIN
         
         -- Migrate counts from wallet_social_graph to profile for NEW owner (if they had wallet counts)
         IF EXISTS (SELECT 1 FROM wallet_social_graph WHERE wallet_address = NEW.owner_address) THEN
+            -- Update profile using owner_address (which should be unique)
+            -- This avoids issues if id column doesn't exist
             UPDATE profiles
             SET 
                 followers_count = COALESCE(NEW.followers_count, 0) + (
@@ -33,7 +35,7 @@ BEGIN
                 blocked_count = COALESCE(NEW.blocked_count, 0) + (
                     SELECT blocked_count FROM wallet_social_graph WHERE wallet_address = NEW.owner_address
                 )
-            WHERE id = NEW.id;
+            WHERE owner_address = NEW.owner_address;
             
             DELETE FROM wallet_social_graph WHERE wallet_address = NEW.owner_address;
         END IF;

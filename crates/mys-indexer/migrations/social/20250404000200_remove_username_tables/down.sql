@@ -58,6 +58,18 @@ BEGIN
 END $$;
 
 -- Populate the usernames table with existing usernames from profiles
-INSERT INTO usernames (profile_id, username, registered_at, updated_at)
-SELECT id, username, created_at, updated_at
-FROM profiles;
+-- Only populate if profiles table has id column
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' AND column_name = 'id'
+    ) AND EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'usernames'
+    ) THEN
+        INSERT INTO usernames (profile_id, username, registered_at, updated_at)
+        SELECT id, username, created_at, updated_at
+        FROM profiles;
+    END IF;
+END $$;

@@ -33,7 +33,16 @@ ALTER TABLE profiles
 ADD COLUMN IF NOT EXISTS blockchain_tx_id TEXT NULL;
 
 -- Delete placeholder profiles (rows 3 and 4) that were automatically created
-DELETE FROM profiles WHERE id IN (3, 4);
+-- Only delete if profiles table has id column
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'profiles' AND column_name = 'id'
+    ) THEN
+        DELETE FROM profiles WHERE id IN (3, 4);
+    END IF;
+END $$;
 
 -- Update counter values for existing profiles
 UPDATE profiles 
