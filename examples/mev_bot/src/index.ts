@@ -117,12 +117,12 @@ console.log(`Total estimated storage fee rebate: ${rebate / 1e9} MYS`);
 // Implementer Todo : sign and execute the transaction
 
 async function retrieveAllPools() {
-	let page = await client.queryEvents({ query: { MoveEventType: '0x0b0c::clob_v2::PoolCreated' } });
+	let page = await client.queryEvents({ query: { MoveEventType: '0x0b0c::clob::PoolCreated' } });
 	let data = page.data;
 	while (page.hasNextPage) {
 		page = await client.queryEvents({
 			query: {
-				MoveEventType: '0x0b0c::clob_v2::PoolCreated',
+				MoveEventType: '0x0b0c::clob::PoolCreated',
 			},
 			cursor: page.nextCursor,
 		});
@@ -211,7 +211,7 @@ async function createCleanUpTransaction(poolOrders: { pool: any; expiredOrders: 
 		let orderOwnerVec = tx.makeMoveVec({ elements: orderOwners, type: 'address' });
 
 		tx.moveCall({
-			target: `0x0b0c::clob_v2::clean_up_expired_orders`,
+			target: `0x0b0c::clob::clean_up_expired_orders`,
 			arguments: [tx.object(poolOrder.pool.pool_id), tx.object('0x6'), orderIdVec, orderOwnerVec],
 			typeArguments: [poolOrder.pool.base_asset, poolOrder.pool.quote_asset],
 		});

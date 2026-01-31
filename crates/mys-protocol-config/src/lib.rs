@@ -50,7 +50,7 @@ const MAX_PROTOCOL_VERSION: u64 = 75;
 //             Change NW Batch to use versioned metadata field.
 //             Changes to mys-system package to add PTB-friendly unstake function, and minor cleanup.
 // Version 13: System package change deprecating `0x0b0c::clob` and `0x0b0c::custodian`, replaced by
-//             `0x0b0c::clob_v2` and `0x0b0c::custodian_v2`.
+//             `0x0b0c::clob` and `0x0b0c::custodian`.
 // Version 14: Introduce a config variable to allow charging of computation to be either
 //             bucket base or rounding up. The presence of `gas_rounding_step` (or `None`)
 //             decides whether rounding is applied or not.

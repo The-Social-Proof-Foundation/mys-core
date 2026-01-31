@@ -7,8 +7,8 @@ module orderbook::order_query {
     use orderbook::critbit::CritbitTree;
     use mys::linked_table;
     use orderbook::critbit;
-    use orderbook::clob_v2;
-    use orderbook::clob_v2::{Order, Pool, TickLevel};
+    use orderbook::clob;
+    use orderbook::clob::{Order, Pool, TickLevel};
 
     const PAGE_LIMIT: u64 = 100;
 
@@ -40,7 +40,7 @@ module orderbook::order_query {
         // if true, the orders are returned in ascending tick level.
         ascending: bool,
     ): OrderPage {
-        let bids = clob_v2::bids(pool);
+        let bids = clob::bids(pool);
         let mut orders = iter_ticks_internal(
             bids,
             start_tick_level,
@@ -51,7 +51,7 @@ module orderbook::order_query {
         );
         let (orders, has_next_page, next_tick_level, next_order_id) = if (vector::length(&orders) > PAGE_LIMIT) {
             let last_order = vector::pop_back(&mut orders);
-            (orders, true, some(clob_v2::tick_level(&last_order)), some(clob_v2::order_id(&last_order)))
+            (orders, true, some(clob::tick_level(&last_order)), some(clob::order_id(&last_order)))
         } else {
             (orders, false, none(), none())
         };
@@ -79,7 +79,7 @@ module orderbook::order_query {
         // if true, the orders are returned in ascending tick level.
         ascending: bool,
     ): OrderPage {
-        let asks = clob_v2::asks(pool);
+        let asks = clob::asks(pool);
         let mut orders = iter_ticks_internal(
             asks,
             start_tick_level,
@@ -90,7 +90,7 @@ module orderbook::order_query {
         );
         let (orders, has_next_page, next_tick_level, next_order_id) = if (vector::length(&orders) > PAGE_LIMIT) {
             let last_order = vector::pop_back(&mut orders);
-            (orders, true, some(clob_v2::tick_level(&last_order)), some(clob_v2::order_id(&last_order)))
+            (orders, true, some(clob::tick_level(&last_order)), some(clob::order_id(&last_order)))
         } else {
             (orders, false, none(), none())
         };
@@ -133,7 +133,7 @@ module orderbook::order_query {
 
         while (tick_level_key != 0 && vector::length(&orders) < PAGE_LIMIT + 1) {
             let tick_level = critbit::borrow_leaf_by_key(ticks, tick_level_key);
-            let open_orders = clob_v2::open_orders(tick_level);
+            let open_orders = clob::open_orders(tick_level);
 
             let mut next_order_key = if (option::is_some(&start_order_id)) {
                 let key = option::destroy_some(start_order_id);
@@ -165,8 +165,8 @@ module orderbook::order_query {
 
                 // if expire timestamp is set, and if the order is expired, we skip it.
                 if (option::is_none(&min_expire_timestamp) ||
-                    clob_v2::expire_timestamp(order) > *option::borrow(&min_expire_timestamp)) {
-                    vector::push_back(&mut orders, clob_v2::clone_order(order));
+                    clob::expire_timestamp(order) > *option::borrow(&min_expire_timestamp)) {
+                    vector::push_back(&mut orders, clob::clone_order(order));
                 };
             };
             let (next_leaf, _) = if (ascending) {
@@ -196,10 +196,10 @@ module orderbook::order_query {
     }
 
     public fun order_id(order: &Order): u64 {
-        clob_v2::order_id(order)
+        clob::order_id(order)
     }
 
     public fun tick_level(order: &Order): u64 {
-        clob_v2::tick_level(order)
+        clob::tick_level(order)
     }
 }

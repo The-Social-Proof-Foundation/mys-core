@@ -8,13 +8,13 @@ module orderbook::order_query_tests {
     use mys::clock;
     use orderbook::order_query;
     use orderbook::order_query::iter_bids;
-    use orderbook::custodian_v2;
-    use orderbook::custodian_v2::{AccountCap, account_owner};
+    use orderbook::custodian;
+    use orderbook::custodian::{AccountCap, account_owner};
     use mys::clock::Clock;
     use mys::coin::mint_for_testing;
-    use orderbook::clob_v2;
+    use orderbook::clob;
     use mys::mys::MYS;
-    use orderbook::clob_v2::{setup_test, USD, mint_account_cap_transfer, Pool};
+    use orderbook::clob::{setup_test, USD, mint_account_cap_transfer, Pool};
     use mys::test_scenario;
     use mys::test_scenario::{next_tx, end, ctx, Scenario};
 
@@ -233,9 +233,9 @@ module orderbook::order_query_tests {
         let mut pool = test_scenario::take_shared<Pool<MYS, USD>>(&scenario);
         let account_cap = test_scenario::take_from_sender<AccountCap>(&scenario);
         let account_cap_user = account_owner(&account_cap);
-        let (base_custodian, quote_custodian) = clob_v2::borrow_mut_custodian(&mut pool);
-        custodian_v2::deposit(base_custodian, mint_for_testing<MYS>(1000000, ctx(&mut scenario)), account_cap_user);
-        custodian_v2::deposit(
+        let (base_custodian, quote_custodian) = clob::borrow_mut_custodian(&mut pool);
+        custodian::deposit(base_custodian, mint_for_testing<MYS>(1000000, ctx(&mut scenario)), account_cap_user);
+        custodian::deposit(
             quote_custodian,
             mint_for_testing<USD>(10000000, ctx(&mut scenario)),
             account_cap_user
@@ -258,7 +258,7 @@ module orderbook::order_query_tests {
             let account_cap = test_scenario::take_from_sender<AccountCap>(scenario);
             let mut pool = test_scenario::take_shared<Pool<MYS, USD>>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
-            clob_v2::place_limit_order<MYS, USD>(
+            clob::place_limit_order<MYS, USD>(
                 &mut pool,
                 CLIENT_ID_ALICE,
                 price,

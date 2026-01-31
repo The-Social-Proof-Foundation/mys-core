@@ -11,9 +11,9 @@ module orderbook::clob_test {
     use mys::mys::MYS;
     use mys::test_scenario::{Self as test, Scenario, next_tx, ctx, end, TransactionEffects};
     use mys::test_utils::assert_eq;
-    use orderbook::clob_v2::{Self as clob, Pool, PoolOwnerCap, WrappedPool, Order, USD, account_balance, get_pool_stat,
+    use orderbook::clob::{Self as clob, Pool, PoolOwnerCap, WrappedPool, Order, USD, account_balance, get_pool_stat,
         order_id_for_test, list_open_orders, mint_account_cap_transfer, borrow_mut_pool};
-    use orderbook::custodian_v2::{Self as custodian, AccountCap, account_owner};
+    use orderbook::custodian::{Self as custodian, AccountCap, account_owner};
 
     const MIN_PRICE: u64 = 0;
     const MAX_PRICE: u64 = (1u128 << 64 - 1) as u64;
