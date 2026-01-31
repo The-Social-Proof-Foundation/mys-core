@@ -341,15 +341,6 @@ Health check endpoint.
 Status: 200 OK
 ```
 
-### GET /deep_supply
-
-Get total supply of DEEP tokens.
-
-**Response:**
-```json
-1234567890
-```
-
 ## Data Types
 
 ### Order Status Values
