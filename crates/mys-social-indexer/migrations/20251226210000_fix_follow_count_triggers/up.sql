@@ -3,7 +3,7 @@
 
 -- First, recalculate all counts from actual relationships to fix any existing discrepancies
 -- Recalculate followers_count for all profiles (matching on both owner_address and profile_id)
--- Handle both TEXT and BYTEA profile_id types
+-- Handle both TEXT and BYTEA profile_id types using dynamic SQL
 DO $$
 DECLARE
     profile_id_type text;
@@ -13,44 +13,19 @@ BEGIN
     FROM information_schema.columns
     WHERE table_name = 'profiles' AND column_name = 'profile_id';
     
-    IF profile_id_type = 'bytea' THEN
-        -- If BYTEA, encode to hex to match TEXT address format
-        UPDATE profiles p
-        SET followers_count = (
-            SELECT COUNT(*) 
-            FROM social_graph_relationships 
-            WHERE following_address = p.owner_address 
-               OR following_address = encode(p.profile_id::bytea, 'hex')
-        )
-        WHERE p.owner_address IS NOT NULL;
-        
-        UPDATE profiles p
-        SET following_count = (
-            SELECT COUNT(*) 
-            FROM social_graph_relationships 
-            WHERE follower_address = p.owner_address 
-               OR follower_address = encode(p.profile_id::bytea, 'hex')
-        )
-        WHERE p.owner_address IS NOT NULL;
-    ELSE
-        -- If TEXT/VARCHAR, cast to text directly
-        UPDATE profiles p
-        SET followers_count = (
-            SELECT COUNT(*) 
-            FROM social_graph_relationships 
-            WHERE following_address = p.owner_address 
-               OR following_address = p.profile_id::text
-        )
-        WHERE p.owner_address IS NOT NULL;
-        
-        UPDATE profiles p
-        SET following_count = (
-            SELECT COUNT(*) 
-            FROM social_graph_relationships 
-            WHERE follower_address = p.owner_address 
-               OR follower_address = p.profile_id::text
-        )
-        WHERE p.owner_address IS NOT NULL;
+    -- Only proceed if profile_id column exists
+    IF profile_id_type IS NOT NULL THEN
+        IF profile_id_type = 'bytea' THEN
+            -- If BYTEA, encode to hex to match TEXT address format
+            -- Use dynamic SQL to avoid parse-time type checking
+            EXECUTE format('UPDATE profiles p SET followers_count = (SELECT COUNT(*) FROM social_graph_relationships WHERE following_address = p.owner_address OR following_address = encode(p.profile_id::bytea, ''hex'')) WHERE p.owner_address IS NOT NULL');
+            EXECUTE format('UPDATE profiles p SET following_count = (SELECT COUNT(*) FROM social_graph_relationships WHERE follower_address = p.owner_address OR follower_address = encode(p.profile_id::bytea, ''hex'')) WHERE p.owner_address IS NOT NULL');
+        ELSE
+            -- If TEXT/VARCHAR, cast to text directly
+            -- Use dynamic SQL to avoid parse-time type checking
+            EXECUTE format('UPDATE profiles p SET followers_count = (SELECT COUNT(*) FROM social_graph_relationships WHERE following_address = p.owner_address OR following_address = p.profile_id::text) WHERE p.owner_address IS NOT NULL');
+            EXECUTE format('UPDATE profiles p SET following_count = (SELECT COUNT(*) FROM social_graph_relationships WHERE follower_address = p.owner_address OR follower_address = p.profile_id::text) WHERE p.owner_address IS NOT NULL');
+        END IF;
     END IF;
 END $$;
 
