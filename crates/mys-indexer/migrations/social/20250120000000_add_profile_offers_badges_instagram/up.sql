@@ -1,3 +1,15 @@
+-- ============================================================================
+-- ENABLE TIMESCALEDB EXTENSION (if not already enabled)
+-- ============================================================================
+-- Ensure TimescaleDB extension is available before creating hypertables
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'timescaledb') THEN
+        CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+    END IF;
+END
+$$;
+
 -- Add Instagram username support to profiles table
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS instagram_username TEXT;
 
