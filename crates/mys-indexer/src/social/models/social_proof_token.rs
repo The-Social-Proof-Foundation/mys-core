@@ -456,3 +456,77 @@ pub struct UserTokenHolding {
     pub current_price: i64,
     pub value: i64,
 }
+
+/// SptReservationPoolWithDisplay extends SptReservationPool with display fields and proper timestamp
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName)]
+pub struct SptReservationPoolWithDisplay {
+    #[diesel(sql_type = diesel::sql_types::Integer)]
+    pub id: i32,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub pool_id: String,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub associated_id: String,
+    #[diesel(sql_type = diesel::sql_types::SmallInt)]
+    pub token_type: i16,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub owner: String,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub total_reserved: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub required_threshold: i64,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub status: String,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    #[serde(skip_serializing)]
+    pub created_at_epoch: i64,
+    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
+    pub created_at: DateTime<Utc>,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+    pub icon: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+    pub primary_label: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+    pub secondary_label: Option<String>,
+}
+
+/// SocialProofTokenPoolWithDisplay extends SocialProofTokenPoolWithPrice with display fields and proper timestamp
+#[derive(Debug, Clone, Serialize, Deserialize, QueryableByName)]
+pub struct SocialProofTokenPoolWithDisplay {
+    #[diesel(sql_type = diesel::sql_types::Integer)]
+    pub id: i32,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub pool_id: String,
+    #[diesel(sql_type = diesel::sql_types::SmallInt)]
+    pub token_type: i16,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub owner: String,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub associated_id: String,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub symbol: String,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub name: String,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub circulating_supply: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub base_price: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub quadratic_coefficient: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    #[serde(skip_serializing)]
+    pub created_at_epoch: i64,
+    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
+    pub created_at: DateTime<Utc>,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub transaction_id: String,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub current_price: i64,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+    pub icon: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+    pub primary_label: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+    pub secondary_label: Option<String>,
+}

@@ -20,8 +20,8 @@ use tracing::error;
 use crate::social::db::Database;
 use crate::social::models::social_proof_token::{
     PopularTokenPool, SocialProofPriceAggregation, SocialProofTokenHolding,
-    SocialProofTokenPoolWithPrice, SocialProofTokenTransaction, SptReservation, SptReservationPool,
-    UserTokenHolding, UserTokenHoldings,
+    SocialProofTokenPoolWithDisplay, SocialProofTokenPoolWithPrice, SocialProofTokenTransaction,
+    SptReservation, SptReservationPool, SptReservationPoolWithDisplay, UserTokenHolding,
 };
 
 // Shared query parameters
@@ -218,7 +218,7 @@ struct UserTokenHoldingRow {
 pub async fn get_spt_pool_by_id(
     State(db): State<Arc<Database>>,
     Path(id): Path<String>,
-) -> Result<Json<ApiResponse<SocialProofTokenPoolWithPrice>>, StatusCode> {
+) -> Result<Json<ApiResponse<SocialProofTokenPoolWithDisplay>>, StatusCode> {
     // Get a connection from the pool
     let mut conn = db.get_connection().await.map_err(|e| {
         error!("Database error: {}", e);
@@ -228,7 +228,55 @@ pub async fn get_spt_pool_by_id(
     // Using raw SQL with diesel because it's a complex query with custom joins
     let query = diesel::sql_query(
         r#"
-        SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
+        WITH latest_profiles AS (
+            SELECT DISTINCT ON (profile_id) *
+            FROM profiles
+            WHERE profile_id IS NOT NULL
+            ORDER BY profile_id, updated_at DESC
+        ),
+        latest_posts AS (
+            SELECT DISTINCT ON (post_id) *
+            FROM posts
+            ORDER BY post_id, time DESC
+        )
+        SELECT 
+            p.id,
+            p.pool_id,
+            p.token_type,
+            p.owner,
+            p.associated_id,
+            p.symbol,
+            p.name,
+            p.circulating_supply,
+            p.base_price,
+            p.quadratic_coefficient,
+            p.created_at as created_at_epoch,
+            p.time as created_at,
+            p.transaction_id,
+            COALESCE(ph.price, p.base_price) as current_price,
+            CASE 
+                WHEN p.token_type = 1 THEN prof.profile_photo
+                WHEN p.token_type = 2 THEN 
+                    CASE 
+                        WHEN post.media_urls IS NOT NULL AND jsonb_typeof(post.media_urls) = 'array' AND jsonb_array_length(post.media_urls) > 0 THEN
+                            CASE 
+                                WHEN jsonb_typeof(post.media_urls->0) = 'string' THEN post.media_urls->>0
+                                WHEN jsonb_typeof(post.media_urls->0) = 'object' THEN post.media_urls->0->>'url'
+                                ELSE NULL
+                            END
+                        ELSE NULL
+                    END
+                ELSE NULL
+            END as icon,
+            CASE 
+                WHEN p.token_type = 1 THEN COALESCE(prof.display_name, prof.username)
+                WHEN p.token_type = 2 THEN post.content
+                ELSE NULL
+            END as primary_label,
+            CASE 
+                WHEN p.token_type = 1 THEN prof.username
+                ELSE NULL
+            END as secondary_label
         FROM spt_pools p
         LEFT JOIN LATERAL (
             SELECT price
@@ -237,6 +285,18 @@ pub async fn get_spt_pool_by_id(
             ORDER BY time DESC
             LIMIT 1
         ) ph ON true
+        LEFT JOIN latest_profiles prof ON 
+            p.token_type = 1 AND 
+            (CASE 
+                WHEN p.associated_id LIKE 'profile_%' THEN SUBSTRING(p.associated_id FROM 9)
+                ELSE p.associated_id
+            END) = prof.profile_id
+        LEFT JOIN latest_posts post ON 
+            p.token_type = 2 AND 
+            (CASE 
+                WHEN p.associated_id LIKE 'post_%' THEN SUBSTRING(p.associated_id FROM 6)
+                ELSE p.associated_id
+            END) = post.post_id
         WHERE p.pool_id = $1
         ORDER BY p.time DESC
         LIMIT 1
@@ -245,7 +305,7 @@ pub async fn get_spt_pool_by_id(
     .bind::<diesel::sql_types::Text, _>(id);
 
     let result = query
-        .get_result::<SocialProofTokenPoolWithPrice>(&mut conn)
+        .get_result::<SocialProofTokenPoolWithDisplay>(&mut conn)
         .await
         .map_err(|e| {
             error!("Database error: {}", e);
@@ -263,7 +323,7 @@ pub async fn list_spt_pools(
     State(db): State<Arc<Database>>,
     Query(pagination): Query<PaginationParams>,
     Query(filters): Query<TokenPoolFilterParams>,
-) -> Result<Json<ApiResponse<Vec<SocialProofTokenPoolWithPrice>>>, StatusCode> {
+) -> Result<Json<ApiResponse<Vec<SocialProofTokenPoolWithDisplay>>>, StatusCode> {
     let limit = pagination.get_limit();
     let offset = pagination.get_offset();
 
@@ -275,7 +335,7 @@ pub async fn list_spt_pools(
 
     // Determine the sort field and direction
     let sort_field = match filters.sort_by.as_deref() {
-        Some("created") => "p.created_at",
+        Some("created") => "p.time",
         Some("supply") => "p.circulating_supply",
         Some("price") => "current_price",
         _ => "p.time", // Default sort by time
@@ -286,14 +346,73 @@ pub async fn list_spt_pools(
         _ => "DESC", // Default sort descending
     };
 
+    // Common CTEs for latest profiles and posts
+    let common_ctes = r#"
+        latest_profiles AS (
+            SELECT DISTINCT ON (profile_id) *
+            FROM profiles
+            WHERE profile_id IS NOT NULL
+            ORDER BY profile_id, updated_at DESC
+        ),
+        latest_posts AS (
+            SELECT DISTINCT ON (post_id) *
+            FROM posts
+            ORDER BY post_id, time DESC
+        )
+    "#;
+
     // Build and execute the query based on filter conditions
     let token_pools = match (filters.token_type, &filters.owner) {
         (Some(token_type), Some(owner)) => {
             // Both token_type and owner filters
             diesel::sql_query(&format!(
                 r#"
-                SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
-                FROM spt_pools p
+                WITH latest_pools AS (
+                    SELECT DISTINCT ON (pool_id) *
+                    FROM spt_pools
+                    WHERE token_type = $1 AND owner = $2
+                    ORDER BY pool_id, time DESC
+                ),
+                {}
+                SELECT 
+                    p.id,
+                    p.pool_id,
+                    p.token_type,
+                    p.owner,
+                    p.associated_id,
+                    p.symbol,
+                    p.name,
+                    p.circulating_supply,
+                    p.base_price,
+                    p.quadratic_coefficient,
+                    p.created_at as created_at_epoch,
+                    p.time as created_at,
+                    p.transaction_id,
+                    COALESCE(ph.price, p.base_price) as current_price,
+                    CASE 
+                        WHEN p.token_type = 1 THEN prof.profile_photo
+                        WHEN p.token_type = 2 THEN 
+                            CASE 
+                                WHEN post.media_urls IS NOT NULL AND jsonb_typeof(post.media_urls) = 'array' AND jsonb_array_length(post.media_urls) > 0 THEN
+                                    CASE 
+                                        WHEN jsonb_typeof(post.media_urls->0) = 'string' THEN post.media_urls->>0
+                                        WHEN jsonb_typeof(post.media_urls->0) = 'object' THEN post.media_urls->0->>'url'
+                                        ELSE NULL
+                                    END
+                                ELSE NULL
+                            END
+                        ELSE NULL
+                    END as icon,
+                    CASE 
+                        WHEN p.token_type = 1 THEN COALESCE(prof.display_name, prof.username)
+                        WHEN p.token_type = 2 THEN post.content
+                        ELSE NULL
+                    END as primary_label,
+                    CASE 
+                        WHEN p.token_type = 1 THEN prof.username
+                        ELSE NULL
+                    END as secondary_label
+                FROM latest_pools p
                 LEFT JOIN LATERAL (
                     SELECT price
                     FROM spt_price_history
@@ -301,30 +420,80 @@ pub async fn list_spt_pools(
                     ORDER BY time DESC
                     LIMIT 1
                 ) ph ON true
-                WHERE p.token_type = $1
-                  AND p.owner = $2
-                  AND p.time = (
-                    SELECT MAX(time) FROM spt_pools sub
-                    WHERE sub.pool_id = p.pool_id
-                  )
+                LEFT JOIN latest_profiles prof ON 
+                    p.token_type = 1 AND 
+                    (CASE 
+                        WHEN p.associated_id LIKE 'profile_%' THEN SUBSTRING(p.associated_id FROM 9)
+                        ELSE p.associated_id
+                    END) = prof.profile_id
+                LEFT JOIN latest_posts post ON 
+                    p.token_type = 2 AND 
+                    (CASE 
+                        WHEN p.associated_id LIKE 'post_%' THEN SUBSTRING(p.associated_id FROM 6)
+                        ELSE p.associated_id
+                    END) = post.post_id
                 ORDER BY {} {}
                 LIMIT $3 OFFSET $4
                 "#,
-                sort_field, sort_dir
+                common_ctes, sort_field, sort_dir
             ))
             .bind::<diesel::sql_types::SmallInt, _>(token_type)
             .bind::<diesel::sql_types::Text, _>(owner)
             .bind::<diesel::sql_types::BigInt, _>(limit)
             .bind::<diesel::sql_types::BigInt, _>(offset)
-            .load::<SocialProofTokenPoolWithPrice>(&mut conn)
+            .load::<SocialProofTokenPoolWithDisplay>(&mut conn)
             .await
         }
         (Some(token_type), None) => {
             // Only token_type filter
             diesel::sql_query(&format!(
                 r#"
-                SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
-                FROM spt_pools p
+                WITH latest_pools AS (
+                    SELECT DISTINCT ON (pool_id) *
+                    FROM spt_pools
+                    WHERE token_type = $1
+                    ORDER BY pool_id, time DESC
+                ),
+                {}
+                SELECT 
+                    p.id,
+                    p.pool_id,
+                    p.token_type,
+                    p.owner,
+                    p.associated_id,
+                    p.symbol,
+                    p.name,
+                    p.circulating_supply,
+                    p.base_price,
+                    p.quadratic_coefficient,
+                    p.created_at as created_at_epoch,
+                    p.time as created_at,
+                    p.transaction_id,
+                    COALESCE(ph.price, p.base_price) as current_price,
+                    CASE 
+                        WHEN p.token_type = 1 THEN prof.profile_photo
+                        WHEN p.token_type = 2 THEN 
+                            CASE 
+                                WHEN post.media_urls IS NOT NULL AND jsonb_typeof(post.media_urls) = 'array' AND jsonb_array_length(post.media_urls) > 0 THEN
+                                    CASE 
+                                        WHEN jsonb_typeof(post.media_urls->0) = 'string' THEN post.media_urls->>0
+                                        WHEN jsonb_typeof(post.media_urls->0) = 'object' THEN post.media_urls->0->>'url'
+                                        ELSE NULL
+                                    END
+                                ELSE NULL
+                            END
+                        ELSE NULL
+                    END as icon,
+                    CASE 
+                        WHEN p.token_type = 1 THEN COALESCE(prof.display_name, prof.username)
+                        WHEN p.token_type = 2 THEN post.content
+                        ELSE NULL
+                    END as primary_label,
+                    CASE 
+                        WHEN p.token_type = 1 THEN prof.username
+                        ELSE NULL
+                    END as secondary_label
+                FROM latest_pools p
                 LEFT JOIN LATERAL (
                     SELECT price
                     FROM spt_price_history
@@ -332,28 +501,79 @@ pub async fn list_spt_pools(
                     ORDER BY time DESC
                     LIMIT 1
                 ) ph ON true
-                WHERE p.token_type = $1
-                  AND p.time = (
-                    SELECT MAX(time) FROM spt_pools sub
-                    WHERE sub.pool_id = p.pool_id
-                  )
+                LEFT JOIN latest_profiles prof ON 
+                    p.token_type = 1 AND 
+                    (CASE 
+                        WHEN p.associated_id LIKE 'profile_%' THEN SUBSTRING(p.associated_id FROM 9)
+                        ELSE p.associated_id
+                    END) = prof.profile_id
+                LEFT JOIN latest_posts post ON 
+                    p.token_type = 2 AND 
+                    (CASE 
+                        WHEN p.associated_id LIKE 'post_%' THEN SUBSTRING(p.associated_id FROM 6)
+                        ELSE p.associated_id
+                    END) = post.post_id
                 ORDER BY {} {}
                 LIMIT $2 OFFSET $3
                 "#,
-                sort_field, sort_dir
+                common_ctes, sort_field, sort_dir
             ))
             .bind::<diesel::sql_types::SmallInt, _>(token_type)
             .bind::<diesel::sql_types::BigInt, _>(limit)
             .bind::<diesel::sql_types::BigInt, _>(offset)
-            .load::<SocialProofTokenPoolWithPrice>(&mut conn)
+            .load::<SocialProofTokenPoolWithDisplay>(&mut conn)
             .await
         }
         (None, Some(owner)) => {
             // Only owner filter
             diesel::sql_query(&format!(
                 r#"
-                SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
-                FROM spt_pools p
+                WITH latest_pools AS (
+                    SELECT DISTINCT ON (pool_id) *
+                    FROM spt_pools
+                    WHERE owner = $1
+                    ORDER BY pool_id, time DESC
+                ),
+                {}
+                SELECT 
+                    p.id,
+                    p.pool_id,
+                    p.token_type,
+                    p.owner,
+                    p.associated_id,
+                    p.symbol,
+                    p.name,
+                    p.circulating_supply,
+                    p.base_price,
+                    p.quadratic_coefficient,
+                    p.created_at as created_at_epoch,
+                    p.time as created_at,
+                    p.transaction_id,
+                    COALESCE(ph.price, p.base_price) as current_price,
+                    CASE 
+                        WHEN p.token_type = 1 THEN prof.profile_photo
+                        WHEN p.token_type = 2 THEN 
+                            CASE 
+                                WHEN post.media_urls IS NOT NULL AND jsonb_typeof(post.media_urls) = 'array' AND jsonb_array_length(post.media_urls) > 0 THEN
+                                    CASE 
+                                        WHEN jsonb_typeof(post.media_urls->0) = 'string' THEN post.media_urls->>0
+                                        WHEN jsonb_typeof(post.media_urls->0) = 'object' THEN post.media_urls->0->>'url'
+                                        ELSE NULL
+                                    END
+                                ELSE NULL
+                            END
+                        ELSE NULL
+                    END as icon,
+                    CASE 
+                        WHEN p.token_type = 1 THEN COALESCE(prof.display_name, prof.username)
+                        WHEN p.token_type = 2 THEN post.content
+                        ELSE NULL
+                    END as primary_label,
+                    CASE 
+                        WHEN p.token_type = 1 THEN prof.username
+                        ELSE NULL
+                    END as secondary_label
+                FROM latest_pools p
                 LEFT JOIN LATERAL (
                     SELECT price
                     FROM spt_price_history
@@ -361,28 +581,78 @@ pub async fn list_spt_pools(
                     ORDER BY time DESC
                     LIMIT 1
                 ) ph ON true
-                WHERE p.owner = $1
-                  AND p.time = (
-                    SELECT MAX(time) FROM spt_pools sub
-                    WHERE sub.pool_id = p.pool_id
-                  )
+                LEFT JOIN latest_profiles prof ON 
+                    p.token_type = 1 AND 
+                    (CASE 
+                        WHEN p.associated_id LIKE 'profile_%' THEN SUBSTRING(p.associated_id FROM 9)
+                        ELSE p.associated_id
+                    END) = prof.profile_id
+                LEFT JOIN latest_posts post ON 
+                    p.token_type = 2 AND 
+                    (CASE 
+                        WHEN p.associated_id LIKE 'post_%' THEN SUBSTRING(p.associated_id FROM 6)
+                        ELSE p.associated_id
+                    END) = post.post_id
                 ORDER BY {} {}
                 LIMIT $2 OFFSET $3
                 "#,
-                sort_field, sort_dir
+                common_ctes, sort_field, sort_dir
             ))
             .bind::<diesel::sql_types::Text, _>(owner)
             .bind::<diesel::sql_types::BigInt, _>(limit)
             .bind::<diesel::sql_types::BigInt, _>(offset)
-            .load::<SocialProofTokenPoolWithPrice>(&mut conn)
+            .load::<SocialProofTokenPoolWithDisplay>(&mut conn)
             .await
         }
         (None, None) => {
             // No filters
             diesel::sql_query(&format!(
                 r#"
-                SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
-                FROM spt_pools p
+                WITH latest_pools AS (
+                    SELECT DISTINCT ON (pool_id) *
+                    FROM spt_pools
+                    ORDER BY pool_id, time DESC
+                ),
+                {}
+                SELECT 
+                    p.id,
+                    p.pool_id,
+                    p.token_type,
+                    p.owner,
+                    p.associated_id,
+                    p.symbol,
+                    p.name,
+                    p.circulating_supply,
+                    p.base_price,
+                    p.quadratic_coefficient,
+                    p.created_at as created_at_epoch,
+                    p.time as created_at,
+                    p.transaction_id,
+                    COALESCE(ph.price, p.base_price) as current_price,
+                    CASE 
+                        WHEN p.token_type = 1 THEN prof.profile_photo
+                        WHEN p.token_type = 2 THEN 
+                            CASE 
+                                WHEN post.media_urls IS NOT NULL AND jsonb_typeof(post.media_urls) = 'array' AND jsonb_array_length(post.media_urls) > 0 THEN
+                                    CASE 
+                                        WHEN jsonb_typeof(post.media_urls->0) = 'string' THEN post.media_urls->>0
+                                        WHEN jsonb_typeof(post.media_urls->0) = 'object' THEN post.media_urls->0->>'url'
+                                        ELSE NULL
+                                    END
+                                ELSE NULL
+                            END
+                        ELSE NULL
+                    END as icon,
+                    CASE 
+                        WHEN p.token_type = 1 THEN COALESCE(prof.display_name, prof.username)
+                        WHEN p.token_type = 2 THEN post.content
+                        ELSE NULL
+                    END as primary_label,
+                    CASE 
+                        WHEN p.token_type = 1 THEN prof.username
+                        ELSE NULL
+                    END as secondary_label
+                FROM latest_pools p
                 LEFT JOIN LATERAL (
                     SELECT price
                     FROM spt_price_history
@@ -390,18 +660,26 @@ pub async fn list_spt_pools(
                     ORDER BY time DESC
                     LIMIT 1
                 ) ph ON true
-                WHERE p.time = (
-                    SELECT MAX(time) FROM spt_pools sub
-                    WHERE sub.pool_id = p.pool_id
-                )
+                LEFT JOIN latest_profiles prof ON 
+                    p.token_type = 1 AND 
+                    (CASE 
+                        WHEN p.associated_id LIKE 'profile_%' THEN SUBSTRING(p.associated_id FROM 9)
+                        ELSE p.associated_id
+                    END) = prof.profile_id
+                LEFT JOIN latest_posts post ON 
+                    p.token_type = 2 AND 
+                    (CASE 
+                        WHEN p.associated_id LIKE 'post_%' THEN SUBSTRING(p.associated_id FROM 6)
+                        ELSE p.associated_id
+                    END) = post.post_id
                 ORDER BY {} {}
                 LIMIT $1 OFFSET $2
                 "#,
-                sort_field, sort_dir
+                common_ctes, sort_field, sort_dir
             ))
             .bind::<diesel::sql_types::BigInt, _>(limit)
             .bind::<diesel::sql_types::BigInt, _>(offset)
-            .load::<SocialProofTokenPoolWithPrice>(&mut conn)
+            .load::<SocialProofTokenPoolWithDisplay>(&mut conn)
             .await
         }
     }
@@ -442,7 +720,7 @@ pub async fn list_spt_pools(
 pub async fn get_spt_pool_by_associated_id(
     State(db): State<Arc<Database>>,
     Path(id): Path<String>,
-) -> Result<Json<ApiResponse<SocialProofTokenPoolWithPrice>>, StatusCode> {
+) -> Result<Json<ApiResponse<SocialProofTokenPoolWithDisplay>>, StatusCode> {
     // Get a connection from the pool
     let mut conn = db.get_connection().await.map_err(|e| {
         error!("Database error: {}", e);
@@ -451,7 +729,55 @@ pub async fn get_spt_pool_by_associated_id(
 
     let query = diesel::sql_query(
         r#"
-        SELECT p.*, COALESCE(ph.price, p.base_price) as current_price
+        WITH latest_profiles AS (
+            SELECT DISTINCT ON (profile_id) *
+            FROM profiles
+            WHERE profile_id IS NOT NULL
+            ORDER BY profile_id, updated_at DESC
+        ),
+        latest_posts AS (
+            SELECT DISTINCT ON (post_id) *
+            FROM posts
+            ORDER BY post_id, time DESC
+        )
+        SELECT 
+            p.id,
+            p.pool_id,
+            p.token_type,
+            p.owner,
+            p.associated_id,
+            p.symbol,
+            p.name,
+            p.circulating_supply,
+            p.base_price,
+            p.quadratic_coefficient,
+            p.created_at as created_at_epoch,
+            p.time as created_at,
+            p.transaction_id,
+            COALESCE(ph.price, p.base_price) as current_price,
+            CASE 
+                WHEN p.token_type = 1 THEN prof.profile_photo
+                WHEN p.token_type = 2 THEN 
+                    CASE 
+                        WHEN post.media_urls IS NOT NULL AND jsonb_typeof(post.media_urls) = 'array' AND jsonb_array_length(post.media_urls) > 0 THEN
+                            CASE 
+                                WHEN jsonb_typeof(post.media_urls->0) = 'string' THEN post.media_urls->>0
+                                WHEN jsonb_typeof(post.media_urls->0) = 'object' THEN post.media_urls->0->>'url'
+                                ELSE NULL
+                            END
+                        ELSE NULL
+                    END
+                ELSE NULL
+            END as icon,
+            CASE 
+                WHEN p.token_type = 1 THEN COALESCE(prof.display_name, prof.username)
+                WHEN p.token_type = 2 THEN post.content
+                ELSE NULL
+            END as primary_label,
+            CASE 
+                WHEN p.token_type = 1 THEN prof.username
+                ELSE NULL
+            END as secondary_label
         FROM spt_pools p
         LEFT JOIN LATERAL (
             SELECT price
@@ -460,6 +786,18 @@ pub async fn get_spt_pool_by_associated_id(
             ORDER BY time DESC
             LIMIT 1
         ) ph ON true
+        LEFT JOIN latest_profiles prof ON 
+            p.token_type = 1 AND 
+            (CASE 
+                WHEN p.associated_id LIKE 'profile_%' THEN SUBSTRING(p.associated_id FROM 9)
+                ELSE p.associated_id
+            END) = prof.profile_id
+        LEFT JOIN latest_posts post ON 
+            p.token_type = 2 AND 
+            (CASE 
+                WHEN p.associated_id LIKE 'post_%' THEN SUBSTRING(p.associated_id FROM 6)
+                ELSE p.associated_id
+            END) = post.post_id
         WHERE p.associated_id = $1
         ORDER BY p.time DESC
         LIMIT 1
@@ -468,7 +806,7 @@ pub async fn get_spt_pool_by_associated_id(
     .bind::<diesel::sql_types::Text, _>(id);
 
     let result = query
-        .get_result::<SocialProofTokenPoolWithPrice>(&mut conn)
+        .get_result::<SocialProofTokenPoolWithDisplay>(&mut conn)
         .await
         .optional()
         .map_err(|e| {
@@ -768,7 +1106,7 @@ pub async fn get_spt_price_history(
 pub async fn get_spt_reservation_pools(
     State(db): State<Arc<Database>>,
     Query(pagination): Query<PaginationParams>,
-) -> Result<Json<ApiResponse<Vec<SptReservationPool>>>, StatusCode> {
+) -> Result<Json<ApiResponse<Vec<SptReservationPoolWithDisplay>>>, StatusCode> {
     let limit = pagination.get_limit();
     let offset = pagination.get_offset();
 
@@ -778,24 +1116,81 @@ pub async fn get_spt_reservation_pools(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    // Get active reservation pools
+    // Get active reservation pools with display fields from profiles/posts
     let reservation_pools = diesel::sql_query(
         r#"
         WITH latest_reservation_pools AS (
             SELECT DISTINCT ON (pool_id) *
             FROM spt_reservation_pools
             ORDER BY pool_id, time DESC
+        ),
+        latest_profiles AS (
+            SELECT DISTINCT ON (profile_id) *
+            FROM profiles
+            WHERE profile_id IS NOT NULL
+            ORDER BY profile_id, updated_at DESC
+        ),
+        latest_posts AS (
+            SELECT DISTINCT ON (post_id) *
+            FROM posts
+            ORDER BY post_id, time DESC
         )
-        SELECT *
-        FROM latest_reservation_pools
-        WHERE status = 'active' OR status = 'threshold_met'
-        ORDER BY total_reserved DESC
+        SELECT 
+            rp.id,
+            rp.pool_id,
+            rp.associated_id,
+            rp.token_type,
+            rp.owner,
+            rp.total_reserved,
+            rp.required_threshold,
+            rp.status,
+            rp.created_at as created_at_epoch,
+            rp.time as created_at,
+            rp.transaction_id,
+            CASE 
+                WHEN rp.token_type = 1 THEN prof.profile_photo
+                WHEN rp.token_type = 2 THEN 
+                    CASE 
+                        WHEN post.media_urls IS NOT NULL AND jsonb_typeof(post.media_urls) = 'array' AND jsonb_array_length(post.media_urls) > 0 THEN
+                            CASE 
+                                WHEN jsonb_typeof(post.media_urls->0) = 'string' THEN post.media_urls->>0
+                                WHEN jsonb_typeof(post.media_urls->0) = 'object' THEN post.media_urls->0->>'url'
+                                ELSE NULL
+                            END
+                        ELSE NULL
+                    END
+                ELSE NULL
+            END as icon,
+            CASE 
+                WHEN rp.token_type = 1 THEN COALESCE(prof.display_name, prof.username)
+                WHEN rp.token_type = 2 THEN post.content
+                ELSE NULL
+            END as primary_label,
+            CASE 
+                WHEN rp.token_type = 1 THEN prof.username
+                ELSE NULL
+            END as secondary_label
+        FROM latest_reservation_pools rp
+        LEFT JOIN latest_profiles prof ON 
+            rp.token_type = 1 AND 
+            (CASE 
+                WHEN rp.associated_id LIKE 'profile_%' THEN SUBSTRING(rp.associated_id FROM 9)
+                ELSE rp.associated_id
+            END) = prof.profile_id
+        LEFT JOIN latest_posts post ON 
+            rp.token_type = 2 AND 
+            (CASE 
+                WHEN rp.associated_id LIKE 'post_%' THEN SUBSTRING(rp.associated_id FROM 6)
+                ELSE rp.associated_id
+            END) = post.post_id
+        WHERE rp.status = 'active' OR rp.status = 'threshold_met'
+        ORDER BY rp.total_reserved DESC
         LIMIT $1 OFFSET $2
         "#,
     )
     .bind::<diesel::sql_types::BigInt, _>(limit)
     .bind::<diesel::sql_types::BigInt, _>(offset)
-    .load::<SptReservationPool>(&mut conn)
+    .load::<SptReservationPoolWithDisplay>(&mut conn)
     .await
     .map_err(|e| {
         error!("Database error: {}", e);
@@ -841,7 +1236,7 @@ pub async fn get_spt_reservation_pools(
 #[derive(Debug, Serialize)]
 pub struct EnhancedReservationPool {
     #[serde(flatten)]
-    pub pool: SptReservationPool,
+    pub pool: SptReservationPoolWithDisplay,
     pub total_fees_paid: i64,
     pub total_creator_fees: i64,
     pub total_platform_fees: i64,
@@ -868,18 +1263,80 @@ pub async fn get_spt_reservation_pool_by_id(
         id.clone()
     };
 
-    // Get the reservation pool
+    // Get the reservation pool with display fields
     let pool_result = diesel::sql_query(
         r#"
-        SELECT *
-        FROM spt_reservation_pools
-        WHERE pool_id = $1 OR associated_id = $1
-        ORDER BY time DESC
+        WITH latest_reservation_pools AS (
+            SELECT DISTINCT ON (pool_id) *
+            FROM spt_reservation_pools
+            WHERE pool_id = $1 OR associated_id = $1
+            ORDER BY pool_id, time DESC
+        ),
+        latest_profiles AS (
+            SELECT DISTINCT ON (profile_id) *
+            FROM profiles
+            WHERE profile_id IS NOT NULL
+            ORDER BY profile_id, updated_at DESC
+        ),
+        latest_posts AS (
+            SELECT DISTINCT ON (post_id) *
+            FROM posts
+            ORDER BY post_id, time DESC
+        )
+        SELECT 
+            rp.id,
+            rp.pool_id,
+            rp.associated_id,
+            rp.token_type,
+            rp.owner,
+            rp.total_reserved,
+            rp.required_threshold,
+            rp.status,
+            rp.created_at as created_at_epoch,
+            rp.time as created_at,
+            rp.transaction_id,
+            CASE 
+                WHEN rp.token_type = 1 THEN prof.profile_photo
+                WHEN rp.token_type = 2 THEN 
+                    CASE 
+                        WHEN post.media_urls IS NOT NULL AND jsonb_typeof(post.media_urls) = 'array' AND jsonb_array_length(post.media_urls) > 0 THEN
+                            CASE 
+                                WHEN jsonb_typeof(post.media_urls->0) = 'string' THEN post.media_urls->>0
+                                WHEN jsonb_typeof(post.media_urls->0) = 'object' THEN post.media_urls->0->>'url'
+                                ELSE NULL
+                            END
+                        ELSE NULL
+                    END
+                ELSE NULL
+            END as icon,
+            CASE 
+                WHEN rp.token_type = 1 THEN COALESCE(prof.display_name, prof.username)
+                WHEN rp.token_type = 2 THEN post.content
+                ELSE NULL
+            END as primary_label,
+            CASE 
+                WHEN rp.token_type = 1 THEN prof.username
+                ELSE NULL
+            END as secondary_label
+        FROM latest_reservation_pools rp
+        LEFT JOIN latest_profiles prof ON 
+            rp.token_type = 1 AND 
+            (CASE 
+                WHEN rp.associated_id LIKE 'profile_%' THEN SUBSTRING(rp.associated_id FROM 9)
+                ELSE rp.associated_id
+            END) = prof.profile_id
+        LEFT JOIN latest_posts post ON 
+            rp.token_type = 2 AND 
+            (CASE 
+                WHEN rp.associated_id LIKE 'post_%' THEN SUBSTRING(rp.associated_id FROM 6)
+                ELSE rp.associated_id
+            END) = post.post_id
+        ORDER BY rp.time DESC
         LIMIT 1
         "#,
     )
     .bind::<diesel::sql_types::Text, _>(pool_id.clone())
-    .get_result::<SptReservationPool>(&mut conn)
+    .get_result::<SptReservationPoolWithDisplay>(&mut conn)
     .await
     .optional()
     .map_err(|e| {
