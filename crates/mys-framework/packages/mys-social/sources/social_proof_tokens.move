@@ -769,7 +769,26 @@ module social_contracts::social_proof_tokens {
         // Ensure reserver has enough funds
         assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
         
+        // Calculate fees upfront based on desired reservation amount
+        validate_reservation_fees(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        
+        // Determine if fees should be on top or deducted from amount
+        let fees_on_top = coin::value(&payment) >= amount + fee_amount;
+        let net_amount = if (fees_on_top) {
+            // User has enough: reserve full amount, fees on top
+            amount
+        } else {
+            // User doesn't have enough for fees on top: deduct fees from amount
+            assert!(coin::value(&payment) >= amount, EInsufficientFunds);
+            amount - fee_amount
+        };
+        
         // Calculate and distribute fees (non-platform version)
+        // Fee distribution calculates fees from 'amount' and deducts from payment
+        // When fees_on_top: payment has amount+fees, after distribution: remaining = amount (correct!)
+        // When fees deducted: payment has amount, after distribution: remaining = amount - fees (correct!)
         let (mut remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = distribute_reservation_fees_with_post(
             config,
             reservation_pool_object,
@@ -779,9 +798,6 @@ module social_contracts::social_proof_tokens {
             treasury,
             ctx
         );
-        
-        // Net amount after fees
-        let net_amount = amount - fee_amount;
         
         // Check individual reservation limit (based on net amount)
         let max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / 10000;
@@ -857,11 +873,12 @@ module social_contracts::social_proof_tokens {
         };
         
         // Emit reservation created event
+        // amount field represents the actual reserved amount (net_amount)
         event::emit(ReservationCreatedEvent {
             associated_id: post_id,
             token_type: TOKEN_TYPE_POST,
             reserver,
-            amount,
+            amount: net_amount,
             total_reserved: reservation_pool_object.info.total_reserved,
             threshold_met,
             reserved_at: now,
@@ -915,7 +932,26 @@ module social_contracts::social_proof_tokens {
         assert!(platform::has_joined_platform(platform, reserver), EUserNotJoinedPlatform);
         assert!(!block_list::is_blocked(block_list_registry, platform_id, reserver), EUserBlockedByPlatform);
         
+        // Calculate fees upfront based on desired reservation amount
+        validate_reservation_fees(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        
+        // Determine if fees should be on top or deducted from amount
+        let fees_on_top = coin::value(&payment) >= amount + fee_amount;
+        let net_amount = if (fees_on_top) {
+            // User has enough: reserve full amount, fees on top
+            amount
+        } else {
+            // User doesn't have enough for fees on top: deduct fees from amount
+            assert!(coin::value(&payment) >= amount, EInsufficientFunds);
+            amount - fee_amount
+        };
+        
         // Calculate and distribute fees (platform version)
+        // Fee distribution calculates fees from 'amount' and deducts from payment
+        // When fees_on_top: payment has amount+fees, after distribution: remaining = amount (correct!)
+        // When fees deducted: payment has amount, after distribution: remaining = amount - fees (correct!)
         let (mut remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = distribute_reservation_fees_with_post_and_platform(
             config,
             reservation_pool_object,
@@ -926,9 +962,6 @@ module social_contracts::social_proof_tokens {
             platform,
             ctx
         );
-        
-        // Net amount after fees
-        let net_amount = amount - fee_amount;
         
         // Check individual reservation limit (based on net amount)
         let max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / 10000;
@@ -1003,11 +1036,12 @@ module social_contracts::social_proof_tokens {
         };
         
         // Emit reservation created event
+        // amount field represents the actual reserved amount (net_amount)
         event::emit(ReservationCreatedEvent {
             associated_id: post_id,
             token_type: TOKEN_TYPE_POST,
             reserver,
-            amount,
+            amount: net_amount,
             total_reserved: reservation_pool_object.info.total_reserved,
             threshold_met,
             reserved_at: now,
@@ -1049,7 +1083,26 @@ module social_contracts::social_proof_tokens {
         // Ensure reserver has enough funds
         assert!(coin::value(&payment) >= amount && amount > 0, EInsufficientFunds);
         
+        // Calculate fees upfront based on desired reservation amount
+        validate_reservation_fees(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        
+        // Determine if fees should be on top or deducted from amount
+        let fees_on_top = coin::value(&payment) >= amount + fee_amount;
+        let net_amount = if (fees_on_top) {
+            // User has enough: reserve full amount, fees on top
+            amount
+        } else {
+            // User doesn't have enough for fees on top: deduct fees from amount
+            assert!(coin::value(&payment) >= amount, EInsufficientFunds);
+            amount - fee_amount
+        };
+        
         // Calculate and distribute fees (non-platform version, no PoC for profiles)
+        // Fee distribution calculates fees from 'amount' and deducts from payment
+        // When fees_on_top: payment has amount+fees, after distribution: remaining = amount (correct!)
+        // When fees deducted: payment has amount, after distribution: remaining = amount - fees (correct!)
         let (mut remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = distribute_reservation_fees_no_poc(
             config,
             reservation_pool_object,
@@ -1058,9 +1111,6 @@ module social_contracts::social_proof_tokens {
             treasury,
             ctx
         );
-        
-        // Net amount after fees
-        let net_amount = amount - fee_amount;
         
         // Check individual reservation limit (based on net amount)
         let max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / 10000;
@@ -1136,11 +1186,12 @@ module social_contracts::social_proof_tokens {
         };
         
         // Emit reservation created event
+        // amount field represents the actual reserved amount (net_amount)
         event::emit(ReservationCreatedEvent {
             associated_id: profile_id,
             token_type: TOKEN_TYPE_PROFILE,
             reserver,
-            amount,
+            amount: net_amount,
             total_reserved: reservation_pool_object.info.total_reserved,
             threshold_met,
             reserved_at: now,
@@ -1191,7 +1242,26 @@ module social_contracts::social_proof_tokens {
         assert!(platform::has_joined_platform(platform, reserver), EUserNotJoinedPlatform);
         assert!(!block_list::is_blocked(block_list_registry, platform_id, reserver), EUserBlockedByPlatform);
         
+        // Calculate fees upfront based on desired reservation amount
+        validate_reservation_fees(config);
+        let reservation_total_fee_bps = calculate_reservation_total_fee_bps(config);
+        let fee_amount = calculate_fee_amount_safe(amount, reservation_total_fee_bps);
+        
+        // Determine if fees should be on top or deducted from amount
+        let fees_on_top = coin::value(&payment) >= amount + fee_amount;
+        let net_amount = if (fees_on_top) {
+            // User has enough: reserve full amount, fees on top
+            amount
+        } else {
+            // User doesn't have enough for fees on top: deduct fees from amount
+            assert!(coin::value(&payment) >= amount, EInsufficientFunds);
+            amount - fee_amount
+        };
+        
         // Calculate and distribute fees (platform version, no PoC for profiles)
+        // Fee distribution calculates fees from 'amount' and deducts from payment
+        // When fees_on_top: payment has amount+fees, after distribution: remaining = amount (correct!)
+        // When fees deducted: payment has amount, after distribution: remaining = amount - fees (correct!)
         let (mut remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = distribute_reservation_fees_no_poc_with_platform(
             config,
             reservation_pool_object,
@@ -1201,9 +1271,6 @@ module social_contracts::social_proof_tokens {
             platform,
             ctx
         );
-        
-        // Net amount after fees
-        let net_amount = amount - fee_amount;
         
         // Check individual reservation limit (based on net amount)
         let max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / 10000;
@@ -1278,11 +1345,12 @@ module social_contracts::social_proof_tokens {
         };
         
         // Emit reservation created event
+        // amount field represents the actual reserved amount (net_amount)
         event::emit(ReservationCreatedEvent {
             associated_id: profile_id,
             token_type: TOKEN_TYPE_PROFILE,
             reserver,
-            amount,
+            amount: net_amount,
             total_reserved: reservation_pool_object.info.total_reserved,
             threshold_met,
             reserved_at: now,
