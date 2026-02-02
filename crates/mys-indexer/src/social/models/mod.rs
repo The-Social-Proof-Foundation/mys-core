@@ -20,6 +20,7 @@ pub mod social_proof_token;
 pub mod social_proof_tokens_config;
 pub mod subscription;
 pub mod treasury;
+pub mod universal_user;
 pub mod vesting;
 
 pub use indexer::*;
@@ -106,3 +107,5 @@ pub use social_proof_of_truth::*;
 pub use insurance::*;
 // Treasury types
 pub use treasury::{EcosystemTreasury, NewEcosystemTreasury, get_current_treasury_address, get_current_treasury_details, get_treasury_history};
+// Universal user types
+pub use universal_user::{UniversalUserResult, SocialProofTokenInfo, ReservationStatus, SelectedBadgeInfo};

@@ -17,7 +17,7 @@ use tracing::{debug, error};
 use crate::social::db::DbPool;
 use crate::social::models::social_graph::{FollowDetail, FollowsQuery};
 use crate::social::schema::{profiles, social_graph_relationships};
-use crate::social::api::handlers::social_proof_token::get_reservation_pool_info_for_profiles;
+use crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data;
 
 // ==============================================================================
 // CHART DATA STRUCTURES
@@ -323,14 +323,14 @@ pub async fn get_following(
                 (None, String::new())
             };
 
-            // Collect wallet addresses for reservation pool lookup
+            // Collect wallet addresses for universal enrichment
             let wallet_addresses: Vec<String> = follows
                 .iter()
                 .map(|(_, _, owner_address, _, _, _)| owner_address.clone())
                 .collect();
 
-            // Get reservation pool info for all profiles
-            let reservation_info = get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+            // Enrich with universal user data
+            let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
                 .await
                 .unwrap_or_default();
 
@@ -339,7 +339,6 @@ pub async fn get_following(
             {
                 // Handle wallet-only addresses (no profile)
                 let id = id_opt.unwrap_or(0);
-                let username = username_opt.unwrap_or_else(|| "".to_string());
                 
                 // Calculate relationship status from viewer's perspective (if viewer_id provided)
                 let (is_following, follows_back) = if !viewer_wallet_address.is_empty() {
@@ -395,23 +394,24 @@ pub async fn get_following(
                     (false, false)
                 };
 
-                // Get reservation pool info for this address (only if it has a profile)
-                let res_info = if id > 0 {
-                    reservation_info.get(&owner_address).cloned()
-                } else {
-                    None
-                };
+                // Get universal user result (fallback to basic structure if not found)
+                let user = enriched_users.get(&owner_address).cloned().unwrap_or_else(|| {
+                    crate::social::models::universal_user::UniversalUserResult {
+                        wallet_address: owner_address.clone(),
+                        username: username_opt,
+                        fullname: display_name,
+                        profile_photo,
+                        social_proof_token: None,
+                        selected_badge: None,
+                    }
+                });
 
                 follows_detail.push(FollowDetail {
                     id,
                     profile_id: followed_profile_id,
-                    owner_address,
-                    username,
-                    display_name,
-                    profile_photo,
+                    user,
                     follows_back,
                     is_following,
-                    reservation_pool: res_info,
                 });
             }
 
@@ -689,14 +689,14 @@ pub async fn get_followers(
                 (None, String::new())
             };
 
-            // Collect wallet addresses for reservation pool lookup
+            // Collect wallet addresses for universal enrichment
             let wallet_addresses: Vec<String> = follows
                 .iter()
                 .map(|(_, _, owner_address, _, _, _)| owner_address.clone())
                 .collect();
 
-            // Get reservation pool info for all profiles
-            let reservation_info = get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+            // Enrich with universal user data
+            let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
                 .await
                 .unwrap_or_default();
 
@@ -705,7 +705,6 @@ pub async fn get_followers(
             {
                 // Handle wallet-only addresses (no profile)
                 let id = id_opt.unwrap_or(0);
-                let username = username_opt.unwrap_or_else(|| "".to_string());
                 
                 // Calculate relationship status from viewer's perspective (if viewer_id provided)
                 let (is_following, follows_back) = if !viewer_wallet_address.is_empty() {
@@ -761,23 +760,24 @@ pub async fn get_followers(
                     (false, false)
                 };
 
-                // Get reservation pool info for this address (only if it has a profile)
-                let res_info = if id > 0 {
-                    reservation_info.get(&owner_address).cloned()
-                } else {
-                    None
-                };
+                // Get universal user result (fallback to basic structure if not found)
+                let user = enriched_users.get(&owner_address).cloned().unwrap_or_else(|| {
+                    crate::social::models::universal_user::UniversalUserResult {
+                        wallet_address: owner_address.clone(),
+                        username: username_opt,
+                        fullname: display_name,
+                        profile_photo,
+                        social_proof_token: None,
+                        selected_badge: None,
+                    }
+                });
 
                 follows_detail.push(FollowDetail {
                     id,
                     profile_id: follower_profile_id,
-                    owner_address,
-                    username,
-                    display_name,
-                    profile_photo,
+                    user,
                     follows_back,
                     is_following,
-                    reservation_pool: res_info,
                 });
             }
 

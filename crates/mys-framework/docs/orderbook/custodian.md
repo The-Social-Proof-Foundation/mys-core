@@ -7,7 +7,11 @@ title: Module `orderbook::custodian`
 -  [Struct `Account`](#orderbook_custodian_Account)
 -  [Struct `AccountCap`](#orderbook_custodian_AccountCap)
 -  [Struct `Custodian`](#orderbook_custodian_Custodian)
+-  [Constants](#@Constants_0)
 -  [Function `mint_account_cap`](#orderbook_custodian_mint_account_cap)
+-  [Function `create_child_account_cap`](#orderbook_custodian_create_child_account_cap)
+-  [Function `delete_account_cap`](#orderbook_custodian_delete_account_cap)
+-  [Function `account_owner`](#orderbook_custodian_account_owner)
 -  [Function `account_balance`](#orderbook_custodian_account_balance)
 -  [Function `new`](#orderbook_custodian_new)
 -  [Function `withdraw_asset`](#orderbook_custodian_withdraw_asset)
@@ -86,6 +90,11 @@ title: Module `orderbook::custodian`
 
 ## Struct `AccountCap`
 
+Capability granting permission to access an entry in <code><a href="../orderbook/custodian.md#orderbook_custodian_Custodian">Custodian</a>.account_balances</code>.
+Calling <code><a href="../orderbook/custodian.md#orderbook_custodian_mint_account_cap">mint_account_cap</a></code> creates an "admin account cap" such that id == owner with
+the permission to both access funds and create new <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a></code>s.
+Calling <code><a href="../orderbook/custodian.md#orderbook_custodian_create_child_account_cap">create_child_account_cap</a></code> creates a "child account cap" such that id != owner
+that can access funds, but cannot create new <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a></code>s.
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a> <b>has</b> key, store
@@ -102,6 +111,13 @@ title: Module `orderbook::custodian`
 <code>id: <a href="../mys/object.md#mys_object_UID">mys::object::UID</a></code>
 </dt>
 <dd>
+</dd>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+ The owner of this AccountCap. Note: this is
+ derived from an object ID, not a user address
 </dd>
 </dl>
 
@@ -130,24 +146,39 @@ title: Module `orderbook::custodian`
 <dd>
 </dd>
 <dt>
-<code>account_balances: <a href="../mys/table.md#mys_table_Table">mys::table::Table</a>&lt;<a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, <a href="../orderbook/custodian.md#orderbook_custodian_Account">orderbook::custodian::Account</a>&lt;T&gt;&gt;</code>
+<code>account_balances: <a href="../mys/table.md#mys_table_Table">mys::table::Table</a>&lt;<b>address</b>, <a href="../orderbook/custodian.md#orderbook_custodian_Account">orderbook::custodian::Account</a>&lt;T&gt;&gt;</code>
 </dt>
 <dd>
- Map from an AccountCap object ID to an Account object
+ Map from the owner address of AccountCap object to an Account object
 </dd>
 </dl>
 
 
 </details>
 
+<a name="@Constants_0"></a>
+
+## Constants
+
+
+<a name="orderbook_custodian_EAdminAccountCapRequired"></a>
+
+
+
+<pre><code><b>const</b> <a href="../orderbook/custodian.md#orderbook_custodian_EAdminAccountCapRequired">EAdminAccountCapRequired</a>: u64 = 2;
+</code></pre>
+
+
+
 <a name="orderbook_custodian_mint_account_cap"></a>
 
 ## Function `mint_account_cap`
 
-Create an <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a></code> that can be used across all OrderBook pool
+Create an admin <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a></code> that can be used across all OrderBook pools, and has
+the permission to create new <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a></code>s that can access the same source of funds
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_mint_account_cap">mint_account_cap</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">orderbook::custodian::AccountCap</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_mint_account_cap">mint_account_cap</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">orderbook::custodian::AccountCap</a>
 </code></pre>
 
 
@@ -156,8 +187,92 @@ Create an <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCa
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_mint_account_cap">mint_account_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a> {
-    <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a> { id: object::new(ctx) }
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_mint_account_cap">mint_account_cap</a>(ctx: &<b>mut</b> TxContext): <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a> {
+    <b>let</b> id = object::new(ctx);
+    <b>let</b> owner = object::uid_to_address(&id);
+    <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a> { id, owner }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="orderbook_custodian_create_child_account_cap"></a>
+
+## Function `create_child_account_cap`
+
+Create a "child account cap" such that id != owner
+that can access funds, but cannot create new <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a></code>s.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_create_child_account_cap">create_child_account_cap</a>(admin_account_cap: &<a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">orderbook::custodian::AccountCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">orderbook::custodian::AccountCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_create_child_account_cap">create_child_account_cap</a>(admin_account_cap: &<a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a>, ctx: &<b>mut</b> TxContext): <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a> {
+    // Only the admin account cap can create <a href="../orderbook/custodian.md#orderbook_custodian_new">new</a> account caps
+    <b>assert</b>!(object::uid_to_address(&admin_account_cap.id) == admin_account_cap.owner, <a href="../orderbook/custodian.md#orderbook_custodian_EAdminAccountCapRequired">EAdminAccountCapRequired</a>);
+    <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a> {
+        id: object::new(ctx),
+        owner: admin_account_cap.owner
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="orderbook_custodian_delete_account_cap"></a>
+
+## Function `delete_account_cap`
+
+Destroy the given <code>account_cap</code> object
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_delete_account_cap">delete_account_cap</a>(account_cap: <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">orderbook::custodian::AccountCap</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_delete_account_cap">delete_account_cap</a>(account_cap: <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a>) {
+    <b>let</b> <a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a> { id, owner: _ } = account_cap;
+    object::delete(id)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="orderbook_custodian_account_owner"></a>
+
+## Function `account_owner`
+
+Return the owner of an AccountCap
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_account_owner">account_owner</a>(account_cap: &<a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">orderbook::custodian::AccountCap</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_account_owner">account_owner</a>(account_cap: &<a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a>): <b>address</b> {
+    account_cap.owner
 }
 </code></pre>
 
@@ -171,7 +286,7 @@ Create an <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCa
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_account_balance">account_balance</a>&lt;Asset&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;Asset&gt;, user: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>): (u64, u64)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_account_balance">account_balance</a>&lt;Asset&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;Asset&gt;, owner: <b>address</b>): (u64, u64)
 </code></pre>
 
 
@@ -182,13 +297,13 @@ Create an <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCa
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_account_balance">account_balance</a>&lt;Asset&gt;(
     <a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<a href="../orderbook/custodian.md#orderbook_custodian_Custodian">Custodian</a>&lt;Asset&gt;,
-    user: ID
+    owner: <b>address</b>
 ): (u64, u64) {
     // <b>if</b> <a href="../orderbook/custodian.md#orderbook_custodian">custodian</a> account is not created yet, directly <b>return</b> (0, 0) rather than <b>abort</b>
-    <b>if</b> (!table::contains(&<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances, user)) {
+    <b>if</b> (!table::contains(&<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances, owner)) {
         <b>return</b> (0, 0)
     };
-    <b>let</b> account_balances = table::borrow(&<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances, user);
+    <b>let</b> account_balances = table::borrow(&<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances, owner);
     <b>let</b> avail_balance = balance::value(&account_balances.available_balance);
     <b>let</b> locked_balance = balance::value(&account_balances.locked_balance);
     (avail_balance, locked_balance)
@@ -261,7 +376,7 @@ Create an <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCa
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_increase_user_available_balance">increase_user_available_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;T&gt;, user: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, quantity: <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;T&gt;)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_increase_user_available_balance">increase_user_available_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;T&gt;, owner: <b>address</b>, quantity: <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;T&gt;)
 </code></pre>
 
 
@@ -272,10 +387,10 @@ Create an <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCa
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_increase_user_available_balance">increase_user_available_balance</a>&lt;T&gt;(
     <a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Custodian">Custodian</a>&lt;T&gt;,
-    user: ID,
+    owner: <b>address</b>,
     quantity: Balance&lt;T&gt;,
 ) {
-    <b>let</b> account = <a href="../orderbook/custodian.md#orderbook_custodian_borrow_mut_account_balance">borrow_mut_account_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>, user);
+    <b>let</b> account = <a href="../orderbook/custodian.md#orderbook_custodian_borrow_mut_account_balance">borrow_mut_account_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>, owner);
     balance::join(&<b>mut</b> account.available_balance, quantity);
 }
 </code></pre>
@@ -304,7 +419,7 @@ Create an <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCa
     account_cap: &<a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a>,
     quantity: u64,
 ): Balance&lt;T&gt; {
-    <b>let</b> account = <a href="../orderbook/custodian.md#orderbook_custodian_borrow_mut_account_balance">borrow_mut_account_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>, object::uid_to_inner(&account_cap.id));
+    <b>let</b> account = <a href="../orderbook/custodian.md#orderbook_custodian_borrow_mut_account_balance">borrow_mut_account_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>, account_cap.owner);
     balance::split(&<b>mut</b> account.available_balance, quantity)
 }
 </code></pre>
@@ -333,7 +448,7 @@ Create an <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCa
     account_cap: &<a href="../orderbook/custodian.md#orderbook_custodian_AccountCap">AccountCap</a>,
     quantity: Balance&lt;T&gt;,
 ) {
-    <b>let</b> account = <a href="../orderbook/custodian.md#orderbook_custodian_borrow_mut_account_balance">borrow_mut_account_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>, object::uid_to_inner(&account_cap.id));
+    <b>let</b> account = <a href="../orderbook/custodian.md#orderbook_custodian_borrow_mut_account_balance">borrow_mut_account_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>, account_cap.owner);
     balance::join(&<b>mut</b> account.locked_balance, quantity);
 }
 </code></pre>
@@ -348,7 +463,7 @@ Create an <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCa
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_decrease_user_locked_balance">decrease_user_locked_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;T&gt;, user: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, quantity: u64): <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;T&gt;
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_decrease_user_locked_balance">decrease_user_locked_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;T&gt;, owner: <b>address</b>, quantity: u64): <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;T&gt;
 </code></pre>
 
 
@@ -359,10 +474,10 @@ Create an <code><a href="../orderbook/custodian.md#orderbook_custodian_AccountCa
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_decrease_user_locked_balance">decrease_user_locked_balance</a>&lt;T&gt;(
     <a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Custodian">Custodian</a>&lt;T&gt;,
-    user: ID,
+    owner: <b>address</b>,
     quantity: u64,
 ): Balance&lt;T&gt; {
-    <b>let</b> account = <a href="../orderbook/custodian.md#orderbook_custodian_borrow_mut_account_balance">borrow_mut_account_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>, user);
+    <b>let</b> account = <a href="../orderbook/custodian.md#orderbook_custodian_borrow_mut_account_balance">borrow_mut_account_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>, owner);
     split(&<b>mut</b> account.locked_balance, quantity)
 }
 </code></pre>
@@ -405,10 +520,10 @@ Move <code>quantity</code> from the unlocked balance of <code>user</code> to the
 
 ## Function `unlock_balance`
 
-Move <code>quantity</code> from the locked balance of <code>user</code> to the unlocked balacne of <code>user</code>
+Move <code>quantity</code> from the locked balance of <code>user</code> to the unlocked balance of <code>user</code>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_unlock_balance">unlock_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;T&gt;, user: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>, quantity: u64)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_unlock_balance">unlock_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;T&gt;, owner: <b>address</b>, quantity: u64)
 </code></pre>
 
 
@@ -419,11 +534,11 @@ Move <code>quantity</code> from the locked balance of <code>user</code> to the u
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_unlock_balance">unlock_balance</a>&lt;T&gt;(
     <a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Custodian">Custodian</a>&lt;T&gt;,
-    user: ID,
+    owner: <b>address</b>,
     quantity: u64,
 ) {
-    <b>let</b> locked_balance = <a href="../orderbook/custodian.md#orderbook_custodian_decrease_user_locked_balance">decrease_user_locked_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>, user, quantity);
-    <a href="../orderbook/custodian.md#orderbook_custodian_increase_user_available_balance">increase_user_available_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>, user, locked_balance)
+    <b>let</b> locked_balance = <a href="../orderbook/custodian.md#orderbook_custodian_decrease_user_locked_balance">decrease_user_locked_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>, owner, quantity);
+    <a href="../orderbook/custodian.md#orderbook_custodian_increase_user_available_balance">increase_user_available_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>, owner, locked_balance)
 }
 </code></pre>
 
@@ -437,7 +552,7 @@ Move <code>quantity</code> from the locked balance of <code>user</code> to the u
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_account_available_balance">account_available_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;T&gt;, user: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>): u64
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_account_available_balance">account_available_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;T&gt;, owner: <b>address</b>): u64
 </code></pre>
 
 
@@ -448,9 +563,9 @@ Move <code>quantity</code> from the locked balance of <code>user</code> to the u
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_account_available_balance">account_available_balance</a>&lt;T&gt;(
     <a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<a href="../orderbook/custodian.md#orderbook_custodian_Custodian">Custodian</a>&lt;T&gt;,
-    user: ID,
+    owner: <b>address</b>,
 ): u64 {
-    balance::value(&table::borrow(&<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances, user).available_balance)
+    balance::value(&table::borrow(&<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances, owner).available_balance)
 }
 </code></pre>
 
@@ -464,7 +579,7 @@ Move <code>quantity</code> from the locked balance of <code>user</code> to the u
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_account_locked_balance">account_locked_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;T&gt;, user: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>): u64
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_account_locked_balance">account_locked_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;T&gt;, owner: <b>address</b>): u64
 </code></pre>
 
 
@@ -475,9 +590,9 @@ Move <code>quantity</code> from the locked balance of <code>user</code> to the u
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_account_locked_balance">account_locked_balance</a>&lt;T&gt;(
     <a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<a href="../orderbook/custodian.md#orderbook_custodian_Custodian">Custodian</a>&lt;T&gt;,
-    user: ID,
+    owner: <b>address</b>,
 ): u64 {
-    balance::value(&table::borrow(&<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances, user).locked_balance)
+    balance::value(&table::borrow(&<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances, owner).locked_balance)
 }
 </code></pre>
 
@@ -491,7 +606,7 @@ Move <code>quantity</code> from the locked balance of <code>user</code> to the u
 
 
 
-<pre><code><b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_borrow_mut_account_balance">borrow_mut_account_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;T&gt;, user: <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>): &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Account">orderbook::custodian::Account</a>&lt;T&gt;
+<pre><code><b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_borrow_mut_account_balance">borrow_mut_account_balance</a>&lt;T&gt;(<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Custodian">orderbook::custodian::Custodian</a>&lt;T&gt;, owner: <b>address</b>): &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Account">orderbook::custodian::Account</a>&lt;T&gt;
 </code></pre>
 
 
@@ -502,16 +617,16 @@ Move <code>quantity</code> from the locked balance of <code>user</code> to the u
 
 <pre><code><b>fun</b> <a href="../orderbook/custodian.md#orderbook_custodian_borrow_mut_account_balance">borrow_mut_account_balance</a>&lt;T&gt;(
     <a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>: &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Custodian">Custodian</a>&lt;T&gt;,
-    user: ID,
+    owner: <b>address</b>,
 ): &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian_Account">Account</a>&lt;T&gt; {
-    <b>if</b> (!table::contains(&<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances, user)) {
+    <b>if</b> (!table::contains(&<a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances, owner)) {
         table::add(
             &<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances,
-            user,
+            owner,
             <a href="../orderbook/custodian.md#orderbook_custodian_Account">Account</a> { available_balance: balance::zero(), locked_balance: balance::zero() }
         );
     };
-    table::borrow_mut(&<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances, user)
+    table::borrow_mut(&<b>mut</b> <a href="../orderbook/custodian.md#orderbook_custodian">custodian</a>.account_balances, owner)
 }
 </code></pre>
 

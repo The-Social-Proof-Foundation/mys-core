@@ -1062,9 +1062,11 @@ of the validator.
     // Only check min <a href="../mys_system/validator.md#mys_system_validator">validator</a> condition <b>if</b> the current number of validators satisfy the constraint.
     // This is so that <b>if</b> we somehow already are in a state where we have less than min validators, it no longer matters
     // and is ok to stay so. This is useful <b>for</b> a test setup.
-    <b>if</b> (self.validators.active_validators().length() &gt;= self.parameters.min_validator_count) {
+    <b>if</b> (self.parameters.min_validator_count &gt; 0 && self.validators.active_validators().length() &gt;= self.parameters.min_validator_count) {
+        // Check that after this removal, we'll still have more than min_validator_count validators.
+        // We subtract 1 because next_epoch_validator_count() doesn't include this removal yet.
         <b>assert</b>!(
-            self.validators.next_epoch_validator_count() &gt; self.parameters.min_validator_count,
+            self.validators.next_epoch_validator_count() - 1 &gt; self.parameters.min_validator_count,
             <a href="../mys_system/mys_system_state_inner.md#mys_system_mys_system_state_inner_ELimitExceeded">ELimitExceeded</a>,
         );
     };

@@ -15,7 +15,7 @@ use crate::social::models::blocking::{
     PaginationMetadata,
 };
 use crate::social::schema::{blocked_profiles, profiles};
-use crate::social::api::handlers::social_proof_token::get_reservation_pool_info_for_profiles;
+use crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data;
 
 /// Response type for blocked platforms list
 #[derive(Debug, Serialize)]
@@ -185,19 +185,22 @@ pub async fn get_blocked_profiles(
         .map(|blocked_profile| blocked_profile.into())
         .collect();
 
-    // Get reservation pool info for all blocked profiles
+    // Get wallet addresses for universal enrichment
     let wallet_addresses: Vec<String> = enriched_blocked_profiles
         .iter()
-        .map(|p| p.wallet_address.clone())
+        .map(|p| p.user.wallet_address.clone())
         .collect();
 
-    let reservation_info = get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+    // Enrich with universal user data
+    let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
         .await
         .unwrap_or_default();
 
-    // Add reservation pool info to each profile
+    // Update each profile with enriched user data
     for profile in &mut enriched_blocked_profiles {
-        profile.reservation_pool = reservation_info.get(&profile.wallet_address).cloned();
+        if let Some(enriched_user) = enriched_users.get(&profile.user.wallet_address) {
+            profile.user = enriched_user.clone();
+        }
     }
 
     let total_count = enriched_blocked_profiles.len() as i64;

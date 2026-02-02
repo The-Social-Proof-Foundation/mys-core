@@ -23,6 +23,7 @@ use crate::social::models::social_proof_token::{
     SocialProofTokenPoolWithDisplay, SocialProofTokenTransaction,
     SptReservation, SptReservationPoolWithDisplay, UserTokenHolding,
 };
+use crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data;
 
 // Shared query parameters
 #[derive(Debug, Deserialize)]
@@ -897,11 +898,20 @@ pub async fn get_spt_transactions(
 }
 
 /// Get token holdings for a token pool
+// SPT holding response with universal user data
+#[derive(Debug, Serialize)]
+pub struct SocialProofTokenHoldingWithUser {
+    #[serde(flatten)]
+    pub holding: SocialProofTokenHolding,
+    // Universal user result with profile, badge, and SPT info
+    pub user: crate::social::models::universal_user::UniversalUserResult,
+}
+
 pub async fn get_spt_holdings(
     State(db): State<Arc<Database>>,
     Path(id): Path<String>,
     Query(pagination): Query<PaginationParams>,
-) -> Result<Json<ApiResponse<Vec<SocialProofTokenHolding>>>, StatusCode> {
+) -> Result<Json<ApiResponse<Vec<SocialProofTokenHoldingWithUser>>>, StatusCode> {
     let limit = pagination.get_limit();
     let offset = pagination.get_offset();
 
@@ -937,6 +947,40 @@ pub async fn get_spt_holdings(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
+    // Get wallet addresses for universal enrichment
+    let wallet_addresses: Vec<String> = holdings.iter()
+        .map(|h| h.holder_address.clone())
+        .collect();
+
+    // Enrich with universal user data
+    let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error enriching users: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // Build holdings with user data
+    let holdings_with_users: Vec<SocialProofTokenHoldingWithUser> = holdings.into_iter()
+        .map(|holding| {
+            let user = enriched_users.get(&holding.holder_address).cloned().unwrap_or_else(|| {
+                crate::social::models::universal_user::UniversalUserResult {
+                    wallet_address: holding.holder_address.clone(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
+
+            SocialProofTokenHoldingWithUser {
+                holding,
+                user,
+            }
+        })
+        .collect();
+
     // Count total for pagination
     let total_count = diesel::sql_query(
         r#"
@@ -963,7 +1007,7 @@ pub async fn get_spt_holdings(
     let total_pages = (total + limit - 1) / limit;
 
     Ok(Json(ApiResponse {
-        data: holdings,
+        data: holdings_with_users,
         pagination: Some(PaginationInfo {
             page: pagination.get_page(),
             limit,
@@ -1426,12 +1470,21 @@ pub async fn get_spt_reservation_pool_by_id(
     }))
 }
 
+// SPT reservation response with universal user data
+#[derive(Debug, Serialize)]
+pub struct SptReservationWithUser {
+    #[serde(flatten)]
+    pub reservation: SptReservation,
+    // Universal user result with profile, badge, and SPT info
+    pub user: crate::social::models::universal_user::UniversalUserResult,
+}
+
 /// Get reservations for a pool
 pub async fn get_spt_reservations_by_pool(
     State(db): State<Arc<Database>>,
     Path(id): Path<String>,
     Query(pagination): Query<PaginationParams>,
-) -> Result<Json<ApiResponse<Vec<SptReservation>>>, StatusCode> {
+) -> Result<Json<ApiResponse<Vec<SptReservationWithUser>>>, StatusCode> {
     let limit = pagination.get_limit();
     let offset = pagination.get_offset();
 
@@ -1511,6 +1564,40 @@ pub async fn get_spt_reservations_by_pool(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
+    // Get wallet addresses for universal enrichment
+    let wallet_addresses: Vec<String> = reservations.iter()
+        .map(|r| r.reserver_address.clone())
+        .collect();
+
+    // Enrich with universal user data
+    let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
+        .await
+        .map_err(|e| {
+            error!("Database error enriching users: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // Build reservations with user data
+    let reservations_with_users: Vec<SptReservationWithUser> = reservations.into_iter()
+        .map(|reservation| {
+            let user = enriched_users.get(&reservation.reserver_address).cloned().unwrap_or_else(|| {
+                crate::social::models::universal_user::UniversalUserResult {
+                    wallet_address: reservation.reserver_address.clone(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
+
+            SptReservationWithUser {
+                reservation,
+                user,
+            }
+        })
+        .collect();
+
     // Count total for pagination
     let total_count = diesel::sql_query(
         r#"
@@ -1537,7 +1624,7 @@ pub async fn get_spt_reservations_by_pool(
     let total_pages = (total + limit - 1) / limit;
 
     Ok(Json(ApiResponse {
-        data: reservations,
+        data: reservations_with_users,
         pagination: Some(PaginationInfo {
             page: pagination.get_page(),
             limit,

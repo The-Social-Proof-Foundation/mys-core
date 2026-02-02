@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::social::schema::blocked_profiles;
+use crate::social::models::universal_user::UniversalUserResult;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -80,41 +81,42 @@ impl NewBlockedProfile {
     }
 }
 
-/// Enriched blocked profile information for API responses (now maps directly to table fields)
+/// Enriched blocked profile information for API responses
 #[derive(Debug, Serialize)]
 pub struct EnrichedBlockedProfile {
     // Profile Identity
     pub profile_id: Option<String>,   // Blockchain profile ID
-    pub wallet_address: String,       // Wallet address
-    pub username: String,             // @username
-    pub display_name: Option<String>, // Display name
-
-    // Profile Media
-    pub profile_photo: Option<String>, // Profile photo URL
+    
+    // Universal user result with profile, badge, and SPT info
+    #[serde(flatten)]
+    pub user: UniversalUserResult,
 
     // Blocking Metadata
     pub blocked_at: NaiveDateTime,          // When last blocked
     pub first_blocked_at: NaiveDateTime,    // When first blocked
     pub total_block_count: i32,             // Times blocked
-
-    // Reservation Pool Info
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reservation_pool: Option<crate::social::api::handlers::social_proof_token::ReservationPoolInfo>,
 }
 
 impl From<BlockedProfile> for EnrichedBlockedProfile {
     /// Convert from BlockedProfile model to API response format
+    /// Note: UniversalUserResult will be populated by the handler using enrich_users_with_universal_data
     fn from(blocked_profile: BlockedProfile) -> Self {
+        // Create a temporary UniversalUserResult - will be replaced by handler
+        let user = UniversalUserResult {
+            wallet_address: blocked_profile.blocked_address.clone(),
+            username: Some(blocked_profile.blocked_username.clone()),
+            fullname: blocked_profile.blocked_display_name.clone(),
+            profile_photo: blocked_profile.blocked_profile_photo.clone(),
+            social_proof_token: None, // Will be populated by handler
+            selected_badge: None, // Will be populated by handler
+        };
+        
         Self {
             profile_id: blocked_profile.blocked_profile_id,
-            wallet_address: blocked_profile.blocked_address,
-            username: blocked_profile.blocked_username,
-            display_name: blocked_profile.blocked_display_name,
-            profile_photo: blocked_profile.blocked_profile_photo,
+            user,
             blocked_at: blocked_profile.last_blocked_at,
             first_blocked_at: blocked_profile.first_blocked_at,
             total_block_count: blocked_profile.total_block_count,
-            reservation_pool: None, // Will be populated by the handler
         }
     }
 }

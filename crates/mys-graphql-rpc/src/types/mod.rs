@@ -41,6 +41,7 @@ pub(crate) mod object_change;
 pub(crate) mod object_read;
 pub(crate) mod open_move_type;
 pub(crate) mod owner;
+pub(crate) mod profile;
 pub(crate) mod protocol_config;
 pub(crate) mod query;
 pub(crate) mod safe_mode;

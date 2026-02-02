@@ -3116,6 +3116,15 @@ Custodian
 	public struct
 	0xb0c::custodian
 mint_account_cap
+	public(package) fun
+	0xb0c::custodian
+create_child_account_cap
+	public fun
+	0xb0c::custodian
+delete_account_cap
+	public fun
+	0xb0c::custodian
+account_owner
 	public fun
 	0xb0c::custodian
 account_balance
@@ -3226,177 +3235,6 @@ update_child
 is_left_child
 	fun
 	0xb0c::critbit
-PoolCreated
-	public struct
-	0xb0c::clob
-OrderPlacedV2
-	public struct
-	0xb0c::clob
-OrderCanceled
-	public struct
-	0xb0c::clob
-OrderFilledV2
-	public struct
-	0xb0c::clob
-Order
-	public struct
-	0xb0c::clob
-TickLevel
-	public struct
-	0xb0c::clob
-Pool
-	public struct
-	0xb0c::clob
-OrderPlaced
-	public struct
-	0xb0c::clob
-OrderFilled
-	public struct
-	0xb0c::clob
-destroy_empty_level
-	fun
-	0xb0c::clob
-create_account
-	public fun
-	0xb0c::clob
-create_pool
-	public fun
-	0xb0c::clob
-deposit_base
-	public fun
-	0xb0c::clob
-deposit_quote
-	public fun
-	0xb0c::clob
-withdraw_base
-	public fun
-	0xb0c::clob
-withdraw_quote
-	public fun
-	0xb0c::clob
-swap_exact_base_for_quote
-	public fun
-	0xb0c::clob
-swap_exact_quote_for_base
-	public fun
-	0xb0c::clob
-match_bid_with_quote_quantity
-	fun
-	0xb0c::clob
-match_bid
-	fun
-	0xb0c::clob
-match_ask
-	fun
-	0xb0c::clob
-place_market_order
-	public fun
-	0xb0c::clob
-inject_limit_order
-	fun
-	0xb0c::clob
-place_limit_order
-	public fun
-	0xb0c::clob
-order_is_bid
-	fun
-	0xb0c::clob
-emit_order_canceled
-	fun
-	0xb0c::clob
-emit_order_filled
-	fun
-	0xb0c::clob
-cancel_order
-	public fun
-	0xb0c::clob
-remove_order
-	fun
-	0xb0c::clob
-cancel_all_orders
-	public fun
-	0xb0c::clob
-batch_cancel_order
-	public fun
-	0xb0c::clob
-list_open_orders
-	public fun
-	0xb0c::clob
-account_balance
-	public fun
-	0xb0c::clob
-get_market_price
-	public fun
-	0xb0c::clob
-get_level2_book_status_bid_side
-	public fun
-	0xb0c::clob
-get_level2_book_status_ask_side
-	public fun
-	0xb0c::clob
-get_level2_book_status
-	fun
-	0xb0c::clob
-get_order_status
-	public fun
-	0xb0c::clob
-Account
-	public struct
-	0xb0c::custodian
-AccountCap
-	public struct
-	0xb0c::custodian
-Custodian
-	public struct
-	0xb0c::custodian
-mint_account_cap
-	public(package) fun
-	0xb0c::custodian
-create_child_account_cap
-	public fun
-	0xb0c::custodian
-delete_account_cap
-	public fun
-	0xb0c::custodian
-account_owner
-	public fun
-	0xb0c::custodian
-account_balance
-	public(package) fun
-	0xb0c::custodian
-new
-	public(package) fun
-	0xb0c::custodian
-withdraw_asset
-	public(package) fun
-	0xb0c::custodian
-increase_user_available_balance
-	public(package) fun
-	0xb0c::custodian
-decrease_user_available_balance
-	public(package) fun
-	0xb0c::custodian
-increase_user_locked_balance
-	public(package) fun
-	0xb0c::custodian
-decrease_user_locked_balance
-	public(package) fun
-	0xb0c::custodian
-lock_balance
-	public(package) fun
-	0xb0c::custodian
-unlock_balance
-	public(package) fun
-	0xb0c::custodian
-account_available_balance
-	public(package) fun
-	0xb0c::custodian
-account_locked_balance
-	public(package) fun
-	0xb0c::custodian
-borrow_mut_account_balance
-	fun
-	0xb0c::custodian
 PoolCreated
 	public struct
 	0xb0c::clob
@@ -5985,6 +5823,18 @@ EmergencyKillSwitchEvent
 	0x50c1::social_proof_tokens
 PocRedirectionUpdatedEvent
 	public struct
+	0x50c1::social_proof_tokens
+split_social_token
+	public fun
+	0x50c1::social_proof_tokens
+merge_social_tokens
+	public fun
+	0x50c1::social_proof_tokens
+split_social_token_entry
+	public entry fun
+	0x50c1::social_proof_tokens
+merge_social_tokens_entry
+	public entry fun
 	0x50c1::social_proof_tokens
 bootstrap_init
 	public(package) fun

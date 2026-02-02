@@ -564,23 +564,6 @@ impl Query {
             .extend()
     }
 
-    /// Resolves a MysNS `domain` name to an address, if it has been bound.
-    async fn resolve_mysns_address(
-        &self,
-        ctx: &Context<'_>,
-        domain: Domain,
-    ) -> Result<Option<Address>> {
-        let Watermark { checkpoint, .. } = *ctx.data()?;
-        Ok(NameService::resolve_to_record(ctx, &domain, checkpoint)
-            .await
-            .extend()?
-            .and_then(|r| r.target_address)
-            .map(|a| Address {
-                address: a.into(),
-                checkpoint_viewed_at: checkpoint,
-            }))
-    }
-
     /// Fetch a package by its name (using dot move service)
     async fn package_by_name(
         &self,

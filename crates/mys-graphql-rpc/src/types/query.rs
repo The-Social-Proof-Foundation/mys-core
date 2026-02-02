@@ -38,12 +38,14 @@ use super::{
     mysns_registration::Domain,
     object::{self, Object, ObjectFilter},
     owner::Owner,
+    profile::Profile,
     protocol_config::ProtocolConfigs,
     transaction_block::{self, TransactionBlock, TransactionBlockFilter},
     transaction_metadata::TransactionMetadata,
     type_filter::ExactTypeFilter,
 };
 use crate::connection::ScanConnection;
+use crate::data::Db;
 use crate::server::watermark_task::Watermark;
 use crate::types::base64::Base64 as GraphQLBase64;
 use crate::types::zklogin_verify_signature::verify_zklogin_signature;
@@ -553,23 +555,6 @@ impl Query {
             .extend()
     }
 
-    /// Resolves a MysNS `domain` name to an address, if it has been bound.
-    async fn resolve_mysns_address(
-        &self,
-        ctx: &Context<'_>,
-        domain: Domain,
-    ) -> Result<Option<Address>> {
-        let Watermark { hi_cp, .. } = *ctx.data()?;
-        Ok(NameService::resolve_to_record(ctx, &domain, hi_cp)
-            .await
-            .extend()?
-            .and_then(|r| r.target_address)
-            .map(|a| Address {
-                address: a.into(),
-                checkpoint_viewed_at: hi_cp,
-            }))
-    }
-
     /// Fetch a package by its name (using dot move service)
     async fn package_by_name(
         &self,
@@ -624,6 +609,199 @@ impl Query {
         verify_zklogin_signature(ctx, bytes, signature, intent_scope, author)
             .await
             .extend()
+    }
+
+    /// Get a profile by wallet address
+    async fn profile(&self, ctx: &Context<'_>, address: String) -> Result<Option<Profile>> {
+        let db: &Db = ctx.data()?;
+        
+        // Get connection from pool
+        let mut conn = db
+            .inner
+            .pool()
+            .get()
+            .await
+            .map_err(|e| Error::Internal(format!("Failed to get database connection: {}", e)))?;
+
+        // Query profile from database
+        use diesel::prelude::*;
+        use diesel_async::RunQueryDsl;
+        use mys_indexer::social::schema::profiles;
+        use mys_indexer::social::models::Profile as DbProfile;
+
+        let db_profile_result = profiles::table
+            .filter(profiles::owner_address.eq(&address))
+            .first::<DbProfile>(&mut conn)
+            .await;
+
+        let db_profile = match db_profile_result {
+            Ok(profile) => profile,
+            Err(diesel::result::Error::NotFound) => return Ok(None),
+            Err(e) => {
+                return Err(Error::Internal(format!("Database error: {}", e))).extend();
+            }
+        };
+
+        // Enrich with universal user data
+        use mys_indexer::social::api::helpers::user_enrichment::enrich_users_with_universal_data;
+        let wallet_addresses = vec![db_profile.owner_address.clone()];
+        let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
+            .await
+            .map_err(|e| Error::Internal(format!("Enrichment error: {}", e)))?;
+
+        let enriched = enriched_users.get(&db_profile.owner_address);
+
+        // Convert to GraphQL Profile
+        let mut profile = Profile::from_db_profile(&db_profile)
+            .map_err(|e| Error::Internal(format!("Failed to convert profile: {}", e)))?;
+
+        // Add enrichment data via a custom resolver approach
+        // We'll store enrichment data in the Profile struct
+        if let Some(enriched_data) = enriched {
+            if let Some(spt) = &enriched_data.social_proof_token {
+                profile.social_proof_token = Some(spt.clone().into());
+            }
+            if let Some(badge) = &enriched_data.selected_badge {
+                profile.selected_badge = Some(badge.clone().into());
+            }
+        }
+
+        Ok(Some(profile))
+    }
+
+    /// Get a profile by username
+    async fn profile_by_username(
+        &self,
+        ctx: &Context<'_>,
+        username: String,
+    ) -> Result<Option<Profile>> {
+        let db: &Db = ctx.data()?;
+        
+        // Get connection from pool
+        let mut conn = db
+            .inner
+            .pool()
+            .get()
+            .await
+            .map_err(|e| Error::Internal(format!("Failed to get database connection: {}", e)))?;
+
+        // Query profile from database
+        use diesel::prelude::*;
+        use diesel_async::RunQueryDsl;
+        use mys_indexer::social::schema::profiles;
+        use mys_indexer::social::models::Profile as DbProfile;
+
+        let db_profile_result = profiles::table
+            .filter(profiles::username.eq(&username))
+            .first::<DbProfile>(&mut conn)
+            .await;
+
+        let db_profile = match db_profile_result {
+            Ok(profile) => profile,
+            Err(diesel::result::Error::NotFound) => return Ok(None),
+            Err(e) => {
+                return Err(Error::Internal(format!("Database error: {}", e))).extend();
+            }
+        };
+
+        // Enrich with universal user data
+        use mys_indexer::social::api::helpers::user_enrichment::enrich_users_with_universal_data;
+        let wallet_addresses = vec![db_profile.owner_address.clone()];
+        let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
+            .await
+            .map_err(|e| Error::Internal(format!("Enrichment error: {}", e)))?;
+
+        let enriched = enriched_users.get(&db_profile.owner_address);
+
+        // Convert to GraphQL Profile
+        let mut profile = Profile::from_db_profile(&db_profile)
+            .map_err(|e| Error::Internal(format!("Failed to convert profile: {}", e)))?;
+
+        // Add enrichment data
+        if let Some(enriched_data) = enriched {
+            if let Some(spt) = &enriched_data.social_proof_token {
+                profile.social_proof_token = Some(spt.clone().into());
+            }
+            if let Some(badge) = &enriched_data.selected_badge {
+                profile.selected_badge = Some(badge.clone().into());
+            }
+        }
+
+        Ok(Some(profile))
+    }
+
+    /// List profiles with pagination
+    async fn profiles(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<i32>,
+        offset: Option<i32>,
+    ) -> Result<Vec<Profile>> {
+        let db: &Db = ctx.data()?;
+        
+        // Get connection from pool
+        let mut conn = db
+            .inner
+            .pool()
+            .get()
+            .await
+            .map_err(|e| Error::Internal(format!("Failed to get database connection: {}", e)))?;
+
+        // Query profiles from database
+        use diesel::prelude::*;
+        use diesel_async::RunQueryDsl;
+        use mys_indexer::social::schema::profiles;
+        use mys_indexer::social::models::Profile as DbProfile;
+
+        let limit = limit.unwrap_or(50).min(100);
+        let offset = offset.unwrap_or(0);
+
+        let db_profiles_result = profiles::table
+            .order_by(profiles::id.desc())
+            .limit(limit as i64)
+            .offset(offset as i64)
+            .load::<DbProfile>(&mut conn)
+            .await;
+
+        let db_profiles = db_profiles_result
+            .map_err(|e| Error::Internal(format!("Database error: {}", e)))?;
+
+        if db_profiles.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Get wallet addresses for enrichment
+        let wallet_addresses: Vec<String> = db_profiles
+            .iter()
+            .map(|p| p.owner_address.clone())
+            .collect();
+
+        // Enrich with universal user data
+        use mys_indexer::social::api::helpers::user_enrichment::enrich_users_with_universal_data;
+        let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
+            .await
+            .map_err(|e| Error::Internal(format!("Enrichment error: {}", e)))?;
+
+        // Convert to GraphQL Profiles
+        let mut graphql_profiles = Vec::new();
+        for db_profile in db_profiles {
+            let mut profile = Profile::from_db_profile(&db_profile)
+                .map_err(|e| Error::Internal(format!("Failed to convert profile: {}", e)))?;
+
+            // Add enrichment data
+            if let Some(enriched_data) = enriched_users.get(&db_profile.owner_address) {
+                if let Some(spt) = &enriched_data.social_proof_token {
+                    profile.social_proof_token = Some(spt.clone().into());
+                }
+                if let Some(badge) = &enriched_data.selected_badge {
+                    profile.selected_badge = Some(badge.clone().into());
+                }
+            }
+
+            graphql_profiles.push(profile);
+        }
+
+        Ok(graphql_profiles)
     }
 }
 

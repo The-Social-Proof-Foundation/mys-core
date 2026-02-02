@@ -21,6 +21,7 @@ use crate::social::models::{
     SptRevenueStats,
 };
 use crate::social::schema;
+use crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data;
 
 // ==============================================================================
 // REQUEST STRUCTURES
@@ -109,14 +110,39 @@ pub async fn get_revenue_leaderboard(
     };
 
     match build_revenue_leaderboard(&mut conn, &params, limit, min_revenue).await {
-        Ok(leaderboard) => (
-            StatusCode::OK,
-            Json(serde_json::json!({
-                "leaderboard": leaderboard,
-                "min_revenue": min_revenue,
-                "limit": limit
-            })),
-        ),
+        Ok(leaderboard) => {
+            // Get creator addresses for universal enrichment
+            let creator_addresses: Vec<String> = leaderboard.iter()
+                .map(|e| e.creator_address.clone())
+                .collect();
+
+            // Enrich with universal user data
+            let enriched_users = enrich_users_with_universal_data(creator_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            // Build leaderboard with user data
+            let leaderboard_with_users: Vec<serde_json::Value> = leaderboard.into_iter()
+                .map(|entry| {
+                    let mut entry_json = serde_json::to_value(&entry).unwrap_or(serde_json::json!({}));
+                    if let Some(user) = enriched_users.get(&entry.creator_address) {
+                        if let Some(obj) = entry_json.as_object_mut() {
+                            obj.insert("user".to_string(), serde_json::to_value(user).unwrap_or(serde_json::json!(null)));
+                        }
+                    }
+                    entry_json
+                })
+                .collect();
+
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "leaderboard": leaderboard_with_users,
+                    "min_revenue": min_revenue,
+                    "limit": limit
+                })),
+            )
+        },
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({

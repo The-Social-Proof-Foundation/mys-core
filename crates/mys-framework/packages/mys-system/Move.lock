@@ -2,30 +2,7 @@
 # This file should be checked in.
 
 [move]
-version = 3
-manifest_digest = "3936004D2EEE3A171D142863CA7D73E9D55078930BD79E90D63173569CB645B6"
-deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
-dependencies = [
-  { id = "MoveStdlib", name = "MoveStdlib" },
-  { id = "MySocial", name = "MySocial" },
-]
-
-[[move.package]]
-id = "MoveStdlib"
-source = { local = "../move-stdlib" }
-
-[[move.package]]
-id = "MySocial"
-source = { local = "../mys-framework" }
-
-dependencies = [
-  { id = "MoveStdlib", name = "MoveStdlib" },
-]
-
-[move.toolchain-version]
-compiler-version = "0.0.1"
-edition = "2024.beta"
-flavor = "mys"
+version = 4
 
 [pinned.testnet.MoveStdlib]
 source = { local = "../move-stdlib" }

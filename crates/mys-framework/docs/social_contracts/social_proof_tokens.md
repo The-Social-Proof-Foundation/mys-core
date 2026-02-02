@@ -29,6 +29,10 @@ platform, and ecosystem treasury.
 -  [Struct `EmergencyKillSwitchEvent`](#social_contracts_social_proof_tokens_EmergencyKillSwitchEvent)
 -  [Struct `PocRedirectionUpdatedEvent`](#social_contracts_social_proof_tokens_PocRedirectionUpdatedEvent)
 -  [Constants](#@Constants_0)
+-  [Function `split_social_token`](#social_contracts_social_proof_tokens_split_social_token)
+-  [Function `merge_social_tokens`](#social_contracts_social_proof_tokens_merge_social_tokens)
+-  [Function `split_social_token_entry`](#social_contracts_social_proof_tokens_split_social_token_entry)
+-  [Function `merge_social_tokens_entry`](#social_contracts_social_proof_tokens_merge_social_tokens_entry)
 -  [Function `bootstrap_init`](#social_contracts_social_proof_tokens_bootstrap_init)
 -  [Function `update_social_proof_tokens_config`](#social_contracts_social_proof_tokens_update_social_proof_tokens_config)
 -  [Function `toggle_emergency_kill_switch`](#social_contracts_social_proof_tokens_toggle_emergency_kill_switch)
@@ -1530,6 +1534,26 @@ Cannot buy token from a blocked user
 
 
 
+<a name="social_contracts_social_proof_tokens_ECannotMerge"></a>
+
+Cannot merge tokens - tokens must be from the same pool
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ECannotMerge">ECannotMerge</a>: u64 = 31;
+</code></pre>
+
+
+
+<a name="social_contracts_social_proof_tokens_ECannotSplit"></a>
+
+Cannot split token - amount must be positive and less than token amount
+
+
+<pre><code><b>const</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ECannotSplit">ECannotSplit</a>: u64 = 30;
+</code></pre>
+
+
+
 <a name="social_contracts_social_proof_tokens_EExceededMaxHold"></a>
 
 Exceeded maximum token hold percentage
@@ -1795,6 +1819,146 @@ Wrong version - object version mismatch
 </code></pre>
 
 
+
+<a name="social_contracts_social_proof_tokens_split_social_token"></a>
+
+## Function `split_social_token`
+
+Split a SocialToken into two tokens
+Returns a new SocialToken with the specified amount
+The original token's amount is reduced by the split amount
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_split_social_token">split_social_token</a>(token: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, split_amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_split_social_token">split_social_token</a>(
+    token: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    split_amount: u64,
+    ctx: &<b>mut</b> TxContext
+): <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a> {
+    // Validation
+    <b>assert</b>!(split_amount &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ECannotSplit">ECannotSplit</a>);
+    <b>assert</b>!(token.amount &gt;= split_amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+    <b>assert</b>!(split_amount &lt; token.amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ECannotSplit">ECannotSplit</a>);
+    // Update original token
+    token.amount = token.amount - split_amount;
+    // Create new token
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a> {
+        id: object::new(ctx),
+        pool_id: token.pool_id,
+        token_type: token.token_type,
+        amount: split_amount,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_merge_social_tokens"></a>
+
+## Function `merge_social_tokens`
+
+Merge two SocialTokens from the same pool
+Consumes the second token and adds its amount to the first
+Both tokens must have the same pool_id and token_type
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_merge_social_tokens">merge_social_tokens</a>(token1: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, token2: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_merge_social_tokens">merge_social_tokens</a>(
+    token1: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    token2: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>
+) {
+    // Validation
+    <b>assert</b>!(token1.pool_id == token2.pool_id, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ECannotMerge">ECannotMerge</a>);
+    <b>assert</b>!(token1.token_type == token2.token_type, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ECannotMerge">ECannotMerge</a>);
+    <b>assert</b>!(token1.amount &lt;= <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_MAX_U64">MAX_U64</a> - token2.amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EOverflow">EOverflow</a>);
+    // Merge amounts
+    token1.amount = token1.amount + token2.amount;
+    // Destroy second token's ID
+    <b>let</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a> { id, pool_id: _, token_type: _, amount: _ } = token2;
+    object::delete(id);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_split_social_token_entry"></a>
+
+## Function `split_social_token_entry`
+
+Entry function to split a SocialToken
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_split_social_token_entry">split_social_token_entry</a>(token: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, split_amount: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_split_social_token_entry">split_social_token_entry</a>(
+    token: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    split_amount: u64,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> new_token = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_split_social_token">split_social_token</a>(token, split_amount, ctx);
+    transfer::public_transfer(new_token, tx_context::sender(ctx));
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_merge_social_tokens_entry"></a>
+
+## Function `merge_social_tokens_entry`
+
+Entry function to merge two SocialTokens
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_merge_social_tokens_entry">merge_social_tokens_entry</a>(token1: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, token2: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_merge_social_tokens_entry">merge_social_tokens_entry</a>(
+    token1: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    token2: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    _ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_merge_social_tokens">merge_social_tokens</a>(token1, token2);
+}
+</code></pre>
+
+
+
+</details>
 
 <a name="social_contracts_social_proof_tokens_bootstrap_init"></a>
 
@@ -2231,7 +2395,24 @@ Non-platform version: platform fees go to ecosystem treasury
     <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_get_id_address">post::get_id_address</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>) == post_id, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidID">EInvalidID</a>);
     // Ensure reserver <b>has</b> enough funds
     <b>assert</b>!(coin::value(&payment) &gt;= amount && amount &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+    // Calculate fees upfront based on desired reservation amount
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_reservation_fees">validate_reservation_fees</a>(config);
+    <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
+    <b>let</b> fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(amount, reservation_total_fee_bps);
+    // Determine <b>if</b> fees should be on top or deducted from amount
+    <b>let</b> fees_on_top = coin::value(&payment) &gt;= amount + fee_amount;
+    <b>let</b> net_amount = <b>if</b> (fees_on_top) {
+        // User <b>has</b> enough: reserve full amount, fees on top
+        amount
+    } <b>else</b> {
+        // User doesn't have enough <b>for</b> fees on top: deduct fees from amount
+        <b>assert</b>!(coin::value(&payment) &gt;= amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+        amount - fee_amount
+    };
     // Calculate and distribute fees (non-<a href="../social_contracts/platform.md#social_contracts_platform">platform</a> version)
+    // Fee distribution calculates fees from 'amount' and deducts from payment
+    // When fees_on_top: payment <b>has</b> amount+fees, after distribution: remaining = amount (correct!)
+    // When fees deducted: payment <b>has</b> amount, after distribution: remaining = amount - fees (correct!)
     <b>let</b> (<b>mut</b> remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post">distribute_reservation_fees_with_post</a>(
         config,
         reservation_pool_object,
@@ -2241,8 +2422,6 @@ Non-platform version: platform fees go to ecosystem treasury
         treasury,
         ctx
     );
-    // Net amount after fees
-    <b>let</b> net_amount = amount - fee_amount;
     // Check individual reservation limit (based on net amount)
     <b>let</b> max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / 10000;
     <b>let</b> current_reservation = <b>if</b> (table::contains(&reservation_pool_object.reservations, reserver)) {
@@ -2307,11 +2486,12 @@ Non-platform version: platform fees go to ecosystem treasury
         coin::destroy_zero(remaining_payment);
     };
     // Emit reservation created event
+    // amount field represents the actual reserved amount (net_amount)
     event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationCreatedEvent">ReservationCreatedEvent</a> {
         associated_id: post_id,
         token_type: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
         reserver,
-        amount,
+        amount: net_amount,
         total_reserved: reservation_pool_object.info.total_reserved,
         threshold_met,
         reserved_at: now,
@@ -2377,7 +2557,24 @@ Platform version: platform fees go to platform treasury, includes platform valid
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, reserver), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
     <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_id, reserver), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
+    // Calculate fees upfront based on desired reservation amount
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_reservation_fees">validate_reservation_fees</a>(config);
+    <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
+    <b>let</b> fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(amount, reservation_total_fee_bps);
+    // Determine <b>if</b> fees should be on top or deducted from amount
+    <b>let</b> fees_on_top = coin::value(&payment) &gt;= amount + fee_amount;
+    <b>let</b> net_amount = <b>if</b> (fees_on_top) {
+        // User <b>has</b> enough: reserve full amount, fees on top
+        amount
+    } <b>else</b> {
+        // User doesn't have enough <b>for</b> fees on top: deduct fees from amount
+        <b>assert</b>!(coin::value(&payment) &gt;= amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+        amount - fee_amount
+    };
     // Calculate and distribute fees (<a href="../social_contracts/platform.md#social_contracts_platform">platform</a> version)
+    // Fee distribution calculates fees from 'amount' and deducts from payment
+    // When fees_on_top: payment <b>has</b> amount+fees, after distribution: remaining = amount (correct!)
+    // When fees deducted: payment <b>has</b> amount, after distribution: remaining = amount - fees (correct!)
     <b>let</b> (<b>mut</b> remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_with_post_and_platform">distribute_reservation_fees_with_post_and_platform</a>(
         config,
         reservation_pool_object,
@@ -2388,8 +2585,6 @@ Platform version: platform fees go to platform treasury, includes platform valid
         <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
         ctx
     );
-    // Net amount after fees
-    <b>let</b> net_amount = amount - fee_amount;
     // Check individual reservation limit (based on net amount)
     <b>let</b> max_individual_reservation = (config.post_threshold * config.max_individual_reservation_bps) / 10000;
     <b>let</b> current_reservation = <b>if</b> (table::contains(&reservation_pool_object.reservations, reserver)) {
@@ -2454,11 +2649,12 @@ Platform version: platform fees go to platform treasury, includes platform valid
         coin::destroy_zero(remaining_payment);
     };
     // Emit reservation created event
+    // amount field represents the actual reserved amount (net_amount)
     event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationCreatedEvent">ReservationCreatedEvent</a> {
         associated_id: post_id,
         token_type: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_POST">TOKEN_TYPE_POST</a>,
         reserver,
-        amount,
+        amount: net_amount,
         total_reserved: reservation_pool_object.info.total_reserved,
         threshold_met,
         reserved_at: now,
@@ -2514,7 +2710,24 @@ Anyone can call this function - the profile owner is stored in the reservation p
     <b>assert</b>!(reservation_pool_object.info.token_type == <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInvalidTokenType">EInvalidTokenType</a>);
     // Ensure reserver <b>has</b> enough funds
     <b>assert</b>!(coin::value(&payment) &gt;= amount && amount &gt; 0, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+    // Calculate fees upfront based on desired reservation amount
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_reservation_fees">validate_reservation_fees</a>(config);
+    <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
+    <b>let</b> fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(amount, reservation_total_fee_bps);
+    // Determine <b>if</b> fees should be on top or deducted from amount
+    <b>let</b> fees_on_top = coin::value(&payment) &gt;= amount + fee_amount;
+    <b>let</b> net_amount = <b>if</b> (fees_on_top) {
+        // User <b>has</b> enough: reserve full amount, fees on top
+        amount
+    } <b>else</b> {
+        // User doesn't have enough <b>for</b> fees on top: deduct fees from amount
+        <b>assert</b>!(coin::value(&payment) &gt;= amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+        amount - fee_amount
+    };
     // Calculate and distribute fees (non-<a href="../social_contracts/platform.md#social_contracts_platform">platform</a> version, no PoC <b>for</b> profiles)
+    // Fee distribution calculates fees from 'amount' and deducts from payment
+    // When fees_on_top: payment <b>has</b> amount+fees, after distribution: remaining = amount (correct!)
+    // When fees deducted: payment <b>has</b> amount, after distribution: remaining = amount - fees (correct!)
     <b>let</b> (<b>mut</b> remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_no_poc">distribute_reservation_fees_no_poc</a>(
         config,
         reservation_pool_object,
@@ -2523,8 +2736,6 @@ Anyone can call this function - the profile owner is stored in the reservation p
         treasury,
         ctx
     );
-    // Net amount after fees
-    <b>let</b> net_amount = amount - fee_amount;
     // Check individual reservation limit (based on net amount)
     <b>let</b> max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / 10000;
     <b>let</b> current_reservation = <b>if</b> (table::contains(&reservation_pool_object.reservations, reserver)) {
@@ -2589,11 +2800,12 @@ Anyone can call this function - the profile owner is stored in the reservation p
         coin::destroy_zero(remaining_payment);
     };
     // Emit reservation created event
+    // amount field represents the actual reserved amount (net_amount)
     event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationCreatedEvent">ReservationCreatedEvent</a> {
         associated_id: profile_id,
         token_type: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>,
         reserver,
-        amount,
+        amount: net_amount,
         total_reserved: reservation_pool_object.info.total_reserved,
         threshold_met,
         reserved_at: now,
@@ -2657,7 +2869,24 @@ Anyone can call this function - the profile owner is stored in the reservation p
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">platform::is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ENotAuthorized">ENotAuthorized</a>);
     <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">platform::has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, reserver), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserNotJoinedPlatform">EUserNotJoinedPlatform</a>);
     <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_id, reserver), <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EUserBlockedByPlatform">EUserBlockedByPlatform</a>);
+    // Calculate fees upfront based on desired reservation amount
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_validate_reservation_fees">validate_reservation_fees</a>(config);
+    <b>let</b> reservation_total_fee_bps = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_reservation_total_fee_bps">calculate_reservation_total_fee_bps</a>(config);
+    <b>let</b> fee_amount = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_calculate_fee_amount_safe">calculate_fee_amount_safe</a>(amount, reservation_total_fee_bps);
+    // Determine <b>if</b> fees should be on top or deducted from amount
+    <b>let</b> fees_on_top = coin::value(&payment) &gt;= amount + fee_amount;
+    <b>let</b> net_amount = <b>if</b> (fees_on_top) {
+        // User <b>has</b> enough: reserve full amount, fees on top
+        amount
+    } <b>else</b> {
+        // User doesn't have enough <b>for</b> fees on top: deduct fees from amount
+        <b>assert</b>!(coin::value(&payment) &gt;= amount, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_EInsufficientFunds">EInsufficientFunds</a>);
+        amount - fee_amount
+    };
     // Calculate and distribute fees (<a href="../social_contracts/platform.md#social_contracts_platform">platform</a> version, no PoC <b>for</b> profiles)
+    // Fee distribution calculates fees from 'amount' and deducts from payment
+    // When fees_on_top: payment <b>has</b> amount+fees, after distribution: remaining = amount (correct!)
+    // When fees deducted: payment <b>has</b> amount, after distribution: remaining = amount - fees (correct!)
     <b>let</b> (<b>mut</b> remaining_payment, fee_amount, creator_fee, platform_fee, treasury_fee) = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_distribute_reservation_fees_no_poc_with_platform">distribute_reservation_fees_no_poc_with_platform</a>(
         config,
         reservation_pool_object,
@@ -2667,8 +2896,6 @@ Anyone can call this function - the profile owner is stored in the reservation p
         <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
         ctx
     );
-    // Net amount after fees
-    <b>let</b> net_amount = amount - fee_amount;
     // Check individual reservation limit (based on net amount)
     <b>let</b> max_individual_reservation = (config.profile_threshold * config.max_individual_reservation_bps) / 10000;
     <b>let</b> current_reservation = <b>if</b> (table::contains(&reservation_pool_object.reservations, reserver)) {
@@ -2733,11 +2960,12 @@ Anyone can call this function - the profile owner is stored in the reservation p
         coin::destroy_zero(remaining_payment);
     };
     // Emit reservation created event
+    // amount field represents the actual reserved amount (net_amount)
     event::emit(<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ReservationCreatedEvent">ReservationCreatedEvent</a> {
         associated_id: profile_id,
         token_type: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TOKEN_TYPE_PROFILE">TOKEN_TYPE_PROFILE</a>,
         reserver,
-        amount,
+        amount: net_amount,
         total_reserved: reservation_pool_object.info.total_reserved,
         threshold_met,
         reserved_at: now,

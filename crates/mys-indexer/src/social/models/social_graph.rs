@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::social::schema::{social_graph_events, social_graph_relationships};
+use crate::social::models::universal_user::UniversalUserResult;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -57,20 +58,13 @@ pub struct FollowDetail {
     pub id: i32,
     // Profile ID in the blockchain
     pub profile_id: Option<String>,
-    // Owner address
-    pub owner_address: String,
-    // Username
-    pub username: String,
-    // Display name
-    pub display_name: Option<String>,
-    // Profile photo
-    pub profile_photo: Option<String>,
+    // Universal user result with profile, badge, and SPT info
+    #[serde(flatten)]
+    pub user: UniversalUserResult,
     // Whether this profile follows back the requesting profile
     pub follows_back: bool,
     // Whether the requesting profile is following this profile
     pub is_following: bool,
-    // Reservation pool information
-    pub reservation_pool: Option<crate::social::api::handlers::social_proof_token::ReservationPoolInfo>,
 }
 
 /// Query parameters for paginating followers/following lists

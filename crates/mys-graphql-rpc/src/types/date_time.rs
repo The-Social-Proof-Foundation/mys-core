@@ -25,6 +25,11 @@ impl DateTime {
             .ok_or_else(|| Error::Internal("Cannot convert timestamp into DateTime".to_string()))
             .map(Self)
     }
+
+    /// Create DateTime from a chrono DateTime<Utc>
+    pub fn from_chrono(dt: ChronoDateTime<ChronoUtc>) -> Self {
+        Self(dt)
+    }
 }
 
 /// The DateTime in UTC format. The milliseconds part is optional,

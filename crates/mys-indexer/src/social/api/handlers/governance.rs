@@ -17,6 +17,7 @@ use crate::social::schema::{
     community_votes, delegate_ratings, delegate_votes, delegates, governance_events,
     governance_registries, nominated_delegates, proposals, reward_distributions,
 };
+use crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data;
 
 // Query parameters
 #[derive(Debug, Deserialize)]
@@ -192,11 +193,20 @@ pub async fn get_proposal_by_id(
     Ok(Json(proposal_detail))
 }
 
+// Community vote response with universal user data
+#[derive(Debug, Serialize)]
+pub struct CommunityVoteWithUser {
+    #[serde(flatten)]
+    pub vote: CommunityVote,
+    // Universal user result with profile, badge, and SPT info
+    pub user: crate::social::models::universal_user::UniversalUserResult,
+}
+
 // Get community votes for a proposal
 pub async fn get_proposal_community_votes(
     State(pool): State<DbPool>,
     Path(id): Path<String>,
-) -> Result<Json<Vec<CommunityVote>>, StatusCode> {
+) -> Result<Json<Vec<CommunityVoteWithUser>>, StatusCode> {
     let mut conn = pool
         .get()
         .await
@@ -212,16 +222,59 @@ pub async fn get_proposal_community_votes(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    Ok(Json(votes))
+    // Get wallet addresses for universal enrichment
+    let wallet_addresses: Vec<String> = votes.iter()
+        .map(|v| v.voter_address.clone())
+        .collect();
+
+    // Enrich with universal user data
+    let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
+        .await
+        .map_err(|e| {
+            error!("Error enriching users: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // Build votes with user data
+    let votes_with_users: Vec<CommunityVoteWithUser> = votes.into_iter()
+        .map(|vote| {
+            let user = enriched_users.get(&vote.voter_address).cloned().unwrap_or_else(|| {
+                crate::social::models::universal_user::UniversalUserResult {
+                    wallet_address: vote.voter_address.clone(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
+
+            CommunityVoteWithUser {
+                vote,
+                user,
+            }
+        })
+        .collect();
+
+    Ok(Json(votes_with_users))
 }
 
 // ============= DELEGATES =============
+
+// Delegate response with universal user data
+#[derive(Debug, Serialize)]
+pub struct DelegateWithUser {
+    #[serde(flatten)]
+    pub delegate: Delegate,
+    // Universal user result with profile, badge, and SPT info
+    pub user: crate::social::models::universal_user::UniversalUserResult,
+}
 
 /// List delegates with optional filtering
 pub async fn list_delegates(
     State(pool): State<DbPool>,
     params: axum::extract::Query<DelegateListParams>,
-) -> Result<Json<Vec<Delegate>>, StatusCode> {
+) -> Result<Json<Vec<DelegateWithUser>>, StatusCode> {
     let mut conn = pool
         .get()
         .await
@@ -250,7 +303,41 @@ pub async fn list_delegates(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    Ok(Json(delegates_list))
+    // Get wallet addresses for universal enrichment
+    let wallet_addresses: Vec<String> = delegates_list.iter()
+        .map(|d| d.address.clone())
+        .collect();
+
+    // Enrich with universal user data
+    let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
+        .await
+        .map_err(|e| {
+            error!("Error enriching users: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // Build delegates with user data
+    let delegates_with_users: Vec<DelegateWithUser> = delegates_list.into_iter()
+        .map(|delegate| {
+            let user = enriched_users.get(&delegate.address).cloned().unwrap_or_else(|| {
+                crate::social::models::universal_user::UniversalUserResult {
+                    wallet_address: delegate.address.clone(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
+
+            DelegateWithUser {
+                delegate,
+                user,
+            }
+        })
+        .collect();
+
+    Ok(Json(delegates_with_users))
 }
 
 /// Get delegate by address
@@ -319,11 +406,20 @@ pub async fn get_delegate_proposals(
     Ok(Json(proposals_list))
 }
 
+// Delegate rating response with universal user data
+#[derive(Debug, Serialize)]
+pub struct DelegateRatingWithUser {
+    #[serde(flatten)]
+    pub rating: DelegateRating,
+    // Universal user result for the rater (voter_address)
+    pub user: crate::social::models::universal_user::UniversalUserResult,
+}
+
 /// Get delegate ratings
 pub async fn get_delegate_ratings(
     State(pool): State<DbPool>,
     Path(address): Path<String>,
-) -> Result<Json<Vec<DelegateRating>>, StatusCode> {
+) -> Result<Json<Vec<DelegateRatingWithUser>>, StatusCode> {
     let mut conn = pool
         .get()
         .await
@@ -339,16 +435,59 @@ pub async fn get_delegate_ratings(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    Ok(Json(ratings))
+    // Get wallet addresses for universal enrichment (raters)
+    let wallet_addresses: Vec<String> = ratings.iter()
+        .map(|r| r.voter_address.clone())
+        .collect();
+
+    // Enrich with universal user data
+    let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
+        .await
+        .map_err(|e| {
+            error!("Error enriching users: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // Build ratings with user data
+    let ratings_with_users: Vec<DelegateRatingWithUser> = ratings.into_iter()
+        .map(|rating| {
+            let user = enriched_users.get(&rating.voter_address).cloned().unwrap_or_else(|| {
+                crate::social::models::universal_user::UniversalUserResult {
+                    wallet_address: rating.voter_address.clone(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
+
+            DelegateRatingWithUser {
+                rating,
+                user,
+            }
+        })
+        .collect();
+
+    Ok(Json(ratings_with_users))
 }
 
 // ============= NOMINATED DELEGATES =============
+
+// Nominated delegate response with universal user data
+#[derive(Debug, Serialize)]
+pub struct NominatedDelegateWithUser {
+    #[serde(flatten)]
+    pub nominee: NominatedDelegate,
+    // Universal user result with profile, badge, and SPT info
+    pub user: crate::social::models::universal_user::UniversalUserResult,
+}
 
 /// List nominated delegates with optional filtering
 pub async fn list_nominees(
     State(pool): State<DbPool>,
     params: axum::extract::Query<NomineeListParams>,
-) -> Result<Json<Vec<NominatedDelegate>>, StatusCode> {
+) -> Result<Json<Vec<NominatedDelegateWithUser>>, StatusCode> {
     let mut conn = pool
         .get()
         .await
@@ -380,7 +519,41 @@ pub async fn list_nominees(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    Ok(Json(nominees_list))
+    // Get wallet addresses for universal enrichment
+    let wallet_addresses: Vec<String> = nominees_list.iter()
+        .map(|n| n.address.clone())
+        .collect();
+
+    // Enrich with universal user data
+    let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
+        .await
+        .map_err(|e| {
+            error!("Error enriching users: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // Build nominees with user data
+    let nominees_with_users: Vec<NominatedDelegateWithUser> = nominees_list.into_iter()
+        .map(|nominee| {
+            let user = enriched_users.get(&nominee.address).cloned().unwrap_or_else(|| {
+                crate::social::models::universal_user::UniversalUserResult {
+                    wallet_address: nominee.address.clone(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
+
+            NominatedDelegateWithUser {
+                nominee,
+                user,
+            }
+        })
+        .collect();
+
+    Ok(Json(nominees_with_users))
 }
 
 // ============= GOVERNANCE REGISTRIES =============

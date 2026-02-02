@@ -16,7 +16,8 @@ use crate::social::db::DbPool;
 use crate::social::models::Profile;
 use crate::social::models::profile_extras::ProfileBadge;
 use crate::social::schema::{profiles, profile_badges};
-use crate::social::api::handlers::social_proof_token::get_reservation_pool_info_for_profiles;
+use crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data;
+use crate::social::models::universal_user::UniversalUserResult;
 
 #[derive(Debug, Deserialize)]
 pub struct ProfileQuery {
@@ -67,34 +68,27 @@ pub async fn latest_profiles(
 
     match profiles_result {
         Ok(profiles) => {
-            // Get reservation pool info for all profiles
+            // Get wallet addresses for enrichment
             let wallet_addresses: Vec<String> = profiles.iter()
                 .map(|p| p.owner_address.clone())
                 .collect();
 
-            let reservation_info = get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+            // Enrich with universal user data
+            let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
                 .await
                 .unwrap_or_default();
 
-            // Build profiles with reservation pool info
-            let profiles_with_reservation: Vec<serde_json::Value> = profiles.into_iter()
-                .map(|profile| {
-                    let res_info = reservation_info.get(&profile.owner_address)
-                        .cloned()
-                        .unwrap_or_default();
-                    
-                    let mut profile_json = serde_json::to_value(&profile).unwrap_or(serde_json::json!({}));
-                    if let Some(obj) = profile_json.as_object_mut() {
-                        obj.insert("reservation_pool".to_string(), serde_json::to_value(res_info).unwrap_or(serde_json::json!(null)));
-                    }
-                    profile_json
+            // Build universal user results
+            let universal_results: Vec<UniversalUserResult> = profiles.into_iter()
+                .filter_map(|profile| {
+                    enriched_users.get(&profile.owner_address).cloned()
                 })
                 .collect();
 
             (
                 StatusCode::OK,
                 Json(serde_json::json!({
-                    "profiles": profiles_with_reservation,
+                    "profiles": universal_results,
                     "pagination": {
                         "total": total_count,
                         "limit": limit,
@@ -138,24 +132,26 @@ pub async fn get_profile_by_address(
 
     match profile_result {
         Ok(profile) => {
-            // Get reservation pool info for this profile
+            // Enrich with universal user data
             let wallet_addresses = vec![profile.owner_address.clone()];
-            let reservation_info = get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+            let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
                 .await
                 .unwrap_or_default();
             
-            let res_info = reservation_info.get(&profile.owner_address)
-                .cloned()
-                .unwrap_or_default();
-            
-            let mut profile_json = serde_json::to_value(&profile).unwrap_or(serde_json::json!({}));
-            if let Some(obj) = profile_json.as_object_mut() {
-                obj.insert("reservation_pool".to_string(), serde_json::to_value(res_info).unwrap_or(serde_json::json!(null)));
-            }
+            let user = enriched_users.get(&profile.owner_address).cloned().unwrap_or_else(|| {
+                crate::social::models::universal_user::UniversalUserResult {
+                    wallet_address: profile.owner_address.clone(),
+                    username: Some(profile.username.clone()),
+                    fullname: profile.display_name.clone(),
+                    profile_photo: profile.profile_photo.clone(),
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
             
             (
                 StatusCode::OK,
-                Json(profile_json),
+                Json(serde_json::to_value(&user).unwrap_or(serde_json::json!({}))),
             )
         },
         Err(diesel::result::Error::NotFound) => {
@@ -303,24 +299,26 @@ pub async fn get_profile_by_username(
 
     match profile_result {
         Ok(profile) => {
-            // Get reservation pool info for this profile
+            // Enrich with universal user data
             let wallet_addresses = vec![profile.owner_address.clone()];
-            let reservation_info = get_reservation_pool_info_for_profiles(wallet_addresses, &mut conn)
+            let enriched_users = enrich_users_with_universal_data(wallet_addresses, &mut conn)
                 .await
                 .unwrap_or_default();
             
-            let res_info = reservation_info.get(&profile.owner_address)
-                .cloned()
-                .unwrap_or_default();
-            
-            let mut profile_json = serde_json::to_value(&profile).unwrap_or(serde_json::json!({}));
-            if let Some(obj) = profile_json.as_object_mut() {
-                obj.insert("reservation_pool".to_string(), serde_json::to_value(res_info).unwrap_or(serde_json::json!(null)));
-            }
+            let user = enriched_users.get(&profile.owner_address).cloned().unwrap_or_else(|| {
+                crate::social::models::universal_user::UniversalUserResult {
+                    wallet_address: profile.owner_address.clone(),
+                    username: Some(profile.username.clone()),
+                    fullname: profile.display_name.clone(),
+                    profile_photo: profile.profile_photo.clone(),
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
             
             (
                 StatusCode::OK,
-                Json(profile_json),
+                Json(serde_json::to_value(&user).unwrap_or(serde_json::json!({}))),
             )
         },
         Err(diesel::result::Error::NotFound) => (

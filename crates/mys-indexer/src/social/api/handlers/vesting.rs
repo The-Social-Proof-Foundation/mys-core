@@ -13,7 +13,7 @@ use tracing::{debug, error};
 
 use crate::social::db::DbPool;
 use crate::social::models::{VestingEvent, VestingWallet, VestingWalletWithStatus};
-use crate::social::schema::{profiles, vesting_events, vesting_wallets};
+use crate::social::schema::{vesting_events, vesting_wallets};
 
 // ===========================================================================
 // REQUEST/RESPONSE TYPES
@@ -52,9 +52,9 @@ pub struct VestingWalletsResponse {
 pub struct VestingWalletWithProfile {
     #[serde(flatten)]
     pub wallet: VestingWalletWithStatus,
-    pub username: Option<String>,
-    pub fullname: Option<String>,
-    pub profile_photo: Option<String>,
+    // Universal user result with profile, badge, and SPT info
+    #[serde(flatten)]
+    pub user: crate::social::models::universal_user::UniversalUserResult,
 }
 
 /// Response type for vesting events list
@@ -102,13 +102,13 @@ pub struct VestingAnalyticsResponse {
 #[derive(Debug, Serialize)]
 pub struct VestingLeaderboardEntry {
     pub owner_address: String,
-    pub username: Option<String>,
-    pub fullname: Option<String>,
-    pub profile_photo: Option<String>,
     pub total_vested: i64,
     pub total_claimed: i64,
     pub active_wallets: i64,
     pub completed_wallets: i64,
+    // Universal user result with profile, badge, and SPT info
+    #[serde(flatten)]
+    pub user: crate::social::models::universal_user::UniversalUserResult,
 }
 
 /// Vesting leaderboard response
@@ -188,45 +188,32 @@ pub async fn get_vesting_wallets(
         .map(|w| w.wallet.owner_address.clone())
         .collect();
 
-    // Load profiles for these addresses
-    let profiles_map: HashMap<String, (Option<String>, Option<String>, Option<String>)> = if !owner_addresses.is_empty() {
-        profiles::table
-            .filter(profiles::owner_address.eq_any(&owner_addresses))
-            .select((
-                profiles::owner_address,
-                profiles::username,
-                profiles::display_name,
-                profiles::profile_photo,
-            ))
-            .load::<(String, String, Option<String>, Option<String>)>(&mut conn)
-            .await
-            .map_err(|e| {
-                error!("Failed to load profiles: {}", e);
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?
-            .into_iter()
-            .map(|(addr, username, display_name, profile_photo)| {
-                (addr, (Some(username), display_name, profile_photo))
-            })
-            .collect()
-    } else {
-        HashMap::new()
-    };
+    // Enrich with universal user data
+    let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(owner_addresses, &mut conn)
+        .await
+        .map_err(|e| {
+            error!("Failed to enrich users: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
-    // Combine wallets with profile data
+    // Combine wallets with universal user data
     let wallets_with_profiles: Vec<VestingWalletWithProfile> = wallets_with_status
         .into_iter()
         .map(|wallet| {
-            let (username, fullname, profile_photo) = profiles_map
-                .get(&wallet.wallet.owner_address)
-                .cloned()
-                .unwrap_or((None, None, None));
+            let user = enriched_users.get(&wallet.wallet.owner_address).cloned().unwrap_or_else(|| {
+                crate::social::models::universal_user::UniversalUserResult {
+                    wallet_address: wallet.wallet.owner_address.clone(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
             
             VestingWalletWithProfile {
                 wallet,
-                username,
-                fullname,
-                profile_photo,
+                user,
             }
         })
         .collect();
@@ -323,45 +310,32 @@ pub async fn get_active_vesting_wallets(
         .map(|w| w.wallet.owner_address.clone())
         .collect();
 
-    // Load profiles for these addresses
-    let profiles_map: HashMap<String, (Option<String>, Option<String>, Option<String>)> = if !owner_addresses.is_empty() {
-        profiles::table
-            .filter(profiles::owner_address.eq_any(&owner_addresses))
-            .select((
-                profiles::owner_address,
-                profiles::username,
-                profiles::display_name,
-                profiles::profile_photo,
-            ))
-            .load::<(String, String, Option<String>, Option<String>)>(&mut conn)
-            .await
-            .map_err(|e| {
-                error!("Failed to load profiles: {}", e);
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?
-            .into_iter()
-            .map(|(addr, username, display_name, profile_photo)| {
-                (addr, (Some(username), display_name, profile_photo))
-            })
-            .collect()
-    } else {
-        HashMap::new()
-    };
+    // Enrich with universal user data
+    let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(owner_addresses, &mut conn)
+        .await
+        .map_err(|e| {
+            error!("Failed to enrich users: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
-    // Combine wallets with profile data
+    // Combine wallets with universal user data
     let wallets_with_profiles: Vec<VestingWalletWithProfile> = wallets_with_status
         .into_iter()
         .map(|wallet| {
-            let (username, fullname, profile_photo) = profiles_map
-                .get(&wallet.wallet.owner_address)
-                .cloned()
-                .unwrap_or((None, None, None));
+            let user = enriched_users.get(&wallet.wallet.owner_address).cloned().unwrap_or_else(|| {
+                crate::social::models::universal_user::UniversalUserResult {
+                    wallet_address: wallet.wallet.owner_address.clone(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
             
             VestingWalletWithProfile {
                 wallet,
-                username,
-                fullname,
-                profile_photo,
+                user,
             }
         })
         .collect();
@@ -579,45 +553,32 @@ pub async fn get_user_vesting_wallets(
         .map(|w| w.wallet.owner_address.clone())
         .collect();
 
-    // Load profiles for these addresses
-    let profiles_map: HashMap<String, (Option<String>, Option<String>, Option<String>)> = if !owner_addresses.is_empty() {
-        profiles::table
-            .filter(profiles::owner_address.eq_any(&owner_addresses))
-            .select((
-                profiles::owner_address,
-                profiles::username,
-                profiles::display_name,
-                profiles::profile_photo,
-            ))
-            .load::<(String, String, Option<String>, Option<String>)>(&mut conn)
-            .await
-            .map_err(|e| {
-                error!("Failed to load profiles: {}", e);
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?
-            .into_iter()
-            .map(|(addr, username, display_name, profile_photo)| {
-                (addr, (Some(username), display_name, profile_photo))
-            })
-            .collect()
-    } else {
-        HashMap::new()
-    };
+    // Enrich with universal user data
+    let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(owner_addresses, &mut conn)
+        .await
+        .map_err(|e| {
+            error!("Failed to enrich users: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
-    // Combine wallets with profile data
+    // Combine wallets with universal user data
     let wallets_with_profiles: Vec<VestingWalletWithProfile> = wallets_with_status
         .into_iter()
         .map(|wallet| {
-            let (username, fullname, profile_photo) = profiles_map
-                .get(&wallet.wallet.owner_address)
-                .cloned()
-                .unwrap_or((None, None, None));
+            let user = enriched_users.get(&wallet.wallet.owner_address).cloned().unwrap_or_else(|| {
+                crate::social::models::universal_user::UniversalUserResult {
+                    wallet_address: wallet.wallet.owner_address.clone(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
             
             VestingWalletWithProfile {
                 wallet,
-                username,
-                fullname,
-                profile_photo,
+                user,
             }
         })
         .collect();
@@ -867,52 +828,39 @@ pub async fn get_vesting_leaderboard(
         .take(query.limit as usize)
         .collect();
 
-    // Get owner addresses for profile lookup
+    // Get owner addresses for universal enrichment
     let owner_addresses: Vec<String> = paginated_data.iter().map(|(addr, _, _, _, _)| addr.clone()).collect();
 
-    // Load profiles for these addresses
-    let profiles_map: HashMap<String, (Option<String>, Option<String>, Option<String>)> = if !owner_addresses.is_empty() {
-        profiles::table
-            .filter(profiles::owner_address.eq_any(&owner_addresses))
-            .select((
-                profiles::owner_address,
-                profiles::username,
-                profiles::display_name,
-                profiles::profile_photo,
-            ))
-            .load::<(String, String, Option<String>, Option<String>)>(&mut conn)
-            .await
-            .map_err(|e| {
-                error!("Failed to load profiles: {}", e);
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?
-            .into_iter()
-            .map(|(addr, username, display_name, profile_photo)| {
-                (addr, (Some(username), display_name, profile_photo))
-            })
-            .collect()
-    } else {
-        HashMap::new()
-    };
+    // Enrich with universal user data
+    let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(owner_addresses, &mut conn)
+        .await
+        .map_err(|e| {
+            error!("Failed to enrich users: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
-    // Build entries with profile data
+    // Build entries with universal user data
     let entries: Vec<VestingLeaderboardEntry> = paginated_data
         .into_iter()
         .map(|(owner_address, total_vested, total_claimed, active_wallets, completed_wallets)| {
-            let (username, fullname, profile_photo) = profiles_map
-                .get(&owner_address)
-                .cloned()
-                .unwrap_or((None, None, None));
+            let user = enriched_users.get(&owner_address).cloned().unwrap_or_else(|| {
+                crate::social::models::universal_user::UniversalUserResult {
+                    wallet_address: owner_address.clone(),
+                    username: None,
+                    fullname: None,
+                    profile_photo: None,
+                    social_proof_token: None,
+                    selected_badge: None,
+                }
+            });
             
             VestingLeaderboardEntry {
                 owner_address,
-                username,
-                fullname,
-                profile_photo,
                 total_vested,
                 total_claimed,
                 active_wallets,
                 completed_wallets,
+                user,
             }
         })
         .collect();

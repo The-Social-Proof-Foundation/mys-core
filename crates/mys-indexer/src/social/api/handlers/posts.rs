@@ -61,7 +61,7 @@ pub struct PostBasic {
     #[diesel(sql_type = Text)]
     pub owner: String,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub profile_id: Option<String>,
 
     #[diesel(sql_type = Text)]
@@ -88,7 +88,7 @@ pub struct PostBasic {
     #[diesel(sql_type = BigInt)]
     pub tips_received: i64,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub promotion_id: Option<String>,
 
     #[diesel(sql_type = Bool)]
@@ -100,17 +100,17 @@ pub struct PostBasic {
     #[diesel(sql_type = Bool)]
     pub enable_spot: bool,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub poc_id: Option<String>,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub spot_id: Option<String>,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub spt_id: Option<String>,
 
     // PoC metadata fields
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub poc_reasoning: Option<String>,
 
     #[diesel(sql_type = Nullable<Jsonb>)]
@@ -122,13 +122,13 @@ pub struct PostBasic {
     #[diesel(sql_type = Nullable<Int2>)]
     pub poc_media_type: Option<i16>,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub poc_oracle_address: Option<String>,
 
     #[diesel(sql_type = Nullable<BigInt>)]
     pub poc_analyzed_at: Option<i64>,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub revenue_redirect_to: Option<String>,
 
     #[diesel(sql_type = Nullable<BigInt>)]
@@ -142,6 +142,15 @@ pub struct PostResponse {
     pub post: PostBasic,
     pub engagement_score: i64,
     pub trending_score: f64,
+}
+
+// Post response with universal user data
+#[derive(Debug, Serialize)]
+pub struct PostWithUser {
+    #[serde(flatten)]
+    pub post: PostBasic,
+    // Universal user result with profile, badge, and SPT info
+    pub user: crate::social::models::universal_user::UniversalUserResult,
 }
 
 // Pagination info structure
@@ -160,7 +169,7 @@ pub struct ApiResponse<T> {
     pub pagination: PaginationInfo,
 }
 
-// Comment data model
+// Comment data model (for database queries)
 #[derive(Debug, Serialize, QueryableByName)]
 #[diesel(check_for_backend(Pg))]
 pub struct CommentInfo {
@@ -173,7 +182,7 @@ pub struct CommentInfo {
     #[diesel(sql_type = Text)]
     pub owner: String,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub profile_id: Option<String>,
 
     #[diesel(sql_type = Text)]
@@ -183,7 +192,19 @@ pub struct CommentInfo {
     pub created_at: i64,
 }
 
-// Reaction data model
+// Comment response with universal user data
+#[derive(Debug, Serialize)]
+pub struct CommentWithUser {
+    pub comment_id: String,
+    pub post_id: String,
+    pub content: String,
+    pub created_at: i64,
+    // Universal user result with profile, badge, and SPT info
+    #[serde(flatten)]
+    pub user: crate::social::models::universal_user::UniversalUserResult,
+}
+
+// Reaction data model (for database queries)
 #[derive(Debug, Serialize, QueryableByName)]
 #[diesel(check_for_backend(Pg))]
 pub struct ReactionInfo {
@@ -199,7 +220,7 @@ pub struct ReactionInfo {
     #[diesel(sql_type = Text)]
     pub owner: String,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub profile_id: Option<String>,
 
     #[diesel(sql_type = Int2)]
@@ -209,7 +230,20 @@ pub struct ReactionInfo {
     pub created_at: i64,
 }
 
-// Repost data model
+// Reaction response with universal user data
+#[derive(Debug, Serialize)]
+pub struct ReactionWithUser {
+    pub reaction_id: String,
+    pub object_id: String,
+    pub is_post: bool,
+    pub reaction_type: i16,
+    pub created_at: i64,
+    // Universal user result with profile, badge, and SPT info
+    #[serde(flatten)]
+    pub user: crate::social::models::universal_user::UniversalUserResult,
+}
+
+// Repost data model (for database queries)
 #[derive(Debug, Serialize, QueryableByName)]
 #[diesel(check_for_backend(Pg))]
 pub struct RepostInfo {
@@ -225,11 +259,23 @@ pub struct RepostInfo {
     #[diesel(sql_type = Text)]
     pub owner: String,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub profile_id: Option<String>,
 
     #[diesel(sql_type = BigInt)]
     pub created_at: i64,
+}
+
+// Repost response with universal user data
+#[derive(Debug, Serialize)]
+pub struct RepostWithUser {
+    pub repost_id: String,
+    pub original_id: String,
+    pub is_original_post: bool,
+    pub created_at: i64,
+    // Universal user result with profile, badge, and SPT info
+    #[serde(flatten)]
+    pub user: crate::social::models::universal_user::UniversalUserResult,
 }
 
 // Post with engagement score for trending views
@@ -242,7 +288,7 @@ pub struct PostWithEngagementInfo {
     #[diesel(sql_type = Text)]
     pub owner: String,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub profile_id: Option<String>,
 
     #[diesel(sql_type = Text)]
@@ -275,7 +321,7 @@ pub struct PostWithEngagementInfo {
     #[diesel(sql_type = Float8)]
     pub trending_score: f64,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub promotion_id: Option<String>,
 
     #[diesel(sql_type = Bool)]
@@ -287,17 +333,17 @@ pub struct PostWithEngagementInfo {
     #[diesel(sql_type = Bool)]
     pub enable_spot: bool,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub poc_id: Option<String>,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub spot_id: Option<String>,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub spt_id: Option<String>,
 
     // PoC metadata fields
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub poc_reasoning: Option<String>,
 
     #[diesel(sql_type = Nullable<Jsonb>)]
@@ -309,13 +355,13 @@ pub struct PostWithEngagementInfo {
     #[diesel(sql_type = Nullable<Int2>)]
     pub poc_media_type: Option<i16>,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub poc_oracle_address: Option<String>,
 
     #[diesel(sql_type = Nullable<BigInt>)]
     pub poc_analyzed_at: Option<i64>,
 
-    #[diesel(sql_type = Nullable<Text>)]
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
     pub revenue_redirect_to: Option<String>,
 
     #[diesel(sql_type = Nullable<BigInt>)]
@@ -478,14 +524,50 @@ pub async fn get_post_comments(
     ";
 
     let result = diesel::sql_query(query)
-        .bind::<Text, _>(&post_id)
-        .bind::<BigInt, _>(limit)
-        .bind::<BigInt, _>(offset)
+        .bind::<diesel::sql_types::Text, _>(&post_id)
+        .bind::<diesel::sql_types::BigInt, _>(limit)
+        .bind::<diesel::sql_types::BigInt, _>(offset)
         .load::<CommentInfo>(&mut conn)
         .await;
 
     match result {
-        Ok(comments) => Json(comments).into_response(),
+        Ok(comments) => {
+            // Get wallet addresses for universal enrichment
+            let wallet_addresses: Vec<String> = comments.iter()
+                .map(|c| c.owner.clone())
+                .collect();
+
+            // Enrich with universal user data
+            let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            // Build comments with user data
+            let comments_with_users: Vec<CommentWithUser> = comments.into_iter()
+                .map(|comment| {
+                    let user = enriched_users.get(&comment.owner).cloned().unwrap_or_else(|| {
+                        crate::social::models::universal_user::UniversalUserResult {
+                            wallet_address: comment.owner.clone(),
+                            username: None,
+                            fullname: None,
+                            profile_photo: None,
+                            social_proof_token: None,
+                            selected_badge: None,
+                        }
+                    });
+
+                    CommentWithUser {
+                        comment_id: comment.comment_id,
+                        post_id: comment.post_id,
+                        content: comment.content,
+                        created_at: comment.created_at,
+                        user,
+                    }
+                })
+                .collect();
+
+            Json(comments_with_users).into_response()
+        },
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Database error: {}", e),
@@ -610,7 +692,40 @@ pub async fn list_posts(State(pool): State<DbPool>, Query(params): Query<PostQue
         .await;
 
     match result {
-        Ok(posts) => Json(posts).into_response(),
+        Ok(posts) => {
+            // Get wallet addresses for universal enrichment
+            let wallet_addresses: Vec<String> = posts.iter()
+                .map(|p| p.owner.clone())
+                .collect();
+
+            // Enrich with universal user data
+            let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            // Build posts with user data
+            let posts_with_users: Vec<PostWithUser> = posts.into_iter()
+                .map(|post| {
+                    let user = enriched_users.get(&post.owner).cloned().unwrap_or_else(|| {
+                        crate::social::models::universal_user::UniversalUserResult {
+                            wallet_address: post.owner.clone(),
+                            username: None,
+                            fullname: None,
+                            profile_photo: None,
+                            social_proof_token: None,
+                            selected_badge: None,
+                        }
+                    });
+
+                    PostWithUser {
+                        post,
+                        user,
+                    }
+                })
+                .collect();
+
+            Json(posts_with_users).into_response()
+        },
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Database error: {}", e),
@@ -649,14 +764,51 @@ pub async fn get_post_reactions(
     ";
 
     let result = diesel::sql_query(query)
-        .bind::<Text, _>(post_id)
-        .bind::<BigInt, _>(limit)
-        .bind::<BigInt, _>(offset)
+        .bind::<diesel::sql_types::Text, _>(post_id)
+        .bind::<diesel::sql_types::BigInt, _>(limit)
+        .bind::<diesel::sql_types::BigInt, _>(offset)
         .load::<ReactionInfo>(&mut conn)
         .await;
 
     match result {
-        Ok(reactions) => Json(reactions).into_response(),
+        Ok(reactions) => {
+            // Get wallet addresses for universal enrichment
+            let wallet_addresses: Vec<String> = reactions.iter()
+                .map(|r| r.owner.clone())
+                .collect();
+
+            // Enrich with universal user data
+            let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            // Build reactions with user data
+            let reactions_with_users: Vec<ReactionWithUser> = reactions.into_iter()
+                .map(|reaction| {
+                    let user = enriched_users.get(&reaction.owner).cloned().unwrap_or_else(|| {
+                        crate::social::models::universal_user::UniversalUserResult {
+                            wallet_address: reaction.owner.clone(),
+                            username: None,
+                            fullname: None,
+                            profile_photo: None,
+                            social_proof_token: None,
+                            selected_badge: None,
+                        }
+                    });
+
+                    ReactionWithUser {
+                        reaction_id: reaction.reaction_id,
+                        object_id: reaction.object_id,
+                        is_post: reaction.is_post,
+                        reaction_type: reaction.reaction_type,
+                        created_at: reaction.created_at,
+                        user,
+                    }
+                })
+                .collect();
+
+            Json(reactions_with_users).into_response()
+        },
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Database error: {}", e),
@@ -695,14 +847,50 @@ pub async fn get_post_reposts(
     ";
 
     let result = diesel::sql_query(query)
-        .bind::<Text, _>(post_id)
-        .bind::<BigInt, _>(limit)
-        .bind::<BigInt, _>(offset)
+        .bind::<diesel::sql_types::Text, _>(post_id)
+        .bind::<diesel::sql_types::BigInt, _>(limit)
+        .bind::<diesel::sql_types::BigInt, _>(offset)
         .load::<RepostInfo>(&mut conn)
         .await;
 
     match result {
-        Ok(reposts) => Json(reposts).into_response(),
+        Ok(reposts) => {
+            // Get wallet addresses for universal enrichment
+            let wallet_addresses: Vec<String> = reposts.iter()
+                .map(|r| r.owner.clone())
+                .collect();
+
+            // Enrich with universal user data
+            let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            // Build reposts with user data
+            let reposts_with_users: Vec<RepostWithUser> = reposts.into_iter()
+                .map(|repost| {
+                    let user = enriched_users.get(&repost.owner).cloned().unwrap_or_else(|| {
+                        crate::social::models::universal_user::UniversalUserResult {
+                            wallet_address: repost.owner.clone(),
+                            username: None,
+                            fullname: None,
+                            profile_photo: None,
+                            social_proof_token: None,
+                            selected_badge: None,
+                        }
+                    });
+
+                    RepostWithUser {
+                        repost_id: repost.repost_id,
+                        original_id: repost.original_id,
+                        is_original_post: repost.is_original_post,
+                        created_at: repost.created_at,
+                        user,
+                    }
+                })
+                .collect();
+
+            Json(reposts_with_users).into_response()
+        },
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Database error: {}", e),
@@ -750,7 +938,40 @@ pub async fn get_trending_posts(
         .await;
 
     match result {
-        Ok(posts) => Json(posts).into_response(),
+        Ok(posts) => {
+            // Get wallet addresses for universal enrichment
+            let wallet_addresses: Vec<String> = posts.iter()
+                .map(|p| p.owner.clone())
+                .collect();
+
+            // Enrich with universal user data
+            let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            // Build posts with user data
+            let posts_with_users: Vec<PostWithUser> = posts.into_iter()
+                .map(|post| {
+                    let user = enriched_users.get(&post.owner).cloned().unwrap_or_else(|| {
+                        crate::social::models::universal_user::UniversalUserResult {
+                            wallet_address: post.owner.clone(),
+                            username: None,
+                            fullname: None,
+                            profile_photo: None,
+                            social_proof_token: None,
+                            selected_badge: None,
+                        }
+                    });
+
+                    PostWithUser {
+                        post,
+                        user,
+                    }
+                })
+                .collect();
+
+            Json(posts_with_users).into_response()
+        },
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Database error: {}", e),

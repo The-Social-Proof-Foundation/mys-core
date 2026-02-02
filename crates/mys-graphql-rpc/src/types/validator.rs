@@ -9,7 +9,6 @@ use async_graphql::connection::{Connection, CursorType, Edge};
 use async_graphql::dataloader::Loader;
 use mys_indexer::apis::GovernanceReadApi;
 use mys_types::committee::EpochId;
-use mys_types::gas_coin::TOTAL_SUPPLY_MIST;
 use mys_types::mys_system_state::PoolTokenExchangeRate;
 use std::collections::{BTreeMap, HashMap};
 

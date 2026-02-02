@@ -12,7 +12,7 @@ use std::sync::Arc;
 use tracing::error;
 
 use crate::social::db::Database;
-use crate::social::api::handlers::social_proof_token::get_reservation_pool_info_for_profiles;
+use crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data;
 
 // Search query parameters
 #[derive(Debug, Deserialize)]
@@ -73,6 +73,9 @@ pub struct SearchResultItem {
     pub timestamp: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
+    // Universal user result (only populated for profile results)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user: Option<crate::social::models::universal_user::UniversalUserResult>,
 }
 
 // Search results
@@ -454,10 +457,11 @@ pub async fn global_search(
             secondary_field: row.secondary_field,
             timestamp: row.timestamp,
             metadata: row.metadata,
+            user: None, // Will be populated for profile results
         })
         .collect();
 
-    // Add reservation pool info for profile results
+    // Enrich profile results with universal user data
     let profile_wallet_addresses: Vec<String> = results
         .iter()
         .filter(|item| item.entity_type == "profile")
@@ -465,27 +469,14 @@ pub async fn global_search(
         .collect();
 
     if !profile_wallet_addresses.is_empty() {
-        let reservation_info = get_reservation_pool_info_for_profiles(profile_wallet_addresses, &mut conn)
+        let enriched_users = enrich_users_with_universal_data(profile_wallet_addresses, &mut conn)
             .await
             .unwrap_or_default();
 
-        // Add reservation pool info to profile results
+        // Add universal user data to profile results
         for result in &mut results {
             if result.entity_type == "profile" {
-                if let Some(res_info) = reservation_info.get(&result.id) {
-                    let mut metadata = result.metadata.clone().unwrap_or(serde_json::json!({}));
-                    if let Some(obj) = metadata.as_object_mut() {
-                        obj.insert("reservation_pool".to_string(), serde_json::to_value(res_info).unwrap_or(serde_json::json!(null)));
-                    }
-                    result.metadata = Some(metadata);
-                } else {
-                    // Add null reservation_pool if no pool exists
-                    let mut metadata = result.metadata.clone().unwrap_or(serde_json::json!({}));
-                    if let Some(obj) = metadata.as_object_mut() {
-                        obj.insert("reservation_pool".to_string(), serde_json::json!(null));
-                    }
-                    result.metadata = Some(metadata);
-                }
+                result.user = enriched_users.get(&result.id).cloned();
             }
         }
     }
