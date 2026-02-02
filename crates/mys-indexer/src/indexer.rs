@@ -9,7 +9,7 @@ use anyhow::Result;
 use prometheus::Registry;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use async_trait::async_trait;
 use futures::future::try_join_all;
@@ -167,7 +167,7 @@ impl Indexer {
                         }
 
                         let social_processor = crate::social::blockchain::SocialCheckpointProcessor::new(
-                            social_db,
+                            social_db.clone(),
                             package_address,
                         );
 
@@ -178,6 +178,16 @@ impl Indexer {
                         );
                         executor.register(social_worker_pool).await?;
                         info!("Social checkpoint processor registered successfully");
+
+                        // Start the social API server
+                        let api_db = social_db.clone();
+                        let api_config = social_db_config.clone();
+                        spawn_monitored_task!(async move {
+                            if let Err(e) = crate::social::api::start_api_server(api_db, &api_config).await {
+                                error!("Failed to start social API server: {}", e);
+                            }
+                        });
+                        info!("Social API server started");
                     }
                     Err(e) => {
                         warn!("Failed to set up social database connection: {}. Social indexer disabled.", e);
