@@ -269,7 +269,11 @@ pub async fn get_spt_pool_by_id(
                 ELSE NULL
             END as icon,
             CASE 
-                WHEN p.token_type = 1 THEN COALESCE(prof.display_name, prof.username)
+                WHEN p.token_type = 1 THEN 
+                    CASE 
+                        WHEN prof.profile_id IS NOT NULL THEN COALESCE(prof.display_name, prof.username)
+                        ELSE 'Anonymous wallet'
+                    END
                 WHEN p.token_type = 2 THEN post.content
                 ELSE NULL
             END as primary_label,
@@ -770,7 +774,11 @@ pub async fn get_spt_pool_by_associated_id(
                 ELSE NULL
             END as icon,
             CASE 
-                WHEN p.token_type = 1 THEN COALESCE(prof.display_name, prof.username)
+                WHEN p.token_type = 1 THEN 
+                    CASE 
+                        WHEN prof.profile_id IS NOT NULL THEN COALESCE(prof.display_name, prof.username)
+                        ELSE 'Anonymous wallet'
+                    END
                 WHEN p.token_type = 2 THEN post.content
                 ELSE NULL
             END as primary_label,
@@ -1162,7 +1170,11 @@ pub async fn get_spt_reservation_pools(
                 ELSE NULL
             END as icon,
             CASE 
-                WHEN rp.token_type = 1 THEN COALESCE(prof.display_name, prof.username)
+                WHEN rp.token_type = 1 THEN 
+                    CASE 
+                        WHEN prof.profile_id IS NOT NULL THEN COALESCE(prof.display_name, prof.username)
+                        ELSE 'Anonymous wallet'
+                    END
                 WHEN rp.token_type = 2 THEN post.content
                 ELSE NULL
             END as primary_label,
@@ -1310,7 +1322,11 @@ pub async fn get_spt_reservation_pool_by_id(
                 ELSE NULL
             END as icon,
             CASE 
-                WHEN rp.token_type = 1 THEN COALESCE(prof.display_name, prof.username)
+                WHEN rp.token_type = 1 THEN 
+                    CASE 
+                        WHEN prof.profile_id IS NOT NULL THEN COALESCE(prof.display_name, prof.username)
+                        ELSE 'Anonymous wallet'
+                    END
                 WHEN rp.token_type = 2 THEN post.content
                 ELSE NULL
             END as primary_label,
