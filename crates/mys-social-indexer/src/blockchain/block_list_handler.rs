@@ -8,7 +8,6 @@ use tracing::{debug, error, info, warn};
 
 use crate::db::{Database, DbConnection};
 use crate::events::blocking_events::{process_profile_block_event, process_profile_unblock_event};
-use crate::schema::platforms;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 
@@ -34,21 +33,6 @@ impl BlockListEventHandler {
             .get_connection()
             .await
             .map_err(|e| anyhow!("Failed to get database connection: {}", e))
-    }
-
-    /// Check if an address is a platform address by querying the platforms table
-    /// Returns Some(platform_id) if the address matches a platform_id, None otherwise
-    async fn is_platform_address(conn: &mut DbConnection, address: &str) -> Result<Option<String>> {
-        match platforms::table
-            .filter(platforms::platform_id.eq(address))
-            .select(platforms::platform_id)
-            .first::<String>(conn)
-            .await
-        {
-            Ok(platform_id) => Ok(Some(platform_id)),
-            Err(diesel::NotFound) => Ok(None),
-            Err(e) => Err(anyhow!("Failed to check if address is platform: {}", e)),
-        }
     }
 
     /// Process raw blockchain events

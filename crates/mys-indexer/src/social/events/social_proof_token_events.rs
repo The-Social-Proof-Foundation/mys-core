@@ -1491,7 +1491,7 @@ impl SocialProofReservationCreatedEvent {
             pool_id,
             reserver_address: self.reserver.clone(),
             amount: 0, // Represents final amount after withdrawal
-            reserved_at: self.withdrawn_at,
+            reserved_at: self.reserved_at,
             fee_amount: None, // Legacy events may not have fee information
             creator_fee: None,
             platform_fee: None,
@@ -2435,8 +2435,8 @@ pub async fn process_poc_redirection_updated_event(
     conn: &mut DbConnection,
     data: &Value,
     event_id: &str,
-    timestamp: u64,
-    tx: String,
+    _timestamp: u64,
+    _tx: String,
 ) -> Result<()> {
     let event: PocRedirectionUpdatedEvent = PocRedirectionUpdatedEvent::try_from(data.clone())
         .map_err(|e| anyhow!("Failed to parse PocRedirectionUpdatedEvent: {}", e))?;

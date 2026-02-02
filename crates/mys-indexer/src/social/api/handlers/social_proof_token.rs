@@ -20,8 +20,8 @@ use tracing::error;
 use crate::social::db::Database;
 use crate::social::models::social_proof_token::{
     PopularTokenPool, SocialProofPriceAggregation, SocialProofTokenHolding,
-    SocialProofTokenPoolWithDisplay, SocialProofTokenPoolWithPrice, SocialProofTokenTransaction,
-    SptReservation, SptReservationPool, SptReservationPoolWithDisplay, UserTokenHolding,
+    SocialProofTokenPoolWithDisplay, SocialProofTokenTransaction,
+    SptReservation, SptReservationPoolWithDisplay, UserTokenHolding,
 };
 
 // Shared query parameters

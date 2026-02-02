@@ -127,6 +127,12 @@ pub struct PostBasic {
 
     #[diesel(sql_type = Nullable<BigInt>)]
     pub poc_analyzed_at: Option<i64>,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    pub revenue_redirect_to: Option<String>,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub revenue_redirect_percentage: Option<i64>,
 }
 
 // Response for a post with engagement stats

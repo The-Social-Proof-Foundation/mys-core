@@ -422,7 +422,6 @@ pub fn validate_config_updated_event(event: &PocConfigUpdatedEvent) -> Result<()
 // =============================================================================
 
 use anyhow::anyhow;
-use chrono::Utc;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use crate::social::db::DbConnection;
