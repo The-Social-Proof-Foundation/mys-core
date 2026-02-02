@@ -45,14 +45,7 @@ COPY --from=builder /app/target/release/mys-graphql-rpc /usr/local/bin
 # Create entrypoint script
 RUN echo '#!/bin/sh\n\
 echo "=== ENTRYPOINT DEBUG ==="\n\
-echo "All environment variables:"\n\
-env | grep -E "(DATABASE_URL|RPC_URL|PORT)" || echo "No matching env vars found"\n\
-echo ""\n\
-echo "=== Key Environment Variables ==="\n\
-echo "DATABASE_URL: ${DATABASE_URL:-NOT_SET}"\n\
-echo "RPC_URL: ${RPC_URL:-NOT_SET}"\n\
-echo "PORT: ${PORT:-NOT_SET}"\n\
-echo "=============================="\n\
+echo "Checking environment variables..."\n\
 \n\
 # Validate required environment variables\n\
 if [ -z "$DATABASE_URL" ]; then\n\
@@ -65,11 +58,18 @@ if [ -z "$RPC_URL" ]; then\n\
   exit 1\n\
 fi\n\
 \n\
-# Use actual environment variable values\n\
-echo "Starting mys-graphql-rpc with:"\n\
-echo "  DATABASE_URL: $DATABASE_URL"\n\
-echo "  RPC_URL: $RPC_URL"\n\
-echo "  PORT: ${PORT:-8080}"\n\
+# Mask sensitive values for logging\n\
+if [ -n "$DATABASE_URL" ]; then\n\
+  MASKED_DB_URL=$(echo "$DATABASE_URL" | sed '\''s/:[^@]*@/:****@/'\'')\n\
+  echo "DATABASE_URL: ${MASKED_DB_URL:-NOT_SET}"\n\
+fi\n\
+\n\
+if [ -n "$RPC_URL" ]; then\n\
+  echo "RPC_URL: [SET]"\n\
+fi\n\
+\n\
+echo "PORT: ${PORT:-8080}"\n\
+echo "Starting mys-graphql-rpc..."\n\
 echo ""\n\
 \n\
 exec mys-graphql-rpc start-server \\\n\

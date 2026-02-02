@@ -34,26 +34,6 @@ static VERSION: Version = Version {
 
 #[tokio::main]
 async fn main() {
-    // Debug: Print environment variables FIRST
-    println!("=== MAIN START - Environment Variables ===");
-    if let Ok(database_url) = std::env::var("DATABASE_URL") {
-        println!("DATABASE_URL from env: {}", database_url);
-    } else {
-        println!("DATABASE_URL not set in environment");
-    }
-    if let Ok(rpc_url) = std::env::var("RPC_URL") {
-        println!("RPC_URL from env: {}", rpc_url);
-    } else {
-        println!("RPC_URL not set in environment");
-    }
-    if let Ok(port) = std::env::var("PORT") {
-        println!("PORT from env: {}", port);
-    } else {
-        println!("PORT not set in environment");
-    }
-    println!("Args: {:?}", std::env::args().collect::<Vec<_>>());
-    println!("==============================");
-
     let cmd: Command = Command::parse();
     match cmd {
         Command::GenerateConfig { output } => {
@@ -75,33 +55,10 @@ async fn main() {
             config,
             mut tx_exec_full_node,
         } => {
-            // Debug: Print environment variables
-            println!("=== Environment Variables ===");
-            if let Ok(database_url) = std::env::var("DATABASE_URL") {
-                println!("DATABASE_URL from env: {}", database_url);
-            } else {
-                println!("DATABASE_URL not set in environment");
-            }
-            if let Ok(rpc_url) = std::env::var("RPC_URL") {
-                println!("RPC_URL from env: {}", rpc_url);
-            } else {
-                println!("RPC_URL not set in environment");
-            }
-            if let Ok(port) = std::env::var("PORT") {
-                println!("PORT from env: {}", port);
-            } else {
-                println!("PORT not set in environment");
-            }
-
-            // Debug: Print connection config BEFORE override
-            println!("Connection config BEFORE override: {:?}", connection);
-            println!("TX exec config BEFORE override: {:?}", tx_exec_full_node);
-
             // Override with environment variables if set
             if let Ok(database_url) = std::env::var("DATABASE_URL") {
                 if database_url != "$DATABASE_URL" {
                     // Make sure it's not the literal string
-                    println!("Overriding db_url with DATABASE_URL: {}", database_url);
                     connection.db_url = database_url;
                 }
             }
@@ -109,7 +66,6 @@ async fn main() {
             if let Ok(rpc_url) = std::env::var("RPC_URL") {
                 if rpc_url != "$RPC_URL" {
                     // Make sure it's not the literal string
-                    println!("Overriding node_rpc_url with RPC_URL: {}", rpc_url);
                     tx_exec_full_node =
                         mys_graphql_rpc::config::TxExecFullNodeConfig::new(Some(rpc_url));
                 }
@@ -117,15 +73,9 @@ async fn main() {
 
             if let Ok(port) = std::env::var("PORT") {
                 if let Ok(port_num) = port.parse::<u16>() {
-                    println!("Overriding port with PORT: {}", port_num);
                     connection.port = port_num;
                 }
             }
-
-            // Debug: Print connection config AFTER override
-            println!("Connection config AFTER override: {:?}", connection);
-            println!("TX exec config AFTER override: {:?}", tx_exec_full_node);
-            println!("==============================");
 
             let service_config = service_config(config);
             let _guard = telemetry_subscribers::TelemetryConfig::new()

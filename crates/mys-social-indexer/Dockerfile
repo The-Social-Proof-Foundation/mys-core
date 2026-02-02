@@ -43,19 +43,22 @@ COPY --from=builder /app/crates/mys-social-indexer/migrations /app/migrations
 # Create entrypoint script with forced migration
 RUN echo '#!/bin/sh\n\
 echo "=== ENTRYPOINT DEBUG ==="\n\
-echo "All environment variables:"\n\
-env | grep -E "(DATABASE_URL|PORT)" || echo "No matching env vars found"\n\
-echo ""\n\
-echo "=== Key Environment Variables ==="\n\
-echo "DATABASE_URL: ${DATABASE_URL:-NOT_SET}"\n\
-echo "PORT: ${PORT:-8080}"\n\
-echo "=============================="\n\
+echo "Checking environment variables..."\n\
 \n\
 # Validate required environment variables\n\
 if [ -z "$DATABASE_URL" ]; then\n\
   echo "ERROR: DATABASE_URL is not set"\n\
   exit 1\n\
 fi\n\
+\n\
+# Mask sensitive values for logging\n\
+if [ -n "$DATABASE_URL" ]; then\n\
+  MASKED_DB_URL=$(echo "$DATABASE_URL" | sed '\''s/:[^@]*@/:****@/'\'')\n\
+  echo "DATABASE_URL: ${MASKED_DB_URL:-NOT_SET}"\n\
+fi\n\
+\n\
+echo "PORT: ${PORT:-8080}"\n\
+echo "=============================="\n\
 \n\
 # Force migrations by setting environment variable\n\
 echo "=== FORCING DATABASE MIGRATIONS ==="\n\
@@ -66,10 +69,7 @@ echo "Setting RESET_BLOCKING_SCHEMA=true to force blocking schema update"\n\
 echo "Migrations will be handled by the application startup process"\n\
 echo "=== MIGRATIONS WILL BE FORCED ==="\n\
 \n\
-# Use actual environment variable values\n\
-echo "Starting mys-social-indexer with:"\n\
-echo "  DATABASE_URL: $DATABASE_URL"\n\
-echo "  PORT: ${PORT:-8080}"\n\
+echo "Starting mys-social-indexer..."\n\
 echo ""\n\
 \n\
 exec mys-social-indexer' > /usr/local/bin/entrypoint.sh && \
