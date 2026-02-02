@@ -1564,6 +1564,9 @@ pub struct UserReservationInfo {
     pub platform_fee: Option<i64>,
     pub treasury_fee: Option<i64>,
     pub reserved_at: i64,
+    pub icon: Option<String>,
+    pub primary_label: Option<String>,
+    pub secondary_label: Option<String>,
 }
 
 /// Enhanced user token holdings with optional reservations
@@ -1666,6 +1669,12 @@ pub async fn get_user_spt_holdings(
             treasury_fee: Option<i64>,
             #[diesel(sql_type = diesel::sql_types::BigInt)]
             reserved_at: i64,
+            #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+            icon: Option<String>,
+            #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+            primary_label: Option<String>,
+            #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+            secondary_label: Option<String>,
         }
 
         let reservation_rows = diesel::sql_query(
@@ -1680,24 +1689,75 @@ pub async fn get_user_spt_holdings(
                     r.platform_fee,
                     r.treasury_fee,
                     r.reserved_at,
-                    rp.associated_id
+                    rp.associated_id,
+                    rp.token_type
                 FROM spt_reservations r
                 LEFT JOIN spt_reservation_pools rp ON r.pool_id = rp.pool_id
                 WHERE r.reserver_address = $1
                 ORDER BY r.pool_id, r.reserver_address, r.time DESC
+            ),
+            latest_profiles AS (
+                SELECT DISTINCT ON (profile_id) *
+                FROM profiles
+                WHERE profile_id IS NOT NULL
+                ORDER BY profile_id, updated_at DESC
+            ),
+            latest_posts AS (
+                SELECT DISTINCT ON (post_id) *
+                FROM posts
+                ORDER BY post_id, time DESC
             )
             SELECT 
-                pool_id,
-                COALESCE(associated_id, '') as associated_id,
-                amount,
-                fee_amount,
-                creator_fee,
-                platform_fee,
-                treasury_fee,
-                reserved_at
-            FROM latest_reservations
-            WHERE amount > 0
-            ORDER BY amount DESC
+                lr.pool_id,
+                COALESCE(lr.associated_id, '') as associated_id,
+                lr.amount,
+                lr.fee_amount,
+                lr.creator_fee,
+                lr.platform_fee,
+                lr.treasury_fee,
+                lr.reserved_at,
+                CASE 
+                    WHEN lr.token_type = 1 THEN prof.profile_photo
+                    WHEN lr.token_type = 2 THEN 
+                        CASE 
+                            WHEN post.media_urls IS NOT NULL AND jsonb_typeof(post.media_urls) = 'array' AND jsonb_array_length(post.media_urls) > 0 THEN
+                                CASE 
+                                    WHEN jsonb_typeof(post.media_urls->0) = 'string' THEN post.media_urls->>0
+                                    WHEN jsonb_typeof(post.media_urls->0) = 'object' THEN post.media_urls->0->>'url'
+                                    ELSE NULL
+                                END
+                            ELSE NULL
+                        END
+                    ELSE NULL
+                END as icon,
+                CASE 
+                    WHEN lr.token_type = 1 THEN 
+                        CASE 
+                            WHEN prof.profile_id IS NOT NULL THEN COALESCE(prof.display_name, prof.username)
+                            ELSE 'Anonymous wallet'
+                        END
+                    WHEN lr.token_type = 2 THEN post.content
+                    ELSE NULL
+                END as primary_label,
+                CASE 
+                    WHEN lr.token_type = 1 THEN prof.username
+                    ELSE NULL
+                END as secondary_label
+            FROM latest_reservations lr
+            LEFT JOIN latest_profiles prof ON 
+                lr.token_type = 1 AND 
+                (CASE 
+                    WHEN lr.associated_id LIKE 'profile_%' THEN SUBSTRING(lr.associated_id FROM 9)
+                    ELSE lr.associated_id
+                END) = prof.profile_id
+            LEFT JOIN latest_posts post ON 
+                lr.token_type = 2 AND 
+                (CASE 
+                    WHEN lr.associated_id LIKE 'post_%' THEN SUBSTRING(lr.associated_id FROM 6)
+                    ELSE lr.associated_id
+                END) = post.post_id
+            WHERE lr.amount > 0
+            ORDER BY lr.amount DESC
             "#,
         )
         .bind::<diesel::sql_types::Text, _>(address.clone())
@@ -1719,6 +1779,9 @@ pub async fn get_user_spt_holdings(
                 platform_fee: r.platform_fee,
                 treasury_fee: r.treasury_fee,
                 reserved_at: r.reserved_at,
+                icon: r.icon,
+                primary_label: r.primary_label,
+                secondary_label: r.secondary_label,
             })
             .collect();
 
@@ -1778,6 +1841,12 @@ pub async fn get_user_spt_reservations(
         treasury_fee: Option<i64>,
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         reserved_at: i64,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+        icon: Option<String>,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+        primary_label: Option<String>,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+        secondary_label: Option<String>,
     }
 
     // Get reservations - latest per pool for this user
@@ -1793,24 +1862,75 @@ pub async fn get_user_spt_reservations(
                 r.platform_fee,
                 r.treasury_fee,
                 r.reserved_at,
-                rp.associated_id
+                rp.associated_id,
+                rp.token_type
             FROM spt_reservations r
             LEFT JOIN spt_reservation_pools rp ON r.pool_id = rp.pool_id
             WHERE r.reserver_address = $1
             ORDER BY r.pool_id, r.reserver_address, r.time DESC
+        ),
+        latest_profiles AS (
+            SELECT DISTINCT ON (profile_id) *
+            FROM profiles
+            WHERE profile_id IS NOT NULL
+            ORDER BY profile_id, updated_at DESC
+        ),
+        latest_posts AS (
+            SELECT DISTINCT ON (post_id) *
+            FROM posts
+            ORDER BY post_id, time DESC
         )
         SELECT 
-            pool_id,
-            COALESCE(associated_id, '') as associated_id,
-            amount,
-            fee_amount,
-            creator_fee,
-            platform_fee,
-            treasury_fee,
-            reserved_at
-        FROM latest_reservations
-        WHERE amount > 0
-        ORDER BY amount DESC
+            lr.pool_id,
+            COALESCE(lr.associated_id, '') as associated_id,
+            lr.amount,
+            lr.fee_amount,
+            lr.creator_fee,
+            lr.platform_fee,
+            lr.treasury_fee,
+            lr.reserved_at,
+            CASE 
+                WHEN lr.token_type = 1 THEN prof.profile_photo
+                WHEN lr.token_type = 2 THEN 
+                    CASE 
+                        WHEN post.media_urls IS NOT NULL AND jsonb_typeof(post.media_urls) = 'array' AND jsonb_array_length(post.media_urls) > 0 THEN
+                            CASE 
+                                WHEN jsonb_typeof(post.media_urls->0) = 'string' THEN post.media_urls->>0
+                                WHEN jsonb_typeof(post.media_urls->0) = 'object' THEN post.media_urls->0->>'url'
+                                ELSE NULL
+                            END
+                        ELSE NULL
+                    END
+                ELSE NULL
+            END as icon,
+            CASE 
+                WHEN lr.token_type = 1 THEN 
+                    CASE 
+                        WHEN prof.profile_id IS NOT NULL THEN COALESCE(prof.display_name, prof.username)
+                        ELSE 'Anonymous wallet'
+                    END
+                WHEN lr.token_type = 2 THEN post.content
+                ELSE NULL
+            END as primary_label,
+            CASE 
+                WHEN lr.token_type = 1 THEN prof.username
+                ELSE NULL
+            END as secondary_label
+        FROM latest_reservations lr
+        LEFT JOIN latest_profiles prof ON 
+            lr.token_type = 1 AND 
+            (CASE 
+                WHEN lr.associated_id LIKE 'profile_%' THEN SUBSTRING(lr.associated_id FROM 9)
+                ELSE lr.associated_id
+            END) = prof.profile_id
+        LEFT JOIN latest_posts post ON 
+            lr.token_type = 2 AND 
+            (CASE 
+                WHEN lr.associated_id LIKE 'post_%' THEN SUBSTRING(lr.associated_id FROM 6)
+                ELSE lr.associated_id
+            END) = post.post_id
+        WHERE lr.amount > 0
+        ORDER BY lr.amount DESC
         LIMIT $2 OFFSET $3
         "#,
     )
@@ -1836,6 +1956,9 @@ pub async fn get_user_spt_reservations(
             platform_fee: r.platform_fee,
             treasury_fee: r.treasury_fee,
             reserved_at: r.reserved_at,
+            icon: r.icon,
+            primary_label: r.primary_label,
+            secondary_label: r.secondary_label,
         })
         .collect();
 
@@ -2502,33 +2625,33 @@ pub async fn get_market_sentiment(
         r#"
         WITH current_volume AS (
             SELECT 
-                SUM(CASE WHEN transaction_type = 'BUY' THEN mys_amount ELSE 0 END) as buy_volume,
-                SUM(CASE WHEN transaction_type = 'SELL' THEN mys_amount ELSE 0 END) as sell_volume,
-                COUNT(*) as transaction_count,
-                COUNT(DISTINCT CASE WHEN transaction_type = 'BUY' THEN sender END) as unique_buyers,
-                COUNT(DISTINCT CASE WHEN transaction_type = 'SELL' THEN sender END) as unique_sellers
+                COALESCE(SUM(CASE WHEN transaction_type = 'BUY' THEN mys_amount ELSE 0 END), 0) as buy_volume,
+                COALESCE(SUM(CASE WHEN transaction_type = 'SELL' THEN mys_amount ELSE 0 END), 0) as sell_volume,
+                COALESCE(COUNT(*), 0) as transaction_count,
+                COALESCE(COUNT(DISTINCT CASE WHEN transaction_type = 'BUY' THEN sender END), 0) as unique_buyers,
+                COALESCE(COUNT(DISTINCT CASE WHEN transaction_type = 'SELL' THEN sender END), 0) as unique_sellers
             FROM spt_transactions
             WHERE time > NOW() - INTERVAL '24 hours'
         ),
         previous_volume AS (
             SELECT 
-                SUM(mys_amount) as total_volume
+                COALESCE(SUM(mys_amount), 0) as total_volume
             FROM spt_transactions
             WHERE time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
         )
         SELECT 
-            c.buy_volume,
-            c.sell_volume,
-            c.transaction_count,
-            c.unique_buyers,
-            c.unique_sellers,
+            COALESCE(c.buy_volume, 0) as buy_volume,
+            COALESCE(c.sell_volume, 0) as sell_volume,
+            COALESCE(c.transaction_count, 0) as transaction_count,
+            COALESCE(c.unique_buyers, 0) as unique_buyers,
+            COALESCE(c.unique_sellers, 0) as unique_sellers,
             CASE 
-                WHEN COALESCE(p.total_volume, 0) = 0 THEN 0
-                ELSE ((c.buy_volume + c.sell_volume) - COALESCE(p.total_volume, 0)) * 100.0 / COALESCE(p.total_volume, 1)
+                WHEN COALESCE(p.total_volume, 0) = 0 THEN 0.0
+                ELSE ((COALESCE(c.buy_volume, 0) + COALESCE(c.sell_volume, 0)) - COALESCE(p.total_volume, 0)) * 100.0 / COALESCE(p.total_volume, 1)
             END as volume_change_percentage,
             CASE
-                WHEN (c.buy_volume + c.sell_volume) = 0 THEN 0
-                ELSE (c.buy_volume - c.sell_volume) * 1.0 / (c.buy_volume + c.sell_volume)
+                WHEN (COALESCE(c.buy_volume, 0) + COALESCE(c.sell_volume, 0)) = 0 THEN 0.0
+                ELSE (COALESCE(c.buy_volume, 0) - COALESCE(c.sell_volume, 0)) * 1.0 / (COALESCE(c.buy_volume, 0) + COALESCE(c.sell_volume, 0))
             END as sentiment_score
         FROM current_volume c
         CROSS JOIN previous_volume p
@@ -2567,9 +2690,9 @@ pub async fn get_market_sentiment(
         WITH token_type_metrics AS (
             SELECT 
                 p.token_type,
-                SUM(CASE WHEN t.transaction_type = 'BUY' THEN t.mys_amount ELSE 0 END) as buy_volume,
-                SUM(CASE WHEN t.transaction_type = 'SELL' THEN t.mys_amount ELSE 0 END) as sell_volume,
-                SUM(t.mys_amount) as current_volume
+                COALESCE(SUM(CASE WHEN t.transaction_type = 'BUY' THEN t.mys_amount ELSE 0 END), 0) as buy_volume,
+                COALESCE(SUM(CASE WHEN t.transaction_type = 'SELL' THEN t.mys_amount ELSE 0 END), 0) as sell_volume,
+                COALESCE(SUM(t.mys_amount), 0) as current_volume
             FROM spt_transactions t
             JOIN spt_pools p ON t.pool_id = p.pool_id
             WHERE t.time > NOW() - INTERVAL '24 hours'
@@ -2578,7 +2701,7 @@ pub async fn get_market_sentiment(
         previous_volumes AS (
             SELECT 
                 p.token_type,
-                SUM(t.mys_amount) as previous_volume
+                COALESCE(SUM(t.mys_amount), 0) as previous_volume
             FROM spt_transactions t
             JOIN spt_pools p ON t.pool_id = p.pool_id
             WHERE t.time BETWEEN NOW() - INTERVAL '48 hours' AND NOW() - INTERVAL '24 hours'
@@ -2587,12 +2710,12 @@ pub async fn get_market_sentiment(
         SELECT 
             c.token_type,
             CASE
-                WHEN (c.buy_volume + c.sell_volume) = 0 THEN 0
-                ELSE (c.buy_volume - c.sell_volume) * 1.0 / (c.buy_volume + c.sell_volume)
+                WHEN (COALESCE(c.buy_volume, 0) + COALESCE(c.sell_volume, 0)) = 0 THEN 0.0
+                ELSE (COALESCE(c.buy_volume, 0) - COALESCE(c.sell_volume, 0)) * 1.0 / (COALESCE(c.buy_volume, 0) + COALESCE(c.sell_volume, 0))
             END as sentiment_score,
             CASE 
-                WHEN COALESCE(p.previous_volume, 0) = 0 THEN 0
-                ELSE (c.current_volume - COALESCE(p.previous_volume, 0)) * 100.0 / COALESCE(p.previous_volume, 1)
+                WHEN COALESCE(p.previous_volume, 0) = 0 THEN 0.0
+                ELSE (COALESCE(c.current_volume, 0) - COALESCE(p.previous_volume, 0)) * 100.0 / COALESCE(p.previous_volume, 1)
             END as volume_change
         FROM token_type_metrics c
         LEFT JOIN previous_volumes p ON c.token_type = p.token_type
@@ -2983,6 +3106,9 @@ pub struct ReservationPoolInfo {
     pub total_reserved: i64,
     pub required_threshold: i64,
     pub pool_id: Option<String>,
+    pub icon: Option<String>,
+    pub primary_label: Option<String>,
+    pub secondary_label: Option<String>,
 }
 
 impl Default for ReservationPoolInfo {
@@ -2993,6 +3119,9 @@ impl Default for ReservationPoolInfo {
             total_reserved: 0,
             required_threshold: 0,
             pool_id: None,
+            icon: None,
+            primary_label: None,
+            secondary_label: None,
         }
     }
 }
@@ -3034,18 +3163,69 @@ pub async fn get_reservation_pool_info_for_profiles(
                 total_reserved,
                 required_threshold,
                 status,
+                token_type,
                 time
             FROM spt_reservation_pools
             WHERE associated_id = ANY($1::TEXT[])
             ORDER BY associated_id, time DESC
+        ),
+        latest_profiles AS (
+            SELECT DISTINCT ON (profile_id) *
+            FROM profiles
+            WHERE profile_id IS NOT NULL
+            ORDER BY profile_id, updated_at DESC
+        ),
+        latest_posts AS (
+            SELECT DISTINCT ON (post_id) *
+            FROM posts
+            ORDER BY post_id, time DESC
         )
         SELECT 
-            associated_id,
-            pool_id,
-            total_reserved,
-            required_threshold,
-            status
-        FROM latest_pools
+            lp.associated_id,
+            lp.pool_id,
+            lp.total_reserved,
+            lp.required_threshold,
+            lp.status,
+            CASE 
+                WHEN lp.token_type = 1 THEN prof.profile_photo
+                WHEN lp.token_type = 2 THEN 
+                    CASE 
+                        WHEN post.media_urls IS NOT NULL AND jsonb_typeof(post.media_urls) = 'array' AND jsonb_array_length(post.media_urls) > 0 THEN
+                            CASE 
+                                WHEN jsonb_typeof(post.media_urls->0) = 'string' THEN post.media_urls->>0
+                                WHEN jsonb_typeof(post.media_urls->0) = 'object' THEN post.media_urls->0->>'url'
+                                ELSE NULL
+                            END
+                        ELSE NULL
+                    END
+                ELSE NULL
+            END as icon,
+            CASE 
+                WHEN lp.token_type = 1 THEN 
+                    CASE 
+                        WHEN prof.profile_id IS NOT NULL THEN COALESCE(prof.display_name, prof.username)
+                        ELSE 'Anonymous wallet'
+                    END
+                WHEN lp.token_type = 2 THEN post.content
+                ELSE NULL
+            END as primary_label,
+            CASE 
+                WHEN lp.token_type = 1 THEN prof.username
+                ELSE NULL
+            END as secondary_label
+        FROM latest_pools lp
+        LEFT JOIN latest_profiles prof ON 
+            lp.token_type = 1 AND 
+            (CASE 
+                WHEN lp.associated_id LIKE 'profile_%' THEN SUBSTRING(lp.associated_id FROM 9)
+                ELSE lp.associated_id
+            END) = prof.profile_id
+        LEFT JOIN latest_posts post ON 
+            lp.token_type = 2 AND 
+            (CASE 
+                WHEN lp.associated_id LIKE 'post_%' THEN SUBSTRING(lp.associated_id FROM 6)
+                ELSE lp.associated_id
+            END) = post.post_id
         "#,
     )
     .bind::<diesel::sql_types::Array<diesel::sql_types::Text>, _>(&associated_ids);
@@ -3062,6 +3242,12 @@ pub async fn get_reservation_pool_info_for_profiles(
         required_threshold: i64,
         #[diesel(sql_type = Text)]
         status: String,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+        icon: Option<String>,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+        primary_label: Option<String>,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+        secondary_label: Option<String>,
     }
 
     let pools: Vec<PoolRow> = query.load::<PoolRow>(conn).await?;
@@ -3087,6 +3273,9 @@ pub async fn get_reservation_pool_info_for_profiles(
                     total_reserved: pool.total_reserved,
                     required_threshold: pool.required_threshold,
                     pool_id: Some(pool.pool_id),
+                    icon: pool.icon,
+                    primary_label: pool.primary_label,
+                    secondary_label: pool.secondary_label,
                 },
             );
         }

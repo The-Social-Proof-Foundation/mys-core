@@ -425,9 +425,11 @@ module mys_system::mys_system_state_inner {
         // Only check min validator condition if the current number of validators satisfy the constraint.
         // This is so that if we somehow already are in a state where we have less than min validators, it no longer matters
         // and is ok to stay so. This is useful for a test setup.
-        if (self.validators.active_validators().length() >= self.parameters.min_validator_count) {
+        if (self.parameters.min_validator_count > 0 && self.validators.active_validators().length() >= self.parameters.min_validator_count) {
+            // Check that after this removal, we'll still have more than min_validator_count validators.
+            // We subtract 1 because next_epoch_validator_count() doesn't include this removal yet.
             assert!(
-                self.validators.next_epoch_validator_count() > self.parameters.min_validator_count,
+                self.validators.next_epoch_validator_count() - 1 > self.parameters.min_validator_count,
                 ELimitExceeded,
             );
         };

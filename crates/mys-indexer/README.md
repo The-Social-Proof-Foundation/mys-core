@@ -382,11 +382,10 @@ Many endpoints support common pagination and filtering parameters:
 #### User Holdings & Reservations
 - **GET /social-proof-token/users/:address/holdings** - Get token holdings for a user
   - Query: `include_reservations` (optional, boolean - if true, includes reservation data with fee breakdowns)
-  - Returns enhanced holdings with total_value and optional reservations array
+  - Returns enhanced holdings with total_value and optional reservations array with icon and label fields
 - **GET /social-proof-token/users/:address/reservations** - Get all reserved tokens for a user across all pools
   - Query: `page` (optional, default: 1), `limit` (optional, default: 20, max: 100)
-  - Returns paginated list of user's reservations with fee breakdowns
-  - Each reservation includes: `pool_id`, `associated_id`, `amount`, `fee_amount`, `creator_fee`, `platform_fee`, `treasury_fee`, `reserved_at`
+  - Returns paginated list of user's reservations with fee breakdowns, icon, and label fields
   - Only returns active reservations (amount > 0)
 
 #### Analytics & Insights
