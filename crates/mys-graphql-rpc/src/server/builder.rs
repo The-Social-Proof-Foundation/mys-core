@@ -652,13 +652,21 @@ async fn health_check(
         return db_health_check;
     }
 
+    let checkpoint_timestamp_ms = watermark_lock.read().await.hi_cp_timestamp_ms;
+
+    // If checkpoint data is not initialized yet, consider service healthy
+    // (DB is reachable, just waiting for checkpoint data)
+    if checkpoint_timestamp_ms == 0 {
+        return StatusCode::OK;
+    }
+
+    // Only validate checkpoint lag if checkpoint data exists
     let max_checkpoint_lag_ms = query_params
         .max_checkpoint_lag_ms
         .map(Duration::from_millis)
         .unwrap_or_else(|| DEFAULT_MAX_CHECKPOINT_LAG);
 
-    let checkpoint_timestamp =
-        Duration::from_millis(watermark_lock.read().await.hi_cp_timestamp_ms);
+    let checkpoint_timestamp = Duration::from_millis(checkpoint_timestamp_ms);
 
     let now_millis = Utc::now().timestamp_millis();
 
@@ -672,7 +680,7 @@ async fn health_check(
         return StatusCode::GATEWAY_TIMEOUT;
     }
 
-    db_health_check
+    StatusCode::OK
 }
 
 // One server per proc, so this is okay
