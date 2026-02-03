@@ -745,7 +745,8 @@ impl CheckpointStore {
 
     pub fn reset_db_for_execution_since_genesis(&self) -> MysResult {
         self.delete_highest_executed_checkpoint_test_only()?;
-        self.watermarks.rocksdb.flush()?;
+        self.watermarks.rocksdb().expect("RocksDB not available").flush()
+            .map_err(|e| TypedStoreError::RocksDBError(e.to_string()))?;
         Ok(())
     }
 
@@ -2214,7 +2215,7 @@ async fn diagnose_split_brain(
     let fork_logs_text = format!("{header}\n\n{diff_patches}\n\n");
     let path = tempfile::tempdir()
         .expect("Failed to create tempdir")
-        .into_path()
+        .keep()
         .join(Path::new("checkpoint_fork_dump.txt"));
     let mut file = File::create(path).unwrap();
     write!(file, "{}", fork_logs_text).unwrap();

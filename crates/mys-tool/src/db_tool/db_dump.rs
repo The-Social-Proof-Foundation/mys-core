@@ -91,38 +91,10 @@ pub fn table_summary(
     .map_err(|err| anyhow!(err.to_string()))
 }
 
-pub fn print_table_metadata(
-    store_name: StoreName,
-    epoch: Option<EpochId>,
-    db_path: PathBuf,
+fn print_table_metadata_impl(
+    db: &typed_store::rocksdb::DBWithThreadMode<MultiThreaded>,
     table_name: &str,
 ) -> anyhow::Result<()> {
-    let db = match store_name {
-        StoreName::Validator => {
-            let epoch_tables = AuthorityEpochTables::describe_tables();
-            if epoch_tables.contains_key(table_name) {
-                let epoch = epoch.ok_or_else(|| anyhow!("--epoch is required"))?;
-                AuthorityEpochTables::open_readonly(epoch, &db_path)
-                    .next_shared_object_versions
-                    .rocksdb
-            } else {
-                AuthorityPerpetualTables::open_readonly(&db_path)
-                    .objects
-                    .rocksdb
-            }
-        }
-        StoreName::Index => {
-            IndexStoreTables::get_read_only_handle(db_path, None, None, MetricConf::default())
-                .event_by_move_module
-                .rocksdb
-        }
-        StoreName::Epoch => {
-            CommitteeStoreTables::get_read_only_handle(db_path, None, None, MetricConf::default())
-                .committee_map
-                .rocksdb
-        }
-    };
-
     let mut table = Table::new();
     table
         .set_content_arrangement(ContentArrangement::Dynamic)
@@ -158,6 +130,51 @@ pub fn print_table_metadata(
 
     eprintln!("{}", table);
     Ok(())
+}
+
+pub fn print_table_metadata(
+    store_name: StoreName,
+    epoch: Option<EpochId>,
+    db_path: PathBuf,
+    table_name: &str,
+) -> anyhow::Result<()> {
+    match store_name {
+        StoreName::Validator => {
+            let epoch_tables = AuthorityEpochTables::describe_tables();
+            if epoch_tables.contains_key(table_name) {
+                let epoch = epoch.ok_or_else(|| anyhow!("--epoch is required"))?;
+                let tables = AuthorityEpochTables::open_readonly(epoch, &db_path);
+                let db = tables
+                    .next_shared_object_versions
+                    .rocksdb()
+                    .expect("RocksDB not available");
+                print_table_metadata_impl(db, table_name)
+            } else {
+                let tables = AuthorityPerpetualTables::open_readonly(&db_path);
+                let db = tables
+                    .objects
+                    .rocksdb()
+                    .expect("RocksDB not available");
+                print_table_metadata_impl(db, table_name)
+            }
+        }
+        StoreName::Index => {
+            let tables = IndexStoreTables::get_read_only_handle(db_path, None, None, MetricConf::default());
+            let db = tables
+                .event_by_move_module
+                .rocksdb()
+                .expect("RocksDB not available");
+            print_table_metadata_impl(db, table_name)
+        }
+        StoreName::Epoch => {
+            let tables = CommitteeStoreTables::get_read_only_handle(db_path, None, None, MetricConf::default());
+            let db = tables
+                .committee_map
+                .rocksdb()
+                .expect("RocksDB not available");
+            print_table_metadata_impl(db, table_name)
+        }
+    }
 }
 
 pub fn duplicate_objects_summary(db_path: PathBuf) -> (usize, usize, usize, usize) {
@@ -321,7 +338,7 @@ mod test {
 
     #[tokio::test]
     async fn db_dump_population() -> Result<(), anyhow::Error> {
-        let primary_path = tempfile::tempdir()?.into_path();
+        let primary_path = tempfile::tempdir()?.keep();
 
         // Open the DB for writing
         let _: AuthorityEpochTables = AuthorityEpochTables::open(0, &primary_path, None);

@@ -462,7 +462,7 @@ impl MysNode {
         );
 
         // Initialize metrics to track db usage before creating any stores
-        DBMetrics::init(&prometheus_registry);
+        DBMetrics::init(registry_service.clone());
 
         // Initialize Mysten metrics.
         mysten_metrics::init_metrics(&prometheus_registry);

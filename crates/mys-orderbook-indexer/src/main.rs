@@ -118,7 +118,6 @@ async fn main() -> Result<()> {
                 tempfile::tempdir()
                     .expect("Failed to create temp directory")
                     .keep()
-                    .expect("Failed to persist temp directory")
             }),
         config.orderbook_genesis_checkpoint,
         ingestion_metrics.clone(),

@@ -1,0 +1,241 @@
+name: Performance Benchmarks
+
+on:
+  # Run benchmarks on demand
+  workflow_dispatch:
+    inputs:
+      benchmark_type:
+        description: "Benchmark to run (all, random_access, read_window, index, benchmark)"
+        type: choice
+        options:
+          - all
+          - random_access
+          - read_window
+          - index
+          - benchmark
+        default: "all"
+      post_to_slack:
+        description: "Post results to Slack"
+        type: boolean
+        default: false
+
+  # Run benchmarks weekly
+  schedule:
+    - cron: "0 0 * * 0" # Run at midnight on Sundays
+
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+# Ensure only one benchmark job runs at a time
+concurrency:
+  group: benchmarks
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-benchmarks')
+
+    name: Run Benchmarks
+    runs-on: self-hosted
+    timeout-minutes: 1440 # 24 hours
+
+    env:
+      BENCH_DATA_DIR: "/opt/myso/db/tidehunter-benchmarks"
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Fetch all history for proper benchmarking
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Prepare results directory
+        run: |
+          mkdir -p ./results
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+          echo "# Benchmark Results - $(date)" > ./results/summary.md
+          echo "## Environment" >> ./results/summary.md
+          echo "![runner bare metal host metrics](https://metrics.sui.io/goto/D1MxYcBNg?orgId=1)" >> ./results/summary.md
+
+      - name: Build all benchmarks
+        run: cargo build --release --all
+
+      - name: Generate index benchmark files
+        if: github.event.inputs.benchmark_type == 'all' || github.event.inputs.benchmark_type == 'index' || github.event_name != 'workflow_dispatch'
+        run: |
+          sudo mkdir -p "$BENCH_DATA_DIR"
+          sudo chown $USER "$BENCH_DATA_DIR"
+
+          # Only generate if files don't exist
+          if [ ! -f "$BENCH_DATA_DIR/bench-header-100GB-100K.dat" ] || [ ! -f "$BENCH_DATA_DIR/bench-uniform-file-100GB-100K.dat" ]; then
+            echo "Generating benchmark files..."
+            cargo run --release --manifest-path benchmarks/index_benchmark/Cargo.toml -- generate \
+              --num-indices 25000 \
+              --entries-per-index 1000000 \
+              --header-file "$BENCH_DATA_DIR/bench-header-100GB-100K.dat" \
+              --uniform-file "$BENCH_DATA_DIR/bench-uniform-file-100GB-100K.dat"
+          else
+            echo "Using existing benchmark files from $BENCH_DATA_DIR"
+          fi
+
+          # Create symlinks to the data directory
+          mkdir -p data
+          ln -sf "$BENCH_DATA_DIR/bench-header-100GB-100K.dat" data/
+          ln -sf "$BENCH_DATA_DIR/bench-uniform-file-100GB-100K.dat" data/
+
+      - name: Run index_benchmark
+        if: github.event.inputs.benchmark_type == 'all' || github.event.inputs.benchmark_type == 'index' || github.event_name != 'workflow_dispatch'
+        run: |
+          echo "## Index Benchmark" >> ./results/summary.md
+          echo '```' >> ./results/summary.md
+          echo "Started at: $(date)" >> ./results/summary.md
+          START_TIME=$(date +%s)
+          cargo run --release -p index_benchmark -- run \
+            --num-lookups 100000 \
+            --num-runs 1 \
+            --batch-size 1000 \
+            --window-size 800 \
+            --header-file data/bench-header-100GB-100K.dat \
+            --uniform-file data/bench-uniform-file-100GB-100K.dat > ./results/index_${{ env.TIMESTAMP }}.txt
+          cat ./results/index_${{ env.TIMESTAMP }}.txt >> ./results/summary.md
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          echo "Total time: $DURATION seconds" >> ./results/summary.md
+          echo "Finished at: $(date)" >> ./results/summary.md
+          echo '```' >> ./results/summary.md
+
+      - name: Run general benchmark
+        if: github.event.inputs.benchmark_type == 'all' || github.event.inputs.benchmark_type == 'benchmark' || github.event_name != 'workflow_dispatch'
+        run: |
+          [ -n "$BENCH_DATA_DIR" ] && [ -d "$BENCH_DATA_DIR" ] && rm -rf "$BENCH_DATA_DIR"/*
+          echo "## General Benchmark" >> ./results/summary.md
+          echo '```' >> ./results/summary.md
+          echo "Started at: $(date)" >> ./results/summary.md
+          START_TIME=$(date +%s)
+          cargo run --release -p benchmark -- \
+            --operations 30000000 \
+            --writes 10000000 \
+            --write-threads 72 \
+            --mixed-threads 72 \
+            --write-size 512 \
+            --key-len 32 \
+            --path "$BENCH_DATA_DIR" > ./results/benchmark_${{ env.TIMESTAMP }}.txt
+          cat ./results/benchmark_${{ env.TIMESTAMP }}.txt >> ./results/summary.md
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          echo "Total time: $DURATION seconds" >> ./results/summary.md
+          echo "Finished at: $(date)" >> ./results/summary.md
+          echo '```' >> ./results/summary.md
+
+
+      - name: Run general benchmark (4K values, Zipf=2.0, 100% reads)
+        if: github.event.inputs.benchmark_type == 'all' || github.event.inputs.benchmark_type == 'benchmark' || github.event_name != 'workflow_dispatch'
+        run: |
+          [ -n "$BENCH_DATA_DIR" ] && [ -d "$BENCH_DATA_DIR" ] && rm -rf "$BENCH_DATA_DIR"/*
+          echo "## General Benchmark (4K Values, Zipf=2.0, 100% Reads)" >> ./results/summary.md
+          echo '```' >> ./results/summary.md
+          echo "Started at: $(date)" >> ./results/summary.md
+          START_TIME=$(date +%s)
+          cargo run --release -p benchmark -- \
+            --parameters-path .github/benchmark-config-4k-zipf2.yml \
+            --path "$BENCH_DATA_DIR" > ./results/benchmark_4k_zipf2_${{ env.TIMESTAMP }}.txt
+          cat ./results/benchmark_4k_zipf2_${{ env.TIMESTAMP }}.txt >> ./results/summary.md
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          echo "Total time: $DURATION seconds" >> ./results/summary.md
+          echo "Finished at: $(date)" >> ./results/summary.md
+          echo '```' >> ./results/summary.md
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ env.TIMESTAMP }}
+          path: results/
+          retention-days: 20
+
+      - name: Comment PR with benchmark results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const benchmarkSummary = fs.readFileSync('./results/summary.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: benchmarkSummary
+            });
+
+      - name: Create condensed summary for Slack
+        id: condensed_summary
+        run: |
+          # Extract just the important numbers and results
+          {
+            echo "# Benchmark Summary ($(date +%Y-%m-%d))"
+            echo ""
+            
+            # Process Index results
+            if [ -f "./results/index_${{ env.TIMESTAMP }}.txt" ]; then
+              echo -e "\nIndex Benchmark:"
+              grep "End-to-end throughput:" "./results/index_${{ env.TIMESTAMP }}.txt" | head -n 1 | sed 's/^[[:space:]]*//'
+              grep "Total time:" "./results/summary.md" | head -n 1
+            fi
+            
+            # Process General benchmark results
+            if [ -f "./results/benchmark_${{ env.TIMESTAMP }}.txt" ]; then
+              echo -e "\nGeneral Benchmark:"
+              grep "Write test done" "./results/benchmark_${{ env.TIMESTAMP }}.txt" | head -n 1 | sed 's/^Write test done in.*: //'
+              grep "Mixed test done" "./results/benchmark_${{ env.TIMESTAMP }}.txt" | head -n 1 | sed 's/^Mixed test done in.*: //'
+              grep "Latency(mcs): p50:" "./results/benchmark_${{ env.TIMESTAMP }}.txt" | tail -n 1
+              grep "Read test done" "./results/benchmark_${{ env.TIMESTAMP }}.txt" | head -n 1 | sed 's/^Read test done in.*: //'
+              grep "Total time:" "./results/summary.md" | tail -n 1
+            fi
+          } > ./results/slack_summary.md
+
+          CONDENSED_SUMMARY=$(cat ./results/slack_summary.md | jq -aRs .)
+          echo "summary=$CONDENSED_SUMMARY" >> $GITHUB_OUTPUT
+          echo "--------------------------------"
+          echo $CONDENSED_SUMMARY
+
+      - name: Send to Slack
+        if: github.event_name == 'schedule' || github.event.inputs.post_to_slack == 'true'
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          channel-id: "tidehunter" # Replace with your channel ID
+          payload: |
+            {
+              "text": "Weekly Benchmark Results",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "📊 Weekly Benchmark Results"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ${{ steps.condensed_summary.outputs.summary }}
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Run on: ${{ env.TIMESTAMP }} • <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View full results>"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}

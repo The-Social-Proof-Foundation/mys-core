@@ -2,78 +2,48 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use rocksdb::{CompactionDecision, MergeOperands};
-use std::cmp::Ordering;
+use rocksdb::{compaction_filter::Decision, MergeOperands};
 
-/// custom rocksdb merge operator used for storing objects with reference counts
-/// important: reference count field must be 64-bit integer and must be last in struct declaration
-/// should be used with immutable objects only
+/// An empty compaction filter that always keeps all entries.
+/// Used as a placeholder when no compaction filtering is needed.
+pub fn empty_compaction_filter(_level: u32, _key: &[u8], _value: &[u8]) -> Decision {
+    Decision::Keep
+}
+
+/// A merge operator for reference counting.
+/// Merges operands by summing them as u64 values.
+/// This is used for reference counting where values are u64 counts.
 pub fn reference_count_merge_operator(
     _key: &[u8],
-    stored_value: Option<&[u8]>,
+    existing_value: Option<&[u8]>,
     operands: &MergeOperands,
 ) -> Option<Vec<u8>> {
-    let (mut value, mut ref_count) = stored_value.map_or((None, 0), deserialize_ref_count_value);
-
-    for operand in operands {
-        let (new_value, delta) = deserialize_ref_count_value(operand);
-        assert!(value.is_none() || new_value.is_none() || value == new_value);
-        if value.is_none() && new_value.is_some() {
-            value = new_value;
+    let mut sum: u64 = 0;
+    
+    // Add existing value if present
+    if let Some(existing) = existing_value {
+        if existing.len() == 8 {
+            sum += u64::from_be_bytes([
+                existing[0], existing[1], existing[2], existing[3],
+                existing[4], existing[5], existing[6], existing[7],
+            ]);
         }
-        ref_count += delta;
     }
-    match ref_count.cmp(&0) {
-        Ordering::Greater => Some([value.unwrap_or(b""), &ref_count.to_le_bytes()].concat()),
-        Ordering::Equal => Some(vec![]),
-        Ordering::Less => Some(ref_count.to_le_bytes().to_vec()),
+    
+    // Add all operands
+    for operand in operands {
+        if operand.len() == 8 {
+            sum += u64::from_be_bytes([
+                operand[0], operand[1], operand[2], operand[3],
+                operand[4], operand[5], operand[6], operand[7],
+            ]);
+        }
     }
+    
+    Some(sum.to_be_bytes().to_vec())
 }
 
-pub fn empty_compaction_filter(_level: u32, _key: &[u8], value: &[u8]) -> CompactionDecision {
-    if value.is_empty() {
-        CompactionDecision::Remove
-    } else {
-        CompactionDecision::Keep
-    }
-}
-
+/// Check if a value is a reference count value (8 bytes, can be interpreted as u64).
 pub fn is_ref_count_value(value: &[u8]) -> bool {
-    value.is_empty() || value.len() == 8
-}
-
-fn deserialize_ref_count_value(bytes: &[u8]) -> (Option<&[u8]>, i64) {
-    if bytes.is_empty() {
-        return (None, 0);
-    }
-    assert!(bytes.len() >= 8);
-    let (value, rc_bytes) = bytes.split_at(bytes.len() - 8);
-    let ref_count = i64::from_le_bytes(rc_bytes.try_into().unwrap());
-    (if value.is_empty() { None } else { Some(value) }, ref_count)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::deserialize_ref_count_value;
-
-    #[test]
-    fn deserialize_ref_count_value_test() {
-        assert_eq!(deserialize_ref_count_value(&[]), (None, 0));
-        assert_eq!(
-            deserialize_ref_count_value(b"\x01\0\0\0\0\0\0\0"),
-            (None, 1)
-        );
-        assert_eq!(
-            deserialize_ref_count_value(b"\xff\xff\xff\xff\xff\xff\xff\xff"),
-            (None, -1)
-        );
-        assert_eq!(
-            deserialize_ref_count_value(b"\xfe\xff\xff\xff\xff\xff\xff\xff"),
-            (None, -2)
-        );
-        assert_eq!(
-            deserialize_ref_count_value(b"test\x04\0\0\0\0\0\0\0"),
-            (Some(b"test".as_ref()), 4)
-        );
-    }
+    value.len() == 8
 }

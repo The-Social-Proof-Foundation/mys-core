@@ -30,7 +30,7 @@ impl AuthorityPerEpochStorePruner {
                 tokio::select! {
                     _ = prune_interval.tick() => {
                         info!("Starting pruning of epoch tables");
-                        match Self::prune_old_directories(&parent_path, num_latest_epoch_dbs_to_retain) {
+                        match Self::prune_old_directories(&parent_path, num_latest_epoch_dbs_to_retain).await {
                             Ok(pruned_count) => info!("Finished pruning old epoch databases. Pruned {} dbs", pruned_count),
                             Err(err) => error!("Error while removing old epoch databases {:?}", err),
                         }
@@ -42,7 +42,7 @@ impl AuthorityPerEpochStorePruner {
         Self { _cancel_handle }
     }
 
-    fn prune_old_directories(
+    async fn prune_old_directories(
         parent_path: &PathBuf,
         num_latest_epoch_dbs_to_retain: usize,
     ) -> Result<usize, anyhow::Error> {
@@ -63,11 +63,11 @@ impl AuthorityPerEpochStorePruner {
             for (_, path) in candidates.into_iter().sorted().take(to_prune) {
                 info!("Dropping epoch directory {:?}", path);
                 pruned += 1;
-                gc_results.push(safe_drop_db(path.join("recovery_log")));
-                gc_results.push(safe_drop_db(path));
+                gc_results.push(safe_drop_db(path.join("recovery_log"), Duration::from_secs(30)));
+                gc_results.push(safe_drop_db(path, Duration::from_secs(30)));
             }
         }
-        gc_results.into_iter().collect::<Result<Vec<_>, _>>()?;
+        futures::future::join_all(gc_results).await.into_iter().collect::<Result<Vec<_>, _>>()?;
         Ok(pruned)
     }
 }
@@ -79,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_basic_epoch_pruner() {
-        let parent_directory = tempfile::tempdir().unwrap().into_path();
+        let parent_directory = tempfile::tempdir().unwrap().keep();
         let directories: Vec<_> = vec!["epoch_0", "epoch_1", "epoch_3", "epoch_4"]
             .into_iter()
             .map(|name| parent_directory.join(name))
@@ -89,7 +89,9 @@ mod tests {
         }
 
         let pruned =
-            AuthorityPerEpochStorePruner::prune_old_directories(&parent_directory, 2).unwrap();
+            tokio::runtime::Runtime::new().unwrap().block_on(
+                AuthorityPerEpochStorePruner::prune_old_directories(&parent_directory, 2)
+            ).unwrap();
         assert_eq!(pruned, 2);
         assert_eq!(
             directories

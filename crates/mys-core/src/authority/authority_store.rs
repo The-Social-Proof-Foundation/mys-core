@@ -985,11 +985,11 @@ impl AuthorityStore {
             )?;
         }
         if !existing_indirect_objects.is_empty() {
-            write_batch.partial_merge_batch(
+            write_batch.partial_merge_batch_raw(
                 &self.perpetual_tables.indirect_move_objects,
                 existing_indirect_objects
                     .into_iter()
-                    .map(|(_, (digest, _))| (digest, 1_u64.to_le_bytes())),
+                    .map(|(_, (digest, _))| (digest, 1_u64.to_be_bytes().to_vec())),
             )?;
         }
 
@@ -1959,8 +1959,7 @@ impl AccumulatorStore for AuthorityStore {
         Ok(self
             .perpetual_tables
             .root_state_hash_by_epoch
-            .safe_iter()
-            .skip_to_last()
+            .reversed_safe_iter_with_bounds(None, None)?
             .next()
             .transpose()?)
     }

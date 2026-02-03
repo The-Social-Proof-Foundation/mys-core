@@ -85,7 +85,6 @@ use typed_store::Map;
 use typed_store::{
     rocks::{default_db_options, DBBatch, DBMap, DBOptions, MetricConf},
     traits::{TableSummary, TypedStoreDebug},
-    TypedStoreError,
 };
 
 use super::authority_store_tables::ENV_VAR_LOCKS_BLOCK_CACHE_SIZE;
@@ -2451,24 +2450,20 @@ impl AuthorityPerEpochStore {
 
     pub fn get_capabilities_v1(&self) -> MysResult<Vec<AuthorityCapabilitiesV1>> {
         assert!(!self.protocol_config.authority_capabilities_v2());
-        let result: Result<Vec<AuthorityCapabilitiesV1>, TypedStoreError> = self
+        let result = self
             .tables()?
             .authority_capabilities
-            .values()
-            .map_into()
-            .collect();
-        Ok(result?)
+            .values()?;
+        Ok(result)
     }
 
     pub fn get_capabilities_v2(&self) -> MysResult<Vec<AuthorityCapabilitiesV2>> {
         assert!(self.protocol_config.authority_capabilities_v2());
-        let result: Result<Vec<AuthorityCapabilitiesV2>, TypedStoreError> = self
+        let result = self
             .tables()?
             .authority_capabilities_v2
-            .values()
-            .map_into()
-            .collect();
-        Ok(result?)
+            .values()?;
+        Ok(result)
     }
 
     fn record_jwk_vote(

@@ -279,7 +279,7 @@ pub async fn create_mys_indexer(
             .unwrap_or_else(|| {
                 tempfile::tempdir()
                     .expect("Failed to create temp directory")
-                    .into_path()
+                    .keep()
             }),
         config.mys_bridge_genesis_checkpoint,
         ingestion_metrics,

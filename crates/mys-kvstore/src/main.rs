@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
     executor.register(worker_pool).await?;
     executor
         .run(
-            tempfile::tempdir()?.into_path(),
+            tempfile::tempdir()?.keep(),
             Some(format!("https://checkpoints.{}.mysocial.network", network)),
             vec![],
             ReaderOptions::default(),

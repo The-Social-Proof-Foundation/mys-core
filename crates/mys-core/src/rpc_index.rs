@@ -417,7 +417,7 @@ impl IndexStoreTables {
         let upper_bound = OwnerIndexKey::new(owner, ObjectID::MAX);
         let mut iter = self
             .owner
-            .iter_with_bounds(Some(lower_bound), Some(upper_bound));
+            .unbounded_iter_with_bounds(Some(lower_bound), Some(upper_bound));
 
         if let Some(cursor) = cursor {
             iter = iter.skip_to(&OwnerIndexKey::new(owner, cursor))?;
@@ -436,7 +436,7 @@ impl IndexStoreTables {
         let upper_bound = DynamicFieldKey::new(parent, ObjectID::MAX);
         let mut iter = self
             .dynamic_field
-            .iter_with_bounds(Some(lower_bound), Some(upper_bound));
+            .unbounded_iter_with_bounds(Some(lower_bound), Some(upper_bound));
 
         if let Some(cursor) = cursor {
             iter = iter.skip_to(&DynamicFieldKey::new(parent, cursor))?;
@@ -484,8 +484,10 @@ impl RpcIndexStore {
             if tables.needs_to_do_initialization() {
                 let mut tables = if tables.needs_to_delete_old_db() {
                     drop(tables);
-                    typed_store::rocks::safe_drop_db(path.clone())
-                        .expect("unable to destroy old rpc-index db");
+                    tokio::runtime::Handle::current().block_on(
+                        typed_store::rocks::safe_drop_db(path.clone(), std::time::Duration::from_secs(30))
+                    )
+                    .expect("unable to destroy old rpc-index db");
                     IndexStoreTables::open(path)
                 } else {
                     tables
