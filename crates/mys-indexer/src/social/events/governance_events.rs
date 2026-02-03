@@ -14,8 +14,8 @@ use crate::social::events::event_utils::parse_json_event;
 use crate::social::events::governance_event_types::*;
 use crate::social::models::governance::*;
 use crate::social::{
-    GOVERNANCE_STATUS_APPROVED, GOVERNANCE_STATUS_COMMUNITY_VOTING, GOVERNANCE_STATUS_IMPLEMENTED,
-    GOVERNANCE_STATUS_OWNER_RESCINDED, GOVERNANCE_STATUS_REJECTED, GOVERNANCE_STATUS_SUBMITTED,
+    GOVERNANCE_STATUS_APPROVED, GOVERNANCE_STATUS_COMMUNITY_VOTING, GOVERNANCE_STATUS_DELEGATE_REVIEW,
+    GOVERNANCE_STATUS_IMPLEMENTED, GOVERNANCE_STATUS_OWNER_RESCINDED, GOVERNANCE_STATUS_REJECTED,
     NOMINEE_STATUS_ELECTED, NOMINEE_STATUS_PENDING,
 };
 
@@ -59,7 +59,7 @@ pub async fn process_governance_registry_created_event(
         min_on_chain_age_days: 0, // Deprecated field, set to 0 for new registries
         max_votes_per_user: registry_event.max_votes_per_user as i64,
         quadratic_base_cost: registry_event.quadratic_base_cost as i64,
-        voting_period_epochs: registry_event.voting_period_epochs as i64,
+        voting_period_ms: registry_event.voting_period_ms as i64,
         quorum_votes: registry_event.quorum_votes as i64,
         updated_at: registry_event.updated_at as i64,
         transaction_id: event_id.to_string(),
@@ -80,8 +80,8 @@ pub async fn process_governance_registry_created_event(
                 .eq(new_registry.max_votes_per_user),
             crate::social::schema::governance_registries::quadratic_base_cost
                 .eq(new_registry.quadratic_base_cost),
-            crate::social::schema::governance_registries::voting_period_epochs
-                .eq(new_registry.voting_period_epochs),
+            crate::social::schema::governance_registries::voting_period_ms
+                .eq(new_registry.voting_period_ms),
             crate::social::schema::governance_registries::quorum_votes.eq(new_registry.quorum_votes),
             crate::social::schema::governance_registries::updated_at.eq(new_registry.updated_at),
             crate::social::schema::governance_registries::transaction_id.eq(event_id.to_string()),
@@ -414,7 +414,7 @@ pub async fn process_proposal_submitted_event(
         metadata_json: metadata_json_value,
         submitter: proposal_event.submitter.clone(),
         submission_time: proposal_event.submission_time as i64,
-        status: GOVERNANCE_STATUS_SUBMITTED as i16,
+        status: GOVERNANCE_STATUS_DELEGATE_REVIEW as i16,
         reward_pool: proposal_event.reward_amount as i64,
         transaction_id: event_id.to_string(),
     };
@@ -500,6 +500,16 @@ pub async fn process_delegate_vote_event(
     conn.build_transaction()
         .run(|tx_conn| {
             Box::pin(async move {
+                // Check if vote already exists before incrementing (for idempotency)
+                let vote_exists = crate::social::schema::delegate_votes::table
+                    .filter(
+                        crate::social::schema::delegate_votes::proposal_id.eq(&vote_event.proposal_id)
+                            .and(crate::social::schema::delegate_votes::delegate_address.eq(&vote_event.delegate_address))
+                    )
+                    .count()
+                    .get_result::<i64>(tx_conn)
+                    .await? > 0;
+
                 // Insert the vote
                 let new_vote = NewDelegateVote {
                     proposal_id: vote_event.proposal_id.clone(),
@@ -526,25 +536,28 @@ pub async fn process_delegate_vote_event(
                     .execute(tx_conn)
                     .await?;
 
-                // Update proposal vote counts
-                if vote_event.approve {
-                    diesel::update(crate::social::schema::proposals::table)
-                        .filter(crate::social::schema::proposals::id.eq(&vote_event.proposal_id))
-                        .set(
-                            crate::social::schema::proposals::delegate_approval_count
-                                .eq(crate::social::schema::proposals::delegate_approval_count + 1),
-                        )
-                        .execute(tx_conn)
-                        .await?;
-                } else {
-                    diesel::update(crate::social::schema::proposals::table)
-                        .filter(crate::social::schema::proposals::id.eq(&vote_event.proposal_id))
-                        .set(
-                            crate::social::schema::proposals::delegate_rejection_count
-                                .eq(crate::social::schema::proposals::delegate_rejection_count + 1),
-                        )
-                        .execute(tx_conn)
-                        .await?;
+                // Only increment if this was a new vote (idempotency)
+                if !vote_exists {
+                    // Update proposal vote counts
+                    if vote_event.approve {
+                        diesel::update(crate::social::schema::proposals::table)
+                            .filter(crate::social::schema::proposals::id.eq(&vote_event.proposal_id))
+                            .set(
+                                crate::social::schema::proposals::delegate_approval_count
+                                    .eq(crate::social::schema::proposals::delegate_approval_count + 1),
+                            )
+                            .execute(tx_conn)
+                            .await?;
+                    } else {
+                        diesel::update(crate::social::schema::proposals::table)
+                            .filter(crate::social::schema::proposals::id.eq(&vote_event.proposal_id))
+                            .set(
+                                crate::social::schema::proposals::delegate_rejection_count
+                                    .eq(crate::social::schema::proposals::delegate_rejection_count + 1),
+                            )
+                            .execute(tx_conn)
+                            .await?;
+                    }
                 }
 
                 // Update delegate's proposals_reviewed count
@@ -615,6 +628,23 @@ pub async fn process_community_vote_event(
     conn.build_transaction()
         .run(|tx_conn| {
             Box::pin(async move {
+                // Get previous vote weight if exists (for idempotency - handle weight changes)
+                let previous_vote = crate::social::schema::community_votes::table
+                    .filter(
+                        crate::social::schema::community_votes::proposal_id.eq(&vote_event.proposal_id)
+                            .and(crate::social::schema::community_votes::voter_address.eq(&vote_event.voter))
+                    )
+                    .select((
+                        crate::social::schema::community_votes::vote_weight,
+                        crate::social::schema::community_votes::approve,
+                    ))
+                    .first::<(i64, bool)>(tx_conn)
+                    .await
+                    .optional()?;
+
+                let (previous_weight, previous_approve) = previous_vote.unwrap_or((0, false));
+                let weight_diff = vote_event.vote_weight as i64 - previous_weight;
+
                 // Insert the vote
                 let new_vote = NewCommunityVote {
                     proposal_id: vote_event.proposal_id.clone(),
@@ -643,27 +673,84 @@ pub async fn process_community_vote_event(
                     .execute(tx_conn)
                     .await?;
 
-                // Update proposal vote counts
-                if vote_event.approve {
-                    diesel::update(crate::social::schema::proposals::table)
-                        .filter(crate::social::schema::proposals::id.eq(&vote_event.proposal_id))
-                        .set(
-                            crate::social::schema::proposals::community_votes_for
-                                .eq(crate::social::schema::proposals::community_votes_for
-                                    + vote_event.vote_weight as i64),
-                        )
-                        .execute(tx_conn)
-                        .await?;
-                } else {
-                    diesel::update(crate::social::schema::proposals::table)
-                        .filter(crate::social::schema::proposals::id.eq(&vote_event.proposal_id))
-                        .set(
-                            crate::social::schema::proposals::community_votes_against
-                                .eq(crate::social::schema::proposals::community_votes_against
-                                    + vote_event.vote_weight as i64),
-                        )
-                        .execute(tx_conn)
-                        .await?;
+                // Adjust vote counts by the difference (handles new votes, updates, and idempotency)
+                if weight_diff != 0 {
+                    if vote_event.approve {
+                        // If previous vote was against, subtract its weight from against, add new weight to for
+                        if previous_approve {
+                            // Same side, just adjust weight difference
+                            diesel::update(crate::social::schema::proposals::table)
+                                .filter(crate::social::schema::proposals::id.eq(&vote_event.proposal_id))
+                                .set(
+                                    crate::social::schema::proposals::community_votes_for
+                                        .eq(crate::social::schema::proposals::community_votes_for + weight_diff),
+                                )
+                                .execute(tx_conn)
+                                .await?;
+                        } else {
+                            // Changed sides: subtract previous from against, add new to for
+                            diesel::update(crate::social::schema::proposals::table)
+                                .filter(crate::social::schema::proposals::id.eq(&vote_event.proposal_id))
+                                .set((
+                                    crate::social::schema::proposals::community_votes_against
+                                        .eq(crate::social::schema::proposals::community_votes_against - previous_weight),
+                                    crate::social::schema::proposals::community_votes_for
+                                        .eq(crate::social::schema::proposals::community_votes_for + vote_event.vote_weight as i64),
+                                ))
+                                .execute(tx_conn)
+                                .await?;
+                        }
+                    } else {
+                        // Voting against
+                        if !previous_approve {
+                            // Same side, just adjust weight difference
+                            diesel::update(crate::social::schema::proposals::table)
+                                .filter(crate::social::schema::proposals::id.eq(&vote_event.proposal_id))
+                                .set(
+                                    crate::social::schema::proposals::community_votes_against
+                                        .eq(crate::social::schema::proposals::community_votes_against + weight_diff),
+                                )
+                                .execute(tx_conn)
+                                .await?;
+                        } else {
+                            // Changed sides: subtract previous from for, add new to against
+                            diesel::update(crate::social::schema::proposals::table)
+                                .filter(crate::social::schema::proposals::id.eq(&vote_event.proposal_id))
+                                .set((
+                                    crate::social::schema::proposals::community_votes_for
+                                        .eq(crate::social::schema::proposals::community_votes_for - previous_weight),
+                                    crate::social::schema::proposals::community_votes_against
+                                        .eq(crate::social::schema::proposals::community_votes_against + vote_event.vote_weight as i64),
+                                ))
+                                .execute(tx_conn)
+                                .await?;
+                        }
+                    }
+                } else if previous_approve != vote_event.approve {
+                    // Weight unchanged but side changed - swap votes
+                    if vote_event.approve {
+                        diesel::update(crate::social::schema::proposals::table)
+                            .filter(crate::social::schema::proposals::id.eq(&vote_event.proposal_id))
+                            .set((
+                                crate::social::schema::proposals::community_votes_against
+                                    .eq(crate::social::schema::proposals::community_votes_against - previous_weight),
+                                crate::social::schema::proposals::community_votes_for
+                                    .eq(crate::social::schema::proposals::community_votes_for + previous_weight),
+                            ))
+                            .execute(tx_conn)
+                            .await?;
+                    } else {
+                        diesel::update(crate::social::schema::proposals::table)
+                            .filter(crate::social::schema::proposals::id.eq(&vote_event.proposal_id))
+                            .set((
+                                crate::social::schema::proposals::community_votes_for
+                                    .eq(crate::social::schema::proposals::community_votes_for - previous_weight),
+                                crate::social::schema::proposals::community_votes_against
+                                    .eq(crate::social::schema::proposals::community_votes_against + previous_weight),
+                            ))
+                            .execute(tx_conn)
+                            .await?;
+                    }
                 }
 
                 // Record this event in the governance_events table
@@ -790,10 +877,13 @@ pub async fn process_proposal_rejected_event(
         .run(|tx_conn| {
             let proposal_id = proposal_id.clone();
             Box::pin(async move {
-                // Update proposal status
+                // Update proposal status and zero reward pool (refunded on-chain)
                 diesel::update(crate::social::schema::proposals::table)
                     .filter(crate::social::schema::proposals::id.eq(&proposal_id))
-                    .set(crate::social::schema::proposals::status.eq(GOVERNANCE_STATUS_REJECTED as i16))
+                    .set((
+                        crate::social::schema::proposals::status.eq(GOVERNANCE_STATUS_REJECTED as i16),
+                        crate::social::schema::proposals::reward_pool.eq(0), // Refunded on-chain
+                    ))
                     .execute(tx_conn)
                     .await?;
 
@@ -989,6 +1079,16 @@ pub async fn process_proposal_rescinded_event(
 }
 
 /// Process a proposal rejected by community event
+/// 
+/// LIMITATION: This event is emitted both when:
+/// - Quorum is met but proposal is rejected (rewards distributed to voters)
+/// - Quorum is not met (reward_pool refunded to submitter)
+/// 
+/// The event doesn't indicate which case occurred. The indexer cannot distinguish
+/// without querying chain state. 
+/// 
+/// BEST FIX: Extend ProposalRejectedByCommunityEvent in Move contract to include
+/// quorum_met: bool or refund_amount: u64.
 pub async fn process_proposal_rejected_by_community_event(
     conn: &mut DbConnection,
     event: &Value,
@@ -1579,7 +1679,7 @@ pub async fn process_governance_parameters_updated_event(
             crate::social::schema::governance_registries::proposal_submission_cost.eq(params_event.proposal_submission_cost as i64),
             crate::social::schema::governance_registries::max_votes_per_user.eq(params_event.max_votes_per_user as i64),
             crate::social::schema::governance_registries::quadratic_base_cost.eq(params_event.quadratic_base_cost as i64),
-            crate::social::schema::governance_registries::voting_period_epochs.eq(params_event.voting_period_epochs as i64),
+            crate::social::schema::governance_registries::voting_period_ms.eq(params_event.voting_period_ms as i64),
             crate::social::schema::governance_registries::quorum_votes.eq(params_event.quorum_votes as i64),
             crate::social::schema::governance_registries::updated_at.eq(params_event.timestamp as i64),
             crate::social::schema::governance_registries::transaction_id.eq(event_id.to_string()),

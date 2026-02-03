@@ -18,7 +18,6 @@ use super::move_package::{
 };
 use super::move_registry::named_move_package::NamedMovePackage;
 use super::move_registry::named_type::NamedType;
-use super::mysns_registration::NameService;
 use super::object::ObjectKey;
 use super::uint53::UInt53;
 use super::{
@@ -35,7 +34,6 @@ use super::{
     event::{self, Event, EventFilter},
     move_type::MoveType,
     mys_address::MysAddress,
-    mysns_registration::Domain,
     object::{self, Object, ObjectFilter},
     owner::Owner,
     profile::Profile,

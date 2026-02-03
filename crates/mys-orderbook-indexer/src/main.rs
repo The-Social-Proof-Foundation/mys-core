@@ -114,7 +114,12 @@ async fn main() -> Result<()> {
         config
             .checkpoints_path
             .map(|p| p.into())
-            .unwrap_or(tempfile::tempdir()?.into_path()),
+            .unwrap_or_else(|| {
+                tempfile::tempdir()
+                    .expect("Failed to create temp directory")
+                    .keep()
+                    .expect("Failed to persist temp directory")
+            }),
         config.orderbook_genesis_checkpoint,
         ingestion_metrics.clone(),
         Box::new(indexer_meterics.clone()),

@@ -199,60 +199,64 @@ impl SocialCheckpointProcessor {
     ) -> Result<()> {
         use crate::social::events::governance_events::*;
 
-        match event_name {
-            "GovernanceRegistryCreatedEvent" => {
+        // Normalize event name by stripping "Event" suffix to match live listener behavior
+        // This ensures both ingestion paths handle event names consistently
+        let normalized_name = event_name.strip_suffix("Event").unwrap_or(event_name);
+
+        match normalized_name {
+            "GovernanceRegistryCreated" => {
                 process_governance_registry_created_event(conn, data, event_id).await?;
             }
-            "DelegateNominatedEvent" => {
+            "DelegateNominated" => {
                 process_delegate_nominated_event(conn, data, event_id).await?;
             }
-            "DelegateElectedEvent" => {
+            "DelegateElected" => {
                 process_delegate_elected_event(conn, data, event_id).await?;
             }
-            "DelegateVotedEvent" => {
+            "DelegateVoted" => {
                 process_delegate_voted_event(conn, data, event_id).await?;
             }
-            "ProposalSubmittedEvent" => {
+            "ProposalSubmitted" => {
                 process_proposal_submitted_event(conn, data, event_id).await?;
             }
-            "DelegateVoteEvent" => {
+            "DelegateVote" => {
                 process_delegate_vote_event(conn, data, event_id).await?;
             }
-            "CommunityVoteEvent" => {
+            "CommunityVote" => {
                 process_community_vote_event(conn, data, event_id).await?;
             }
-            "ProposalApprovedForVotingEvent" => {
+            "ProposalApprovedForVoting" => {
                 process_proposal_approved_for_voting_event(conn, data, event_id).await?;
             }
-            "ProposalRejectedEvent" => {
+            "ProposalRejected" => {
                 process_proposal_rejected_event(conn, data, event_id).await?;
             }
-            "ProposalRescindedEvent" => {
+            "ProposalRescinded" => {
                 process_proposal_rescinded_event(conn, data, event_id).await?;
             }
-            "ProposalRejectedByCommunityEvent" => {
+            "ProposalRejectedByCommunity" => {
                 process_proposal_rejected_by_community_event(conn, data, event_id).await?;
             }
-            "ProposalApprovedEvent" => {
+            "ProposalApproved" => {
                 process_proposal_approved_event(conn, data, event_id).await?;
             }
-            "ProposalImplementedEvent" => {
+            "ProposalImplemented" => {
                 process_proposal_implemented_event(conn, data, event_id).await?;
             }
-            "RewardsDistributedEvent" => {
+            "RewardsDistributed" => {
                 process_rewards_distributed_event(conn, data, event_id).await?;
             }
-            "AnonymousVoteEvent" => {
+            "AnonymousVote" => {
                 process_anonymous_vote_event(conn, data, event_id).await?;
             }
-            "VoteDecryptionFailedEvent" => {
+            "VoteDecryptionFailed" => {
                 process_vote_decryption_failed_event(conn, data, event_id).await?;
             }
-            "GovernanceParametersUpdatedEvent" => {
+            "GovernanceParametersUpdated" => {
                 process_governance_parameters_updated_event(conn, data, event_id).await?;
             }
             _ => {
-                debug!("Unhandled governance event: {}", event_name);
+                debug!("Unhandled governance event: {} (normalized: {})", event_name, normalized_name);
             }
         }
         Ok(())

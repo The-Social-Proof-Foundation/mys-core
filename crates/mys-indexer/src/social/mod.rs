@@ -34,8 +34,8 @@ pub const PROFILE_STRUCT_NAME: &str = "Profile";
 
 /// Governance registry types
 pub const GOVERNANCE_REGISTRY_ECOSYSTEM: u8 = 0;
-pub const GOVERNANCE_REGISTRY_REPUTATION: u8 = 1;
-pub const GOVERNANCE_REGISTRY_COMMUNITY_NOTES: u8 = 2;
+pub const GOVERNANCE_REGISTRY_PROOF_OF_CREATIVITY: u8 = 1;
+pub const GOVERNANCE_REGISTRY_PLATFORM: u8 = 3;
 
 /// Governance proposal status values
 pub const GOVERNANCE_STATUS_SUBMITTED: u8 = 0;

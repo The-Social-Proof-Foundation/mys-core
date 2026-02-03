@@ -8,8 +8,6 @@ use tracing::{debug, error, info, warn};
 
 use crate::db::{Database, DbConnection};
 use crate::events::blocking_events::{process_profile_block_event, process_profile_unblock_event};
-use diesel::prelude::*;
-use diesel_async::RunQueryDsl;
 
 use super::listener::BlockchainEvent;
 

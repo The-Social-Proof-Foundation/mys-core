@@ -89,7 +89,7 @@ module social_contracts::governance {
         proposal_submission_cost: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
-        voting_period_epochs: u64,  // Number of epochs for the voting period
+        voting_period_ms: u64,  // Voting period duration in milliseconds
         quorum_votes: u64,  // Minimum number of votes required for a valid proposal outcome
         /// Tables and mappings
         delegates: Table<address, Delegate>,
@@ -139,8 +139,8 @@ module social_contracts::governance {
         community_votes_for: u64,
         community_votes_against: u64,
         status: u8,  // Submitted, DelegateReview, CommunityVoting, Approved, Rejected, Implemented
-        voting_start_time: u64,
-        voting_end_time: u64,
+        voting_start_time: u64,  // Voting start time in milliseconds
+        voting_end_time: u64,    // Voting end time in milliseconds
         reward_pool: Balance<MYS>,
     }
 
@@ -282,7 +282,7 @@ module social_contracts::governance {
         proposal_submission_cost: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
-        voting_period_epochs: u64,
+        voting_period_ms: u64,
         quorum_votes: u64,
         timestamp: u64,
     }
@@ -297,7 +297,7 @@ module social_contracts::governance {
         proposal_submission_cost: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
-        voting_period_epochs: u64,
+        voting_period_ms: u64,
         quorum_votes: u64,
         updated_at: u64, // Using updated_at to match indexer structure (represents creation time)
     }
@@ -317,7 +317,7 @@ module social_contracts::governance {
             proposal_submission_cost: 100_000_000, // 100 MYS for ecosystem proposals
             max_votes_per_user: 10, // Up to 10 votes per user
             quadratic_base_cost: 10_000_000, // 10 MYS per additional vote
-            voting_period_epochs: 7, // 7 epochs for ecosystem votes
+            voting_period_ms: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds for ecosystem votes
             quorum_votes: 20, // 20 votes required for ecosystem proposals
             // Tables
             delegates: table::new<address, Delegate>(ctx),
@@ -346,7 +346,7 @@ module social_contracts::governance {
             proposal_submission_cost: ecosystem_registry.proposal_submission_cost,
             max_votes_per_user: ecosystem_registry.max_votes_per_user,
             quadratic_base_cost: ecosystem_registry.quadratic_base_cost,
-            voting_period_epochs: ecosystem_registry.voting_period_epochs,
+            voting_period_ms: ecosystem_registry.voting_period_ms,
             quorum_votes: ecosystem_registry.quorum_votes,
             updated_at: current_time,
         });
@@ -364,7 +364,7 @@ module social_contracts::governance {
             proposal_submission_cost: 25_000_000, // 25 MYS for proof of creativity
             max_votes_per_user: 3, // Up to 3 votes per user
             quadratic_base_cost: 2_500_000, // 2.5 MYS per additional vote
-            voting_period_epochs: 1, // 1 epoch for proof of creativity votes
+            voting_period_ms: 24 * 60 * 60 * 1000, // 1 day in milliseconds for proof of creativity votes
             quorum_votes: 10, // 10 votes required for proof of creativity proposals
             // Tables
             delegates: table::new<address, Delegate>(ctx),
@@ -393,7 +393,7 @@ module social_contracts::governance {
             proposal_submission_cost: proof_of_creativity_registry.proposal_submission_cost,
             max_votes_per_user: proof_of_creativity_registry.max_votes_per_user,
             quadratic_base_cost: proof_of_creativity_registry.quadratic_base_cost,
-            voting_period_epochs: proof_of_creativity_registry.voting_period_epochs,
+            voting_period_ms: proof_of_creativity_registry.voting_period_ms,
             quorum_votes: proof_of_creativity_registry.quorum_votes,
             updated_at: current_time,
         });
@@ -421,7 +421,7 @@ module social_contracts::governance {
         proposal_submission_cost: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
-        voting_period_epochs: u64,
+        voting_period_ms: u64,
         quorum_votes: u64,
         _ctx: &mut TxContext
     ) {
@@ -434,7 +434,7 @@ module social_contracts::governance {
         // proposal_submission_cost can be 0
         assert!(max_votes_per_user > 0, EInvalidParameter);
         // quadratic_base_cost can be 0 (if voting is free)
-        assert!(voting_period_epochs > 0, EInvalidParameter);
+        assert!(voting_period_ms > 0, EInvalidParameter);
         assert!(quorum_votes > 0, EInvalidParameter);
         
         // Update parameters
@@ -443,7 +443,7 @@ module social_contracts::governance {
         registry.proposal_submission_cost = proposal_submission_cost;
         registry.max_votes_per_user = max_votes_per_user;
         registry.quadratic_base_cost = quadratic_base_cost;
-        registry.voting_period_epochs = voting_period_epochs;
+        registry.voting_period_ms = voting_period_ms;
         registry.quorum_votes = quorum_votes;
         
         // Emit governance parameters updated event
@@ -455,7 +455,7 @@ module social_contracts::governance {
             proposal_submission_cost,
             max_votes_per_user,
             quadratic_base_cost,
-            voting_period_epochs,
+            voting_period_ms,
             quorum_votes,
             timestamp: tx_context::epoch_timestamp_ms(_ctx),
         });
@@ -472,7 +472,7 @@ module social_contracts::governance {
         proposal_submission_cost: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
-        voting_period_epochs: u64,
+        voting_period_ms: u64,
         quorum_votes: u64,
         ctx: &mut TxContext
     ) {
@@ -491,7 +491,7 @@ module social_contracts::governance {
             proposal_submission_cost,
             max_votes_per_user,
             quadratic_base_cost,
-            voting_period_epochs,
+            voting_period_ms,
             quorum_votes,
             ctx
         );
@@ -507,7 +507,7 @@ module social_contracts::governance {
         proposal_submission_cost: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
-        voting_period_epochs: u64,
+        voting_period_ms: u64,
         quorum_votes: u64,
         _ctx: &mut TxContext
     ) {
@@ -522,7 +522,7 @@ module social_contracts::governance {
             proposal_submission_cost,
             max_votes_per_user,
             quadratic_base_cost,
-            voting_period_epochs,
+            voting_period_ms,
             quorum_votes,
             _ctx
         );
@@ -1299,13 +1299,13 @@ module social_contracts::governance {
         // Update status
         proposal.status = STATUS_COMMUNITY_VOTING;
         
-        // Get current epoch for voting period calculation
-        let current_epoch = tx_context::epoch(ctx);
+        // Get current timestamp in milliseconds for voting period calculation
+        let current_time_ms = tx_context::epoch_timestamp_ms(ctx);
         
-        // Set voting period based on registry voting period (using epochs)
-        // This ensures voting ends on epoch boundaries, not millisecond timestamps
-        proposal.voting_start_time = current_epoch;
-        proposal.voting_end_time = current_epoch + registry.voting_period_epochs;
+        // Set voting period based on registry voting period (using milliseconds)
+        // This allows flexible voting durations independent of epoch boundaries
+        proposal.voting_start_time = current_time_ms;
+        proposal.voting_end_time = current_time_ms + registry.voting_period_ms;
         
         // Update proposals by status
         let from_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_DELEGATE_REVIEW);
@@ -1325,11 +1325,11 @@ module social_contracts::governance {
         // Put proposal back in registry
         table::add(&mut registry.proposals, proposal_id, proposal);
         
-        // Emit event - use the precise timestamp for the event
+        // Emit event - use millisecond timestamps
         event::emit(ProposalApprovedForVotingEvent {
             proposal_id,
-            voting_start_time: current_epoch,
-            voting_end_time: current_epoch + registry.voting_period_epochs,
+            voting_start_time: current_time_ms,
+            voting_end_time: current_time_ms + registry.voting_period_ms,
         });
     }
 
@@ -1397,9 +1397,7 @@ module social_contracts::governance {
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
         let caller = tx_context::sender(ctx);
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
-        // Also get the current epoch for timing checks
-        let current_epoch = tx_context::epoch(ctx);
+        let current_time_ms = tx_context::epoch_timestamp_ms(ctx);
         
         // Calculate vote cost before borrowing from registry
         let quadratic_base_cost = registry.quadratic_base_cost;
@@ -1415,8 +1413,8 @@ module social_contracts::governance {
         let proposal = table::borrow_mut(&mut registry.proposals, proposal_id);
         assert!(proposal.status == STATUS_COMMUNITY_VOTING, ENotVotingPhase);
         
-        // Verify voting period hasn't ended (check using epochs, not milliseconds)
-        assert!(current_epoch <= proposal.voting_end_time, EVotingPeriodEnded);
+        // Verify voting period hasn't ended (check using milliseconds)
+        assert!(current_time_ms <= proposal.voting_end_time, EVotingPeriodEnded);
         
         // Verify vote count is valid (at least 1, no more than max)
         assert!(vote_count > 0, EInvalidVoteCount);
@@ -1470,13 +1468,12 @@ module social_contracts::governance {
         ctx: &mut TxContext
     ) {
         let caller = tx_context::sender(ctx);
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
-        let current_epoch = tx_context::epoch(ctx);
+        let current_time_ms = tx_context::epoch_timestamp_ms(ctx);
 
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
         let proposal = table::borrow_mut(&mut registry.proposals, proposal_id);
         assert!(proposal.status == STATUS_COMMUNITY_VOTING, ENotVotingPhase);
-        assert!(current_epoch <= proposal.voting_end_time, EVotingPeriodEnded);
+        assert!(current_time_ms <= proposal.voting_end_time, EVotingPeriodEnded);
         assert!(!table::contains(&registry.delegates, caller), EDelegateAnonNotAllowed);
 
         let voted_community: &mut VecSet<address> = dynamic_field::borrow_mut(&mut proposal.id, VOTED_COMMUNITY_FIELD);
@@ -1518,16 +1515,15 @@ module social_contracts::governance {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
-        let current_epoch = tx_context::epoch(ctx);
-        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        let current_time_ms = tx_context::epoch_timestamp_ms(ctx);
         
         // Verify proposal exists and is in community voting phase
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
         let proposal = table::borrow_mut(&mut registry.proposals, proposal_id);
         assert!(proposal.status == STATUS_COMMUNITY_VOTING, EInvalidProposalStatus);
         
-        // Verify voting period has ended (using epoch-based timing)
-        assert!(current_epoch > proposal.voting_end_time, EVotingPeriodNotEnded);
+        // Verify voting period has ended (using millisecond-based timing)
+        assert!(current_time_ms > proposal.voting_end_time, EVotingPeriodNotEnded);
         
         // Get total votes
         let total_votes = proposal.community_votes_for + proposal.community_votes_against;
@@ -1588,7 +1584,7 @@ module social_contracts::governance {
                 // Emit approval event
                 event::emit(ProposalApprovedEvent {
                     proposal_id,
-                    approval_time: current_time,
+                    approval_time: current_time_ms,
                     votes_for: proposal.community_votes_for,
                     votes_against: proposal.community_votes_against,
                 });
@@ -1605,7 +1601,7 @@ module social_contracts::governance {
                 // Emit rejection event
                 event::emit(ProposalRejectedByCommunityEvent {
                     proposal_id,
-                    rejection_time: current_time,
+                    rejection_time: current_time_ms,
                     votes_for: proposal.community_votes_for,
                     votes_against: proposal.community_votes_against,
                 });
@@ -1623,7 +1619,7 @@ module social_contracts::governance {
             // Emit rejection event
             event::emit(ProposalRejectedByCommunityEvent {
                 proposal_id,
-                rejection_time: current_time,
+                rejection_time: current_time_ms,
                 votes_for: proposal.community_votes_for,
                 votes_against: proposal.community_votes_against,
             });
@@ -1653,7 +1649,7 @@ module social_contracts::governance {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
-        let current_epoch = tx_context::epoch(ctx);
+        let current_time_ms = tx_context::epoch_timestamp_ms(ctx);
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
 
         // First, collect all the decrypted votes
@@ -1664,7 +1660,7 @@ module social_contracts::governance {
         {
             let proposal = table::borrow_mut(&mut registry.proposals, proposal_id);
             assert!(proposal.status == STATUS_COMMUNITY_VOTING, EInvalidProposalStatus);
-            assert!(current_epoch > proposal.voting_end_time, EVotingPeriodNotEnded);
+            assert!(current_time_ms > proposal.voting_end_time, EVotingPeriodNotEnded);
 
             if (dynamic_field::exists_(&proposal.id, ENCRYPTED_VOTES_FIELD)) {
                 let votes_tbl: &Table<address, EncryptedObject> = dynamic_field::borrow(&proposal.id, ENCRYPTED_VOTES_FIELD);
@@ -2013,7 +2009,7 @@ module social_contracts::governance {
             registry.proposal_submission_cost,
             registry.max_votes_per_user,
             registry.quadratic_base_cost,
-            registry.voting_period_epochs,
+            registry.voting_period_ms,
             registry.quorum_votes
         )
     }
@@ -2049,7 +2045,7 @@ module social_contracts::governance {
         proposal_submission_cost: u64,
         max_votes_per_user: u64,
         quadratic_base_cost: u64,
-        voting_period_epochs: u64,
+        voting_period_ms: u64,
         quorum_votes: u64,
         ctx: &mut TxContext
     ): ID {
@@ -2065,7 +2061,7 @@ module social_contracts::governance {
             proposal_submission_cost,
             max_votes_per_user,
             quadratic_base_cost,
-            voting_period_epochs,
+            voting_period_ms,
             quorum_votes,
             // Tables
             delegates: table::new<address, Delegate>(ctx),
@@ -2094,7 +2090,7 @@ module social_contracts::governance {
             proposal_submission_cost: platform_registry.proposal_submission_cost,
             max_votes_per_user: platform_registry.max_votes_per_user,
             quadratic_base_cost: platform_registry.quadratic_base_cost,
-            voting_period_epochs: platform_registry.voting_period_epochs,
+            voting_period_ms: platform_registry.voting_period_ms,
             quorum_votes: platform_registry.quorum_votes,
             updated_at: current_time,
         });

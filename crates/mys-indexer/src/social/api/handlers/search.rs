@@ -240,8 +240,8 @@ pub async fn global_search(
             'governance-registry' as entity_type,
             CASE 
                 WHEN registry_type = 0 THEN 'Ecosystem Registry'
-                WHEN registry_type = 1 THEN 'Reputation Registry'
-                WHEN registry_type = 2 THEN 'Community Notes Registry'
+                WHEN registry_type = 1 THEN 'Proof of Creativity Registry'
+                WHEN registry_type = 3 THEN 'Platform Registry'
                 ELSE 'Governance Registry'
             END as title,
             'MySocial governance registry for community participation' as description,

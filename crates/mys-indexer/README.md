@@ -332,21 +332,31 @@ Many endpoints support common pagination and filtering parameters:
 - **GET /creators/:id/mydata** - Get MyData entries created by a specific address
 
 ### Governance API
-- **GET /governance/proposals** - List governance proposals
-- **GET /governance/proposals/:id** - Get proposal details
-- **GET /governance/proposals/:id/votes** - Get community votes on a proposal
-- **GET /governance/proposals/:id/anonymous-stats** - Get anonymous voting statistics for a proposal
-- **GET /governance/proposals/:id/anonymous-votes** - Get anonymous votes for a proposal
+
+#### Proposals
+- **GET /governance/proposals** - List governance proposals (query params: `limit`, `offset`, `status`, `proposal_type`, `submitter`)
+- **GET /governance/proposals/:id** - Get proposal details with delegate votes, community vote count, and reward distributions
+- **GET /governance/proposals/:id/votes** - Get community votes on a proposal with user enrichment (profile, badge, SPT info)
+- **GET /governance/proposals/:id/anonymous-stats** - Get anonymous voting statistics for a proposal (total, decrypted, failed, pending)
+- **GET /governance/proposals/:id/anonymous-votes** - Get anonymous votes for a proposal (query params: `limit`, `offset`, `decryption_status`)
 - **GET /governance/proposals/:id/decryption-failures** - Get vote decryption failures for a proposal
-- **GET /governance/delegates** - List delegates
-- **GET /governance/delegates/:address** - Get delegate details
+
+#### Delegates
+- **GET /governance/delegates** - List delegates with user enrichment (query params: `limit`, `offset`, `registry_type`, `is_active`)
+- **GET /governance/delegates/:address** - Get delegate details by address
 - **GET /governance/delegates/:address/proposals** - Get proposals reviewed by a delegate
-- **GET /governance/delegates/:address/ratings** - Get ratings for a delegate
-- **GET /governance/nominees** - List nominated delegates
-- **GET /governance/registries** - List governance registries
-- **GET /governance/registries/:registry_type** - Get registry by type
-- **GET /governance/events** - List recent governance events
-- **GET /governance/anonymous-voting-trends** - Get anonymous voting trends analytics
+- **GET /governance/delegates/:address/ratings** - Get ratings for a delegate with user enrichment for raters
+
+#### Nominees
+- **GET /governance/nominees** - List nominated delegates with user enrichment (query params: `limit`, `offset`, `registry_type`, `status`)
+
+#### Registries
+- **GET /governance/registries** - List all governance registries
+- **GET /governance/registries/:registry_type** - Get registry by type (0=ecosystem, 1=creativity, 3=platform)
+
+#### Events & Analytics
+- **GET /governance/events** - List recent governance events (last 100)
+- **GET /governance/anonymous-voting-trends** - Get anonymous voting trends analytics over time (query param: `days`, default: 30)
 
 ### Social Proof Token API
 

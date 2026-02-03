@@ -24,7 +24,7 @@ pub struct GovernanceRegistry {
     pub min_on_chain_age_days: i64,
     pub max_votes_per_user: i64,
     pub quadratic_base_cost: i64,
-    pub voting_period_epochs: i64,
+    pub voting_period_ms: i64,
     pub quorum_votes: i64,
     pub updated_at: i64,
     pub time: DateTime<Utc>,
@@ -43,7 +43,7 @@ pub struct NewGovernanceRegistry {
     pub min_on_chain_age_days: i64, // Deprecated: kept for database compatibility, always set to 0
     pub max_votes_per_user: i64,
     pub quadratic_base_cost: i64,
-    pub voting_period_epochs: i64,
+    pub voting_period_ms: i64,
     pub quorum_votes: i64,
     pub updated_at: i64,
     pub transaction_id: String,

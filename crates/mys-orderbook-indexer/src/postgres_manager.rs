@@ -28,7 +28,7 @@ pub async fn get_connection_pool(database_url: String) -> PgPool {
         .expect("Could not build Postgres DB connection pool")
 }
 
-fn establish_connection(config: &str) -> BoxFuture<ConnectionResult<AsyncPgConnection>> {
+fn establish_connection(config: &str) -> BoxFuture<'_, ConnectionResult<AsyncPgConnection>> {
     let fut = async {
         // Set up rustls for TLS connections
         let rustls_config = rustls::ClientConfig::builder()

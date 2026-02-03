@@ -14,8 +14,9 @@ use crate::social::models::blocking::{
     BlockedListQuery, BlockedProfile, EnrichedBlockedProfile, PaginatedBlockedProfilesResponse,
     PaginationMetadata,
 };
-use crate::social::schema::{blocked_profiles, profiles};
+use crate::social::schema::{blocked_profiles, platforms, profiles};
 use crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data;
+use crate::social::models::platform::Platform;
 
 /// Response type for blocked platforms list
 #[derive(Debug, Serialize)]
@@ -28,7 +29,15 @@ pub struct BlockedPlatformsResponse {
 #[derive(Debug, Serialize)]
 pub struct PlatformBlockInfo {
     pub platform_id: String,
+    pub name: String,
+    pub logo: Option<String>,
+    pub developer_address: String,
+    pub tagline: String,
     pub blocked_at: chrono::NaiveDateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_approved: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub primary_category: Option<String>,
 }
 
 /// Response for block check
@@ -42,7 +51,7 @@ pub struct BlockCheckResponse {
 pub struct BlockedPlatformsQuery {
     /// Optional sort: latest | earliest | alphabetical
     pub sort: Option<String>,
-    /// Optional search by platform_id
+    /// Optional search by platform_id or platform name
     pub search: Option<String>,
 }
 
@@ -444,13 +453,66 @@ pub async fn get_blocked_platforms(
                 }
             }
 
-            // Convert to Vec of currently blocked platforms
+            // Get list of currently blocked platform IDs
+            let blocked_platform_ids: Vec<String> = platform_states
+                .iter()
+                .filter(|(_, (is_blocked, _))| *is_blocked)
+                .map(|(platform_id, _)| platform_id.clone())
+                .collect();
+
+            // Query platforms table to get platform details
+            let platforms_map: HashMap<String, Platform> = if !blocked_platform_ids.is_empty() {
+                match platforms::table
+                    .filter(platforms::platform_id.eq_any(&blocked_platform_ids))
+                    .filter(platforms::deleted_at.is_null())
+                    .load::<Platform>(&mut conn)
+                    .await
+                {
+                    Ok(platforms_list) => {
+                        platforms_list
+                            .into_iter()
+                            .map(|p| (p.platform_id.clone(), p))
+                            .collect()
+                    }
+                    Err(e) => {
+                        error!("Failed to query platforms table: {}", e);
+                        HashMap::new()
+                    }
+                }
+            } else {
+                HashMap::new()
+            };
+
+            // Convert to Vec of enriched PlatformBlockInfo
             platform_states
                 .into_iter()
                 .filter(|(_, (is_blocked, _))| *is_blocked)
-                .map(|(platform_id, (_, blocked_at))| PlatformBlockInfo {
-                    platform_id,
-                    blocked_at,
+                .map(|(platform_id, (_, blocked_at))| {
+                    if let Some(platform) = platforms_map.get(&platform_id) {
+                        // Platform exists - use full details
+                        PlatformBlockInfo {
+                            platform_id: platform_id.clone(),
+                            name: platform.name.clone(),
+                            logo: platform.logo.clone(),
+                            developer_address: platform.developer_address.clone(),
+                            tagline: platform.tagline.clone(),
+                            blocked_at,
+                            is_approved: Some(platform.is_approved),
+                            primary_category: Some(platform.primary_category.clone()),
+                        }
+                    } else {
+                        // Platform was deleted or doesn't exist - use minimal data
+                        PlatformBlockInfo {
+                            platform_id: platform_id.clone(),
+                            name: "Deleted Platform".to_string(),
+                            logo: None,
+                            developer_address: String::new(),
+                            tagline: String::new(),
+                            blocked_at,
+                            is_approved: None,
+                            primary_category: None,
+                        }
+                    }
                 })
                 .collect()
         }
@@ -466,7 +528,10 @@ pub async fn get_blocked_platforms(
             let search_term = term.trim().to_lowercase();
             blocked_platforms
                 .into_iter()
-                .filter(|platform| platform.platform_id.to_lowercase().contains(&search_term))
+                .filter(|platform| {
+                    platform.platform_id.to_lowercase().contains(&search_term)
+                        || platform.name.to_lowercase().contains(&search_term)
+                })
                 .collect()
         } else {
             blocked_platforms
@@ -482,7 +547,7 @@ pub async fn get_blocked_platforms(
             filtered_platforms.sort_by(|a, b| a.blocked_at.cmp(&b.blocked_at));
         }
         Some("alphabetical") => {
-            filtered_platforms.sort_by(|a, b| a.platform_id.cmp(&b.platform_id));
+            filtered_platforms.sort_by(|a, b| a.name.cmp(&b.name));
         }
         _ => {
             // Default: latest (newest first)

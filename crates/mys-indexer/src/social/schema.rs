@@ -820,7 +820,7 @@ table! {
         min_on_chain_age_days -> Int8,
         max_votes_per_user -> Int8,
         quadratic_base_cost -> Int8,
-        voting_period_epochs -> Int8,
+        voting_period_ms -> Int8,
         quorum_votes -> Int8,
         updated_at -> Int8,
         time -> Timestamptz,

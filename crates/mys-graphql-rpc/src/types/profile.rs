@@ -171,8 +171,8 @@ impl Profile {
         profile: &mys_indexer::social::models::Profile,
     ) -> Result<Self, crate::error::Error> {
         // Convert NaiveDateTime to DateTime<Utc> then to GraphQL DateTime
-        let created_at = ChronoDateTime::<Utc>::from_utc(profile.created_at, Utc);
-        let updated_at = ChronoDateTime::<Utc>::from_utc(profile.updated_at, Utc);
+        let created_at = ChronoDateTime::<Utc>::from_naive_utc_and_offset(profile.created_at, Utc);
+        let updated_at = ChronoDateTime::<Utc>::from_naive_utc_and_offset(profile.updated_at, Utc);
 
         Ok(Profile {
             id: profile.id,

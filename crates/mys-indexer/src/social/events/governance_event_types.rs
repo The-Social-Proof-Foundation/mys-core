@@ -20,7 +20,7 @@ pub struct GovernanceRegistryEvent {
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quadratic_base_cost: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub voting_period_epochs: u64,
+    pub voting_period_ms: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quorum_votes: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
@@ -44,7 +44,7 @@ pub struct GovernanceRegistryCreatedEvent {
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quadratic_base_cost: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub voting_period_epochs: u64,
+    pub voting_period_ms: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quorum_votes: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
@@ -241,7 +241,7 @@ pub struct GovernanceParametersUpdatedEvent {
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quadratic_base_cost: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
-    pub voting_period_epochs: u64,
+    pub voting_period_ms: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]
     pub quorum_votes: u64,
     #[serde(deserialize_with = "deserialize_u64_from_string")]

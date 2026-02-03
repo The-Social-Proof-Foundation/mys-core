@@ -2,7 +2,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-pub(crate) mod apys;
 pub(crate) mod move_registry_data_loader;
 pub(crate) mod package_resolver;
 pub(crate) mod pg;

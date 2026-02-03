@@ -33,8 +33,6 @@ pub(crate) struct Validator {
     pub report_records: Option<Vec<Address>>,
     /// The checkpoint sequence number at which this was viewed at.
     pub checkpoint_viewed_at: u64,
-    /// The epoch at which this validator's information was requested to be viewed at.
-    pub requested_for_epoch: u64,
 }
 
 type EpochStakeSubsidyStarted = u64;
@@ -101,10 +99,7 @@ impl Loader<u64> for Db {
         };
 
         // filter the exchange rates to only include data for the epochs that are less than or
-        // equal to the requested epoch. This enables us to get historical exchange rates
-        // accurately and pass this to the APY calculation function
-        // TODO we might even filter here by the epoch at which the stake subsidy started
-        // to avoid passing that to the `calculate_apy` function and doing another filter there
+        // equal to the requested epoch. This enables us to get historical exchange rates accurately.
         for er in exchange_rates {
             results.insert(
                 er.address,
