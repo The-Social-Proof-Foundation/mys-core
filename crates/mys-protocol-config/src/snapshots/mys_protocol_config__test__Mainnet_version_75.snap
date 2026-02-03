@@ -11,6 +11,8 @@ feature_flags:
   missing_type_is_compatibility_error: true
   scoring_decision_with_validity_cutoff: true
   consensus_order_end_of_epoch_last: true
+  consensus_always_accept_system_transactions: true
+  consensus_skip_gced_blocks_in_direct_finalization: true
   disallow_adding_abilities_on_upgrade: true
   disable_invariant_violation_check_in_swap_loc: true
   advance_to_highest_supported_protocol_version: true

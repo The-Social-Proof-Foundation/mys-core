@@ -4,7 +4,7 @@
 
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use anemo::{types::PeerEvent, PeerId};
+use anemo::{PeerId, types::PeerEvent};
 use dashmap::DashMap;
 use mysten_metrics::spawn_logged_monitored_task;
 use quinn_proto::ConnectionStats;
@@ -14,7 +14,7 @@ use tokio::{
     time,
 };
 
-use super::metrics::QuinnConnectionMetrics;
+use crate::quinn_metrics::QuinnConnectionMetrics;
 
 const CONNECTION_STAT_COLLECTION_INTERVAL: Duration = Duration::from_secs(60);
 

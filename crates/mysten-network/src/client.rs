@@ -4,11 +4,10 @@
 
 use crate::{
     config::Config,
-    multiaddr::{parse_dns, parse_ip4, parse_ip6, Multiaddr, Protocol},
+    multiaddr::{Multiaddr, Protocol, parse_dns, parse_ip4, parse_ip6},
 };
-use eyre::{eyre, Context, Result};
-use hyper_util::client::legacy::connect::{dns::Name, HttpConnector};
-use once_cell::sync::OnceCell;
+use eyre::{Context, Result, eyre};
+use hyper_util::client::legacy::connect::dns::Name;
 use std::{
     collections::HashMap,
     fmt,
@@ -23,25 +22,26 @@ use std::{
 };
 use tokio::task::JoinHandle;
 use tokio_rustls::rustls::ClientConfig;
-use tonic::transport::{Channel, Endpoint, Uri};
+use tonic::transport::Uri;
+use tonic_rustls::Channel;
 use tower::Service;
-use tracing::{info, trace};
+use tracing::trace;
 
-pub async fn connect(address: &Multiaddr, tls_config: Option<ClientConfig>) -> Result<Channel> {
+pub async fn connect(address: &Multiaddr, tls_config: ClientConfig) -> Result<Channel> {
     let channel = endpoint_from_multiaddr(address, tls_config)?
         .connect()
         .await?;
     Ok(channel)
 }
 
-pub fn connect_lazy(address: &Multiaddr, tls_config: Option<ClientConfig>) -> Result<Channel> {
+pub fn connect_lazy(address: &Multiaddr, tls_config: ClientConfig) -> Result<Channel> {
     let channel = endpoint_from_multiaddr(address, tls_config)?.connect_lazy();
     Ok(channel)
 }
 
 pub(crate) async fn connect_with_config(
     address: &Multiaddr,
-    tls_config: Option<ClientConfig>,
+    tls_config: ClientConfig,
     config: &Config,
 ) -> Result<Channel> {
     let channel = endpoint_from_multiaddr(address, tls_config)?
@@ -53,7 +53,7 @@ pub(crate) async fn connect_with_config(
 
 pub(crate) fn connect_lazy_with_config(
     address: &Multiaddr,
-    tls_config: Option<ClientConfig>,
+    tls_config: ClientConfig,
     config: &Config,
 ) -> Result<Channel> {
     let channel = endpoint_from_multiaddr(address, tls_config)?
@@ -62,10 +62,7 @@ pub(crate) fn connect_lazy_with_config(
     Ok(channel)
 }
 
-fn endpoint_from_multiaddr(
-    addr: &Multiaddr,
-    tls_config: Option<ClientConfig>,
-) -> Result<MyEndpoint> {
+fn endpoint_from_multiaddr(addr: &Multiaddr, tls_config: ClientConfig) -> Result<MyEndpoint> {
     let mut iter = addr.iter();
 
     let channel = match iter.next().ok_or_else(|| eyre!("address is empty"))? {
@@ -91,122 +88,100 @@ fn endpoint_from_multiaddr(
 }
 
 struct MyEndpoint {
-    endpoint: Endpoint,
-    tls_config: Option<ClientConfig>,
+    uri: String,
+    tls_config: ClientConfig,
+    config: Option<Config>,
 }
 
-static DISABLE_CACHING_RESOLVER: OnceCell<bool> = OnceCell::new();
-
 impl MyEndpoint {
-    fn new(endpoint: Endpoint, tls_config: Option<ClientConfig>) -> Self {
+    fn new(uri: String, tls_config: ClientConfig) -> Self {
         Self {
-            endpoint,
+            uri,
             tls_config,
+            config: None,
         }
     }
 
-    fn try_from_uri(uri: String, tls_config: Option<ClientConfig>) -> Result<Self> {
-        let uri: Uri = uri
-            .parse()
+    fn try_from_uri(uri: String, tls_config: ClientConfig) -> Result<Self> {
+        // Validate URI
+        uri.parse::<Uri>()
             .with_context(|| format!("unable to create Uri from '{uri}'"))?;
-        let endpoint = Endpoint::from(uri);
-        Ok(Self::new(endpoint, tls_config))
+        Ok(Self::new(uri, tls_config))
     }
 
     fn apply_config(mut self, config: &Config) -> Self {
-        self.endpoint = apply_config_to_endpoint(config, self.endpoint);
+        self.config = Some(config.clone());
         self
     }
 
     fn connect_lazy(self) -> Channel {
-        let disable_caching_resolver = *DISABLE_CACHING_RESOLVER.get_or_init(|| {
-            let disable_caching_resolver = std::env::var("DISABLE_CACHING_RESOLVER").is_ok();
-            info!("DISABLE_CACHING_RESOLVER: {disable_caching_resolver}");
-            disable_caching_resolver
-        });
-
-        if disable_caching_resolver {
-            if let Some(tls_config) = self.tls_config {
-                self.endpoint.connect_with_connector_lazy(
-                    hyper_rustls::HttpsConnectorBuilder::new()
-                        .with_tls_config(tls_config)
-                        .https_only()
-                        .enable_http2()
-                        .build(),
-                )
-            } else {
-                self.endpoint.connect_lazy()
+        // Use tonic_rustls::Channel API similar to consensus/core
+        let mut builder = tonic_rustls::Channel::from_shared(self.uri.clone())
+            .expect("URI should be valid");
+        
+        // Apply config if available
+        if let Some(ref config) = self.config {
+            if let Some(timeout) = config.connect_timeout {
+                builder = builder.connect_timeout(timeout);
             }
-        } else {
-            let mut http = HttpConnector::new_with_resolver(CachingResolver::new());
-            http.enforce_http(false);
-            http.set_nodelay(true);
-            http.set_keepalive(None);
-            http.set_connect_timeout(None);
-
-            if let Some(tls_config) = self.tls_config {
-                let https = hyper_rustls::HttpsConnectorBuilder::new()
-                    .with_tls_config(tls_config)
-                    .https_only()
-                    .enable_http1()
-                    .wrap_connector(http);
-                self.endpoint.connect_with_connector_lazy(https)
-            } else {
-                self.endpoint.connect_with_connector_lazy(http)
+            if let Some(window_size) = config.http2_initial_stream_window_size {
+                builder = builder.initial_stream_window_size(Some(window_size));
+            }
+            if let Some(window_size) = config.http2_initial_connection_window_size {
+                builder = builder.initial_connection_window_size(Some(window_size));
+            }
+            if let Some(keepalive) = config.http2_keepalive_interval {
+                builder = builder.http2_keep_alive_interval(keepalive);
+            }
+            if let Some(timeout) = config.http2_keepalive_timeout {
+                builder = builder.keep_alive_timeout(timeout);
+            }
+            if let Some(keepalive) = config.tcp_keepalive {
+                builder = builder.tcp_keepalive(Some(keepalive));
             }
         }
+        
+        builder
+            .tls_config(self.tls_config)
+            .expect("TLS config should be valid")
+            .connect_lazy()
     }
 
     async fn connect(self) -> Result<Channel> {
-        if let Some(tls_config) = self.tls_config {
-            let https_connector = hyper_rustls::HttpsConnectorBuilder::new()
-                .with_tls_config(tls_config)
-                .https_only()
-                .enable_http2()
-                .build();
-            self.endpoint
-                .connect_with_connector(https_connector)
-                .await
-                .map_err(Into::into)
-        } else {
-            self.endpoint.connect().await.map_err(Into::into)
+        // Use tonic_rustls::Channel API similar to consensus/core
+        let mut builder = tonic_rustls::Channel::from_shared(self.uri.clone())
+            .map_err(|e| eyre!("invalid URI '{}': {}", self.uri, e))?;
+        
+        // Apply config if available
+        if let Some(ref config) = self.config {
+            if let Some(timeout) = config.connect_timeout {
+                builder = builder.connect_timeout(timeout);
+            }
+            if let Some(window_size) = config.http2_initial_stream_window_size {
+                builder = builder.initial_stream_window_size(Some(window_size));
+            }
+            if let Some(window_size) = config.http2_initial_connection_window_size {
+                builder = builder.initial_connection_window_size(Some(window_size));
+            }
+            if let Some(keepalive) = config.http2_keepalive_interval {
+                builder = builder.http2_keep_alive_interval(keepalive);
+            }
+            if let Some(timeout) = config.http2_keepalive_timeout {
+                builder = builder.keep_alive_timeout(timeout);
+            }
+            if let Some(keepalive) = config.tcp_keepalive {
+                builder = builder.tcp_keepalive(Some(keepalive));
+            }
         }
+        
+        let channel = builder
+            .tls_config(self.tls_config)
+            .map_err(|e| eyre!("invalid TLS config: {}", e))?
+            .connect()
+            .await
+            .map_err(|e| eyre!("failed to connect: {}", e))?;
+        Ok(channel)
     }
-}
-
-fn apply_config_to_endpoint(config: &Config, mut endpoint: Endpoint) -> Endpoint {
-    if let Some(limit) = config.concurrency_limit_per_connection {
-        endpoint = endpoint.concurrency_limit(limit);
-    }
-
-    if let Some(timeout) = config.request_timeout {
-        endpoint = endpoint.timeout(timeout);
-    }
-
-    if let Some(timeout) = config.connect_timeout {
-        endpoint = endpoint.connect_timeout(timeout);
-    }
-
-    if let Some(tcp_nodelay) = config.tcp_nodelay {
-        endpoint = endpoint.tcp_nodelay(tcp_nodelay);
-    }
-
-    if let Some(http2_keepalive_interval) = config.http2_keepalive_interval {
-        endpoint = endpoint.http2_keep_alive_interval(http2_keepalive_interval);
-    }
-
-    if let Some(http2_keepalive_timeout) = config.http2_keepalive_timeout {
-        endpoint = endpoint.keep_alive_timeout(http2_keepalive_timeout);
-    }
-
-    if let Some((limit, duration)) = config.rate_limit {
-        endpoint = endpoint.rate_limit(limit, duration);
-    }
-
-    endpoint
-        .initial_stream_window_size(config.http2_initial_stream_window_size)
-        .initial_connection_window_size(config.http2_initial_connection_window_size)
-        .tcp_keepalive(config.tcp_keepalive)
 }
 
 type CacheEntry = (Instant, Vec<SocketAddr>);

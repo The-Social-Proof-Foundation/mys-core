@@ -584,6 +584,7 @@ macro_rules! malloc_size_of_is_0(
 					0
 				}
 				#[inline(always)]
+				#[allow(dead_code)] // Some types like `str` are not Sized, so constant_size() cannot be used
 				fn constant_size() -> Option<usize> { Some(0) }
 			}
 		)+
@@ -630,6 +631,7 @@ malloc_size_of_is_0!(any: PhantomData<T>);
 
 /// Measurable that defers to inner value and used to verify MallocSizeOf implementation in a
 /// struct.
+#[allow(dead_code)] // Used for testing/verification purposes
 #[derive(Clone)]
 pub struct Measurable<T: MallocSizeOf>(pub T);
 

@@ -195,7 +195,7 @@ Governance registry that keeps track of all delegates and proposals
 <dd>
 </dd>
 <dt>
-<code>voting_period_epochs: u64</code>
+<code>voting_period_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1202,7 +1202,7 @@ Event emitted when governance parameters are updated
 <dd>
 </dd>
 <dt>
-<code>voting_period_epochs: u64</code>
+<code>voting_period_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1275,7 +1275,7 @@ This event matches the GovernanceRegistryEvent structure expected by the indexer
 <dd>
 </dd>
 <dt>
-<code>voting_period_epochs: u64</code>
+<code>voting_period_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1666,7 +1666,7 @@ This function has the same logic as init() but can be called by bootstrap
         proposal_submission_cost: 100_000_000, // 100 MYS <b>for</b> ecosystem proposals
         max_votes_per_user: 10, // Up to 10 votes per user
         quadratic_base_cost: 10_000_000, // 10 MYS per additional vote
-        voting_period_epochs: 7, // 7 epochs <b>for</b> ecosystem votes
+        voting_period_ms: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds <b>for</b> ecosystem votes
         quorum_votes: 20, // 20 votes required <b>for</b> ecosystem proposals
         // Tables
         delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a>&gt;(ctx),
@@ -1692,7 +1692,7 @@ This function has the same logic as init() but can be called by bootstrap
         proposal_submission_cost: ecosystem_registry.proposal_submission_cost,
         max_votes_per_user: ecosystem_registry.max_votes_per_user,
         quadratic_base_cost: ecosystem_registry.quadratic_base_cost,
-        voting_period_epochs: ecosystem_registry.voting_period_epochs,
+        voting_period_ms: ecosystem_registry.voting_period_ms,
         quorum_votes: ecosystem_registry.quorum_votes,
         updated_at: current_time,
     });
@@ -1708,7 +1708,7 @@ This function has the same logic as init() but can be called by bootstrap
         proposal_submission_cost: 25_000_000, // 25 MYS <b>for</b> proof of creativity
         max_votes_per_user: 3, // Up to 3 votes per user
         quadratic_base_cost: 2_500_000, // 2.5 MYS per additional vote
-        voting_period_epochs: 1, // 1 epoch <b>for</b> proof of creativity votes
+        voting_period_ms: 24 * 60 * 60 * 1000, // 1 day in milliseconds <b>for</b> proof of creativity votes
         quorum_votes: 10, // 10 votes required <b>for</b> proof of creativity proposals
         // Tables
         delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a>&gt;(ctx),
@@ -1734,7 +1734,7 @@ This function has the same logic as init() but can be called by bootstrap
         proposal_submission_cost: proof_of_creativity_registry.proposal_submission_cost,
         max_votes_per_user: proof_of_creativity_registry.max_votes_per_user,
         quadratic_base_cost: proof_of_creativity_registry.quadratic_base_cost,
-        voting_period_epochs: proof_of_creativity_registry.voting_period_epochs,
+        voting_period_ms: proof_of_creativity_registry.voting_period_ms,
         quorum_votes: proof_of_creativity_registry.quorum_votes,
         updated_at: current_time,
     });
@@ -1785,7 +1785,7 @@ Update governance parameters (internal function)
 This function does not perform authorization checks - callers must verify permissions
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters_internal">update_governance_parameters_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters_internal">update_governance_parameters_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1801,7 +1801,7 @@ This function does not perform authorization checks - callers must verify permis
     proposal_submission_cost: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
-    voting_period_epochs: u64,
+    voting_period_ms: u64,
     quorum_votes: u64,
     _ctx: &<b>mut</b> TxContext
 ) {
@@ -1813,7 +1813,7 @@ This function does not perform authorization checks - callers must verify permis
     // proposal_submission_cost can be 0
     <b>assert</b>!(max_votes_per_user &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
     // quadratic_base_cost can be 0 (<b>if</b> voting is free)
-    <b>assert</b>!(voting_period_epochs &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
+    <b>assert</b>!(voting_period_ms &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
     <b>assert</b>!(quorum_votes &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
     // Update parameters
     registry.delegate_count = delegate_count;
@@ -1821,7 +1821,7 @@ This function does not perform authorization checks - callers must verify permis
     registry.proposal_submission_cost = proposal_submission_cost;
     registry.max_votes_per_user = max_votes_per_user;
     registry.quadratic_base_cost = quadratic_base_cost;
-    registry.voting_period_epochs = voting_period_epochs;
+    registry.voting_period_ms = voting_period_ms;
     registry.quorum_votes = quorum_votes;
     // Emit <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> parameters updated event
     event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceParametersUpdatedEvent">GovernanceParametersUpdatedEvent</a> {
@@ -1832,7 +1832,7 @@ This function does not perform authorization checks - callers must verify permis
         proposal_submission_cost,
         max_votes_per_user,
         quadratic_base_cost,
-        voting_period_epochs,
+        voting_period_ms,
         quorum_votes,
         timestamp: tx_context::epoch_timestamp_ms(_ctx),
     });
@@ -1852,7 +1852,7 @@ Can only be called by the platform module (which verifies platform ownership)
 This function is package-private to prevent direct calls that bypass platform ownership verification
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_platform_governance_parameters">update_platform_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, platform_developer: <b>address</b>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_platform_governance_parameters">update_platform_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, platform_developer: <b>address</b>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1869,7 +1869,7 @@ This function is package-private to prevent direct calls that bypass platform ow
     proposal_submission_cost: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
-    voting_period_epochs: u64,
+    voting_period_ms: u64,
     quorum_votes: u64,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -1886,7 +1886,7 @@ This function is package-private to prevent direct calls that bypass platform ow
         proposal_submission_cost,
         max_votes_per_user,
         quadratic_base_cost,
-        voting_period_epochs,
+        voting_period_ms,
         quorum_votes,
         ctx
     );
@@ -1905,7 +1905,7 @@ Update governance parameters for ecosystem/proof-of-creativity registries
 Can only be called by governance admin
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">social_contracts::governance::GovernanceAdminCap</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_update_governance_parameters">update_governance_parameters</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">social_contracts::governance::GovernanceAdminCap</a>, delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, _ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1922,7 +1922,7 @@ Can only be called by governance admin
     proposal_submission_cost: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
-    voting_period_epochs: u64,
+    voting_period_ms: u64,
     quorum_votes: u64,
     _ctx: &<b>mut</b> TxContext
 ) {
@@ -1936,7 +1936,7 @@ Can only be called by governance admin
         proposal_submission_cost,
         max_votes_per_user,
         quadratic_base_cost,
-        voting_period_epochs,
+        voting_period_ms,
         quorum_votes,
         _ctx
     );
@@ -2815,12 +2815,12 @@ Move a proposal to community voting phase
     <b>let</b> <b>mut</b> proposal = table::remove(&<b>mut</b> registry.proposals, proposal_id);
     // Update status
     proposal.status = <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>;
-    // Get current epoch <b>for</b> voting period calculation
-    <b>let</b> current_epoch = tx_context::epoch(ctx);
-    // Set voting period based on registry voting period (using epochs)
-    // This ensures voting ends on epoch boundaries, not millisecond timestamps
-    proposal.voting_start_time = current_epoch;
-    proposal.voting_end_time = current_epoch + registry.voting_period_epochs;
+    // Get current timestamp in milliseconds <b>for</b> voting period calculation
+    <b>let</b> current_time_ms = tx_context::epoch_timestamp_ms(ctx);
+    // Set voting period based on registry voting period (using milliseconds)
+    // This allows flexible voting durations independent of epoch boundaries
+    proposal.voting_start_time = current_time_ms;
+    proposal.voting_end_time = current_time_ms + registry.voting_period_ms;
     // Update proposals by status
     <b>let</b> from_status = table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>);
     <b>let</b> <b>mut</b> index = 0;
@@ -2836,11 +2836,11 @@ Move a proposal to community voting phase
     vector::push_back(to_status, proposal_id);
     // Put proposal back in registry
     table::add(&<b>mut</b> registry.proposals, proposal_id, proposal);
-    // Emit event - <b>use</b> the precise timestamp <b>for</b> the event
+    // Emit event - <b>use</b> millisecond timestamps
     event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalApprovedForVotingEvent">ProposalApprovedForVotingEvent</a> {
         proposal_id,
-        voting_start_time: current_epoch,
-        voting_end_time: current_epoch + registry.voting_period_epochs,
+        voting_start_time: current_time_ms,
+        voting_end_time: current_time_ms + registry.voting_period_ms,
     });
 }
 </code></pre>
@@ -2940,9 +2940,7 @@ Users can cast multiple votes by paying a quadratically increasing cost
     // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
-    <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
-    // Also get the current epoch <b>for</b> timing checks
-    <b>let</b> current_epoch = tx_context::epoch(ctx);
+    <b>let</b> current_time_ms = tx_context::epoch_timestamp_ms(ctx);
     // Calculate vote cost before borrowing from registry
     <b>let</b> quadratic_base_cost = registry.quadratic_base_cost;
     <b>let</b> vote_cost = <b>if</b> (vote_count &lt;= 1) {
@@ -2955,8 +2953,8 @@ Users can cast multiple votes by paying a quadratically increasing cost
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
     <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_ENotVotingPhase">ENotVotingPhase</a>);
-    // Verify voting period hasn't ended (check using epochs, not milliseconds)
-    <b>assert</b>!(current_epoch &lt;= proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodEnded">EVotingPeriodEnded</a>);
+    // Verify voting period hasn't ended (check using milliseconds)
+    <b>assert</b>!(current_time_ms &lt;= proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodEnded">EVotingPeriodEnded</a>);
     // Verify vote count is valid (at least 1, no more than max)
     <b>assert</b>!(vote_count &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidVoteCount">EInvalidVoteCount</a>);
     <b>assert</b>!(vote_count &lt;= registry.max_votes_per_user, <a href="../social_contracts/governance.md#social_contracts_governance_EExceedsMaxVotes">EExceedsMaxVotes</a>);
@@ -2990,7 +2988,7 @@ Users can cast multiple votes by paying a quadratically increasing cost
         voter: caller,
         vote_weight: vote_count,
         approve,
-        vote_time: current_time,
+        vote_time: current_time_ms,
         vote_cost,
     });
 }
@@ -3023,12 +3021,11 @@ Submit an anonymous encrypted vote on a proposal
     ctx: &<b>mut</b> TxContext
 ) {
     <b>let</b> caller = tx_context::sender(ctx);
-    <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
-    <b>let</b> current_epoch = tx_context::epoch(ctx);
+    <b>let</b> current_time_ms = tx_context::epoch_timestamp_ms(ctx);
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
     <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_ENotVotingPhase">ENotVotingPhase</a>);
-    <b>assert</b>!(current_epoch &lt;= proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodEnded">EVotingPeriodEnded</a>);
+    <b>assert</b>!(current_time_ms &lt;= proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodEnded">EVotingPeriodEnded</a>);
     <b>assert</b>!(!table::contains(&registry.delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_EDelegateAnonNotAllowed">EDelegateAnonNotAllowed</a>);
     <b>let</b> voted_community: &<b>mut</b> VecSet&lt;<b>address</b>&gt; = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTED_COMMUNITY_FIELD">VOTED_COMMUNITY_FIELD</a>);
     <b>assert</b>!(!vec_set::contains(voted_community, &caller), <a href="../social_contracts/governance.md#social_contracts_governance_EAlreadyVoted">EAlreadyVoted</a>);
@@ -3051,7 +3048,7 @@ Submit an anonymous encrypted vote on a proposal
     event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_AnonymousVoteEvent">AnonymousVoteEvent</a> {
         proposal_id,
         voter: caller,
-        vote_time: current_time,
+        vote_time: current_time_ms,
         encrypted_vote_data: serialized_vote, // Emit encrypted blob <b>for</b> indexer
     });
 }
@@ -3084,14 +3081,13 @@ Finalize a proposal after the voting period ends
 ) {
     // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
-    <b>let</b> current_epoch = tx_context::epoch(ctx);
-    <b>let</b> current_time = tx_context::epoch_timestamp_ms(ctx);
+    <b>let</b> current_time_ms = tx_context::epoch_timestamp_ms(ctx);
     // Verify proposal exists and is in community voting phase
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
     <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
-    // Verify voting period <b>has</b> ended (using epoch-based timing)
-    <b>assert</b>!(current_epoch &gt; proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodNotEnded">EVotingPeriodNotEnded</a>);
+    // Verify voting period <b>has</b> ended (using millisecond-based timing)
+    <b>assert</b>!(current_time_ms &gt; proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodNotEnded">EVotingPeriodNotEnded</a>);
     // Get total votes
     <b>let</b> total_votes = proposal.community_votes_for + proposal.community_votes_against;
     // Update proposals by status
@@ -3140,7 +3136,7 @@ Finalize a proposal after the voting period ends
             // Emit approval event
             event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalApprovedEvent">ProposalApprovedEvent</a> {
                 proposal_id,
-                approval_time: current_time,
+                approval_time: current_time_ms,
                 votes_for: proposal.community_votes_for,
                 votes_against: proposal.community_votes_against,
             });
@@ -3154,7 +3150,7 @@ Finalize a proposal after the voting period ends
             // Emit rejection event
             event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalRejectedByCommunityEvent">ProposalRejectedByCommunityEvent</a> {
                 proposal_id,
-                rejection_time: current_time,
+                rejection_time: current_time_ms,
                 votes_for: proposal.community_votes_for,
                 votes_against: proposal.community_votes_against,
             });
@@ -3169,7 +3165,7 @@ Finalize a proposal after the voting period ends
         // Emit rejection event
         event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalRejectedByCommunityEvent">ProposalRejectedByCommunityEvent</a> {
             proposal_id,
-            rejection_time: current_time,
+            rejection_time: current_time_ms,
             votes_for: proposal.community_votes_for,
             votes_against: proposal.community_votes_against,
         });
@@ -3216,7 +3212,7 @@ Finalize a proposal with anonymous votes by decrypting them first
 ) {
     // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
-    <b>let</b> current_epoch = tx_context::epoch(ctx);
+    <b>let</b> current_time_ms = tx_context::epoch_timestamp_ms(ctx);
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
     // First, collect all the decrypted votes
     <b>let</b> <b>mut</b> votes_for = vector::empty&lt;<b>address</b>&gt;();
@@ -3225,7 +3221,7 @@ Finalize a proposal with anonymous votes by decrypting them first
     {
         <b>let</b> proposal = table::borrow_mut(&<b>mut</b> registry.proposals, proposal_id);
         <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
-        <b>assert</b>!(current_epoch &gt; proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodNotEnded">EVotingPeriodNotEnded</a>);
+        <b>assert</b>!(current_time_ms &gt; proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodNotEnded">EVotingPeriodNotEnded</a>);
         <b>if</b> (dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ENCRYPTED_VOTES_FIELD">ENCRYPTED_VOTES_FIELD</a>)) {
             <b>let</b> votes_tbl: &Table&lt;<b>address</b>, EncryptedObject&gt; = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ENCRYPTED_VOTES_FIELD">ENCRYPTED_VOTES_FIELD</a>);
             <b>let</b> anon_set: &VecSet&lt;<b>address</b>&gt; = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ANON_VOTERS_FIELD">ANON_VOTERS_FIELD</a>);
@@ -3783,7 +3779,7 @@ Get governance parameters
         registry.proposal_submission_cost,
         registry.max_votes_per_user,
         registry.quadratic_base_cost,
-        registry.voting_period_epochs,
+        registry.voting_period_ms,
         registry.quorum_votes
     )
 }
@@ -3841,7 +3837,7 @@ Create a platform-specific governance registry when a platform is approved
 This function can only be called by the platform toggle_platform_approval function
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_epochs: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_create_platform_governance">create_platform_governance</a>(delegate_count: u64, delegate_term_epochs: u64, proposal_submission_cost: u64, max_votes_per_user: u64, quadratic_base_cost: u64, voting_period_ms: u64, quorum_votes: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/object.md#mys_object_ID">mys::object::ID</a>
 </code></pre>
 
 
@@ -3856,7 +3852,7 @@ This function can only be called by the platform toggle_platform_approval functi
     proposal_submission_cost: u64,
     max_votes_per_user: u64,
     quadratic_base_cost: u64,
-    voting_period_epochs: u64,
+    voting_period_ms: u64,
     quorum_votes: u64,
     ctx: &<b>mut</b> TxContext
 ): ID {
@@ -3871,7 +3867,7 @@ This function can only be called by the platform toggle_platform_approval functi
         proposal_submission_cost,
         max_votes_per_user,
         quadratic_base_cost,
-        voting_period_epochs,
+        voting_period_ms,
         quorum_votes,
         // Tables
         delegates: table::new&lt;<b>address</b>, <a href="../social_contracts/governance.md#social_contracts_governance_Delegate">Delegate</a>&gt;(ctx),
@@ -3897,7 +3893,7 @@ This function can only be called by the platform toggle_platform_approval functi
         proposal_submission_cost: platform_registry.proposal_submission_cost,
         max_votes_per_user: platform_registry.max_votes_per_user,
         quadratic_base_cost: platform_registry.quadratic_base_cost,
-        voting_period_epochs: platform_registry.voting_period_epochs,
+        voting_period_ms: platform_registry.voting_period_ms,
         quorum_votes: platform_registry.quorum_votes,
         updated_at: current_time,
     });

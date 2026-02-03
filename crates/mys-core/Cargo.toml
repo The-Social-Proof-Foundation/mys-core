@@ -65,6 +65,7 @@ move-symbol-pool.workspace = true
 mysten-common.workspace = true
 mysten-network.workspace = true
 telemetry-subscribers.workspace = true
+tonic-rustls.workspace = true
 typed-store.workspace = true
 
 mysten-metrics.workspace = true

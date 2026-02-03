@@ -108,13 +108,14 @@ async fn make_clients(
     for validator in active_validators {
         let net_addr = Multiaddr::try_from(validator.net_address).unwrap();
         // TODO: Enable TLS on this interface with below config, once support is rolled out to validators.
-        // let tls_config = mys_tls::create_rustls_client_config(
-        //     mys_types::crypto::NetworkPublicKey::from_bytes(&validator.network_pubkey_bytes)?,
-        //     mys_tls::MYS_VALIDATOR_SERVER_NAME.to_string(),
-        //     None,
-        // );
+        // For now, create a default TLS config for insecure connections
+        let default_tls_config = mys_tls::create_rustls_client_config(
+            fastcrypto::ed25519::Ed25519PublicKey::from_bytes(&[0u8; 32]).unwrap(),
+            mys_tls::MYS_VALIDATOR_SERVER_NAME.to_string(),
+            None,
+        );
         let channel = net_config
-            .connect_lazy(&net_addr, None)
+            .connect_lazy(&net_addr, default_tls_config)
             .map_err(|err| anyhow!(err.to_string()))?;
         let client = NetworkAuthorityClient::new(channel);
         let public_key_bytes =

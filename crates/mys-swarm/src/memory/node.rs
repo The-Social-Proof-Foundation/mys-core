@@ -113,7 +113,7 @@ impl Node {
                 mys_tls::MYS_VALIDATOR_SERVER_NAME.to_string(),
                 None,
             );
-            let channel = mysten_network::client::connect(&network_address, Some(tls_config))
+            let channel = mysten_network::client::connect(&network_address, tls_config)
                 .await
                 .map_err(|err| anyhow!(err.to_string()))
                 .map_err(HealthCheckError::Failure)

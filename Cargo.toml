@@ -70,6 +70,7 @@ members = [
     "consensus/config",
     "consensus/core",
     "consensus/simtests",
+    "consensus/types",
     "crates/anemo-benchmark",
     "crates/bin-version",
     "crates/mysten-common",
@@ -162,7 +163,6 @@ members = [
     "crates/mys-simulator",
     "crates/mys-single-node-benchmark",
     "crates/mys-snapshot",
-    "crates/mys-social-indexer",
     "crates/mys-source-validation",
     "crates/mys-source-validation-service",
     "crates/mys-storage",
@@ -704,7 +704,6 @@ mys-rpc-loadgen = { path = "crates/mys-rpc-loadgen" }
 mys-sdk = { path = "crates/mys-sdk" }
 mys-simulator = { path = "crates/mys-simulator" }
 mys-snapshot = { path = "crates/mys-snapshot" }
-mys-social-indexer = { path = "crates/mys-social-indexer" }
 mys-source-validation = { path = "crates/mys-source-validation" }
 mys-source-validation-service = { path = "crates/mys-source-validation-service" }
 mys-storage = { path = "crates/mys-storage" }
@@ -734,6 +733,7 @@ x = { path = "crates/x" }
 consensus-config = { path = "consensus/config" }
 consensus-core = { path = "consensus/core" }
 consensus-simtests = { path = "consensus/simtests" }
+consensus-types = { path = "consensus/types" }
 
 mys-execution = { path = "mys-execution" }
 # mys-move-natives = { path = "mys-execution/latest/mys-move-natives", package = "mys-move-natives-latest" }

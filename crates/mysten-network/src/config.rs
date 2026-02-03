@@ -1,17 +1,16 @@
 // Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
-use crate::metrics::{DefaultMetricsCallbackProvider, MetricsCallbackProvider};
+
 use crate::{
-    client::{connect_lazy_with_config, connect_with_config},
-    server::ServerBuilder,
     Multiaddr,
+    client::{connect_lazy_with_config, connect_with_config},
 };
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tokio_rustls::rustls::ClientConfig;
-use tonic::transport::Channel;
+use tonic_rustls::Channel;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Config {
@@ -46,9 +45,6 @@ pub struct Config {
     /// Default is no keepalive (None)
     pub tcp_keepalive: Option<Duration>,
 
-    /// Set the value of TCP_NODELAY option for accepted connections. Enabled by default.
-    pub tcp_nodelay: Option<bool>,
-
     /// Set whether HTTP2 Ping frames are enabled on accepted connections.
     ///
     /// If None is specified, HTTP2 keepalive is disabled, otherwise the duration specified will be
@@ -81,34 +77,15 @@ impl Config {
         Default::default()
     }
 
-    pub fn server_builder(&self) -> ServerBuilder {
-        ServerBuilder::from_config(self, DefaultMetricsCallbackProvider::default())
-    }
-
-    pub fn server_builder_with_metrics<M>(&self, metrics_provider: M) -> ServerBuilder<M>
-    where
-        M: MetricsCallbackProvider,
-    {
-        ServerBuilder::from_config(self, metrics_provider)
-    }
-
-    pub async fn connect(
-        &self,
-        addr: &Multiaddr,
-        tls_config: Option<ClientConfig>,
-    ) -> Result<Channel> {
+    pub async fn connect(&self, addr: &Multiaddr, tls_config: ClientConfig) -> Result<Channel> {
         connect_with_config(addr, tls_config, self).await
     }
 
-    pub fn connect_lazy(
-        &self,
-        addr: &Multiaddr,
-        tls_config: Option<ClientConfig>,
-    ) -> Result<Channel> {
+    pub fn connect_lazy(&self, addr: &Multiaddr, tls_config: ClientConfig) -> Result<Channel> {
         connect_lazy_with_config(addr, tls_config, self)
     }
 
-    pub(crate) fn http_config(&self) -> mys_http::Config {
+    pub fn http_config(&self) -> mys_http::Config {
         mys_http::Config::default()
             .initial_stream_window_size(self.http2_initial_stream_window_size)
             .initial_connection_window_size(self.http2_initial_connection_window_size)
@@ -116,6 +93,9 @@ impl Config {
             .http2_keepalive_timeout(self.http2_keepalive_timeout)
             .http2_keepalive_interval(self.http2_keepalive_interval)
             .tcp_keepalive(self.tcp_keepalive)
-            .tcp_nodelay(self.tcp_nodelay.unwrap_or_default())
+    }
+
+    pub fn server_builder(&self) -> crate::server::ServerBuilder {
+        crate::server::ServerBuilder::from_config(self, crate::metrics::DefaultMetricsCallbackProvider {})
     }
 }

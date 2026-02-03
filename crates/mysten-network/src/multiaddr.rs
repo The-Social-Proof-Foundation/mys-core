@@ -1,8 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
-// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use eyre::{eyre, Result};
+use eyre::{Result, eyre};
 use std::{
     borrow::Cow,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
@@ -21,7 +20,7 @@ impl Multiaddr {
     }
 
     #[cfg(test)]
-    pub(crate) fn new_internal(inner: ::multiaddr::Multiaddr) -> Self {
+    fn new_internal(inner: ::multiaddr::Multiaddr) -> Self {
         Self(inner)
     }
 
@@ -209,6 +208,20 @@ impl Multiaddr {
         for component in self.iter() {
             if let Protocol::Udp(port) = component {
                 new.push(Protocol::Tcp(port));
+            } else {
+                new.push(component);
+            }
+        }
+
+        new
+    }
+
+    pub fn rewrite_http_to_https(&self) -> Self {
+        let mut new = Self::empty();
+
+        for component in self.iter() {
+            if let Protocol::Http = component {
+                new.push(Protocol::Https);
             } else {
                 new.push(component);
             }
@@ -405,7 +418,7 @@ mod test {
 
     #[test]
     fn test_to_socket_addr_unsupported_protocol() {
-        let multi_addr_dns = Multiaddr(multiaddr!(Dnsaddr("mysten.mys"), Tcp(10500u16)));
+        let multi_addr_dns = Multiaddr(multiaddr!(Dnsaddr("mysten.myso"), Tcp(10500u16)));
         let _ = multi_addr_dns
             .to_socket_addr()
             .expect_err("DNS is unsupported");
@@ -417,14 +430,14 @@ mod test {
         assert!(multi_addr_ipv4.is_loosely_valid_tcp_addr());
         let multi_addr_ipv6 = Multiaddr(multiaddr!(Ip6([172, 0, 0, 1, 1, 1, 1, 1]), Tcp(10500u16)));
         assert!(multi_addr_ipv6.is_loosely_valid_tcp_addr());
-        let multi_addr_dns = Multiaddr(multiaddr!(Dnsaddr("mysten.mys"), Tcp(10500u16)));
+        let multi_addr_dns = Multiaddr(multiaddr!(Dnsaddr("mysten.myso"), Tcp(10500u16)));
         assert!(multi_addr_dns.is_loosely_valid_tcp_addr());
 
         let multi_addr_ipv4 = Multiaddr(multiaddr!(Ip4([127, 0, 0, 1]), Udp(10500u16)));
         assert!(!multi_addr_ipv4.is_loosely_valid_tcp_addr());
         let multi_addr_ipv6 = Multiaddr(multiaddr!(Ip6([172, 0, 0, 1, 1, 1, 1, 1]), Udp(10500u16)));
         assert!(!multi_addr_ipv6.is_loosely_valid_tcp_addr());
-        let multi_addr_dns = Multiaddr(multiaddr!(Dnsaddr("mysten.mys"), Udp(10500u16)));
+        let multi_addr_dns = Multiaddr(multiaddr!(Dnsaddr("mysten.myso"), Udp(10500u16)));
         assert!(!multi_addr_dns.is_loosely_valid_tcp_addr());
 
         let invalid_multi_addr_ipv4 = Multiaddr(multiaddr!(Ip4([127, 0, 0, 1])));
@@ -437,8 +450,8 @@ mod test {
         assert_eq!(Some("127.0.0.1".to_string()), multi_addr_ip4.hostname());
         assert_eq!(Some(10500u16), multi_addr_ip4.port());
 
-        let multi_addr_dns = Multiaddr(multiaddr!(Dns("mysten.mys"), Tcp(10501u16)));
-        assert_eq!(Some("mysten.mys".to_string()), multi_addr_dns.hostname());
+        let multi_addr_dns = Multiaddr(multiaddr!(Dns("mysten.myso"), Tcp(10501u16)));
+        assert_eq!(Some("mysten.myso".to_string()), multi_addr_dns.hostname());
         assert_eq!(Some(10501u16), multi_addr_dns.port());
     }
 
@@ -457,13 +470,13 @@ mod test {
         .unwrap();
         assert_eq!("[f:f:f:f:f:f:f:1]:10500".to_string(), addr_ip6.to_string());
 
-        let addr_dns = Multiaddr(multiaddr!(Dns("mysten.mys"), Udp(10501u16)))
+        let addr_dns = Multiaddr(multiaddr!(Dns("mysten.myso"), Udp(10501u16)))
             .to_anemo_address()
             .unwrap();
-        assert_eq!("mysten.mys:10501".to_string(), addr_dns.to_string());
+        assert_eq!("mysten.myso:10501".to_string(), addr_dns.to_string());
 
         let addr_invalid =
-            Multiaddr(multiaddr!(Dns("mysten.mys"), Tcp(10501u16))).to_anemo_address();
+            Multiaddr(multiaddr!(Dns("mysten.myso"), Tcp(10501u16))).to_anemo_address();
         assert!(addr_invalid.is_err());
     }
 
@@ -480,9 +493,9 @@ mod test {
         ))
         .with_zero_ip();
         assert_eq!(Some("::".to_string()), multi_addr_ip6.hostname());
-        assert_eq!(Some(10500u16), multi_addr_ip4.port());
+        assert_eq!(Some(10500u16), multi_addr_ip6.port());
 
-        let multi_addr_dns = Multiaddr(multiaddr!(Dns("mysten.mys"), Tcp(10501u16))).with_zero_ip();
+        let multi_addr_dns = Multiaddr(multiaddr!(Dns("mysten.myso"), Tcp(10501u16))).with_zero_ip();
         assert_eq!(Some("0.0.0.0".to_string()), multi_addr_dns.hostname());
         assert_eq!(Some(10501u16), multi_addr_dns.port());
     }
@@ -500,11 +513,22 @@ mod test {
         ))
         .with_localhost_ip();
         assert_eq!(Some("::1".to_string()), multi_addr_ip6.hostname());
-        assert_eq!(Some(10500u16), multi_addr_ip4.port());
+        assert_eq!(Some(10500u16), multi_addr_ip6.port());
 
         let multi_addr_dns =
-            Multiaddr(multiaddr!(Dns("mysten.mys"), Tcp(10501u16))).with_localhost_ip();
+            Multiaddr(multiaddr!(Dns("mysten.myso"), Tcp(10501u16))).with_localhost_ip();
         assert_eq!(Some("127.0.0.1".to_string()), multi_addr_dns.hostname());
         assert_eq!(Some(10501u16), multi_addr_dns.port());
+    }
+
+    #[test]
+    fn document_multiaddr_limitation_for_unix_protocol() {
+        // You can construct a multiaddr by hand (ie binary format) just fine
+        let path = "/tmp/foo";
+        let addr = Multiaddr::new_internal(multiaddr::multiaddr!(Unix(path), Http));
+
+        // But it doesn't round-trip in the human readable format
+        let s = addr.to_string();
+        assert!(s.parse::<Multiaddr>().is_err());
     }
 }

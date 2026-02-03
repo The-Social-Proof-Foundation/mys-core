@@ -26,8 +26,16 @@ pub fn start_prometheus_server(
         .layer(Extension(registry_service.clone()));
 
     tokio::spawn(async move {
-        let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-        axum::serve(listener, app).await.unwrap();
+        match tokio::net::TcpListener::bind(&addr).await {
+            Ok(listener) => {
+                if let Err(e) = axum::serve(listener, app).await {
+                    tracing::error!("Prometheus server error: {}", e);
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to bind prometheus server to {}: {}. Metrics endpoint may not be available.", addr, e);
+            }
+        }
     });
     Ok((registry_service, registry))
 }

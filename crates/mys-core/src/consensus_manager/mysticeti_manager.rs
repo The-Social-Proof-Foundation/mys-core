@@ -6,10 +6,12 @@ use std::{path::PathBuf, sync::Arc};
 use arc_swap::ArcSwapOption;
 use async_trait::async_trait;
 use consensus_config::{Committee, NetworkKeyPair, Parameters, ProtocolKeyPair};
-use consensus_core::{CommitConsumer, CommitConsumerMonitor, CommitIndex, ConsensusAuthority};
+use consensus_core::{CommitConsumerArgs, CommitConsumerMonitor, CommitIndex, ConsensusAuthority, NetworkType, TransactionIndex, VerifiedBlock};
+use consensus_core::Clock;
 use fastcrypto::ed25519;
 use mys_config::NodeConfig;
 use mys_protocol_config::ConsensusNetwork;
+use mysten_metrics::monitored_mpsc::unbounded_channel;
 use mys_types::{
     committee::EpochId, mys_system_state::epoch_start_mys_system_state::EpochStartSystemStateTrait,
 };
@@ -114,7 +116,17 @@ impl ConsensusManagerTrait for MysticetiManager {
         let committee: Committee = system_state.get_consensus_committee();
         let epoch = epoch_store.epoch();
         let protocol_config = epoch_store.protocol_config();
-        let network_type = self.pick_network(&epoch_store);
+        let consensus_network = self.pick_network(&epoch_store);
+        let network_type = match consensus_network {
+            ConsensusNetwork::Tonic => NetworkType::Tonic,
+            ConsensusNetwork::Anemo => {
+                // Anemo network type is not supported in consensus_core::NetworkType
+                // Default to Tonic for now
+                NetworkType::Tonic
+            }
+        };
+        let epoch_start_timestamp_ms = epoch_store.epoch_start_config().epoch_start_timestamp_ms();
+        let clock = Arc::new(Clock::default());
 
         let Some(_guard) = RunningLockGuard::acquire_start(
             &self.metrics,
@@ -145,9 +157,28 @@ impl ConsensusManagerTrait for MysticetiManager {
         let registry = Registry::new_custom(Some("consensus".to_string()), None).unwrap();
 
         let consensus_handler = consensus_handler_initializer.new_consensus_handler();
-        let (commit_consumer, commit_receiver, transaction_receiver) =
-            CommitConsumer::new(consensus_handler.last_processed_subdag_index() as CommitIndex);
+        let last_processed_index = consensus_handler.last_processed_subdag_index() as CommitIndex;
+        let (commit_consumer, commit_receiver, mut block_receiver) = CommitConsumerArgs::new(
+            last_processed_index,
+            last_processed_index,
+        );
         let monitor = commit_consumer.monitor();
+        // Convert CertifiedBlocksOutput to Vec<(VerifiedBlock, Vec<TransactionIndex>)>
+        let transaction_receiver = {
+            let (tx_sender, tx_receiver) = unbounded_channel("consensus_transaction_output");
+            tokio::spawn(async move {
+                while let Some(output) = block_receiver.recv().await {
+                    let blocks: Vec<(VerifiedBlock, Vec<TransactionIndex>)> = 
+                        output.blocks.into_iter()
+                            .map(|cb| (cb.block, cb.rejected))
+                            .collect();
+                    if tx_sender.send(blocks).is_err() {
+                        break;
+                    }
+                }
+            });
+            tx_receiver
+        };
 
         // If there is a previous consumer monitor, it indicates that the consensus engine has been restarted, due to an epoch change. However, that on its
         // own doesn't tell us much whether it participated on an active epoch or an old one. We need to check if it has handled any commits to determine this.
@@ -175,12 +206,14 @@ impl ConsensusManagerTrait for MysticetiManager {
 
         let authority = ConsensusAuthority::start(
             network_type,
+            epoch_start_timestamp_ms,
             own_index,
             committee.clone(),
             parameters.clone(),
             protocol_config.clone(),
             self.protocol_keypair.clone(),
             self.network_keypair.clone(),
+            clock,
             Arc::new(tx_validator.clone()),
             commit_consumer,
             registry.clone(),
@@ -215,8 +248,7 @@ impl ConsensusManagerTrait for MysticetiManager {
         let mut consensus_handler = self.consensus_handler.lock().await;
         *consensus_handler = Some(handler);
 
-        // Wait until all locally available commits have been processed
-        registered_authority.0.replay_complete().await;
+        // Note: Consensus authority handles replay internally via CommitConsumerArgs
     }
 
     async fn shutdown(&self) {

@@ -47,13 +47,15 @@ use mysten_common::debug_fatal;
 use mysten_network::server::MYS_TLS_SERVER_NAME;
 use prometheus::Registry;
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::sync::{Arc, Weak};
+use dashmap::DashMap;
+use consensus_core::ConnectionStatus as ConsensusConnectionStatus;
 use std::fmt;
 use std::future::Future;
 use std::path::PathBuf;
 use std::str::FromStr;
 #[cfg(msim)]
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Weak};
 use std::time::Duration;
 use tap::tap::TapFallible;
 use tokio::runtime::Handle;
@@ -247,7 +249,7 @@ pub struct MysNode {
     metrics: Arc<MysNodeMetrics>,
 
     _discovery: discovery::Handle,
-    _connection_monitor_handle: consensus_core::ConnectionMonitorHandle,
+    _connection_monitor_handle: mysten_network::ConnectionMonitorHandle,
     state_sync_handle: state_sync::Handle,
     randomness_handle: randomness::Handle,
     checkpoint_store: Arc<CheckpointStore>,
@@ -818,21 +820,32 @@ impl MysNode {
             .epoch_start_state()
             .get_authority_names_to_peer_ids();
 
-        let network_connection_metrics = consensus_core::QuinnConnectionMetrics::new(
+        let network_connection_metrics = mysten_network::QuinnConnectionMetrics::new(
             "mys",
             &registry_service.default_registry(),
         );
 
         let authority_names_to_peer_ids = ArcSwap::from_pointee(authority_names_to_peer_ids);
 
-        let connection_monitor_handle = consensus_core::AnemoConnectionMonitor::spawn(
+        let connection_monitor_handle = mysten_network::AnemoConnectionMonitor::spawn(
             p2p_network.downgrade(),
             Arc::new(network_connection_metrics),
             known_peers,
         );
 
+        // Convert mysten_network::ConnectionStatus to consensus_core::ConnectionStatus
+        let mysten_statuses = connection_monitor_handle.connection_statuses();
+        let consensus_statuses = Arc::new(DashMap::new());
+        for entry in mysten_statuses.iter() {
+            let status = match *entry.value() {
+                mysten_network::ConnectionStatus::Connected => ConsensusConnectionStatus::Connected,
+                mysten_network::ConnectionStatus::Disconnected => ConsensusConnectionStatus::Disconnected,
+            };
+            consensus_statuses.insert(*entry.key(), status);
+        }
+        
         let connection_monitor_status = ConnectionMonitorStatus {
-            connection_statuses: connection_monitor_handle.connection_statuses(),
+            connection_statuses: consensus_statuses,
             authority_names_to_peer_ids,
         };
 
@@ -1123,9 +1136,9 @@ impl MysNode {
             let routes = routes.merge(randomness_router);
 
             let inbound_network_metrics =
-                consensus_core::NetworkRouteMetrics::new("mys", "inbound", prometheus_registry);
+                mysten_network::NetworkMetrics::new("mys", "inbound", prometheus_registry);
             let outbound_network_metrics =
-                consensus_core::NetworkRouteMetrics::new("mys", "outbound", prometheus_registry);
+                mysten_network::NetworkMetrics::new("mys", "outbound", prometheus_registry);
 
             let service = ServiceBuilder::new()
                 .layer(
@@ -1134,7 +1147,7 @@ impl MysNode {
                         .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN)),
                 )
                 .layer(CallbackLayer::new(
-                    consensus_core::MetricsMakeCallbackHandler::new(
+                    mysten_network::metrics::MetricsMakeCallbackHandler::new(
                         Arc::new(inbound_network_metrics),
                         config.p2p_config.excessive_message_size(),
                     ),
@@ -1148,7 +1161,7 @@ impl MysNode {
                         .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN)),
                 )
                 .layer(CallbackLayer::new(
-                    consensus_core::MetricsMakeCallbackHandler::new(
+                    mysten_network::metrics::MetricsMakeCallbackHandler::new(
                         Arc::new(outbound_network_metrics),
                         config.p2p_config.excessive_message_size(),
                     ),

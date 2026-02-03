@@ -5,6 +5,7 @@
 use std::sync::Arc;
 
 use consensus_core::{TransactionIndex, TransactionVerifier, ValidationError};
+use futures::executor;
 use fastcrypto_tbls::dkg_v1;
 use mys_types::{
     error::{MysError, MysResult},
@@ -213,8 +214,9 @@ impl TransactionVerifier for MysTxValidator {
             .map_err(|e| ValidationError::InvalidTransaction(e.to_string()))
     }
 
-    async fn verify_and_vote_batch(
+    fn verify_and_vote_batch(
         &self,
+        _block_ref: &consensus_core::BlockRef,
         batch: &[&[u8]],
     ) -> Result<Vec<TransactionIndex>, ValidationError> {
         let _scope = monitored_scope("VerifyAndVoteBatch");
@@ -227,7 +229,9 @@ impl TransactionVerifier for MysTxValidator {
         self.validate_transactions(&txs)
             .map_err(|e| ValidationError::InvalidTransaction(e.to_string()))?;
 
-        Ok(self.vote_transactions(txs).await)
+        // Note: vote_transactions is async but verify_and_vote_batch trait method is sync
+        // We use futures::executor::block_on to bridge the gap
+        Ok(executor::block_on(self.vote_transactions(txs)))
     }
 }
 

@@ -9,7 +9,7 @@ use parking_lot::RwLock;
 
 use crate::{
     block::{BlockAPI, Slot, TestBlock, Transaction, VerifiedBlock},
-    commit::{DecidedLeader, DEFAULT_WAVE_LENGTH},
+    commit::{DEFAULT_WAVE_LENGTH, DecidedLeader},
     context::Context,
     dag_state::DagState,
     leader_schedule::{LeaderSchedule, LeaderSwapTable},
@@ -33,12 +33,13 @@ async fn direct_commit() {
     assert_eq!(sequence.len(), 1);
 
     let leader_round_wave_0_pipeline_1 = committer.committers[1].leader_round(0);
-    if let DecidedLeader::Commit(ref block) = sequence[0] {
+    if let DecidedLeader::Commit(ref block, direct) = sequence[0] {
         assert_eq!(block.round(), leader_round_wave_0_pipeline_1);
         assert_eq!(
             block.author(),
             committer.get_leaders(leader_round_wave_0_pipeline_1)[0]
         );
+        assert!(direct);
     } else {
         panic!("Expected a committed leader")
     };
@@ -66,7 +67,7 @@ async fn idempotence() {
     assert_eq!(first_sequence.len(), 1);
     tracing::info!("Commit sequence: {first_sequence:#?}");
 
-    if let DecidedLeader::Commit(ref block) = first_sequence[0] {
+    if let DecidedLeader::Commit(ref block, _direct) = first_sequence[0] {
         assert_eq!(block.round(), leader_round_pipeline_1_wave_0);
         assert_eq!(
             block.author(),
@@ -81,7 +82,7 @@ async fn idempotence() {
     let first_sequence = committer.try_decide(last_decided);
 
     assert_eq!(first_sequence.len(), 1);
-    if let DecidedLeader::Commit(ref block) = first_sequence[0] {
+    if let DecidedLeader::Commit(ref block, _direct) = first_sequence[0] {
         assert_eq!(block.round(), leader_round_pipeline_1_wave_0);
         assert_eq!(
             block.author(),
@@ -126,12 +127,13 @@ async fn multiple_direct_commit() {
         tracing::info!("Commit sequence: {sequence:#?}");
 
         assert_eq!(sequence.len(), 1);
-        if let DecidedLeader::Commit(ref block) = sequence[0] {
+        if let DecidedLeader::Commit(ref block, direct) = sequence[0] {
             assert_eq!(block.round(), leader_round);
             assert_eq!(
                 block.author(),
                 *committer.get_leaders(leader_round).first().unwrap()
             );
+            assert!(direct);
         } else {
             panic!("Expected a committed leader")
         }
@@ -165,7 +167,7 @@ async fn direct_commit_late_call() {
     for (i, leader_block) in sequence.iter().enumerate() {
         // First sequenced leader should be in round 1.
         let leader_round = i as u32 + 1;
-        if let DecidedLeader::Commit(ref block) = leader_block {
+        if let DecidedLeader::Commit(block, _direct) = leader_block {
             assert_eq!(block.round(), leader_round);
             assert_eq!(block.author(), committer.get_leaders(leader_round)[0]);
         } else {
@@ -418,7 +420,7 @@ async fn indirect_commit() {
 
     let committed_leader_round = 1;
     let leader = committer.get_leaders(committed_leader_round)[0];
-    if let DecidedLeader::Commit(ref block) = sequence[0] {
+    if let DecidedLeader::Commit(ref block, _direct) = sequence[0] {
         assert_eq!(block.round(), committed_leader_round);
         assert_eq!(block.author(), leader);
     } else {
@@ -501,7 +503,7 @@ async fn indirect_skip() {
         // First sequenced leader should be in round 1.
         let leader_round = i + 1;
         let leader = committer.get_leaders(leader_round)[0];
-        if let DecidedLeader::Commit(ref block) = sequence[i as usize] {
+        if let DecidedLeader::Commit(ref block, _direct) = sequence[i as usize] {
             assert_eq!(block.author(), leader);
         } else {
             panic!("Expected a committed leader")
@@ -520,7 +522,7 @@ async fn indirect_skip() {
     for i in 4..=6 {
         let leader_round = i + 1;
         let leader = committer.get_leaders(leader_round)[0];
-        if let DecidedLeader::Commit(ref block) = sequence[i as usize] {
+        if let DecidedLeader::Commit(ref block, _direct) = sequence[i as usize] {
             assert_eq!(block.author(), leader);
         } else {
             panic!("Expected a committed leader")
@@ -719,7 +721,7 @@ async fn test_byzantine_validator() {
     tracing::info!("Commit sequence: {sequence:#?}");
 
     assert_eq!(sequence.len(), 12);
-    if let DecidedLeader::Commit(ref block) = sequence[11] {
+    if let DecidedLeader::Commit(ref block, _direct) = sequence[11] {
         assert_eq!(block.round(), leader_round_12);
         assert_eq!(block.author(), committer.get_leaders(leader_round_12)[0])
     } else {

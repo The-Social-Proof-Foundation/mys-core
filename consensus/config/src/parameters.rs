@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 /// Operational configurations of a consensus authority.
 ///
 /// All fields should tolerate inconsistencies among authorities, without affecting safety of the
-/// protocol. Otherwise, they need to be part of Mys protocol config or epoch state on-chain.
+/// protocol. Otherwise, they need to be part of MySocial protocol config or epoch state on-chain.
 ///
 /// NOTE: fields with default values are specified in the serde default functions. Most operators
 /// should not need to specify any field, except db_path.
@@ -36,7 +36,16 @@ pub struct Parameters {
     #[serde(default = "Parameters::default_max_forward_time_drift")]
     pub max_forward_time_drift: Duration,
 
-    /// Number of blocks to fetch per request.
+    /// Max number of blocks to fetch per block sync request.
+    /// Block sync requests have very short (~2s) timeouts.
+    /// So this value should be limited to allow the requests
+    /// to finish on hosts with good network with this timeout.
+    /// Usually a host sends 14-16 blocks per sec to a peer, so
+    /// sending 32 blocks in 2 seconds should be reasonable.
+    #[serde(default = "Parameters::default_max_blocks_per_sync")]
+    pub max_blocks_per_sync: usize,
+
+    /// Max number of blocks to fetch per commit sync request.
     #[serde(default = "Parameters::default_max_blocks_per_fetch")]
     pub max_blocks_per_fetch: usize,
 
@@ -84,18 +93,18 @@ pub struct Parameters {
     #[serde(default = "Parameters::default_commit_sync_batches_ahead")]
     pub commit_sync_batches_ahead: usize,
 
-    /// Anemo network settings.
-    #[serde(default = "AnemoParameters::default")]
-    pub anemo: AnemoParameters,
-
     /// Tonic network settings.
     #[serde(default = "TonicParameters::default")]
     pub tonic: TonicParameters,
+
+    /// Internal consensus parameters.
+    #[serde(default = "InternalParameters::default")]
+    pub internal: InternalParameters,
 }
 
 impl Parameters {
     pub(crate) fn default_leader_timeout() -> Duration {
-        Duration::from_millis(250)
+        Duration::from_millis(200)
     }
 
     pub(crate) fn default_min_round_delay() -> Duration {
@@ -114,6 +123,15 @@ impl Parameters {
 
     pub(crate) fn default_max_forward_time_drift() -> Duration {
         Duration::from_millis(500)
+    }
+
+    pub(crate) fn default_max_blocks_per_sync() -> usize {
+        if cfg!(msim) {
+            // Exercise hitting blocks per sync limit.
+            4
+        } else {
+            32
+        }
     }
 
     pub(crate) fn default_max_blocks_per_fetch() -> usize {
@@ -136,28 +154,16 @@ impl Parameters {
     }
 
     pub(crate) fn default_round_prober_interval_ms() -> u64 {
-        if cfg!(msim) {
-            1000
-        } else {
-            5000
-        }
+        if cfg!(msim) { 1000 } else { 5000 }
     }
 
     pub(crate) fn default_round_prober_request_timeout_ms() -> u64 {
-        if cfg!(msim) {
-            800
-        } else {
-            4000
-        }
+        if cfg!(msim) { 800 } else { 4000 }
     }
 
     pub(crate) fn default_propagation_delay_stop_proposal_threshold() -> u32 {
         // Propagation delay is usually 0 round in production.
-        if cfg!(msim) {
-            2
-        } else {
-            5
-        }
+        if cfg!(msim) { 2 } else { 5 }
     }
 
     pub(crate) fn default_dag_state_cached_rounds() -> u32 {
@@ -196,6 +202,7 @@ impl Default for Parameters {
             leader_timeout: Parameters::default_leader_timeout(),
             min_round_delay: Parameters::default_min_round_delay(),
             max_forward_time_drift: Parameters::default_max_forward_time_drift(),
+            max_blocks_per_sync: Parameters::default_max_blocks_per_sync(),
             max_blocks_per_fetch: Parameters::default_max_blocks_per_fetch(),
             sync_last_known_own_block_timeout:
                 Parameters::default_sync_last_known_own_block_timeout(),
@@ -207,32 +214,8 @@ impl Default for Parameters {
             commit_sync_parallel_fetches: Parameters::default_commit_sync_parallel_fetches(),
             commit_sync_batch_size: Parameters::default_commit_sync_batch_size(),
             commit_sync_batches_ahead: Parameters::default_commit_sync_batches_ahead(),
-            anemo: AnemoParameters::default(),
             tonic: TonicParameters::default(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AnemoParameters {
-    /// Size in bytes above which network messages are considered excessively large. Excessively
-    /// large messages will still be handled, but logged and reported in metrics for debugging.
-    ///
-    /// If unspecified, this will default to 8 MiB.
-    #[serde(default = "AnemoParameters::default_excessive_message_size")]
-    pub excessive_message_size: usize,
-}
-
-impl AnemoParameters {
-    fn default_excessive_message_size() -> usize {
-        8 << 20
-    }
-}
-
-impl Default for AnemoParameters {
-    fn default() -> Self {
-        Self {
-            excessive_message_size: AnemoParameters::default_excessive_message_size(),
+            internal: InternalParameters::default(),
         }
     }
 }
@@ -268,7 +251,7 @@ pub struct TonicParameters {
 
 impl TonicParameters {
     fn default_keepalive_interval() -> Duration {
-        Duration::from_secs(5)
+        Duration::from_secs(10)
     }
 
     fn default_connection_buffer_size() -> usize {
@@ -291,6 +274,29 @@ impl Default for TonicParameters {
             connection_buffer_size: TonicParameters::default_connection_buffer_size(),
             excessive_message_size: TonicParameters::default_excessive_message_size(),
             message_size_limit: TonicParameters::default_message_size_limit(),
+        }
+    }
+}
+
+/// Internal parameters unrelated to operating a consensus node in the real world.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct InternalParameters {
+    /// Whether to skip equivocation validation, when testing with equivocators.
+    #[serde(default = "InternalParameters::default_skip_equivocation_validation")]
+    pub skip_equivocation_validation: bool,
+}
+
+impl InternalParameters {
+    fn default_skip_equivocation_validation() -> bool {
+        false
+    }
+}
+
+impl Default for InternalParameters {
+    fn default() -> Self {
+        Self {
+            skip_equivocation_validation: InternalParameters::default_skip_equivocation_validation(
+            ),
         }
     }
 }

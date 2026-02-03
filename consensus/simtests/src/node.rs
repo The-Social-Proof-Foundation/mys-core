@@ -1,43 +1,44 @@
 // Copyright (c) Mysten Labs, Inc.
-// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
-use arc_swap::ArcSwapOption;
-use mysten_metrics::monitored_mpsc::UnboundedReceiver;
+
 use std::{
     net::{IpAddr, SocketAddr},
     sync::Arc,
     time::Duration,
 };
-use tracing::{info, trace};
 
 use anyhow::Result;
+use arc_swap::ArcSwapOption;
 use consensus_config::{AuthorityIndex, Committee, NetworkKeyPair, Parameters, ProtocolKeyPair};
-use mys_protocol_config::{ConsensusNetwork, ProtocolConfig};
+use consensus_core::{
+    Clock, CommitConsumerArgs, CommitConsumerMonitor, CommittedSubDag, ConsensusAuthority,
+    NetworkType, TransactionClient, TransactionVerifier, to_socket_addr,
+};
+use consensus_types::block::BlockTimestampMs;
+use mysten_metrics::monitored_mpsc::UnboundedReceiver;
+use mysten_metrics::monitored_mpsc::unbounded_channel;
 use parking_lot::Mutex;
 use prometheus::Registry;
+use mys_protocol_config::ProtocolConfig;
 use tempfile::TempDir;
-
-use consensus_core::network::tonic_network::to_socket_addr;
-use consensus_core::transaction::NoopTransactionVerifier;
-use consensus_core::{
-    CommitConsumer, CommitConsumerMonitor, CommittedSubDag, ConsensusAuthority, TransactionClient,
-};
+use tracing::{info, trace};
 
 #[derive(Clone)]
-#[allow(unused)]
-pub(crate) struct Config {
+pub struct Config {
     pub authority_index: AuthorityIndex,
     pub db_dir: Arc<TempDir>,
     pub committee: Committee,
     pub keypairs: Vec<(NetworkKeyPair, ProtocolKeyPair)>,
-    pub network_type: ConsensusNetwork,
     pub boot_counter: u64,
+    pub clock_drift: BlockTimestampMs,
     pub protocol_config: ProtocolConfig,
+    pub transaction_verifier: Arc<dyn TransactionVerifier>,
 }
 
-pub(crate) struct AuthorityNode {
+pub struct AuthorityNode {
     inner: Mutex<Option<AuthorityNodeInner>>,
     config: Config,
+    commit_consumer_receiver: Mutex<Option<UnboundedReceiver<CommittedSubDag>>>,
 }
 
 impl AuthorityNode {
@@ -45,6 +46,7 @@ impl AuthorityNode {
         Self {
             inner: Default::default(),
             config,
+            commit_consumer_receiver: Mutex::new(None),
         }
     }
 
@@ -55,7 +57,7 @@ impl AuthorityNode {
 
     /// Start this Node
     pub async fn start(&self) -> Result<()> {
-        info!(index =% self.config.authority_index, "starting in-memory node");
+        info!(index = %self.config.authority_index, "starting in-memory node");
         let config = self.config.clone();
         *self.inner.lock() = Some(AuthorityNodeInner::spawn(config).await);
         Ok(())
@@ -65,12 +67,21 @@ impl AuthorityNode {
         let authority_index = self.config.authority_index;
         let inner = self.inner.lock();
         if let Some(inner) = inner.as_ref() {
+            let (commit_sender, commit_receiver) =
+                unbounded_channel("consensus_commit_output_simtests");
+
+            {
+                let mut commit_consumer_receiver_lock = self.commit_consumer_receiver.lock();
+                *commit_consumer_receiver_lock = Some(commit_receiver);
+            }
+
             let mut commit_receiver = inner.take_commit_receiver();
             let commit_consumer_monitor = inner.commit_consumer_monitor();
             let _handle = tokio::spawn(async move {
                 while let Some(subdag) = commit_receiver.recv().await {
-                    info!(index =% authority_index, "received committed subdag");
+                    info!(authority =% authority_index, commit_index =% subdag.commit_ref.index, "Received committed subdag");
                     commit_consumer_monitor.set_highest_handled_commit(subdag.commit_ref.index);
+                    let _ = commit_sender.send(subdag);
                 }
             });
         }
@@ -84,6 +95,13 @@ impl AuthorityNode {
         } else {
             panic!("Node not initialised");
         }
+    }
+
+    pub fn commit_consumer_receiver(&self) -> UnboundedReceiver<CommittedSubDag> {
+        let mut commit_consumer_receiver_lock = self.commit_consumer_receiver.lock();
+        commit_consumer_receiver_lock
+            .take()
+            .expect("No commit consumer receiver found")
     }
 
     pub fn transaction_client(&self) -> Arc<TransactionClient> {
@@ -248,9 +266,10 @@ pub(crate) async fn make_authority(
         db_dir,
         committee,
         keypairs,
-        network_type,
         boot_counter,
         protocol_config,
+        clock_drift,
+        transaction_verifier,
     } = config;
 
     let registry = Registry::new();
@@ -264,23 +283,24 @@ pub(crate) async fn make_authority(
         sync_last_known_own_block_timeout: Duration::from_millis(2_000),
         ..Default::default()
     };
-    let txn_verifier = NoopTransactionVerifier {};
 
     let protocol_keypair = keypairs[authority_index].1.clone();
     let network_keypair = keypairs[authority_index].0.clone();
 
-    let (commit_consumer, commit_receiver, _) = CommitConsumer::new(0);
+    let (commit_consumer, commit_receiver, _block_receiver) = CommitConsumerArgs::new(0, 0);
     let commit_consumer_monitor = commit_consumer.monitor();
 
     let authority = ConsensusAuthority::start(
-        network_type,
+        NetworkType::Tonic,
+        0,
         authority_index,
         committee,
         parameters,
         protocol_config,
         protocol_keypair,
         network_keypair,
-        Arc::new(txn_verifier),
+        Arc::new(Clock::new_for_test(clock_drift)),
+        transaction_verifier,
         commit_consumer,
         registry,
         boot_counter,

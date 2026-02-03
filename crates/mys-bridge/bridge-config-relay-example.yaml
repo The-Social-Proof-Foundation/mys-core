@@ -1,0 +1,72 @@
+# MySocial Bridge Node Configuration with Auto-Relay
+# This is an example configuration showing how to enable the auto-relay feature
+
+server-listen-port: 9191
+metrics-port: 9184
+bridge-authority-key-path: /path/to/your/bridge_authority_key
+
+# Whether to run the bridge client (required for relaying)
+run-client: true
+db-path: /path/to/bridge/db
+
+# MySocial blockchain configuration
+mys:
+  mys-rpc-url: "https://fullnode.testnet.mysocial.network:8082"
+  mys-bridge-chain-id: 2  # MySocial testnet
+  bridge-client-key-path: /path/to/bridge_client_key
+  # Optional: specify gas object
+  # bridge-client-gas-object: "0x..."
+
+# Ethereum/EVM blockchain configuration
+eth:
+  eth-rpc-url: "https://sepolia.base.org"  # Or use ${ETH_RPC_URL} env var
+  eth-bridge-proxy-address: "0x42c69700027E1C7F9Af981FB5B39BAb824560225"
+  eth-bridge-chain-id: 12  # Base Sepolia
+  eth-contracts-start-block-fallback: 10000000
+
+# Auto-Relay Configuration (NEW!)
+relay:
+  # Enable auto-relay feature
+  enabled: true
+  
+  # Retry configuration
+  max-retries: 5
+  retry-delay-seconds: 30
+  
+  # MySocial relay settings (EVM → MySocial direction)
+  mys:
+    gas-budget: 100000000  # 0.1 MYS in MIST
+  
+  # EVM relay settings (MySocial → EVM direction)
+  evm:
+    # Enable EVM relay
+    enabled: true
+    
+    # Optional: Override RPC URL (defaults to eth.eth-rpc-url above)
+    # rpc-url: "https://sepolia.base.org"
+    
+    # Optional: Override bridge address (defaults to eth.eth-bridge-proxy-address)
+    # bridge-contract-address: "0x42c69700027E1C7F9Af981FB5B39BAb824560225"
+    
+    # Maximum gas price willing to pay (in Gwei)
+    max-gas-price-gwei: 10
+    
+    # Gas estimation buffer percentage (20 = add 20% to estimated gas)
+    gas-estimate-buffer-percent: 20
+    
+    # Number of confirmations to wait for
+    confirmation-blocks: 2  # 2 for testnet, 5-10 for mainnet
+
+# Approved governance actions (for signing)
+approved-governance-actions: []
+
+# Metrics configuration (optional)
+metrics:
+  push-url: "https://metrics.mysocial.network"
+  push-interval-seconds: 60
+
+# Watchdog configuration (optional)
+watchdog-config:
+  total-supplies:
+    eth: "0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH"
+

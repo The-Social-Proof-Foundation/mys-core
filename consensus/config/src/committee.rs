@@ -15,7 +15,7 @@ use crate::{AuthorityPublicKey, NetworkPublicKey, ProtocolPublicKey};
 /// Committee of the consensus protocol is updated each epoch.
 pub type Epoch = u64;
 
-/// Voting power of an authority, roughly proportional to the actual amount of Mys staked
+/// Voting power of an authority, roughly proportional to the actual amount of MySo staked
 /// by the authority.
 /// Total stake / voting power of all authorities should sum to 10,000.
 pub type Stake = u64;
@@ -45,10 +45,18 @@ impl Committee {
             authorities.len()
         );
 
-        let total_stake = authorities.iter().map(|a| a.stake).sum();
+        let total_stake: Stake = authorities.iter().map(|a| a.stake).sum();
         assert_ne!(total_stake, 0, "Total stake cannot be zero!");
-        let quorum_threshold = 2 * total_stake / 3 + 1;
-        let validity_threshold = (total_stake + 2) / 3;
+
+        // Tolerate integer f faults when total stake is 3f+1.
+        let fault_tolerance = (total_stake - 1) / 3;
+        let quorum_threshold = total_stake - fault_tolerance;
+        let validity_threshold = fault_tolerance + 1;
+        assert!(
+            2 * quorum_threshold - fault_tolerance > total_stake,
+            "Quorum must intersect under maxim equivocations! Quorum: {quorum_threshold}, Fault tolerance: {fault_tolerance}, Total: {total_stake}"
+        );
+
         Self {
             epoch,
             total_stake,
@@ -58,8 +66,8 @@ impl Committee {
         }
     }
 
-    /// -----------------------------------------------------------------------
-    /// Accessors to Committee fields.
+    // -----------------------------------------------------------------------
+    // Accessors to Committee fields.
 
     pub fn epoch(&self) -> Epoch {
         self.epoch
@@ -92,8 +100,8 @@ impl Committee {
             .map(|(i, a)| (AuthorityIndex(i as u32), a))
     }
 
-    /// -----------------------------------------------------------------------
-    /// Helpers for Committee properties.
+    // -----------------------------------------------------------------------
+    // Helpers for Committee properties.
 
     /// Returns true if the provided stake has reached quorum (2f+1).
     pub fn reached_quorum(&self, stake: Stake) -> bool {
@@ -105,7 +113,7 @@ impl Committee {
         stake >= self.validity_threshold()
     }
 
-    /// Coverts an index to an AuthorityIndex, if valid.
+    /// Converts an index to an AuthorityIndex, if valid.
     /// Returns None if index is out of bound.
     pub fn to_authority_index(&self, index: usize) -> Option<AuthorityIndex> {
         if index < self.authorities.len() {
@@ -138,7 +146,7 @@ pub struct Authority {
     pub address: Multiaddr,
     /// The authority's hostname, for metrics and logging.
     pub hostname: String,
-    /// The authority's public key as Mys identity.
+    /// The authority's public key as MySo identity.
     pub authority_key: AuthorityPublicKey,
     /// The authority's public key for verifying blocks.
     pub protocol_key: ProtocolPublicKey,
@@ -219,8 +227,8 @@ mod tests {
     fn committee_basic() {
         // GIVEN
         let epoch = 100;
-        let num_of_authorities = 9;
-        let authority_stakes = (1..=9).map(|s| s as Stake).collect();
+        let num_of_authorities = 10;
+        let authority_stakes = (1..=num_of_authorities).map(|s| s as Stake).collect();
         let (committee, _) = local_committee_and_keys(epoch, authority_stakes);
 
         // THEN make sure the output Committee fields are populated correctly.
@@ -230,8 +238,35 @@ mod tests {
         }
 
         // AND ensure thresholds are calculated correctly.
-        assert_eq!(committee.total_stake(), 45);
-        assert_eq!(committee.quorum_threshold(), 31);
-        assert_eq!(committee.validity_threshold(), 15);
+        assert_eq!(committee.total_stake(), 55);
+        assert_eq!(committee.quorum_threshold(), 37);
+        assert_eq!(committee.validity_threshold(), 19);
+    }
+
+    #[test]
+    fn committee_different_sizes() {
+        let epoch = 100;
+
+        {
+            let num_of_authorities = 11;
+            let authority_stakes = (1..=num_of_authorities).map(|_| 1 as Stake).collect();
+            let (committee, _) = local_committee_and_keys(epoch, authority_stakes);
+
+            // AND ensure thresholds are calculated correctly.
+            assert_eq!(committee.total_stake(), 11);
+            assert_eq!(committee.quorum_threshold(), 8);
+            assert_eq!(committee.validity_threshold(), 4);
+        }
+
+        {
+            let num_of_authorities = 12;
+            let authority_stakes = (1..=num_of_authorities).map(|_| 10 as Stake).collect();
+            let (committee, _) = local_committee_and_keys(epoch, authority_stakes);
+
+            // AND ensure thresholds are calculated correctly.
+            assert_eq!(committee.total_stake(), 120);
+            assert_eq!(committee.quorum_threshold(), 81);
+            assert_eq!(committee.validity_threshold(), 40);
+        }
     }
 }

@@ -22,6 +22,7 @@ use mysten_metrics::spawn_monitored_task;
 use crate::build_json_rpc_server;
 use crate::config::{IngestionConfig, JsonRpcConfig, RetentionConfig, SnapshotLagConfig, SocialIndexerConfig};
 use crate::database::ConnectionPool;
+use crate::db::run_migrations;
 use crate::errors::IndexerError;
 use crate::handlers::checkpoint_handler::new_handlers;
 use crate::handlers::objects_snapshot_handler::start_objects_snapshot_handler;
@@ -51,6 +52,14 @@ impl Indexer {
         if social_config.enable_social_indexer {
             info!("Social indexer enabled with package: {:?}", social_config.mysocial_package_address);
         }
+
+        // Run main indexer migrations first (before social migrations)
+        info!("Running main indexer migrations...");
+        let main_migration_conn = store.pool().dedicated_connection().await
+            .map_err(|e| IndexerError::PostgresReadError(format!("Failed to get connection for main migrations: {}", e)))?;
+        run_migrations(main_migration_conn).await
+            .map_err(|e| IndexerError::PostgresReadError(format!("Failed to run main migrations: {}", e)))?;
+        info!("Main indexer migrations completed successfully");
 
         let extra_reader_options = ReaderOptions {
             batch_size: config.checkpoint_download_queue_size,
@@ -161,9 +170,12 @@ impl Indexer {
 
                 match crate::social::db::setup_connection_pool(&social_db_config).await {
                     Ok(social_db) => {
-                        // Run social migrations
+                        // Run social migrations (after main migrations)
+                        info!("Running social indexer migrations...");
                         if let Err(e) = crate::social::db::run_migrations(&social_db_config) {
                             warn!("Failed to run social migrations: {}. Continuing anyway...", e);
+                        } else {
+                            info!("Social indexer migrations completed successfully");
                         }
 
                         let social_processor = crate::social::blockchain::SocialCheckpointProcessor::new(

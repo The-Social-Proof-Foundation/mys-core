@@ -13,30 +13,31 @@ use std::{
 use async_trait::async_trait;
 use bytes::Bytes;
 use consensus_config::{AuthorityIndex, NetworkKeyPair, NetworkPublicKey};
-use futures::{stream, Stream, StreamExt as _};
-use mys_http::ServerHandle;
-use mys_tls::AllowPublicKeys;
+use consensus_types::block::{BlockRef, Round};
+use futures::{Stream, StreamExt as _, stream};
 use mysten_network::{
+    Multiaddr,
     callback::{CallbackLayer, MakeCallbackHandler, ResponseHandler},
     multiaddr::Protocol,
-    Multiaddr,
 };
 use parking_lot::RwLock;
-use tokio_stream::{iter, Iter};
-use tonic::{codec::CompressionEncoding, Request, Response, Streaming};
+use mys_http::ServerHandle;
+use mys_tls::AllowPublicKeys;
+use tokio_stream::{Iter, iter};
+use tonic::{Request, Response, Streaming, codec::CompressionEncoding};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnFailure, TraceLayer};
 use tracing::{debug, error, info, trace, warn};
 
 use super::{
+    BlockStream, ExtendedSerializedBlock, NetworkClient, NetworkManager, NetworkService,
     metrics_layer::{MetricsCallbackMaker, MetricsResponseCallback, SizedRequest, SizedResponse},
     tonic_gen::{
         consensus_service_client::ConsensusServiceClient,
         consensus_service_server::ConsensusService,
     },
-    BlockStream, ExtendedSerializedBlock, NetworkClient, NetworkManager, NetworkService,
 };
 use crate::{
-    block::{BlockRef, VerifiedBlock},
+    CommitIndex,
     commit::CommitRange,
     context::Context,
     error::{ConsensusError, ConsensusResult},
@@ -44,15 +45,13 @@ use crate::{
         tonic_gen::consensus_service_server::ConsensusServiceServer,
         tonic_tls::certificate_server_name,
     },
-    CommitIndex, Round,
 };
 
 // Maximum bytes size in a single fetch_blocks()response.
 // TODO: put max RPC response size in protocol config.
 const MAX_FETCH_RESPONSE_BYTES: usize = 4 * 1024 * 1024;
 
-// Maximum total bytes fetched in a single fetch_blocks() call, after combining the responses.
-const MAX_TOTAL_FETCHED_BYTES: usize = 128 * 1024 * 1024;
+const DEFAULT_GRPC_SERVER_TIMEOUT: Duration = Duration::from_secs(300);
 
 // Implements Tonic RPC client for Consensus.
 pub(crate) struct TonicClient {
@@ -80,15 +79,11 @@ impl TonicClient {
             .channel_pool
             .get_channel(self.network_keypair.clone(), peer, timeout)
             .await?;
-        let mut client = ConsensusServiceClient::new(channel)
+        let client = ConsensusServiceClient::new(channel)
             .max_encoding_message_size(config.message_size_limit)
-            .max_decoding_message_size(config.message_size_limit);
-
-        if self.context.protocol_config.consensus_zstd_compression() {
-            client = client
-                .send_compressed(CompressionEncoding::Zstd)
-                .accept_compressed(CompressionEncoding::Zstd);
-        }
+            .max_decoding_message_size(config.message_size_limit)
+            .send_compressed(CompressionEncoding::Zstd)
+            .accept_compressed(CompressionEncoding::Zstd);
         Ok(client)
     }
 }
@@ -96,26 +91,6 @@ impl TonicClient {
 // TODO: make sure callsites do not send request to own index, and return error otherwise.
 #[async_trait]
 impl NetworkClient for TonicClient {
-    const SUPPORT_STREAMING: bool = true;
-
-    async fn send_block(
-        &self,
-        peer: AuthorityIndex,
-        block: &VerifiedBlock,
-        timeout: Duration,
-    ) -> ConsensusResult<()> {
-        let mut client = self.get_client(peer, timeout).await?;
-        let mut request = Request::new(SendBlockRequest {
-            block: block.serialized().clone(),
-        });
-        request.set_timeout(timeout);
-        client
-            .send_block(request)
-            .await
-            .map_err(|e| ConsensusError::NetworkRequest(format!("send_block failed: {e:?}")))?;
-        Ok(())
-    }
-
     async fn subscribe_blocks(
         &self,
         peer: AuthorityIndex,
@@ -158,6 +133,7 @@ impl NetworkClient for TonicClient {
         peer: AuthorityIndex,
         block_refs: Vec<BlockRef>,
         highest_accepted_rounds: Vec<Round>,
+        breadth_first: bool,
         timeout: Duration,
     ) -> ConsensusResult<Vec<Bytes>> {
         let mut client = self.get_client(peer, timeout).await?;
@@ -173,8 +149,10 @@ impl NetworkClient for TonicClient {
                 })
                 .collect(),
             highest_accepted_rounds,
+            breadth_first,
         });
         request.set_timeout(timeout);
+
         let mut stream = client
             .fetch_blocks(request)
             .await
@@ -186,6 +164,14 @@ impl NetworkClient for TonicClient {
                 }
             })?
             .into_inner();
+
+        // Allow twice the max total size of transactions in the fetched blocks.
+        let max_allowed_bytes = block_refs.len()
+            * self
+                .context
+                .protocol_config
+                .consensus_max_transactions_in_block_bytes() as usize
+            * 2;
         let mut blocks = vec![];
         let mut total_fetched_bytes = 0;
         loop {
@@ -195,10 +181,10 @@ impl NetworkClient for TonicClient {
                         total_fetched_bytes += b.len();
                     }
                     blocks.extend(response.blocks);
-                    if total_fetched_bytes > MAX_TOTAL_FETCHED_BYTES {
+                    if total_fetched_bytes > max_allowed_bytes {
                         info!(
                             "fetch_blocks() fetched bytes exceeded limit: {} > {}, terminating stream.",
-                            total_fetched_bytes, MAX_TOTAL_FETCHED_BYTES,
+                            total_fetched_bytes, max_allowed_bytes,
                         );
                         break;
                     }
@@ -260,17 +246,28 @@ impl NetworkClient for TonicClient {
                 .collect(),
         });
         request.set_timeout(timeout);
+
         let mut stream = client
             .fetch_latest_blocks(request)
             .await
             .map_err(|e| {
                 if e.code() == tonic::Code::DeadlineExceeded {
-                    ConsensusError::NetworkRequestTimeout(format!("fetch_blocks failed: {e:?}"))
+                    ConsensusError::NetworkRequestTimeout(format!(
+                        "fetch_latest_blocks failed: {e:?}"
+                    ))
                 } else {
-                    ConsensusError::NetworkRequest(format!("fetch_blocks failed: {e:?}"))
+                    ConsensusError::NetworkRequest(format!("fetch_latest_blocks failed: {e:?}"))
                 }
             })?
             .into_inner();
+
+        // Allow twice the max total size of transactions in the fetched blocks.
+        let max_allowed_bytes = authorities.len()
+            * self
+                .context
+                .protocol_config
+                .consensus_max_transactions_in_block_bytes() as usize
+            * 2;
         let mut blocks = vec![];
         let mut total_fetched_bytes = 0;
         loop {
@@ -280,10 +277,10 @@ impl NetworkClient for TonicClient {
                         total_fetched_bytes += b.len();
                     }
                     blocks.extend(response.blocks);
-                    if total_fetched_bytes > MAX_TOTAL_FETCHED_BYTES {
+                    if total_fetched_bytes > max_allowed_bytes {
                         info!(
                             "fetch_blocks() fetched bytes exceeded limit: {} > {}, terminating stream.",
-                            total_fetched_bytes, MAX_TOTAL_FETCHED_BYTES,
+                            total_fetched_bytes, max_allowed_bytes,
                         );
                         break;
                     }
@@ -302,7 +299,7 @@ impl NetworkClient for TonicClient {
                             "fetch_blocks failed mid-stream: {e:?}"
                         )));
                     } else {
-                        warn!("fetch_blocks failed mid-stream: {e:?}");
+                        warn!("fetch_latest_blocks failed mid-stream: {e:?}");
                         break;
                     }
                 }
@@ -324,6 +321,25 @@ impl NetworkClient for TonicClient {
         })?;
         let response = response.into_inner();
         Ok((response.highest_received, response.highest_accepted))
+    }
+
+    #[cfg(test)]
+    async fn send_block(
+        &self,
+        peer: AuthorityIndex,
+        block: &crate::VerifiedBlock,
+        timeout: Duration,
+    ) -> ConsensusResult<()> {
+        let mut client = self.get_client(peer, timeout).await?;
+        let mut request = Request::new(SendBlockRequest {
+            block: block.serialized().clone(),
+        });
+        request.set_timeout(timeout);
+        client
+            .send_block(request)
+            .await
+            .map_err(|e| ConsensusError::NetworkRequest(format!("send_block failed: {e:?}")))?;
+        Ok(())
     }
 }
 
@@ -383,7 +399,7 @@ impl ChannelPool {
             Some(network_keypair.private_key().into_inner()),
         );
         let endpoint = tonic_rustls::Channel::from_shared(address.clone())
-            .unwrap()
+            .map_err(|e| ConsensusError::NetworkConfig(format!("invalid URI '{address}': {e}")))?
             .connect_timeout(timeout)
             .initial_connection_window_size(Some(buffer_size as u32))
             .initial_stream_window_size(Some(buffer_size as u32 / 2))
@@ -402,7 +418,7 @@ impl ChannelPool {
             match endpoint.connect().await {
                 Ok(channel) => break channel,
                 Err(e) => {
-                    warn!("Failed to connect to endpoint at {address}: {e:?}");
+                    debug!("Failed to connect to endpoint at {address}: {e:?}");
                     if tokio::time::Instant::now() >= deadline {
                         return Err(ConsensusError::NetworkClientConnection(format!(
                             "Timed out connecting to endpoint at {address}: {e:?}"
@@ -541,9 +557,15 @@ impl<S: NetworkService> ConsensusService for TonicServiceProxy<S> {
             })
             .collect();
         let highest_accepted_rounds = inner.highest_accepted_rounds;
+        let breadth_first = inner.breadth_first;
         let blocks = self
             .service
-            .handle_fetch_blocks(peer_index, block_refs, highest_accepted_rounds)
+            .handle_fetch_blocks(
+                peer_index,
+                block_refs,
+                highest_accepted_rounds,
+                breadth_first,
+            )
             .await
             .map_err(|e| tonic::Status::internal(format!("{e:?}")))?;
         let responses: std::vec::IntoIter<Result<FetchBlocksResponse, tonic::Status>> =
@@ -719,12 +741,10 @@ impl<S: NetworkService> NetworkManager<S> for TonicManager {
             .map_request(move |mut request: http::Request<_>| {
                 if let Some(peer_certificates) =
                     request.extensions().get::<mys_http::PeerCertificates>()
-                {
-                    if let Some(peer_info) =
+                    && let Some(peer_info) =
                         peer_info_from_certs(&connections_info, peer_certificates)
-                    {
-                        request.extensions_mut().insert(peer_info);
-                    }
+                {
+                    request.extensions_mut().insert(peer_info);
                 }
                 request
             })
@@ -737,17 +757,20 @@ impl<S: NetworkService> NetworkManager<S> for TonicManager {
                     .make_span_with(DefaultMakeSpan::new().level(tracing::Level::TRACE))
                     .on_failure(DefaultOnFailure::new().level(tracing::Level::DEBUG)),
             )
-            .layer_fn(|service| mysten_network::grpc_timeout::GrpcTimeout::new(service, None));
+            .layer_fn(|service| {
+                mysten_network::grpc_timeout::GrpcTimeout::new(
+                    service,
+                    // This should only bound the unary and initial response time,
+                    // not the duration of streaming responses.
+                    DEFAULT_GRPC_SERVER_TIMEOUT,
+                )
+            });
 
-        let mut consensus_service_server = ConsensusServiceServer::new(service)
+        let consensus_service_server = ConsensusServiceServer::new(service)
             .max_encoding_message_size(config.message_size_limit)
-            .max_decoding_message_size(config.message_size_limit);
-
-        if self.context.protocol_config.consensus_zstd_compression() {
-            consensus_service_server = consensus_service_server
-                .send_compressed(CompressionEncoding::Zstd)
-                .accept_compressed(CompressionEncoding::Zstd);
-        }
+            .max_decoding_message_size(config.message_size_limit)
+            .send_compressed(CompressionEncoding::Zstd)
+            .accept_compressed(CompressionEncoding::Zstd);
 
         let consensus_service = tonic::service::Routes::new(consensus_service_server)
             .into_axum_router()
@@ -802,7 +825,6 @@ impl<S: NetworkService> NetworkManager<S> for TonicManager {
         }
 
         let http_config = mys_http::Config::default()
-            .tcp_nodelay(true)
             .initial_connection_window_size(64 << 20)
             .initial_stream_window_size(32 << 20)
             .http2_keepalive_interval(Some(config.keepalive_interval))
@@ -868,15 +890,6 @@ fn peer_info_from_certs(
     peer_certificates: &mys_http::PeerCertificates,
 ) -> Option<PeerInfo> {
     let certs = peer_certificates.peer_certs();
-
-    if certs.len() != 1 {
-        trace!(
-            "Unexpected number of certificates from TLS stream: {}",
-            certs.len()
-        );
-        return None;
-    }
-    trace!("Received {} certificates", certs.len());
     let public_key = mys_tls::public_key_from_certificate(&certs[0])
         .map_err(|e| {
             trace!("Failed to extract public key from certificate: {e:?}");
@@ -893,7 +906,7 @@ fn peer_info_from_certs(
 
 /// Attempts to convert a multiaddr of the form `/[ip4,ip6,dns]/{}/udp/{port}` into
 /// a host:port string.
-fn to_host_port_str(addr: &Multiaddr) -> Result<String, &'static str> {
+fn to_host_port_str(addr: &Multiaddr) -> Result<String, String> {
     let mut iter = addr.iter();
 
     match (iter.next(), iter.next()) {
@@ -901,22 +914,19 @@ fn to_host_port_str(addr: &Multiaddr) -> Result<String, &'static str> {
             Ok(format!("{}:{}", ipaddr, port))
         }
         (Some(Protocol::Ip6(ipaddr)), Some(Protocol::Udp(port))) => {
-            Ok(format!("{}:{}", ipaddr, port))
+            Ok(format!("{}", SocketAddrV6::new(ipaddr, port, 0, 0)))
         }
         (Some(Protocol::Dns(hostname)), Some(Protocol::Udp(port))) => {
             Ok(format!("{}:{}", hostname, port))
         }
 
-        _ => {
-            tracing::warn!("unsupported multiaddr: '{addr}'");
-            Err("invalid address")
-        }
+        _ => Err(format!("unsupported multiaddr: {addr}")),
     }
 }
 
 /// Attempts to convert a multiaddr of the form `/[ip4,ip6]/{}/[udp,tcp]/{port}` into
 /// a SocketAddr value.
-pub fn to_socket_addr(addr: &Multiaddr) -> Result<SocketAddr, &'static str> {
+pub fn to_socket_addr(addr: &Multiaddr) -> Result<SocketAddr, String> {
     let mut iter = addr.iter();
 
     match (iter.next(), iter.next()) {
@@ -930,10 +940,7 @@ pub fn to_socket_addr(addr: &Multiaddr) -> Result<SocketAddr, &'static str> {
             Ok(SocketAddr::V6(SocketAddrV6::new(ipaddr, port, 0, 0)))
         }
 
-        _ => {
-            tracing::warn!("unsupported multiaddr: '{addr}'");
-            Err("invalid address")
-        }
+        _ => Err(format!("unsupported multiaddr: {addr}")),
     }
 }
 
@@ -1069,8 +1076,16 @@ pub(crate) struct FetchBlocksRequest {
     block_refs: Vec<Vec<u8>>,
     // The highest accepted round per authority. The vector represents the round for each authority
     // and its length should be the same as the committee size.
+    // When this field is non-empty, additional ancestors of the requested blocks can be fetched.
     #[prost(uint32, repeated, tag = "2")]
     highest_accepted_rounds: Vec<Round>,
+    // When true, this indicates that missing ancestors should be added breadth-first, by searching through
+    // missing ancestors of the requested blocks.
+    // When false, this indicates that missing ancestors should be added depth-first, by adding missing
+    // ancestors from the requested block authorities.
+    // This field is only meaningful when highest_accepted_rounds is non-empty.
+    #[prost(bool, tag = "3")]
+    breadth_first: bool,
 }
 
 #[derive(Clone, prost::Message)]

@@ -2,20 +2,17 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-    ops::Deref,
-    sync::Arc,
-};
+use std::{fmt, hash::Hash, ops::Deref, sync::Arc};
 
 use bytes::Bytes;
 use consensus_config::{
     AuthorityIndex, DefaultHashFunction, Epoch, ProtocolKeyPair, ProtocolKeySignature,
-    ProtocolPublicKey, DIGEST_LENGTH,
+    ProtocolPublicKey,
 };
+use consensus_types::block::{BlockDigest, BlockRef, BlockTimestampMs, Round, TransactionIndex};
 use enum_dispatch::enum_dispatch;
-use fastcrypto::hash::{Digest, HashFunction};
+use fastcrypto::hash::HashFunction;
+use itertools::Itertools as _;
 use serde::{Deserialize, Serialize};
 use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
 
@@ -26,15 +23,9 @@ use crate::{
     error::{ConsensusError, ConsensusResult},
 };
 
-/// Round number of a block.
-pub type Round = u32;
-
 pub(crate) const GENESIS_ROUND: Round = 0;
 
-/// Block proposal timestamp in milliseconds.
-pub type BlockTimestampMs = u64;
-
-/// Mys transaction in serialised bytes
+/// MySo transaction in serialised bytes
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Default, Debug)]
 pub struct Transaction {
     data: Bytes,
@@ -53,10 +44,6 @@ impl Transaction {
         self.data
     }
 }
-
-/// Index of a transaction in a block.
-pub type TransactionIndex = u16;
-
 /// Votes on transactions in a specific block.
 /// Reject votes are explicit. The rest of transactions in the block receive implicit accept votes.
 // TODO: look into making fields `pub`.
@@ -88,6 +75,7 @@ pub trait BlockAPI {
     fn timestamp_ms(&self) -> BlockTimestampMs;
     fn ancestors(&self) -> &[BlockRef];
     fn transactions(&self) -> &[Transaction];
+    fn transactions_data(&self) -> Vec<&[u8]>;
     fn commit_votes(&self) -> &[CommitVote];
     fn transaction_votes(&self) -> &[BlockTransactionVotes];
     fn misbehavior_reports(&self) -> &[MisbehaviorReport];
@@ -128,12 +116,12 @@ impl BlockV1 {
         }
     }
 
-    fn genesis_block(epoch: Epoch, author: AuthorityIndex) -> Self {
+    fn genesis_block(context: &Context, author: AuthorityIndex) -> Self {
         Self {
-            epoch,
+            epoch: context.committee.epoch(),
             round: GENESIS_ROUND,
             author,
-            timestamp_ms: 0,
+            timestamp_ms: context.epoch_start_timestamp_ms,
             ancestors: vec![],
             transactions: vec![],
             commit_votes: vec![],
@@ -169,6 +157,10 @@ impl BlockAPI for BlockV1 {
 
     fn transactions(&self) -> &[Transaction] {
         &self.transactions
+    }
+
+    fn transactions_data(&self) -> Vec<&[u8]> {
+        self.transactions.iter().map(|t| t.data()).collect()
     }
 
     fn commit_votes(&self) -> &[CommitVote] {
@@ -223,12 +215,12 @@ impl BlockV2 {
         }
     }
 
-    fn genesis_block(epoch: Epoch, author: AuthorityIndex) -> Self {
+    fn genesis_block(context: &Context, author: AuthorityIndex) -> Self {
         Self {
-            epoch,
+            epoch: context.committee.epoch(),
             round: GENESIS_ROUND,
             author,
-            timestamp_ms: 0,
+            timestamp_ms: context.epoch_start_timestamp_ms,
             ancestors: vec![],
             transactions: vec![],
             commit_votes: vec![],
@@ -267,6 +259,10 @@ impl BlockAPI for BlockV2 {
         &self.transactions
     }
 
+    fn transactions_data(&self) -> Vec<&[u8]> {
+        self.transactions.iter().map(|t| t.data()).collect()
+    }
+
     fn transaction_votes(&self) -> &[BlockTransactionVotes] {
         &self.transaction_votes
     }
@@ -277,110 +273,6 @@ impl BlockAPI for BlockV2 {
 
     fn misbehavior_reports(&self) -> &[MisbehaviorReport] {
         &self.misbehavior_reports
-    }
-}
-
-/// `BlockRef` uniquely identifies a `VerifiedBlock` via `digest`. It also contains the slot
-/// info (round and author) so it can be used in logic such as aggregating stakes for a round.
-#[derive(Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct BlockRef {
-    pub round: Round,
-    pub author: AuthorityIndex,
-    pub digest: BlockDigest,
-}
-
-impl BlockRef {
-    pub const MIN: Self = Self {
-        round: 0,
-        author: AuthorityIndex::MIN,
-        digest: BlockDigest::MIN,
-    };
-
-    pub const MAX: Self = Self {
-        round: u32::MAX,
-        author: AuthorityIndex::MAX,
-        digest: BlockDigest::MAX,
-    };
-
-    pub fn new(round: Round, author: AuthorityIndex, digest: BlockDigest) -> Self {
-        Self {
-            round,
-            author,
-            digest,
-        }
-    }
-}
-
-// TODO: re-evaluate formats for production debugging.
-impl fmt::Display for BlockRef {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "B{}({},{})", self.round, self.author, self.digest)
-    }
-}
-
-impl fmt::Debug for BlockRef {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "B{}({},{:?})", self.round, self.author, self.digest)
-    }
-}
-
-impl Hash for BlockRef {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        state.write(&self.digest.0[..8]);
-    }
-}
-
-/// Digest of a `VerifiedBlock` or verified `SignedBlock`, which covers the `Block` and its
-/// signature.
-///
-/// Note: the signature algorithm is assumed to be non-malleable, so it is impossible for another
-/// party to create an altered but valid signature, producing an equivocating `BlockDigest`.
-#[derive(Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct BlockDigest([u8; consensus_config::DIGEST_LENGTH]);
-
-impl BlockDigest {
-    /// Lexicographic min & max digest.
-    pub const MIN: Self = Self([u8::MIN; consensus_config::DIGEST_LENGTH]);
-    pub const MAX: Self = Self([u8::MAX; consensus_config::DIGEST_LENGTH]);
-}
-
-impl Hash for BlockDigest {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        state.write(&self.0[..8]);
-    }
-}
-
-impl From<BlockDigest> for Digest<{ DIGEST_LENGTH }> {
-    fn from(hd: BlockDigest) -> Self {
-        Digest::new(hd.0)
-    }
-}
-
-impl fmt::Display for BlockDigest {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            base64::Engine::encode(&base64::engine::general_purpose::STANDARD, self.0)
-                .get(0..4)
-                .ok_or(fmt::Error)?
-        )
-    }
-}
-
-impl fmt::Debug for BlockDigest {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            base64::Engine::encode(&base64::engine::general_purpose::STANDARD, self.0)
-        )
-    }
-}
-
-impl AsRef<[u8]> for BlockDigest {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
     }
 }
 
@@ -397,7 +289,6 @@ impl Slot {
         Self { round, authority }
     }
 
-    #[cfg(test)]
     pub fn new_for_test(round: Round, authority: u32) -> Self {
         Self {
             round,
@@ -415,7 +306,7 @@ impl From<BlockRef> for Slot {
 // TODO: re-evaluate formats for production debugging.
 impl fmt::Display for Slot {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", self.authority, self.round,)
+        write!(f, "{}{}", self.authority, self.round)
     }
 }
 
@@ -503,7 +394,7 @@ fn to_consensus_block_intent(digest: InnerBlockDigest) -> IntentMessage<InnerBlo
     IntentMessage::new(Intent::consensus_app(IntentScope::ConsensusBlock), digest)
 }
 
-/// Process for signing & verying a block signature:
+/// Process for signing a block & verifying a block signature:
 /// 1. Compute the digest of `Block`.
 /// 2. Wrap the digest in `IntentMessage`.
 /// 3. Sign the serialized `IntentMessage`, or verify signature against it.
@@ -516,6 +407,7 @@ fn compute_block_signature(
         .map_err(ConsensusError::SerializationFailure)?;
     Ok(protocol_keypair.sign(&message))
 }
+
 fn verify_block_signature(
     block: &Block,
     signature: &[u8],
@@ -632,10 +524,10 @@ impl fmt::Debug for VerifiedBlock {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,
-            "{:?}({}ms;{:?};{}t;{}c)",
+            "{:?}([{}];{}ms;{}t;{}c)",
             self.reference(),
+            self.ancestors().iter().map(|a| a.to_string()).join(", "),
             self.timestamp_ms(),
-            self.ancestors(),
             self.transactions().len(),
             self.commit_votes().len(),
         )
@@ -653,15 +545,17 @@ pub(crate) struct ExtendedBlock {
 
 /// Generates the genesis blocks for the current Committee.
 /// The blocks are returned in authority index order.
-pub(crate) fn genesis_blocks(context: Arc<Context>) -> Vec<VerifiedBlock> {
+pub(crate) fn genesis_blocks(context: &Context) -> Vec<VerifiedBlock> {
     context
         .committee
         .authorities()
         .map(|(authority_index, _)| {
-            let signed_block = SignedBlock::new_genesis(Block::V1(BlockV1::genesis_block(
-                context.committee.epoch(),
-                authority_index,
-            )));
+            let block = if context.protocol_config.mysticeti_fastpath() {
+                Block::V2(BlockV2::genesis_block(context, authority_index))
+            } else {
+                Block::V1(BlockV1::genesis_block(context, authority_index))
+            };
+            let signed_block = SignedBlock::new_genesis(block);
             let serialized = signed_block
                 .serialize()
                 .expect("Genesis block serialization failed.");
@@ -671,17 +565,37 @@ pub(crate) fn genesis_blocks(context: Arc<Context>) -> Vec<VerifiedBlock> {
         .collect::<Vec<VerifiedBlock>>()
 }
 
+/// A block certified by consensus for fast path execution.
+#[derive(Clone)]
+pub struct CertifiedBlock {
+    /// All transactions in the block have a quorum of accept or reject votes.
+    pub block: VerifiedBlock,
+    /// Sorted transaction indices that indicate the transactions rejected by a quorum.
+    pub rejected: Vec<TransactionIndex>,
+}
+
+impl CertifiedBlock {
+    pub fn new(block: VerifiedBlock, rejected: Vec<TransactionIndex>) -> Self {
+        Self { block, rejected }
+    }
+}
+
+/// A batch of certified blocks output by consensus for processing.
+pub struct CertifiedBlocksOutput {
+    pub blocks: Vec<CertifiedBlock>,
+}
+
 /// Creates fake blocks for testing.
 /// This struct is public for testing in other crates.
 #[derive(Clone)]
 pub struct TestBlock {
-    block: BlockV1,
+    block: BlockV2,
 }
 
 impl TestBlock {
     pub fn new(round: Round, author: u32) -> Self {
         Self {
-            block: BlockV1 {
+            block: BlockV2 {
                 round,
                 author: AuthorityIndex::new_for_test(author),
                 ..Default::default()
@@ -709,7 +623,25 @@ impl TestBlock {
         self
     }
 
-    pub fn set_ancestors(mut self, ancestors: Vec<BlockRef>) -> Self {
+    /// Sorts then sets ancestors in the TestBlock.
+    /// Author's own block is always first, which is expected by BlockVerifier and
+    /// the rest of the system.
+    pub fn set_ancestors(mut self, mut ancestors: Vec<BlockRef>) -> Self {
+        ancestors.sort_by(|a, b| {
+            if a.author == self.block.author {
+                return std::cmp::Ordering::Less;
+            }
+            if b.author == self.block.author {
+                return std::cmp::Ordering::Greater;
+            }
+            a.author.cmp(&b.author)
+        });
+        self.block.ancestors = ancestors;
+        self
+    }
+
+    /// Sets ancestors in the TestBlock exactly as provided.
+    pub fn set_ancestors_raw(mut self, ancestors: Vec<BlockRef>) -> Self {
         self.block.ancestors = ancestors;
         self
     }
@@ -719,13 +651,19 @@ impl TestBlock {
         self
     }
 
-    pub fn set_commit_votes(mut self, commit_votes: Vec<CommitVote>) -> Self {
+    pub(crate) fn set_transaction_votes(mut self, votes: Vec<BlockTransactionVotes>) -> Self {
+        self.block.transaction_votes = votes;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_commit_votes(mut self, commit_votes: Vec<CommitVote>) -> Self {
         self.block.commit_votes = commit_votes;
         self
     }
 
     pub fn build(self) -> Block {
-        Block::V1(self.block)
+        Block::V2(self.block)
     }
 }
 
@@ -752,7 +690,7 @@ mod tests {
     use fastcrypto::error::FastCryptoError;
 
     use crate::{
-        block::{SignedBlock, TestBlock},
+        block::{BlockAPI, SignedBlock, TestBlock, genesis_blocks},
         context::Context,
         error::ConsensusError,
     };
@@ -785,6 +723,19 @@ mod tests {
                 assert_eq!(err, FastCryptoError::InvalidSignature);
             }
             err => panic!("Unexpected error: {err:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_genesis_blocks() {
+        let (context, _) = Context::new_for_test(4);
+        const TIMESTAMP_MS: u64 = 1000;
+        let context = Arc::new(context.with_epoch_start_timestamp_ms(TIMESTAMP_MS));
+        let blocks = genesis_blocks(&context);
+        for (i, block) in blocks.into_iter().enumerate() {
+            assert_eq!(block.author().value(), i);
+            assert_eq!(block.round(), 0);
+            assert_eq!(block.timestamp_ms(), TIMESTAMP_MS);
         }
     }
 }

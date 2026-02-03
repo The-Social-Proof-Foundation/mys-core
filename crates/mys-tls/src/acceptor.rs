@@ -2,6 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(feature = "axum-server")]
 use axum::{middleware::AddExtension, Extension};
 #[cfg(feature = "axum-server")]
 use axum_server::{
@@ -10,9 +11,14 @@ use axum_server::{
 };
 use fastcrypto::ed25519::Ed25519PublicKey;
 use rustls::pki_types::CertificateDer;
-use std::{io, sync::Arc};
+use std::sync::Arc;
+#[cfg(feature = "axum-server")]
+use std::io;
+#[cfg(feature = "axum-server")]
 use tokio::io::{AsyncRead, AsyncWrite};
+#[cfg(feature = "axum-server")]
 use tokio_rustls::server::TlsStream;
+#[cfg(feature = "axum-server")]
 use tower_layer::Layer;
 
 #[derive(Debug, Clone)]
@@ -62,6 +68,7 @@ impl TlsAcceptor {
     }
 }
 
+#[cfg(feature = "axum-server")]
 type BoxFuture<'a, T> = std::pin::Pin<Box<dyn std::future::Future<Output = T> + Send + 'a>>;
 
 #[cfg(feature = "axum-server")]

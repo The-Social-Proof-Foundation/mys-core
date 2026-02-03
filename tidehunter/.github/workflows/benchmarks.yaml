@@ -60,7 +60,7 @@ jobs:
           echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
           echo "# Benchmark Results - $(date)" > ./results/summary.md
           echo "## Environment" >> ./results/summary.md
-          echo "![runner bare metal host metrics](https://metrics.sui.io/goto/D1MxYcBNg?orgId=1)" >> ./results/summary.md
+          echo "![runner bare metal host metrics](https://metrics.mysocial.network/goto/D1MxYcBNg?orgId=1)" >> ./results/summary.md
 
       - name: Build all benchmarks
         run: cargo build --release --all

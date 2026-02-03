@@ -309,9 +309,8 @@ pub fn run_migrations(config: &Config) -> Result<()> {
 fn refresh_profile_daily_stats_aggregate(conn: &mut PgConnection) -> Result<()> {
     use diesel::sql_query;
     
-    sql_query("COMMIT")
-        .execute(conn)
-        .ok();
+    // Note: Migrations run outside of a transaction, so we don't need to COMMIT
+    // The refresh_continuous_aggregate call and INSERT can run directly
     
     sql_query("CALL refresh_continuous_aggregate('profile_daily_stats', NULL, NULL)")
         .execute(conn)

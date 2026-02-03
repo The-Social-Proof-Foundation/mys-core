@@ -5,6 +5,7 @@
 
 use anyhow::anyhow;
 use async_trait::async_trait;
+use fastcrypto::traits::ToFromBytes;
 use mys_network::{api::ValidatorClient, tonic};
 use mys_types::base_types::AuthorityName;
 use mys_types::committee::CommitteeWithNetworkMetadata;
@@ -25,7 +26,8 @@ use std::time::Duration;
 
 use crate::authority_client::tonic::IntoRequest;
 use mys_network::tonic::metadata::KeyAndValueRef;
-use mys_network::tonic::transport::Channel;
+// Use tonic_rustls::Channel which is compatible with ValidatorClient
+use tonic_rustls::Channel;
 use mys_types::messages_grpc::{
     HandleCertificateRequestV3, HandleCertificateResponseV2, HandleCertificateResponseV3,
     HandleSoftBundleCertificatesRequestV3, HandleSoftBundleCertificatesResponseV3,
@@ -110,6 +112,7 @@ impl NetworkAuthorityClient {
                 None,
             )
         });
+        let tls_config = tls_config.ok_or_else(|| anyhow!("TLS config required"))?;
         let channel = mysten_network::client::connect(address, tls_config)
             .await
             .map_err(|err| anyhow!(err.to_string()))?;
@@ -120,6 +123,16 @@ impl NetworkAuthorityClient {
         let tls_config = tls_target.map(|tls_target| {
             mys_tls::create_rustls_client_config(
                 tls_target,
+                mys_tls::MYS_VALIDATOR_SERVER_NAME.to_string(),
+                None,
+            )
+        });
+        // For lazy connections, TLS config is optional - use default if None
+        let tls_config = tls_config.unwrap_or_else(|| {
+            mys_tls::create_rustls_client_config(
+                // Create a dummy config for insecure connections
+                // This should be replaced with proper insecure connection handling
+                fastcrypto::ed25519::Ed25519PublicKey::from_bytes(&[0u8; 32]).unwrap(),
                 mys_tls::MYS_VALIDATOR_SERVER_NAME.to_string(),
                 None,
             )
@@ -293,7 +306,13 @@ pub fn make_network_authority_clients_with_network_config(
         //     )
         // });
         // TODO: Change below code to generate a MysError if no valid TLS config is available.
-        let maybe_channel = network_config.connect_lazy(&address, None).map_err(|e| {
+        // Create a default TLS config for insecure connections
+        let default_tls_config = mys_tls::create_rustls_client_config(
+            fastcrypto::ed25519::Ed25519PublicKey::from_bytes(&[0u8; 32]).unwrap(),
+            mys_tls::MYS_VALIDATOR_SERVER_NAME.to_string(),
+            None,
+        );
+        let maybe_channel = network_config.connect_lazy(&address, default_tls_config).map_err(|e| {
             tracing::error!(
                 address = %address,
                 name = %name,

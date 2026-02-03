@@ -12,7 +12,6 @@ mod checked {
         sync::Arc,
     };
 
-    use crate::adapter::new_native_extensions;
     use crate::error::convert_vm_error;
     use crate::execution_mode::ExecutionMode;
     use crate::execution_value::{CommandKind, ObjectContents, TryFromValue, Value};
@@ -23,6 +22,7 @@ mod checked {
     use crate::gas_charger::GasCharger;
     use crate::programmable_transactions::linkage_view::LinkageView;
     use crate::type_resolver::TypeTagResolver;
+    use crate::adapter::new_native_extensions;
     use move_binary_format::{
         errors::{Location, PartialVMError, PartialVMResult, VMError, VMResult},
         file_format::{CodeOffset, FunctionDefinitionIndex, TypeParameterIndex},
@@ -50,7 +50,7 @@ mod checked {
     use mys_types::storage::PackageObject;
     use mys_types::{
         balance::Balance,
-        base_types::{MoveObjectType, MysAddress, ObjectID, TxContext},
+        base_types::{MoveObjectType, ObjectID, MysAddress, TxContext},
         coin::Coin,
         error::{ExecutionError, ExecutionErrorKind},
         event::Event,
@@ -189,25 +189,6 @@ mod checked {
                 tx_context.epoch(),
             );
 
-            // Set the profiler if feature is enabled
-            #[skip_checked_arithmetic]
-            move_vm_profiler::tracing_feature_enabled! {
-                use move_vm_profiler::GasProfiler;
-                use move_vm_types::gas::GasMeter;
-
-                let tx_digest = tx_context.digest();
-                let remaining_gas: u64 =
-                    move_vm_types::gas::GasMeter::remaining_gas(gas_charger.move_gas_status())
-                        .into();
-                gas_charger
-                    .move_gas_status_mut()
-                    .set_profiler(GasProfiler::init(
-                        &vm.config().profiler_config,
-                        format!("{}", tx_digest),
-                        remaining_gas,
-                    ));
-            }
-
             Ok(Self {
                 protocol_config,
                 metrics,
@@ -227,7 +208,7 @@ mod checked {
             })
         }
 
-        pub fn object_runtime(&mut self) -> &ObjectRuntime {
+        pub fn object_runtime(&mut self) -> &ObjectRuntime<'_> {
             self.native_extensions.get()
         }
 
@@ -950,7 +931,7 @@ mod checked {
         }
     }
 
-    impl<'vm, 'state, 'a> TypeTagResolver for ExecutionContext<'vm, 'state, 'a> {
+    impl TypeTagResolver for ExecutionContext<'_, '_, '_> {
         fn get_type_tag(&self, type_: &Type) -> Result<TypeTag, ExecutionError> {
             self.vm
                 .get_runtime()
@@ -1228,7 +1209,7 @@ mod checked {
                 new_packages,
                 input_object_map,
                 obj_arg,
-            )?,
+            )?
         })
     }
 
@@ -1398,7 +1379,7 @@ mod checked {
 
     // TODO: `DataStore` will be reworked and this is likely to disappear.
     //       Leaving this comment around until then as testament to better days to come...
-    impl<'state, 'a> DataStore for MysDataStore<'state, 'a> {
+    impl DataStore for MysDataStore<'_, '_> {
         fn link_context(&self) -> AccountAddress {
             self.linkage_view.link_context()
         }

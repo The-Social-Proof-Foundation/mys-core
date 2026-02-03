@@ -335,6 +335,12 @@ struct FeatureFlags {
     // been deployed everywhere.
     #[serde(skip_serializing_if = "is_false")]
     consensus_order_end_of_epoch_last: bool,
+    // If true, always accept system transactions in consensus
+    #[serde(skip_serializing_if = "is_false")]
+    consensus_always_accept_system_transactions: bool,
+    // If true, skip GCed blocks in direct finalization
+    #[serde(skip_serializing_if = "is_false")]
+    consensus_skip_gced_blocks_in_direct_finalization: bool,
 
     // Disallow adding abilities to types during package upgrades.
     #[serde(skip_serializing_if = "is_false")]
@@ -1456,6 +1462,14 @@ impl ProtocolConfig {
 
     pub fn consensus_order_end_of_epoch_last(&self) -> bool {
         self.feature_flags.consensus_order_end_of_epoch_last
+    }
+
+    pub fn consensus_always_accept_system_transactions(&self) -> bool {
+        self.feature_flags.consensus_always_accept_system_transactions
+    }
+
+    pub fn consensus_skip_gced_blocks_in_direct_finalization(&self) -> bool {
+        self.feature_flags.consensus_skip_gced_blocks_in_direct_finalization
     }
 
     pub fn disallow_adding_abilities_on_upgrade(&self) -> bool {
@@ -3253,6 +3267,8 @@ impl ProtocolConfig {
                     }
                 }
                 75 => {
+                    cfg.feature_flags.consensus_always_accept_system_transactions = true;
+                    cfg.feature_flags.consensus_skip_gced_blocks_in_direct_finalization = true;
                     // Reduce compute and storage gas costs by 75%
 
                     // Compute costs - 75% reduction

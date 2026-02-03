@@ -2,7 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use fastcrypto::ed25519::{Ed25519PrivateKey, Ed25519PublicKey};
+use fastcrypto::ed25519::Ed25519PrivateKey;
+#[cfg(feature = "axum-server")]
+use fastcrypto::ed25519::Ed25519PublicKey;
 use pkcs8::EncodePrivateKey;
 use rcgen::{CertificateParams, KeyPair};
 use rustls::pki_types::CertificateDer;
@@ -64,6 +66,7 @@ fn generate_cert(keypair: &KeyPair, server_name: &str) -> rcgen::Certificate {
         )
 }
 
+#[cfg(feature = "axum-server")]
 pub(crate) fn public_key_from_certificate(
     certificate: &CertificateDer,
 ) -> Result<Ed25519PublicKey, anyhow::Error> {

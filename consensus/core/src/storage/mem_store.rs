@@ -8,11 +8,12 @@ use std::{
 };
 
 use consensus_config::AuthorityIndex;
+use consensus_types::block::{BlockDigest, BlockRef, Round, TransactionIndex};
 use parking_lot::RwLock;
 
 use super::{Store, WriteBatch};
 use crate::{
-    block::{BlockAPI as _, BlockDigest, BlockRef, Round, Slot, VerifiedBlock},
+    block::{BlockAPI as _, VerifiedBlock},
     commit::{
         CommitAPI as _, CommitDigest, CommitIndex, CommitInfo, CommitRange, CommitRef,
         TrustedCommit,
@@ -21,23 +22,22 @@ use crate::{
 };
 
 /// In-memory storage for testing.
-#[allow(unused)]
-pub(crate) struct MemStore {
+pub struct MemStore {
     inner: RwLock<Inner>,
 }
 
-#[allow(unused)]
 struct Inner {
     blocks: BTreeMap<(Round, AuthorityIndex, BlockDigest), VerifiedBlock>,
     digests_by_authorities: BTreeSet<(AuthorityIndex, Round, BlockDigest)>,
     commits: BTreeMap<(CommitIndex, CommitDigest), TrustedCommit>,
     commit_votes: BTreeSet<(CommitIndex, CommitDigest, BlockRef)>,
     commit_info: BTreeMap<(CommitIndex, CommitDigest), CommitInfo>,
+    finalized_commits:
+        BTreeMap<(CommitIndex, CommitDigest), BTreeMap<BlockRef, Vec<TransactionIndex>>>,
 }
 
 impl MemStore {
-    #[cfg(test)]
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         MemStore {
             inner: RwLock::new(Inner {
                 blocks: BTreeMap::new(),
@@ -45,8 +45,15 @@ impl MemStore {
                 commits: BTreeMap::new(),
                 commit_votes: BTreeSet::new(),
                 commit_info: BTreeMap::new(),
+                finalized_commits: BTreeMap::new(),
             }),
         }
+    }
+}
+
+impl Default for MemStore {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -82,6 +89,12 @@ impl Store for MemStore {
             inner
                 .commit_info
                 .insert((commit_ref.index, commit_ref.digest), commit_info);
+        }
+
+        for (commit_ref, rejected_transactions) in write_batch.finalized_commits {
+            inner
+                .finalized_commits
+                .insert((commit_ref.index, commit_ref.digest), rejected_transactions);
         }
 
         Ok(())
@@ -130,19 +143,6 @@ impl Store for MemStore {
         Ok(blocks)
     }
 
-    fn contains_block_at_slot(&self, slot: Slot) -> ConsensusResult<bool> {
-        let inner = self.inner.read();
-        let found = inner
-            .digests_by_authorities
-            .range((
-                Included((slot.authority, slot.round, BlockDigest::MIN)),
-                Included((slot.authority, slot.round, BlockDigest::MAX)),
-            ))
-            .next()
-            .is_some();
-        Ok(found)
-    }
-
     fn scan_last_blocks_by_author(
         &self,
         author: AuthorityIndex,
@@ -164,7 +164,8 @@ impl Store for MemStore {
         {
             refs.push_front(BlockRef::new(round, author, digest));
         }
-        let results = self.read_blocks(refs.as_slices().0)?;
+        let refs_slice = refs.make_contiguous();
+        let results = self.read_blocks(refs_slice)?;
         let mut blocks = vec![];
         for (r, block) in refs.into_iter().zip(results.into_iter()) {
             blocks.push(
@@ -213,5 +214,24 @@ impl Store for MemStore {
             .commit_info
             .last_key_value()
             .map(|(k, v)| (CommitRef::new(k.0, k.1), v.clone())))
+    }
+
+    fn read_last_finalized_commit(&self) -> ConsensusResult<Option<CommitRef>> {
+        let inner = self.inner.read();
+        Ok(inner
+            .finalized_commits
+            .last_key_value()
+            .map(|(k, _)| CommitRef::new(k.0, k.1)))
+    }
+
+    fn read_rejected_transactions(
+        &self,
+        commit_ref: CommitRef,
+    ) -> ConsensusResult<Option<BTreeMap<BlockRef, Vec<TransactionIndex>>>> {
+        let inner = self.inner.read();
+        Ok(inner
+            .finalized_commits
+            .get(&(commit_ref.index, commit_ref.digest))
+            .cloned())
     }
 }

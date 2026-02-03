@@ -3,19 +3,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use consensus_config::{AuthorityIndex, Epoch, Stake};
+use consensus_types::block::{BlockRef, Round};
 use fastcrypto::error::FastCryptoError;
 use strum_macros::IntoStaticStr;
 use thiserror::Error;
 use typed_store::TypedStoreError;
 
-use crate::{
-    block::{BlockRef, Round},
-    commit::{Commit, CommitIndex},
-};
+use crate::commit::{Commit, CommitIndex};
 
 /// Errors that can occur when processing blocks, reading from storage, or encountering shutdown.
 #[derive(Clone, Debug, Error, IntoStaticStr)]
-pub(crate) enum ConsensusError {
+pub enum ConsensusError {
     #[error("Error deserializing block: {0}")]
     MalformedBlock(bcs::Error),
 
@@ -69,16 +67,17 @@ pub(crate) enum ConsensusError {
         block_ref: BlockRef,
     },
 
-    #[error("Too many blocks have been returned from authority {0} when requesting to fetch missing blocks")]
+    #[error(
+        "Too many blocks have been returned from authority {0} when requesting to fetch missing blocks"
+    )]
     TooManyFetchedBlocksReturned(AuthorityIndex),
-
-    #[error("Too many blocks have been requested from authority {0}")]
-    TooManyFetchBlocksRequested(AuthorityIndex),
 
     #[error("Too many authorities have been provided from authority {0}")]
     TooManyAuthoritiesProvided(AuthorityIndex),
 
-    #[error("Provided size of highest accepted rounds parameter, {0}, is different than committee size, {1}")]
+    #[error(
+        "Provided size of highest accepted rounds parameter, {0}, is different than committee size, {1}"
+    )]
     InvalidSizeOfHighestAcceptedRounds(usize, usize),
 
     #[error("Invalid authority index: {index} > {max}")]
@@ -96,7 +95,9 @@ pub(crate) enum ConsensusError {
     #[error("Block {block_ref:?} rejected: {reason}")]
     BlockRejected { block_ref: BlockRef, reason: String },
 
-    #[error("Ancestor is in wrong position: block {block_authority}, ancestor {ancestor_authority}, position {position}")]
+    #[error(
+        "Ancestor is in wrong position: block {block_authority}, ancestor {ancestor_authority}, position {position}"
+    )]
     InvalidAncestorPosition {
         block_authority: AuthorityIndex,
         ancestor_authority: AuthorityIndex,
@@ -120,12 +121,6 @@ pub(crate) enum ConsensusError {
 
     #[error("Invalid transaction: {0}")]
     InvalidTransaction(String),
-
-    #[error("Ancestors max timestamp {max_timestamp_ms} > block timestamp {block_timestamp_ms}")]
-    InvalidBlockTimestamp {
-        max_timestamp_ms: u64,
-        block_timestamp_ms: u64,
-    },
 
     #[error("Received no commit from peer {peer}")]
     NoCommitReceived { peer: AuthorityIndex },
@@ -160,6 +155,14 @@ pub(crate) enum ConsensusError {
         peer: AuthorityIndex,
         requested: BlockRef,
         received: BlockRef,
+    },
+
+    #[error(
+        "Unexpected certified commit index and last committed index. Expected next commit index to be {expected_commit_index}, but found {commit_index}"
+    )]
+    UnexpectedCertifiedCommitIndex {
+        expected_commit_index: CommitIndex,
+        commit_index: CommitIndex,
     },
 
     #[error("RocksDB failure: {0}")]

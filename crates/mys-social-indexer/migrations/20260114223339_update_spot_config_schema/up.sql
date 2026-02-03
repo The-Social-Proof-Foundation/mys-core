@@ -24,7 +24,7 @@ ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
 -- Convert payout_delay_epochs to payout_delay_ms
 -- NOTE: This conversion assumes 1 epoch = 86400000 milliseconds (24 hours)
 -- Adjust the multiplier if your epoch duration differs
--- Sui epochs are typically ~24 hours, but verify with your network configuration
+-- MySo epochs are typically ~24 hours, but verify with your network configuration
 UPDATE spot_config 
 SET payout_delay_ms = payout_delay_epochs * 86400000
 WHERE payout_delay_epochs > 0;

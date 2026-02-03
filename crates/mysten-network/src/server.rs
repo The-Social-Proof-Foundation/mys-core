@@ -13,6 +13,7 @@ use crate::{
 use eyre::{eyre, Result};
 use std::convert::Infallible;
 use std::task::{Context, Poll};
+use std::time::Duration;
 use tokio_rustls::rustls::ServerConfig;
 use tonic::codegen::http::HeaderValue;
 use tonic::{
@@ -115,7 +116,9 @@ impl<M: MetricsCallbackProvider> ServerBuilder<M> {
             .layer(request_metrics)
             .layer(PropagateHeaderLayer::new(GRPC_ENDPOINT_PATH_HEADER.clone()))
             .layer_fn(move |service| {
-                crate::grpc_timeout::GrpcTimeout::new(service, request_timeout)
+                // Use default timeout of 30 seconds if not specified
+                let timeout = request_timeout.unwrap_or(Duration::from_secs(30));
+                crate::grpc_timeout::GrpcTimeout::new(service, timeout)
             });
 
         let mut builder = mys_http::Builder::new().config(http_config);
@@ -141,7 +144,7 @@ impl<M: MetricsCallbackProvider> ServerBuilder<M> {
 }
 
 /// TLS server name to use for the public Mys validator interface.
-pub const MYS_TLS_SERVER_NAME: &str = "mys";
+pub use mys_tls::MYS_VALIDATOR_SERVER_NAME as MYS_TLS_SERVER_NAME;
 
 pub struct Server {
     server: mys_http::ServerHandle,
