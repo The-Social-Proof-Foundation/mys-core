@@ -281,7 +281,7 @@ aws-sdk-ec2 = "0.29.0"
 aws-sdk-dynamodb = "0.29.0"
 aws-smithy-http = "0.56"
 aws-smithy-runtime-api = "0.56"
-axum = { version = "0.7", default-features = false, features = [
+axum = { version = "0.8", default-features = false, features = [
     "macros",
     "tokio",
     "http1",
@@ -293,7 +293,7 @@ axum = { version = "0.7", default-features = false, features = [
     "query",
     "ws",
 ] }
-axum-extra = { version = "0.9", features = ["typed-header"] }
+axum-extra = { version = "0.12", features = ["typed-header"] }
 axum-server = { version = "0.8.0", default-features = false, features = [
     "tls-rustls",
 ] }

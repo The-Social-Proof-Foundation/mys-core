@@ -9,18 +9,7 @@ publish = false
 [dependencies]
 anyhow = "1.0.71"
 async-trait = "0.1.61"
-axum = { version = "0.7", default-features = false, features = [
-    "macros",
-    "tokio",
-    "http1",
-    "http2",
-    "json",
-    "matched-path",
-    "original-uri",
-    "form",
-    "query",
-    "ws",
-] }
+axum.workspace = true
 bin-version.workspace = true
 clap = { version = "4.4", features = ["derive", "wrap_help"] }
 dashmap = "5.5.3"
