@@ -294,7 +294,7 @@ axum = { version = "0.7", default-features = false, features = [
     "ws",
 ] }
 axum-extra = { version = "0.9", features = ["typed-header"] }
-axum-server = { version = "0.7.1", default-features = false, features = [
+axum-server = { version = "0.8.0", default-features = false, features = [
     "tls-rustls",
 ] }
 backoff = { version = "0.4.0", features = [
@@ -375,7 +375,7 @@ humantime = "2.1.0"
 # Remove this once home 0.5.13+ is released with fixed rust-version metadata
 home = "=0.5.11"
 hyper = "1.8"
-hyper-util = "0.1.18"
+hyper-util = "0.1.20"
 hyper-rustls = { version = "0.27", default-features = false, features = [
     "webpki-roots",
     "http1",

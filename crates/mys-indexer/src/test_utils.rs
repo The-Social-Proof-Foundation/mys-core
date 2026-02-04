@@ -77,6 +77,7 @@ pub async fn start_indexer_writer_for_testing(
     cancel: Option<CancellationToken>,
     start_checkpoint: Option<u64>,
     end_checkpoint: Option<u64>,
+    social_config: Option<SocialIndexerConfig>,
 ) -> (
     PgIndexerStore,
     JoinHandle<Result<(), IndexerError>>,
@@ -91,6 +92,7 @@ pub async fn start_indexer_writer_for_testing(
         start_checkpoint,
         end_checkpoint,
         false,
+        social_config,
     )
     .await
 }
@@ -107,6 +109,7 @@ pub async fn start_indexer_writer_for_testing_with_mvr_mode(
     start_checkpoint: Option<u64>,
     end_checkpoint: Option<u64>,
     mvr_mode: bool,
+    social_config: Option<SocialIndexerConfig>,
 ) -> (
     PgIndexerStore,
     JoinHandle<Result<(), IndexerError>>,
@@ -166,7 +169,7 @@ pub async fn start_indexer_writer_for_testing_with_mvr_mode(
                 retention_config,
                 token_clone,
                 mvr_mode,
-                SocialIndexerConfig::default(),
+                social_config.unwrap_or_default(),
             )
             .await
         })
@@ -307,6 +310,7 @@ pub async fn set_up_on_mvr_mode(
         None,     /* start_checkpoint */
         None,     /* end_checkpoint */
         mvr_mode, /* mvr_mode */
+        None,     /* social_config */
     )
     .await;
     (server_handle, pg_store, pg_handle, database)
@@ -341,6 +345,7 @@ pub async fn set_up_with_start_and_end_checkpoints(
         None, /* cancel */
         Some(start_checkpoint),
         Some(end_checkpoint),
+        None, /* social_config */
     )
     .await;
     (server_handle, pg_store, pg_handle, database)

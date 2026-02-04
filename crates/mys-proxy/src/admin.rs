@@ -32,8 +32,8 @@ use tower_http::{
 };
 use tracing::{info, Level};
 
-/// Configure our graceful shutdown scenarios
-pub async fn shutdown_signal(h: axum_server::Handle) {
+/// Configure our graceful shutdown scenarios  
+pub async fn shutdown_signal(h: axum_server::Handle<SocketAddr>) {
     let ctrl_c = async {
         signal::ctrl_c()
             .await
@@ -148,18 +148,22 @@ pub async fn server(
     acceptor: Option<TlsAcceptor>,
 ) -> std::io::Result<()> {
     // setup our graceful shutdown
-    let handle = axum_server::Handle::new();
+    let handle: axum_server::Handle<SocketAddr> = axum_server::Handle::new();
     // Spawn a task to gracefully shutdown server.
     tokio::spawn(shutdown_signal(handle.clone()));
 
     if let Some(verify_peers) = acceptor {
-        axum_server::Server::from_tcp(listener)
+        // Convert std::net::TcpListener to tokio::net::TcpListener for axum-server 0.8
+        let listener = tokio::net::TcpListener::from_std(listener)?;
+        axum_server::Server::from_listener(listener)
             .acceptor(verify_peers)
             .handle(handle)
             .serve(app.into_make_service_with_connect_info::<SocketAddr>())
             .await
     } else {
-        axum_server::Server::from_tcp(listener)
+        // Convert std::net::TcpListener to tokio::net::TcpListener for axum-server 0.8
+        let listener = tokio::net::TcpListener::from_std(listener)?;
+        axum_server::Server::from_listener(listener)
             .handle(handle)
             .serve(app.into_make_service_with_connect_info::<SocketAddr>())
             .await

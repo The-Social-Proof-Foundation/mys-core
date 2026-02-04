@@ -22,6 +22,7 @@ use mysten_metrics::spawn_monitored_task;
 use crate::build_json_rpc_server;
 use crate::config::{IngestionConfig, JsonRpcConfig, RetentionConfig, SnapshotLagConfig, SocialIndexerConfig};
 use crate::database::ConnectionPool;
+use crate::db::run_migrations;
 use crate::errors::IndexerError;
 use crate::handlers::checkpoint_handler::new_handlers;
 use crate::handlers::objects_snapshot_handler::start_objects_snapshot_handler;
@@ -50,6 +51,39 @@ impl Indexer {
         info!("Mys Indexer Writer config: {config:?}",);
         if social_config.enable_social_indexer {
             info!("Social indexer enabled with package: {:?}", social_config.mysocial_package_address);
+        }
+
+        // Run main indexer migrations first (before social migrations)
+        info!("Running main indexer migrations...");
+        let main_migration_conn = store.pool().dedicated_connection().await
+            .map_err(|e| IndexerError::PostgresReadError(format!("Failed to get connection for main migrations: {}", e)))?;
+        run_migrations(main_migration_conn).await
+            .map_err(|e| IndexerError::PostgresReadError(format!("Failed to run main migrations: {}", e)))?;
+        info!("Main indexer migrations completed successfully");
+
+        // Always run social migrations (schema creation) regardless of enable_social_indexer flag
+        // This ensures social tables are created even if the worker is disabled
+        let social_db_url = social_config.social_database_url
+            .as_ref()
+            .map(|u| u.to_string())
+            .unwrap_or_else(|| {
+                // Use main database URL from store if social_database_url not provided
+                store.pool().url().to_string()
+            });
+
+        let social_db_config = crate::social::config::Config {
+            database: crate::social::config::DatabaseConfig {
+                url: social_db_url,
+                max_connections: social_config.social_db_max_connections,
+            },
+            ..Default::default()
+        };
+
+        info!("Running social indexer migrations...");
+        if let Err(e) = crate::social::db::run_migrations(&social_db_config) {
+            warn!("Failed to run social migrations: {}. Continuing anyway...", e);
+        } else {
+            info!("Social indexer migrations completed successfully");
         }
 
         let extra_reader_options = ReaderOptions {
@@ -140,32 +174,13 @@ impl Indexer {
         );
         executor.register(worker_pool).await?;
 
-        // Register social checkpoint processor if enabled
+        // Register social checkpoint processor if enabled (worker runtime behavior)
         if social_config.enable_social_indexer {
             if let Some(package_address) = social_config.package_address() {
                 info!("Initializing social checkpoint processor for package: {}", package_address);
 
-                // Set up social database connection
-                let social_db_url = social_config.social_database_url
-                    .as_ref()
-                    .map(|u| u.to_string())
-                    .unwrap_or_else(|| std::env::var("DATABASE_URL").unwrap_or_default());
-
-                let social_db_config = crate::social::config::Config {
-                    database: crate::social::config::DatabaseConfig {
-                        url: social_db_url,
-                        max_connections: social_config.social_db_max_connections,
-                    },
-                    ..Default::default()
-                };
-
                 match crate::social::db::setup_connection_pool(&social_db_config).await {
                     Ok(social_db) => {
-                        // Run social migrations
-                        if let Err(e) = crate::social::db::run_migrations(&social_db_config) {
-                            warn!("Failed to run social migrations: {}. Continuing anyway...", e);
-                        }
-
                         let social_processor = crate::social::blockchain::SocialCheckpointProcessor::new(
                             social_db.clone(),
                             package_address,

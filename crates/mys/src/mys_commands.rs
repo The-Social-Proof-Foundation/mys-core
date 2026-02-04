@@ -28,6 +28,7 @@ use mys_config::{
     MYS_BENCHMARK_GENESIS_GAS_KEYSTORE_FILENAME, MYS_GENESIS_FILENAME, MYS_KEYSTORE_FILENAME,
 };
 use mys_faucet::{create_wallet_context, start_faucet, AppState, FaucetConfig, SimpleFaucet};
+use mys_indexer::config::SocialIndexerConfig;
 use mys_indexer::test_utils::{
     start_indexer_jsonrpc_for_testing, start_indexer_writer_for_testing,
 };
@@ -839,6 +840,16 @@ async fn start(
         )
         .await;
         info!("Indexer started in reader mode");
+        
+        // Auto-enable social indexer when --with-indexer is used
+        // Hardcoded framework address: 0x50c1
+        let social_config = SocialIndexerConfig {
+            enable_social_indexer: true,
+            mysocial_package_address: Some("0x50c1".to_string()),
+            social_database_url: None, // Uses main DB by default
+            social_db_max_connections: 10,
+        };
+        
         start_indexer_writer_for_testing(
             pg_address.clone(),
             None,
@@ -848,6 +859,7 @@ async fn start(
             None,
             None, /* start_checkpoint */
             None, /* end_checkpoint */
+            Some(social_config), // Pass enabled social config
         )
         .await;
         info!("Indexer started in writer mode");

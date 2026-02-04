@@ -1455,7 +1455,7 @@ module social_contracts::governance {
             voter: caller,
             vote_weight: vote_count,
             approve,
-            vote_time: current_time,
+            vote_time: current_time_ms,
             vote_cost,
         });
     }
@@ -1501,7 +1501,7 @@ module social_contracts::governance {
         event::emit(AnonymousVoteEvent {
             proposal_id,
             voter: caller,
-            vote_time: current_time,
+            vote_time: current_time_ms,
             encrypted_vote_data: serialized_vote, // Emit encrypted blob for indexer
         });
     }

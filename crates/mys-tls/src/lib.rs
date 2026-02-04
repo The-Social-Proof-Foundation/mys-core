@@ -282,7 +282,7 @@ mod tests {
         let acceptor = TlsAcceptor::new(tls_config);
         #[cfg(feature = "axum-server")]
         let _server = tokio::spawn(async move {
-            axum_server::Server::from_tcp(listener)
+            axum_server::Server::from_listener(listener)
                 .acceptor(acceptor)
                 .serve(app.into_make_service())
                 .await

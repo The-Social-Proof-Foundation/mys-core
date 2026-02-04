@@ -136,6 +136,7 @@ pub async fn start_network_cluster() -> NetworkCluster {
         Some(cancellation_token.clone()),
         None, /* start_checkpoint */
         None, /* end_checkpoint */
+        None, /* social_config */
     )
     .await;
 
@@ -197,6 +198,7 @@ pub async fn serve_executor(
         Some(cancellation_token.clone()),
         None,
         None,
+        None, /* social_config */
     )
     .await;
 
