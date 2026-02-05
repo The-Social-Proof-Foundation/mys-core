@@ -4,6 +4,7 @@
 
 use std::{
     collections::{BTreeSet, HashMap},
+    future::Future,
     sync::Arc,
 };
 
@@ -17,32 +18,35 @@ use super::reader::{ReadError, Reader};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct CheckpointKey(pub u64);
 
-#[async_trait::async_trait]
 impl Loader<CheckpointKey> for Reader {
     type Value = StoredCheckpoint;
     type Error = Arc<ReadError>;
 
-    async fn load(
+    fn load(
         &self,
         keys: &[CheckpointKey],
-    ) -> Result<HashMap<CheckpointKey, Self::Value>, Self::Error> {
-        use kv_checkpoints::dsl as c;
+    ) -> impl Future<Output = Result<HashMap<CheckpointKey, Self::Value>, Self::Error>> + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            use kv_checkpoints::dsl as c;
 
-        if keys.is_empty() {
-            return Ok(HashMap::new());
+            if keys_vec.is_empty() {
+                return Ok(HashMap::new());
+            }
+
+            let mut conn = self_clone.connect().await.map_err(Arc::new)?;
+
+            let seqs: BTreeSet<_> = keys_vec.iter().map(|d| d.0 as i64).collect();
+            let checkpoints: Vec<StoredCheckpoint> = conn
+                .results(c::kv_checkpoints.filter(c::sequence_number.eq_any(seqs)))
+                .await
+                .map_err(Arc::new)?;
+
+            Ok(checkpoints
+                .into_iter()
+                .map(|c| (CheckpointKey(c.sequence_number as u64), c))
+                .collect())
         }
-
-        let mut conn = self.connect().await.map_err(Arc::new)?;
-
-        let seqs: BTreeSet<_> = keys.iter().map(|d| d.0 as i64).collect();
-        let checkpoints: Vec<StoredCheckpoint> = conn
-            .results(c::kv_checkpoints.filter(c::sequence_number.eq_any(seqs)))
-            .await
-            .map_err(Arc::new)?;
-
-        Ok(checkpoints
-            .into_iter()
-            .map(|c| (CheckpointKey(c.sequence_number as u64), c))
-            .collect())
     }
 }

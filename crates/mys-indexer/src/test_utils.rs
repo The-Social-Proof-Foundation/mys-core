@@ -5,6 +5,7 @@
 use mysten_metrics::init_metrics;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
+use rustls;
 
 use mys_json_rpc_types::MysTransactionBlockResponse;
 use mys_pg_db::temp::{get_available_port, TempDb};
@@ -31,6 +32,12 @@ pub async fn start_indexer_jsonrpc_for_testing(
     json_rpc_url: String,
     cancel: Option<CancellationToken>,
 ) -> (JoinHandle<Result<(), IndexerError>>, CancellationToken) {
+    // Install default crypto provider for rustls (required for rustls 0.23+)
+    // This MUST be done before ANY database connections are created, including ConnectionPool::new()
+    // because connection pools may establish connections that use TLS
+    // install_default() returns Err(CryptoProvider) if already installed, which is fine - ignore it
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     let token = cancel.unwrap_or_default();
 
     // Reduce the connection pool size to 10 for testing
@@ -47,6 +54,7 @@ pub async fn start_indexer_jsonrpc_for_testing(
     let registry = prometheus::Registry::default();
     init_metrics(&registry);
 
+    // Create connection pool AFTER rustls is installed
     let pool = ConnectionPool::new(db_url.parse().unwrap(), pool_config)
         .await
         .unwrap();
@@ -115,6 +123,11 @@ pub async fn start_indexer_writer_for_testing_with_mvr_mode(
     JoinHandle<Result<(), IndexerError>>,
     CancellationToken,
 ) {
+    // Install default crypto provider for rustls (required for rustls 0.23+)
+    // This must be done before any TLS operations
+    // install_default() returns Err(CryptoProvider) if already installed, which is fine - ignore it
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     let token = cancel.unwrap_or_default();
     let snapshot_config = snapshot_config.unwrap_or(SnapshotLagConfig {
         snapshot_min_lag: 5,

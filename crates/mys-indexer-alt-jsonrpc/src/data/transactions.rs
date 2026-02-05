@@ -4,6 +4,7 @@
 
 use std::{
     collections::{BTreeSet, HashMap},
+    future::Future,
     sync::Arc,
 };
 
@@ -18,40 +19,43 @@ use super::reader::{ReadError, Reader};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct TransactionKey(pub TransactionDigest);
 
-#[async_trait::async_trait]
 impl Loader<TransactionKey> for Reader {
     type Value = StoredTransaction;
     type Error = Arc<ReadError>;
 
-    async fn load(
+    fn load(
         &self,
         keys: &[TransactionKey],
-    ) -> Result<HashMap<TransactionKey, Self::Value>, Self::Error> {
-        use kv_transactions::dsl as t;
+    ) -> impl Future<Output = Result<HashMap<TransactionKey, Self::Value>, Self::Error>> + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            use kv_transactions::dsl as t;
 
-        if keys.is_empty() {
-            return Ok(HashMap::new());
+            if keys_vec.is_empty() {
+                return Ok(HashMap::new());
+            }
+
+            let mut conn = self_clone.connect().await.map_err(Arc::new)?;
+
+            let digests: BTreeSet<_> = keys_vec.iter().map(|d| d.0.into_inner()).collect();
+            let transactions: Vec<StoredTransaction> = conn
+                .results(t::kv_transactions.filter(t::tx_digest.eq_any(digests)))
+                .await
+                .map_err(Arc::new)?;
+
+            let digest_to_stored: HashMap<_, _> = transactions
+                .into_iter()
+                .map(|stored| (stored.tx_digest.clone(), stored))
+                .collect();
+
+            Ok(keys_vec
+                .iter()
+                .filter_map(|key| {
+                    let slice: &[u8] = key.0.as_ref();
+                    Some((*key, digest_to_stored.get(slice).cloned()?))
+                })
+                .collect())
         }
-
-        let mut conn = self.connect().await.map_err(Arc::new)?;
-
-        let digests: BTreeSet<_> = keys.iter().map(|d| d.0.into_inner()).collect();
-        let transactions: Vec<StoredTransaction> = conn
-            .results(t::kv_transactions.filter(t::tx_digest.eq_any(digests)))
-            .await
-            .map_err(Arc::new)?;
-
-        let digest_to_stored: HashMap<_, _> = transactions
-            .into_iter()
-            .map(|stored| (stored.tx_digest.clone(), stored))
-            .collect();
-
-        Ok(keys
-            .iter()
-            .filter_map(|key| {
-                let slice: &[u8] = key.0.as_ref();
-                Some((*key, digest_to_stored.get(slice).cloned()?))
-            })
-            .collect())
     }
 }

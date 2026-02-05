@@ -269,12 +269,12 @@ arrow-buffer = "54"
 arrow-schema = "54"
 arc-swap = { version = "1.5.1", features = ["serde"] }
 assert_cmd = "2.0.6"
-async-graphql = "=7.0.1"
-async-graphql-axum = "=7.0.1"
-async-graphql-value = "=7.0.1"
+async-graphql = "7.2"
+async-graphql-axum = "7.2"
+async-graphql-value = "7.2"
 async-recursion = "1.0.4"
 async-stream = "0.3.6"
-async-trait = "0.1.61"
+async-trait = "0.1"
 atomic_float = "0.1"
 aws-config = "0.56"
 aws-sdk-ec2 = "0.29.0"
@@ -293,7 +293,7 @@ axum = { version = "0.8", default-features = false, features = [
     "query",
     "ws",
 ] }
-axum-extra = { version = "0.12", features = ["typed-header"] }
+axum-extra = { version = "0.12", features = ["typed-header", "with-rejection"] }
 axum-server = { version = "0.8.0", default-features = false, features = [
     "tls-rustls",
 ] }

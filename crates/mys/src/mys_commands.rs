@@ -61,6 +61,7 @@ use mys_types::crypto::{MysKeyPair, SignatureScheme, ToFromBytes};
 use tempfile::tempdir;
 use tracing;
 use tracing::info;
+use rustls;
 
 const CONCURRENCY_LIMIT: usize = 30;
 const DEFAULT_EPOCH_DURATION_MS: u64 = 60_000;
@@ -638,6 +639,10 @@ async fn start(
     no_full_node: bool,
     committee_size: Option<usize>,
 ) -> Result<(), anyhow::Error> {
+    // Install default crypto provider for rustls (required for rustls 0.23+)
+    // This must be done before any TLS operations, including database connections that might use TLS
+    // install_default() returns Err(CryptoProvider) if already installed, which is fine - ignore it
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
     if force_regenesis {
         ensure!(
             config.is_none(),

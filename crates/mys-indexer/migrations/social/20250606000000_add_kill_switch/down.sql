@@ -1,6 +1,5 @@
 -- Enhanced rollback migration for emergency kill switch functionality only
--- Transaction wrapper for atomic rollback
-BEGIN;
+-- Note: Diesel migrations run in transactions automatically, so BEGIN/COMMIT are not needed
 
 -- Drop indexes for token exchange events
 DROP INDEX IF EXISTS idx_token_exchange_events_event_id;
@@ -16,5 +15,3 @@ DROP INDEX IF EXISTS idx_token_exchange_config_updated_at;
 
 -- Drop token exchange config table
 DROP TABLE IF EXISTS token_exchange_config;
-
-COMMIT;

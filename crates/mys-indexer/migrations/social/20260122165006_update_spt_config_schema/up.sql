@@ -1,7 +1,6 @@
 -- Update spt_exchange_config schema to support separate trading and reservation fees
 -- This migration adds new fields matching the updated Move contract structure
-
-BEGIN;
+-- Note: Diesel migrations run in transactions automatically, so BEGIN/COMMIT are not needed
 
 -- ============================================================================
 -- 1. ADD NEW COLUMNS FOR SEPARATE TRADING AND RESERVATION FEES
@@ -63,5 +62,3 @@ ALTER COLUMN reservation_creator_fee_bps SET DEFAULT 100, -- 1.0% default
 ALTER COLUMN reservation_platform_fee_bps SET DEFAULT 25, -- 0.25% default
 ALTER COLUMN reservation_treasury_fee_bps SET DEFAULT 25, -- 0.25% default
 ALTER COLUMN max_reservers_per_pool SET DEFAULT 1000;     -- Default from Move contract
-
-COMMIT;

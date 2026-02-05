@@ -1,7 +1,6 @@
 -- Rename trading_halted to trading_enabled and invert boolean values
 -- This migration updates the schema to match the smart contract's positive logic
-
-BEGIN;
+-- Note: Diesel migrations run in transactions automatically, so BEGIN/COMMIT are not needed
 
 -- ============================================================================
 -- 0. DROP FUNCTION (must be dropped before changing return type)
@@ -138,6 +137,4 @@ BEGIN
     LIMIT 1;
 END;
 $$ LANGUAGE plpgsql;
-
-COMMIT;
 
