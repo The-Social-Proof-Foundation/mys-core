@@ -20,7 +20,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::{info, warn};
 
 /// Helper function to run social migrations
-fn run_social_migrations(
+async fn run_social_migrations(
     database_url: &url::Url,
     social_config: &SocialIndexerConfig,
 ) -> anyhow::Result<()> {
@@ -41,6 +41,7 @@ fn run_social_migrations(
 
     info!("Running social migrations...");
     mys_indexer::social::db::run_migrations(&social_db_config)
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to run social migrations: {}", e))?;
     info!("Social migrations completed successfully");
     Ok(())
@@ -80,7 +81,7 @@ async fn main() -> anyhow::Result<()> {
             run_migrations(pool.dedicated_connection().await?).await?;
             
             // Run social migrations after main migrations
-            run_social_migrations(&opts.database_url, &social_config)?;
+            run_social_migrations(&opts.database_url, &social_config).await?;
 
             let retention_config = if mvr_mode {
                 warn!("Indexer in MVR mode is configured to prune `objects_history` to 2 epochs. The other tables have a 2000 epoch retention.");
@@ -131,14 +132,14 @@ async fn main() -> anyhow::Result<()> {
                 reset_database(pool.dedicated_connection().await?).await?;
                 // Also run social migrations after reset
                 let default_social_config = SocialIndexerConfig::default();
-                run_social_migrations(&opts.database_url, &default_social_config)?;
+                run_social_migrations(&opts.database_url, &default_social_config).await?;
             }
         }
         Command::RunMigrations => {
             run_migrations(pool.dedicated_connection().await?).await?;
             // Also run social migrations
             let default_social_config = SocialIndexerConfig::default();
-            run_social_migrations(&opts.database_url, &default_social_config)?;
+            run_social_migrations(&opts.database_url, &default_social_config).await?;
         }
         Command::RunBackFill {
             start,

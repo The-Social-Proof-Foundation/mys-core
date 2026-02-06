@@ -4,6 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write;
+use std::future::Future;
 
 use super::available_range::AvailableRange;
 use super::balance::{self, Balance};
@@ -1290,345 +1291,363 @@ impl Target<Cursor> for StoredHistoryObject {
     }
 }
 
-#[async_trait::async_trait]
 impl Loader<HistoricalKey> for Db {
     type Value = Object;
     type Error = Error;
 
-    async fn load(&self, keys: &[HistoricalKey]) -> Result<HashMap<HistoricalKey, Object>, Error> {
-        use objects_version::dsl as v;
+    fn load(
+        &self,
+        keys: &[HistoricalKey],
+    ) -> impl Future<Output = Result<HashMap<HistoricalKey, Object>, Error>> + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            use objects_version::dsl as v;
 
-        if keys.is_empty() {
-            return Ok(HashMap::new());
+            if keys_vec.is_empty() {
+                return Ok(HashMap::new());
+            }
+
+            let id_versions: BTreeSet<_> = keys_vec
+                .iter()
+                .map(|key| (key.id.into_vec(), key.version as i64))
+                .collect();
+
+            // Maps from (object_id, version) to sequence_number in the object_versions table.
+            let object_versions: HashMap<_, _> = self_clone
+                .execute(move |conn| {
+                    async {
+                        conn.results(move || {
+                            let mut query = v::objects_version
+                                .select(StoredObjectVersion::as_select())
+                                .into_boxed();
+
+                            for (id, version) in id_versions.iter().cloned() {
+                                // TODO: consider using something other than `or_filter` to avoid returning
+                                // all results when `id_versions` is empty. It is mitigated today by the
+                                // early return above.
+                                query = query
+                                    .or_filter(v::object_id.eq(id).and(v::object_version.eq(version)));
+                            }
+
+                            query
+                        })
+                        .await
+                    }
+                    .scope_boxed()
+                })
+                .await?
+                .into_iter()
+                .map(|v| ((v.object_id, v.object_version), v.cp_sequence_number))
+                .collect();
+            let filtered_keys: Vec<_> = keys_vec
+                .iter()
+                .filter(|key| {
+                    object_versions
+                        .get(&(key.id.into_vec(), key.version as i64))
+                        // Filter by key's checkpoint viewed at here. Doing this in memory because it should be
+                        // quite rare that this query actually filters something, but encoding it in SQL is
+                        // complicated.
+                        .is_some_and(|&seq| key.checkpoint_viewed_at >= seq as u64)
+                })
+                .collect();
+            let point_lookup_keys: Vec<_> = filtered_keys
+                .iter()
+                .map(|key| PointLookupKey {
+                    id: key.id,
+                    version: key.version,
+                })
+                .collect();
+            let objects = self_clone.load(&point_lookup_keys).await?;
+            let results = filtered_keys
+                .into_iter()
+                .zip(point_lookup_keys)
+                .filter_map(|(hist_key, lookup_key)| {
+                    let object = objects.get(&lookup_key)?;
+                    let hist_obj = Object::new_serialized(
+                        lookup_key.id,
+                        lookup_key.version,
+                        object.clone(),
+                        hist_key.checkpoint_viewed_at,
+                        lookup_key.version,
+                    );
+                    hist_obj.map(|obj| (*hist_key, obj))
+                })
+                .collect();
+            Ok(results)
         }
-
-        let id_versions: BTreeSet<_> = keys
-            .iter()
-            .map(|key| (key.id.into_vec(), key.version as i64))
-            .collect();
-
-        // Maps from (object_id, version) to sequence_number in the object_versions table.
-        let object_versions: HashMap<_, _> = self
-            .execute(move |conn| {
-                async {
-                    conn.results(move || {
-                        let mut query = v::objects_version
-                            .select(StoredObjectVersion::as_select())
-                            .into_boxed();
-
-                        for (id, version) in id_versions.iter().cloned() {
-                            // TODO: consider using something other than `or_filter` to avoid returning
-                            // all results when `id_versions` is empty. It is mitigated today by the
-                            // early return above.
-                            query = query
-                                .or_filter(v::object_id.eq(id).and(v::object_version.eq(version)));
-                        }
-
-                        query
-                    })
-                    .await
-                }
-                .scope_boxed()
-            })
-            .await?
-            .into_iter()
-            .map(|v| ((v.object_id, v.object_version), v.cp_sequence_number))
-            .collect();
-        let filtered_keys: Vec<_> = keys
-            .iter()
-            .filter(|key| {
-                object_versions
-                    .get(&(key.id.into_vec(), key.version as i64))
-                    // Filter by key's checkpoint viewed at here. Doing this in memory because it should be
-                    // quite rare that this query actually filters something, but encoding it in SQL is
-                    // complicated.
-                    .is_some_and(|&seq| key.checkpoint_viewed_at >= seq as u64)
-            })
-            .collect();
-        let point_lookup_keys: Vec<_> = filtered_keys
-            .iter()
-            .map(|key| PointLookupKey {
-                id: key.id,
-                version: key.version,
-            })
-            .collect();
-        let objects = self.load(&point_lookup_keys).await?;
-        let results = filtered_keys
-            .into_iter()
-            .zip(point_lookup_keys)
-            .filter_map(|(hist_key, lookup_key)| {
-                let object = objects.get(&lookup_key)?;
-                let hist_obj = Object::new_serialized(
-                    lookup_key.id,
-                    lookup_key.version,
-                    object.clone(),
-                    hist_key.checkpoint_viewed_at,
-                    lookup_key.version,
-                );
-                hist_obj.map(|obj| (*hist_key, obj))
-            })
-            .collect();
-        Ok(results)
     }
 }
 
-#[async_trait::async_trait]
 impl Loader<ParentVersionKey> for Db {
     type Value = Object;
     type Error = Error;
 
-    async fn load(
+    fn load(
         &self,
         keys: &[ParentVersionKey],
-    ) -> Result<HashMap<ParentVersionKey, Object>, Error> {
-        // Group keys by checkpoint viewed at and parent version -- we'll issue a separate query for
-        // each group.
-        #[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
-        struct GroupKey {
-            checkpoint_viewed_at: u64,
-            parent_version: u64,
-        }
-
-        let mut keys_by_cursor_and_parent_version: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
-        for key in keys {
-            let group_key = GroupKey {
-                checkpoint_viewed_at: key.checkpoint_viewed_at,
-                parent_version: key.parent_version,
-            };
-
-            keys_by_cursor_and_parent_version
-                .entry(group_key)
-                .or_default()
-                .insert(key.id.into_vec());
-        }
-
-        // Issue concurrent reads for each group of keys.
-        let futures = keys_by_cursor_and_parent_version
-            .into_iter()
-            .map(|(group_key, ids)| {
-                self.execute(move |conn| {
-                    async move {
-                        let stored: Vec<StoredObjectVersion> = conn
-                            .results(move || {
-                                use objects_version::dsl as v;
-
-                                v::objects_version
-                                    .select(StoredObjectVersion::as_select())
-                                    .filter(v::object_id.eq_any(ids.iter().cloned()))
-                                    .filter(v::object_version.le(group_key.parent_version as i64))
-                                    .distinct_on(v::object_id)
-                                    .order_by(v::object_id)
-                                    .then_order_by(v::object_version.desc())
-                                    .into_boxed()
-                            })
-                            .await?;
-
-                        Ok::<_, diesel::result::Error>(
-                            stored
-                                .into_iter()
-                                .map(|stored| (group_key, stored))
-                                .collect::<Vec<_>>(),
-                        )
-                    }
-                    .scope_boxed()
-                })
-            });
-
-        let groups = futures::future::join_all(futures).await;
-        let mut group_map = HashMap::new();
-        for group in groups {
-            for (group_key, stored) in
-                group.map_err(|e| Error::Internal(format!("Failed to fetch objects: {e}")))?
-            {
-                // This particular object is invalid -- it didn't exist at the checkpoint we are
-                // viewing at.
-                if group_key.checkpoint_viewed_at < stored.cp_sequence_number as u64 {
-                    continue;
-                }
-                let key = ParentVersionKey {
-                    id: addr(&stored.object_id)?,
-                    checkpoint_viewed_at: group_key.checkpoint_viewed_at,
-                    parent_version: group_key.parent_version,
-                };
-                group_map.insert(key, stored.object_version);
+    ) -> impl Future<Output = Result<HashMap<ParentVersionKey, Object>, Error>> + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            // Group keys by checkpoint viewed at and parent version -- we'll issue a separate query for
+            // each group.
+            #[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
+            struct GroupKey {
+                checkpoint_viewed_at: u64,
+                parent_version: u64,
             }
-        }
-        let point_lookup_keys = group_map
-            .iter()
-            .map(|(parent_key, version)| PointLookupKey {
-                id: parent_key.id,
-                version: *version as u64,
-            })
-            .collect::<Vec<_>>();
-        let objects = self.load(&point_lookup_keys).await?;
-        let results = group_map
-            .into_keys()
-            .zip(point_lookup_keys)
-            .filter_map(|(parent_key, lookup_key)| {
-                let object = objects.get(&lookup_key)?;
-                let hist_obj = Object::new_serialized(
-                    parent_key.id,
-                    lookup_key.version,
-                    object.clone(),
-                    parent_key.checkpoint_viewed_at,
-                    // If `ParentVersionKey::parent_version` is set, it must have been correctly
-                    // propagated from the `Object::root_version` of some object.
-                    parent_key.parent_version,
-                );
-                hist_obj.map(|obj| (parent_key, obj))
-            })
-            .collect();
 
-        Ok(results)
-    }
-}
+            let mut keys_by_cursor_and_parent_version: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
+            for key in &keys_vec {
+                let group_key = GroupKey {
+                    checkpoint_viewed_at: key.checkpoint_viewed_at,
+                    parent_version: key.parent_version,
+                };
 
-#[async_trait::async_trait]
-impl Loader<LatestAtKey> for Db {
-    type Value = Object;
-    type Error = Error;
+                keys_by_cursor_and_parent_version
+                    .entry(group_key)
+                    .or_default()
+                    .insert(key.id.into_vec());
+            }
 
-    async fn load(&self, keys: &[LatestAtKey]) -> Result<HashMap<LatestAtKey, Object>, Error> {
-        // Group keys by checkpoint viewed at -- we'll issue a separate query for each group.
-        let mut keys_by_cursor_and_parent_version: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
-
-        for key in keys {
-            keys_by_cursor_and_parent_version
-                .entry(key.checkpoint_viewed_at)
-                .or_default()
-                .insert(key.id);
-        }
-
-        // Issue concurrent reads for each group of keys.
-        let futures =
-            keys_by_cursor_and_parent_version
+            // Issue concurrent reads for each group of keys.
+            let futures = keys_by_cursor_and_parent_version
                 .into_iter()
-                .map(|(checkpoint_viewed_at, ids)| {
-                    self.execute_repeatable(move |conn| {
+                .map(|(group_key, ids)| {
+                    self_clone.execute(move |conn| {
                         async move {
-                            let Some(range) =
-                                AvailableRange::result(conn, checkpoint_viewed_at).await?
-                            else {
-                                return Ok::<Vec<(u64, StoredHistoryObject)>, diesel::result::Error>(
-                                    vec![],
-                                );
-                            };
-
-                            let filter = ObjectFilter {
-                                object_ids: Some(ids.iter().cloned().collect()),
-                                ..Default::default()
-                            };
-
-                            Ok(conn
+                            let stored: Vec<StoredObjectVersion> = conn
                                 .results(move || {
-                                    build_objects_query(
-                                        View::Consistent,
-                                        range,
-                                        &Page::bounded(ids.len() as u64),
-                                        |q| filter.apply(q),
-                                        |q| q,
-                                    )
-                                    .into_boxed()
+                                    use objects_version::dsl as v;
+
+                                    v::objects_version
+                                        .select(StoredObjectVersion::as_select())
+                                        .filter(v::object_id.eq_any(ids.iter().cloned()))
+                                        .filter(v::object_version.le(group_key.parent_version as i64))
+                                        .distinct_on(v::object_id)
+                                        .order_by(v::object_id)
+                                        .then_order_by(v::object_version.desc())
+                                        .into_boxed()
                                 })
-                                .await?
-                                .into_iter()
-                                .map(|r| (checkpoint_viewed_at, r))
-                                .collect())
+                                .await?;
+
+                            Ok::<_, diesel::result::Error>(
+                                stored
+                                    .into_iter()
+                                    .map(|stored| (group_key, stored))
+                                    .collect::<Vec<_>>(),
+                            )
                         }
                         .scope_boxed()
                     })
                 });
 
-        // Wait for the reads to all finish, and gather them into the result map.
-        let groups = futures::future::join_all(futures).await;
-
-        let mut results = HashMap::new();
-        for group in groups {
-            for (checkpoint_viewed_at, stored) in
-                group.map_err(|e| Error::Internal(format!("Failed to fetch objects: {e}")))?
-            {
-                let object =
-                    Object::try_from_stored_history_object(stored, checkpoint_viewed_at, None)?;
-
-                let key = LatestAtKey {
-                    id: object.address,
-                    checkpoint_viewed_at,
-                };
-
-                results.insert(key, object);
+            let groups = futures::future::join_all(futures).await;
+            let mut group_map = HashMap::new();
+            for group in groups {
+                for (group_key, stored) in
+                    group.map_err(|e| Error::Internal(format!("Failed to fetch objects: {e}")))?
+                {
+                    // This particular object is invalid -- it didn't exist at the checkpoint we are
+                    // viewing at.
+                    if group_key.checkpoint_viewed_at < stored.cp_sequence_number as u64 {
+                        continue;
+                    }
+                    let key = ParentVersionKey {
+                        id: addr(&stored.object_id)?,
+                        checkpoint_viewed_at: group_key.checkpoint_viewed_at,
+                        parent_version: group_key.parent_version,
+                    };
+                    group_map.insert(key, stored.object_version);
+                }
             }
-        }
+            let point_lookup_keys = group_map
+                .iter()
+                .map(|(parent_key, version)| PointLookupKey {
+                    id: parent_key.id,
+                    version: *version as u64,
+                })
+                .collect::<Vec<_>>();
+            let objects = self_clone.load(&point_lookup_keys).await?;
+            let results = group_map
+                .into_keys()
+                .zip(point_lookup_keys)
+                .filter_map(|(parent_key, lookup_key)| {
+                    let object = objects.get(&lookup_key)?;
+                    let hist_obj = Object::new_serialized(
+                        parent_key.id,
+                        lookup_key.version,
+                        object.clone(),
+                        parent_key.checkpoint_viewed_at,
+                        // If `ParentVersionKey::parent_version` is set, it must have been correctly
+                        // propagated from the `Object::root_version` of some object.
+                        parent_key.parent_version,
+                    );
+                    hist_obj.map(|obj| (parent_key, obj))
+                })
+                .collect();
 
-        Ok(results)
+            Ok(results)
+        }
     }
 }
 
-#[async_trait::async_trait]
+impl Loader<LatestAtKey> for Db {
+    type Value = Object;
+    type Error = Error;
+
+    fn load(
+        &self,
+        keys: &[LatestAtKey],
+    ) -> impl Future<Output = Result<HashMap<LatestAtKey, Object>, Error>> + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            // Group keys by checkpoint viewed at -- we'll issue a separate query for each group.
+            let mut keys_by_cursor_and_parent_version: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
+
+            for key in &keys_vec {
+                keys_by_cursor_and_parent_version
+                    .entry(key.checkpoint_viewed_at)
+                    .or_default()
+                    .insert(key.id);
+            }
+
+            // Issue concurrent reads for each group of keys.
+            let futures =
+                keys_by_cursor_and_parent_version
+                    .into_iter()
+                    .map(|(checkpoint_viewed_at, ids)| {
+                        self_clone.execute_repeatable(move |conn| {
+                            async move {
+                                let Some(range) =
+                                    AvailableRange::result(conn, checkpoint_viewed_at).await?
+                                else {
+                                    return Ok::<Vec<(u64, StoredHistoryObject)>, diesel::result::Error>(
+                                        vec![],
+                                    );
+                                };
+
+                                let filter = ObjectFilter {
+                                    object_ids: Some(ids.iter().cloned().collect()),
+                                    ..Default::default()
+                                };
+
+                                Ok(conn
+                                    .results(move || {
+                                        build_objects_query(
+                                            View::Consistent,
+                                            range,
+                                            &Page::bounded(ids.len() as u64),
+                                            |q| filter.apply(q),
+                                            |q| q,
+                                        )
+                                        .into_boxed()
+                                    })
+                                    .await?
+                                    .into_iter()
+                                    .map(|r| (checkpoint_viewed_at, r))
+                                    .collect())
+                            }
+                            .scope_boxed()
+                        })
+                    });
+
+            // Wait for the reads to all finish, and gather them into the result map.
+            let groups = futures::future::join_all(futures).await;
+
+            let mut results = HashMap::new();
+            for group in groups {
+                for (checkpoint_viewed_at, stored) in
+                    group.map_err(|e| Error::Internal(format!("Failed to fetch objects: {e}")))?
+                {
+                    let object =
+                        Object::try_from_stored_history_object(stored, checkpoint_viewed_at, None)?;
+
+                    let key = LatestAtKey {
+                        id: object.address,
+                        checkpoint_viewed_at,
+                    };
+
+                    results.insert(key, object);
+                }
+            }
+
+            Ok(results)
+        }
+    }
+}
+
 impl Loader<PointLookupKey> for Db {
     type Value = Option<Vec<u8>>;
     type Error = Error;
 
-    async fn load(
+    fn load(
         &self,
         keys: &[PointLookupKey],
-    ) -> Result<HashMap<PointLookupKey, Option<Vec<u8>>>, Error> {
-        use full_objects_history::dsl as f;
+    ) -> impl Future<Output = Result<HashMap<PointLookupKey, Option<Vec<u8>>>, Error>> + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            use full_objects_history::dsl as f;
 
-        if keys.is_empty() {
-            return Ok(HashMap::new());
+            if keys_vec.is_empty() {
+                return Ok(HashMap::new());
+            }
+
+            let id_versions: BTreeSet<_> = keys_vec
+                .iter()
+                .map(|key| (key.id.into_vec(), key.version as i64))
+                .collect();
+            let objects = self_clone
+                .execute(move |conn| {
+                    async {
+                        conn.results(move || {
+                            let mut query = f::full_objects_history
+                                .select(StoredFullHistoryObject::as_select())
+                                .into_boxed();
+
+                            for (id, version) in id_versions.iter() {
+                                // TODO: consider using something other than `or_filter` to avoid returning
+                                // all results when `id_versions` is empty. It is mitigated today by the
+                                // early return above.
+                                query = query.or_filter(
+                                    f::object_id
+                                        .eq(id.clone())
+                                        .and(f::object_version.eq(*version)),
+                                );
+                            }
+
+                            query
+                        })
+                        .await
+                    }
+                    .scope_boxed()
+                })
+                .await?;
+            let objects_map: HashMap<_, _> = objects
+                .into_iter()
+                .map(|o| {
+                    (
+                        PointLookupKey {
+                            id: addr(&o.object_id).unwrap(),
+                            version: o.object_version as u64,
+                        },
+                        o.serialized_object,
+                    )
+                })
+                .collect();
+
+            let result = keys_vec
+                .iter()
+                .filter_map(|key| {
+                    let serialized = objects_map.get(key)?;
+                    Some((*key, serialized.clone()))
+                })
+                .collect();
+            Ok(result)
         }
-
-        let id_versions: BTreeSet<_> = keys
-            .iter()
-            .map(|key| (key.id.into_vec(), key.version as i64))
-            .collect();
-        let objects = self
-            .execute(move |conn| {
-                async {
-                    conn.results(move || {
-                        let mut query = f::full_objects_history
-                            .select(StoredFullHistoryObject::as_select())
-                            .into_boxed();
-
-                        for (id, version) in id_versions.iter() {
-                            // TODO: consider using something other than `or_filter` to avoid returning
-                            // all results when `id_versions` is empty. It is mitigated today by the
-                            // early return above.
-                            query = query.or_filter(
-                                f::object_id
-                                    .eq(id.clone())
-                                    .and(f::object_version.eq(*version)),
-                            );
-                        }
-
-                        query
-                    })
-                    .await
-                }
-                .scope_boxed()
-            })
-            .await?;
-        let objects_map: HashMap<_, _> = objects
-            .into_iter()
-            .map(|o| {
-                (
-                    PointLookupKey {
-                        id: addr(&o.object_id).unwrap(),
-                        version: o.object_version as u64,
-                    },
-                    o.serialized_object,
-                )
-            })
-            .collect();
-
-        let result = keys
-            .iter()
-            .filter_map(|key| {
-                let serialized = objects_map.get(key)?;
-                Some((*key, serialized.clone()))
-            })
-            .collect();
-        Ok(result)
     }
 }
 

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::future::Future;
 
 use crate::connection::ScanConnection;
 use crate::consistency::Checkpointed;
@@ -444,51 +445,57 @@ impl Checkpointed for Cursor {
 
 impl ScanLimited for Cursor {}
 
-#[async_trait::async_trait]
 impl Loader<EpochKey> for Db {
     type Value = Epoch;
     type Error = Error;
 
-    async fn load(&self, keys: &[EpochKey]) -> Result<HashMap<EpochKey, Epoch>, Error> {
-        use epochs::dsl;
+    fn load(
+        &self,
+        keys: &[EpochKey],
+    ) -> impl Future<Output = Result<HashMap<EpochKey, Epoch>, Error>> + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            use epochs::dsl;
 
-        let epoch_ids: BTreeSet<_> = keys.iter().map(|key| key.epoch_id as i64).collect();
-        let epochs: Vec<QueryableEpochInfo> = self
-            .execute_repeatable(move |conn| {
-                async move {
-                    conn.results(move || {
-                        dsl::epochs
-                            .select(QueryableEpochInfo::as_select())
-                            .filter(dsl::epoch.eq_any(epoch_ids.iter().cloned()))
-                    })
-                    .await
-                }
-                .scope_boxed()
-            })
-            .await
-            .map_err(|e| Error::Internal(format!("Failed to fetch epochs: {e}")))?;
+            let epoch_ids: BTreeSet<_> = keys_vec.iter().map(|key| key.epoch_id as i64).collect();
+            let epochs: Vec<QueryableEpochInfo> = self_clone
+                .execute_repeatable(move |conn| {
+                    async move {
+                        conn.results(move || {
+                            dsl::epochs
+                                .select(QueryableEpochInfo::as_select())
+                                .filter(dsl::epoch.eq_any(epoch_ids.iter().cloned()))
+                        })
+                        .await
+                    }
+                    .scope_boxed()
+                })
+                .await
+                .map_err(|e| Error::Internal(format!("Failed to fetch epochs: {e}")))?;
 
-        let epoch_id_to_stored: BTreeMap<_, _> = epochs
-            .into_iter()
-            .map(|stored| (stored.epoch as u64, stored))
-            .collect();
+            let epoch_id_to_stored: BTreeMap<_, _> = epochs
+                .into_iter()
+                .map(|stored| (stored.epoch as u64, stored))
+                .collect();
 
-        Ok(keys
-            .iter()
-            .filter_map(|key| {
-                let stored = epoch_id_to_stored.get(&key.epoch_id).cloned()?;
-                let epoch = Epoch {
-                    stored,
-                    checkpoint_viewed_at: key.checkpoint_viewed_at,
-                };
+            Ok(keys_vec
+                .iter()
+                .filter_map(|key| {
+                    let stored = epoch_id_to_stored.get(&key.epoch_id).cloned()?;
+                    let epoch = Epoch {
+                        stored,
+                        checkpoint_viewed_at: key.checkpoint_viewed_at,
+                    };
 
-                // We filter by checkpoint viewed at in memory because it should be quite rare that
-                // this query actually filters something (only in edge cases), and not trying to
-                // encode it in the SQL query makes the query much simpler and therefore easier for
-                // the DB to plan.
-                let start = epoch.stored.first_checkpoint_id as u64;
-                (key.checkpoint_viewed_at >= start).then_some((*key, epoch))
-            })
-            .collect())
+                    // We filter by checkpoint viewed at in memory because it should be quite rare that
+                    // this query actually filters something (only in edge cases), and not trying to
+                    // encode it in the SQL query makes the query much simpler and therefore easier for
+                    // the DB to plan.
+                    let start = epoch.stored.first_checkpoint_id as u64;
+                    (key.checkpoint_viewed_at >= start).then_some((*key, epoch))
+                })
+                .collect())
+        }
     }
 }

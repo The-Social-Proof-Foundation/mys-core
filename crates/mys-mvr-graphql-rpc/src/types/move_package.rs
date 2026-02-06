@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::future::Future;
 
 use super::balance::{self, Balance};
 use super::base64::Base64;
@@ -911,141 +912,147 @@ impl Target<Cursor> for StoredHistoryPackage {
 
 impl ScanLimited for BcsCursor<PackageCursor> {}
 
-#[async_trait::async_trait]
 impl Loader<PackageVersionKey> for Db {
     type Value = MysAddress;
     type Error = Error;
 
-    async fn load(
+    fn load(
         &self,
         keys: &[PackageVersionKey],
-    ) -> Result<HashMap<PackageVersionKey, MysAddress>, Error> {
+    ) -> impl Future<Output = Result<HashMap<PackageVersionKey, MysAddress>, Error>> + Send {
         use packages::dsl;
         let other = diesel::alias!(packages as other);
 
-        let id_versions: BTreeSet<_> = keys
-            .iter()
-            .map(|k| (k.address.into_vec(), k.version as i64))
-            .collect();
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            let id_versions: BTreeSet<_> = keys_vec
+                .iter()
+                .map(|k| (k.address.into_vec(), k.version as i64))
+                .collect();
 
-        let stored_packages: Vec<(Vec<u8>, i64, Vec<u8>)> = self
-            .execute(move |conn| {
-                async move {
-                    conn.results(|| {
-                        let mut query = dsl::packages
-                            .inner_join(
-                                other.on(dsl::original_id.eq(other.field(dsl::original_id))),
-                            )
-                            .select((
-                                dsl::package_id,
-                                other.field(dsl::package_version),
-                                other.field(dsl::package_id),
-                            ))
-                            .into_boxed();
+            let stored_packages: Vec<(Vec<u8>, i64, Vec<u8>)> = self_clone
+                .execute(move |conn| {
+                    async move {
+                        conn.results(|| {
+                            let mut query = dsl::packages
+                                .inner_join(
+                                    other.on(dsl::original_id.eq(other.field(dsl::original_id))),
+                                )
+                                .select((
+                                    dsl::package_id,
+                                    other.field(dsl::package_version),
+                                    other.field(dsl::package_id),
+                                ))
+                                .into_boxed();
 
-                        for (id, version) in id_versions.iter().cloned() {
-                            query = query.or_filter(
-                                dsl::package_id
-                                    .eq(id)
-                                    .and(other.field(dsl::package_version).eq(version)),
-                            );
-                        }
+                            for (id, version) in id_versions.iter().cloned() {
+                                query = query.or_filter(
+                                    dsl::package_id
+                                        .eq(id)
+                                        .and(other.field(dsl::package_version).eq(version)),
+                                );
+                            }
 
-                        query
-                    })
-                    .await
-                }
-                .scope_boxed()
-            })
-            .await
-            .map_err(|e| Error::Internal(format!("Failed to load packages: {e}")))?;
+                            query
+                        })
+                        .await
+                    }
+                    .scope_boxed()
+                })
+                .await
+                .map_err(|e| Error::Internal(format!("Failed to load packages: {e}")))?;
 
-        let mut result = HashMap::new();
-        for (id, version, other_id) in stored_packages {
-            result.insert(
-                PackageVersionKey {
-                    address: addr(&id)?,
-                    version: version as u64,
-                },
-                addr(&other_id)?,
-            );
+            let mut result = HashMap::new();
+            for (id, version, other_id) in stored_packages {
+                result.insert(
+                    PackageVersionKey {
+                        address: addr(&id)?,
+                        version: version as u64,
+                    },
+                    addr(&other_id)?,
+                );
+            }
+
+            Ok(result)
         }
-
-        Ok(result)
     }
 }
 
-#[async_trait::async_trait]
 impl Loader<LatestKey> for Db {
     type Value = MysAddress;
     type Error = Error;
 
-    async fn load(&self, keys: &[LatestKey]) -> Result<HashMap<LatestKey, MysAddress>, Error> {
+    fn load(&self, keys: &[LatestKey]) -> impl Future<Output = Result<HashMap<LatestKey, MysAddress>, Error>> + Send {
         use packages::dsl;
         let other = diesel::alias!(packages as other);
 
-        let mut ids_by_cursor: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
-        for key in keys {
-            ids_by_cursor
-                .entry(key.checkpoint_viewed_at)
-                .or_default()
-                .insert(key.address.into_vec());
-        }
-
-        // Issue concurrent reads for each group of IDs
-        let futures = ids_by_cursor
-            .into_iter()
-            .map(|(checkpoint_viewed_at, ids)| {
-                self.execute(move |conn| {
-                    async move {
-                        let results: Vec<(Vec<u8>, Vec<u8>)> = conn
-                            .results(|| {
-                                let o_original_id = other.field(dsl::original_id);
-                                let o_package_id = other.field(dsl::package_id);
-                                let o_cp_seq_num = other.field(dsl::checkpoint_sequence_number);
-                                let o_version = other.field(dsl::package_version);
-
-                                let query = dsl::packages
-                                    .inner_join(other.on(dsl::original_id.eq(o_original_id)))
-                                    .select((dsl::package_id, o_package_id))
-                                    .filter(dsl::package_id.eq_any(ids.iter().cloned()))
-                                    .filter(o_cp_seq_num.le(checkpoint_viewed_at as i64))
-                                    .order_by((dsl::package_id, dsl::original_id, o_version.desc()))
-                                    .distinct_on((dsl::package_id, dsl::original_id));
-                                query
-                            })
-                            .await?;
-
-                        Ok::<_, diesel::result::Error>(
-                            results
-                                .into_iter()
-                                .map(|(p, latest)| (checkpoint_viewed_at, p, latest))
-                                .collect::<Vec<_>>(),
-                        )
-                    }
-                    .scope_boxed()
-                })
-            });
-
-        // Wait for the reads to all finish, and gather them into the result map.
-        let groups = futures::future::join_all(futures).await;
-
-        let mut results = HashMap::new();
-        for group in groups {
-            for (checkpoint_viewed_at, address, latest) in
-                group.map_err(|e| Error::Internal(format!("Failed to fetch packages: {e}")))?
-            {
-                results.insert(
-                    LatestKey {
-                        address: addr(&address)?,
-                        checkpoint_viewed_at,
-                    },
-                    addr(&latest)?,
-                );
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            let mut ids_by_cursor: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
+            for key in &keys_vec {
+                ids_by_cursor
+                    .entry(key.checkpoint_viewed_at)
+                    .or_default()
+                    .insert(key.address.into_vec());
             }
-        }
 
-        Ok(results)
+            // Issue concurrent reads for each group of IDs
+            let futures = ids_by_cursor
+                .into_iter()
+                .map(|(checkpoint_viewed_at, ids)| {
+                    self_clone.execute(move |conn| {
+                        async move {
+                            let results: Vec<(Vec<u8>, Vec<u8>)> = conn
+                                .results(|| {
+                                    let o_original_id = other.field(dsl::original_id);
+                                    let o_package_id = other.field(dsl::package_id);
+                                    let o_cp_seq_num = other.field(dsl::checkpoint_sequence_number);
+                                    let o_version = other.field(dsl::package_version);
+
+                                    let query = dsl::packages
+                                        .inner_join(other.on(dsl::original_id.eq(o_original_id)))
+                                        .select((dsl::package_id, o_package_id))
+                                        .filter(dsl::package_id.eq_any(ids.iter().cloned()))
+                                        .filter(o_cp_seq_num.le(checkpoint_viewed_at as i64))
+                                        .order_by((dsl::package_id, dsl::original_id, o_version.desc()))
+                                        .distinct_on((dsl::package_id, dsl::original_id));
+                                    query
+                                })
+                                .await?;
+
+                            Ok::<_, diesel::result::Error>(
+                                results
+                                    .into_iter()
+                                    .map(|(p, latest)| (checkpoint_viewed_at, p, latest))
+                                    .collect::<Vec<_>>(),
+                            )
+                        }
+                        .scope_boxed()
+                    })
+                });
+
+            // Wait for the reads to all finish, and gather them into the result map.
+            let groups = futures::future::join_all(futures).await;
+
+            let mut results = HashMap::new();
+            for group in groups {
+                for (checkpoint_viewed_at, address, latest) in
+                    group.map_err(|e| Error::Internal(format!("Failed to fetch packages: {e}")))?
+                {
+                    results.insert(
+                        LatestKey {
+                            address: addr(&address)?,
+                            checkpoint_viewed_at,
+                        },
+                        addr(&latest)?,
+                    );
+                }
+            }
+
+            Ok(results)
+        }
     }
 }
 

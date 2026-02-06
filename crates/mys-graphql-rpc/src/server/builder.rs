@@ -276,8 +276,8 @@ impl ServerBuilder {
 
     pub fn layer<L>(mut self, layer: L) -> Self
     where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>> + Clone + Send + 'static,
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request<Body>> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<Body>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<Body>>>::Future: Send + 'static,

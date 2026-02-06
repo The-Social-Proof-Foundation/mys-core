@@ -80,7 +80,7 @@ impl Indexer {
         };
 
         info!("Running social indexer migrations...");
-        if let Err(e) = crate::social::db::run_migrations(&social_db_config) {
+        if let Err(e) = crate::social::db::run_migrations(&social_db_config).await {
             warn!("Failed to run social migrations: {}. Continuing anyway...", e);
         } else {
             info!("Social indexer migrations completed successfully");

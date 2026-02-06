@@ -8,8 +8,8 @@ use crate::{
 };
 use axum::{
     error_handling::HandleErrorLayer,
-    extract::{ConnectInfo, Host, Path},
-    http::{header::HeaderMap, StatusCode},
+    extract::{ConnectInfo, Path},
+    http::{header::{HeaderMap, HOST}, StatusCode},
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
     BoxError, Extension, Json, Router,
@@ -259,9 +259,7 @@ pub async fn start_faucet(
     let global_limited_routes = Router::new()
         .route("/gas", post(request_gas))
         .route("/v1/gas", post(batch_request_gas))
-        .layer(GovernorLayer {
-            config: governor_cfg.clone(),
-        });
+        .layer(GovernorLayer::new(governor_cfg.clone()));
 
     // This has its own rate limiter via the RequestManager
     let faucet_web_routes = Router::new().route("/v1/faucet_web_gas", post(batch_faucet_web_gas));
@@ -270,7 +268,7 @@ pub async fn start_faucet(
         .route("/", get(redirect))
         .route("/health", get(health))
         .route("/v1/faucet_discord", post(batch_faucet_discord))
-        .route("/v1/status/:task_id", get(request_status));
+        .route("/v1/status/{task_id}", get(request_status));
 
     // Combine all routes
     let app = Router::new()
@@ -325,8 +323,12 @@ async fn health() -> &'static str {
 
 /// Redirect to faucet.mysocial.network/?network if it's testnet/devnet network. For local network, keep the
 /// previous behavior to return health status.
-async fn redirect(Host(host): Host) -> Response {
+async fn redirect(headers: HeaderMap) -> Response {
     let url = FAUCET_WEB_APP_URL.to_string();
+    let host = headers
+        .get(HOST)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
     if host.contains("testnet") {
         let redirect = Redirect::to(&format!("{url}/?network=testnet"));
         redirect.into_response()

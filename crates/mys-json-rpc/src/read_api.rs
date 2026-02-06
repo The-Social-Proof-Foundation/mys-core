@@ -736,13 +736,37 @@ impl ReadApiServer for ReadApi {
             let opts = opts.unwrap_or_default();
             let mut temp_response = IntermediateTransactionResponse::new(digest);
 
-            // Fetch transaction to determine existence
+            // Fetch transaction to determine existence, with retry for recently
+            // executed transactions that may not yet be committed to the KV store.
             let transaction_kv_store = self.transaction_kv_store.clone();
             let transaction = spawn_monitored_task!(async move {
-                let ret = transaction_kv_store.get_tx(digest).await.map_err(|err| {
-                    debug!(tx_digest=?digest, "Failed to get transaction: {:?}", err);
-                    Error::from(err)
-                });
+                let backoff = ExponentialBackoff {
+                    max_elapsed_time: Some(Duration::from_secs(3)),
+                    multiplier: 1.0,
+                    ..ExponentialBackoff::default()
+                };
+                let ret = retry(backoff, || async {
+                    match transaction_kv_store.get_tx(digest).await {
+                        Ok(tx) => Ok(tx),
+                        Err(MysError::TransactionNotFound { .. }) => {
+                            debug!(
+                                tx_digest=?digest,
+                                "Transaction not yet available, retrying..."
+                            );
+                            Err(backoff::Error::transient(Error::MysError(
+                                MysError::TransactionNotFound { digest },
+                            )))
+                        }
+                        Err(err) => {
+                            debug!(
+                                tx_digest=?digest,
+                                "Failed to get transaction: {:?}", err
+                            );
+                            Err(backoff::Error::permanent(Error::from(err)))
+                        }
+                    }
+                })
+                .await;
                 add_server_timing("tx_kv_lookup");
                 ret
             })
