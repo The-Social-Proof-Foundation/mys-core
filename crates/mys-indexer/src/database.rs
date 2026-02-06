@@ -152,18 +152,11 @@ async fn establish_connection(
     url: &str,
     config: ConnectionConfig,
 ) -> Result<AsyncPgConnection, ConnectionError> {
-    // Install default crypto provider for rustls (required for rustls 0.23+)
-    // This MUST be done before AsyncPgConnection::establish() which may use TLS
-    // install_default() is safe to call multiple times - it returns Ok(()) if already installed
-    rustls::crypto::aws_lc_rs::default_provider()
-        .install_default()
-        .map_err(|e| ConnectionError::CouldntSetupConfiguration(
-            diesel::result::Error::DatabaseError(
-                diesel::result::DatabaseErrorKind::UnableToSendCommand,
-                Box::new(format!("Failed to install rustls crypto provider: {:?}", e))
-            )
-        ))?;
-    
+    // Install default crypto provider for rustls (required for rustls 0.23+).
+    // install_default() returns Err if a provider is already installed, which is
+    // expected when establishing multiple connections.
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     let mut connection = AsyncPgConnection::establish(url).await?;
 
     config
