@@ -253,11 +253,10 @@ pub async fn run_migrations(config: &Config) -> Result<()> {
         ));
     }
 
-    // Attempt async connection with detailed error handling
-    let conn = match AsyncPgConnection::establish(&config.database.url).await {
-        Ok(conn) => {
-            tracing::info!("Database migration connection established successfully");
-            conn
+    // Validate database connectivity before attempting migrations
+    match AsyncPgConnection::establish(&config.database.url).await {
+        Ok(_conn) => {
+            tracing::info!("Database migration connection validated successfully");
         }
         Err(e) => {
             tracing::error!("Failed to establish migration connection: {}", e);
@@ -290,65 +289,118 @@ pub async fn run_migrations(config: &Config) -> Result<()> {
 
     tracing::info!("Running pending database migrations...");
 
-    // Run migrations using async wrapper pattern
-    let mut wrapper: AsyncConnectionWrapper<AsyncPgConnection> =
-        AsyncConnectionWrapper::from(conn);
-    let migrations_run = tokio::task::spawn_blocking(move || {
-        wrapper
-            .run_pending_migrations(MIGRATIONS)
-            .map(|versions| versions.iter().map(MigrationVersion::as_owned).collect::<Vec<_>>())
-    })
-    .await
-    .map_err(|e| anyhow!("Migration task panicked: {}", e))?
-    .map_err(|e| {
-        let error_msg = format!("{}", e);
-        let error_debug = format!("{:?}", e);
-        
-        tracing::error!("Migration execution failed: {}", error_msg);
-        tracing::error!("Migration error details (debug): {}", error_debug);
-        
-        // Try to extract which migration failed from the error message
-        // Diesel migration errors often include the migration name/version in the format:
-        // "Failed to run migration <version> with: <error>"
-        // or "Migration <version> failed: <error>"
-        if let Some(captured) = error_msg
-            .split("Failed to run")
-            .nth(1)
-            .and_then(|s| s.split("with:").next())
-            .or_else(|| error_msg.split("Migration").nth(1).and_then(|s| s.split("failed:").next()))
-        {
-            let migration_name = captured.trim();
-            tracing::error!("Failed migration appears to be: {}", migration_name);
-            tracing::error!("Check migration file: migrations/social/{}/up.sql", migration_name);
-        }
-        
-        // Extract migration version patterns (e.g., "20260122165006" or similar timestamps)
-        let migration_pattern = regex::Regex::new(r"\d{14,}").ok();
-        if let Some(re) = migration_pattern {
-            if let Some(cap) = re.find(&error_msg) {
-                let migration_version = cap.as_str();
-                tracing::error!("Failed migration version pattern detected: {}", migration_version);
-                tracing::error!("Check migration files matching: migrations/social/{}*/up.sql", migration_version);
+    // Run migrations with retry logic for transient errors (e.g. deadlocks).
+    // TimescaleDB DDL operations (create_hypertable, compression policies, continuous
+    // aggregates) can deadlock with background workers or concurrent connections.
+    const MAX_MIGRATION_RETRIES: u32 = 3;
+    let mut migrations_run: Vec<MigrationVersion<'static>> = Vec::new();
+    let mut last_error: Option<anyhow::Error> = None;
+
+    // We need to re-establish the connection on each retry because a deadlock
+    // aborts the current transaction and leaves the connection in a broken state.
+    let db_url = config.database.url.clone();
+
+    for attempt in 1..=MAX_MIGRATION_RETRIES {
+        let conn = match AsyncPgConnection::establish(&db_url).await {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::error!("Failed to establish migration connection on attempt {}: {}", attempt, e);
+                last_error = Some(anyhow!("Failed to establish migration connection: {}", e));
+                if attempt < MAX_MIGRATION_RETRIES {
+                    let wait = Duration::from_secs(2_u64.pow(attempt - 1));
+                    tracing::info!("Retrying migrations in {:?}...", wait);
+                    tokio::time::sleep(wait).await;
+                }
+                continue;
+            }
+        };
+
+        let mut wrapper: AsyncConnectionWrapper<AsyncPgConnection> =
+            AsyncConnectionWrapper::from(conn);
+        let result = tokio::task::spawn_blocking(move || {
+            wrapper
+                .run_pending_migrations(MIGRATIONS)
+                .map(|versions| versions.iter().map(MigrationVersion::as_owned).collect::<Vec<_>>())
+        })
+        .await
+        .map_err(|e| anyhow!("Migration task panicked: {}", e));
+
+        match result {
+            Ok(Ok(versions)) => {
+                migrations_run = versions;
+                last_error = None;
+                if attempt > 1 {
+                    tracing::info!("Migrations succeeded on attempt {}", attempt);
+                }
+                break;
+            }
+            Ok(Err(e)) => {
+                let error_msg = format!("{}", e);
+                let is_retryable = error_msg.contains("deadlock detected")
+                    || error_msg.contains("could not serialize access")
+                    || error_msg.contains("current transaction is aborted");
+
+                if is_retryable && attempt < MAX_MIGRATION_RETRIES {
+                    tracing::warn!(
+                        "Migration attempt {} failed with retryable error: {}. Retrying...",
+                        attempt, error_msg
+                    );
+                    let wait = Duration::from_secs(2_u64.pow(attempt - 1));
+                    tokio::time::sleep(wait).await;
+                    last_error = Some(anyhow!("Migration error: {}", error_msg));
+                    continue;
+                }
+
+                // Non-retryable or final attempt — log detailed diagnostics
+                let error_debug = format!("{:?}", e);
+                tracing::error!("Migration execution failed: {}", error_msg);
+                tracing::error!("Migration error details (debug): {}", error_debug);
+
+                if let Some(captured) = error_msg
+                    .split("Failed to run")
+                    .nth(1)
+                    .and_then(|s| s.split("with:").next())
+                    .or_else(|| error_msg.split("Migration").nth(1).and_then(|s| s.split("failed:").next()))
+                {
+                    let migration_name = captured.trim();
+                    tracing::error!("Failed migration appears to be: {}", migration_name);
+                    tracing::error!("Check migration file: migrations/social/{}/up.sql", migration_name);
+                }
+
+                let migration_pattern = regex::Regex::new(r"\d{14,}").ok();
+                if let Some(re) = migration_pattern {
+                    if let Some(cap) = re.find(&error_msg) {
+                        let migration_version = cap.as_str();
+                        tracing::error!("Failed migration version pattern detected: {}", migration_version);
+                        tracing::error!("Check migration files matching: migrations/social/{}*/up.sql", migration_version);
+                    }
+                }
+
+                if error_msg.contains("Cannot perform this operation outside of a transaction") {
+                    tracing::error!("This error typically indicates:");
+                    tracing::error!("  1. A migration SQL file contains explicit BEGIN/COMMIT statements");
+                    tracing::error!("  2. A migration tries to perform operations that conflict with diesel's automatic transaction wrapping");
+                    tracing::error!("  3. A migration uses SAVEPOINT or other subtransaction features incorrectly");
+                    tracing::error!("  4. Connection state issues with AsyncConnectionWrapper in spawn_blocking");
+                    tracing::error!("  5. A migration attempts DDL operations that cannot run inside a transaction");
+                    tracing::error!("Please check migration SQL files for explicit transaction control statements.");
+                } else if error_msg.contains("relation") && error_msg.contains("does not exist") {
+                    tracing::error!("Table or relation does not exist - check migration order and dependencies");
+                }
+
+                last_error = Some(anyhow!("Migration error: {}", error_msg));
+                break;
+            }
+            Err(e) => {
+                last_error = Some(e);
+                break;
             }
         }
-        
-        // Provide specific guidance for common errors
-        if error_msg.contains("Cannot perform this operation outside of a transaction") {
-            tracing::error!("This error typically indicates:");
-            tracing::error!("  1. A migration SQL file contains explicit BEGIN/COMMIT statements");
-            tracing::error!("  2. A migration tries to perform operations that conflict with diesel's automatic transaction wrapping");
-            tracing::error!("  3. A migration uses SAVEPOINT or other subtransaction features incorrectly");
-            tracing::error!("  4. Connection state issues with AsyncConnectionWrapper in spawn_blocking");
-            tracing::error!("  5. A migration attempts DDL operations that cannot run inside a transaction");
-            tracing::error!("Please check migration SQL files for explicit transaction control statements.");
-        } else if error_msg.contains("current transaction is aborted") {
-            tracing::error!("Transaction was aborted - this may indicate a SQL syntax error or constraint violation");
-        } else if error_msg.contains("relation") && error_msg.contains("does not exist") {
-            tracing::error!("Table or relation does not exist - check migration order and dependencies");
-        }
-        
-        anyhow::anyhow!("Migration error: {}", error_msg)
-    })?;
+    }
+
+    if let Some(err) = last_error {
+        return Err(err);
+    }
 
     if migrations_run.is_empty() {
         tracing::info!("No pending migrations to run");
