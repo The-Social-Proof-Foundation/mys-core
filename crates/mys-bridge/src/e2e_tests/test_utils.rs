@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::abi::EthBridgeConfig;
@@ -9,9 +10,9 @@ use crate::crypto::BridgeAuthorityPublicKeyBytes;
 use crate::crypto::BridgeAuthoritySignInfo;
 use crate::events::*;
 use crate::metrics::BridgeMetrics;
-use crate::server::BridgeNodePublicMetadata;
 use crate::mys_transaction_builder::build_add_tokens_on_mys_transaction;
 use crate::mys_transaction_builder::build_committee_register_transaction;
+use crate::server::BridgeNodePublicMetadata;
 use crate::types::BridgeCommitteeValiditySignInfo;
 use crate::types::CertifiedBridgeAction;
 use crate::types::VerifiedCertifiedBridgeAction;
@@ -24,20 +25,6 @@ use ethers::types::Address as EthAddress;
 use futures::future::join_all;
 use futures::Future;
 use move_core_types::language_storage::{StructTag, TypeTag};
-use prometheus::Registry;
-use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::collections::{BTreeMap, HashMap};
-use std::fs::File;
-use std::fs::{self, DirBuilder};
-use std::io::{Read, Write};
-use std::path::Path;
-use std::path::PathBuf;
-use std::process::Command;
-use std::str::FromStr;
-use std::sync::Arc;
 use mys_json_rpc_api::BridgeReadApiClient;
 use mys_json_rpc_types::MysEvent;
 use mys_json_rpc_types::MysExecutionStatus;
@@ -62,6 +49,20 @@ use mys_types::digests::TransactionDigest;
 use mys_types::object::Object;
 use mys_types::transaction::{ObjectArg, Transaction, TransactionData};
 use mys_types::{BRIDGE_PACKAGE_ID, MYS_BRIDGE_OBJECT_ID};
+use prometheus::Registry;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::collections::{BTreeMap, HashMap};
+use std::fs::File;
+use std::fs::{self, DirBuilder};
+use std::io::{Read, Write};
+use std::path::Path;
+use std::path::PathBuf;
+use std::process::Command;
+use std::str::FromStr;
+use std::sync::Arc;
 use tokio::join;
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
@@ -70,22 +71,24 @@ use tracing::error;
 use tracing::info;
 
 use crate::config::{BridgeNodeConfig, EthConfig, MysConfig};
-use crate::node::run_bridge_node;
 use crate::mys_client::MysBridgeClient;
+use crate::node::run_bridge_node;
 use crate::BRIDGE_ENABLE_PROTOCOL_VERSION;
 use anyhow::anyhow;
 use ethers::prelude::*;
 use move_core_types::ident_str;
-use std::process::Child;
 use mys_config::local_ip_utils::get_available_port;
 use mys_sdk::MysClient;
 use mys_types::base_types::MysAddress;
 use mys_types::crypto::EncodeDecodeBase64;
 use mys_types::crypto::KeypairTraits;
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
+use std::process::Child;
 use tap::TapFallible;
 use tempfile::tempdir;
+#[cfg(feature = "test-utils")]
 use test_cluster::TestCluster;
+#[cfg(feature = "test-utils")]
 use test_cluster::TestClusterBuilder;
 
 const BRIDGE_COMMITTEE_NAME: &str = "BridgeCommittee";
@@ -523,7 +526,7 @@ pub(crate) async fn deploy_sol_contract(
     // Write the deploy config to a temp file then provide it to the forge late
     let deploy_config_path = tempfile::tempdir()
         .unwrap()
-        .into_path()
+        .keep()
         .join("sol_deploy_config.json");
     let node_len = bridge_authority_keys.len();
     let stake = TOTAL_VOTING_POWER / (node_len as u64);
@@ -777,7 +780,7 @@ pub(crate) async fn start_bridge_cluster(
         .enumerate()
     {
         // prepare node config (server + client)
-        let tmp_dir = tempdir().unwrap().into_path().join(i.to_string());
+        let tmp_dir = tempdir().unwrap().keep().join(i.to_string());
         std::fs::create_dir_all(tmp_dir.clone()).unwrap();
         let db_path = tmp_dir.join("client_db");
         // write authority key to file
@@ -809,6 +812,8 @@ pub(crate) async fn start_bridge_cluster(
             metrics_key_pair: default_ed25519_key_pair(),
             metrics: None,
             watchdog_config: None,
+            relay: None,
+            deposits: None,
         };
         // Spawn bridge node in memory
         handles.push(

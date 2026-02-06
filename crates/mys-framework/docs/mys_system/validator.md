@@ -61,7 +61,7 @@ title: Module `mys_system::validator`
 -  [Function `pending_stake_withdraw_amount`](#mys_system_validator_pending_stake_withdraw_amount)
 -  [Function `gas_price`](#mys_system_validator_gas_price)
 -  [Function `commission_rate`](#mys_system_validator_commission_rate)
--  [Function `pool_token_exchange_rate_at_epoch`](#mys_system_validator_pool_token_exchange_rate_at_epoch)
+-  [Function `pool_social_proof_token_rate_at_epoch`](#mys_system_validator_pool_social_proof_token_rate_at_epoch)
 -  [Function `staking_pool_id`](#mys_system_validator_staking_pool_id)
 -  [Function `is_duplicate`](#mys_system_validator_is_duplicate)
 -  [Function `is_equal_some_and_value`](#mys_system_validator_is_equal_some_and_value)
@@ -92,17 +92,10 @@ title: Module `mys_system::validator`
 -  [Function `new_from_metadata`](#mys_system_validator_new_from_metadata)
 
 
-<pre><code><b>use</b> <a href="../std/address.md#std_address">std::address</a>;
-<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
-<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
-<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
-<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
-<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
-<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
-<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
 <b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
@@ -110,8 +103,8 @@ title: Module `mys_system::validator`
 <b>use</b> <a href="../mys/dynamic_object_field.md#mys_dynamic_object_field">mys::dynamic_object_field</a>;
 <b>use</b> <a href="../mys/event.md#mys_event">mys::event</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
-<b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
+<b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/table.md#mys_table">mys::table</a>;
 <b>use</b> <a href="../mys/transfer.md#mys_transfer">mys::transfer</a>;
 <b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
@@ -120,6 +113,14 @@ title: Module `mys_system::validator`
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
 <b>use</b> <a href="../mys_system/staking_pool.md#mys_system_staking_pool">mys_system::staking_pool</a>;
 <b>use</b> <a href="../mys_system/validator_cap.md#mys_system_validator_cap">mys_system::validator_cap</a>;
+<b>use</b> <a href="../std/address.md#std_address">std::address</a>;
+<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
+<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
+<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
+<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
+<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
+<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
 
@@ -144,7 +145,7 @@ title: Module `mys_system::validator`
 <code><a href="../mys_system/validator.md#mys_system_validator_mys_address">mys_address</a>: <b>address</b></code>
 </dt>
 <dd>
- The MySocial Address of the validator. This is the sender that created the Validator object,
+ The Mys Address of the validator. This is the sender that created the Validator object,
  and also the address to send validator/coins to during withdraws.
 </dd>
 <dt>
@@ -2149,13 +2150,13 @@ Set the voting power of this validator, called only from validator_set.
 
 </details>
 
-<a name="mys_system_validator_pool_token_exchange_rate_at_epoch"></a>
+<a name="mys_system_validator_pool_social_proof_token_rate_at_epoch"></a>
 
-## Function `pool_token_exchange_rate_at_epoch`
+## Function `pool_social_proof_token_rate_at_epoch`
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys_system/validator.md#mys_system_validator_pool_token_exchange_rate_at_epoch">pool_token_exchange_rate_at_epoch</a>(self: &<a href="../mys_system/validator.md#mys_system_validator_Validator">mys_system::validator::Validator</a>, epoch: u64): <a href="../mys_system/staking_pool.md#mys_system_staking_pool_PoolTokenExchangeRate">mys_system::staking_pool::PoolTokenExchangeRate</a>
+<pre><code><b>public</b> <b>fun</b> <a href="../mys_system/validator.md#mys_system_validator_pool_social_proof_token_rate_at_epoch">pool_social_proof_token_rate_at_epoch</a>(self: &<a href="../mys_system/validator.md#mys_system_validator_Validator">mys_system::validator::Validator</a>, epoch: u64): <a href="../mys_system/staking_pool.md#mys_system_staking_pool_PoolTokenExchangeRate">mys_system::staking_pool::PoolTokenExchangeRate</a>
 </code></pre>
 
 
@@ -2164,8 +2165,8 @@ Set the voting power of this validator, called only from validator_set.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys_system/validator.md#mys_system_validator_pool_token_exchange_rate_at_epoch">pool_token_exchange_rate_at_epoch</a>(self: &<a href="../mys_system/validator.md#mys_system_validator_Validator">Validator</a>, epoch: u64): PoolTokenExchangeRate {
-    self.<a href="../mys_system/staking_pool.md#mys_system_staking_pool">staking_pool</a>.<a href="../mys_system/validator.md#mys_system_validator_pool_token_exchange_rate_at_epoch">pool_token_exchange_rate_at_epoch</a>(epoch)
+<pre><code><b>public</b> <b>fun</b> <a href="../mys_system/validator.md#mys_system_validator_pool_social_proof_token_rate_at_epoch">pool_social_proof_token_rate_at_epoch</a>(self: &<a href="../mys_system/validator.md#mys_system_validator_Validator">Validator</a>, epoch: u64): PoolTokenExchangeRate {
+    self.<a href="../mys_system/staking_pool.md#mys_system_staking_pool">staking_pool</a>.<a href="../mys_system/validator.md#mys_system_validator_pool_social_proof_token_rate_at_epoch">pool_social_proof_token_rate_at_epoch</a>(epoch)
 }
 </code></pre>
 

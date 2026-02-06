@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::path::PathBuf;
@@ -10,7 +11,7 @@ use move_vm_config::verifier::{MeterConfig, VerifierConfig};
 use mys_protocol_config::ProtocolConfig;
 use mys_types::execution::ExecutionTiming;
 use mys_types::{
-    base_types::{ObjectRef, MysAddress, TxContext},
+    base_types::{MysAddress, ObjectRef, TxContext},
     committee::EpochId,
     digests::TransactionDigest,
     effects::TransactionEffects,

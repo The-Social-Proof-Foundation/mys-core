@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{collections::HashSet, sync::Arc};
@@ -112,6 +113,7 @@ impl EpochState {
             &input_object_kinds,
             &receiving_object_refs,
             deny_config,
+            &store,
             &store,
         )?;
 

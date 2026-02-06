@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 #[cfg(msim)]
@@ -16,10 +17,10 @@ pub use anemo_tower;
 pub use fastcrypto;
 pub use lru;
 pub use move_package;
-pub use mysten_network;
 pub use mys_framework;
 pub use mys_move_build;
 pub use mys_types;
+pub use mysten_network;
 pub use telemetry_subscribers;
 pub use tempfile;
 pub use tower;

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_graphql::connection::{Connection, CursorType, Edge};
@@ -40,7 +41,7 @@ pub(crate) enum DynamicFieldValue {
 #[derive(InputObject)] // used as input object
 pub(crate) struct DynamicFieldName {
     /// The string type of the DynamicField's 'name' field.
-    /// A string representation of a Move primitive like 'u64', or a struct type like '0x2::kiosk::Listing'
+    /// A string representation of a Move primitive like 'u64', or a struct type name
     pub type_: ExactTypeFilter,
     /// The Base64 encoded bcs serialization of the DynamicField's 'name' field.
     pub bcs: Base64,

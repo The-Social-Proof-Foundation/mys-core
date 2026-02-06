@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 #[test_only]
@@ -128,7 +129,7 @@ module mys_system::staking_pool_tests {
 
         assert!(distribute_rewards_and_advance_epoch(&mut staking_pool, &mut scenario, 0) == 1, 0);
 
-        let latest_exchange_rate = staking_pool.pool_token_exchange_rate_at_epoch(1);
+        let latest_exchange_rate = staking_pool.pool_social_proof_token_rate_at_epoch(1);
         assert!(latest_exchange_rate.mys_amount() == 1_000_000_000, 0);
         assert!(latest_exchange_rate.pool_token_amount() == 1_000_000_000, 0);
 
@@ -137,7 +138,7 @@ module mys_system::staking_pool_tests {
 
         assert!(distribute_rewards_and_advance_epoch(&mut staking_pool, &mut scenario, 1_000_000_000) == 2, 0);
 
-        let latest_exchange_rate = staking_pool.pool_token_exchange_rate_at_epoch(2);
+        let latest_exchange_rate = staking_pool.pool_social_proof_token_rate_at_epoch(2);
         assert!(latest_exchange_rate.mys_amount() == 3_000_000_000, 0);
         assert!(latest_exchange_rate.pool_token_amount() == 1_500_000_000, 0);
 
@@ -180,7 +181,7 @@ module mys_system::staking_pool_tests {
 
         assert!(distribute_rewards_and_advance_epoch(&mut staking_pool, &mut scenario, 0) == 1, 0);
 
-        let latest_exchange_rate = staking_pool.pool_token_exchange_rate_at_epoch(1);
+        let latest_exchange_rate = staking_pool.pool_social_proof_token_rate_at_epoch(1);
         assert!(latest_exchange_rate.mys_amount() == 1_000_000_000, 0);
         assert!(latest_exchange_rate.pool_token_amount() == 1_000_000_000, 0);
 
@@ -189,7 +190,7 @@ module mys_system::staking_pool_tests {
 
         assert!(distribute_rewards_and_advance_epoch(&mut staking_pool, &mut scenario, 1_000_000_000) == 2, 0);
 
-        let latest_exchange_rate = staking_pool.pool_token_exchange_rate_at_epoch(2);
+        let latest_exchange_rate = staking_pool.pool_social_proof_token_rate_at_epoch(2);
         assert!(latest_exchange_rate.mys_amount() == 3_000_000_000, 0);
         assert!(latest_exchange_rate.pool_token_amount() == 1_500_000_000, 0);
 
@@ -212,7 +213,7 @@ module mys_system::staking_pool_tests {
         // test starts here
         assert!(distribute_rewards_and_advance_epoch(&mut staking_pool, &mut scenario, 3_000_000_000) == 3, 0);
 
-        let latest_exchange_rate = staking_pool.pool_token_exchange_rate_at_epoch(3);
+        let latest_exchange_rate = staking_pool.pool_social_proof_token_rate_at_epoch(3);
         assert!(latest_exchange_rate.mys_amount() == 6_000_000_000, 0);
         assert!(latest_exchange_rate.pool_token_amount() == 1_500_000_000, 0);
 
@@ -260,7 +261,7 @@ module mys_system::staking_pool_tests {
 
         assert!(distribute_rewards_and_advance_epoch(&mut staking_pool, &mut scenario, 0) == 1, 0);
 
-        let latest_exchange_rate = staking_pool.pool_token_exchange_rate_at_epoch(1);
+        let latest_exchange_rate = staking_pool.pool_social_proof_token_rate_at_epoch(1);
         assert!(latest_exchange_rate.mys_amount() == 1_000_000_000, 0);
         assert!(latest_exchange_rate.pool_token_amount() == 1_000_000_000, 0);
 
@@ -269,7 +270,7 @@ module mys_system::staking_pool_tests {
 
         assert!(distribute_rewards_and_advance_epoch(&mut staking_pool, &mut scenario, 1_000_000_000) == 2, 0);
 
-        let latest_exchange_rate = staking_pool.pool_token_exchange_rate_at_epoch(2);
+        let latest_exchange_rate = staking_pool.pool_social_proof_token_rate_at_epoch(2);
         assert!(latest_exchange_rate.mys_amount() == 3_000_000_001, 0);
         assert!(latest_exchange_rate.pool_token_amount() == 1_500_000_000, 0);
 

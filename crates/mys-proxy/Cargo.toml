@@ -30,7 +30,7 @@ itertools.workspace = true
 rand.workspace = true
 reqwest.workspace = true
 hyper.workspace = true
-mys-tls.workspace = true
+mys-tls = { workspace = true, features = ["axum-server"] }
 mys-types.workspace = true
 mysten-metrics.workspace = true
 multiaddr.workspace = true

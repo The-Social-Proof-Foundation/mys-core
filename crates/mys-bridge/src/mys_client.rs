@@ -1,18 +1,14 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::anyhow;
 use async_trait::async_trait;
 use core::panic;
 use fastcrypto::traits::ToFromBytes;
-use serde::de::DeserializeOwned;
-use std::collections::HashMap;
-use std::str::from_utf8;
-use std::sync::Arc;
-use std::time::Duration;
 use mys_json_rpc_api::BridgeReadApiClient;
 use mys_json_rpc_types::DevInspectResults;
-use mys_json_rpc_types::{EventFilter, Page, MysEvent};
+use mys_json_rpc_types::{EventFilter, MysEvent, Page};
 use mys_json_rpc_types::{
     EventPage, MysObjectDataOptions, MysTransactionBlockResponse,
     MysTransactionBlockResponseOptions,
@@ -38,11 +34,16 @@ use mys_types::TypeTag;
 use mys_types::BRIDGE_PACKAGE_ID;
 use mys_types::MYS_BRIDGE_OBJECT_ID;
 use mys_types::{
-    base_types::{ObjectID, MysAddress},
+    base_types::{MysAddress, ObjectID},
     digests::TransactionDigest,
     event::EventID,
     Identifier,
 };
+use serde::de::DeserializeOwned;
+use std::collections::HashMap;
+use std::str::from_utf8;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::OnceCell;
 use tracing::{error, warn};
 
@@ -92,6 +93,13 @@ where
             inner,
             bridge_metrics: Arc::new(BridgeMetrics::new_for_testing()),
         }
+    }
+
+    pub async fn get_gas_object_once(
+        &self,
+        gas_object_id: ObjectID,
+    ) -> BridgeResult<(GasCoin, ObjectRef, Owner)> {
+        self.inner.get_gas_object_once(gas_object_id).await
     }
 
     // TODO assert chain identifier
@@ -436,6 +444,12 @@ pub trait MysClientInner: Send + Sync {
         &self,
         gas_object_id: ObjectID,
     ) -> (GasCoin, ObjectRef, Owner);
+
+    /// Try to get gas object once (no retry loop). Returns error if object not found.
+    async fn get_gas_object_once(
+        &self,
+        gas_object_id: ObjectID,
+    ) -> Result<(GasCoin, ObjectRef, Owner), BridgeError>;
 }
 
 #[async_trait]
@@ -579,6 +593,30 @@ impl MysClientInner for MysSdkClient {
             }
         }
     }
+
+    async fn get_gas_object_once(
+        &self,
+        gas_object_id: ObjectID,
+    ) -> Result<(GasCoin, ObjectRef, Owner), BridgeError> {
+        match self
+            .read_api()
+            .get_object_with_options(
+                gas_object_id,
+                MysObjectDataOptions::default().with_owner().with_content(),
+            )
+            .await
+            .map_err(|e| BridgeError::Generic(format!("Failed to query gas object: {:?}", e)))?
+            .data
+        {
+            Some(gas_obj) => {
+                let owner = gas_obj.owner.clone().expect("Owner is requested");
+                let gas_coin = GasCoin::try_from(&gas_obj)
+                    .map_err(|e| BridgeError::Generic(format!("{} is not a gas coin: {:?}", gas_object_id, e)))?;
+                Ok((gas_coin, gas_obj.object_ref(), owner))
+            }
+            None => Err(BridgeError::Generic(format!("Gas object {} not found", gas_object_id))),
+        }
+    }
 }
 
 /// Helper function to dev-inspect `bridge::{function_name}` function
@@ -656,11 +694,11 @@ mod tests {
     };
     use ethers::types::Address as EthAddress;
     use move_core_types::account_address::AccountAddress;
-    use serde::{Deserialize, Serialize};
-    use std::str::FromStr;
     use mys_json_rpc_types::BcsEvent;
     use mys_types::bridge::{BridgeChainId, TOKEN_ID_MYS, TOKEN_ID_USDC};
     use mys_types::crypto::get_key_pair;
+    use serde::{Deserialize, Serialize};
+    use std::str::FromStr;
 
     use super::*;
     use crate::events::{init_all_struct_tags, MysToEthTokenBridgeV1};

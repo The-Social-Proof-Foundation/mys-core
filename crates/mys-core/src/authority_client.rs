@@ -1,13 +1,10 @@
 // Copyright (c) 2021, Facebook, Inc. and its affiliates
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-use mysten_network::config::Config;
-use std::collections::BTreeMap;
-use std::net::SocketAddr;
-use std::time::Duration;
 use mys_network::{api::ValidatorClient, tonic};
 use mys_types::base_types::AuthorityName;
 use mys_types::committee::CommitteeWithNetworkMetadata;
@@ -21,6 +18,10 @@ use mys_types::{
     error::{MysError, MysResult},
     transaction::*,
 };
+use mysten_network::config::Config;
+use std::collections::BTreeMap;
+use std::net::SocketAddr;
+use std::time::Duration;
 
 use crate::authority_client::tonic::IntoRequest;
 use mys_network::tonic::metadata::KeyAndValueRef;

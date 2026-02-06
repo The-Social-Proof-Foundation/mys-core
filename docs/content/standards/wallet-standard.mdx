@@ -17,7 +17,7 @@ Create a class that represents your wallet. Use the `Wallet` interface from
 `@mysten/wallet-standard` to help ensure your class adheres to the standard.
 
 ```tsx
-import { MYS_DEVNET_CHAIN, Wallet } from '@mysten/wallet-standard';
+import { MYS_DEVNET_CHAIN, Wallet } from '@socialproof/wallet-standard';
 
 class YourWallet implements Wallet {
 	get version() {
@@ -140,7 +140,7 @@ The accounts use the `ReadonlyWalletAccount` class to construct an account match
 required interface.
 
 ```tsx
-import { ReadonlyWalletAccount } from '@mysten/wallet-standard';
+import { ReadonlyWalletAccount } from '@socialproof/wallet-standard';
 
 class YourWallet implements Wallet {
 	get accounts() {
@@ -172,7 +172,7 @@ After you have a compatible interface for your wallet, use the `registerWallet`
 function to register it.
 
 ```tsx
-import { registerWallet } from '@mysten/wallet-standard';
+import { registerWallet } from '@socialproof/wallet-standard';
 
 registerWallet(new YourWallet());
 ```
@@ -214,7 +214,7 @@ The Wallet standard includes features to help your apps interact with wallets.
 To query the installed wallets in a user's browser, use the `get` function of `getWallets`.
 
 ```tsx
-import { getWallets } from '@mysten/wallet-standard';
+import { getWallets } from '@socialproof/wallet-standard';
 
 const availableWallets = getWallets().get();
 ```
@@ -277,7 +277,7 @@ client.executeTransactionBlock({
 Your app then sends the transaction effects back to the wallet, which reports results to the user. The wallet expects the effects to be `b64` encoded.
 
 ```tsx
-import { toBase64 } from '@mysten/mys/utils';
+import { toBase64 } from '@socialproof/mys/utils';
 
 wallet.features['mys:reportTransactionEffects'].reportTransactionEffects(
     effects: Array.isArray(transactionResponse.effects) ? toBase64(

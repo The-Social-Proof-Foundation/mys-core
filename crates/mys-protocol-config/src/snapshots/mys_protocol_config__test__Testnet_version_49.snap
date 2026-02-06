@@ -84,7 +84,7 @@ binary_field_handles: 500
 binary_field_instantiations: 250
 binary_friend_decls: 100
 max_move_object_size: 256000
-max_move_package_size: 102400
+max_move_package_size: 1048576
 max_publish_or_upgrade_per_ptb: 5
 max_tx_gas: 50000000000
 max_gas_price: 100000
@@ -274,4 +274,3 @@ random_beacon_dkg_timeout_round: 3000
 random_beacon_min_round_interval_ms: 200
 consensus_max_transaction_size_bytes: 262144
 consensus_max_transactions_in_block_bytes: 6291456
-

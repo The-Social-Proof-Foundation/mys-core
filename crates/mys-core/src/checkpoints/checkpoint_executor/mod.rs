@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! CheckpointExecutor is a Node component that executes all checkpoints for the
@@ -28,7 +29,6 @@ use std::{
 use either::Either;
 use futures::stream::FuturesOrdered;
 use itertools::izip;
-use mysten_metrics::spawn_monitored_task;
 use mys_config::node::{CheckpointExecutorConfig, RunWithRange};
 use mys_macros::{fail_point, fail_point_async};
 use mys_types::accumulator::Accumulator;
@@ -45,6 +45,7 @@ use mys_types::{
     transaction::VerifiedTransaction,
 };
 use mys_types::{error::MysResult, transaction::TransactionDataAPI};
+use mysten_metrics::spawn_monitored_task;
 use tap::{TapFallible, TapOptional};
 use tokio::{
     sync::broadcast::{self, error::RecvError},

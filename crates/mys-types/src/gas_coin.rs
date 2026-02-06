@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use move_core_types::{
@@ -21,11 +22,11 @@ use crate::{
     MYS_FRAMEWORK_ADDRESS,
 };
 
-/// The number of Mist per Mys token
+/// The number of Mist per MySo token
 pub const MIST_PER_MYS: u64 = 1_000_000_000;
 
-/// Total supply denominated in Mys
-pub const TOTAL_SUPPLY_MYS: u64 = 10_000_000_000;
+/// Total supply denominated in MySo
+pub const TOTAL_SUPPLY_MYS: u64 = 1_000_000_000;
 
 // Note: cannot use checked arithmetic here since `const unwrap` is still unstable.
 /// Total supply denominated in Mist

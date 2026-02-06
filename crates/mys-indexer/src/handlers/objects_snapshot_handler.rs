@@ -1,12 +1,13 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_trait::async_trait;
+use mys_data_ingestion_core::Worker;
+use mys_rpc_api::CheckpointData;
 use mysten_metrics::get_metrics;
 use mysten_metrics::metered_channel::Sender;
 use mysten_metrics::spawn_monitored_task;
-use mys_data_ingestion_core::Worker;
-use mys_rpc_api::CheckpointData;
 use tokio_util::sync::CancellationToken;
 use tracing::info;
 

@@ -1,8 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 mod utils;
-use shared_crypto::intent::Intent;
 use mys_config::{mys_config_dir, MYS_KEYSTORE_FILENAME};
 use mys_keys::keystore::{AccountKeystore, FileBasedKeystore};
 use mys_sdk::{
@@ -13,6 +13,7 @@ use mys_sdk::{
         transaction::{Argument, Command, Transaction, TransactionData},
     },
 };
+use shared_crypto::intent::Intent;
 use utils::setup_for_write;
 
 // This example shows how to use programmable transactions to chain multiple

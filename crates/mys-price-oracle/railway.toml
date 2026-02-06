@@ -1,0 +1,48 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "crates/mys-price-oracle/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+
+[environments.production.variables]
+# Oracle Configuration
+MYS_ORACLE_CHAIN_ID = "8453"
+MYS_ORACLE_TOKEN_ID = "1"
+MYS_ORACLE_UPDATE_INTERVAL = "30s"
+MYS_ORACLE_PRICE_CHANGE_THRESHOLD = "0.02"
+
+# Data Source - DripDrop API
+MYS_ORACLE_SOURCE_TYPE = "rest_api"
+MYS_ORACLE_SOURCE_URL = "https://api.testnet.dripdrop.social/price/mysocial"
+MYS_ORACLE_SOURCE_JSON_PATH = "$.priceUsd"
+
+# Price Validation
+MYS_ORACLE_VALIDATION_MIN_PRICE_USD = "0.000001"
+MYS_ORACLE_VALIDATION_MAX_PRICE_USD = "1000000"
+MYS_ORACLE_VALIDATION_MAX_PRICE_DEVIATION_PERCENT = "50"
+
+# Retry Configuration
+MYS_ORACLE_RETRY_MAX_ATTEMPTS = "3"
+MYS_ORACLE_RETRY_INITIAL_DELAY = "100ms"
+MYS_ORACLE_RETRY_MAX_DELAY = "30s"
+MYS_ORACLE_RETRY_MULTIPLIER = "2.0"
+
+# Monitoring (Railway will assign PORT)
+MYS_ORACLE_MONITORING_HEALTH_CHECK_PORT = "8080"
+MYS_ORACLE_MONITORING_METRICS_PORT = "9090"
+
+# State Persistence
+MYS_ORACLE_PERSISTENCE_DATABASE_PATH = "/app/data/oracle_state.db"
+
+# Logging
+RUST_LOG = "info,mys_price_oracle=debug"
+
+# NOTE: These must be set as Railway secrets:
+# MYS_ORACLE_SERVER_URL - Your bridge server URL
+# MYS_ORACLE_AUTH_API_KEY - Your API key (if using API key auth)
+# MYS_ORACLE_AUTH_HMAC_SECRET - Your HMAC secret (if using HMAC auth) 

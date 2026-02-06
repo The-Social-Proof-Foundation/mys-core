@@ -1,17 +1,18 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use crate::types::{
     AccountBalanceRequest, Amount, ConstructionMetadata, Currency, CurrencyMetadata,
 };
+use mys_types::base_types::{MysAddress, ObjectRef};
 use quick_js::Context;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use mys_types::base_types::{ObjectRef, MysAddress};
 
 #[tokio::test]
 async fn test_currency_defaults() {
     let expected = Currency {
-        symbol: "MYS".to_string(),
+        symbol: "MySo".to_string(),
         decimals: 9,
         metadata: CurrencyMetadata {
             coin_type: "0x2::mys::MYS".to_string(),
@@ -20,7 +21,7 @@ async fn test_currency_defaults() {
 
     let currency: Currency = serde_json::from_value(json!(
         {
-            "symbol": "MYS",
+            "symbol": "MySo",
             "decimals": 9,
         }
     ))

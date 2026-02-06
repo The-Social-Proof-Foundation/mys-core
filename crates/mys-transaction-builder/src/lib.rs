@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::BTreeMap;
@@ -15,20 +16,20 @@ use move_binary_format::CompiledModule;
 use move_core_types::ident_str;
 use move_core_types::identifier::Identifier;
 use move_core_types::language_storage::{StructTag, TypeTag};
-use mys_json::{is_receiving_argument, resolve_move_function_args, ResolvedCallArg, MysJsonValue};
+use mys_json::{is_receiving_argument, resolve_move_function_args, MysJsonValue, ResolvedCallArg};
 use mys_json_rpc_types::{
-    RPCTransactionRequestParams, MysData, MysObjectDataOptions, MysObjectResponse, MysRawData,
-    MysTypeTag,
+    MysData, MysObjectDataOptions, MysObjectResponse, MysRawData, MysTypeTag,
+    RPCTransactionRequestParams,
 };
 use mys_protocol_config::ProtocolConfig;
-use mys_types::base_types::{ObjectID, ObjectInfo, ObjectRef, ObjectType, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID, ObjectInfo, ObjectRef, ObjectType};
 use mys_types::error::UserInputError;
 use mys_types::gas_coin::GasCoin;
 use mys_types::governance::{ADD_STAKE_MUL_COIN_FUN_NAME, WITHDRAW_STAKE_FUN_NAME};
 use mys_types::move_package::MovePackage;
+use mys_types::mys_system_state::MYS_SYSTEM_MODULE_NAME;
 use mys_types::object::{Object, Owner};
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
-use mys_types::mys_system_state::MYS_SYSTEM_MODULE_NAME;
 use mys_types::transaction::{
     Argument, CallArg, Command, InputObjectKind, ObjectArg, TransactionData, TransactionKind,
 };
@@ -255,7 +256,7 @@ impl TransactionBuilder {
     ) -> anyhow::Result<TransactionData> {
         if let Some(gas) = gas {
             if input_coins.contains(&gas) {
-                return Err(anyhow!("Gas coin is in input coins of Pay transaction, use PayMys transaction instead!"));
+                return Err(anyhow!("Gas coin is in input coins of Pay transaction, use PayMySo transaction instead!"));
             }
         }
 
@@ -280,7 +281,7 @@ impl TransactionBuilder {
         Ok(obj_refs)
     }
 
-    /// Construct a transaction kind for the PayMys transaction type
+    /// Construct a transaction kind for the PayMySo transaction type
     ///
     /// Use this function together with tx_data_for_dry_run or tx_data
     /// for maximum reusability
@@ -579,9 +580,31 @@ impl TransactionBuilder {
         sender: MysAddress,
         modules: Vec<Vec<u8>>,
         dep_ids: Vec<ObjectID>,
+        admin_cap: Option<ObjectID>,
+        publish_admin_cap: Option<ObjectID>,
+        coin_admin_cap: Option<ObjectID>,
     ) -> Result<TransactionKind, anyhow::Error> {
         let pt = {
             let mut builder = ProgrammableTransactionBuilder::new();
+            
+            // If admin_cap is provided, add it as an input object to enable publish bypass
+            if let Some(cap_id) = admin_cap {
+                let cap_ref = self.get_object_ref(cap_id).await?;
+                builder.obj(ObjectArg::ImmOrOwnedObject(cap_ref))?;
+            }
+            
+            // If publish_admin_cap is provided, add it as an input object to enable publish bypass
+            if let Some(cap_id) = publish_admin_cap {
+                let cap_ref = self.get_object_ref(cap_id).await?;
+                builder.obj(ObjectArg::ImmOrOwnedObject(cap_ref))?;
+            }
+            
+            // If coin_admin_cap is provided, add it as an input object to enable coin creation
+            if let Some(cap_id) = coin_admin_cap {
+                let cap_ref = self.get_object_ref(cap_id).await?;
+                builder.obj(ObjectArg::ImmOrOwnedObject(cap_ref))?;
+            }
+            
             let upgrade_cap = builder.publish_upgradeable(modules, dep_ids);
             builder.transfer_arg(sender, upgrade_cap);
             builder.finish()

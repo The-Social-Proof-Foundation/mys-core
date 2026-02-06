@@ -1,14 +1,15 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::node::RuntimeType;
 use futures::FutureExt;
-use std::sync::{Arc, Weak};
-use std::thread;
 use mys_config::NodeConfig;
 use mys_node::{MysNode, MysNodeHandle};
 use mys_types::base_types::ConciseableName;
 use mys_types::crypto::{AuthorityPublicKeyBytes, KeypairTraits};
+use std::sync::{Arc, Weak};
+use std::thread;
 use telemetry_subscribers::get_global_telemetry_config;
 use tracing::{info, trace};
 

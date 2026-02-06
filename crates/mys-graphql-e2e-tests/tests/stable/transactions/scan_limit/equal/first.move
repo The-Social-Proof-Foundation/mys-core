@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 // Tests paginating forwards where first and scanLimit are equal. The 1st, 3rd, 5th, and 7th through

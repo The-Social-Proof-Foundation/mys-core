@@ -1,15 +1,16 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{env, fmt};
 
 use crate::{error::MysError, mys_serde::Readable};
 use fastcrypto::encoding::{Base58, Encoding, Hex};
+use mys_protocol_config::Chain;
 use once_cell::sync::{Lazy, OnceCell};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, Bytes};
-use mys_protocol_config::Chain;
 use tracing::info;
 
 /// A representation of a 32 byte digest

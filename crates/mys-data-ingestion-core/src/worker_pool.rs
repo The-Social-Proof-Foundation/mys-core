@@ -1,15 +1,16 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::executor::MAX_CHECKPOINTS_IN_PROGRESS;
 use crate::reducer::reduce;
 use crate::{Reducer, Worker};
+use mys_types::full_checkpoint_content::CheckpointData;
+use mys_types::messages_checkpoint::CheckpointSequenceNumber;
 use mysten_metrics::spawn_monitored_task;
 use std::collections::{BTreeSet, VecDeque};
 use std::sync::Arc;
 use std::time::Instant;
-use mys_types::full_checkpoint_content::CheckpointData;
-use mys_types::messages_checkpoint::CheckpointSequenceNumber;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tracing::info;

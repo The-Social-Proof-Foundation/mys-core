@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::abi::{eth_mys_bridge, EthMysBridge};
@@ -19,19 +20,20 @@ use crate::utils::publish_and_register_coins_return_add_coins_on_mys_action;
 use crate::BRIDGE_ENABLE_PROTOCOL_VERSION;
 use ethers::prelude::*;
 use ethers::types::Address as EthAddress;
-use std::collections::HashSet;
 use mys_json_rpc_api::BridgeReadApiClient;
 use mys_types::crypto::get_key_pair;
+use std::collections::HashSet;
+#[cfg(feature = "test-utils")]
 use test_cluster::TestClusterBuilder;
 
 use std::path::Path;
 
-use std::sync::Arc;
 use mys_json_rpc_types::{MysExecutionStatus, MysTransactionBlockEffectsAPI};
 use mys_types::bridge::{
     get_bridge, BridgeChainId, BridgeTokenMetadata, BridgeTrait, TOKEN_ID_ETH,
 };
 use mys_types::MYS_BRIDGE_OBJECT_ID;
+use std::sync::Arc;
 use tracing::info;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
@@ -396,15 +398,19 @@ async fn test_committee_registration() {
 }
 
 #[tokio::test]
+#[cfg(feature = "test-utils")]
 async fn test_bridge_api_compatibility() {
-    let test_cluster: test_cluster::TestCluster = TestClusterBuilder::new()
-        .with_protocol_version(BRIDGE_ENABLE_PROTOCOL_VERSION.into())
-        .build()
-        .await;
+    #[cfg(feature = "test-utils")]
+    {
+        let test_cluster: test_cluster::TestCluster = TestClusterBuilder::new()
+            .with_protocol_version(BRIDGE_ENABLE_PROTOCOL_VERSION.into())
+            .build()
+            .await;
 
-    test_cluster.trigger_reconfiguration().await;
-    let client = test_cluster.rpc_client();
-    client.get_latest_bridge().await.unwrap();
+        test_cluster.trigger_reconfiguration().await;
+        let client = test_cluster.rpc_client();
+        client.get_latest_bridge().await.unwrap();
+    }
     // TODO: assert fields in summary
 
     client

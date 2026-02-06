@@ -53,6 +53,8 @@ tracing-subscriber.workspace = true
 tracing.workspace = true
 once_cell.workspace = true
 futures.workspace = true
+# Pin home to 0.5.11 via workspace (prevents upgrade to broken 0.5.12)
+home.workspace = true
 thiserror.workspace = true
 strsim = "0.11.1"
 futures-timer = "3.0.3"

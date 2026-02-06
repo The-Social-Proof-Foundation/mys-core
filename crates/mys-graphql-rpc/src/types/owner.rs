@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::address::Address;
@@ -7,14 +8,14 @@ use super::cursor::Page;
 use super::dynamic_field::DynamicField;
 use super::dynamic_field::DynamicFieldName;
 use super::move_package::MovePackage;
+use super::mysns_registration::{DomainFormat, MysnsRegistration, NameService};
 use super::stake::StakedMys;
-use super::mysns_registration::{DomainFormat, NameService, MysnsRegistration};
 use crate::data::Db;
 use crate::types::balance::{self, Balance};
 use crate::types::coin::Coin;
 use crate::types::move_object::MoveObject;
-use crate::types::object::{self, Object, ObjectFilter};
 use crate::types::mys_address::MysAddress;
+use crate::types::object::{self, Object, ObjectFilter};
 use crate::types::type_filter::ExactTypeFilter;
 
 use async_graphql::connection::Connection;

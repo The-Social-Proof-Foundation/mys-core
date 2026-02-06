@@ -22,10 +22,10 @@ docker compose up
 
 
 **additional info**
-The version of `mys` which is used to generate the genesis outputs much be on the same protocol version as the fullnode/validators (eg: `mysten/mys-node:mainnet-v1.19.1`)
-Here's an example of how to build a `mys` binary that creates a genesis which is compatible with the release: `v1.19.1`
+The version of `myso` which is used to generate the genesis outputs much be on the same protocol version as the fullnode/validators (eg: `mysten/mys-node:mainnet-v1.19.1`)
+Here's an example of how to build a `myso` binary that creates a genesis which is compatible with the release: `v1.19.1`
 ```
 git checkout releases/mys-v1.19.0-release
-cargo build --bin mys
+cargo build --bin myso
 ```
 you can also use `mys-network/Dockerfile` for building genesis

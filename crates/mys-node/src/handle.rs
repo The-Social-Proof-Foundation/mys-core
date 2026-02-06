@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! MysNodeHandle wraps MysNode in a way ttttable for access by test code.
@@ -43,9 +44,9 @@
 //! We can't prevent this completely, but we can at least make the right way the easy way.
 
 use super::MysNode;
+use mys_core::authority::AuthorityState;
 use std::future::Future;
 use std::sync::Arc;
-use mys_core::authority::AuthorityState;
 
 /// Wrap MysNode to allow correct access to MysNode in simulator tests.
 pub struct MysNodeHandle {

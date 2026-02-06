@@ -1,5 +1,6 @@
 // Copyright (c) 2021, Facebook, Inc. and its affiliates
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::base_types::*;
@@ -10,6 +11,7 @@ use crate::error::{MysError, MysResult};
 use crate::multiaddr::Multiaddr;
 use fastcrypto::traits::KeyPair;
 use itertools::Itertools;
+pub use mys_protocol_config::ProtocolVersion;
 use once_cell::sync::OnceCell;
 use rand::rngs::{StdRng, ThreadRng};
 use rand::seq::SliceRandom;
@@ -19,7 +21,6 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
-pub use mys_protocol_config::ProtocolVersion;
 
 pub type EpochId = u64;
 

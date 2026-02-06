@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{
@@ -12,13 +13,6 @@ use arc_swap::ArcSwap;
 use consensus_config::Committee as ConsensusCommittee;
 use consensus_core::{CommitConsumerMonitor, TransactionIndex, VerifiedBlock};
 use lru::LruCache;
-use mysten_common::debug_fatal;
-use mysten_metrics::{
-    monitored_future,
-    monitored_mpsc::{self, UnboundedReceiver},
-    monitored_scope, spawn_monitored_task,
-};
-use serde::{Deserialize, Serialize};
 use mys_macros::{fail_point, fail_point_if};
 use mys_protocol_config::ProtocolConfig;
 use mys_types::{
@@ -35,6 +29,13 @@ use mys_types::{
     mys_system_state::epoch_start_mys_system_state::EpochStartSystemStateTrait,
     transaction::{SenderSignedData, VerifiedTransaction},
 };
+use mysten_common::debug_fatal;
+use mysten_metrics::{
+    monitored_future,
+    monitored_mpsc::{self, UnboundedReceiver},
+    monitored_scope, spawn_monitored_task,
+};
+use serde::{Deserialize, Serialize};
 use tokio::task::JoinSet;
 use tracing::{debug, error, info, instrument, trace_span, warn};
 
@@ -1032,10 +1033,9 @@ mod tests {
         BlockAPI, CommitDigest, CommitRef, CommittedSubDag, TestBlock, Transaction, VerifiedBlock,
     };
     use futures::pin_mut;
-    use prometheus::Registry;
     use mys_protocol_config::ConsensusTransactionOrdering;
     use mys_types::{
-        base_types::{random_object_ref, AuthorityName, ObjectID, MysAddress},
+        base_types::{random_object_ref, AuthorityName, MysAddress, ObjectID},
         committee::Committee,
         crypto::deterministic_random_account_key,
         messages_consensus::{
@@ -1048,6 +1048,7 @@ mod tests {
             CertifiedTransaction, SenderSignedData, TransactionData, TransactionDataAPI,
         },
     };
+    use prometheus::Registry;
 
     use super::*;
     use crate::{

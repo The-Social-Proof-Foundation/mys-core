@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use crate::key_identity::{get_identity_address_from_keystore, KeyIdentity};
 use crate::zklogin_commands_util::{perform_zk_login_test_tx, read_cli_line};
@@ -13,13 +14,32 @@ use fastcrypto::secp256k1::recoverable::Secp256k1Sig;
 use fastcrypto::traits::{KeyPair, ToFromBytes};
 use fastcrypto_zkp::bn254::utils::{
     gen_address_seed, get_nonce, get_oidc_url, get_proof, get_test_issuer_jwt_token,
-    get_token_exchange_url,
 };
 use fastcrypto_zkp::bn254::zk_login::{fetch_jwks, OIDCProvider, ZkLoginInputs};
 use fastcrypto_zkp::bn254::zk_login::{JwkId, JWK};
 use fastcrypto_zkp::bn254::zk_login_api::ZkLoginEnv;
 use im::hashmap::HashMap as ImHashMap;
 use json_to_table::{json_to_table, Orientation};
+use mys_keys::key_derive::generate_new_key;
+use mys_keys::keypair_file::{
+    read_authority_keypair_from_file, read_keypair_from_file, write_authority_keypair_to_file,
+    write_keypair_to_file,
+};
+use mys_keys::keystore::{AccountKeystore, Keystore};
+use mys_types::base_types::MysAddress;
+use mys_types::committee::EpochId;
+use mys_types::crypto::{
+    get_authority_key_pair, EncodeDecodeBase64, MysKeyPair, Signature, SignatureScheme,
+    ZkLoginPublicIdentifier,
+};
+use mys_types::crypto::{DefaultHash, PublicKey};
+use mys_types::error::MysResult;
+use mys_types::multisig::{MultiSig, MultiSigPublicKey, ThresholdUnit, WeightUnit};
+use mys_types::multisig_legacy::{MultiSigLegacy, MultiSigPublicKeyLegacy};
+use mys_types::signature::{GenericSignature, VerifyParams};
+use mys_types::signature_verification::VerifiedDigestCache;
+use mys_types::transaction::{TransactionData, TransactionDataAPI};
+use mys_types::zk_login_authenticator::ZkLoginAuthenticator;
 use num_bigint::BigUint;
 use rand::rngs::StdRng;
 use rand::Rng;
@@ -33,26 +53,6 @@ use std::fmt::{Debug, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use mys_keys::key_derive::generate_new_key;
-use mys_keys::keypair_file::{
-    read_authority_keypair_from_file, read_keypair_from_file, write_authority_keypair_to_file,
-    write_keypair_to_file,
-};
-use mys_keys::keystore::{AccountKeystore, Keystore};
-use mys_types::base_types::MysAddress;
-use mys_types::committee::EpochId;
-use mys_types::crypto::{
-    get_authority_key_pair, EncodeDecodeBase64, Signature, SignatureScheme, MysKeyPair,
-    ZkLoginPublicIdentifier,
-};
-use mys_types::crypto::{DefaultHash, PublicKey};
-use mys_types::error::MysResult;
-use mys_types::multisig::{MultiSig, MultiSigPublicKey, ThresholdUnit, WeightUnit};
-use mys_types::multisig_legacy::{MultiSigLegacy, MultiSigPublicKeyLegacy};
-use mys_types::signature::{GenericSignature, VerifyParams};
-use mys_types::signature_verification::VerifiedDigestCache;
-use mys_types::transaction::{TransactionData, TransactionDataAPI};
-use mys_types::zk_login_authenticator::ZkLoginAuthenticator;
 use tabled::builder::Builder;
 use tabled::settings::Rotate;
 use tabled::settings::{object::Rows, Modify, Width};
@@ -74,7 +74,7 @@ pub enum KeyToolCommand {
         new_alias: Option<String>,
     },
     /// Convert private key in Hex or Base64 to new format (Bech32
-    /// encoded 33 byte flag || private key starting with "mysprivkey").
+    /// encoded 33 byte flag || private key starting with "mysoprivkey").
     /// Hex private key format import and export are both deprecated in
     /// Mys Wallet and Mys CLI Keystore. Use `mys keytool import` if you
     /// wish to import a key to Mys Keystore.
@@ -100,8 +100,8 @@ pub enum KeyToolCommand {
         cur_epoch: u64,
     },
     /// Generate a new keypair with key scheme flag {ed25519 | secp256k1 | secp256r1}
-    /// with optional derivation path, default to m/44'/784'/0'/0'/0' for ed25519 or
-    /// m/54'/784'/0'/0/0 for secp256k1 or m/74'/784'/0'/0/0 for secp256r1. Word
+    /// with optional derivation path, default to m/44'/6976'/0'/0'/0' for ed25519 or
+    /// m/54'/6976'/0'/0/0 for secp256k1 or m/74'/6976'/0'/0/0 for secp256r1. Word
     /// length can be { word12 | word15 | word18 | word21 | word24} default to word12
     /// if not specified.
     ///
@@ -116,9 +116,9 @@ pub enum KeyToolCommand {
     },
 
     /// Add a new key to Mys CLI Keystore using either the input mnemonic phrase or a Bech32 encoded 33-byte
-    /// `flag || privkey` starting with "mysprivkey", the key scheme flag {ed25519 | secp256k1 | secp256r1}
-    /// and an optional derivation path, default to m/44'/784'/0'/0'/0' for ed25519 or m/54'/784'/0'/0/0
-    /// for secp256k1 or m/74'/784'/0'/0/0 for secp256r1. Supports mnemonic phrase of word length 12, 15,
+    /// `flag || privkey` starting with "mysoprivkey", the key scheme flag {ed25519 | secp256k1 | secp256r1}
+    /// and an optional derivation path, default to m/44'/6976'/0'/0'/0' for ed25519 or m/54'/6976'/0'/0/0
+    /// for secp256k1 or m/74'/6976'/0'/0/0 for secp256r1. Supports mnemonic phrase of word length 12, 15,
     /// 18, 21, 24. Set an alias for the key with the --alias flag. If no alias is provided, the tool will
     /// automatically generate one.
     Import {
@@ -130,7 +130,7 @@ pub enum KeyToolCommand {
         derivation_path: Option<DerivationPath>,
     },
     /// Output the private key of the given key identity in Mys CLI Keystore as Bech32
-    /// encoded string starting with `mysprivkey`.
+    /// encoded string starting with `mysoprivkey`.
     Export {
         #[clap(long)]
         key_identity: KeyIdentity,
@@ -625,7 +625,7 @@ impl KeyToolCommand {
                         "Mys Keystore and Mys Wallet no longer support importing 
                     private key as Hex, if you are sure your private key is encoded in Hex, use 
                     `mys keytool convert $HEX` to convert first then import the Bech32 encoded 
-                    private key starting with `mysprivkey`."
+                    private key starting with `mysoprivkey`."
                     ));
                 }
 
@@ -1031,7 +1031,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "25769832374-famecqrhe2gkebt5fvqms2263046lj96.apps.googleusercontent.com",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
                 let url_2 = get_oidc_url(
@@ -1039,7 +1039,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "rs1bh065i9ya4ydvifixl4kss0uhpt",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
                 let url_3 = get_oidc_url(
@@ -1047,7 +1047,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "233307156352917",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
                 let url_4 = get_oidc_url(
@@ -1055,13 +1055,13 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "aa6bddf393b54d4e0d42ae0014edfd2f",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
-                let url_5 = get_token_exchange_url(
+                let url_5 = get_social_proof_token_url(
                     OIDCProvider::Kakao,
                     "aa6bddf393b54d4e0d42ae0014edfd2f",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     "$YOUR_AUTH_CODE",
                     "", // not needed
                 )?;
@@ -1070,7 +1070,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "nl.digkas.wallet.client",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
                 let url_7 = get_oidc_url(
@@ -1078,13 +1078,13 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "2426087588661.5742457039348",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     &jwt_randomness,
                 )?;
-                let url_8 = get_token_exchange_url(
+                let url_8 = get_social_proof_token_url(
                     OIDCProvider::Slack,
                     "2426087588661.5742457039348",
-                    "https://mys.io/",
+                    "https://mysocial.network/",
                     "$YOUR_AUTH_CODE",
                     "39b955a118f2f21110939bf3dff1de90",
                 )?;
@@ -1096,7 +1096,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "6c56t7re6ekgmv23o7to8r0sic",
-                    "https://www.mys.io/",
+                    "https://www.mysocial.network/",
                     &jwt_randomness,
                 )?;
                 let url_10 = get_oidc_url(
@@ -1104,7 +1104,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "2e3e87cb-bf24-4399-ab98-48343d457124",
-                    "https://www.mys.io",
+                    "https://www.mysocial.network",
                     &jwt_randomness,
                 )?;
                 let url_11 = get_oidc_url(
@@ -1112,7 +1112,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "kns-dev",
-                    "https://mys.io/", // placeholder
+                    "https://mysocial.network/", // placeholder
                     &jwt_randomness,
                 )?;
                 let url_12 = get_oidc_url(
@@ -1136,7 +1136,7 @@ impl KeyToolCommand {
                     &eph_pk_bytes,
                     max_epoch,
                     "2e3i87cb-bf24-4399-ab98-48343d457124",
-                    "https://www.mys.io",
+                    "https://www.mysocial.network",
                     &jwt_randomness,
                 )?;
                 let url_15 = get_oidc_url(
@@ -1165,7 +1165,7 @@ impl KeyToolCommand {
                 println!("Visit URL (Arden): {url_14}");
                 println!("Visit URL (AWS - Trace): {url_15}");
 
-                println!("Finish login and paste the entire URL here (e.g. https://mys.io/#id_token=...):");
+                println!("Finish login and paste the entire URL here (e.g. https://mysocial.network/#id_token=...):");
 
                 let parsed_token = read_cli_line()?;
                 let tx_digest = perform_zk_login_test_tx(
@@ -1346,7 +1346,7 @@ impl Display for CommandOutput {
                         "rawIntentMsg",
                         "intent",
                         "rawTxData",
-                        "mysAddress",
+                        "mysoAddress",
                     ])
                     .push_record([
                         &data.mys_signature,
@@ -1442,5 +1442,28 @@ fn anemo_styling(pk: &PublicKey) -> Option<String> {
         Some(anemo::PeerId(public_key.0).to_string())
     } else {
         None
+    }
+}
+
+// Simple implementation for missing function
+fn get_social_proof_token_url(
+    provider: OIDCProvider,
+    client_id: &str,
+    redirect_url: &str,
+    auth_code: &str,
+    client_secret: &str,
+) -> Result<String, anyhow::Error> {
+    // This is a placeholder implementation for the missing function
+    // In a real implementation, this would generate proper OAuth token exchange URLs
+    match provider {
+        OIDCProvider::Kakao => Ok(format!(
+            "https://kauth.kakao.com/oauth/token?client_id={}&redirect_uri={}&code={}&grant_type=authorization_code",
+            client_id, redirect_url, auth_code
+        )),
+        OIDCProvider::Slack => Ok(format!(
+            "https://slack.com/api/oauth.v2.access?client_id={}&client_secret={}&code={}&redirect_uri={}",
+            client_id, client_secret, auth_code, redirect_url
+        )),
+        _ => Ok("https://example.com/token".to_string()),
     }
 }

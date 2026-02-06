@@ -1,8 +1,9 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getFullnodeUrl, MysClient } from '@mysten/mys/client';
-import { parseSerializedSignature } from '@mysten/mys/cryptography';
+import { getFullnodeUrl, MysClient } from '@socialproof/mys/client';
+import { parseSerializedSignature } from '@socialproof/mys/cryptography';
 import { useMutation } from '@tanstack/react-query';
 import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';

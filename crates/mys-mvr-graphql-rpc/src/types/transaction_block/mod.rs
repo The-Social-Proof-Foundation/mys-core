@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{
@@ -25,8 +26,6 @@ use cursor::TxLookup;
 use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
 use diesel_async::scoped_futures::ScopedFutureExt;
 use fastcrypto::encoding::{Base58, Encoding};
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
 use mys_indexer::{
     models::transactions::StoredTransaction,
     schema::{transactions, tx_digests},
@@ -41,6 +40,8 @@ use mys_types::{
         TransactionDataAPI, TransactionExpiration,
     },
 };
+use std::collections::{BTreeMap, HashMap};
+use std::future::Future;
 
 mod cursor;
 mod filter;
@@ -106,21 +107,6 @@ pub(crate) enum TransactionBlockLookup {
 }
 
 type Query<ST, GB> = data::Query<ST, transactions::table, GB>;
-
-/// The cursor returned for each `TransactionBlock` in a connection's page of results. The
-/// `checkpoint_viewed_at` will set the consistent upper bound for subsequent queries made on this
-/// cursor.
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub(crate) struct TransactionBlockCursor {
-    /// The checkpoint sequence number this was viewed at.
-    #[serde(rename = "c")]
-    pub checkpoint_viewed_at: u64,
-    #[serde(rename = "t")]
-    pub tx_sequence_number: u64,
-    /// The checkpoint sequence number when the transaction was finalized.
-    #[serde(rename = "tc")]
-    pub tx_checkpoint_number: u64,
-}
 
 /// `DataLoader` key for fetching a `TransactionBlock` by its digest, constrained by a consistency
 /// cursor.
@@ -490,127 +476,133 @@ impl TransactionBlock {
     }
 }
 
-#[async_trait::async_trait]
 impl Loader<DigestKey> for Db {
     type Value = TransactionBlock;
     type Error = Error;
 
-    async fn load(
+    fn load(
         &self,
         keys: &[DigestKey],
-    ) -> Result<HashMap<DigestKey, TransactionBlock>, Error> {
+    ) -> impl Future<Output = Result<HashMap<DigestKey, TransactionBlock>, Error>> + Send {
         use transactions::dsl as tx;
         use tx_digests::dsl as ds;
 
-        let digests: Vec<_> = keys.iter().map(|k| k.digest.to_vec()).collect();
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            let digests: Vec<_> = keys_vec.iter().map(|k| k.digest.to_vec()).collect();
 
-        let transactions: Vec<StoredTransaction> = self
-            .execute(move |conn| {
-                async move {
-                    conn.results(move || {
-                        let join = ds::tx_sequence_number.eq(tx::tx_sequence_number);
+            let transactions: Vec<StoredTransaction> = self_clone
+                .execute(move |conn| {
+                    async move {
+                        conn.results(move || {
+                            let join = ds::tx_sequence_number.eq(tx::tx_sequence_number);
 
-                        tx::transactions
-                            .inner_join(ds::tx_digests.on(join))
-                            .select(StoredTransaction::as_select())
-                            .filter(ds::tx_digest.eq_any(digests.clone()))
-                    })
-                    .await
+                            tx::transactions
+                                .inner_join(ds::tx_digests.on(join))
+                                .select(StoredTransaction::as_select())
+                                .filter(ds::tx_digest.eq_any(digests.clone()))
+                        })
+                        .await
+                    }
+                    .scope_boxed()
+                })
+                .await
+                .map_err(|e| Error::Internal(format!("Failed to fetch transactions: {e}")))?;
+
+            let transaction_digest_to_stored: BTreeMap<_, _> = transactions
+                .into_iter()
+                .map(|tx| (tx.transaction_digest.clone(), tx))
+                .collect();
+
+            let mut results = HashMap::new();
+            for key in &keys_vec {
+                let Some(stored) = transaction_digest_to_stored
+                    .get(key.digest.as_slice())
+                    .cloned()
+                else {
+                    continue;
+                };
+
+                // Filter by key's checkpoint viewed at here. Doing this in memory because it should be
+                // quite rare that this query actually filters something, but encoding it in SQL is
+                // complicated.
+                if key.checkpoint_viewed_at < stored.checkpoint_sequence_number as u64 {
+                    continue;
                 }
-                .scope_boxed()
-            })
-            .await
-            .map_err(|e| Error::Internal(format!("Failed to fetch transactions: {e}")))?;
 
-        let transaction_digest_to_stored: BTreeMap<_, _> = transactions
-            .into_iter()
-            .map(|tx| (tx.transaction_digest.clone(), tx))
-            .collect();
-
-        let mut results = HashMap::new();
-        for key in keys {
-            let Some(stored) = transaction_digest_to_stored
-                .get(key.digest.as_slice())
-                .cloned()
-            else {
-                continue;
-            };
-
-            // Filter by key's checkpoint viewed at here. Doing this in memory because it should be
-            // quite rare that this query actually filters something, but encoding it in SQL is
-            // complicated.
-            if key.checkpoint_viewed_at < stored.checkpoint_sequence_number as u64 {
-                continue;
+                let inner = TransactionBlockInner::try_from(stored)?;
+                results.insert(
+                    *key,
+                    TransactionBlock {
+                        inner,
+                        checkpoint_viewed_at: key.checkpoint_viewed_at,
+                    },
+                );
             }
 
-            let inner = TransactionBlockInner::try_from(stored)?;
-            results.insert(
-                *key,
-                TransactionBlock {
-                    inner,
-                    checkpoint_viewed_at: key.checkpoint_viewed_at,
-                },
-            );
+            Ok(results)
         }
-
-        Ok(results)
     }
 }
 
-#[async_trait::async_trait]
 impl Loader<SeqKey> for Db {
     type Value = TransactionBlock;
     type Error = Error;
 
-    async fn load(&self, keys: &[SeqKey]) -> Result<HashMap<SeqKey, TransactionBlock>, Error> {
+    fn load(&self, keys: &[SeqKey]) -> impl Future<Output = Result<HashMap<SeqKey, TransactionBlock>, Error>> + Send {
         use transactions::dsl as tx;
 
-        let seqs: Vec<_> = keys.iter().map(|k| k.tx_sequence_number as i64).collect();
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            let seqs: Vec<_> = keys_vec.iter().map(|k| k.tx_sequence_number as i64).collect();
 
-        let transactions: Vec<StoredTransaction> = self
-            .execute(move |conn| {
-                async move {
-                    conn.results(move || {
-                        tx::transactions
-                            .select(StoredTransaction::as_select())
-                            .filter(tx::tx_sequence_number.eq_any(seqs.clone()))
-                    })
-                    .await
+            let transactions: Vec<StoredTransaction> = self_clone
+                .execute(move |conn| {
+                    async move {
+                        conn.results(move || {
+                            tx::transactions
+                                .select(StoredTransaction::as_select())
+                                .filter(tx::tx_sequence_number.eq_any(seqs.clone()))
+                        })
+                        .await
+                    }
+                    .scope_boxed()
+                })
+                .await
+                .map_err(|e| Error::Internal(format!("Failed to fetch transactions: {e}")))?;
+
+            let seq_to_stored: BTreeMap<_, _> = transactions
+                .into_iter()
+                .map(|tx| (tx.tx_sequence_number as u64, tx))
+                .collect();
+
+            let mut results = HashMap::new();
+            for key in &keys_vec {
+                let Some(stored) = seq_to_stored.get(&key.tx_sequence_number).cloned() else {
+                    continue;
+                };
+
+                // Filter by key's checkpoint viewed at here. Doing this in memory because it should be
+                // quite rare that this query actually filters something, but encoding it in SQL is
+                // complicated.
+                if key.checkpoint_viewed_at < stored.checkpoint_sequence_number as u64 {
+                    continue;
                 }
-                .scope_boxed()
-            })
-            .await
-            .map_err(|e| Error::Internal(format!("Failed to fetch transactions: {e}")))?;
 
-        let seq_to_stored: BTreeMap<_, _> = transactions
-            .into_iter()
-            .map(|tx| (tx.tx_sequence_number as u64, tx))
-            .collect();
-
-        let mut results = HashMap::new();
-        for key in keys {
-            let Some(stored) = seq_to_stored.get(&key.tx_sequence_number).cloned() else {
-                continue;
-            };
-
-            // Filter by key's checkpoint viewed at here. Doing this in memory because it should be
-            // quite rare that this query actually filters something, but encoding it in SQL is
-            // complicated.
-            if key.checkpoint_viewed_at < stored.checkpoint_sequence_number as u64 {
-                continue;
+                let inner = TransactionBlockInner::try_from(stored)?;
+                results.insert(
+                    *key,
+                    TransactionBlock {
+                        inner,
+                        checkpoint_viewed_at: key.checkpoint_viewed_at,
+                    },
+                );
             }
 
-            let inner = TransactionBlockInner::try_from(stored)?;
-            results.insert(
-                *key,
-                TransactionBlock {
-                    inner,
-                    checkpoint_viewed_at: key.checkpoint_viewed_at,
-                },
-            );
+            Ok(results)
         }
-
-        Ok(results)
     }
 }
 

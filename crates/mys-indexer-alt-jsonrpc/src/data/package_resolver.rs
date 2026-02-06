@@ -1,8 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{
     collections::{BTreeSet, HashMap},
+    future::Future,
     sync::Arc,
 };
 
@@ -43,39 +45,45 @@ impl PackageStore for DbPackageStore {
     }
 }
 
-#[async_trait::async_trait]
 impl Loader<PackageKey> for Reader {
     type Value = Arc<Package>;
     type Error = Error;
 
-    async fn load(&self, keys: &[PackageKey]) -> Result<HashMap<PackageKey, Arc<Package>>> {
-        use sum_packages::dsl as p;
+    fn load(
+        &self,
+        keys: &[PackageKey],
+    ) -> impl Future<Output = std::result::Result<HashMap<PackageKey, Arc<Package>>, Error>> + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            use sum_packages::dsl as p;
 
-        let mut id_to_package = HashMap::new();
-        if keys.is_empty() {
-            return Ok(id_to_package);
-        }
+            let mut id_to_package = HashMap::new();
+            if keys_vec.is_empty() {
+                return Ok(id_to_package);
+            }
 
-        let mut conn = self.connect().await.map_err(|e| Error::Store {
-            store: STORE,
-            error: e.to_string(),
-        })?;
-
-        let ids: BTreeSet<_> = keys.iter().map(|PackageKey(id)| id.to_vec()).collect();
-        let stored_packages: Vec<StoredPackage> = conn
-            .results(p::sum_packages.filter(p::package_id.eq_any(ids)))
-            .await
-            .map_err(|e| Error::Store {
+            let mut conn = self_clone.connect().await.map_err(|e| Error::Store {
                 store: STORE,
                 error: e.to_string(),
             })?;
 
-        for stored_package in stored_packages {
-            let move_package = bcs::from_bytes(&stored_package.move_package)?;
-            let package = Package::read_from_package(&move_package)?;
-            id_to_package.insert(PackageKey(*move_package.id()), Arc::new(package));
-        }
+            let ids: BTreeSet<_> = keys_vec.iter().map(|PackageKey(id)| id.to_vec()).collect();
+            let stored_packages: Vec<StoredPackage> = conn
+                .results(p::sum_packages.filter(p::package_id.eq_any(ids)))
+                .await
+                .map_err(|e| Error::Store {
+                    store: STORE,
+                    error: e.to_string(),
+                })?;
 
-        Ok(id_to_package)
+            for stored_package in stored_packages {
+                let move_package = bcs::from_bytes(&stored_package.move_package)?;
+                let package = Package::read_from_package(&move_package)?;
+                id_to_package.insert(PackageKey(*move_package.id()), Arc::new(package));
+            }
+
+            Ok(id_to_package)
+        }
     }
 }

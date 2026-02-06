@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -12,8 +13,8 @@ use tap::Pipe;
 
 use crate::{
     base_types::{
-        dbg_addr, random_object_ref, ExecutionDigests, ObjectID, ObjectRef, SequenceNumber,
-        MysAddress,
+        dbg_addr, random_object_ref, ExecutionDigests, MysAddress, ObjectID, ObjectRef,
+        SequenceNumber,
     },
     coin::Coin,
     committee::Committee,

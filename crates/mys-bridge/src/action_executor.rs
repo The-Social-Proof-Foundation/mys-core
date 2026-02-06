@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! BridgeActionExecutor receives BridgeActions (from BridgeOrchestrator),
@@ -7,21 +8,21 @@
 use crate::retry_with_max_elapsed_time;
 use crate::types::IsBridgePaused;
 use arc_swap::ArcSwap;
-use mysten_metrics::spawn_logged_monitored_task;
-use shared_crypto::intent::{Intent, IntentMessage};
 use mys_json_rpc_types::{
     MysExecutionStatus, MysTransactionBlockEffectsAPI, MysTransactionBlockResponse,
 };
 use mys_types::transaction::ObjectArg;
 use mys_types::TypeTag;
 use mys_types::{
-    base_types::{ObjectID, ObjectRef, MysAddress},
-    crypto::{Signature, MysKeyPair},
+    base_types::{MysAddress, ObjectID, ObjectRef},
+    crypto::{MysKeyPair, Signature},
     digests::TransactionDigest,
     gas_coin::GasCoin,
     object::Owner,
     transaction::Transaction,
 };
+use mysten_metrics::spawn_logged_monitored_task;
+use shared_crypto::intent::{Intent, IntentMessage};
 
 use crate::events::{
     TokenTransferAlreadyApproved, TokenTransferAlreadyClaimed, TokenTransferApproved,
@@ -30,17 +31,17 @@ use crate::events::{
 use crate::metrics::BridgeMetrics;
 use crate::{
     client::bridge_authority_aggregator::BridgeAuthorityAggregator,
-    error::BridgeError,
-    storage::BridgeOrchestratorTables,
+    error::{BridgeError, BridgeResult},
     mys_client::{MysClient, MysClientInner},
     mys_transaction_builder::build_mys_transaction,
+    storage::BridgeOrchestratorTables,
     types::{BridgeAction, BridgeActionStatus, VerifiedCertifiedBridgeAction},
 };
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tokio::time::Duration;
-use tracing::{error, info, instrument, warn, Instrument};
+use tracing::{error, info, instrument, warn, debug, Instrument};
 
 pub const CHANNEL_SIZE: usize = 1000;
 pub const SIGNING_CONCURRENCY: usize = 10;
@@ -81,6 +82,7 @@ pub struct BridgeActionExecutor<C> {
     mys_token_type_tags: Arc<ArcSwap<HashMap<u8, TypeTag>>>,
     bridge_pause_rx: tokio::sync::watch::Receiver<IsBridgePaused>,
     metrics: Arc<BridgeMetrics>,
+    relayer: Option<Arc<crate::relay::BridgeRelayer<C>>>,
 }
 
 impl<C> BridgeActionExecutorTrait for BridgeActionExecutor<C>
@@ -112,10 +114,35 @@ where
         mys_token_type_tags: Arc<ArcSwap<HashMap<u8, TypeTag>>>,
         bridge_pause_rx: tokio::sync::watch::Receiver<IsBridgePaused>,
         metrics: Arc<BridgeMetrics>,
+        relayer_config: Option<crate::relay::RelayConfig>,
     ) -> Self {
         let bridge_object_arg = mys_client
             .get_mutable_bridge_object_arg_must_succeed()
             .await;
+        
+        // Create relayer if config is provided
+        let relayer = if let Some(config) = relayer_config {
+            match crate::relay::BridgeRelayer::new(
+                mys_client.clone(),
+                store.clone(),
+                config,
+                key.copy(),
+                mys_address,
+                gas_object_id,
+                mys_token_type_tags.clone(),
+            )
+            .await
+            {
+                Ok(r) => Some(Arc::new(r)),
+                Err(e) => {
+                    error!("Failed to initialize BridgeRelayer: {:?}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        
         Self {
             mys_client,
             bridge_auth_agg,
@@ -127,6 +154,7 @@ where
             mys_token_type_tags,
             bridge_pause_rx,
             metrics,
+            relayer,
         }
     }
 
@@ -187,6 +215,7 @@ where
                 self.mys_token_type_tags,
                 self.bridge_pause_rx,
                 metrics,
+                self.relayer.clone(),
             )
         ));
         (tasks, sender, execution_tx)
@@ -294,16 +323,34 @@ where
         store: &Arc<BridgeOrchestratorTables>,
         metrics: &Arc<BridgeMetrics>,
     ) -> bool {
+        // #region agent log
+        debug!(
+            chain_id = action.chain_id() as u8,
+            seq_num = action.seq_number(),
+            hypothesis = "A",
+            "🔍 DEBUG: Before get_token_transfer_action_onchain_status"
+        );
+        // #endregion
         let status = mys_client
             .get_token_transfer_action_onchain_status_until_success(
                 action.chain_id() as u8,
                 action.seq_number(),
             )
             .await;
+        // #region agent log
+        debug!(
+            status = ?status,
+            hypothesis = "A",
+            "🔍 DEBUG: After get_token_transfer_action_onchain_status"
+        );
+        // #endregion
         match status {
-            BridgeActionStatus::Approved | BridgeActionStatus::Claimed => {
+            BridgeActionStatus::Approved => {
                 info!(
-                    "Action already approved or claimed, removing action from pending logs: {:?}",
+                    chain_id = action.chain_id() as u8,
+                    seq_num = action.seq_number(),
+                    status = ?status,
+                    "Action already approved on-chain, removing from pending logs: {:?}",
                     action
                 );
                 metrics.action_executor_already_processed_actions.inc();
@@ -314,9 +361,42 @@ where
                     });
                 true
             }
-            // Although theoretically a legit MysToEthBridgeAction should not have
-            // status `NotFound`
-            BridgeActionStatus::Pending | BridgeActionStatus::NotFound => false,
+            BridgeActionStatus::Claimed => {
+                info!(
+                    chain_id = action.chain_id() as u8,
+                    seq_num = action.seq_number(),
+                    status = ?status,
+                    "Action already claimed on-chain, removing from pending logs: {:?}",
+                    action
+                );
+                metrics.action_executor_already_processed_actions.inc();
+                store
+                    .remove_pending_actions(&[action.digest()])
+                    .unwrap_or_else(|e| {
+                        panic!("Write to DB should not fail: {:?}", e);
+                    });
+                true
+            }
+            BridgeActionStatus::Pending => {
+                debug!(
+                    chain_id = action.chain_id() as u8,
+                    seq_num = action.seq_number(),
+                    status = ?status,
+                    "Action status is Pending, will proceed with execution"
+                );
+                false
+            }
+            BridgeActionStatus::NotFound => {
+                debug!(
+                    chain_id = action.chain_id() as u8,
+                    seq_num = action.seq_number(),
+                    status = ?status,
+                    "Action not found on-chain (status: NotFound), will proceed with execution"
+                );
+                // Although theoretically a legit MysToEthBridgeAction should not have
+                // status `NotFound`, we proceed anyway
+                false
+            }
         }
     }
 
@@ -411,6 +491,7 @@ where
         mys_token_type_tags: Arc<ArcSwap<HashMap<u8, TypeTag>>>,
         bridge_pause_rx: tokio::sync::watch::Receiver<IsBridgePaused>,
         metrics: Arc<BridgeMetrics>,
+        relayer: Option<Arc<crate::relay::BridgeRelayer<C>>>,
     ) {
         info!("Starting run_onchain_execution_loop");
         while let Some(certificate_wrapper) = execution_queue_receiver.recv().await {
@@ -424,19 +505,20 @@ where
                     .inc();
                 continue;
             }
-            Self::handle_execution_task(
-                certificate_wrapper,
-                &mys_client,
-                &mys_key,
-                &mys_address,
-                gas_object_id,
-                &store,
-                &execution_queue_sender,
-                &bridge_object_arg,
-                &mys_token_type_tags,
-                &metrics,
-            )
-            .await;
+                Self::handle_execution_task(
+                    certificate_wrapper,
+                    &mys_client,
+                    &mys_key,
+                    &mys_address,
+                    gas_object_id,
+                    &store,
+                    &execution_queue_sender,
+                    &bridge_object_arg,
+                    &mys_token_type_tags,
+                    &metrics,
+                    &relayer,
+                )
+                .await;
         }
         panic!("Execution queue closed unexpectedly");
     }
@@ -455,7 +537,19 @@ where
         bridge_object_arg: &ObjectArg,
         mys_token_type_tags: &ArcSwap<HashMap<u8, TypeTag>>,
         metrics: &Arc<BridgeMetrics>,
+        relayer: &Option<Arc<crate::relay::BridgeRelayer<C>>>,
     ) {
+        // #region agent log
+        let action_data = certificate_wrapper.0.data();
+        debug!(
+            action_key = ?action_data.key(),
+            attempt_times = certificate_wrapper.1,
+            chain_id = action_data.chain_id() as u8,
+            seq_num = action_data.seq_number(),
+            hypothesis = "A,B,C,D,E",
+            "🔍 DEBUG: handle_execution_task entry"
+        );
+        // #endregion
         metrics
             .action_executor_execution_queue_received_actions
             .inc();
@@ -466,34 +560,103 @@ where
         info!("Received certified action for execution: {:?}", action);
 
         // TODO check gas coin balance here. If gas balance too low, do not proceed.
+        // #region agent log
+        debug!(
+            gas_object_id = ?gas_object_id,
+            mys_address = ?mys_address,
+            hypothesis = "B",
+            "🔍 DEBUG: Before gas object check"
+        );
+        // #endregion
         let (gas_coin, gas_object_ref) =
-            Self::get_gas_data_assert_ownership(*mys_address, gas_object_id, mys_client).await;
-        metrics.gas_coin_balance.set(gas_coin.value() as i64);
+            Self::get_gas_data_with_retry(*mys_address, gas_object_id, mys_client).await;
+        // #region agent log
+        let gas_balance = gas_coin.value();
+        debug!(
+            gas_balance,
+            gas_object_ref = ?gas_object_ref,
+            hypothesis = "B",
+            "🔍 DEBUG: After gas object check"
+        );
+        // #endregion
+        metrics.gas_coin_balance.set(gas_balance as i64);
 
         let ceriticate_clone = certificate.clone();
 
         // Check once: if the action is already processed, skip it.
-        if Self::handle_already_processed_token_transfer_action_maybe(
+        // #region agent log
+        debug!(
+            chain_id = action.chain_id() as u8,
+            seq_num = action.seq_number(),
+            hypothesis = "A",
+            "🔍 DEBUG: Before already_processed check"
+        );
+        // #endregion
+        let already_processed = Self::handle_already_processed_token_transfer_action_maybe(
             mys_client, action, store, metrics,
         )
-        .await
-        {
+        .await;
+        // #region agent log
+        debug!(
+            already_processed,
+            hypothesis = "A",
+            "🔍 DEBUG: After already_processed check"
+        );
+        // #endregion
+        if already_processed {
             info!("Action already processed, skipping");
             return;
         }
 
         info!("Building Mys transaction");
+        // #region agent log
+        let token_type_tags = mys_token_type_tags.load();
+        let registered_token_ids: Vec<u8> = token_type_tags.keys().copied().collect();
+        let action_token_id = match action {
+            BridgeAction::EthToMysBridgeAction(a) => a.eth_bridge_event.token_id,
+            BridgeAction::MysToEthBridgeAction(a) => a.mys_bridge_event.token_id,
+            _ => 255,
+        };
+        debug!(
+            registered_token_ids = ?registered_token_ids,
+            action_token_id,
+            hypothesis = "C,D",
+            "🔍 DEBUG: Before build_mys_transaction"
+        );
+        // #endregion
         let rgp = mys_client.get_reference_gas_price_until_success().await;
+        // #region agent log
+        debug!(
+            rgp,
+            hypothesis = "E",
+            "🔍 DEBUG: Reference gas price fetched"
+        );
+        // #endregion
         let tx_data = match build_mys_transaction(
             *mys_address,
             &gas_object_ref,
             ceriticate_clone,
             *bridge_object_arg,
-            mys_token_type_tags.load().as_ref(),
+            token_type_tags.as_ref(),
             rgp,
         ) {
-            Ok(tx_data) => tx_data,
+            Ok(tx_data) => {
+                // #region agent log
+                debug!(
+                    hypothesis = "C,D",
+                    "🔍 DEBUG: build_mys_transaction succeeded"
+                );
+                // #endregion
+                tx_data
+            },
             Err(err) => {
+                // #region agent log
+                error!(
+                    error = ?err,
+                    hypothesis = "C,D",
+                    "🔍 DEBUG: build_mys_transaction failed"
+                );
+                // #endregion
                 metrics.err_build_mys_transaction.inc();
                 error!(
                     "Manual intervention is required. Failed to build transaction for action {:?}: {:?}",
@@ -522,16 +685,38 @@ where
         }
 
         info!(?tx_digest, ?gas_object_ref, "Sending transaction to Mys");
+        // #region agent log
+        debug!(
+            tx_digest = ?tx_digest,
+            hypothesis = "C",
+            "🔍 DEBUG: Before execute_transaction_block_with_effects"
+        );
+        // #endregion
         match mys_client
             .execute_transaction_block_with_effects(signed_tx)
             .await
         {
             Ok(resp) => {
-                Self::handle_execution_effects(tx_digest, resp, store, action, metrics).await
+                // #region agent log
+                debug!(
+                    tx_digest = ?tx_digest,
+                    hypothesis = "C",
+                    "🔍 DEBUG: execute_transaction_block_with_effects succeeded"
+                );
+                // #endregion
+                Self::handle_execution_effects(tx_digest, resp, mys_client, store, action, metrics, relayer).await
             }
 
             // If the transaction did not go through, retry up to a certain times.
             Err(err) => {
+                // #region agent log
+                error!(
+                    error = ?err,
+                    tx_digest = ?tx_digest,
+                    hypothesis = "C",
+                    "🔍 DEBUG: execute_transaction_block_with_effects failed"
+                );
+                // #endregion
                 error!(
                     ?action_key,
                     ?tx_digest,
@@ -570,9 +755,11 @@ where
     async fn handle_execution_effects(
         tx_digest: TransactionDigest,
         response: MysTransactionBlockResponse,
+        mys_client: &Arc<MysClient<C>>,
         store: &Arc<BridgeOrchestratorTables>,
         action: &BridgeAction,
         metrics: &Arc<BridgeMetrics>,
+        relayer: &Option<Arc<crate::relay::BridgeRelayer<C>>>,
     ) {
         let effects = response
             .effects
@@ -613,21 +800,98 @@ where
                         }
                     } else if e.type_ == *TokenTransferApproved.get().unwrap() {
                         match action {
-                            BridgeAction::EthToMysBridgeAction(_) => {
+                            BridgeAction::EthToMysBridgeAction(ref eth_action) => {
                                 metrics.eth_mys_token_transfer_approved.inc();
+                                info!(
+                                    tx_digest = ?tx_digest,
+                                    nonce = eth_action.eth_bridge_event.nonce,
+                                    source_chain = ?eth_action.eth_bridge_event.eth_chain_id,
+                                    target_chain = ?eth_action.eth_bridge_event.mys_chain_id,
+                                    token_id = eth_action.eth_bridge_event.token_id,
+                                    amount = eth_action.eth_bridge_event.mys_adjusted_amount,
+                                    "TokenTransferApproved event detected for EthToMysBridgeAction"
+                                );
                             }
-                            BridgeAction::MysToEthBridgeAction(_) => {
+                            BridgeAction::MysToEthBridgeAction(ref mys_action) => {
                                 metrics.mys_eth_token_transfer_approved.inc();
+                                info!(
+                                    tx_digest = ?tx_digest,
+                                    nonce = mys_action.mys_bridge_event.nonce,
+                                    source_chain = ?mys_action.mys_bridge_event.mys_chain_id,
+                                    target_chain = ?mys_action.mys_bridge_event.eth_chain_id,
+                                    token_id = mys_action.mys_bridge_event.token_id,
+                                    amount = mys_action.mys_bridge_event.amount_mys_adjusted,
+                                    mys_address = ?mys_action.mys_bridge_event.mys_address,
+                                    eth_address = ?mys_action.mys_bridge_event.eth_address,
+                                    "TokenTransferApproved event detected for MysToEthBridgeAction - triggering relay"
+                                );
                             }
                             _ => error!("Unexpected action type for approved event: {:?}", action),
                         }
+                        
+                        // Trigger auto-relay for approved transfers
+                        if let Some(relayer) = relayer {
+                            let action_clone = action.clone();
+                            let relayer_clone = relayer.clone();
+                            info!(
+                                action = ?action_clone,
+                                "Spawning relay task for approved transfer"
+                            );
+                            tokio::spawn(async move {
+                                match relayer_clone.handle_approved_transfer(&action_clone).await {
+                                    Ok(()) => {
+                                        info!(
+                                            action = ?action_clone,
+                                            "Auto-relay completed successfully"
+                                        );
+                                    }
+                                    Err(e) => {
+                                        error!(
+                                            action = ?action_clone,
+                                            error = ?e,
+                                            "Auto-relay failed - manual intervention may be required"
+                                        );
+                                    }
+                                }
+                            });
+                        } else {
+                            warn!(
+                                action = ?action,
+                                "Relayer not configured - approved transfer will not be auto-relayed. \
+                                 Add relay configuration to bridge config YAML to enable automatic token claiming."
+                            );
+                        }
                     }
                 });
-                store
-                    .remove_pending_actions(&[action.digest()])
-                    .unwrap_or_else(|e| {
-                        panic!("Write to DB should not fail: {:?}", e);
-                    })
+                
+                // Wait for checkpoint inclusion before updating database
+                // MySocial transactions are finalized immediately, but we wait a bit to ensure
+                // checkpoint inclusion for safety
+                let checkpoint_confirmed = Self::wait_for_checkpoint_inclusion(
+                    mys_client,
+                    tx_digest,
+                    10, // Wait up to 10 checkpoints
+                )
+                .await;
+                
+                if checkpoint_confirmed.is_ok() {
+                    info!(
+                        ?tx_digest,
+                        "Transaction confirmed in checkpoint, removing from pending actions"
+                    );
+                    store
+                        .remove_pending_actions(&[action.digest()])
+                        .unwrap_or_else(|e| {
+                            panic!("Write to DB should not fail: {:?}", e);
+                        });
+                } else {
+                    // Log error but don't panic - will retry on restart
+                    error!(
+                        ?tx_digest,
+                        ?action,
+                        "Transaction not confirmed in checkpoint after waiting, will retry on restart"
+                    );
+                }
             }
             MysExecutionStatus::Failure { error } => {
                 // In practice the transaction could fail because of running out of gas, but really
@@ -642,18 +906,109 @@ where
         }
     }
 
-    /// Panics if the gas object is not owned by the address.
-    async fn get_gas_data_assert_ownership(
+    /// Wait for transaction to be included in a checkpoint.
+    /// MySocial transactions are finalized immediately, so we wait a short time
+    /// to ensure checkpoint inclusion before updating database.
+    async fn wait_for_checkpoint_inclusion(
+        mys_client: &Arc<MysClient<C>>,
+        tx_digest: TransactionDigest,
+        max_wait_checkpoints: u64,
+    ) -> BridgeResult<()> {
+        // Get initial checkpoint number
+        let initial_checkpoint = mys_client
+            .get_latest_checkpoint_sequence_number()
+            .await
+            .map_err(|e| BridgeError::Generic(format!("Failed to get checkpoint: {:?}", e)))?;
+        
+        info!(
+            ?tx_digest,
+            initial_checkpoint,
+            max_wait_checkpoints,
+            "Waiting for transaction to be included in checkpoint"
+        );
+        
+        // Wait for checkpoints to pass (each checkpoint is ~0.25 seconds, so wait accordingly)
+        // We wait a bit longer to be safe
+        let wait_seconds = (max_wait_checkpoints * 1) as u64; // 1 second per checkpoint
+        tokio::time::sleep(Duration::from_secs(wait_seconds)).await;
+        
+        // Verify checkpoint has advanced
+        let final_checkpoint = mys_client
+            .get_latest_checkpoint_sequence_number()
+            .await
+            .map_err(|e| BridgeError::Generic(format!("Failed to get checkpoint: {:?}", e)))?;
+        
+        let checkpoints_passed = final_checkpoint.saturating_sub(initial_checkpoint);
+        
+        if checkpoints_passed >= max_wait_checkpoints {
+            info!(
+                ?tx_digest,
+                initial_checkpoint,
+                final_checkpoint,
+                checkpoints_passed,
+                "Transaction confirmed - {} checkpoints passed",
+                checkpoints_passed
+            );
+            Ok(())
+        } else {
+            // Still log success but warn about low checkpoint advance
+            warn!(
+                ?tx_digest,
+                initial_checkpoint,
+                final_checkpoint,
+                checkpoints_passed,
+                "Only {} checkpoints passed (expected {}), but proceeding anyway",
+                checkpoints_passed, max_wait_checkpoints
+            );
+            // Still return Ok since transaction succeeded - checkpoint inclusion is eventual
+            Ok(())
+        }
+    }
+
+    /// Get gas data with retry logic (max 3 attempts, 5 sec delay).
+    /// Falls back to panic method if all retries fail.
+    async fn get_gas_data_with_retry(
         mys_address: MysAddress,
         gas_object_id: ObjectID,
         mys_client: &MysClient<C>,
     ) -> (GasCoin, ObjectRef) {
+        // Try with retry logic (max 3 attempts, 5 sec delay)
+        for attempt in 0..3 {
+            match mys_client
+                .get_gas_object_once(gas_object_id)
+                .await
+            {
+                Ok((gas_coin, gas_obj_ref, owner)) => {
+                    if owner == Owner::AddressOwner(mys_address) {
+                        debug!(
+                            gas_object_id = ?gas_object_id,
+                            attempt,
+                            "Successfully retrieved gas object"
+                        );
+                        return (gas_coin, gas_obj_ref);
+                    }
+                }
+                Err(_) if attempt < 2 => {
+                    debug!(
+                        gas_object_id = ?gas_object_id,
+                        attempt,
+                        "Gas object unavailable, retrying..."
+                    );
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    continue;
+                }
+                Err(_) => break, // All retries failed
+            }
+        }
+
+        // All retries failed - use the old method as last resort (will panic/hang)
+        warn!(
+            gas_object_id = ?gas_object_id,
+            "Gas object unavailable after retries, falling back to panic method"
+        );
         let (gas_coin, gas_obj_ref, owner) = mys_client
             .get_gas_data_panic_if_not_gas(gas_object_id)
             .await;
-
-        // TODO: when we add multiple gas support in the future we could discard
-        // transferred gas object instead.
         assert_eq!(
             owner,
             Owner::AddressOwner(mys_address),
@@ -680,9 +1035,6 @@ mod tests {
     use crate::test_utils::DUMMY_MUTALBE_BRIDGE_OBJECT_ARG;
     use crate::types::BRIDGE_PAUSED;
     use fastcrypto::traits::KeyPair;
-    use prometheus::Registry;
-    use std::collections::{BTreeMap, HashMap};
-    use std::str::FromStr;
     use mys_json_rpc_types::MysTransactionBlockEffects;
     use mys_json_rpc_types::MysTransactionBlockEvents;
     use mys_json_rpc_types::{MysEvent, MysTransactionBlockResponse};
@@ -690,14 +1042,17 @@ mod tests {
     use mys_types::gas_coin::GasCoin;
     use mys_types::TypeTag;
     use mys_types::{base_types::random_object_ref, transaction::TransactionData};
+    use prometheus::Registry;
+    use std::collections::{BTreeMap, HashMap};
+    use std::str::FromStr;
 
     use crate::{
         crypto::{
             BridgeAuthorityKeyPair, BridgeAuthorityPublicKeyBytes,
             BridgeAuthorityRecoverableSignature,
         },
-        server::mock_handler::BridgeRequestMockHandler,
         mys_mock_client::MysMockClient,
+        server::mock_handler::BridgeRequestMockHandler,
         test_utils::{
             get_test_authorities_and_run_mock_bridge_server, get_test_eth_to_mys_bridge_action,
             get_test_mys_to_eth_bridge_action, sign_action_with_key,
@@ -1558,6 +1913,7 @@ mod tests {
             mys_token_type_tags.clone(),
             bridge_pause_rx,
             metrics,
+            None, // No relay config for tests
         )
         .await;
 

@@ -1,11 +1,12 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use crate::base_types::{AuthorityName, ConciseableName, MysAddress};
 use crate::committee::CommitteeTrait;
 use crate::committee::{Committee, EpochId, StakeUnit};
 use crate::error::{MysError, MysResult};
+use crate::mys_serde::{MysBitmap, Readable};
 use crate::signature::GenericSignature;
-use crate::mys_serde::{Readable, MysBitmap};
 use anyhow::{anyhow, Error};
 use derive_more::{AsMut, AsRef, From};
 pub use enum_dispatch::enum_dispatch;
@@ -81,7 +82,7 @@ pub type NetworkPrivateKey = Ed25519PrivateKey;
 pub type DefaultHash = Blake2b256;
 
 pub const DEFAULT_EPOCH_ID: EpochId = 0;
-pub const MYS_PRIV_KEY_PREFIX: &str = "mysprivkey";
+pub const MYS_PRIV_KEY_PREFIX: &str = "mysoprivkey";
 
 /// Creates a proof of that the authority account address is owned by the
 /// holder of authority protocol key, and also ensures that the authority
@@ -227,12 +228,12 @@ impl MysKeyPair {
         }
     }
 
-    /// Encode a MysKeyPair as `flag || privkey` in Bech32 starting with "mysprivkey" to a string. Note that the pubkey is not encoded.
+    /// Encode a MysKeyPair as `flag || privkey` in Bech32 starting with "mysoprivkey" to a string. Note that the pubkey is not encoded.
     pub fn encode(&self) -> Result<String, eyre::Report> {
         Bech32::encode(self.to_bytes(), MYS_PRIV_KEY_PREFIX).map_err(|e| eyre!(e))
     }
 
-    /// Decode a MysKeyPair from `flag || privkey` in Bech32 starting with "mysprivkey" to MysKeyPair. The public key is computed directly from the private key bytes.
+    /// Decode a MysKeyPair from `flag || privkey` in Bech32 starting with "mysoprivkey" to MysKeyPair. The public key is computed directly from the private key bytes.
     pub fn decode(value: &str) -> Result<Self, eyre::Report> {
         let bytes = Bech32::decode(value, MYS_PRIV_KEY_PREFIX)?;
         Self::from_bytes(&bytes)

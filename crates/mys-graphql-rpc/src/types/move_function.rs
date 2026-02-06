@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_graphql::*;
@@ -8,8 +9,8 @@ use crate::error::Error;
 
 use super::{
     move_module::MoveModule,
-    open_move_type::{abilities, MoveAbility, MoveVisibility, OpenMoveType},
     mys_address::MysAddress,
+    open_move_type::{abilities, MoveAbility, MoveVisibility, OpenMoveType},
 };
 
 pub(crate) struct MoveFunction {

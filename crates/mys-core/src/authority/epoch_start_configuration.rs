@@ -1,11 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use enum_dispatch::enum_dispatch;
-use serde::{Deserialize, Serialize};
 use mys_config::NodeConfig;
+use serde::{Deserialize, Serialize};
 
-use std::fmt;
 use mys_types::authenticator_state::get_authenticator_state_obj_initial_shared_version;
 use mys_types::base_types::SequenceNumber;
 use mys_types::bridge::{get_bridge_obj_initial_shared_version, is_bridge_committee_initiated};
@@ -13,11 +13,12 @@ use mys_types::deny_list_v1::get_deny_list_obj_initial_shared_version;
 use mys_types::epoch_data::EpochData;
 use mys_types::error::MysResult;
 use mys_types::messages_checkpoint::{CheckpointDigest, CheckpointTimestamp};
-use mys_types::randomness_state::get_randomness_state_obj_initial_shared_version;
-use mys_types::storage::ObjectStore;
 use mys_types::mys_system_state::epoch_start_mys_system_state::{
     EpochStartSystemState, EpochStartSystemStateTrait,
 };
+use mys_types::randomness_state::get_randomness_state_obj_initial_shared_version;
+use mys_types::storage::ObjectStore;
+use std::fmt;
 
 #[enum_dispatch]
 pub trait EpochStartConfigTrait {

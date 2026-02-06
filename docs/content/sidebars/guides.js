@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 const guides = [
@@ -94,7 +95,7 @@ const guides = [
 					type: 'doc',
 					id: 'guides/developer/nft',
 				},
-				items: ['guides/developer/nft/nft-rental', 'guides/developer/nft/asset-tokenization'],
+                                items: [],
 			},
 			{
 				type: 'category',

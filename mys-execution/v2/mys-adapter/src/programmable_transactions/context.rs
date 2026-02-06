@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 pub use checked::*;
@@ -50,7 +51,7 @@ mod checked {
     use mys_types::storage::PackageObject;
     use mys_types::{
         balance::Balance,
-        base_types::{MoveObjectType, ObjectID, MysAddress, TxContext},
+        base_types::{MoveObjectType, MysAddress, ObjectID, TxContext},
         coin::Coin,
         error::{ExecutionError, ExecutionErrorKind},
         event::Event,

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use std::{path::PathBuf, sync::Arc};
 
@@ -7,13 +8,13 @@ use async_trait::async_trait;
 use consensus_config::{Committee, NetworkKeyPair, Parameters, ProtocolKeyPair};
 use consensus_core::{CommitConsumer, CommitConsumerMonitor, CommitIndex, ConsensusAuthority};
 use fastcrypto::ed25519;
-use mysten_metrics::{RegistryID, RegistryService};
-use prometheus::Registry;
 use mys_config::NodeConfig;
 use mys_protocol_config::ConsensusNetwork;
 use mys_types::{
     committee::EpochId, mys_system_state::epoch_start_mys_system_state::EpochStartSystemStateTrait,
 };
+use mysten_metrics::{RegistryID, RegistryService};
+use prometheus::Registry;
 use tokio::sync::Mutex;
 use tracing::info;
 

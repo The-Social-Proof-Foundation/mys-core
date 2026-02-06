@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::HashMap;
@@ -6,8 +7,8 @@ use std::str::FromStr;
 
 use async_graphql::Context;
 use futures::future;
-use regex::{Captures, Regex};
 use mys_types::{base_types::ObjectID, TypeTag};
+use regex::{Captures, Regex};
 
 use crate::{data::package_resolver::PackageResolver, error::Error};
 

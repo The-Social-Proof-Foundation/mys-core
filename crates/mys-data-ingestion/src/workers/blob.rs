@@ -1,15 +1,16 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
-use object_store::path::Path;
-use object_store::ObjectStore;
-use serde::{Deserialize, Serialize};
 use mys_data_ingestion_core::{create_remote_store_client, Worker};
 use mys_storage::blob::{Blob, BlobEncoding};
 use mys_types::full_checkpoint_content::CheckpointData;
+use object_store::path::Path;
+use object_store::ObjectStore;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BlobTaskConfig {

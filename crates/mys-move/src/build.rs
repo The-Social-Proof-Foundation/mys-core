@@ -1,13 +1,14 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::manage_package::resolve_lock_file_path;
 use clap::Parser;
 use move_cli::base;
 use move_package::BuildConfig as MoveBuildConfig;
+use mys_move_build::{check_invalid_dependencies, check_unpublished_dependencies, BuildConfig};
 use serde_json::json;
 use std::{fs, path::Path};
-use mys_move_build::{check_invalid_dependencies, check_unpublished_dependencies, BuildConfig};
 
 const LAYOUTS_DIR: &str = "layouts";
 const STRUCT_LAYOUTS_FILENAME: &str = "struct_layouts.yaml";

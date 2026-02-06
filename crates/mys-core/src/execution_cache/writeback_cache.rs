@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! MemoryCache is a cache for the transaction execution which delays writes to the database until
@@ -39,7 +40,7 @@
 
 use crate::authority::authority_per_epoch_store::AuthorityPerEpochStore;
 use crate::authority::authority_store::{
-    ExecutionLockWriteGuard, LockDetailsDeprecated, ObjectLockStatus, MysLockResult,
+    ExecutionLockWriteGuard, LockDetailsDeprecated, MysLockResult, ObjectLockStatus,
 };
 use crate::authority::authority_store_tables::LiveObject;
 use crate::authority::backpressure::BackpressureManager;
@@ -52,13 +53,6 @@ use dashmap::mapref::entry::Entry as DashMapEntry;
 use dashmap::DashMap;
 use futures::{future::BoxFuture, FutureExt};
 use moka::sync::Cache as MokaCache;
-use mysten_common::sync::notify_read::NotifyRead;
-use parking_lot::Mutex;
-use prometheus::Registry;
-use std::collections::{BTreeMap, BTreeSet};
-use std::hash::Hash;
-use std::sync::atomic::AtomicU64;
-use std::sync::Arc;
 use mys_config::ExecutionCacheConfig;
 use mys_macros::fail_point_async;
 use mys_protocol_config::ProtocolVersion;
@@ -74,12 +68,19 @@ use mys_types::effects::{TransactionEffects, TransactionEvents};
 use mys_types::error::{MysError, MysResult, UserInputError};
 use mys_types::message_envelope::Message;
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use mys_types::mys_system_state::{get_mys_system_state, MysSystemState};
 use mys_types::object::Object;
 use mys_types::storage::{
     FullObjectKey, MarkerValue, ObjectKey, ObjectOrTombstone, ObjectStore, PackageObject,
 };
-use mys_types::mys_system_state::{get_mys_system_state, MysSystemState};
 use mys_types::transaction::{VerifiedSignedTransaction, VerifiedTransaction};
+use mysten_common::sync::notify_read::NotifyRead;
+use parking_lot::Mutex;
+use prometheus::Registry;
+use std::collections::{BTreeMap, BTreeSet};
+use std::hash::Hash;
+use std::sync::atomic::AtomicU64;
+use std::sync::Arc;
 use tap::TapOptional;
 use tracing::{debug, info, instrument, trace, warn};
 

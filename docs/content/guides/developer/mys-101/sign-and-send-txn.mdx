@@ -10,7 +10,7 @@ The signature is provided with the private key owned by the wallet, and its publ
 
 MySocial uses a `MySocialKeyPair` to produce the signature, which commits to the Blake2b hash digest of the intent message (`intent || bcs bytes of tx_data`). The signature schemes currently supported are `Ed25519 Pure`, `ECDSA Secp256k1`, `ECDSA Secp256r1`, `Multisig`, and `zkLogin`.
 
-You can instantiate `Ed25519 Pure`, `ECDSA Secp256k1`, and `ECDSA Secp256r1` using `MySocialKeyPair` and use it to sign transactions. Note that this guide does not apply to `Multisig` and `zkLogin`, please refer to their own pages ([Multisig](/concepts/cryptography/transaction-auth/multisig) and [zkLogin](https://docs.mys.io/concepts/cryptography/zklogin) respectively) for instructions.
+You can instantiate `Ed25519 Pure`, `ECDSA Secp256k1`, and `ECDSA Secp256r1` using `MySocialKeyPair` and use it to sign transactions. Note that this guide does not apply to `Multisig` and `zkLogin`, please refer to their own pages ([Multisig](/concepts/cryptography/transaction-auth/multisig) and [zkLogin](https://docs.mysocial.network/concepts/cryptography/zklogin) respectively) for instructions.
 
 With a signature and the transaction bytes, a transaction can be submitted to be executed.
 
@@ -40,13 +40,13 @@ The following examples demonstrate how to sign and execute transactions using Ru
 There are various ways to instantiate a key pair and to derive its public key and MySocial address using the MySocial TypeScript SDK.
 
 ```tsx
-import { fromHex } from '@mysten/bcs';
-import { getFullnodeUrl, MySocialClient } from '@mysten/mys/client';
-import { type Keypair } from '@mysten/mys/cryptography';
-import { Ed25519Keypair } from '@mysten/mys/keypairs/ed25519';
-import { Secp256k1Keypair } from '@mysten/mys/keypairs/secp256k1';
-import { Secp256r1Keypair } from '@mysten/mys/keypairs/secp256r1';
-import { Transaction } from '@mysten/mys/transactions';
+import { fromHex } from '@socialproof/bcs';
+import { getFullnodeUrl, MySocialClient } from '@socialproof/mys/client';
+import { type Keypair } from '@socialproof/mys/cryptography';
+import { Ed25519Keypair } from '@socialproof/mys/keypairs/ed25519';
+import { Secp256k1Keypair } from '@socialproof/mys/keypairs/secp256k1';
+import { Secp256r1Keypair } from '@socialproof/mys/keypairs/secp256r1';
+import { Transaction } from '@socialproof/mys/transactions';
 
 const kp_rand_0 = new Ed25519Keypair();
 const kp_rand_1 = new Secp256k1Keypair();
@@ -67,9 +67,9 @@ const kp_derive_0 = Ed25519Keypair.deriveKeypair('$MNEMONICS');
 const kp_derive_1 = Secp256k1Keypair.deriveKeypair('$MNEMONICS');
 const kp_derive_2 = Secp256r1Keypair.deriveKeypair('$MNEMONICS');
 
-const kp_derive_with_path_0 = Ed25519Keypair.deriveKeypair('$MNEMONICS', "m/44'/784'/1'/0'/0'");
-const kp_derive_with_path_1 = Secp256k1Keypair.deriveKeypair('$MNEMONICS', "m/54'/784'/1'/0/0");
-const kp_derive_with_path_2 = Secp256r1Keypair.deriveKeypair('$MNEMONICS', "m/74'/784'/1'/0/0");
+const kp_derive_with_path_0 = Ed25519Keypair.deriveKeypair('$MNEMONICS', "m/44'/6976'/1'/0'/0'");
+const kp_derive_with_path_1 = Secp256k1Keypair.deriveKeypair('$MNEMONICS', "m/54'/6976'/1'/0/0");
+const kp_derive_with_path_2 = Secp256r1Keypair.deriveKeypair('$MNEMONICS', "m/74'/6976'/1'/0/0");
 
 // replace `kp_rand_0` with the variable names above.
 const pk = kp_rand_0.getPublicKey();

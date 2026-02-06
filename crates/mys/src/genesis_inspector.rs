@@ -1,8 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use inquire::Select;
-use std::collections::BTreeMap;
 use mys_config::genesis::UnsignedGenesis;
 use mys_types::mys_system_state::MysValidatorGenesis;
 use mys_types::{
@@ -13,6 +13,7 @@ use mys_types::{
     move_package::MovePackage,
     object::{MoveObject, Owner},
 };
+use std::collections::BTreeMap;
 
 const STR_ALL: &str = "All";
 const STR_EXIT: &str = "Exit";

@@ -1,18 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::*;
 use ethers::providers::Middleware;
 use ethers::types::Address as EthAddress;
 use fastcrypto::encoding::{Encoding, Hex};
-use shared_crypto::intent::Intent;
-use shared_crypto::intent::IntentMessage;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::str::from_utf8;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::Duration;
 use mys_bridge::client::bridge_authority_aggregator::BridgeAuthorityAggregator;
 use mys_bridge::crypto::{BridgeAuthorityPublicKey, BridgeAuthorityPublicKeyBytes};
 use mys_bridge::eth_transaction_builder::build_eth_transaction;
@@ -40,6 +33,14 @@ use mys_types::crypto::AuthorityPublicKeyBytes;
 use mys_types::crypto::Signature;
 use mys_types::crypto::ToFromBytes;
 use mys_types::transaction::Transaction;
+use shared_crypto::intent::Intent;
+use shared_crypto::intent::IntentMessage;
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::str::from_utf8;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -89,7 +90,7 @@ async fn main() -> anyhow::Result<()> {
             let (mys_key, mys_address, gas_object_ref) = config
                 .get_mys_account_info()
                 .await
-                .expect("Failed to get mys account info");
+                .expect("Failed to get MySo account info");
             let bridge_summary = mys_bridge_client
                 .get_bridge_summary()
                 .await
@@ -140,7 +141,7 @@ async fn main() -> anyhow::Result<()> {
                     &id_token_map,
                     rgp,
                 )
-                .expect("Failed to build mys transaction");
+                .expect("Failed to build MySo transaction");
                 let mys_sig = Signature::new_secure(
                     &IntentMessage::new(Intent::mys_transaction(), tx.clone()),
                     &mys_key,

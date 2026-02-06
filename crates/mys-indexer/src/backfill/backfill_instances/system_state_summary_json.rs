@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::backfill::backfill_task::BackfillTask;
@@ -7,8 +8,8 @@ use crate::schema::epochs;
 use async_trait::async_trait;
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::{AsyncConnection, RunQueryDsl};
-use std::ops::RangeInclusive;
 use mys_types::mys_system_state::mys_system_state_summary::MysSystemStateSummary;
+use std::ops::RangeInclusive;
 
 pub struct SystemStateSummaryJsonBackfill;
 

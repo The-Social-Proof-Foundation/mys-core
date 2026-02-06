@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use jsonrpsee::core::RpcResult;
@@ -6,7 +7,7 @@ use jsonrpsee::proc_macros::rpc;
 
 use mys_json_rpc_types::{DelegatedStake, MysCommittee, ValidatorApys};
 use mys_open_rpc_macros::open_rpc;
-use mys_types::base_types::{ObjectID, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID};
 use mys_types::mys_serde::BigInt;
 use mys_types::mys_system_state::mys_system_state_summary::MysSystemStateSummary;
 

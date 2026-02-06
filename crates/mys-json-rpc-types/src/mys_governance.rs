@@ -1,12 +1,13 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use mys_types::base_types::{AuthorityName, EpochId, MysAddress, ObjectID};
+use mys_types::committee::{Committee, StakeUnit};
+use mys_types::mys_serde::BigInt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use mys_types::base_types::{AuthorityName, EpochId, ObjectID, MysAddress};
-use mys_types::committee::{Committee, StakeUnit};
-use mys_types::mys_serde::BigInt;
 
 /// RPC representation of the [Committee] type.
 #[serde_as]

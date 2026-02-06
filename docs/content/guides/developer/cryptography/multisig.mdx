@@ -24,13 +24,13 @@ To demonstrate multisig, this topic guides you through setting up and executing 
 To begin, create three addresses that will act as the signers for the transaction you perform later in the instruction. Use the `mys client new-address` command to generate a MySocial address and public key for three supported key schemes.
 
 ```sh
-$ mys client new-address ed25519
+$ myso client new-address ed25519
 ```
 ```sh
-$ mys client new-address secp256k1
+$ myso client new-address secp256k1
 ```
 ```sh
-$ mys client new-address secp256r1
+$ myso client new-address secp256r1
 ```
 
 The console displays a response to each successful call that is similar to the following:
@@ -72,10 +72,10 @@ You can set the shell variables to the alias values instead of addresses if you 
 
 ### Verify addresses
 
-Use `mys keytool` to list the addresses you created in the previous section.
+Use `myso keytool` to list the addresses you created in the previous section.
 
 ```sh
-$ mys keytool list
+$ myso keytool list
 ```
 
 The response resembles the following, but displays actual alias names, addresses, keys, and peer IDs:
@@ -84,7 +84,7 @@ The response resembles the following, but displays actual alias names, addresses
 ╭────────────────────────────────────────────────────────────────────╮
 │ ╭─────────────────┬──────────────────────────────────────────────╮ │
 | | alias           |  <ALIAS-NAME>                                | |
-│ │ mysAddress      │  <MYS-ADDRESS>                               │ │
+│ │ mysoAddress      │  <MYS-ADDRESS>                               │ │
 │ │ publicBase64Key │  <PUBLIC-KEY>                                │ │
 │ │ keyScheme       │  ed25519                                     │ │
 │ │ flag            │  0                                           │ │
@@ -92,7 +92,7 @@ The response resembles the following, but displays actual alias names, addresses
 │ ╰─────────────────┴──────────────────────────────────────────────╯ │
 │ ╭─────────────────┬──────────────────────────────────────────────╮ │
 | | alias           |  <ALIAS-NAME>                                | |
-│ │ mysAddress      │  <MYS-ADDRESS>                               │ │
+│ │ mysoAddress      │  <MYS-ADDRESS>                               │ │
 │ │ publicBase64Key │  <PUBLIC-KEY>                                │ │
 │ │ keyScheme       │  secp256k1                                   │ │
 │ │ flag            │  0                                           │ │
@@ -100,7 +100,7 @@ The response resembles the following, but displays actual alias names, addresses
 │ ╰─────────────────┴──────────────────────────────────────────────╯ │
 │ ╭─────────────────┬──────────────────────────────────────────────╮ │
 | | alias           |  <ALIAS-NAME>                                | |
-│ │ mysAddress      │  <MYS-ADDRESS>                               │ │
+│ │ mysoAddress      │  <MYS-ADDRESS>                               │ │
 │ │ publicBase64Key │  <PUBLIC-KEY>                                │ │
 │ │ keyScheme       │  secp256r1                                   │ │
 │ │ flag            │  0                                           │ │
@@ -165,13 +165,13 @@ $ MULTISIG=<MULTISIG-ADDRESS>
 If you use the `mys client objects $MULTISIG` command, you can see that the newly created multisig address has no objects. This means you need to get MYS before you can perform any transactions. To get MYS for your multisig account, use the `mys client faucet` command and provide the multisig address using the `--address` flag. Run this command twice so that the multisig address owns at least two MYS. This example uses two MYS so that one can be transferred and the other can pay for gas.
 
 ```sh
-$ mys client faucet --address $MULTISIG
+$ myso client faucet --address $MULTISIG
 ```
 
 Use the `mys client gas` command to verify the address now has at least two MYS.
 
 ```sh
-$ mys client gas $MULTISIG
+$ myso client gas $MULTISIG
 ```
 
 ### Transfer MYS to your active address
@@ -187,7 +187,7 @@ Use the `mys client transfer` command to set up the transfer. The `--serialize-u
 {@include: ../../../snippets/info-gas-budget.mdx}
 
 ```sh
-$ mys client transfer --to $ACTIVE --object-id $COIN --gas-budget <GAS-AMOUNT> --serialize-unsigned-transaction
+$ myso client transfer --to $ACTIVE --object-id $COIN --gas-budget <GAS-AMOUNT> --serialize-unsigned-transaction
 ```
 
 The console displays the result (`<TX-BYTES-RESULT>`), which you can assign to another shell variable.
@@ -207,17 +207,17 @@ You can create the signature with other tools, as well, as long as you serialize
 :::
 
 ```sh
-$ mys keytool sign --address $ADDRESS1 --data $TXBYTES
+$ myso keytool sign --address $ADDRESS1 --data $TXBYTES
 ```
 ```sh
-$ mys keytool sign --address $ADDRESS2 --data $TXBYTES
+$ myso keytool sign --address $ADDRESS2 --data $TXBYTES
 ```
 
 Each successful call to the command receives a response similar to the following.
 
 ```sh
 ╭──────────────┬─────────────────────────────╮
-│ mysAddress   │ <ADDRESS>                   │
+│ mysoAddress   │ <ADDRESS>                   │
 │ rawTxData    │ <TRANSACTION-HASH>          │
 │ intent       │ ╭─────────┬─────╮           │
 │              │ │ scope   │  0  │           |

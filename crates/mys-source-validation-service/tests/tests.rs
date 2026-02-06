@@ -1,23 +1,24 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use expect_test::expect;
+use mys::client_commands::{MysClientCommandResult, MysClientCommands, OptsWithGas};
+use mys_json_rpc_types::{MysTransactionBlockEffects, MysTransactionBlockEffectsAPI};
+use mys_move_build::{BuildConfig, MysPackageHooks};
+use mys_sdk::rpc_types::{
+    MysObjectDataOptions, MysObjectResponseQuery, MysTransactionBlockEffectsV1, OwnedObjectRef,
+};
+use mys_sdk::types::base_types::ObjectID;
+use mys_sdk::types::object::Owner;
+use mys_sdk::types::transaction::TEST_ONLY_GAS_UNIT_FOR_PUBLISH;
+use mys_sdk::wallet_context::WalletContext;
 use reqwest::Client;
 use std::fs;
 use std::io::Read;
 use std::os::unix::fs::FileExt;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use mys::client_commands::{OptsWithGas, MysClientCommandResult, MysClientCommands};
-use mys_json_rpc_types::{MysTransactionBlockEffects, MysTransactionBlockEffectsAPI};
-use mys_move_build::{BuildConfig, MysPackageHooks};
-use mys_sdk::rpc_types::{
-    OwnedObjectRef, MysObjectDataOptions, MysObjectResponseQuery, MysTransactionBlockEffectsV1,
-};
-use mys_sdk::types::base_types::ObjectID;
-use mys_sdk::types::object::Owner;
-use mys_sdk::types::transaction::TEST_ONLY_GAS_UNIT_FOR_PUBLISH;
-use mys_sdk::wallet_context::WalletContext;
 use tokio::sync::oneshot;
 
 use move_core_types::account_address::AccountAddress;
@@ -279,7 +280,7 @@ async fn test_api_route() -> anyhow::Result<()> {
     let address = "0x2";
     let module = "address";
     let source_path = fixtures
-        .into_path()
+        .keep()
         .join("mys/move-stdlib/sources/address.move");
 
     let mut source_lookup = SourceLookup::new();
@@ -390,7 +391,7 @@ network = "mainnet"
 [[packages.values.branches]]
 branch = "framework/mainnet"
 paths = [
-  { path = "crates/mys-framework/packages/deepbook", watch = "0xdee9" },
+  { path = "crates/mys-framework/packages/orderbook", watch = "0x0b0c" },
   { path = "crates/mys-framework/packages/move-stdlib", watch = "0x1" },
   { path = "crates/mys-framework/packages/mys-framework", watch = "0x2" },
   { path = "crates/mys-framework/packages/mys-system", watch = "0x3" }
@@ -420,9 +421,9 @@ paths = [
                                 branch: "framework/mainnet",
                                 paths: [
                                     Package {
-                                        path: "crates/mys-framework/packages/deepbook",
+                                        path: "crates/mys-framework/packages/orderbook",
                                         watch: Some(
-                                            0x000000000000000000000000000000000000000000000000000000000000dee9,
+                                            0x0000000000000000000000000000000000000000000000000000000000000b0c,
                                         ),
                                     },
                                     Package {
@@ -441,6 +442,12 @@ paths = [
                                         path: "crates/mys-framework/packages/mys-system",
                                         watch: Some(
                                             0x0000000000000000000000000000000000000000000000000000000000000003,
+                                        ),
+                                    },
+                                    Package {
+                                        path: "crates/mys-framework/packages/mys-social",
+                                        watch: Some(
+                                            0x00000000000000000000000000000000000000000000000000000000000050c1,
                                         ),
                                     },
                                 ],

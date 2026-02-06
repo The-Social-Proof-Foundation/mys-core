@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_graphql::*;
@@ -8,8 +9,8 @@ use move_core_types::{
     identifier::{IdentStr, Identifier},
     language_storage::{StructTag, TypeTag},
 };
-use serde::{Deserialize, Serialize};
 use mys_types::object::bounded_visitor::BoundedVisitor;
+use serde::{Deserialize, Serialize};
 
 use crate::data::package_resolver::PackageResolver;
 use crate::{error::Error, types::json::Json, types::move_type::unexpected_signer_error};

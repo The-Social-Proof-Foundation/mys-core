@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::*;
@@ -7,6 +8,7 @@ use mys::client_commands::MysClientCommands::{ProfileTransaction, ReplayBatch, R
 use mys::mys_commands::MysCommand;
 use mys_types::exit_main;
 use tracing::debug;
+use rustls;
 
 // Define the `GIT_REVISION` and `VERSION` consts
 bin_version::bin_version!();
@@ -25,8 +27,25 @@ struct Args {
     command: MysCommand,
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    // Install default crypto provider for rustls (required for rustls 0.23+)
+    // This MUST be done BEFORE creating the Tokio runtime to ensure it's available
+    // to all worker threads that may spawn TLS connections
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
+    // Create Tokio runtime manually after rustls is installed
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to create Tokio runtime");
+
+    rt.block_on(async_main());
+}
+
+async fn async_main() {
+
     #[cfg(windows)]
     colored::control::set_virtual_terminal(true).unwrap();
 

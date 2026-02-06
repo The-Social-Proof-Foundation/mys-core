@@ -1,13 +1,14 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! The MysBridgeStatus observable monitors whether the Mys Bridge is paused.
 
 use crate::mys_bridge_watchdog::Observable;
 use async_trait::async_trait;
+use mys_sdk::MysClient;
 use prometheus::IntGaugeVec;
 use std::{collections::BTreeMap, sync::Arc};
-use mys_sdk::MysClient;
 
 use tokio::time::Duration;
 use tracing::{error, info};
@@ -60,6 +61,6 @@ impl Observable for TotalSupplies {
     }
 
     fn interval(&self) -> Duration {
-        Duration::from_secs(10)
+        Duration::from_secs(60)
     }
 }

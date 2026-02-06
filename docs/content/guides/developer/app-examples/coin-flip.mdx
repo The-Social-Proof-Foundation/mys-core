@@ -608,7 +608,7 @@ Now that you have written our contracts, it's time to deploy them.
 Next, configure the MySocial CLI to use `testnet` as the active environment, as well. If you haven't already set up a `testnet` environment, do so by running the following command in a terminal or console:
 
 ```sh
-$ mys client new-env --alias testnet --rpc https://fullnode.testnet.mys.io:443
+$ mys client new-env --alias testnet --rpc https://fullnode.testnet.mysocial.network:443
 ```
 
 Run the following command to activate the `testnet` environment:
@@ -757,7 +757,7 @@ The following frontend code snippets include only the most relevant sections. Re
 As is common in other React projects, `App.tsx` is where you implement the outer layout:
 
 ```typescript title='App.tsx'
-import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
+import { ConnectButton, useCurrentAccount } from '@socialproof/dapp-kit';
 import { InfoCircledIcon } from '@radix-ui/react-icons';
 import { Box, Callout, Container, Flex, Grid, Heading } from '@radix-ui/themes';
 
@@ -916,7 +916,7 @@ Great, now you know how to initialize the `HouseData` shared object. Move to the
 In this game, the users must create a `Counter` object to start the game. So there should be a place in the Player column UI to list the existing `Counter` object information for the player to choose. It seems likely that you will reuse the fetching logic for the `Counter` object in several places in your UI, so it's good practice to isolate this logic into a React hook, which you call `useFetchCounterNft()` in `useFetchCounterNft.ts`:
 
 ```typescript title='containers/Player/useFetchCounterNft.ts'
-import { useCurrentAccount, useMySocialClientQuery } from '@mysten/dapp-kit';
+import { useCurrentAccount, useMySocialClientQuery } from '@socialproof/dapp-kit';
 
 import 'react';
 

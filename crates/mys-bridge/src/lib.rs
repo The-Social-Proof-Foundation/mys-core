@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod abi;
@@ -6,6 +7,12 @@ pub mod action_executor;
 pub mod client;
 pub mod config;
 pub mod crypto;
+pub mod deposit_addresses;
+pub mod deposit_bridge;
+pub mod deposit_gas_manager;
+pub mod deposit_handler;
+pub mod deposit_monitor;
+pub mod deposit_sig_verification;
 pub mod encoding;
 pub mod error;
 pub mod eth_client;
@@ -15,14 +22,15 @@ pub mod events;
 pub mod metered_eth_provider;
 pub mod metrics;
 pub mod monitor;
-pub mod node;
-pub mod orchestrator;
-pub mod server;
-pub mod storage;
 pub mod mys_bridge_watchdog;
 pub mod mys_client;
 pub mod mys_syncer;
 pub mod mys_transaction_builder;
+pub mod node;
+pub mod orchestrator;
+pub mod relay;
+pub mod server;
+pub mod storage;
 pub mod types;
 pub mod utils;
 
@@ -43,8 +51,7 @@ pub mod e2e_tests;
 #[macro_export]
 macro_rules! retry_with_max_elapsed_time {
     ($func:expr, $max_elapsed_time:expr) => {{
-        // The following delay sequence (in secs) will be used, applied with jitter
-        // 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 30, 60, 120, 120 ...
+        // Standard backoff: 0.4s, 0.8s, 1.6s, 3.2s, 6.4s, 12.8s, 25.6s, max 120s
         let backoff = backoff::ExponentialBackoff {
             initial_interval: Duration::from_millis(400),
             randomization_factor: 0.1,
@@ -53,17 +60,15 @@ macro_rules! retry_with_max_elapsed_time {
             max_elapsed_time: Some($max_elapsed_time),
             ..Default::default()
         };
+        
         backoff::future::retry(backoff, || {
             let fut = async {
                 let result = $func.await;
                 match result {
-                    Ok(_) => {
-                        return Ok(result);
-                    }
+                    Ok(_) => Ok(result),
                     Err(e) => {
-                        // For simplicity we treat every error as transient so we can retry until max_elapsed_time
                         tracing::debug!("Retrying due to error: {:?}", e);
-                        return Err(backoff::Error::transient(e));
+                        Err(backoff::Error::transient(e))
                     }
                 }
             };

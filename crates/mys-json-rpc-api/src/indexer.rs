@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use jsonrpsee::core::{RpcResult, SubscriptionResult};
@@ -6,12 +7,11 @@ use jsonrpsee::proc_macros::rpc;
 
 use mys_json_rpc_types::MysTransactionBlockEffects;
 use mys_json_rpc_types::{
-    DynamicFieldPage, EventFilter, EventPage, ObjectsPage, Page, MysEvent, MysObjectResponse,
-    MysObjectResponseQuery, MysTransactionBlockResponseQuery, TransactionBlocksPage,
-    TransactionFilter,
+    DynamicFieldPage, EventFilter, EventPage, MysEvent, MysObjectResponse, MysObjectResponseQuery,
+    MysTransactionBlockResponseQuery, ObjectsPage, Page, TransactionBlocksPage, TransactionFilter,
 };
 use mys_open_rpc_macros::open_rpc;
-use mys_types::base_types::{ObjectID, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID};
 use mys_types::digests::TransactionDigest;
 use mys_types::dynamic_field::DynamicFieldName;
 use mys_types::event::EventID;
@@ -55,7 +55,7 @@ pub trait IndexerApi {
     #[method(name = "queryEvents")]
     async fn query_events(
         &self,
-        /// The event query criteria. See [Event filter](https://docs.mys.io/build/event_api#event-filters) documentation for examples.
+        /// The event query criteria. See [Event filter](https://docs.mysocial.network/build/event_api#event-filters) documentation for examples.
         query: EventFilter,
         /// optional paging cursor
         cursor: Option<EventID>,
@@ -69,7 +69,7 @@ pub trait IndexerApi {
     #[subscription(name = "subscribeEvent", item = MysEvent)]
     fn subscribe_event(
         &self,
-        /// The filter criteria of the event stream. See [Event filter](https://docs.mys.io/build/event_api#event-filters) documentation for examples.
+        /// The filter criteria of the event stream. See [Event filter](https://docs.mysocial.network/build/event_api#event-filters) documentation for examples.
         filter: EventFilter,
     ) -> SubscriptionResult;
 

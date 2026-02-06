@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::quorum_driver::reconfig_observer::DummyReconfigObserver;
@@ -9,11 +10,6 @@ use crate::test_authority_clients::LocalAuthorityClient;
 use crate::test_authority_clients::LocalAuthorityClientFaultConfig;
 use crate::test_utils::make_transfer_mys_transaction;
 use crate::{quorum_driver::QuorumDriverMetrics, unit_test_utils::init_local_authorities};
-use mysten_common::sync::notify_read::{NotifyRead, Registration};
-use std::net::SocketAddr;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
 use mys_macros::{register_fail_point, sim_test};
 use mys_types::base_types::MysAddress;
 use mys_types::base_types::TransactionDigest;
@@ -24,6 +20,11 @@ use mys_types::quorum_driver_types::{
     ExecuteTransactionRequestV3, QuorumDriverError, QuorumDriverResponse, QuorumDriverResult,
 };
 use mys_types::transaction::Transaction;
+use mysten_common::sync::notify_read::{NotifyRead, Registration};
+use std::net::SocketAddr;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::time::timeout;
 
 async fn setup() -> (AuthorityAggregator<LocalAuthorityClient>, Transaction) {

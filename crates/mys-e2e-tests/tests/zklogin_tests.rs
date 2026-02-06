@@ -1,10 +1,8 @@
 // Copyright (c) 2021, Facebook, Inc. and its affiliates
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use shared_crypto::intent::Intent;
-use shared_crypto::intent::IntentMessage;
-use std::net::SocketAddr;
 use mys_core::authority_client::AuthorityAPI;
 use mys_macros::sim_test;
 use mys_protocol_config::ProtocolConfig;
@@ -21,6 +19,9 @@ use mys_types::utils::{
 };
 use mys_types::zk_login_authenticator::ZkLoginAuthenticator;
 use mys_types::MYS_AUTHENTICATOR_STATE_OBJECT_ID;
+use shared_crypto::intent::Intent;
+use shared_crypto::intent::IntentMessage;
+use std::net::SocketAddr;
 use test_cluster::TestCluster;
 use test_cluster::TestClusterBuilder;
 
@@ -271,12 +272,12 @@ async fn test_create_authenticator_state_object() {
 #[sim_test]
 async fn test_conflicting_jwks() {
     use futures::StreamExt;
-    use std::collections::HashSet;
-    use std::sync::{Arc, Mutex};
     use mys_json_rpc_types::MysTransactionBlockEffectsAPI;
     use mys_json_rpc_types::TransactionFilter;
     use mys_types::base_types::ObjectID;
     use mys_types::transaction::{TransactionDataAPI, TransactionKind};
+    use std::collections::HashSet;
+    use std::sync::{Arc, Mutex};
     use tokio::time::Duration;
 
     let test_cluster = TestClusterBuilder::new()

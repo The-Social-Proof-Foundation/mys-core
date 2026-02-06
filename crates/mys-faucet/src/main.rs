@@ -1,12 +1,13 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::Parser;
-use std::env;
-use std::sync::Arc;
 use mys_config::mys_config_dir;
 use mys_faucet::{create_wallet_context, start_faucet, AppState};
 use mys_faucet::{FaucetConfig, SimpleFaucet};
+use std::env;
+use std::sync::Arc;
 use tracing::info;
 
 const CONCURRENCY_LIMIT: usize = 30;

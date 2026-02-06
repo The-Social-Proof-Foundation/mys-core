@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use self::{
@@ -56,9 +57,9 @@ use move_vm_types::{
     natives::function::NativeResult,
     values::{Struct, Value},
 };
-use std::sync::Arc;
 use mys_protocol_config::ProtocolConfig;
 use mys_types::{MOVE_STDLIB_ADDRESS, MYS_FRAMEWORK_ADDRESS, MYS_SYSTEM_ADDRESS};
+use std::sync::Arc;
 use transfer::TransferReceiveObjectInternalCostParams;
 
 mod address;

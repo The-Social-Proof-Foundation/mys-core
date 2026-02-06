@@ -1,13 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority::authority_per_epoch_store::CancelConsensusCertificateReason;
 use crate::authority::epoch_start_configuration::EpochStartConfigTrait;
 use crate::authority::AuthorityPerEpochStore;
 use crate::execution_cache::ObjectCacheRead;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::collections::HashSet;
 use mys_types::base_types::ConsensusObjectSequenceKey;
 use mys_types::base_types::TransactionDigest;
 use mys_types::crypto::RandomnessRound;
@@ -20,6 +18,9 @@ use mys_types::transaction::{
     SenderSignedData, SharedInputObject, TransactionDataAPI, TransactionKey,
 };
 use mys_types::{base_types::SequenceNumber, error::MysResult, MYS_RANDOMNESS_STATE_OBJECT_ID};
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use tracing::{debug, trace};
 
 pub struct SharedObjVerManager {}
@@ -314,9 +315,8 @@ mod tests {
         ConsensusSharedObjVerAssignment, SharedObjVerManager,
     };
     use crate::authority::test_authority_builder::TestAuthorityBuilder;
-    use std::collections::{BTreeMap, HashMap};
     use mys_test_transaction_builder::TestTransactionBuilder;
-    use mys_types::base_types::{ObjectID, SequenceNumber, MysAddress};
+    use mys_types::base_types::{MysAddress, ObjectID, SequenceNumber};
     use mys_types::crypto::RandomnessRound;
     use mys_types::digests::ObjectDigest;
     use mys_types::effects::TestEffectsBuilder;
@@ -327,6 +327,7 @@ mod tests {
     use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
     use mys_types::transaction::{ObjectArg, SenderSignedData, TransactionKey};
     use mys_types::MYS_RANDOMNESS_STATE_OBJECT_ID;
+    use std::collections::{BTreeMap, HashMap};
 
     #[tokio::test]
     async fn test_assign_versions_from_consensus_basic() {

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! Objects whose struct type has key ability represent Mys objects.
@@ -27,7 +28,6 @@ use move_bytecode_verifier_meter::{Meter, Scope};
 use move_core_types::{
     account_address::AccountAddress, ident_str, identifier::IdentStr, vm_status::StatusCode,
 };
-use std::{collections::BTreeMap, error::Error, num::NonZeroU64};
 use mys_types::bridge::BRIDGE_MODULE_NAME;
 use mys_types::deny_list_v1::{DENY_LIST_CREATE_FUNC, DENY_LIST_MODULE};
 use mys_types::{
@@ -35,10 +35,11 @@ use mys_types::{
     clock::CLOCK_MODULE_NAME,
     error::{ExecutionError, VMMVerifierErrorSubStatusCode},
     id::OBJECT_MODULE_NAME,
-    randomness_state::RANDOMNESS_MODULE_NAME,
     mys_system_state::MYS_SYSTEM_MODULE_NAME,
+    randomness_state::RANDOMNESS_MODULE_NAME,
     BRIDGE_ADDRESS, MYS_FRAMEWORK_ADDRESS, MYS_SYSTEM_ADDRESS,
 };
+use std::{collections::BTreeMap, error::Error, num::NonZeroU64};
 
 use crate::{
     check_for_verifier_timeout, to_verification_timeout_error, verification_failure,

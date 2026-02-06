@@ -1,13 +1,14 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
     crypto::{CompressedSignature, SignatureScheme},
     digests::ZKLoginInputsDigest,
     multisig::{MultiSig, MultiSigPublicKey},
+    mys_serde::MysBitmap,
     signature::{AuthenticatorTrait, GenericSignature, VerifyParams},
     signature_verification::VerifiedDigestCache,
-    mys_serde::MysBitmap,
 };
 pub use enum_dispatch::enum_dispatch;
 use fastcrypto::{

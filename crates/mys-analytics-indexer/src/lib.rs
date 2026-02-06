@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::ops::Range;
@@ -58,7 +59,7 @@ pub mod tables;
 mod writers;
 
 const EPOCH_DIR_PREFIX: &str = "epoch_";
-const CHECKPOINT_DIR_PREFIX: &str = "checkpoints";
+const CHECKPOINT_DIR_PREFIX: &str = "";
 const OBJECT_DIR_PREFIX: &str = "objects";
 const TRANSACTION_DIR_PREFIX: &str = "transactions";
 const EVENT_DIR_PREFIX: &str = "events";
@@ -79,12 +80,6 @@ pub struct AnalyticsIndexerConfig {
     /// The url of the checkpoint client to connect to.
     #[clap(long)]
     pub rest_url: String,
-    /// The url of the metrics client to connect to.
-    #[clap(long, default_value = "127.0.0.1", global = true)]
-    pub client_metric_host: String,
-    /// The port of the metrics client to connect to.
-    #[clap(long, default_value = "8081", global = true)]
-    pub client_metric_port: u16,
     /// Directory to contain the temporary files for checkpoint entries.
     #[clap(long, global = true, default_value = "/tmp")]
     pub checkpoint_dir: PathBuf,
@@ -114,7 +109,7 @@ pub struct AnalyticsIndexerConfig {
     pub file_type: FileType,
     #[clap(
         long,
-        default_value = "https://checkpoints.mainnet.mys.io",
+        default_value = "https://mysocial-testnet-checkpoints.storage.googleapis.com",
         global = true
     )]
     pub remote_store_url: String,

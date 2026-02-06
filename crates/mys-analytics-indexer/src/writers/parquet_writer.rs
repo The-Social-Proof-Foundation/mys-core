@@ -1,22 +1,23 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{AnalyticsWriter, FileFormat, FileType};
 use crate::{ParquetSchema, ParquetValue};
 use anyhow::{anyhow, Result};
 use arrow_array::{ArrayRef, BooleanArray, Int64Array, RecordBatch, StringArray, UInt64Array};
+use mys_types::base_types::EpochId;
 use serde::Serialize;
 use std::fs::File;
 use std::fs::{create_dir_all, remove_file};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use mys_types::base_types::EpochId;
 
+use mys_storage::object_store::util::path_to_filesystem;
 use parquet::arrow::ArrowWriter;
 use parquet::basic::Compression;
 use parquet::file::properties::WriterProperties;
-use mys_storage::object_store::util::path_to_filesystem;
 
 // Save table entries to parquet files.
 pub(crate) struct ParquetWriter {

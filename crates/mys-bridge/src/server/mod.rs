@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 #![allow(clippy::inconsistent_digit_grouping)]
@@ -25,11 +26,12 @@ use fastcrypto::{
     encoding::{Encoding, Hex},
     traits::ToFromBytes,
 };
+use mys_types::{bridge::BridgeChainId, TypeTag};
 use std::sync::Arc;
 use std::{net::SocketAddr, str::FromStr};
-use mys_types::{bridge::BridgeChainId, TypeTag};
 use tracing::{info, instrument};
 
+pub mod deposit_api;
 pub mod governance_verifier;
 pub mod handler;
 
@@ -42,23 +44,23 @@ pub const PING_PATH: &str = "/ping";
 pub const METRICS_KEY_PATH: &str = "/metrics_pub_key";
 
 // Important: for BridgeActions, the paths need to match the ones in bridge_client.rs
-pub const ETH_TO_MYS_TX_PATH: &str = "/sign/bridge_tx/eth/mys/:tx_hash/:event_index";
-pub const MYS_TO_ETH_TX_PATH: &str = "/sign/bridge_tx/mys/eth/:tx_digest/:event_index";
+pub const ETH_TO_MYS_TX_PATH: &str = "/sign/bridge_tx/eth/mys/{tx_hash}/{event_index}";
+pub const MYS_TO_ETH_TX_PATH: &str = "/sign/bridge_tx/mys/eth/{tx_digest}/{event_index}";
 pub const COMMITTEE_BLOCKLIST_UPDATE_PATH: &str =
-    "/sign/update_committee_blocklist/:chain_id/:nonce/:type/:keys";
-pub const EMERGENCY_BUTTON_PATH: &str = "/sign/emergency_button/:chain_id/:nonce/:type";
+    "/sign/update_committee_blocklist/{chain_id}/{nonce}/{type}/{keys}";
+pub const EMERGENCY_BUTTON_PATH: &str = "/sign/emergency_button/{chain_id}/{nonce}/{type}";
 pub const LIMIT_UPDATE_PATH: &str =
-    "/sign/update_limit/:chain_id/:nonce/:sending_chain_id/:new_usd_limit";
+    "/sign/update_limit/{chain_id}/{nonce}/{sending_chain_id}/{new_usd_limit}";
 pub const ASSET_PRICE_UPDATE_PATH: &str =
-    "/sign/update_asset_price/:chain_id/:nonce/:token_id/:new_usd_price";
+    "/sign/update_asset_price/{chain_id}/{nonce}/{token_id}/{new_usd_price}";
 pub const EVM_CONTRACT_UPGRADE_PATH_WITH_CALLDATA: &str =
-    "/sign/upgrade_evm_contract/:chain_id/:nonce/:proxy_address/:new_impl_address/:calldata";
+    "/sign/upgrade_evm_contract/{chain_id}/{nonce}/{proxy_address}/{new_impl_address}/{calldata}";
 pub const EVM_CONTRACT_UPGRADE_PATH: &str =
-    "/sign/upgrade_evm_contract/:chain_id/:nonce/:proxy_address/:new_impl_address";
+    "/sign/upgrade_evm_contract/{chain_id}/{nonce}/{proxy_address}/{new_impl_address}";
 pub const ADD_TOKENS_ON_MYS_PATH: &str =
-    "/sign/add_tokens_on_mys/:chain_id/:nonce/:native/:token_ids/:token_type_names/:token_prices";
+    "/sign/add_tokens_on_mys/{chain_id}/{nonce}/{native}/{token_ids}/{token_type_names}/{token_prices}";
 pub const ADD_TOKENS_ON_EVM_PATH: &str =
-    "/sign/add_tokens_on_evm/:chain_id/:nonce/:native/:token_ids/:token_addresses/:token_mys_decimals/:token_prices";
+    "/sign/add_tokens_on_evm/{chain_id}/{nonce}/{native}/{token_ids}/{token_addresses}/{token_mys_decimals}/{token_prices}";
 
 // BridgeNode's public metadata that is accessible via the `/ping` endpoint.
 // Be careful with what to put here, as it is public.
@@ -89,13 +91,15 @@ pub fn run_server(
     handler: BridgeRequestHandler,
     metrics: Arc<BridgeMetrics>,
     metadata: Arc<BridgeNodePublicMetadata>,
+    deposit_state: Option<Arc<deposit_api::DepositApiState>>,
 ) -> tokio::task::JoinHandle<()> {
     let socket_address = *socket_address;
     tokio::spawn(async move {
         let listener = tokio::net::TcpListener::bind(socket_address).await.unwrap();
+        info!("Bridge server listening on {}", socket_address);
         axum::serve(
             listener,
-            make_router(Arc::new(handler), metrics, metadata).into_make_service(),
+            make_router(Arc::new(handler), metrics, metadata, deposit_state).into_make_service(),
         )
         .await
         .unwrap();
@@ -106,9 +110,10 @@ pub(crate) fn make_router(
     handler: Arc<impl BridgeRequestHandlerTrait + Sync + Send + 'static>,
     metrics: Arc<BridgeMetrics>,
     metadata: Arc<BridgeNodePublicMetadata>,
+    deposit_state: Option<Arc<deposit_api::DepositApiState>>,
 ) -> Router {
-    Router::new()
-        .route("/", get(health_check))
+    let mut router = Router::new()
+        .route("/", get(ping))
         .route(PING_PATH, get(ping))
         .route(METRICS_KEY_PATH, get(metrics_key_fetch))
         .route(ETH_TO_MYS_TX_PATH, get(handle_eth_tx_hash))
@@ -130,7 +135,37 @@ pub(crate) fn make_router(
         )
         .route(ADD_TOKENS_ON_MYS_PATH, get(handle_add_tokens_on_mys))
         .route(ADD_TOKENS_ON_EVM_PATH, get(handle_add_tokens_on_evm))
-        .with_state((handler, metrics, metadata))
+        .with_state((handler, metrics, metadata));
+    
+    // Merge deposit API routes if deposit system is configured
+    if let Some(state) = deposit_state {
+        info!("Adding deposit API routes to server");
+        router = router.merge(make_deposit_router(state));
+    }
+    
+    router
+}
+
+/// Create a separate router for deposit API routes (if deposit manager is configured)
+pub fn make_deposit_router(
+    deposit_state: Arc<deposit_api::DepositApiState>,
+) -> Router {
+    use axum::routing::post;
+
+    Router::new()
+        .route(
+            "/api/v1/deposit-address/generate",
+            post(deposit_api::generate_deposit_address),
+        )
+        .route(
+            "/api/v1/deposit-address/link",
+            post(deposit_api::link_addresses),
+        )
+        .route(
+            "/api/v1/deposit-address/{address}",
+            get(deposit_api::query_deposit_addresses),
+        )
+        .with_state(deposit_state)
 }
 
 impl axum::response::IntoResponse for BridgeError {
@@ -151,10 +186,6 @@ where
     fn from(err: E) -> Self {
         Self::Generic(err.into().to_string())
     }
-}
-
-async fn health_check() -> StatusCode {
-    StatusCode::OK
 }
 
 async fn ping(
@@ -230,15 +261,19 @@ async fn handle_update_committee_blocklist_action(
                 err
             ))
         })?;
-        let members_to_update = keys
-            .split(',')
-            .map(|s| {
-                let bytes = Hex::decode(s).map_err(|e| anyhow::anyhow!("{:?}", e))?;
-                BridgeAuthorityPublicKeyBytes::from_bytes(&bytes)
-                    .map_err(|e| anyhow::anyhow!("{:?}", e))
-            })
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| BridgeError::InvalidBridgeClientRequest(format!("{:?}", e)))?;
+        let members_to_update = if keys == "none" {
+            vec![]
+        } else {
+            keys.split(',')
+                .filter(|s| !s.is_empty())
+                .map(|s| {
+                    let bytes = Hex::decode(s).map_err(|e| anyhow::anyhow!("{:?}", e))?;
+                    BridgeAuthorityPublicKeyBytes::from_bytes(&bytes)
+                        .map_err(|e| anyhow::anyhow!("{:?}", e))
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| BridgeError::InvalidBridgeClientRequest(format!("{:?}", e)))?
+        };
         let action = BridgeAction::BlocklistCommitteeAction(BlocklistCommitteeAction {
             chain_id,
             nonce,

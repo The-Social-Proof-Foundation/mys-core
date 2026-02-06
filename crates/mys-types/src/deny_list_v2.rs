@@ -1,7 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::base_types::{EpochId, ObjectID, MysAddress};
+use crate::base_types::{EpochId, MysAddress, ObjectID};
 use crate::config::{Config, Setting};
 use crate::deny_list_v1::{
     input_object_coin_types_for_denylist_check, DENY_LIST_COIN_TYPE_INDEX, DENY_LIST_MODULE,

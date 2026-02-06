@@ -2,7 +2,7 @@
 name = "typed-store"
 version = "0.4.0"
 license = "Apache-2.0"
-authors = ["Francois Garillot <francois@mystenlabs.com>"]
+authors = ["Brandon Shaw <brandon@mysocial.network>"]
 description = "a typed database interface"
 repository = "https://github.com/mystenlabs/mysten-infra"
 edition = "2021"
@@ -23,6 +23,7 @@ serde.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "test-util"] }
 tracing.workspace = true
+tidehunter = { path = "../../tidehunter/tidehunter" }
 typed-store-error.workspace = true
 typed-store-derive = { path = "../typed-store-derive" }
 typed-store-workspace-hack = { path = "../typed-store-workspace-hack" }
@@ -31,6 +32,10 @@ ouroboros.workspace = true
 rand.workspace = true
 async-trait.workspace = true
 itertools.workspace = true
+backoff.workspace = true
+fastcrypto.workspace = true
+mysten-common = { path = "../mysten-common" }
+mysten-metrics = { path = "../mysten-metrics" }
 
 [dev-dependencies]
 tempfile.workspace = true

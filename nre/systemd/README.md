@@ -22,7 +22,7 @@ sudo chown -R mys:mys /opt/mys
 - Pre-built binary stored in Amazon S3:
         
 ```shell
-wget https://releases.mys.io/$MYS_SHA/mys-node
+wget https://releases.mysocial.network/$MYS_SHA/mys-node
 chmod +x mys-node
 sudo mv mys-node /opt/mys/bin
 ```
@@ -116,7 +116,7 @@ sudo systemctl stop mys-node
 2. Fetch the new mys-node binary
 
 ```shell
-wget https://releases.mys.io/${MYS_SHA}/mys-node
+wget https://releases.mysocial.network/${MYS_SHA}/mys-node
 ```
 
 3. Update and move the new binary:

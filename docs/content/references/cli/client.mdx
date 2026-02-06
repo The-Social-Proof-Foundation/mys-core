@@ -28,8 +28,8 @@ Commands:
   faucet                      Request gas coin from faucet. By default, it will use the active address and the active network
   gas                         Obtain all gas objects owned by the address. An address' alias can be used instead of the address
   merge-coin                  Merge two coin objects into one coin
-  new-address                 Generate new address and keypair with keypair scheme flag {ed25519 | secp256k1 | secp256r1} with optional derivation path, default to m/44'/784'/0'/0'/0' for ed25519 or m/54'/784'/0'/0/0
-                                  for secp256k1 or m/74'/784'/0'/0/0 for secp256r1. Word length can be { word12 | word15 | word18 | word21 | word24} default to word12 if not specified
+  new-address                 Generate new address and keypair with keypair scheme flag {ed25519 | secp256k1 | secp256r1} with optional derivation path, default to m/44'/6976'/0'/0'/0' for ed25519 or m/54'/6976'/0'/0/0
+                                  for secp256k1 or m/74'/6976'/0'/0/0 for secp256r1. Word length can be { word12 | word15 | word18 | word21 | word24} default to word12 if not specified
   new-env                     Add new MySocial environment
   object                      Get object info
   objects                     Obtain all objects owned by the address. It also accepts an address by its alias
@@ -76,7 +76,7 @@ Use the `mys client envs` command to find the network environments set up in the
 ╭────────┬────────────────────────────────────┬────────╮
 │ alias  │ url                                │ active │
 ├────────┼────────────────────────────────────┼────────┤
-│ devnet │ https://fullnode.devnet.mys.io:443 │ *  	   │
+│ devnet │ https://fullnode.devnet.mysocial.network:443 │ *  	   │
 ╰────────┴────────────────────────────────────┴────────╯
 ```
 
@@ -85,7 +85,7 @@ Use the `mys client envs` command to find the network environments set up in the
 Use `client new-env` to add details for a new network environment. This example creates an environment pointer to MySocial Mainnet. Setting the `alias` value makes referencing the environment less prone to typographical errors. After running this command, MySocial updates your client.yaml file in `~/.mys/mys_config` with the new information.
 
 ```
-$ mys client new-env --alias=mainnet --rpc https://fullnode.mainnet.mys.io:443
+$ mys client new-env --alias=mainnet --rpc https://fullnode.mainnet.mysocial.network:443
 
 Added new MySocial env [mainnet] to config.
 ```
@@ -116,7 +116,7 @@ $ mys client active-address
 
 ### Request a MYS coin from faucet
 
-If you use one of the standard public RPCs (for example, `fullnode.devnet.mys.io:443`), you can use the `faucet` command to request gas coins. If you use a custom faucet service, then pass in the URL to the faucet using the `--url` option.
+If you use one of the standard public RPCs (for example, `fullnode.devnet.mysocial.network:443`), you can use the `faucet` command to request gas coins. If you use a custom faucet service, then pass in the URL to the faucet using the `--url` option.
 The `faucet` command works for a local network, as well. If you start your network with a custom faucet port, include the `--url` option. 
 
 ```sh

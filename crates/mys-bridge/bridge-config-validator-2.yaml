@@ -1,0 +1,89 @@
+server-listen-port: 8080
+metrics-port: 9090
+bridge-authority-key-path: /tmp/bridge_key_validator_2
+run-client: false
+approved-governance-actions:
+  - AddTokensOnMysAction:
+      nonce: 0
+      chain_id: MysCustom
+      native: true
+      token_ids: [0]
+      token_type_names:
+        - Struct:
+            address: "0x0000000000000000000000000000000000000000000000000000000000000002"
+            module: "mys"
+            name: "MYS"
+            type_params: []
+      token_prices: [47000]
+
+  # Note: Update these placeholder values with actual proposal values when governance proposals are created.
+  # The system matches by exact hash, so placeholder values won't match real proposals until updated.
+  
+  - AddTokensOnEvmAction:
+      nonce: 0
+      chain_id: EthCustom
+      native: true
+      token_ids: [0]
+      token_addresses: ["0x643e8c1Cf3Ef9f76D4EF2a81C461Fe39c2F2C7f8"]
+      token_mys_decimals: [9]
+      token_prices: [47000]
+  
+  - BlocklistCommitteeAction:
+      nonce: 0
+      chain_id: EthCustom
+      blocklist_type: Unblocklist
+      members_to_update: []
+  
+  - EmergencyAction:
+      nonce: 0  # Update with actual nonce when proposal is created
+      chain_id: EthCustom
+      action_type: Pause  # or Unpause
+  
+  - LimitUpdateAction:
+      nonce: 0  # Update with actual nonce when proposal is created
+      chain_id: EthCustom
+      sending_chain_id: MysCustom
+      new_usd_limit: 0  # Update with actual limit (in USD cents, 4 decimal places: 1 USD = 10000)
+  
+  - AssetPriceUpdateAction:
+      nonce: 0  # Update with actual nonce when proposal is created
+      chain_id: EthCustom
+      token_id: 0  # Update with actual token ID when proposal is created
+      new_usd_price: 0  # Update with actual price (in USD cents, 4 decimal places: 1 USD = 10000)
+  
+  - EvmContractUpgradeAction:
+      nonce: 0  # Update with actual nonce when proposal is created
+      chain_id: EthCustom
+      proxy_address: "0xE924C53019c5c105fBD126f01A611B830613165D"  # MysBridge proxy address (UPDATED Dec 14)
+      new_impl_address: "0x0000000000000000000000000000000000000000"  # Update with actual implementation address when proposal is created
+      call_data: []  # Update with actual call data bytes when proposal is created
+
+mys:
+  mys-rpc-url: "http://fullnode.testnet.mysocial.network:8082"
+  mys-bridge-chain-id: 2
+
+eth:
+  eth-rpc-url: "${ETH_RPC_URL}"
+  eth-bridge-proxy-address: "${ETH_BRIDGE_PROXY_ADDRESS}"
+  eth-bridge-chain-id: 12
+  eth-contracts-start-block-fallback: 36767538
+
+deposits:
+  enabled: true
+  poll-interval-secs: 12 # Default: 12 (matches Ethereum block time)
+  auto-fund-gas: true
+
+relay:
+  enabled: true
+  max-retries: 3
+  retry-delay-seconds: 30
+  mys:
+    gas-budget: 10000000 # 0.01 MySo
+  evm:
+    enabled: true
+    max-gas-price-gwei: 10
+    gas-estimate-buffer-percent: 20
+    confirmation-blocks: 2
+
+metrics:
+  push-url: "https://bridge-metrics.testnet.mysocial.network:8443/publish/metrics"

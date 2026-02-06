@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::anyhow;
@@ -92,7 +93,7 @@ impl<P: Display, S: Send, H: AsyncHandler<S>> Shell<P, S, H> {
                         // These are shell only commands.
                         match s.as_str() {
                             "quit" | "exit" => {
-                                writeln!(out, "Bye! Thank you for using MySocial!")?;
+                                writeln!(out, "Bye! Thank you for using the MySocial CLI tool!")?;
                                 break;
                             }
                             "clear" => {

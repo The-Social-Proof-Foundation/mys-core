@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use camino::Utf8PathBuf;
@@ -17,6 +18,7 @@ async fn main() {
     let dir = Utf8PathBuf::try_from(dir).unwrap();
 
     let mut builder = Builder::new();
+
     let mut keys = Vec::new();
     for i in 0..2 {
         let key: AuthorityKeyPair = get_key_pair_from_rng(&mut rand::rngs::OsRng).1;

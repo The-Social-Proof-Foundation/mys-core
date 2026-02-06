@@ -1008,7 +1008,7 @@ type DynamicFieldEdge {
 input DynamicFieldName {
 	"""
 	The string type of the DynamicField's 'name' field.
-	A string representation of a Move primitive like 'u64', or a struct type like '0x2::kiosk::Listing'
+        A string representation of a Move primitive like 'u64', or a struct type name
 	"""
 	type: String!
 	"""
@@ -3731,16 +3731,16 @@ type StakeSubsidy {
 	"""
 	distributionCounter: Int
 	"""
-	Amount of stake subsidy deducted from the balance per distribution -- decays over time.
+	Current stake subsidy APY in basis points -- decays over time.
 	"""
-	currentDistributionAmount: BigInt
+	currentApyBps: BigInt
 	"""
-	Maximum number of stake subsidy distributions that occur with the same distribution amount
-	(before the amount is reduced).
+	Maximum number of stake subsidy distributions that occur with the same APY
+	(before the APY is reduced).
 	"""
 	periodLength: Int
 	"""
-	Percentage of the current distribution amount to deduct at the end of the current subsidy
+	Percentage of the current APY to deduct at the end of the current subsidy
 	period, expressed in basis points.
 	"""
 	decreaseRate: Int

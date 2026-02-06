@@ -1,18 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::writer::StateSnapshotWriterV1;
 use anyhow::Result;
 use bytes::Bytes;
-use object_store::DynObjectStore;
-use prometheus::{
-    register_int_counter_with_registry, register_int_gauge_with_registry, IntCounter, IntGauge,
-    Registry,
-};
-use std::num::NonZeroUsize;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
 use mys_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
 use mys_core::authority::authority_store_tables::AuthorityPerpetualTables;
 use mys_core::checkpoints::CheckpointStore;
@@ -24,6 +16,15 @@ use mys_storage::object_store::util::{
 use mys_storage::FileCompression;
 use mys_types::digests::ChainIdentifier;
 use mys_types::messages_checkpoint::CheckpointCommitment::ECMHLiveObjectSetDigest;
+use object_store::DynObjectStore;
+use prometheus::{
+    register_int_counter_with_registry, register_int_gauge_with_registry, IntCounter, IntGauge,
+    Registry,
+};
+use std::num::NonZeroUsize;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Duration;
 use tracing::{debug, error, info};
 
 pub struct StateSnapshotUploaderMetrics {

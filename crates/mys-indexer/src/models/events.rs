@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::str::FromStr;
@@ -9,7 +10,7 @@ use move_core_types::identifier::Identifier;
 
 use mys_json_rpc_types::{type_and_fields_from_move_event_data, BcsEvent, MysEvent};
 use mys_package_resolver::{PackageStore, Resolver};
-use mys_types::base_types::{ObjectID, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID};
 use mys_types::digests::TransactionDigest;
 use mys_types::event::EventID;
 use mys_types::object::bounded_visitor::BoundedVisitor;

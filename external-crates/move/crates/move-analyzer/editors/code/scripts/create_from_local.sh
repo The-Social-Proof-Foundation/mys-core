@@ -1,5 +1,6 @@
 #!/bin/zsh
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 # This script is meant to be executed on MacOS (hence zsh use - to get associative arrays otherwise

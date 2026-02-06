@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority_state::StateRead;
@@ -14,18 +15,18 @@ use move_binary_format::{
     normalized::{Module as NormalizedModule, Type},
 };
 use move_core_types::identifier::Identifier;
-use std::collections::BTreeMap;
-use std::sync::Arc;
 use mys_core::authority::AuthorityState;
 use mys_json_rpc_api::{MoveUtilsOpenRpc, MoveUtilsServer};
 use mys_json_rpc_types::{
-    MoveFunctionArgType, ObjectValueKind, MysMoveNormalizedFunction, MysMoveNormalizedModule,
-    MysMoveNormalizedStruct,
+    MoveFunctionArgType, MysMoveNormalizedFunction, MysMoveNormalizedModule,
+    MysMoveNormalizedStruct, ObjectValueKind,
 };
 use mys_open_rpc::Module;
 use mys_types::base_types::ObjectID;
 use mys_types::move_package::normalize_modules;
 use mys_types::object::{Data, ObjectRead};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 use tap::TapFallible;
 use tracing::{error, instrument, warn};
 

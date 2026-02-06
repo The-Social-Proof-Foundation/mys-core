@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 /// Defines the `Coin` type - platform wide representation of fungible
@@ -9,9 +10,12 @@ module mys::coin;
 use std::ascii;
 use std::string;
 use std::type_name;
-use mys::balance::{Self, Balance, Supply};
-use mys::deny_list::DenyList;
-use mys::url::{Self, Url};
+use mys::{
+    balance::{Self, Balance, Supply},
+    deny_list::DenyList,
+    url::{Self, Url},
+    bootstrap_key::BootstrapKey,
+};
 
 // Allows calling `.split_vec(amounts, ctx)` on `coin`
 public use fun mys::pay::split_vec as Coin.split_vec;
@@ -35,6 +39,25 @@ const ENotEnough: u64 = 2;
 // const EGlobalPauseNotAllowed: vector<u8> =
 //    b"Kill switch was not allowed at the creation of the DenyCapV2";
 const EGlobalPauseNotAllowed: u64 = 3;
+/// Caller is not authorized to create coins
+const ENotAuthorized: u64 = 4;
+
+/// Admin capability for creating new coin types
+public struct CoinCreationAdminCap has key, store {
+    id: UID,
+}
+
+/// Create CoinCreationAdminCap for bootstrap (called by bootstrap module)
+/// Requires BootstrapKey parameter for security - ensures only authorized callers can invoke
+/// Bootstrap module handles BootstrapKey check before calling this
+public fun create_coin_creation_admin_cap_for_bootstrap(
+    _bootstrap_key: &BootstrapKey,
+    ctx: &mut TxContext
+): CoinCreationAdminCap {
+    CoinCreationAdminCap {
+        id: object::new(ctx)
+    }
+}
 
 /// A coin of type `T` worth `value`. Transferable and storable
 public struct Coin<phantom T> has key, store {
@@ -208,6 +231,10 @@ public fun destroy_zero<T>(c: Coin<T>) {
 /// Create a new currency type `T` as and return the `TreasuryCap` for
 /// `T` to the caller. Can only be called with a `one-time-witness`
 /// type, ensuring that there's only one `TreasuryCap` per `T`.
+/// 
+/// SECURITY: Only @0x0 at epoch 0 (genesis) can call this.
+/// This allows the MYS token to be created during genesis.
+/// All other coin creation must use create_currency_with_admin().
 public fun create_currency<T: drop>(
     witness: T,
     decimals: u8,
@@ -217,6 +244,9 @@ public fun create_currency<T: drop>(
     icon_url: Option<Url>,
     ctx: &mut TxContext,
 ): (TreasuryCap<T>, CoinMetadata<T>) {
+    // Only allow genesis (@0x0 at epoch 0)
+    assert!(ctx.sender() == @0x0 && ctx.epoch() == 0, ENotAuthorized);
+    
     // Make sure there's only one instance of the type T
     assert!(mys::types::is_one_time_witness(&witness), EBadWitness);
 
@@ -236,7 +266,38 @@ public fun create_currency<T: drop>(
     )
 }
 
-/// This creates a new currency, via `create_currency`, but with an extra capability that
+/// Create a new currency with admin authorization
+/// Requires CoinCreationAdminCap - only the admin can create new coins.
+/// Uniqueness is enforced by admin discretion (only CoinCreationAdminCap holder can create).
+public fun create_currency_with_admin<T>(
+    decimals: u8,
+    symbol: vector<u8>,
+    name: vector<u8>,
+    description: vector<u8>,
+    icon_url: Option<Url>,
+    _admin_cap: &CoinCreationAdminCap,
+    ctx: &mut TxContext,
+): (TreasuryCap<T>, CoinMetadata<T>) {
+    // Admin cap proves authorization
+    // Uniqueness is enforced by admin discretion (only CoinCreationAdminCap holder can create)
+
+    (
+        TreasuryCap {
+            id: object::new(ctx),
+            total_supply: balance::create_supply_without_witness(),
+        },
+        CoinMetadata {
+            id: object::new(ctx),
+            decimals,
+            name: string::utf8(name),
+            symbol: ascii::string(symbol),
+            description: string::utf8(description),
+            icon_url,
+        },
+    )
+}
+
+/// This creates a new currency, via `create_currency_with_admin`, but with an extra capability that
 /// allows for specific addresses to have their coins frozen. When an address is added to the
 /// deny list, it is immediately unable to interact with the currency's coin as input objects.
 /// Additionally at the start of the next epoch, they will be unable to receive the currency's
@@ -244,23 +305,24 @@ public fun create_currency<T: drop>(
 /// The `allow_global_pause` flag enables an additional API that will cause all addresses to
 /// be denied. Note however, that this doesn't affect per-address entries of the deny list and
 /// will not change the result of the "contains" APIs.
-public fun create_regulated_currency_v2<T: drop>(
-    witness: T,
+/// Requires CoinCreationAdminCap.
+public fun create_regulated_currency_v2<T>(
     decimals: u8,
     symbol: vector<u8>,
     name: vector<u8>,
     description: vector<u8>,
     icon_url: Option<Url>,
     allow_global_pause: bool,
+    admin_cap: &CoinCreationAdminCap,
     ctx: &mut TxContext,
 ): (TreasuryCap<T>, DenyCapV2<T>, CoinMetadata<T>) {
-    let (treasury_cap, metadata) = create_currency(
-        witness,
+    let (treasury_cap, metadata) = create_currency_with_admin(
         decimals,
         symbol,
         name,
         description,
         icon_url,
+        admin_cap,
         ctx,
     );
     let deny_cap = DenyCapV2 {
@@ -503,6 +565,105 @@ public fun create_treasury_cap_for_testing<T>(ctx: &mut TxContext): TreasuryCap<
     }
 }
 
+#[test_only]
+/// Create a new currency for testing purposes, bypassing admin cap and genesis restrictions.
+/// This allows tests to create tokens without needing the CoinCreationAdminCap.
+/// 
+/// SECURITY: This function is only available in test builds and cannot be used in production.
+public fun create_currency_for_testing<T: drop>(
+    witness: T,
+    decimals: u8,
+    symbol: vector<u8>,
+    name: vector<u8>,
+    description: vector<u8>,
+    icon_url: Option<Url>,
+    ctx: &mut TxContext,
+): (TreasuryCap<T>, CoinMetadata<T>) {
+    // Make sure there's only one instance of the type T
+    assert!(mys::types::is_one_time_witness(&witness), EBadWitness);
+
+    (
+        TreasuryCap {
+            id: object::new(ctx),
+            total_supply: balance::create_supply(witness),
+        },
+        CoinMetadata {
+            id: object::new(ctx),
+            decimals,
+            name: string::utf8(name),
+            symbol: ascii::string(symbol),
+            description: string::utf8(description),
+            icon_url,
+        },
+    )
+}
+
+#[test_only]
+/// Create a new regulated currency (v2) for testing purposes, bypassing admin cap restrictions.
+/// SECURITY: This function is only available in test builds and cannot be used in production.
+public fun create_regulated_currency_v2_for_testing<T: drop>(
+    witness: T,
+    decimals: u8,
+    symbol: vector<u8>,
+    name: vector<u8>,
+    description: vector<u8>,
+    icon_url: Option<Url>,
+    allow_global_pause: bool,
+    ctx: &mut TxContext,
+): (TreasuryCap<T>, DenyCapV2<T>, CoinMetadata<T>) {
+    let (treasury_cap, metadata) = create_currency_for_testing(
+        witness,
+        decimals,
+        symbol,
+        name,
+        description,
+        icon_url,
+        ctx,
+    );
+    let deny_cap = DenyCapV2 {
+        id: object::new(ctx),
+        allow_global_pause,
+    };
+    transfer::freeze_object(RegulatedCoinMetadata<T> {
+        id: object::new(ctx),
+        coin_metadata_object: object::id(&metadata),
+        deny_cap_object: object::id(&deny_cap),
+    });
+    (treasury_cap, deny_cap, metadata)
+}
+
+#[test_only]
+/// Create a new regulated currency (deprecated v1) for testing purposes.
+/// SECURITY: This function is only available in test builds and cannot be used in production.
+public fun create_regulated_currency_for_testing<T: drop>(
+    witness: T,
+    decimals: u8,
+    symbol: vector<u8>,
+    name: vector<u8>,
+    description: vector<u8>,
+    icon_url: Option<Url>,
+    ctx: &mut TxContext,
+): (TreasuryCap<T>, DenyCap<T>, CoinMetadata<T>) {
+    let (treasury_cap, metadata) = create_currency_for_testing(
+        witness,
+        decimals,
+        symbol,
+        name,
+        description,
+        icon_url,
+        ctx,
+    );
+    let deny_cap = DenyCap {
+        id: object::new(ctx),
+    };
+    transfer::freeze_object(RegulatedCoinMetadata<T> {
+        id: object::new(ctx),
+        coin_metadata_object: object::id(&metadata),
+        deny_cap_object: object::id(&deny_cap),
+    });
+    (treasury_cap, deny_cap, metadata)
+}
+
 // === Deprecated code ===
 
 // oops, wanted treasury: &TreasuryCap<T>
@@ -522,30 +683,31 @@ public struct DenyCap<phantom T> has key, store {
     id: UID,
 }
 
-/// This creates a new currency, via `create_currency`, but with an extra capability that
+/// This creates a new currency, via `create_currency_with_admin`, but with an extra capability that
 /// allows for specific addresses to have their coins frozen. Those addresses cannot interact
 /// with the coin as input objects.
+/// Requires CoinCreationAdminCap.
 #[
     deprecated(
         note = b"For new coins, use `create_regulated_currency_v2`. To migrate existing regulated currencies, migrate with `migrate_regulated_currency_to_v2`",
     ),
 ]
-public fun create_regulated_currency<T: drop>(
-    witness: T,
+public fun create_regulated_currency<T>(
     decimals: u8,
     symbol: vector<u8>,
     name: vector<u8>,
     description: vector<u8>,
     icon_url: Option<Url>,
+    admin_cap: &CoinCreationAdminCap,
     ctx: &mut TxContext,
 ): (TreasuryCap<T>, DenyCap<T>, CoinMetadata<T>) {
-    let (treasury_cap, metadata) = create_currency(
-        witness,
+    let (treasury_cap, metadata) = create_currency_with_admin(
         decimals,
         symbol,
         name,
         description,
         icon_url,
+        admin_cap,
         ctx,
     );
     let deny_cap = DenyCap {

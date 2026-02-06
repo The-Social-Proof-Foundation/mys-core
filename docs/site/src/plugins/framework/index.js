@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 // Plugin copies files from specified directories into the
@@ -21,9 +22,9 @@ const STDLIB_PATH = path.join(
   __dirname,
   "../../../../../crates/mys-framework/docs/std",
 );
-const DEEPBOOK_PATH = path.join(
+const ORDERBOOK_PATH = path.join(
   __dirname,
-  "../../../../../crates/mys-framework/docs/deepbook",
+  "../../../../../crates/mys-framework/docs/orderbook",
 );
 const MYSSYS_PATH = path.join(
   __dirname,
@@ -68,13 +69,13 @@ const frameworkPlugin = (context, options) => {
       const bridgeFiles = recurseFiles(BRIDGE_PATH);
       const frameworkFiles = recurseFiles(FRAMEWORK_PATH);
       const stdlibFiles = recurseFiles(STDLIB_PATH);
-      const deepbookFiles = recurseFiles(DEEPBOOK_PATH);
+      const orderbookFiles = recurseFiles(ORDERBOOK_PATH);
       const myssysFiles = recurseFiles(MYSSYS_PATH);
       const allFiles = [
         bridgeFiles,
         frameworkFiles,
         stdlibFiles,
-        deepbookFiles,
+        orderbookFiles,
         myssysFiles,
       ];
       allFiles.forEach((theseFiles) => {

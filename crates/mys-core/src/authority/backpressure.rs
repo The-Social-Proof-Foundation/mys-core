@@ -1,10 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::sync::Arc;
 
-use mysten_metrics::monitored_scope;
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use mysten_metrics::monitored_scope;
 use tokio::sync::watch;
 use tracing::{debug, info};
 

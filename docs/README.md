@@ -1,6 +1,6 @@
 ## Overview
 
-This directory contains the assets required to build and update the [MySocial documentation](https://docs.mys.io). The directory is split between `content` and `site`. To run the docs.mys.io site locally, open the `site` directory in a terminal or console. Use a package manager to install the required modules:
+This directory contains the assets required to build and update the [MySocial documentation](https://docs.mysocial.network). The directory is split between `content` and `site`. To run the docs.mysocial.network site locally, open the `site` directory in a terminal or console. Use a package manager to install the required modules:
 
 ```shell
 pnpm install
@@ -40,11 +40,11 @@ If you'd like to view the Vercel preview before your changes are ready for revie
 
 MySocial is for the community. Contribute for the benefit of all.
 
-- [Docs contributing guidelines](https://docs.mys.io/references/contribute/contribution-process)
-- [Repo contributing guidelines](https://docs.mys.io/contribute-to-mys-repos)
-- [Style guide](https://docs.mys.io/style-guide)
-- [Localization](https://docs.mys.io/localize-mys-docs)
-- [Code of conduct](https://docs.mys.io/contribute/code-of-conduct)
+- [Docs contributing guidelines](https://docs.mysocial.network/references/contribute/contribution-process)
+- [Repo contributing guidelines](https://docs.mysocial.network/contribute-to-mys-repos)
+- [Style guide](https://docs.mysocial.network/style-guide)
+- [Localization](https://docs.mysocial.network/localize-mys-docs)
+- [Code of conduct](https://docs.mysocial.network/contribute/code-of-conduct)
 
 ## License
 

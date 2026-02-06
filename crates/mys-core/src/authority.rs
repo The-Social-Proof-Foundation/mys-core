@@ -1,5 +1,6 @@
 // Copyright (c) 2021, Facebook, Inc. and its affiliates
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::congestion_tracker::CongestionTracker;
@@ -22,6 +23,18 @@ use move_binary_format::binary_config::BinaryConfig;
 use move_binary_format::CompiledModule;
 use move_core_types::annotated_value::MoveStructLayout;
 use move_core_types::language_storage::ModuleId;
+use mys_config::node::{AuthorityOverloadConfig, StateDebugDumpConfig};
+use mys_config::NodeConfig;
+use mys_types::crypto::RandomnessRound;
+use mys_types::dynamic_field::visitor as DFV;
+use mys_types::execution::ExecutionTiming;
+use mys_types::execution_status::ExecutionStatus;
+use mys_types::inner_temporary_store::PackageStoreWithFallback;
+use mys_types::layout_resolver::into_struct_layout;
+use mys_types::layout_resolver::LayoutResolver;
+use mys_types::messages_consensus::{AuthorityCapabilitiesV1, AuthorityCapabilitiesV2};
+use mys_types::object::bounded_visitor::BoundedVisitor;
+use mys_types::transaction_executor::SimulateTransactionResult;
 use mysten_metrics::{TX_TYPE_SHARED_OBJ_TX, TX_TYPE_SINGLE_WRITER_TX};
 use parking_lot::Mutex;
 use prometheus::{
@@ -48,18 +61,6 @@ use std::{
     sync::Arc,
     vec,
 };
-use mys_config::node::{AuthorityOverloadConfig, StateDebugDumpConfig};
-use mys_config::NodeConfig;
-use mys_types::crypto::RandomnessRound;
-use mys_types::dynamic_field::visitor as DFV;
-use mys_types::execution::ExecutionTiming;
-use mys_types::execution_status::ExecutionStatus;
-use mys_types::inner_temporary_store::PackageStoreWithFallback;
-use mys_types::layout_resolver::into_struct_layout;
-use mys_types::layout_resolver::LayoutResolver;
-use mys_types::messages_consensus::{AuthorityCapabilitiesV1, AuthorityCapabilitiesV2};
-use mys_types::object::bounded_visitor::BoundedVisitor;
-use mys_types::transaction_executor::SimulateTransactionResult;
 use tap::TapFallible;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::RwLock;
@@ -75,8 +76,6 @@ use mysten_metrics::{monitored_scope, spawn_monitored_task};
 
 use crate::jsonrpc_index::IndexStore;
 use crate::jsonrpc_index::{CoinInfo, ObjectIndexChanges};
-use mysten_common::debug_fatal;
-use shared_crypto::intent::{AppId, Intent, IntentMessage, IntentScope, IntentVersion};
 use mys_archival::reader::ArchiveReaderBalancer;
 use mys_config::genesis::Genesis;
 use mys_config::node::{DBCheckpointConfig, ExpensiveSafetyCheckConfig};
@@ -119,13 +118,13 @@ use mys_types::messages_grpc::{
     ObjectInfoResponse, TransactionInfoRequest, TransactionInfoResponse, TransactionStatus,
 };
 use mys_types::metrics::{BytecodeVerifierMetrics, LimitsMetrics};
+use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemStateTrait;
+use mys_types::mys_system_state::MysSystemStateTrait;
+use mys_types::mys_system_state::{get_mys_system_state, MysSystemState};
 use mys_types::object::{MoveObject, Owner, PastObjectRead, OBJECT_START_VERSION};
 use mys_types::storage::{
     BackingPackageStore, BackingStore, ObjectKey, ObjectOrTombstone, ObjectStore, WriteKind,
 };
-use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemStateTrait;
-use mys_types::mys_system_state::MysSystemStateTrait;
-use mys_types::mys_system_state::{get_mys_system_state, MysSystemState};
 use mys_types::supported_protocol_versions::{ProtocolConfig, SupportedProtocolVersions};
 use mys_types::{
     base_types::*,
@@ -137,6 +136,8 @@ use mys_types::{
     MYS_SYSTEM_ADDRESS,
 };
 use mys_types::{is_system_package, TypeTag};
+use mysten_common::debug_fatal;
+use shared_crypto::intent::{AppId, Intent, IntentMessage, IntentScope, IntentVersion};
 use typed_store::TypedStoreError;
 
 use crate::authority::authority_per_epoch_store::{AuthorityPerEpochStore, CertTxGuard};
@@ -891,6 +892,7 @@ impl AuthorityState {
             &receiving_objects_refs,
             &self.config.transaction_deny_config,
             self.get_backing_package_store().as_ref(),
+            self.get_object_store().as_ref(),
         )?;
 
         let (input_objects, receiving_objects) = self.input_loader.read_objects_for_signing(
@@ -1800,6 +1802,7 @@ impl AuthorityState {
             &receiving_object_refs,
             &self.config.transaction_deny_config,
             self.get_backing_package_store().as_ref(),
+            self.get_object_store().as_ref(),
         )?;
 
         let (input_objects, receiving_objects) = self.input_loader.read_objects_for_signing(
@@ -1991,6 +1994,7 @@ impl AuthorityState {
             &receiving_object_refs,
             &self.config.transaction_deny_config,
             self.get_backing_package_store().as_ref(),
+            self.get_object_store().as_ref(),
         )?;
 
         let (input_objects, receiving_objects) = self.input_loader.read_objects_for_signing(
@@ -2158,6 +2162,7 @@ impl AuthorityState {
             &receiving_object_refs,
             &self.config.transaction_deny_config,
             self.get_backing_package_store().as_ref(),
+            self.get_object_store().as_ref(),
         )?;
 
         let (mut input_objects, receiving_objects) = self.input_loader.read_objects_for_signing(
@@ -5468,11 +5473,11 @@ impl TransactionKeyValueStoreTrait for AuthorityState {
 #[cfg(msim)]
 pub mod framework_injection {
     use move_binary_format::CompiledModule;
-    use std::collections::BTreeMap;
-    use std::{cell::RefCell, collections::BTreeSet};
     use mys_framework::{BuiltInFramework, SystemPackage};
     use mys_types::base_types::{AuthorityName, ObjectID};
     use mys_types::is_system_package;
+    use std::collections::BTreeMap;
+    use std::{cell::RefCell, collections::BTreeSet};
 
     type FrameworkOverrideConfig = BTreeMap<ObjectID, PackageOverrideConfig>;
 

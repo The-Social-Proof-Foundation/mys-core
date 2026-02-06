@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
@@ -6,14 +7,14 @@ use async_trait::async_trait;
 use diesel::{dsl::sql, BoolExpressionMethods, ExpressionMethods};
 use diesel_async::{scoped_futures::ScopedFutureExt, AsyncConnection, RunQueryDsl};
 use dotenvy::dotenv;
-use mysten_service::metrics::start_basic_prometheus_server;
-use prometheus::Registry;
-use std::env;
-use std::path::PathBuf;
 use mys_data_ingestion_core::{
     DataIngestionMetrics, FileProgressStore, IndexerExecutor, ReaderOptions, Worker, WorkerPool,
 };
 use mys_types::full_checkpoint_content::CheckpointData;
+use mysten_service::metrics::start_basic_prometheus_server;
+use prometheus::Registry;
+use std::env;
+use std::path::PathBuf;
 use tokio::sync::oneshot;
 use tracing::info;
 

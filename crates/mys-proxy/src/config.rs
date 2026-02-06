@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use anyhow::{Context, Result};
 use core::time::Duration;
@@ -95,7 +96,7 @@ fn hostname_default() -> Option<String> {
 
 /// the default remote write url
 fn remote_write_url() -> String {
-    "http://metrics-gw.testnet.mys.io/api/v1/push".to_string()
+    "http://metrics-gw.testnet.mysocial.network/api/v1/push".to_string()
 }
 
 /// load our config file from a path

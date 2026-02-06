@@ -1,9 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::displays::Pretty;
-use std::fmt::{Display, Formatter};
 use mys_json_rpc_types::MysExecutionStatus::{self, Failure, Success};
+use std::fmt::{Display, Formatter};
 
 impl<'a> Display for Pretty<'a, MysExecutionStatus> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

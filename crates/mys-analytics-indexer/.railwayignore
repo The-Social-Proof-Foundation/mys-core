@@ -1,0 +1,15 @@
+# Ignore Node.js files that confuse Railway's detection
+package.json
+package-lock.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+node_modules/
+turbo.json
+
+# Ignore other non-Rust artifacts
+.git/
+target/
+.github/
+docs/
+examples/
+scripts/ 

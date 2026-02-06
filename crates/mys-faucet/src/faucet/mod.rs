@@ -1,9 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use crate::FaucetError;
 use async_trait::async_trait;
+use mys_types::base_types::{MysAddress, ObjectID, TransactionDigest};
 use serde::{Deserialize, Serialize};
-use mys_types::base_types::{ObjectID, MysAddress, TransactionDigest};
 use uuid::Uuid;
 
 mod simple_faucet;
@@ -77,7 +78,7 @@ pub trait Faucet {
     async fn get_batch_send_status(&self, task_id: Uuid) -> Result<BatchSendStatus, FaucetError>;
 }
 
-pub const DEFAULT_AMOUNT: u64 = 1_000_000_000;
+pub const DEFAULT_AMOUNT: u64 = 5_000_000_000;
 pub const DEFAULT_NUM_OF_COINS: usize = 1;
 
 #[derive(Parser, Clone)]
@@ -126,7 +127,7 @@ pub struct FaucetConfig {
     #[clap(long, action = clap::ArgAction::Set, default_value_t = false)]
     pub batch_enabled: bool,
 
-    /// Testnet faucet requires authentication via the Web UI at <https://faucet.mys.io>
+    /// Testnet faucet requires authentication via the Web UI at <https://faucet.mysocial.network>
     /// This flag is used to indicate that authentication mode is enabled.
     #[clap(long)]
     pub authenticated: bool,
@@ -151,6 +152,18 @@ pub struct FaucetConfig {
     /// used for authenticated mode.
     #[clap(long, default_value_t = 60)]
     pub rate_limiter_cleanup_interval_secs: u64,
+
+    /// Enable on-demand coin splitting when pool runs low
+    #[clap(long, action = clap::ArgAction::Set, default_value_t = true)]
+    pub auto_split_coins: bool,
+
+    /// Minimum number of coins to maintain in pool before triggering on-demand split
+    #[clap(long, default_value_t = 5)]
+    pub min_coin_threshold: usize,
+
+    /// Amount to split from large coins when pool is low (in mist). If 0, auto-calculate
+    #[clap(long, default_value_t = 5000000000)]
+    pub split_amount: u64,
 }
 
 impl Default for FaucetConfig {
@@ -158,7 +171,7 @@ impl Default for FaucetConfig {
         Self {
             port: 5003,
             host_ip: Ipv4Addr::new(127, 0, 0, 1),
-            amount: 1_000_000_000,
+            amount: 5_000_000_000,
             num_coins: 1,
             request_buffer_size: 10,
             max_request_per_second: 10,
@@ -174,6 +187,9 @@ impl Default for FaucetConfig {
             replenish_quota_interval_ms: 10,
             reset_time_interval_secs: 3600 * 12,
             rate_limiter_cleanup_interval_secs: 60,
+            auto_split_coins: true,
+            min_coin_threshold: 5,
+            split_amount: 5000000000,
         }
     }
 }

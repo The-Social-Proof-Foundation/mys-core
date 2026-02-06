@@ -1,8 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_trait::async_trait;
-use std::{collections::HashMap, sync::Arc};
 use mys_core::{
     authority_aggregator::{AuthAggMetrics, AuthorityAggregator},
     authority_client::NetworkAuthorityClient,
@@ -11,6 +11,7 @@ use mys_core::{
     safe_client::SafeClientMetricsBase,
 };
 use mys_sdk::{MysClient, MysClientBuilder};
+use std::{collections::HashMap, sync::Arc};
 use tracing::{debug, error, trace};
 
 /// A ReconfigObserver that polls FullNode periodically

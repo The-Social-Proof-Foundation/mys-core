@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 extern crate move_ir_types;
@@ -40,7 +41,6 @@ use move_package::{
     source_package::parsed_manifest::OnChainInfo, source_package::parsed_manifest::SourceManifest,
 };
 use move_symbol_pool::Symbol;
-use serde_reflection::Registry;
 use mys_package_management::{resolve_published_id, PublishedAtError};
 use mys_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use mys_types::{
@@ -48,10 +48,11 @@ use mys_types::{
     error::{MysError, MysResult},
     is_system_package,
     move_package::{FnInfo, FnInfoKey, FnInfoMap, MovePackage},
-    BRIDGE_ADDRESS, DEEPBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYS_FRAMEWORK_ADDRESS,
-    MYS_SYSTEM_ADDRESS,
+    BRIDGE_ADDRESS, ORDERBOOK_ADDRESS, MOVE_STDLIB_ADDRESS, MYS_FRAMEWORK_ADDRESS,
+    MYS_SOCIAL_ADDRESS, MYS_SYSTEM_ADDRESS, MYDATA_ADDRESS
 };
 use mys_verifier::verifier as mys_bytecode_verifier;
+use serde_reflection::Registry;
 
 #[cfg(test)]
 #[path = "unit_tests/build_tests.rs"]
@@ -108,7 +109,7 @@ impl BuildConfig {
     pub fn new_for_testing() -> Self {
         move_package::package_hooks::register_package_hooks(Box::new(MysPackageHooks));
         let mut build_config: Self = Default::default();
-        let install_dir = tempfile::tempdir().unwrap().into_path();
+        let install_dir = tempfile::tempdir().unwrap().keep();
         let lock_file = install_dir.join("Move.lock");
         build_config.config.install_dir = Some(install_dir);
         build_config.config.lock_file = Some(lock_file);
@@ -227,7 +228,9 @@ pub fn decorate_warnings(warning_diags: Diagnostics, files: Option<&MappedFiles>
         report_warnings(f, warning_diags);
     }
     if any_linter_warnings {
-        eprintln!("Please report feedback on the linter warnings at https://forums.mys.io\n");
+        eprintln!(
+            "Please report feedback on the linter warnings at https://forums.mysocial.network\n"
+        );
     }
     if filtered_diags_num > 0 {
         eprintln!("Total number of linter warnings suppressed: {filtered_diags_num} (unique lints: {unique})");
@@ -442,13 +445,13 @@ impl CompiledPackage {
             .collect()
     }
 
-    /// Get bytecode modules from DeepBook that are used by this package
-    pub fn get_deepbook_modules(&self) -> impl Iterator<Item = &CompiledModule> {
+    /// Get bytecode modules from OrderBook that are used by this package
+    pub fn get_orderbook_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
-            .filter(|m| *m.self_id().address() == DEEPBOOK_ADDRESS)
+            .filter(|m| *m.self_id().address() == ORDERBOOK_ADDRESS)
     }
 
-    /// Get bytecode modules from DeepBook that are used by this package
+    /// Get bytecode modules from OrderBook that are used by this package
     pub fn get_bridge_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
             .filter(|m| *m.self_id().address() == BRIDGE_ADDRESS)
@@ -470,6 +473,18 @@ impl CompiledPackage {
     pub fn get_stdlib_modules(&self) -> impl Iterator<Item = &CompiledModule> {
         self.get_modules_and_deps()
             .filter(|m| *m.self_id().address() == MOVE_STDLIB_ADDRESS)
+    }
+
+    /// Get bytecode modules from the Mys Social that are used by this package
+    pub fn get_mys_social_modules(&self) -> impl Iterator<Item = &CompiledModule> {
+        self.get_modules_and_deps()
+            .filter(|m| *m.self_id().address() == MYS_SOCIAL_ADDRESS)
+    }
+
+    /// Get bytecode modules from MyData that are used by this package
+    pub fn get_seal_modules(&self) -> impl Iterator<Item = &CompiledModule> {
+        self.get_modules_and_deps()
+            .filter(|m| *m.self_id().address() == MYDATA_ADDRESS)
     }
 
     /// Generate layout schemas for all types declared by this package, as well as

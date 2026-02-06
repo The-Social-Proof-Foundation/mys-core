@@ -1,0 +1,54 @@
+# Bridge Watchdog Configuration
+# This file configures the monitoring parameters for the bridge watchdog
+
+# Bridge nodes to monitor
+bridge_nodes:
+  - name: "validator-1"
+    url: "http://yamanote.proxy.rlwy.net:47836"
+    expected_status: 200
+  - name: "validator-2"
+    url: "http://interchange.proxy.rlwy.net:43720"
+    expected_status: 200
+  - name: "validator-3"
+    url: "http://gondola.proxy.rlwy.net:18706"
+    expected_status: 200
+
+# Mys network configuration
+mys:
+  rpc_url: "http://fullnode.testnet.mysocial.network:8082"
+  bridge_chain_id: 1
+
+# Ethereum network configuration
+eth:
+  rpc_url: "https://base-sepolia.g.alchemy.com/v2/dP5ANdv4tQc7ldy_stPvRTQWtO0J3KS5"
+  bridge_proxy_address: "0x02D265E77590025660a4eff50E7227136762b0d2"
+  vault_address: "0xaF12A0Af2A325518cc8655a787aab6DC34EFc95E"
+  bridge_chain_id: 12
+
+# Monitoring intervals (in seconds)
+monitoring:
+  eth_vault_balance_check_interval: 300  # 5 minutes
+  mys_bridge_status_check_interval: 60   # 1 minute
+  eth_bridge_status_check_interval: 120  # 2 minutes
+
+# Alert thresholds
+alerts:
+  min_vault_balance_eth: 0.1
+  max_bridge_down_time_seconds: 300
+  consecutive_failures_before_alert: 3
+
+# Observables to run
+observables:
+  - name: "eth_vault_balance"
+    enabled: true
+  - name: "mys_bridge_status"
+    enabled: true
+  - name: "eth_bridge_status"
+    enabled: true
+  - name: "bridge_node_health"
+    enabled: true
+
+# Logging
+logging:
+  level: "info"
+  format: "json"

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use mys_cluster_test::{config::ClusterTestOpt, ClusterTest};
@@ -12,10 +13,10 @@ async fn cluster_test() {
 
 #[tokio::test]
 async fn test_mys_cluster() {
-    use reqwest::StatusCode;
     use mys_cluster_test::cluster::Cluster;
     use mys_cluster_test::cluster::LocalNewCluster;
     use mys_graphql_rpc::client::simple_client::SimpleClient;
+    use reqwest::StatusCode;
     use tokio::time::sleep;
 
     telemetry_subscribers::init_for_testing();

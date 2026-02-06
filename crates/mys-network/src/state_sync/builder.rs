@@ -1,15 +1,16 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anemo::codegen::InboundRequestLayer;
 use anemo_tower::{inflight_limit, rate_limit};
+use mys_archival::reader::ArchiveReaderBalancer;
+use mys_config::p2p::StateSyncConfig;
+use mys_types::messages_checkpoint::VerifiedCheckpoint;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
-use mys_archival::reader::ArchiveReaderBalancer;
-use mys_config::p2p::StateSyncConfig;
-use mys_types::messages_checkpoint::VerifiedCheckpoint;
 use tap::Pipe;
 use tokio::{
     sync::{broadcast, mpsc},

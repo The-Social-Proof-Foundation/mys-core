@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::available_range::AvailableRange;
@@ -17,10 +18,10 @@ use diesel::{
     OptionalExtension, QueryableByName,
 };
 use diesel_async::scoped_futures::ScopedFutureExt;
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use mys_indexer::types::OwnerType;
 use mys_types::TypeTag;
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 /// The total balance for a particular coin type.
 #[derive(Clone, Debug, SimpleObject)]

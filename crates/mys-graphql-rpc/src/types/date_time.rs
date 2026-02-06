@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::str::FromStr;
@@ -23,6 +24,11 @@ impl DateTime {
             .single()
             .ok_or_else(|| Error::Internal("Cannot convert timestamp into DateTime".to_string()))
             .map(Self)
+    }
+
+    /// Create DateTime from a chrono DateTime<Utc>
+    pub fn from_chrono(dt: ChronoDateTime<ChronoUtc>) -> Self {
+        Self(dt)
     }
 }
 

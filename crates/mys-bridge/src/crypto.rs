@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -19,10 +20,10 @@ use fastcrypto::{
     traits::{RecoverableSigner, ToFromBytes, VerifyRecoverable},
 };
 use fastcrypto::{hash::Keccak256, traits::KeyPair};
+use mys_types::{base_types::ConciseableName, message_envelope::VerifiedEnvelope};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::fmt::{Display, Formatter};
-use mys_types::{base_types::ConciseableName, message_envelope::VerifiedEnvelope};
 use tap::TapFallible;
 pub type BridgeAuthorityKeyPair = Secp256k1KeyPair;
 pub type BridgeAuthorityPublicKey = Secp256k1PublicKey;
@@ -185,13 +186,13 @@ mod tests {
     use crate::types::{BridgeAction, BridgeAuthority, MysToEthBridgeAction};
     use ethers::types::Address as EthAddress;
     use fastcrypto::traits::{KeyPair, ToFromBytes};
-    use prometheus::Registry;
-    use std::str::FromStr;
-    use std::sync::Arc;
     use mys_types::base_types::MysAddress;
     use mys_types::bridge::{BridgeChainId, TOKEN_ID_ETH};
     use mys_types::crypto::get_key_pair;
     use mys_types::digests::TransactionDigest;
+    use prometheus::Registry;
+    use std::str::FromStr;
+    use std::sync::Arc;
 
     use super::*;
 

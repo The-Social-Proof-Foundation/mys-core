@@ -16,7 +16,7 @@ A MySocial package consists of:
 - a `Move.toml` manifest file that declares dependencies and other information about the package
 - a `Move.lock` file that the MySocial Move toolchain automatically generates to lock the versions of the dependencies and track the different published and upgraded versions of the package that exist on the different networks
 
-For this reason, the `Move.lock` file should always be part of the package (don't add it to the `.gitignore` file). Use the [automated address management](https://docs.mys.io/concepts/mys-move-concepts/packages/automated-address-management) instead of the old `published-at` field in the manifest file.
+For this reason, the `Move.lock` file should always be part of the package (don't add it to the `.gitignore` file). Use the [automated address management](https://docs.mysocial.network/concepts/mys-move-concepts/packages/automated-address-management) instead of the old `published-at` field in the manifest file.
 
 Optionally, you can add a `tests` directory to contain the tests for the package and an `examples` directory to provide use cases for the package. Neither directory is uploaded on chain when you publish the package.
 
@@ -412,7 +412,7 @@ Use field comments to describe the properties of your structs. In complex functi
 module conventions::hero;
 
 use std::string::String;
-use mys::kiosk::{Kiosk, KioskOwnerCap};
+
 
 public struct Hero has key, store {
     id: UID,
@@ -434,8 +434,7 @@ public fun initialize_hero(hero: &mut Hero) {
 }
 
 public fun start_battle(
-    self: &mut Kiosk, // user kiosk
-    cap: &KioskOwnerCap, // user kiosk owner cap
+    // user asset container would go here
     _policy: &TransferPolicy<Hero>, // transfer policy for the game
     hero_id: ID, // hero to use
     battle_id: String // id of the battle to start

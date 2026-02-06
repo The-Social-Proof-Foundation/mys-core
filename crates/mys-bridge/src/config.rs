@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::abi::EthBridgeConfig;
@@ -15,6 +16,19 @@ use anyhow::anyhow;
 use ethers::providers::Middleware;
 use ethers::types::Address as EthAddress;
 use futures::{future, StreamExt};
+use mys_config::Config;
+use mys_json_rpc_types::Coin;
+use mys_keys::keypair_file::read_key;
+use mys_sdk::apis::CoinReadApi;
+use mys_sdk::{MysClient as MysSdkClient, MysClientBuilder};
+use mys_types::base_types::ObjectRef;
+use mys_types::base_types::{MysAddress, ObjectID};
+use mys_types::bridge::BridgeChainId;
+use mys_types::crypto::KeypairTraits;
+use mys_types::crypto::{get_key_pair_from_rng, MysKeyPair, NetworkKeyPair};
+use mys_types::digests::{get_mainnet_chain_identifier, get_testnet_chain_identifier};
+use mys_types::event::EventID;
+use mys_types::object::Owner;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::BTreeMap;
@@ -22,19 +36,6 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use mys_config::Config;
-use mys_json_rpc_types::Coin;
-use mys_keys::keypair_file::read_key;
-use mys_sdk::apis::CoinReadApi;
-use mys_sdk::{MysClient as MysSdkClient, MysClientBuilder};
-use mys_types::base_types::ObjectRef;
-use mys_types::base_types::{ObjectID, MysAddress};
-use mys_types::bridge::BridgeChainId;
-use mys_types::crypto::KeypairTraits;
-use mys_types::crypto::{get_key_pair_from_rng, NetworkKeyPair, MysKeyPair};
-use mys_types::digests::{get_mainnet_chain_identifier, get_testnet_chain_identifier};
-use mys_types::event::EventID;
-use mys_types::object::Owner;
 use tracing::info;
 
 #[serde_as]
@@ -93,6 +94,126 @@ pub struct MysConfig {
     pub mys_bridge_module_last_processed_event_id_override: Option<EventID>,
 }
 
+/// Auto-relay configuration loaded from config file
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct RelayConfigFile {
+    /// Whether auto-relay is enabled
+    pub enabled: bool,
+    /// Maximum number of retry attempts
+    #[serde(default = "default_max_retries")]
+    pub max_retries: u8,
+    /// Delay between retries in seconds
+    #[serde(default = "default_retry_delay")]
+    pub retry_delay_seconds: u64,
+    /// MySocial relay configuration
+    #[serde(default)]
+    pub mys: MysRelayConfigFile,
+    /// EVM relay configuration
+    pub evm: Option<EvmRelayConfigFile>,
+}
+
+/// MySocial-specific relay configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct MysRelayConfigFile {
+    /// Maximum gas budget for Mys transactions (in MIST)
+    #[serde(default = "default_mys_gas_budget")]
+    pub gas_budget: u64,
+}
+
+impl Default for MysRelayConfigFile {
+    fn default() -> Self {
+        Self {
+            gas_budget: default_mys_gas_budget(),
+        }
+    }
+}
+
+/// EVM-specific relay configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct EvmRelayConfigFile {
+    /// Whether EVM relay is enabled
+    pub enabled: bool,
+    /// EVM RPC URL (can use ETH_RPC_URL from eth config if not specified)
+    pub rpc_url: Option<String>,
+    /// Bridge contract address (can use from eth config if not specified)
+    pub bridge_contract_address: Option<String>,
+    /// Maximum gas price in Gwei
+    #[serde(default = "default_max_gas_price_gwei")]
+    pub max_gas_price_gwei: u64,
+    /// Percentage buffer for gas estimation
+    #[serde(default = "default_gas_buffer_percent")]
+    pub gas_estimate_buffer_percent: u8,
+    /// Number of confirmations to wait for
+    #[serde(default = "default_confirmation_blocks")]
+    pub confirmation_blocks: u64,
+}
+
+fn default_max_retries() -> u8 {
+    3
+}
+
+fn default_retry_delay() -> u64 {
+    30
+}
+
+fn default_mys_gas_budget() -> u64 {
+    100_000_000 // 0.1 MYS
+}
+
+fn default_max_gas_price_gwei() -> u64 {
+    10
+}
+
+fn default_gas_buffer_percent() -> u8 {
+    20
+}
+
+fn default_confirmation_blocks() -> u64 {
+    2
+}
+
+/// Deposit system configuration loaded from config file
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DepositConfigFile {
+    /// Whether custodial deposit system is enabled
+    pub enabled: bool,
+    /// Polling interval for deposit monitoring in seconds
+    #[serde(default = "default_deposit_poll_interval")]
+    pub poll_interval_secs: u64,
+    /// Whether to automatically fund gas for deposit addresses
+    #[serde(default = "default_auto_fund_gas")]
+    pub auto_fund_gas: bool,
+    /// Optional: specify supported ERC20 token addresses
+    /// If not specified, will query from BridgeConfig contract
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supported_tokens: Option<Vec<String>>,
+}
+
+fn default_deposit_poll_interval() -> u64 {
+    45
+}
+
+fn default_auto_fund_gas() -> bool {
+    true
+}
+
+/// Runtime deposit system configuration (converted from DepositConfigFile)
+#[derive(Debug, Clone)]
+pub struct DepositConfig {
+    /// Whether custodial deposit system is enabled
+    pub enabled: bool,
+    /// Polling interval for deposit monitoring in seconds
+    pub poll_interval_secs: u64,
+    /// Whether to automatically fund gas for deposit addresses
+    pub auto_fund_gas: bool,
+    /// Supported ERC20 token addresses (parsed from strings)
+    pub supported_tokens: Vec<EthAddress>,
+}
+
 #[serde_as]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -123,6 +244,14 @@ pub struct BridgeNodeConfig {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub watchdog_config: Option<WatchdogConfig>,
+    
+    /// Auto-relay configuration for automatic token claiming
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relay: Option<RelayConfigFile>,
+    
+    /// Deposit system configuration for custodial deposit addresses
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deposits: Option<DepositConfigFile>,
 }
 
 pub fn default_ed25519_key_pair() -> NetworkKeyPair {
@@ -227,6 +356,87 @@ impl BridgeNodeConfig {
             .clone()
             .ok_or(anyhow!("`db_path` is required when `run_client` is true"))?;
 
+        // Convert relay config from file format to runtime format
+        let relay_config = self.relay.as_ref().map(|relay_cfg| {
+            // Warn if deposits are enabled but relay is disabled
+            if self.deposits.as_ref().map(|d| d.enabled).unwrap_or(false) && !relay_cfg.enabled {
+                tracing::warn!(
+                    "Deposits are enabled but relay is disabled. \
+                     MySocial → EVM deposits will not be automatically bridged. \
+                     Consider enabling relay in config to enable automatic token claiming."
+                );
+            }
+            
+            let evm_config = relay_cfg.evm.as_ref().map(|evm_cfg| {
+                if evm_cfg.enabled {
+                    // Validate that eth config has RPC URL and bridge address
+                    if self.eth.eth_rpc_url.is_empty() {
+                        tracing::warn!(
+                            "EVM relay enabled but eth.eth-rpc-url is empty. \
+                             Relay will use ETH_RPC_URL environment variable if available."
+                        );
+                    }
+                    if self.eth.eth_bridge_proxy_address.is_empty() {
+                        tracing::warn!(
+                            "EVM relay enabled but eth.eth-bridge-proxy-address is empty. \
+                             Relay will use ETH_BRIDGE_PROXY_ADDRESS environment variable if available."
+                        );
+                    }
+                }
+                
+                let rpc_url = evm_cfg.rpc_url.clone()
+                    .unwrap_or_else(|| self.eth.eth_rpc_url.clone());
+                let bridge_address = evm_cfg.bridge_contract_address.clone()
+                    .unwrap_or_else(|| self.eth.eth_bridge_proxy_address.clone());
+                
+                crate::relay::EvmRelayConfig {
+                    enabled: evm_cfg.enabled,
+                    rpc_url,
+                    bridge_contract_address: bridge_address
+                        .parse()
+                        .expect("Invalid bridge contract address in config"),
+                    max_gas_price_gwei: evm_cfg.max_gas_price_gwei,
+                    gas_estimate_buffer_percent: evm_cfg.gas_estimate_buffer_percent,
+                    confirmation_blocks: evm_cfg.confirmation_blocks,
+                }
+            });
+            
+            crate::relay::RelayConfig {
+                enabled: relay_cfg.enabled,
+                max_retries: relay_cfg.max_retries,
+                retry_delay_seconds: relay_cfg.retry_delay_seconds,
+                mys_gas_budget: relay_cfg.mys.gas_budget,
+                evm: evm_config,
+            }
+        });
+
+        // Convert deposit config from file format to runtime format
+        let deposit_config = self.deposits.as_ref().map(|deposit_cfg| {
+            // Parse supported token addresses if provided
+            let supported_tokens = match &deposit_cfg.supported_tokens {
+                Some(tokens) => tokens
+                    .iter()
+                    .filter_map(|addr_str| {
+                        addr_str.parse::<EthAddress>().ok()
+                    })
+                    .collect(),
+                None => Vec::new(), // Will be queried from BridgeConfig contract
+            };
+            
+            // Check for environment variable override
+            let poll_interval_secs = std::env::var("DEPOSIT_POLL_INTERVAL_SECS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .unwrap_or(deposit_cfg.poll_interval_secs);
+            
+            DepositConfig {
+                enabled: deposit_cfg.enabled,
+                poll_interval_secs,
+                auto_fund_gas: deposit_cfg.auto_fund_gas,
+                supported_tokens,
+            }
+        });
+
         let bridge_client_config = BridgeClientConfig {
             mys_address: client_mys_address,
             key: bridge_client_key,
@@ -245,6 +455,8 @@ impl BridgeNodeConfig {
             mys_bridge_module_last_processed_event_id_override: self
                 .mys
                 .mys_bridge_module_last_processed_event_id_override,
+            relay_config,
+            deposit_config,
         };
 
         Ok((bridge_server_config, Some(bridge_client_config)))
@@ -425,6 +637,10 @@ pub struct BridgeClientConfig {
     pub eth_contracts_start_block_fallback: u64,
     pub eth_contracts_start_block_override: Option<u64>,
     pub mys_bridge_module_last_processed_event_id_override: Option<EventID>,
+    /// Auto-relay configuration
+    pub relay_config: Option<crate::relay::RelayConfig>,
+    /// Deposit system configuration
+    pub deposit_config: Option<DepositConfig>,
 }
 
 #[serde_as]

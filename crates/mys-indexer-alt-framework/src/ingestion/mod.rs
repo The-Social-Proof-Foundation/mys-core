@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 // Allow use of `unbounded_channel` in `ingestion` -- it is used by the regulator task to receive
@@ -8,8 +9,8 @@
 
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
-use serde::{Deserialize, Serialize};
 use mys_types::full_checkpoint_content::CheckpointData;
+use serde::{Deserialize, Serialize};
 use tokio::{sync::mpsc, task::JoinHandle};
 use tokio_util::sync::CancellationToken;
 use url::Url;

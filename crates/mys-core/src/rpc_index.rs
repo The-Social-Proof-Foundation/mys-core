@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority::authority_per_epoch_store::AuthorityPerEpochStore;
@@ -7,21 +8,10 @@ use crate::checkpoints::CheckpointStore;
 use crate::par_index_live_object_set::LiveObjectIndexer;
 use crate::par_index_live_object_set::ParMakeLiveObjectIndexer;
 use move_core_types::language_storage::StructTag;
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
-use serde::Deserialize;
-use serde::Serialize;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::path::Path;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::time::Instant;
 use mys_types::base_types::MoveObjectType;
+use mys_types::base_types::MysAddress;
 use mys_types::base_types::ObjectID;
 use mys_types::base_types::SequenceNumber;
-use mys_types::base_types::MysAddress;
 use mys_types::digests::TransactionDigest;
 use mys_types::dynamic_field::visitor as DFV;
 use mys_types::full_checkpoint_content::CheckpointData;
@@ -33,6 +23,17 @@ use mys_types::storage::error::Error as StorageError;
 use mys_types::storage::BackingPackageStore;
 use mys_types::storage::DynamicFieldIndexInfo;
 use mys_types::storage::DynamicFieldKey;
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
+use serde::Deserialize;
+use serde::Serialize;
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::time::Instant;
 use tracing::{debug, info};
 use typed_store::rocks::{DBMap, MetricConf};
 use typed_store::traits::Map;
@@ -416,7 +417,7 @@ impl IndexStoreTables {
         let upper_bound = OwnerIndexKey::new(owner, ObjectID::MAX);
         let mut iter = self
             .owner
-            .iter_with_bounds(Some(lower_bound), Some(upper_bound));
+            .unbounded_iter_with_bounds(Some(lower_bound), Some(upper_bound));
 
         if let Some(cursor) = cursor {
             iter = iter.skip_to(&OwnerIndexKey::new(owner, cursor))?;
@@ -435,7 +436,7 @@ impl IndexStoreTables {
         let upper_bound = DynamicFieldKey::new(parent, ObjectID::MAX);
         let mut iter = self
             .dynamic_field
-            .iter_with_bounds(Some(lower_bound), Some(upper_bound));
+            .unbounded_iter_with_bounds(Some(lower_bound), Some(upper_bound));
 
         if let Some(cursor) = cursor {
             iter = iter.skip_to(&DynamicFieldKey::new(parent, cursor))?;
@@ -483,8 +484,10 @@ impl RpcIndexStore {
             if tables.needs_to_do_initialization() {
                 let mut tables = if tables.needs_to_delete_old_db() {
                     drop(tables);
-                    typed_store::rocks::safe_drop_db(path.clone())
-                        .expect("unable to destroy old rpc-index db");
+                    tokio::runtime::Handle::current().block_on(
+                        typed_store::rocks::safe_drop_db(path.clone(), std::time::Duration::from_secs(30))
+                    )
+                    .expect("unable to destroy old rpc-index db");
                     IndexStoreTables::open(path)
                 } else {
                     tables

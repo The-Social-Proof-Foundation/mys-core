@@ -1,5 +1,6 @@
 // Copyright (c) 2021, Facebook, Inc. and its affiliates
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{
@@ -11,7 +12,6 @@ use std::{
 use crate::authority::test_authority_builder::TestAuthorityBuilder;
 use crate::{authority::AuthorityState, authority_client::AuthorityAPI};
 use async_trait::async_trait;
-use mysten_metrics::spawn_monitored_task;
 use mys_config::genesis::Genesis;
 use mys_types::messages_grpc::{
     HandleCertificateResponseV2, HandleSoftBundleCertificatesRequestV3,
@@ -33,6 +33,7 @@ use mys_types::{
     error::MysResult,
     messages_grpc::{HandleCertificateRequestV3, HandleCertificateResponseV3},
 };
+use mysten_metrics::spawn_monitored_task;
 
 #[derive(Clone, Copy, Default)]
 pub struct LocalAuthorityClientFaultConfig {

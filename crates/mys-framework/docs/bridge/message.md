@@ -60,14 +60,14 @@ title: Module `bridge::message`
 
 <pre><code><b>use</b> <a href="../bridge/chain_ids.md#bridge_chain_ids">bridge::chain_ids</a>;
 <b>use</b> <a href="../bridge/message_types.md#bridge_message_types">bridge::message_types</a>;
+<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
+<b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
-<b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
-<b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
 </code></pre>
 
 
@@ -1021,7 +1021,7 @@ Update asset price message
 
 ## Function `create_add_tokens_on_mys_message`
 
-Update MySocial token message
+Update Mys token message
 [message_type:u8]
 [version:u8]
 [nonce:u64]

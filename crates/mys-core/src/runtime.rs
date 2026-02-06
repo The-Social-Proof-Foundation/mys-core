@@ -1,9 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use mys_config::NodeConfig;
 use std::env;
 use std::str::FromStr;
-use mys_config::NodeConfig;
 use tap::TapFallible;
 use tokio::runtime::Runtime;
 use tracing::warn;

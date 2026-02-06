@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! `BridgeClient` talks to BridgeNode.
@@ -9,6 +10,7 @@ use crate::server::APPLICATION_JSON;
 use crate::types::{BridgeAction, BridgeCommittee, VerifiedSignedBridgeAction};
 use fastcrypto::encoding::{Encoding, Hex};
 use fastcrypto::traits::ToFromBytes;
+use mys_types::base_types::ConciseableName;
 use std::str::FromStr;
 use std::sync::Arc;
 use url::Url;
@@ -65,12 +67,21 @@ impl BridgeClient {
                 let chain_id = (a.chain_id as u8).to_string();
                 let nonce = a.nonce.to_string();
                 let type_ = (a.blocklist_type as u8).to_string();
-                let keys = a
-                    .members_to_update
-                    .iter()
-                    .map(|k| Hex::encode(k.as_bytes()))
-                    .collect::<Vec<_>>()
-                    .join(",");
+                let keys = if a.members_to_update.is_empty() {
+                    "none".to_string()
+                } else {
+                    let encoded: Vec<String> = a.members_to_update
+                        .iter()
+                        .map(|k| Hex::encode(k.as_bytes()))
+                        .collect();
+                    if encoded.is_empty() {
+                        "none".to_string()
+                    } else {
+                        encoded.join(",")
+                    }
+                };
+                // Ensure keys is never empty - defensive check
+                let keys = if keys.is_empty() { "none".to_string() } else { keys };
                 format!("sign/update_committee_blocklist/{chain_id}/{nonce}/{type_}/{keys}")
             }
             BridgeAction::EmergencyAction(a) => {
@@ -194,11 +205,16 @@ impl BridgeClient {
             return Err(BridgeError::InvalidAuthorityUrl(self.authority.clone()));
         }
         // Unwrap safe: checked `self.base_url.is_none()` above
-        let url = self
-            .base_url
-            .clone()
-            .unwrap()
-            .join(&Self::bridge_action_to_path(&action))?;
+        let path = Self::bridge_action_to_path(&action);
+        let base_url = self.base_url.clone().unwrap();
+        let url = base_url.join(&path)?;
+        tracing::debug!(
+            "Requesting signature from {}: path={}, base_url={}, full_url={}",
+            self.authority.concise(),
+            path,
+            base_url,
+            url
+        );
         let resp = self
             .inner
             .get(url)
@@ -244,10 +260,10 @@ mod tests {
     use ethers::types::TxHash;
     use fastcrypto::hash::{HashFunction, Keccak256};
     use fastcrypto::traits::KeyPair;
-    use prometheus::Registry;
     use mys_types::bridge::{BridgeChainId, TOKEN_ID_BTC, TOKEN_ID_USDT};
     use mys_types::TypeTag;
     use mys_types::{base_types::MysAddress, crypto::get_key_pair, digests::TransactionDigest};
+    use prometheus::Registry;
 
     #[tokio::test]
     async fn test_bridge_client() {

@@ -1,0 +1,93 @@
+---
+# Genesis configuration parameters
+# This file controls the epoch duration and stake subsidy parameters
+
+parameters:
+  # Chain start timestamp current time + 0 hour (in milliseconds since epoch)
+  chain_start_timestamp_ms: 1768557600000 # 1768552353000
+
+  # Protocol version
+  protocol_version: 75  # Latest version
+
+  # Whether to allow insertion of extra objects in genesis
+  allow_insertion_of_extra_objects: true
+
+  # Epoch duration in milliseconds (default: 24 hours)
+  # 1 hour = 3,600,000 ms
+  # 24 hours = 86,400,000 ms
+  epoch_duration_ms: 7200000  # 2 hours for testnet (faster epochs)
+
+  # Stake subsidy parameters
+  #
+  # When to start paying stake subsidies (0 = from beginning)
+  stake_subsidy_start_epoch: 0
+
+  # Initial stake subsidy distribution amount per epoch (in MIST)
+  # Default: 31,537 MySo = 31,537,208,455,986 MIST
+  # stake_subsidy_initial_distribution_amount: 31537208455986
+  stake_subsidy_initial_apy_bps: 2000
+
+  # Maximum APY cap (in basis points). Effective APY will never exceed this.
+  stake_subsidy_max_apy_bps: 2500
+
+  # Minimum APY floor (in basis points). Effective APY will never go below this.
+  stake_subsidy_min_apy_bps: 100
+
+  # Target duration for subsidy pool in years (e.g., 10).
+  # Used to calculate stake-aware APY reduction to ensure pool sustainability.
+  stake_subsidy_intended_duration_years: 10
+
+  # Number of epochs before decreasing the subsidy amount
+  # Default: 15 epochs
+  stake_subsidy_period_length: 12
+
+  # Rate at which subsidy decreases at end of each period (in basis points)
+  # 40 basis points = 0.40%
+  stake_subsidy_decrease_rate: 100
+
+# Accounts to add tokens to
+accounts:
+  # Faucet
+  - address: "0xfe5fd021999e3601d0b0810bdb2b0a871630007f9c55477548ef448f6c48143f"
+    gas_amounts:
+      - 1000000000000000 # 1,000,000 MySo
+  # Social Proof Foundation
+  - address: "0x84555105d9275a1e4fd6966dfb337a07011b6ce661b5261daf573d8b05d9223e"
+    gas_amounts:
+      - 646200000000000000 # 646,200,000 MySo (24% from the Social Proof Foundation + 51% from the Community - 3 mill from Validators - 150 mill from staking subsidy)
+  # Core Team
+  - address: "0x467fa95f1b7c7c46a093f5f1c9986e007ac44e7fadc2e8f889da722706460935"
+    gas_amounts:
+      - 249000000000000000 # 249,000,000 MySo (25% = 12.5% core + 12.5% marketing - 1 mill faucet)
+
+validator_config_info:
+  # Validator 1 (dynamic ports)
+  - name: "MySo Validator 1"
+    network_address: "/ip4/69.10.63.78/tcp/59010/http"
+    p2p_address: "/ip4/69.10.63.78/udp/59020"
+    narwhal_primary_address: "/ip4/69.10.63.78/udp/59030"
+    narwhal_worker_address: "/ip4/69.10.63.78/udp/59040"
+    consensus_address: "/ip4/69.10.63.78/tcp/59050/http"
+    gas_price: 1
+    commission_rate: 250
+    stake: 1000000000000000  # 1 million MySo in MIST units
+  # Validator 2 (dynamic ports)
+  - name: "MySo Validator 2"
+    network_address: "/ip4/69.10.63.78/tcp/59110/http"
+    p2p_address: "/ip4/69.10.63.78/udp/59120"
+    narwhal_primary_address: "/ip4/69.10.63.78/udp/59130"
+    narwhal_worker_address: "/ip4/69.10.63.78/udp/59140"
+    consensus_address: "/ip4/69.10.63.78/tcp/59150/http"
+    gas_price: 1
+    commission_rate: 250
+    stake: 1000000000000000  # 1 million MySo in MIST units
+  # Validator 3 (dynamic ports)
+  - name: "MySo Validator 3"
+    network_address: "/ip4/69.10.63.78/tcp/59210/http"
+    p2p_address: "/ip4/69.10.63.78/udp/59220"
+    narwhal_primary_address: "/ip4/69.10.63.78/udp/59230"
+    narwhal_worker_address: "/ip4/69.10.63.78/udp/59240"
+    consensus_address: "/ip4/69.10.63.78/tcp/59250/http"
+    gas_price: 1
+    commission_rate: 250
+    stake: 1000000000000000  # 1 million MySo in MIST units

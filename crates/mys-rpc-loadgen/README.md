@@ -1,4 +1,4 @@
-# mys-rpc-loadgen: Load Generator for MYS RPC Servers
+# mys-rpc-loadgen: Load Generator for TESTING MYS RPC Servers
 
 `mys-rpc-loadgen` is a utility that facilitates the generation of read and write loads on single or multiple MySocial RPC servers. Its primary functions include performance testing and data correctness verification.
 
@@ -17,7 +17,7 @@ Run the following command to see available commands:
 cargo run --bin mys-rpc-loadgen -- -h
 ```
 
-To try this locally, refer to the [docs](https://docs.mys.io/guides/developer/getting-started/local-network). Recommend setting `database-url` to an env variable. Note: run `RUST_LOG="consensus=off" cargo run mys -- start --with-faucet --force-regenesis --with-indexer` to rebuild.
+To try this locally, refer to the [docs](https://docs.mysocial.network/guides/developer/getting-started/local-network). Recommend setting `database-url` to an env variable. Note: run `RUST_LOG="consensus=off" cargo run mys -- start --with-faucet --force-regenesis --with-indexer` to rebuild.
 
 ### Example 1: Get All Checkpoints
 
@@ -39,7 +39,7 @@ By default, this command also verify all the transactions in the checkpoint, spe
 
 **Note** you must put `--num-threads ` after the urls, otherwise the command will not be parsed correctly
 
-### Example 2: (WIP) Execute PayMys Transaction
+### Example 2: (WIP) Execute PayMySo Transaction
 
 ```bash
 cargo run --bin mys-rpc-loadgen -- --urls "http://127.0.0.1:9000" --num-threads 1 pay-mys --repeat 100

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod deny;
@@ -7,8 +8,6 @@ pub use checked::*;
 
 #[mys_macros::with_checked_arithmetic]
 mod checked {
-    use std::collections::{BTreeMap, HashSet};
-    use std::sync::Arc;
     use mys_config::verifier_signing_config::VerifierSigningConfig;
     use mys_protocol_config::ProtocolConfig;
     use mys_types::base_types::{ObjectID, ObjectRef};
@@ -21,7 +20,7 @@ mod checked {
         TransactionKind,
     };
     use mys_types::{
-        base_types::{SequenceNumber, MysAddress},
+        base_types::{MysAddress, SequenceNumber},
         error::MysError,
         fp_bail, fp_ensure,
         gas::MysGasStatus,
@@ -31,6 +30,8 @@ mod checked {
         MYS_AUTHENTICATOR_STATE_OBJECT_ID, MYS_CLOCK_OBJECT_ID, MYS_CLOCK_OBJECT_SHARED_VERSION,
         MYS_RANDOMNESS_STATE_OBJECT_ID,
     };
+    use std::collections::{BTreeMap, HashSet};
+    use std::sync::Arc;
     use tracing::error;
     use tracing::instrument;
 

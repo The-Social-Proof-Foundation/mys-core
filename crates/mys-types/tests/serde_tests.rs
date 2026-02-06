@@ -1,14 +1,15 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use move_core_types::language_storage::StructTag;
+use mys_types::base_types::ObjectType;
+use mys_types::mys_serde::MysStructTag;
+use mys_types::parse_mys_struct_tag;
 use serde::Serialize;
 use serde_json::Value;
 use serde_with::serde_as;
 use std::str::FromStr;
-use mys_types::base_types::ObjectType;
-use mys_types::parse_mys_struct_tag;
-use mys_types::mys_serde::MysStructTag;
 
 #[test]
 fn test_struct_tag_serde() {

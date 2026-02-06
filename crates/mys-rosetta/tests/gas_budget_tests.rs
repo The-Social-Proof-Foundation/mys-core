@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::time::Duration;
@@ -7,17 +8,17 @@ use fastcrypto::encoding::{Encoding, Hex};
 use serde::Deserialize;
 use serde_json::json;
 
-use rosetta_client::start_rosetta_test_server;
 use mys_keys::keystore::AccountKeystore;
 use mys_rosetta::operations::Operations;
 use mys_rosetta::types::{
     ConstructionCombineRequest, ConstructionCombineResponse, ConstructionMetadataRequest,
     ConstructionMetadataResponse, ConstructionPayloadsRequest, ConstructionPayloadsResponse,
     ConstructionPreprocessRequest, ConstructionPreprocessResponse, ConstructionSubmitRequest,
-    NetworkIdentifier, PreprocessMetadata, Signature, SignatureType, MysEnv,
+    MysEnv, NetworkIdentifier, PreprocessMetadata, Signature, SignatureType,
     TransactionIdentifierResponse,
 };
 use mys_types::crypto::MysSignature;
+use rosetta_client::start_rosetta_test_server;
 use test_cluster::TestClusterBuilder;
 
 use crate::rosetta_client::RosettaEndpoint;
@@ -68,7 +69,7 @@ async fn pay_with_gas_budget(budget: u64) -> TransactionIdentifierResponseResult
             "operation_identifier":{"index":0},
             "type":"PayMys",
             "account": { "address" : recipient.to_string() },
-            "amount" : { "value": "1000000000" , "currency": { "symbol": "MYS", "decimals": 9}}
+            "amount" : { "value": "1000000000" , "currency": { "symbol": "MySo", "decimals": 9}}
         },{
             "operation_identifier":{"index":1},
             "type":"PayMys",
@@ -76,7 +77,7 @@ async fn pay_with_gas_budget(budget: u64) -> TransactionIdentifierResponseResult
             "amount" : {
                 "value": "-1000000000",
                 "currency": {
-                    "symbol": "MYS",
+                    "symbol": "MySo",
                     "decimals": 9,
                 }
             },

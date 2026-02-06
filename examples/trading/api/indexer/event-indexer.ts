@@ -1,7 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { EventId, MysClient, MysEvent, MysEventFilter } from '@mysten/mys/client';
+import { EventId, MysClient, MysEvent, MysEventFilter } from '@socialproof/mys/client';
 
 import { CONFIG } from '../config';
 import { prisma } from '../db';

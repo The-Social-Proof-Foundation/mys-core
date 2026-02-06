@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Error;
@@ -19,7 +20,7 @@ use mys_types::{BRIDGE_ADDRESS, MYS_BRIDGE_OBJECT_ID};
 
 use crate::metrics::BridgeIndexerMetrics;
 use crate::{
-    BridgeDataSource, GovernanceAction, GovernanceActionType, ProcessedTxnData, MysTxnError,
+    BridgeDataSource, GovernanceAction, GovernanceActionType, MysTxnError, ProcessedTxnData,
     TokenTransfer, TokenTransferData, TokenTransferStatus,
 };
 
@@ -45,22 +46,66 @@ impl DataMapper<CheckpointTxnData, ProcessedTxnData> for MysBridgeDataMapper {
 
         match &data.events {
             Some(events) => {
-                let token_transfers = events.data.iter().try_fold(vec![], |mut result, ev| {
-                    if let Some(data) = process_mys_event(ev, &data, checkpoint_num, timestamp_ms)?
-                    {
-                        result.push(data);
-                    }
-                    Ok::<_, anyhow::Error>(result)
-                })?;
+                let mut all_data = vec![];
 
-                if !token_transfers.is_empty() {
+                // Process main bridge events
+                for ev in &events.data {
+                    if let Some(processed) =
+                        process_mys_event(ev, &data, checkpoint_num, timestamp_ms)?
+                    {
+                        // Check if this is a native MYS transfer event (token_id 0)
+                        // and create corresponding treasury events
+                        if let ProcessedTxnData::TokenTransfer(ref transfer) = processed {
+                            if let Some(ref transfer_data) = transfer.data {
+                                if transfer_data.token_id == 0 {
+                                    // This is native MYS
+                                    match transfer.status {
+                                        crate::TokenTransferStatus::Deposited => {
+                                            // Lock event: MYS being sent from MySo -> Eth
+                                            all_data.push(ProcessedTxnData::TreasuryEvent(crate::TreasuryEvent {
+                                                token_type: "0x0000000000000000000000000000000000000000000000000000000000000002::mys::MYS".to_string(),
+                                                token_id: 0,
+                                                event_type: crate::TreasuryEventType::Lock,
+                                                amount: transfer_data.amount,
+                                                tx_digest: transfer.txn_hash.clone(),
+                                                block_height: transfer.block_height,
+                                                timestamp_ms: transfer.timestamp_ms,
+                                                sender: transfer.txn_sender.clone(),
+                                            }));
+                                        }
+                                        crate::TokenTransferStatus::Claimed => {
+                                            // Unlock event: MYS being claimed from Eth -> MySo
+                                            // Only if source chain is not MySo (coming from Ethereum)
+                                            if transfer.chain_id != 2 {
+                                                all_data.push(ProcessedTxnData::TreasuryEvent(crate::TreasuryEvent {
+                                                    token_type: "0x0000000000000000000000000000000000000000000000000000000000000002::mys::MYS".to_string(),
+                                                    token_id: 0,
+                                                    event_type: crate::TreasuryEventType::Unlock,
+                                                    amount: transfer_data.amount,
+                                                    tx_digest: transfer.txn_hash.clone(),
+                                                    block_height: transfer.block_height,
+                                                    timestamp_ms: transfer.timestamp_ms,
+                                                    sender: transfer.txn_sender.clone(),
+                                                }));
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
+                        all_data.push(processed);
+                    }
+                }
+
+                if !all_data.is_empty() {
                     info!(
-                        "MYS: Extracted {} bridge token transfer data entries for tx {}.",
-                        token_transfers.len(),
+                        "MYS: Extracted {} bridge data entries for tx {}.",
+                        all_data.len(),
                         data.transaction.digest()
                     );
                 }
-                Ok(token_transfers)
+                Ok(all_data)
             }
             None => {
                 if let ExecutionStatus::Failure { error, command } = data.effects.status() {

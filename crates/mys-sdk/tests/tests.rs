@@ -1,10 +1,23 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use tempfile::TempDir;
 
+use fastcrypto::ed25519::Ed25519KeyPair;
 use mys_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
-use mys_types::crypto::Ed25519MysSignature;
-use mys_types::crypto::{SignatureScheme, MysSignatureInner};
+use mys_macros::sim_test;
+use mys_sdk::verify_personal_message_signature::verify_personal_message_signature;
+use mys_types::base_types::MysAddress;
+use mys_types::crypto::{Ed25519MysSignature, MysKeyPair};
+use mys_types::crypto::{MysSignatureInner, SignatureScheme};
+use mys_types::multisig::{MultiSig, MultiSigPublicKey};
+use mys_types::{
+    crypto::{get_key_pair, Signature},
+    signature::GenericSignature,
+    utils::sign_zklogin_personal_msg,
+};
+use shared_crypto::intent::{Intent, IntentMessage, PersonalMessage};
+
 #[test]
 fn mnemonic_test() {
     let temp_dir = TempDir::new().unwrap();
@@ -31,4 +44,90 @@ fn keystore_display_test() -> Result<(), anyhow::Error> {
     assert!(keystore.to_string().contains("mys.keystore"));
     assert!(!keystore.to_string().contains("keys:"));
     Ok(())
+}
+
+#[tokio::test]
+async fn test_verify_personal_message_signature() {
+    let (address, sec1): (_, Ed25519KeyPair) = get_key_pair();
+    let message = b"hello";
+    let intent_message = IntentMessage::new(
+        Intent::personal_message(),
+        PersonalMessage {
+            message: message.to_vec(),
+        },
+    );
+
+    let s = Signature::new_secure(&intent_message, &sec1);
+    let signature: GenericSignature = GenericSignature::Signature(s);
+    let res = verify_personal_message_signature(signature.clone(), message, address, None).await;
+    assert!(res.is_ok());
+
+    let res =
+        verify_personal_message_signature(signature, "wrong msg".as_bytes(), address, None).await;
+    assert!(res.is_err());
+}
+
+#[sim_test]
+async fn test_verify_signature_zklogin() {
+    use test_cluster::TestClusterBuilder;
+
+    let message = b"hello";
+    let personal_message = PersonalMessage {
+        message: message.to_vec(),
+    };
+    let (user_address, signature) = sign_zklogin_personal_msg(personal_message.clone());
+
+    let test_cluster = TestClusterBuilder::new()
+        .with_epoch_duration_ms(15000)
+        .with_default_jwks()
+        .build()
+        .await;
+    test_cluster.wait_for_epoch(Some(1)).await;
+    test_cluster.wait_for_authenticator_state_update().await;
+    let client = test_cluster.mys_client();
+    let res = verify_personal_message_signature(
+        signature.clone(),
+        message,
+        user_address,
+        Some(client.clone()),
+    )
+    .await;
+    assert!(res.is_ok());
+
+    let res = verify_personal_message_signature(
+        signature,
+        "wrong msg".as_bytes(),
+        user_address,
+        Some(client.clone()),
+    )
+    .await;
+    assert!(res.is_err());
+}
+
+#[tokio::test]
+async fn test_verify_signature_multisig() {
+    let kp1: MysKeyPair = MysKeyPair::Ed25519(get_key_pair().1);
+    let kp2: MysKeyPair = MysKeyPair::Secp256k1(get_key_pair().1);
+
+    let message = b"hello";
+    let intent_message = IntentMessage::new(
+        Intent::personal_message(),
+        PersonalMessage {
+            message: message.to_vec(),
+        },
+    );
+    let sig1: GenericSignature = Signature::new_secure(&intent_message, &kp1).into();
+    let sig2: GenericSignature = Signature::new_secure(&intent_message, &kp2).into();
+    let multisig_pk =
+        MultiSigPublicKey::new(vec![kp1.public(), kp2.public()], vec![1, 1], 2).unwrap();
+    let address: MysAddress = (&multisig_pk).into();
+    let multisig = MultiSig::combine(vec![sig1, sig2], multisig_pk).unwrap();
+    let generic_sig = GenericSignature::MultiSig(multisig);
+
+    let res = verify_personal_message_signature(generic_sig.clone(), message, address, None).await;
+    assert!(res.is_ok());
+
+    let res =
+        verify_personal_message_signature(generic_sig, "wrong msg".as_bytes(), address, None).await;
+    assert!(res.is_err());
 }

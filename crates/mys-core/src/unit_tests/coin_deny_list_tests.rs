@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority::authority_tests::send_and_confirm_transaction_;
@@ -7,9 +8,8 @@ use crate::authority::test_authority_builder::TestAuthorityBuilder;
 use crate::authority::AuthorityState;
 use move_core_types::ident_str;
 use move_core_types::language_storage::{StructTag, TypeTag};
-use std::sync::Arc;
 use mys_test_transaction_builder::TestTransactionBuilder;
-use mys_types::base_types::{dbg_addr, ObjectID, ObjectRef, MysAddress};
+use mys_types::base_types::{dbg_addr, MysAddress, ObjectID, ObjectRef};
 use mys_types::crypto::{get_account_key_pair, AccountKeyPair};
 use mys_types::deny_list_v1::{CoinDenyCap, RegulatedCoinMetadata};
 use mys_types::deny_list_v2::{
@@ -19,6 +19,7 @@ use mys_types::effects::{TransactionEffects, TransactionEffectsAPI};
 use mys_types::object::Object;
 use mys_types::transaction::{CallArg, ObjectArg, TEST_ONLY_GAS_UNIT_FOR_PUBLISH};
 use mys_types::{MYS_DENY_LIST_OBJECT_ID, MYS_FRAMEWORK_PACKAGE_ID};
+use std::sync::Arc;
 
 // Test that a regulated coin can be created and all the necessary objects are created with the right types.
 // Make sure that these types can be converted to Rust types.

@@ -1,12 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::displays::Pretty;
 use crate::replay::LocalExec;
 use move_core_types::annotated_value::{MoveTypeLayout, MoveValue};
 use move_core_types::language_storage::TypeTag;
-use std::fmt::{Display, Formatter};
-use std::sync::Arc;
 use mys_execution::Executor;
 use mys_types::execution::ExecutionResult;
 use mys_types::object::bounded_visitor::BoundedVisitor;
@@ -14,6 +13,8 @@ use mys_types::transaction::CallArg::Pure;
 use mys_types::transaction::{
     write_sep, Argument, CallArg, Command, ObjectArg, ProgrammableMoveCall, ProgrammableTransaction,
 };
+use std::fmt::{Display, Formatter};
+use std::sync::Arc;
 use tabled::{
     builder::Builder as TableBuilder,
     settings::{style::HorizontalLine, Panel as TablePanel, Style as TableStyle},

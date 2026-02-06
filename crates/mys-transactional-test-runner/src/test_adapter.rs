@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! This module contains the transactional test runner instantiation for the Mys adapter
@@ -37,18 +38,6 @@ use move_transactional_test_runner::{
     tasks::{InitCommand, RunCommand, SyntaxChoice, TaskInput},
 };
 use move_vm_runtime::session::SerializedReturnValues;
-use once_cell::sync::Lazy;
-use rand::{rngs::StdRng, Rng, SeedableRng};
-use serde::Deserialize;
-use serde_json::Value;
-use std::fmt::{self, Write};
-use std::path::PathBuf;
-use std::time::Duration;
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    path::Path,
-    sync::Arc,
-};
 use mys_core::authority::test_authority_builder::TestAuthorityBuilder;
 use mys_core::authority::AuthorityState;
 use mys_framework::DEFAULT_FRAMEWORK_PATH;
@@ -78,9 +67,10 @@ use mys_types::storage::{ObjectStore, RpcStateReader};
 use mys_types::transaction::Command;
 use mys_types::transaction::ProgrammableTransaction;
 use mys_types::utils::to_sender_signed_transaction_with_multi_signers;
+use mys_types::MYS_SOCIAL_ADDRESS;
 use mys_types::MYS_SYSTEM_ADDRESS;
 use mys_types::{
-    base_types::{ObjectID, ObjectRef, MysAddress, MYS_ADDRESS_LENGTH},
+    base_types::{MysAddress, ObjectID, ObjectRef, MYS_ADDRESS_LENGTH},
     crypto::{get_key_pair_from_rng, AccountKeyPair},
     event::Event,
     object::{self, Object},
@@ -98,8 +88,20 @@ use mys_types::{
 };
 use mys_types::{utils::to_sender_signed_transaction, MYS_SYSTEM_PACKAGE_ID};
 use mys_types::{BRIDGE_ADDRESS, MOVE_STDLIB_PACKAGE_ID};
-use mys_types::{DEEPBOOK_ADDRESS, MYS_DENY_LIST_OBJECT_ID};
-use mys_types::{DEEPBOOK_PACKAGE_ID, MYS_RANDOMNESS_STATE_OBJECT_ID};
+use mys_types::{ORDERBOOK_ADDRESS, MYS_DENY_LIST_OBJECT_ID};
+use mys_types::{ORDERBOOK_PACKAGE_ID, MYS_RANDOMNESS_STATE_OBJECT_ID};
+use once_cell::sync::Lazy;
+use rand::{rngs::StdRng, Rng, SeedableRng};
+use serde::Deserialize;
+use serde_json::Value;
+use std::fmt::{self, Write};
+use std::path::PathBuf;
+use std::time::Duration;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::Path,
+    sync::Arc,
+};
 use tempfile::{tempdir, NamedTempFile};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -112,7 +114,7 @@ const DEFAULT_GAS_PRICE: u64 = 1_000;
 
 const WELL_KNOWN_OBJECTS: &[ObjectID] = &[
     MOVE_STDLIB_PACKAGE_ID,
-    DEEPBOOK_PACKAGE_ID,
+    ORDERBOOK_PACKAGE_ID,
     MYS_FRAMEWORK_PACKAGE_ID,
     MYS_SYSTEM_PACKAGE_ID,
     MYS_SYSTEM_STATE_OBJECT_ID,
@@ -263,7 +265,7 @@ impl AdapterInitConfig {
             Some(OffChainConfig {
                 snapshot_config,
                 retention_config,
-                data_ingestion_path: data_ingestion_path.unwrap_or(tempdir().unwrap().into_path()),
+                data_ingestion_path: data_ingestion_path.unwrap_or(tempdir().unwrap().keep()),
                 rest_api_url,
             })
         } else {
@@ -2102,9 +2104,9 @@ static NAMED_ADDRESSES: Lazy<BTreeMap<String, NumericalAddress>> = Lazy::new(|| 
         ),
     );
     map.insert(
-        "deepbook".to_string(),
+        "orderbook".to_string(),
         NumericalAddress::new(
-            DEEPBOOK_ADDRESS.into_bytes(),
+            ORDERBOOK_ADDRESS.into_bytes(),
             move_compiler::shared::NumberFormat::Hex,
         ),
     );
@@ -2112,6 +2114,13 @@ static NAMED_ADDRESSES: Lazy<BTreeMap<String, NumericalAddress>> = Lazy::new(|| 
         "bridge".to_string(),
         NumericalAddress::new(
             BRIDGE_ADDRESS.into_bytes(),
+            move_compiler::shared::NumberFormat::Hex,
+        ),
+    );
+    map.insert(
+        "mys-social".to_string(),
+        NumericalAddress::new(
+            MYS_SOCIAL_ADDRESS.into_bytes(),
             move_compiler::shared::NumberFormat::Hex,
         ),
     );
@@ -2137,9 +2146,9 @@ pub static PRE_COMPILED: Lazy<FullyCompiledProgram> = Lazy::new(|| {
         buf.extend(["packages", "move-stdlib", "sources"]);
         buf.to_string_lossy().to_string()
     };
-    let deepbook_sources = {
+    let orderbook_sources = {
         let mut buf = mys_files.to_path_buf();
-        buf.extend(["packages", "deepbook", "sources"]);
+        buf.extend(["packages", "orderbook", "sources"]);
         buf.to_string_lossy().to_string()
     };
     let config = PackageConfig {
@@ -2159,7 +2168,7 @@ pub static PRE_COMPILED: Lazy<FullyCompiledProgram> = Lazy::new(|| {
                 mys_system_sources,
                 mys_sources,
                 mys_deps,
-                deepbook_sources,
+                orderbook_sources,
                 bridge_sources,
             ],
             named_address_map: NAMED_ADDRESSES.clone(),

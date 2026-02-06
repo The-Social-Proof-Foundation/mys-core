@@ -1,0 +1,68 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/mys-bridge/Dockerfile"
+
+[deploy]
+startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key_validator_1 && cargo run --release --bin mys-bridge -- --config-path /app/bridge-config-validator-1.yaml'"
+healthcheckPath = "/ping"
+healthcheckTimeout = 300
+
+[deploy.envVars]
+PORT = "8080"
+
+[variables]
+# Required: Bridge authority private key (Secp256k1) for this validator
+# Must be set in Railway environment variables - do not commit to Git
+BRIDGE_AUTHORITY_KEY = ""
+
+# Optional: Logging configuration
+RUST_LOG = "info,mys_bridge=debug"
+
+# Database Configuration (needed for BridgeClient)
+DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+
+# Required: Bridge configuration environment variables
+# These are substituted into bridge-config-validator-1.yaml at runtime
+# ETH_RPC_URL must be set (contains API keys - do not commit to Git)
+ETH_RPC_URL = ""
+# ETH_BRIDGE_PROXY_ADDRESS must be set (UPDATED to new deployment)
+ETH_BRIDGE_PROXY_ADDRESS = "0x02D265E77590025660a4eff50E7227136762b0d2"
+
+# Optional: Override other config values
+# MYS_RPC_URL = "http://fullnode.testnet.mysocial.network:8082"
+
+# Bridge Node Configuration
+BRIDGE_NODE_PORT = "8080"
+BRIDGE_METRICS_PORT = "9090"
+
+# Contract Addresses (Base Sepolia) - UPDATED to new deployment
+BRIDGE_COMMITTEE_ADDRESS = "0x1d7d41ccfbc5203e95231d01B066Eb11B33669c4"
+BRIDGE_CONFIG_ADDRESS = "0x4c1b2B56b8bE63f430D25bFC551146Ae58aA03A0"
+BRIDGE_LIMITER_ADDRESS = "0x502D256645560869427a8Ae46bB560Cc8e33baC2"
+BRIDGE_VAULT_ADDRESS = "0xaF12A0Af2A325518cc8655a787aab6DC34EFc95E"
+
+# Bridge Authority Configuration
+BRIDGE_COMMITTEE_MEMBER = "true"
+
+# Network Configuration
+SOURCE_CHAIN_ID = "12"  # Base Sepolia
+TARGET_CHAIN_ID = "2"      # Mys Network
+
+# Monitoring and Logging
+LOG_LEVEL = "info"
+METRICS_ENABLED = "true"
+PROMETHEUS_PORT = "9090"
+
+# Performance Settings
+SYNC_BATCH_SIZE = "100"
+SYNC_INTERVAL_MS = "5000"
+MAX_CONCURRENT_REQUESTS = "10"
+
+# Security Settings
+ENABLE_CORS = "true"
+TRUSTED_PROXY_COUNT = "1"
+
+# Feature Flags
+ENABLE_EMERGENCY_PAUSE = "true"
+ENABLE_RATE_LIMITING = "true"
+ENABLE_TRANSFER_LIMITS = "true"

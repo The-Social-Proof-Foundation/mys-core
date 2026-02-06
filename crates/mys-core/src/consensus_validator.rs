@@ -1,17 +1,18 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::sync::Arc;
 
 use consensus_core::{TransactionIndex, TransactionVerifier, ValidationError};
 use fastcrypto_tbls::dkg_v1;
-use mysten_metrics::monitored_scope;
-use prometheus::{register_int_counter_with_registry, IntCounter, Registry};
 use mys_types::{
     error::{MysError, MysResult},
     messages_consensus::{ConsensusTransaction, ConsensusTransactionKind},
     transaction::Transaction,
 };
+use mysten_metrics::monitored_scope;
+use prometheus::{register_int_counter_with_registry, IntCounter, Registry};
 use tap::TapFallible;
 use tracing::{debug, info, warn};
 

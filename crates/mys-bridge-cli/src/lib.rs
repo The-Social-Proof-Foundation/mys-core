@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::anyhow;
@@ -10,13 +11,6 @@ use fastcrypto::encoding::Encoding;
 use fastcrypto::encoding::Hex;
 use fastcrypto::hash::{HashFunction, Keccak256};
 use move_core_types::ident_str;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
-use shared_crypto::intent::Intent;
-use shared_crypto::intent::IntentMessage;
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::sync::Arc;
 use mys_bridge::abi::EthBridgeCommittee;
 use mys_bridge::abi::{eth_mys_bridge, EthMysBridge};
 use mys_bridge::crypto::BridgeAuthorityPublicKeyBytes;
@@ -36,16 +30,26 @@ use mys_sdk::MysClientBuilder;
 use mys_types::base_types::MysAddress;
 use mys_types::base_types::{ObjectID, ObjectRef};
 use mys_types::bridge::{BridgeChainId, BRIDGE_MODULE_NAME};
-use mys_types::crypto::{Signature, MysKeyPair};
+use mys_types::crypto::{MysKeyPair, Signature};
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::transaction::{ObjectArg, Transaction, TransactionData};
 use mys_types::{TypeTag, BRIDGE_PACKAGE_ID};
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
+use shared_crypto::intent::Intent;
+use shared_crypto::intent::IntentMessage;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::sync::Arc;
 use tracing::info;
+use fastcrypto::encoding::Base64;
 
-pub const SEPOLIA_BRIDGE_PROXY_ADDR: &str = "0xAE68F87938439afEEDd6552B0E83D2CbC2473623";
+pub const SEPOLIA_BRIDGE_PROXY_ADDR: &str = "0x538f62e8E903DcaAAB6eB2cD1c5b9A8742e66CB1";
 
 #[derive(Parser)]
 #[clap(rename_all = "kebab-case")]
+#[clap(name = "myso-bridge")]
+#[clap(about = "MySo Bridge CLI - Manage bridge operations and governance")]
 pub struct Args {
     #[clap(subcommand)]
     pub command: BridgeCommand,
@@ -108,13 +112,13 @@ pub enum BridgeCommand {
     /// View current list of registered validators
     #[clap(name = "view-bridge-registration")]
     ViewBridgeRegistration {
-        #[clap(long = "mys-rpc-url")]
+        #[clap(long = "myso-rpc-url")]
         mys_rpc_url: String,
     },
-    /// View current status of Mys bridge
-    #[clap(name = "view-mys-bridge")]
+    /// View current status of MySo bridge
+    #[clap(name = "view-myso-bridge")]
     ViewMysBridge {
-        #[clap(long = "mys-rpc-url")]
+        #[clap(long = "myso-rpc-url")]
         mys_rpc_url: String,
         #[clap(long, default_value = "false")]
         hex: bool,
@@ -169,7 +173,7 @@ pub enum GovernanceClientCommands {
         #[clap(name = "new-usd-price", long)]
         new_usd_price: u64,
     },
-    #[clap(name = "add-tokens-on-mys")]
+    #[clap(name = "add-tokens-on-myso")]
     AddTokensOnMys {
         #[clap(name = "nonce", long)]
         nonce: u64,
@@ -190,7 +194,7 @@ pub enum GovernanceClientCommands {
         token_addresses: Vec<EthAddress>,
         #[clap(name = "token-prices", use_value_delimiter = true, long)]
         token_prices: Vec<u64>,
-        #[clap(name = "token-mys-decimals", use_value_delimiter = true, long)]
+        #[clap(name = "token-myso-decimals", use_value_delimiter = true, long)]
         token_mys_decimals: Vec<u8>,
     },
     #[clap(name = "upgrade-evm-contract")]
@@ -262,10 +266,23 @@ pub fn make_action(chain_id: BridgeChainId, cmd: &GovernanceClientCommands) -> B
         } => {
             assert_eq!(token_ids.len(), token_type_names.len());
             assert_eq!(token_ids.len(), token_prices.len());
+
+            // Detect if this is native MYS token (0x2::mys::MYS)
+            let is_native_mys = token_type_names.len() == 1 && {
+                if let TypeTag::Struct(s) = &token_type_names[0] {
+                    // Check if it's 0x2::mys::MYS (address can be 0x2 or 0x0000...0002)
+                    s.address.to_hex_literal() == "0x2"
+                        && s.module.as_str() == "mys"
+                        && s.name.as_str() == "MYS"
+                } else {
+                    false
+                }
+            };
+
             BridgeAction::AddTokensOnMysAction(AddTokensOnMysAction {
                 nonce: *nonce,
                 chain_id,
-                native: false, // only foreign tokens are supported now
+                native: is_native_mys, // true for native MYS, false for foreign tokens
                 token_ids: token_ids.clone(),
                 token_type_names: token_type_names.clone(),
                 token_prices: token_prices.clone(),
@@ -525,7 +542,7 @@ pub enum BridgeClientCommands {
         #[clap(long)]
         mys_recipient_address: MysAddress,
     },
-    #[clap(name = "deposit-on-mys")]
+    #[clap(name = "deposit-on-myso")]
     DepositOnMys {
         #[clap(long)]
         coin_object_id: ObjectID,
@@ -557,24 +574,90 @@ impl BridgeClientCommands {
                 target_chain,
                 mys_recipient_address,
             } => {
-                let eth_mys_bridge = EthMysBridge::new(
-                    config.eth_bridge_proxy_address,
-                    Arc::new(config.eth_signer().clone()),
-                );
+                let eth_signer = config.eth_signer();
+                let eth_address = eth_signer.address();
+                let provider = eth_signer.inner();
+                
+                // Check wallet balance before attempting transaction
+                let balance = provider.get_balance(eth_address, None).await
+                    .map_err(|e| anyhow!("Failed to get wallet balance: {:?}", e))?;
+                
                 // Note: even with f64 there may still be loss of precision even there are a lot of 0s
                 let int_part = ether_amount.trunc() as u64;
                 let frac_part = ether_amount.fract();
                 let int_wei = U256::from(int_part) * U256::exp10(18);
                 let frac_wei = U256::from((frac_part * 1_000_000_000_000_000_000f64) as u64);
                 let amount = int_wei + frac_wei;
+                
+                // Estimate gas cost
+                let gas_price = provider.get_gas_price().await
+                    .map_err(|e| anyhow!("Failed to get gas price: {:?}", e))?;
+                let estimated_gas = U256::from(100_000u64); // Rough estimate for bridge_eth call
+                let gas_cost = gas_price * estimated_gas;
+                let total_cost = amount + gas_cost;
+                
+                println!("Wallet address: {:?}", eth_address);
+                println!("Wallet balance: {} wei ({:.6} ETH)", balance, balance.as_u128() as f64 / 1e18);
+                println!("Amount to bridge: {} wei ({:.6} ETH)", amount, ether_amount);
+                println!("Estimated gas cost: {} wei ({:.6} ETH)", gas_cost, gas_cost.as_u128() as f64 / 1e18);
+                println!("Total required: {} wei ({:.6} ETH)", total_cost, total_cost.as_u128() as f64 / 1e18);
+                
+                if balance < total_cost {
+                    return Err(anyhow!(
+                        "Insufficient balance. Required: {} wei ({:.6} ETH), Available: {} wei ({:.6} ETH)",
+                        total_cost,
+                        total_cost.as_u128() as f64 / 1e18,
+                        balance,
+                        balance.as_u128() as f64 / 1e18
+                    ));
+                }
+                
+                let eth_mys_bridge = EthMysBridge::new(
+                    config.eth_bridge_proxy_address,
+                    Arc::new(eth_signer.clone()),
+                );
+                
+                println!("Building bridge transaction...");
                 let eth_tx = eth_mys_bridge
                     .bridge_eth(mys_recipient_address.to_vec().into(), target_chain)
                     .value(amount);
-                let pending_tx = eth_tx.send().await.unwrap();
-                let tx_receipt = pending_tx.await.unwrap().unwrap();
-                info!(
-                    "Deposited {ether_amount} Ethers to {:?} (target chain {target_chain}). Receipt: {:?}", mys_recipient_address, tx_receipt,
-                );
+                
+                println!("Sending transaction...");
+                let pending_tx = eth_tx.send().await
+                    .map_err(|e| {
+                        let error_msg = format!("{:?}", e);
+                        // Check for common error patterns
+                        if error_msg.contains("insufficient funds") || error_msg.contains("insufficient balance") {
+                            anyhow!("Insufficient funds for transaction. Error: {}", error_msg)
+                        } else if error_msg.contains("nonce") {
+                            anyhow!("Nonce error (transaction may already be pending). Error: {}", error_msg)
+                        } else if error_msg.contains("revert") {
+                            anyhow!("Transaction would revert. Error: {}", error_msg)
+                        } else {
+                            anyhow!("Failed to send transaction: {}", error_msg)
+                        }
+                    })?;
+                
+                println!("Transaction sent! Hash: {:?}", pending_tx.tx_hash());
+                println!("Waiting for confirmation...");
+                
+                let tx_receipt = pending_tx.await
+                    .map_err(|e| anyhow!("Failed to wait for transaction receipt: {:?}", e))?
+                    .ok_or_else(|| anyhow!("Transaction receipt not found"))?;
+                
+                if tx_receipt.status == Some(ethers::types::U64::from(1u64)) {
+                    info!(
+                        "Successfully deposited {ether_amount} Ethers to {:?} (target chain {target_chain}). Receipt: {:?}", 
+                        mys_recipient_address, tx_receipt
+                    );
+                    println!("Transaction confirmed! Block: {:?}, Gas used: {:?}", tx_receipt.block_number, tx_receipt.gas_used);
+                } else {
+                    return Err(anyhow!(
+                        "Transaction failed. Receipt: {:?}",
+                        tx_receipt
+                    ));
+                }
+                
                 Ok(())
             }
             BridgeClientCommands::ClaimOnEth { seq_num, dry_run } => {
@@ -630,13 +713,37 @@ async fn deposit_on_mys(
         .first()
         .ok_or(anyhow!("No coin found for address {}", sender))?
         .object_ref();
-    let coin_obj_ref = mys_client
+    
+    // Read coin object with owner information to verify ownership
+    let coin_obj_response = mys_client
         .read_api()
-        .get_object_with_options(coin_object_id, MysObjectDataOptions::default())
-        .await?
+        .get_object_with_options(coin_object_id, MysObjectDataOptions::default().with_owner())
+        .await?;
+    
+    let coin_obj_data = coin_obj_response
         .data
-        .unwrap()
-        .object_ref();
+        .ok_or_else(|| anyhow!("Coin object {} not found", coin_object_id))?;
+    
+    // Extract owner address from coin object (using as_ref to avoid moving coin_obj_data)
+    let coin_owner_address = coin_obj_data
+        .owner
+        .as_ref()
+        .ok_or_else(|| anyhow!("Coin object {} has no owner information", coin_object_id))?
+        .get_address_owner_address()
+        .map_err(|e| anyhow!("Coin object {} owner is not an address owner: {:?}", coin_object_id, e))?;
+    
+    // Verify coin owner matches the signer address
+    if coin_owner_address != sender {
+        return Err(anyhow!(
+            "Coin ownership mismatch: Coin {} is owned by address {}, but transaction is being signed by address {} (derived from config.mys_key). \
+             Please use the keypair that corresponds to the coin owner address, or transfer the coin to your address first.",
+            coin_object_id,
+            coin_owner_address,
+            sender
+        ));
+    }
+    
+    let coin_obj_ref = coin_obj_data.object_ref();
 
     let mut builder = ProgrammableTransactionBuilder::new();
     let arg_target_chain = builder.pure(target_chain).unwrap();
@@ -646,13 +753,34 @@ async fn deposit_on_mys(
         .unwrap();
     let arg_bridge = builder.obj(bridge_object_arg).unwrap();
 
-    builder.programmable_move_call(
-        BRIDGE_PACKAGE_ID,
-        BRIDGE_MODULE_NAME.to_owned(),
-        ident_str!("send_token").to_owned(),
-        vec![coin_type],
-        vec![arg_bridge, arg_target_chain, arg_target_address, arg_token],
-    );
+    // Check if this is native MYS token
+    let is_native_mys = if let TypeTag::Struct(s) = &coin_type {
+        s.address.to_hex_literal() == "0x2"
+            && s.module.as_str() == "mys"
+            && s.name.as_str() == "MYS"
+    } else {
+        false
+    };
+
+    if is_native_mys {
+        // Use send_mys_token for native MYS
+        builder.programmable_move_call(
+            BRIDGE_PACKAGE_ID,
+            BRIDGE_MODULE_NAME.to_owned(),
+            ident_str!("send_mys_token").to_owned(),
+            vec![], // No type parameters for native MYS
+            vec![arg_bridge, arg_target_chain, arg_target_address, arg_token],
+        );
+    } else {
+        // Use send_token for foreign tokens
+        builder.programmable_move_call(
+            BRIDGE_PACKAGE_ID,
+            BRIDGE_MODULE_NAME.to_owned(),
+            ident_str!("send_token").to_owned(),
+            vec![coin_type],
+            vec![arg_bridge, arg_target_chain, arg_target_address, arg_token],
+        );
+    }
     let pt = builder.finish();
     let tx_data =
         TransactionData::new_programmable(sender, vec![gas_obj_ref], pt, 500_000_000, rgp);
@@ -693,24 +821,100 @@ async fn claim_on_eth(
         return Ok(());
     }
     let parsed_message = parsed_message.unwrap();
+    
+    // WORKAROUND: Fetch signatures directly from validators via HTTP instead of on-chain
+    // This bypasses the broken bridge client aggregation that only stores 1 signature
+    eprintln!("Attempting to fetch signatures directly from validators...");
+    
+    // Hardcoded validator URLs (TODO: get from committee)
+    let validator_urls = vec![
+        "http://yamanote.proxy.rlwy.net:47836",
+        "http://interchange.proxy.rlwy.net:43720",
+        "http://gondola.proxy.rlwy.net:18706",
+    ];
+    
+    // Try to find the tx_digest by querying MySocial events
+    // For now, we'll try the fallback first, then enhance if needed
+    let mut signatures = Vec::new();
+    
+    // First try on-chain signatures
     let sigs = mys_bridge_client
         .get_token_transfer_action_onchain_signatures_until_success(mys_chain_id, seq_num)
         .await;
-    if sigs.is_none() {
+    
+    if let Some(onchain_sigs) = sigs {
+        signatures = onchain_sigs
+            .into_iter()
+            .map(|sig: Vec<u8>| ethers::types::Bytes::from(sig))
+            .collect::<Vec<_>>();
+        eprintln!("Got {} signatures from on-chain storage", signatures.len());
+    }
+    
+    // If we only got 1 signature on-chain, try fetching from validators directly
+    if signatures.len() < 2 {
+        eprintln!("Only {} signature(s) on-chain, attempting to fetch directly from validators...", signatures.len());
+        eprintln!("Note: You need to provide the tx_digest manually for now");
+        eprintln!("Usage: Set TX_DIGEST env var, then run this command");
+        eprintln!("Example: TX_DIGEST=5oypDxjSFLd6EMorqykG5FpAxH92tYXw2qDWsfa7SZG8 myso-bridge client ...");
+        
+        if let Ok(tx_digest_str) = std::env::var("TX_DIGEST") {
+            eprintln!("Using TX_DIGEST from environment: {}", tx_digest_str);
+            signatures.clear();
+            
+            for url in &validator_urls {
+                let endpoint = format!("{}/sign/bridge_tx/mys/eth/{}/0", url, tx_digest_str);
+                eprintln!("Querying: {}", endpoint);
+                
+                match reqwest::blocking::get(&endpoint) {
+                    Ok(resp) => {
+                        match resp.json::<serde_json::Value>() {
+                            Ok(json) => {
+                                if let Some(sig_b64) = json.get("auth_signature")
+                                    .and_then(|a| a.get("signature"))
+                                    .and_then(|s| s.as_str())
+                                {
+                                    if let Ok(sig_bytes) = Base64::decode(sig_b64) {
+                                        eprintln!("✓ Got signature ({} bytes)", sig_bytes.len());
+                                        signatures.push(ethers::types::Bytes::from(sig_bytes));
+                                    }
+                                }
+                            }
+                            Err(e) => eprintln!("Failed to parse response from {}: {}", url, e),
+                        }
+                    }
+                    Err(e) => eprintln!("Failed to query {}: {}", url, e),
+                }
+            }
+            
+            eprintln!("Collected total of {} signatures", signatures.len());
+        }
+    }
+    
+    if signatures.is_empty() {
         println!("No signatures found for seq_num: {seq_num}, chain id: {mys_chain_id}");
         return Ok(());
     }
-    let signatures = sigs
-        .unwrap()
-        .into_iter()
-        .map(|sig: Vec<u8>| ethers::types::Bytes::from(sig))
-        .collect::<Vec<_>>();
 
     let eth_mys_bridge = EthMysBridge::new(
         config.eth_bridge_proxy_address,
         Arc::new(config.eth_signer().clone()),
     );
+    
+    eprintln!("DEBUG: Parsed message source_chain: {:?}", parsed_message.source_chain);
+    eprintln!("DEBUG: Parsed message seq_num: {}", parsed_message.seq_num);
+    eprintln!("DEBUG: Parsed message version: {}", parsed_message.message_version);
+    
     let message = eth_mys_bridge::Message::from(parsed_message);
+    
+    eprintln!("DEBUG: Eth message chain_id: {}", message.chain_id);
+    eprintln!("DEBUG: Eth message nonce: {}", message.nonce);
+    eprintln!("DEBUG: Eth message message_type: {}", message.message_type);
+    eprintln!("DEBUG: Eth message version: {}", message.version);
+    eprintln!("DEBUG: Number of signatures: {}", signatures.len());
+    for (i, sig) in signatures.iter().enumerate() {
+        eprintln!("DEBUG: Signature {} length: {} bytes", i, sig.len());
+    }
+    
     let tx = eth_mys_bridge.transfer_bridged_tokens_with_signatures(signatures, message);
     if dry_run {
         let tx = tx.tx;

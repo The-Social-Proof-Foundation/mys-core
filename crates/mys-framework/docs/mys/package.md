@@ -11,7 +11,9 @@ Functions for operating on Move packages from within Move:
 -  [Struct `UpgradeCap`](#mys_package_UpgradeCap)
 -  [Struct `UpgradeTicket`](#mys_package_UpgradeTicket)
 -  [Struct `UpgradeReceipt`](#mys_package_UpgradeReceipt)
+-  [Struct `PackagePublishingAdminCap`](#mys_package_PackagePublishingAdminCap)
 -  [Constants](#@Constants_0)
+-  [Function `create_package_publishing_admin_cap_for_bootstrap`](#mys_package_create_package_publishing_admin_cap_for_bootstrap)
 -  [Function `claim`](#mys_package_claim)
 -  [Function `claim_and_keep`](#mys_package_claim_and_keep)
 -  [Function `burn_publisher`](#mys_package_burn_publisher)
@@ -38,19 +40,20 @@ Functions for operating on Move packages from within Move:
 -  [Function `restrict`](#mys_package_restrict)
 
 
-<pre><code><b>use</b> <a href="../std/address.md#std_address">std::address</a>;
+<pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
+<b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
+<b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
+<b>use</b> <a href="../mys/transfer.md#mys_transfer">mys::transfer</a>;
+<b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
+<b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
+<b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
-<b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
-<b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
-<b>use</b> <a href="../mys/transfer.md#mys_transfer">mys::transfer</a>;
-<b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
-<b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 </code></pre>
 
 
@@ -233,6 +236,34 @@ the end of the transaction that performed the upgrade.
 
 </details>
 
+<a name="mys_package_PackagePublishingAdminCap"></a>
+
+## Struct `PackagePublishingAdminCap`
+
+Admin capability for publishing new packages
+Allows bypassing package publish restrictions when package publishing is disabled
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../mys/package.md#mys_package_PackagePublishingAdminCap">PackagePublishingAdminCap</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>id: <a href="../mys/object.md#mys_object_UID">mys::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -320,6 +351,38 @@ Trying to commit an upgrade to the wrong <code><a href="../mys/package.md#mys_pa
 </code></pre>
 
 
+
+<a name="mys_package_create_package_publishing_admin_cap_for_bootstrap"></a>
+
+## Function `create_package_publishing_admin_cap_for_bootstrap`
+
+Create PackagePublishingAdminCap for bootstrap (called by bootstrap module)
+Requires BootstrapKey parameter for security - ensures only authorized callers can invoke
+Bootstrap module handles BootstrapKey check before calling this
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/package.md#mys_package_create_package_publishing_admin_cap_for_bootstrap">create_package_publishing_admin_cap_for_bootstrap</a>(_bootstrap_key: &<a href="../mys/bootstrap_key.md#mys_bootstrap_key_BootstrapKey">mys::bootstrap_key::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/package.md#mys_package_PackagePublishingAdminCap">mys::package::PackagePublishingAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/package.md#mys_package_create_package_publishing_admin_cap_for_bootstrap">create_package_publishing_admin_cap_for_bootstrap</a>(
+    _bootstrap_key: &BootstrapKey,
+    ctx: &<b>mut</b> TxContext
+): <a href="../mys/package.md#mys_package_PackagePublishingAdminCap">PackagePublishingAdminCap</a> {
+    <a href="../mys/package.md#mys_package_PackagePublishingAdminCap">PackagePublishingAdminCap</a> {
+        id: <a href="../mys/object.md#mys_object_new">object::new</a>(ctx)
+    }
+}
+</code></pre>
+
+
+
+</details>
 
 <a name="mys_package_claim"></a>
 

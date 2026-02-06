@@ -1,12 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::net::{IpAddr, SocketAddr};
 
 use anyhow::Result;
 use fastcrypto::traits::KeyPair;
-use rand::{rngs::StdRng, SeedableRng};
-use serde::{Deserialize, Serialize};
 use mys_config::genesis::{GenesisCeremonyParameters, TokenAllocation};
 use mys_config::node::{DEFAULT_COMMISSION_RATE, DEFAULT_VALIDATOR_GAS_PRICE};
 use mys_config::{local_ip_utils, Config};
@@ -14,9 +13,11 @@ use mys_genesis_builder::validator_info::{GenesisValidatorInfo, ValidatorInfo};
 use mys_types::base_types::MysAddress;
 use mys_types::crypto::{
     generate_proof_of_possession, get_key_pair_from_rng, AccountKeyPair, AuthorityKeyPair,
-    AuthorityPublicKeyBytes, NetworkKeyPair, NetworkPublicKey, PublicKey, MysKeyPair,
+    AuthorityPublicKeyBytes, MysKeyPair, NetworkKeyPair, NetworkPublicKey, PublicKey,
 };
 use mys_types::multiaddr::Multiaddr;
+use rand::{rngs::StdRng, SeedableRng};
+use serde::{Deserialize, Serialize};
 use tracing::info;
 
 // All information needed to build a NodeConfig for a state sync fullnode.
@@ -289,7 +290,7 @@ pub struct AccountConfig {
     pub gas_amounts: Vec<u64>,
 }
 
-pub const DEFAULT_GAS_AMOUNT: u64 = 30_000_000_000_000_000;
+pub const DEFAULT_GAS_AMOUNT: u64 = 100_000_000_000_000;
 pub const DEFAULT_NUMBER_OF_AUTHORITIES: usize = 4;
 const DEFAULT_NUMBER_OF_ACCOUNT: usize = 5;
 pub const DEFAULT_NUMBER_OF_OBJECT_PER_ACCOUNT: usize = 5;
@@ -301,7 +302,7 @@ impl GenesisConfig {
     /// Port offset for benchmarks' genesis configs.
     pub const BENCHMARKS_PORT_OFFSET: u16 = 2000;
     /// The gas amount for each genesis gas object.
-    const BENCHMARK_GAS_AMOUNT: u64 = 50_000_000_000_000_000;
+    const BENCHMARK_GAS_AMOUNT: u64 = 50_000_000_000_000;
     /// Trigger epoch change every hour minutes.
     const BENCHMARK_EPOCH_DURATION_MS: u64 = 60 * 60 * 1000;
 

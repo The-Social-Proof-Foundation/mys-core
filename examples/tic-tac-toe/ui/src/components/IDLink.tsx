@@ -1,7 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { formatAddress } from '@mysten/mys/utils';
+import { formatAddress } from '@socialproof/mys/utils';
 import { CheckIcon, CopyIcon } from '@radix-ui/react-icons';
 import { Button, Flex, Link, Tooltip } from '@radix-ui/themes';
 import { useNetworkVariable } from 'config';

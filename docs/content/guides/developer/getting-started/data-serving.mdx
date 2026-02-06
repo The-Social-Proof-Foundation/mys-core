@@ -15,8 +15,8 @@ This document outlines the interfaces that are currently available to access the
 
 Currently, you can use any of the following mechanisms to access MySocial network data:
 
-- Directly connect to [JSON-RPC](/references/mys-api.mdx) hosted on MySocial [Full nodes](guides/operator/mys-full-node.mdx) that are operated by [RPC providers](https://mys.io/developers#dev-tools) (filter by `RPC`) or [Data indexer operators](https://github.com/mys-foundation/awesome-mys?tab=readme-ov-file#indexers--data-services).
-  - The [Mainnet](https://fullnode.mainnet.mys.io:443), [Testnet](https://fullnode.testnet.mys.io:443), or [Devnet](https://fullnode.devnet.mys.io:443) load balancer URLs abstract the MySocial Foundation-managed Full nodes. Those are not recommended for production use.
+- Directly connect to [JSON-RPC](/references/mys-api.mdx) hosted on MySocial [Full nodes](guides/operator/mys-full-node.mdx) that are operated by [RPC providers](https://mysocial.network/developers#dev-tools) (filter by `RPC`) or [Data indexer operators](https://github.com/mys-foundation/awesome-mys?tab=readme-ov-file#indexers--data-services).
+  - The [Mainnet](https://fullnode.mainnet.mysocial.network:443), [Testnet](https://fullnode.testnet.mysocial.network:443), or [Devnet](https://fullnode.devnet.mysocial.network:443) load balancer URLs abstract the MySocial Foundation-managed Full nodes. Those are not recommended for production use.
 - Set up your own [custom indexer](/guides/developer/advanced/custom-indexer.mdx) to continuously load the data of interest into a Postgres database.
 
 :::info
@@ -53,7 +53,7 @@ Primary interfaces to access MySocial access data in the future include:
 - Indexer 2.0 will include a performant and scalable implementation of the MySocial indexer framework and is currently available in alpha. You can use it to load data at scale from Full nodes into a Postgres relational database.
 - [GraphQL RPC](/references/mys-graphql.mdx) will include a lightweight GraphQL RPC Server that you can use to read data from the Indexer 2.0's relational database. It is currently available in alpha. You can use it as an alternative to gRPC, including for migration from JSON-RPC for an existing application. Refer to the [high-level timeline for GraphQL availability](#graphql-rpc-with-indexer-20).
 
-You could still utilize an [RPC provider](https://mys.io/developers#dev-tools) (filter by `RPC`) or a [Data indexer operator](https://github.com/mys-foundation/awesome-mys?tab=readme-ov-file#indexers--data-services) with these options, assuming some or all of those providers choose to operate the Indexer 2.0 and the GraphQL RPC Server.
+You could still utilize an [RPC provider](https://mysocial.network/developers#dev-tools) (filter by `RPC`) or a [Data indexer operator](https://github.com/mys-foundation/awesome-mys?tab=readme-ov-file#indexers--data-services) with these options, assuming some or all of those providers choose to operate the Indexer 2.0 and the GraphQL RPC Server.
 
 ### gRPC API
 

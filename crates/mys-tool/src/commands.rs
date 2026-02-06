@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -11,13 +12,13 @@ use crate::{
 };
 use anyhow::Result;
 use futures::{future::join_all, StreamExt};
-use std::path::PathBuf;
-use std::{collections::BTreeMap, env, sync::Arc};
 use mys_config::genesis::Genesis;
 use mys_core::authority_client::AuthorityAPI;
 use mys_protocol_config::Chain;
 use mys_replay::{execute_replay_command, ReplayToolCommand};
 use mys_sdk::{rpc_types::MysTransactionBlockResponseOptions, MysClient, MysClientBuilder};
+use std::path::PathBuf;
+use std::{collections::BTreeMap, env, sync::Arc};
 use telemetry_subscribers::TracingHandle;
 
 use mys_types::{
@@ -86,7 +87,7 @@ pub enum ToolCommand {
         /// prints tabular output ttttable for processing with unix tools. For
         /// instance, to quickly check that all validators agree on the history of an object:
         /// ```text
-        /// $ mys-tool fetch-object --id 0x260efde76ebccf57f4c5e951157f5c361cde822c \
+        /// $ myso-tool fetch-object --id 0x260efde76ebccf57f4c5e951157f5c361cde822c \
         ///      --genesis $HOME/.mys/mys_config/genesis.blob \
         ///      --verbosity concise --concise-no-header
         /// ```
@@ -700,9 +701,9 @@ impl ToolCommand {
                 let aws_endpoint = env::var("AWS_SNAPSHOT_ENDPOINT").ok().or_else(|| {
                     if no_sign_request {
                         if network == Chain::Mainnet {
-                            Some("https://formal-snapshot.mainnet.mys.io".to_string())
+                            Some("https://formal-snapshot.mainnet.mysocial.network".to_string())
                         } else if network == Chain::Testnet {
-                            Some("https://formal-snapshot.testnet.mys.io".to_string())
+                            Some("https://formal-snapshot.testnet.mysocial.network".to_string())
                         } else {
                             None
                         }
@@ -931,9 +932,9 @@ impl ToolCommand {
                 let snapshot_store_config = if no_sign_request {
                     let aws_endpoint = env::var("AWS_SNAPSHOT_ENDPOINT").ok().or_else(|| {
                         if network == Chain::Mainnet {
-                            Some("https://db-snapshot.mainnet.mys.io".to_string())
+                            Some("https://db-snapshot.mainnet.mysocial.network".to_string())
                         } else if network == Chain::Testnet {
-                            Some("https://db-snapshot.testnet.mys.io".to_string())
+                            Some("https://db-snapshot.testnet.mysocial.network".to_string())
                         } else {
                             None
                         }

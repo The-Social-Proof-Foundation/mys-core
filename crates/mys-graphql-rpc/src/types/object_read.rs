@@ -1,10 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_graphql::*;
 use mys_types::base_types::ObjectRef as NativeObjectRef;
 
-use super::{object::Object, mys_address::MysAddress, uint53::UInt53};
+use super::{mys_address::MysAddress, object::Object, uint53::UInt53};
 
 // A helper type representing the read of a specific version of an object. Intended to be
 // "flattened" into other GraphQL types.

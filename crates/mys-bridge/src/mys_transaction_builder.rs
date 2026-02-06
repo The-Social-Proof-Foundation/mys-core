@@ -1,21 +1,22 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use fastcrypto::traits::ToFromBytes;
 use move_core_types::ident_str;
-use std::{collections::HashMap, str::FromStr};
 use mys_types::bridge::{
     BRIDGE_CREATE_ADD_TOKEN_ON_MYS_MESSAGE_FUNCTION_NAME,
     BRIDGE_EXECUTE_SYSTEM_MESSAGE_FUNCTION_NAME, BRIDGE_MESSAGE_MODULE_NAME, BRIDGE_MODULE_NAME,
 };
 use mys_types::transaction::CallArg;
 use mys_types::{
-    base_types::{ObjectRef, MysAddress},
+    base_types::{MysAddress, ObjectRef},
     programmable_transaction_builder::ProgrammableTransactionBuilder,
     transaction::{ObjectArg, TransactionData},
     TypeTag,
 };
 use mys_types::{Identifier, BRIDGE_PACKAGE_ID};
+use std::{collections::HashMap, str::FromStr};
 
 use crate::{
     error::{BridgeError, BridgeResult},
@@ -195,14 +196,24 @@ fn build_token_bridge_approve_transaction(
     );
 
     if claim {
+        // Use token_id directly as-is from the bridge message
+        // Token IDs should match across chains - no mapping needed
+        let type_tag = mys_token_type_tags
+            .get(&token_type)
+            .ok_or_else(|| {
+                let registered_ids: Vec<u8> = mys_token_type_tags.keys().copied().collect();
+                BridgeError::Generic(format!(
+                    "UnknownTokenId({}): Token ID {} is not registered on MySocial bridge. \
+                     Registered token IDs: {:?}. \
+                     This token must be registered on MySocial bridge's treasury before bridging can proceed.",
+                    token_type, token_type, registered_ids
+                ))
+            })?;
         builder.programmable_move_call(
             BRIDGE_PACKAGE_ID,
             mys_types::bridge::BRIDGE_MODULE_NAME.to_owned(),
             ident_str!("claim_and_transfer_token").to_owned(),
-            vec![mys_token_type_tags
-                .get(&token_type)
-                .ok_or(BridgeError::UnknownTokenId(token_type))?
-                .clone()],
+            vec![type_tag.clone()],
             vec![arg_bridge, arg_clock, source_chain, seq_num],
         );
     }
@@ -632,11 +643,11 @@ mod tests {
         },
     };
     use ethers::types::Address as EthAddress;
-    use std::collections::HashMap;
-    use std::sync::Arc;
     use mys_types::bridge::{BridgeChainId, TOKEN_ID_BTC, TOKEN_ID_USDC};
     use mys_types::crypto::get_key_pair;
     use mys_types::crypto::ToFromBytes;
+    use std::collections::HashMap;
+    use std::sync::Arc;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
     async fn test_build_mys_transaction_for_token_transfer() {

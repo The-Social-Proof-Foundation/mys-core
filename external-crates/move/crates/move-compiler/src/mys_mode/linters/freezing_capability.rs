@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! Implements lint to warn against freezing capability-like types in Mys, identifying function calls that may incorrectly freeze such types.

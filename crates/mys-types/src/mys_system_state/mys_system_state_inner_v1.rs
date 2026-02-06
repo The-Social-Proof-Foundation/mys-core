@@ -1,8 +1,9 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::balance::Balance;
-use crate::base_types::{ObjectID, MysAddress};
+use crate::base_types::{MysAddress, ObjectID};
 use crate::collection_types::{Bag, Table, TableVec, VecMap, VecSet};
 use crate::committee::{CommitteeWithNetworkMetadata, NetworkMetadata};
 use crate::crypto::{verify_proof_of_possession, AuthorityPublicKey, AuthoritySignature};
@@ -10,8 +11,8 @@ use crate::crypto::{AuthorityPublicKeyBytes, NetworkPublicKey};
 use crate::error::MysError;
 use crate::id::ID;
 use crate::multiaddr::Multiaddr;
-use crate::storage::ObjectStore;
 use crate::mys_system_state::epoch_start_mys_system_state::EpochStartSystemState;
+use crate::storage::ObjectStore;
 use anyhow::Result;
 use fastcrypto::traits::ToFromBytes;
 use once_cell::sync::OnceCell;
@@ -481,16 +482,26 @@ pub struct StakeSubsidyV1 {
     /// Count of the number of times stake subsidies have been distributed.
     pub distribution_counter: u64,
 
-    /// The amount of stake subsidy to be drawn down per distribution.
+    /// The current stake subsidy APY in basis points.
     /// This amount decays and decreases over time.
-    pub current_distribution_amount: u64,
+    pub current_apy_bps: u64,
 
-    /// Number of distributions to occur before the distribution amount decays.
+    /// Number of distributions to occur before the APY decays.
     pub stake_subsidy_period_length: u64,
 
-    /// The rate at which the distribution amount decays at the end of each
+    /// The rate at which the APY decays at the end of each
     /// period. Expressed in basis points.
     pub stake_subsidy_decrease_rate: u16,
+
+    /// Maximum APY cap (in basis points). Effective APY will never exceed this.
+    pub max_apy_bps: u64,
+
+    /// Minimum APY floor (in basis points). Effective APY will never go below this.
+    pub min_apy_bps: u64,
+
+    /// Target duration for subsidy pool in years (e.g., 10).
+    /// Used to calculate stake-aware APY reduction to ensure pool sustainability.
+    pub intended_duration_years: u64,
 
     pub extra_fields: Bag,
 }
@@ -668,9 +679,12 @@ impl MysSystemStateTrait for MysSystemStateInnerV1 {
                 StakeSubsidyV1 {
                     balance: stake_subsidy_balance,
                     distribution_counter: stake_subsidy_distribution_counter,
-                    current_distribution_amount: stake_subsidy_current_distribution_amount,
+                    current_apy_bps: stake_subsidy_current_apy_bps,
                     stake_subsidy_period_length,
                     stake_subsidy_decrease_rate,
+                    max_apy_bps: stake_subsidy_max_apy_bps,
+                    min_apy_bps: stake_subsidy_min_apy_bps,
+                    intended_duration_years: stake_subsidy_intended_duration_years,
                     extra_fields: _,
                 },
             safe_mode,
@@ -700,7 +714,7 @@ impl MysSystemStateTrait for MysSystemStateInnerV1 {
             epoch_duration_ms,
             stake_subsidy_distribution_counter,
             stake_subsidy_balance: stake_subsidy_balance.value(),
-            stake_subsidy_current_distribution_amount,
+            stake_subsidy_current_apy_bps,
             total_stake,
             active_validators: active_validators
                 .into_iter()
@@ -730,6 +744,9 @@ impl MysSystemStateTrait for MysSystemStateInnerV1 {
             validator_low_stake_grace_period,
             stake_subsidy_period_length,
             stake_subsidy_decrease_rate,
+            stake_subsidy_max_apy_bps,
+            stake_subsidy_min_apy_bps,
+            stake_subsidy_intended_duration_years,
         }
     }
 }

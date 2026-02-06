@@ -28,7 +28,7 @@ BIP-44 further defines the five levels of the derivation path with their exact m
 
 The `purpose` level is generally set to 44, corresponding to the BIP number. In MySocial, however, the purpose level distinguishes different signing schemes: 44 is set for Ed25519, 54 for ECDSA Secp256k1 and 74 for Secp256r1. While it is non-standard to set the purpose level to a value that is not 44, it is common to use the purpose field to distinguish different signing schemes. BIP-49 and BIP-84, for example, are used to identify script types in Bitcoin. MySocial chose 54 to indicate ECDSA Secp256k1 because there is no existing BIP under 54, avoiding confusion with any Bitcoin standard.
 
-The `coin_type` value is managed with a repository of all other cryptocurrencies. Both signature schemes use MySocial's registered coin_type, 784 (MYS on a telephone keypad).
+The `coin_type` value is managed with a repository of all other cryptocurrencies. Both signature schemes use MySocial's registered coin_type, 6976 (MYS on a telephone keypad).
 
 The `account` level is usually used for logically separating user accounts and creating specific account categories.
 
@@ -36,9 +36,9 @@ It is generally accepted that, while account-based currencies define only the fi
 
 | Scheme          | Path                                         | Comments                                       |
 | --------------- | -------------------------------------------- | ---------------------------------------------- |
-| Ed25519         | `m/44'/784'/{account}'/{change}'/{address}'` | Each level of the derivation path is hardened. |
-| ECDSA Secp256k1 | `m/54'/784'/{account}'/{change}/{address}`   | The first three levels are hardened.           |
-| ECDSA Secp256r1 | `m/74'/784'/{account}'/{change}/{address}`   | The first three levels are hardened.           |
+| Ed25519         | `m/44'/6976'/{account}'/{change}'/{address}'` | Each level of the derivation path is hardened. |
+| ECDSA Secp256k1 | `m/54'/6976'/{account}'/{change}/{address}`   | The first three levels are hardened.           |
+| ECDSA Secp256r1 | `m/74'/6976'/{account}'/{change}/{address}`   | The first three levels are hardened.           |
 
 ## Mnemonics support
 
@@ -56,7 +56,7 @@ MySocial Wallet and SDKs provide a flexible interface to sign transactions with 
 <TabItem value="typescript" label="TypeScript">
 
 ```typescript
-const keypair = Ed25519Keypair.deriveKeypair(TEST_MNEMONIC, `m/44'/784'/0'/0'/0'`);
+const keypair = Ed25519Keypair.deriveKeypair(TEST_MNEMONIC, `m/44'/6976'/0'/0'/0'`);
 const address = keypair.getPublicKey().toMySocialAddress();
 ```
 
@@ -64,10 +64,10 @@ const address = keypair.getPublicKey().toMySocialAddress();
 <TabItem value="cli" label="CLI">
 
 ```sh
-$ mys keytool import "TEST_MNEMONIC" ed25519 "m/44'/784'/0'/0'/0'"
+$ mys keytool import "TEST_MNEMONIC" ed25519 "m/44'/6976'/0'/0'/0'"
 ```
 ```sh
-$ mys client new-address ed25519 "m/44'/784'/0'/0'/0'"
+$ mys client new-address ed25519 "m/44'/6976'/0'/0'/0'"
 ```
 
 </TabItem>

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::VecDeque;
@@ -8,9 +9,9 @@ use std::sync::Arc;
 use std::{cmp::Ordering, hash::DefaultHasher};
 
 use moka::sync::Cache as MokaCache;
+use mys_types::base_types::SequenceNumber;
 use mysten_common::debug_fatal;
 use parking_lot::Mutex;
-use mys_types::base_types::SequenceNumber;
 
 /// CachedVersionMap is a map from version to value, with the additional contraints:
 /// - The key (SequenceNumber) must be monotonically increasing for each insert. If

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 mod acceptor;
@@ -242,6 +243,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "axum-server")]
     async fn axum_acceptor() {
         use fastcrypto::ed25519::Ed25519KeyPair;
         use fastcrypto::traits::KeyPair;
@@ -278,8 +280,9 @@ mod tests {
         let listener = std::net::TcpListener::bind("localhost:0").unwrap();
         let server_address = listener.local_addr().unwrap();
         let acceptor = TlsAcceptor::new(tls_config);
+        #[cfg(feature = "axum-server")]
         let _server = tokio::spawn(async move {
-            axum_server::Server::from_tcp(listener)
+            axum_server::Server::from_listener(listener)
                 .acceptor(acceptor)
                 .serve(app.into_make_service())
                 .await

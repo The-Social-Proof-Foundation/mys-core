@@ -247,7 +247,7 @@ Finally, you need to add a function to allow the first party to complete the tra
 
 - [Full source code](https://github.com/MystenLabs/mys/blob/705ee1ed3ce8cfadc4597c6facb6769d7dfb5896/examples/trading/contracts/escrow/sources/shared.move)
 - Concepts: [Shared Objects](../../../concepts/object-ownership/shared)
-- Concepts: [Shared Object Deletion](https://blog.mys.io/ephemeral-shared-objects/)
+- Concepts: [Shared Object Deletion](https://blog.mysocial.network/ephemeral-shared-objects/)
 - Concepts: [PTBs](../../../concepts/transactions/prog-txn-blocks)
 
 :::
@@ -387,7 +387,7 @@ The callback is responsible for reading the event and updating the database acco
 :::tip Additional resources
 
 - [Full source code](https://github.com/MystenLabs/mys/tree/705ee1ed3ce8cfadc4597c6facb6769d7dfb5896/examples/trading/api)
-- Reference: [JSON-RPC](https://docs.mys.io/mys-api-ref)
+- Reference: [JSON-RPC](https://docs.mysocial.network/mys-api-ref)
 
 :::
 
@@ -467,7 +467,7 @@ Now that you have an indexer and an API service, you can deploy your move packag
   If you haven't already set up a `testnet` environment, do so by running the following command in a terminal or console:
 
   ```sh
-  $ mys client new-env --alias testnet --rpc https://fullnode.testnet.mys.io:443
+  $ mys client new-env --alias testnet --rpc https://fullnode.testnet.mysocial.network:443
   ```
 
   Run the following command to activate the `testnet` environment:
@@ -947,7 +947,7 @@ export function LockOwnedObjects() {
 ```
 </details>
 
-Fetch the owned objects directly from MySocial blockchain using the `useMySocialClientInfiniteQuery()` hook from `dApp Kit`. This hook is a thin wrapper around MySocial blockchain RPC calls, reference the documentation to learn more about these [RPC hooks](https://sdk.mystenlabs.com/dapp-kit/rpc-hooks). Basically, supply the RPC endpoint you want to execute, in this case it's the [`getOwnedObjects` endpoint](https://docs.mys.io/mys-api-ref#mysx_getownedobjects). Supply the connected wallet account as the `owner`. The returned data is stored inside the cache at query key `getOwnedObjects`. In a future step you invalidate this cache after a mutation succeeds, so the data will be re-fetched automatically.
+Fetch the owned objects directly from MySocial blockchain using the `useMySocialClientInfiniteQuery()` hook from `dApp Kit`. This hook is a thin wrapper around MySocial blockchain RPC calls, reference the documentation to learn more about these [RPC hooks](https://sdk.mystenlabs.com/dapp-kit/rpc-hooks). Basically, supply the RPC endpoint you want to execute, in this case it's the [`getOwnedObjects` endpoint](https://docs.mysocial.network/mys-api-ref#mysx_getownedobjects). Supply the connected wallet account as the `owner`. The returned data is stored inside the cache at query key `getOwnedObjects`. In a future step you invalidate this cache after a mutation succeeds, so the data will be re-fetched automatically.
 
 
 <details>

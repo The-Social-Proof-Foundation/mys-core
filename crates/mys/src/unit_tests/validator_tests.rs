@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::validator_commands::{
@@ -6,10 +7,10 @@ use crate::validator_commands::{
 };
 use anyhow::Ok;
 use fastcrypto::encoding::{Base64, Encoding};
-use shared_crypto::intent::{Intent, IntentMessage};
 use mys_types::crypto::MysKeyPair;
 use mys_types::transaction::TransactionData;
 use mys_types::{base_types::MysAddress, crypto::Signature, transaction::Transaction};
+use shared_crypto::intent::{Intent, IntentMessage};
 use test_cluster::TestClusterBuilder;
 
 #[tokio::test]

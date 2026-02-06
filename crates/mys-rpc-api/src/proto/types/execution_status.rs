@@ -160,7 +160,7 @@ impl From<mys_sdk_types::ExecutionError> for super::failure_status::ExecutionErr
                 Self::ExecutionCancelledDueToRandomnessUnavailable(())
             }
             // Add catch-all pattern to handle any new and verification-related variants
-            _ => Self::MysMoveVerificationError(())
+            _ => Self::MysMoveVerificationError(()),
         }
     }
 }

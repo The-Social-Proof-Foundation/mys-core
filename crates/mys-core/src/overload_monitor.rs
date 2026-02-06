@@ -1,7 +1,13 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority::AuthorityState;
+use mys_config::node::AuthorityOverloadConfig;
+use mys_types::digests::TransactionDigest;
+use mys_types::error::MysError;
+use mys_types::error::MysResult;
+use mys_types::fp_bail;
 use mysten_metrics::monitored_scope;
 use std::cmp::{max, min};
 use std::hash::Hasher;
@@ -9,11 +15,6 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Weak;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
-use mys_config::node::AuthorityOverloadConfig;
-use mys_types::digests::TransactionDigest;
-use mys_types::error::MysError;
-use mys_types::error::MysResult;
-use mys_types::fp_bail;
 use tokio::time::sleep;
 use tracing::{debug, info};
 use twox_hash::XxHash64;
@@ -262,12 +263,12 @@ mod tests {
     use super::*;
 
     use crate::authority::test_authority_builder::TestAuthorityBuilder;
+    use mys_macros::sim_test;
     use rand::{
         rngs::{OsRng, StdRng},
         Rng, SeedableRng,
     };
     use std::sync::Arc;
-    use mys_macros::sim_test;
     use tokio::sync::mpsc::unbounded_channel;
     use tokio::sync::mpsc::UnboundedReceiver;
     use tokio::sync::mpsc::UnboundedSender;

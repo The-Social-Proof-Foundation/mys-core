@@ -1,4 +1,5 @@
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 # check that --skip-dependency-verification has the right behavior on publish and upgrade

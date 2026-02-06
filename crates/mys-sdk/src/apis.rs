@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use fastcrypto::encoding::Base64;
@@ -6,13 +7,15 @@ use futures::stream;
 use futures::StreamExt;
 use futures_core::Stream;
 use jsonrpsee::core::client::Subscription;
+use mys_json_rpc_types::DevInspectArgs;
+use mys_json_rpc_types::MysData;
+use mys_json_rpc_types::ZkLoginIntentScope;
+use mys_json_rpc_types::ZkLoginVerifyResult;
 use std::collections::BTreeMap;
 use std::future;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
-use mys_json_rpc_types::DevInspectArgs;
-use mys_json_rpc_types::MysData;
 
 use crate::error::{Error, MysRpcResult};
 use crate::RpcClient;
@@ -23,21 +26,21 @@ use mys_json_rpc_api::{
 use mys_json_rpc_types::CheckpointPage;
 use mys_json_rpc_types::{
     Balance, Checkpoint, CheckpointId, Coin, CoinPage, DelegatedStake, DevInspectResults,
-    DryRunTransactionBlockResponse, DynamicFieldPage, EventFilter, EventPage, ObjectsPage,
-    ProtocolConfigResponse, MysCoinMetadata, MysCommittee, MysEvent, MysGetPastObjectRequest,
-    MysMoveNormalizedModule, MysObjectDataOptions, MysObjectResponse, MysObjectResponseQuery,
-    MysPastObjectResponse, MysTransactionBlockEffects, MysTransactionBlockResponse,
-    MysTransactionBlockResponseOptions, MysTransactionBlockResponseQuery, TransactionBlocksPage,
+    DryRunTransactionBlockResponse, DynamicFieldPage, EventFilter, EventPage, MysCoinMetadata,
+    MysCommittee, MysEvent, MysGetPastObjectRequest, MysMoveNormalizedModule, MysObjectDataOptions,
+    MysObjectResponse, MysObjectResponseQuery, MysPastObjectResponse, MysTransactionBlockEffects,
+    MysTransactionBlockResponse, MysTransactionBlockResponseOptions,
+    MysTransactionBlockResponseQuery, ObjectsPage, ProtocolConfigResponse, TransactionBlocksPage,
     TransactionFilter,
 };
 use mys_types::balance::Supply;
-use mys_types::base_types::{ObjectID, SequenceNumber, MysAddress, TransactionDigest};
+use mys_types::base_types::{MysAddress, ObjectID, SequenceNumber, TransactionDigest};
 use mys_types::dynamic_field::DynamicFieldName;
 use mys_types::event::EventID;
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
-use mys_types::quorum_driver_types::ExecuteTransactionRequestType;
 use mys_types::mys_serde::BigInt;
 use mys_types::mys_system_state::mys_system_state_summary::MysSystemStateSummary;
+use mys_types::quorum_driver_types::ExecuteTransactionRequestType;
 use mys_types::transaction::{Transaction, TransactionData, TransactionKind};
 
 const WAIT_FOR_LOCAL_EXECUTION_TIMEOUT: Duration = Duration::from_secs(60);
@@ -708,6 +711,21 @@ impl ReadApi {
             .try_get_object_before_version(object_id, version)
             .await?)
     }
+
+    /// Verify a zkLogin signature against bytes that is parsed using intent_scope, and the mys address.
+    pub async fn verify_zklogin_signature(
+        &self,
+        bytes: String,
+        signature: String,
+        intent_scope: ZkLoginIntentScope,
+        address: MysAddress,
+    ) -> MysRpcResult<ZkLoginVerifyResult> {
+        Ok(self
+            .api
+            .http
+            .verify_zklogin_signature(bytes, signature, intent_scope, address)
+            .await?)
+    }
 }
 
 /// Coin Read API provides the functionality needed to get information from the Mys network regarding the coins owned by an address.
@@ -1028,8 +1046,8 @@ impl EventApi {
     /// #[tokio::main]
     /// async fn main() -> Result<(), anyhow::Error> {
     ///     let mys = MysClientBuilder::default()
-    ///         .ws_url("wss://rpc.mainnet.mys.io:443")
-    ///         .build("https://fullnode.mainnet.mys.io:443")
+    ///         .ws_url("wss://rpc.testnet.mysocial.network:443")
+    ///         .build("https://fullnode.testnet.mysocial.network:443")
     ///         .await?;
     ///     let mut subscribe_all = mys
     ///         .event_api()

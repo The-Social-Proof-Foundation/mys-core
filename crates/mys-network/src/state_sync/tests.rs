@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -10,9 +11,6 @@ use crate::{
 };
 use anemo::{PeerId, Request};
 use anyhow::anyhow;
-use prometheus::Registry;
-use std::num::NonZeroUsize;
-use std::{collections::HashMap, time::Duration};
 use mys_archival::reader::ArchiveReaderBalancer;
 use mys_archival::writer::ArchiveWriter;
 use mys_config::node::ArchiveReaderConfig;
@@ -23,6 +21,9 @@ use mys_types::{
     messages_checkpoint::CheckpointDigest,
     storage::{ReadStore, SharedInMemoryStore, WriteStore},
 };
+use prometheus::Registry;
+use std::num::NonZeroUsize;
+use std::{collections::HashMap, time::Duration};
 use tempfile::tempdir;
 use tokio::time::{timeout, Instant};
 
@@ -272,7 +273,7 @@ async fn test_state_sync_using_archive() -> anyhow::Result<()> {
     let (ordered_checkpoints, _, sequence_number_to_digest, checkpoints) =
         committee.make_empty_checkpoints(100, None);
     // Initialize archive store with all checkpoints
-    let temp_dir = tempdir()?.into_path();
+    let temp_dir = tempdir()?.keep();
     let local_path = temp_dir.join("local_dir");
     let remote_path = temp_dir.join("remote_dir");
     let local_store_config = ObjectStoreConfig {

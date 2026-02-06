@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::connection::ScanConnection;
@@ -8,11 +9,11 @@ use super::{
     coin::Coin,
     cursor::Page,
     move_object::MoveObject,
+    mys_address::MysAddress,
+    mysns_registration::{DomainFormat, MysnsRegistration},
     object::{self, ObjectFilter},
     owner::OwnerImpl,
     stake::StakedMys,
-    mys_address::MysAddress,
-    mysns_registration::{DomainFormat, MysnsRegistration},
     transaction_block::{self, TransactionBlock, TransactionBlockFilter},
     type_filter::ExactTypeFilter,
 };

@@ -1,11 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::path::PathBuf;
 use std::time::Duration;
 use std::{num::NonZeroUsize, path::Path, sync::Arc};
 
-use rand::rngs::OsRng;
 use mys_config::genesis::{TokenAllocation, TokenDistributionScheduleBuilder};
 use mys_config::node::AuthorityOverloadConfig;
 use mys_config::ExecutionCacheConfig;
@@ -16,6 +16,7 @@ use mys_types::crypto::{get_key_pair_from_rng, AccountKeyPair, KeypairTraits, Pu
 use mys_types::object::Object;
 use mys_types::supported_protocol_versions::SupportedProtocolVersions;
 use mys_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};
+use rand::rngs::OsRng;
 
 use crate::genesis_config::{AccountConfig, ValidatorGenesisConfigBuilder, DEFAULT_GAS_AMOUNT};
 use crate::genesis_config::{GenesisConfig, ValidatorGenesisConfig};
@@ -106,7 +107,7 @@ impl ConfigBuilder {
     }
 
     pub fn new_with_temp_dir() -> Self {
-        Self::new(nondeterministic!(tempfile::tempdir().unwrap()).into_path())
+        Self::new(nondeterministic!(tempfile::tempdir().unwrap()).keep())
     }
 }
 
@@ -552,8 +553,6 @@ mod tests {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashSet;
-    use std::sync::Arc;
     use mys_config::genesis::Genesis;
     use mys_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
     use mys_types::epoch_data::EpochData;
@@ -562,6 +561,8 @@ mod test {
     use mys_types::metrics::LimitsMetrics;
     use mys_types::mys_system_state::MysSystemStateTrait;
     use mys_types::transaction::CheckedInputObjects;
+    use std::collections::HashSet;
+    use std::sync::Arc;
 
     #[test]
     fn roundtrip() {

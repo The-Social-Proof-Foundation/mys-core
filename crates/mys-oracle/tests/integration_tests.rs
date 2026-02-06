@@ -1,16 +1,16 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::path::Path;
 use std::str::FromStr;
 
-use shared_crypto::intent::Intent;
 use mys_json_rpc_types::MysTransactionBlockEffectsAPI;
-use mys_json_rpc_types::{ObjectChange, MysExecutionStatus};
+use mys_json_rpc_types::{MysExecutionStatus, ObjectChange};
 use mys_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use mys_move_build::BuildConfig;
 use mys_sdk::rpc_types::MysTransactionBlockResponseOptions;
-use mys_sdk::types::base_types::{ObjectID, MysAddress};
+use mys_sdk::types::base_types::{MysAddress, ObjectID};
 use mys_sdk::types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_sdk::types::quorum_driver_types::ExecuteTransactionRequestType;
 use mys_sdk::types::transaction::{CallArg, ObjectArg, Transaction, TransactionData};
@@ -18,6 +18,7 @@ use mys_sdk::types::Identifier;
 use mys_sdk::{MysClient, MysClientBuilder};
 use mys_types::base_types::{ObjectRef, SequenceNumber};
 use mys_types::{parse_mys_type_tag, TypeTag};
+use shared_crypto::intent::Intent;
 
 // Integration tests for MYS Oracle, these test can be run manually on local or remote testnet.
 #[ignore]
@@ -430,7 +431,7 @@ async fn get_gas(client: &MysClient, sender: MysAddress) -> (ObjectRef, u64) {
 
 async fn init_test_client() -> (MysClient, Keystore, MysAddress) {
     let client = MysClientBuilder::default()
-        .build("https://rpc.devnet.mys.io:443")
+        .build("https://rpc.devnet.mysocial.network:443")
         .await
         .unwrap();
 

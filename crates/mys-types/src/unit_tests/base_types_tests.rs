@@ -1,5 +1,6 @@
 // Copyright (c) 2021, Facebook, Inc. and its affiliates
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 #![allow(clippy::disallowed_names)]
@@ -13,13 +14,13 @@ use move_binary_format::file_format;
 use crate::crypto::bcs_signable_test::{Bar, Foo};
 use crate::crypto::{
     get_key_pair, get_key_pair_from_bytes, AccountKeyPair, AuthorityKeyPair, AuthoritySignature,
-    Signature, MysAuthoritySignature, MysSignature,
+    MysAuthoritySignature, MysSignature, Signature,
 };
 use crate::digests::Digest;
 use crate::id::{ID, UID};
 use crate::{gas_coin::GasCoin, object::Object, MYS_FRAMEWORK_ADDRESS};
-use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
 use mys_protocol_config::ProtocolConfig;
+use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
 
 use super::*;
 

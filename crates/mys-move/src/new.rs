@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::Parser;
@@ -37,7 +38,7 @@ module {name}::{name};
 */
 
 // For Move coding conventions, see
-// https://docs.mys.io/concepts/mys-move-concepts/conventions
+// https://docs.mysocial.network/concepts/mys-move-concepts/conventions
 
 "#,
             name = name

@@ -1,10 +1,9 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::config::{ClusterTestOpt, Env};
 use async_trait::async_trait;
-use std::net::SocketAddr;
-use std::path::Path;
 use mys_config::local_ip_utils::get_available_port;
 use mys_config::Config;
 use mys_config::{PersistedConfig, MYS_KEYSTORE_FILENAME, MYS_NETWORK_CONFIG};
@@ -24,20 +23,22 @@ use mys_types::base_types::MysAddress;
 use mys_types::crypto::KeypairTraits;
 use mys_types::crypto::MysKeyPair;
 use mys_types::crypto::{get_key_pair, AccountKeyPair};
+use std::net::SocketAddr;
+use std::path::Path;
 use tempfile::tempdir;
 use test_cluster::{TestCluster, TestClusterBuilder};
 use tracing::info;
 
-const DEVNET_FAUCET_ADDR: &str = "https://faucet.devnet.mys.io:443";
-const STAGING_FAUCET_ADDR: &str = "https://faucet.staging.mys.io:443";
-const CONTINUOUS_FAUCET_ADDR: &str = "https://faucet.ci.mys.io:443";
-const CONTINUOUS_NOMAD_FAUCET_ADDR: &str = "https://faucet.nomad.ci.mys.io:443";
-const TESTNET_FAUCET_ADDR: &str = "https://faucet.testnet.mys.io:443";
-const DEVNET_FULLNODE_ADDR: &str = "https://rpc.devnet.mys.io:443";
-const STAGING_FULLNODE_ADDR: &str = "https://fullnode.staging.mys.io:443";
-const CONTINUOUS_FULLNODE_ADDR: &str = "https://fullnode.ci.mys.io:443";
-const CONTINUOUS_NOMAD_FULLNODE_ADDR: &str = "https://fullnode.nomad.ci.mys.io:443";
-const TESTNET_FULLNODE_ADDR: &str = "https://fullnode.testnet.mys.io:443";
+const DEVNET_FAUCET_ADDR: &str = "https://faucet.devnet.mysocial.network:443";
+const STAGING_FAUCET_ADDR: &str = "https://faucet.staging.mysocial.network:443";
+const CONTINUOUS_FAUCET_ADDR: &str = "https://faucet.ci.mysocial.network:443";
+const CONTINUOUS_NOMAD_FAUCET_ADDR: &str = "https://faucet.nomad.ci.mysocial.network:443";
+const TESTNET_FAUCET_ADDR: &str = "https://faucet.testnet.mysocial.network:443";
+const DEVNET_FULLNODE_ADDR: &str = "https://rpc.devnet.mysocial.network:443";
+const STAGING_FULLNODE_ADDR: &str = "https://fullnode.staging.mysocial.network:443";
+const CONTINUOUS_FULLNODE_ADDR: &str = "https://fullnode.ci.mysocial.network:443";
+const CONTINUOUS_NOMAD_FULLNODE_ADDR: &str = "https://fullnode.nomad.ci.mysocial.network:443";
+const TESTNET_FULLNODE_ADDR: &str = "https://fullnode.testnet.mysocial.network:443";
 
 pub struct ClusterFactory;
 
@@ -240,6 +241,7 @@ impl Cluster for LocalNewCluster {
                 None, /* cancel */
                 None, /* start_checkpoint */
                 None, /* end_checkpoint */
+                None, /* social_config */
             )
             .await;
             cancellation_tokens.push(writer_token.drop_guard());

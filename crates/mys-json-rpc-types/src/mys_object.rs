@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::cmp::Ordering;
@@ -23,7 +24,7 @@ use serde_with::DisplayFromStr;
 
 use mys_protocol_config::ProtocolConfig;
 use mys_types::base_types::{
-    ObjectDigest, ObjectID, ObjectInfo, ObjectRef, ObjectType, SequenceNumber, MysAddress,
+    MysAddress, ObjectDigest, ObjectID, ObjectInfo, ObjectRef, ObjectType, SequenceNumber,
     TransactionDigest,
 };
 use mys_types::error::{
@@ -32,12 +33,12 @@ use mys_types::error::{
 use mys_types::gas_coin::GasCoin;
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
 use mys_types::move_package::{MovePackage, TypeOrigin, UpgradeInfo};
-use mys_types::object::{Data, MoveObject, Object, ObjectInner, ObjectRead, Owner};
 use mys_types::mys_serde::BigInt;
-use mys_types::mys_serde::SequenceNumber as AsSequenceNumber;
 use mys_types::mys_serde::MysStructTag;
+use mys_types::mys_serde::SequenceNumber as AsSequenceNumber;
+use mys_types::object::{Data, MoveObject, Object, ObjectInner, ObjectRead, Owner};
 
-use crate::{Page, MysMoveStruct, MysMoveValue};
+use crate::{MysMoveStruct, MysMoveValue, Page};
 
 #[derive(Serialize, Deserialize, Debug, JsonSchema, Clone, PartialEq, Eq)]
 pub struct MysObjectResponse {
@@ -200,7 +201,7 @@ pub struct MysObjectData {
     pub storage_rebate: Option<u64>,
     /// The Display metadata for frontend UI rendering, default to be None unless MysObjectDataOptions.showContent is set to true
     /// This can also be None if the struct type does not have Display defined
-    /// See more details in <https://forums.mys.io/t/nft-object-display-proposal/4872>
+    /// See more details in <https://forums.mysocial.network/t/nft-object-display-proposal/4872>
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display: Option<DisplayFieldsResponse>,
     /// Move object content or package content, default to be None unless MysObjectDataOptions.showContent is set to true

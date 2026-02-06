@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 const references = [
@@ -138,7 +139,7 @@ const references = [
 			{
 				type: 'link',
 				label: 'Submit a SIP',
-				href: 'https://sips.mys.io',
+				href: 'https://sips.mysocial.network',
 			},
 			'references/contribute/localize-mys-docs',
 			'references/contribute/code-of-conduct',

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! IndexStore supports creation of various ancillary indexes of state in MysDataStore.
@@ -21,7 +22,7 @@ use mys_json_rpc_types::{MysObjectDataFilter, TransactionFilter};
 use mys_storage::mutex_table::MutexTable;
 use mys_storage::sharded_lru::ShardedLruCache;
 use mys_types::base_types::{
-    ObjectDigest, ObjectID, SequenceNumber, MysAddress, TransactionDigest, TxSequenceNumber,
+    MysAddress, ObjectDigest, ObjectID, SequenceNumber, TransactionDigest, TxSequenceNumber,
 };
 use mys_types::base_types::{ObjectInfo, ObjectRef};
 use mys_types::digests::TransactionEventsDigest;
@@ -1771,15 +1772,15 @@ mod tests {
     use super::IndexStore;
     use super::ObjectIndexChanges;
     use move_core_types::account_address::AccountAddress;
-    use prometheus::Registry;
-    use std::collections::BTreeMap;
-    use std::env::temp_dir;
-    use mys_types::base_types::{ObjectInfo, ObjectType, MysAddress};
+    use mys_types::base_types::{MysAddress, ObjectInfo, ObjectType};
     use mys_types::digests::TransactionDigest;
     use mys_types::effects::TransactionEvents;
     use mys_types::gas_coin::GAS;
     use mys_types::object;
     use mys_types::object::Owner;
+    use prometheus::Registry;
+    use std::collections::BTreeMap;
+    use std::env::temp_dir;
 
     #[tokio::test]
     async fn test_index_cache() -> anyhow::Result<()> {

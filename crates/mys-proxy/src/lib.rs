@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 pub mod admin;
 pub mod config;
@@ -42,12 +43,12 @@ mod tests {
     use axum::http::StatusCode;
     use axum::routing::post;
     use axum::Router;
+    use mys_tls::{ClientCertVerifier, TlsAcceptor};
     use prometheus::Encoder;
     use prometheus::PROTOBUF_FORMAT;
     use protobuf::RepeatedField;
     use std::net::TcpListener;
     use std::time::Duration;
-    use mys_tls::{ClientCertVerifier, TlsAcceptor};
 
     async fn run_dummy_remote_write(listener: TcpListener) {
         /// i accept everything, send me the trash

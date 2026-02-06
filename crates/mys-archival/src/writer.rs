@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 #![allow(dead_code)]
 
@@ -10,6 +11,15 @@ use crate::{
 use anyhow::Context;
 use anyhow::Result;
 use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
+use mys_config::object_storage_config::ObjectStoreConfig;
+use mys_storage::blob::{Blob, BlobEncoding};
+use mys_storage::object_store::util::{copy_file, path_to_filesystem};
+use mys_storage::{compress, FileCompression, StorageFormat};
+use mys_types::messages_checkpoint::{
+    CertifiedCheckpointSummary as Checkpoint, CheckpointSequenceNumber,
+    FullCheckpointContents as CheckpointContents,
+};
+use mys_types::storage::WriteStore;
 use object_store::DynObjectStore;
 use prometheus::{register_int_gauge_with_registry, IntGauge, Registry};
 use std::fs;
@@ -20,15 +30,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
-use mys_config::object_storage_config::ObjectStoreConfig;
-use mys_storage::blob::{Blob, BlobEncoding};
-use mys_storage::object_store::util::{copy_file, path_to_filesystem};
-use mys_storage::{compress, FileCompression, StorageFormat};
-use mys_types::messages_checkpoint::{
-    CertifiedCheckpointSummary as Checkpoint, CheckpointSequenceNumber,
-    FullCheckpointContents as CheckpointContents,
-};
-use mys_types::storage::WriteStore;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Instant;

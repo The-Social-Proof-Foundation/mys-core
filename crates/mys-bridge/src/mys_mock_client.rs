@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! A mock implementation of Mys JSON-RPC client.
@@ -6,9 +7,6 @@
 use crate::error::{BridgeError, BridgeResult};
 use crate::test_utils::DUMMY_MUTALBE_BRIDGE_OBJECT_ARG;
 use async_trait::async_trait;
-use std::collections::{HashMap, VecDeque};
-use std::sync::atomic::AtomicU64;
-use std::sync::{Arc, Mutex};
 use mys_json_rpc_types::MysTransactionBlockResponse;
 use mys_json_rpc_types::{EventFilter, EventPage, MysEvent};
 use mys_types::base_types::ObjectID;
@@ -23,6 +21,9 @@ use mys_types::object::Owner;
 use mys_types::transaction::ObjectArg;
 use mys_types::transaction::Transaction;
 use mys_types::Identifier;
+use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::AtomicU64;
+use std::sync::{Arc, Mutex};
 
 use crate::mys_client::MysClientInner;
 use crate::types::{BridgeAction, BridgeActionStatus, IsBridgePaused};
@@ -298,5 +299,20 @@ impl MysClientInner for MysMockClient {
                     gas_object_id
                 )
             })
+    }
+
+    async fn get_gas_object_once(
+        &self,
+        gas_object_id: ObjectID,
+    ) -> Result<(GasCoin, ObjectRef, Owner), BridgeError> {
+        self.get_object_info
+            .lock()
+            .unwrap()
+            .get(&gas_object_id)
+            .cloned()
+            .ok_or_else(|| BridgeError::Generic(format!(
+                "No preset gas object info found for gas_object_id: {:?}",
+                gas_object_id
+            )))
     }
 }

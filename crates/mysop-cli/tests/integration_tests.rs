@@ -1,9 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{Context, Result};
-use std::process::Command;
 use mysoplib::cli::service::init;
+use std::process::Command;
 use tracing::debug;
 
 #[cfg(test)]

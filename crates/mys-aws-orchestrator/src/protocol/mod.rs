@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::path::PathBuf;
@@ -8,8 +9,8 @@ use crate::{
     client::Instance,
 };
 
-pub mod narwhal;
 pub mod mys;
+pub mod narwhal;
 
 /// The minimum interface that the protocol should implement to allow benchmarks from
 /// the orchestrator.

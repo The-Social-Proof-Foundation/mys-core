@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{
@@ -15,9 +16,6 @@ use std::{
 use anyhow::{anyhow, bail, Context};
 use diesel::{dsl, ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
-use prometheus::Registry;
-use reqwest::Client;
-use serde_json::{json, Value};
 use mys_indexer_alt::{config::IndexerConfig, start_indexer};
 use mys_indexer_alt_framework::{ingestion::ClientArgs, schema::watermarks, IndexerArgs};
 use mys_indexer_alt_jsonrpc::{
@@ -31,8 +29,11 @@ use mys_transactional_test_runner::{
     create_adapter,
     offchain_state::{OffchainStateReader, TestResponse},
     run_tasks_with_adapter,
-    test_adapter::{OffChainConfig, MysTestAdapter, PRE_COMPILED},
+    test_adapter::{MysTestAdapter, OffChainConfig, PRE_COMPILED},
 };
+use prometheus::Registry;
+use reqwest::Client;
+use serde_json::{json, Value};
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use url::Url;

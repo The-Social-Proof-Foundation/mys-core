@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use move_binary_format::errors::{PartialVMError, PartialVMResult};
@@ -10,8 +11,8 @@ use move_vm_types::{
     pop_arg,
     values::{Struct, Value, Vector, VectorRef},
 };
-use std::collections::VecDeque;
 use mys_types::nitro_attestation::{parse_nitro_attestation, verify_nitro_attestation};
+use std::collections::VecDeque;
 
 use crate::{object_runtime::ObjectRuntime, NativesCostTable};
 use move_vm_runtime::native_charge_gas_early_exit;

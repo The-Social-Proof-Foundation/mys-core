@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::path::PathBuf;
@@ -19,7 +20,7 @@ use move_core_types::u256::U256;
 use move_symbol_pool::Symbol;
 use move_transactional_test_runner::tasks::{RunCommand, SyntaxChoice};
 use mys_graphql_rpc::test_infra::cluster::SnapshotLagConfig;
-use mys_types::base_types::{SequenceNumber, MysAddress};
+use mys_types::base_types::{MysAddress, SequenceNumber};
 use mys_types::move_package::UpgradePolicy;
 use mys_types::object::{Object, Owner};
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;

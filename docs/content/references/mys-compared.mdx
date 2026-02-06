@@ -100,7 +100,7 @@ This section presents the main disadvantages of MySocial with respect to traditi
 
 ### Design complexity {#design-complexity}
 
-While traditional blockchains require implementing only a single consensus protocol, MySocial requires two protocols: (i) a protocol based on Byzantine Consistent Broadcast to handle simple transactions, and (ii) a consensus protocol to handle transactions with shared objects. This means the MySocial team needs to maintain a much larger codebase.
+While traditional blockchains require implementing only a single consensus protocol, MySocial requires two protocols: (i) a protocol based on Byzantine Consistent Broadcast to handle simple transactions, and (ii) a consensus protocol to handle transactions with shared objects. This means The Social Proof Foundation needs to maintain a much larger codebase.
 
 Transactions involving shared objects require a little overhead (adding two extra round trips - 200ms for well-connected clients using a MySocial Gateway service) before submitting it to the consensus protocol. This overhead is required to securely compose the two protocols described above. Other blockchains can instead directly submit the transaction to the consensus protocol. Note the finality for shared object transactions is still in the 2-3 second range even with this overhead.
 

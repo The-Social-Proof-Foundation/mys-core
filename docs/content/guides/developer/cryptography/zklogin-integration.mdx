@@ -36,9 +36,9 @@ npm install @mysten/mys@experimental
 1. Assemble the OAuth URL with configured client ID, redirect URL, ephemeral public key and nonce: This is what the application sends the user to complete the login flow with a computed [nonce](#notations).
 
 ```typescript
-import { generateNonce, generateRandomness } from '@mysten/mys/zklogin';
+import { generateNonce, generateRandomness } from '@socialproof/mys/zklogin';
 
-const FULLNODE_URL = 'https://fullnode.devnet.mys.io'; // replace with the RPC URL you want to use
+const FULLNODE_URL = 'https://fullnode.devnet.mysocial.network'; // replace with the RPC URL you want to use
 const mysClient = new MySocialClient({ url: FULLNODE_URL });
 const { epoch, epochDurationMs, epochStartTimestampMs } = await mysClient.getLatestMySocialSystemState();
 
@@ -117,7 +117,7 @@ User salt is used to disconnect the OAuth identifier (sub) from the on-chain MyS
 Once the OAuth flow completes, the JWT can be found in the redirect URL. Along with the user salt, the zkLogin address can be derived as follows:
 
 ```typescript
-import { jwtToAddress } from '@mysten/mys/zklogin';
+import { jwtToAddress } from '@socialproof/mys/zklogin';
 
 const zkLoginUserAddress = jwtToAddress(jwt, userSalt);
 ```
@@ -129,7 +129,7 @@ The next step is to fetch the ZK proof. This is an attestation (proof) over the 
 First, generate the extended ephemeral public key to use as an input to the ZKP.
 
 ```typescript
-import { getExtendedEphemeralPublicKey } from '@mysten/mys/zklogin';
+import { getExtendedEphemeralPublicKey } from '@socialproof/mys/zklogin';
 
 const extendedEphemeralPublicKey = getExtendedEphemeralPublicKey(ephemeralKeyPair.getPublicKey());
 ```
@@ -317,7 +317,7 @@ You can now serialize the zkLogin signature by combining the ZK proof (`inputs`)
 the `maxEpoch`, and the ephemeral signature (`userSignature`).
 
 ```typescript
-import { genAddressSeed, getZkLoginSignature } from '@mysten/mys/zklogin';
+import { genAddressSeed, getZkLoginSignature } from '@socialproof/mys/zklogin';
 
 const addressSeed: string = genAddressSeed(
 	BigInt(userSalt!),

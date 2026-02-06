@@ -159,7 +159,7 @@ The generated configuration includes the following parameters:
 | `eth:eth-bridge-proxy-address` | The proxy address for Bridge Solidity contracts on Ethereum. |
 | `eth:eth-bridge-chain-id` | `10` for Ethereum Mainnet, `11` for Sepolia Testnet. |
 | `eth:eth-contracts-start-block-fallback` | The starting block BridgeNodes queries for from Ethereum FullNode. This number should be the block where Solidity contracts are deployed or slightly before. |
-| `metrics:push-url` | The url of the remote MySocial metrics pipeline (for example, `https://metrics-proxy.[testnet_OR_mainnet].mys.io:8443/publish/metrics`). See the [metrics push section](#metrics-push) that follows for more details. | 
+| `metrics:push-url` | The url of the remote MySocial metrics pipeline (for example, `https://metrics-proxy.[testnet_OR_mainnet].mysocial.network:8443/publish/metrics`). See the [metrics push section](#metrics-push) that follows for more details. | 
 
 With `run-client: true`, you can find these additional fields in the generated config:
 
@@ -284,10 +284,10 @@ To enable metrics push, set the following parameters in `BridgeNodeConfig`:
 
 ```yaml
 metrics:
-    push-url: https://metrics-proxy.[testnet|mainnet].mys.io:8443/publish/metrics
+    push-url: https://metrics-proxy.[testnet|mainnet].mysocial.network:8443/publish/metrics
 ```
 
-The proxy authenticates pushed metrics by using the metrics key pair. It is similar to `mys-node` pushing metrics with `NetworkKey`. Unlike `NetworkKey`, the Bridge Node metrics key is not recorded on chain and can be ephemeral. The metrics key is loaded from the `metrics-key-pair` field in `BridgeNodeConfig` if provided, otherwise a new key pair is generated on the fly. The proxy queries node public keys periodically by hitting the metrics public API key of each node.
+The proxy authenticates pushed metrics by using the metrics key pair. It is similar to `mys-node` pushing metrics with `NetworkKey`. Unlike `NetworkKey`, the Bridge Node metrics key is not recorded on chain and can be ephemeral.`BridgeNodeConfig` if provided, otherwise a new key pair is generated on the fly. The proxy queries node public keys periodically by hitting the metrics public API key of each node.
 
 When Bridge Node starts, it might log this line once:
 

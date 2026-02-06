@@ -1,0 +1,37 @@
+# Build application
+#
+# Copy in all crates, Cargo.toml and Cargo.lock unmodified,
+# and build the application.
+FROM rust:1.85-bullseye AS builder
+ARG PROFILE=release
+ARG GIT_REVISION
+ENV GIT_REVISION=$GIT_REVISION
+WORKDIR "$WORKDIR/mys"
+
+# orderbook-indexer needs postgres libpq5 and ca-certificates
+RUN apt update && apt install -y libpq5 ca-certificates libpq-dev postgresql
+
+RUN apt-get update && apt-get install -y cmake clang
+
+COPY Cargo.toml Cargo.lock ./
+COPY consensus consensus
+COPY crates crates
+COPY mys-execution mys-execution
+COPY external-crates external-crates
+
+RUN cargo build --release --package mys-orderbook-indexer --bin mys-orderbook-indexer
+
+# Production Image
+FROM debian:bullseye-slim AS runtime
+# Use jemalloc as memory allocator
+RUN apt-get update && apt-get install -y libjemalloc-dev ca-certificates curl
+ENV LD_PRELOAD /usr/lib/x86_64-linux-gnu/libjemalloc.so
+WORKDIR "$WORKDIR/mys"
+COPY --from=builder /mys/target/release/mys-orderbook-indexer /usr/local/bin
+COPY crates/mys-orderbook-indexer/config.yaml /mys/config.yaml
+RUN apt update && apt install -y libpq5 ca-certificates libpq-dev postgresql
+
+ARG BUILD_DATE
+ARG GIT_REVISION
+LABEL build-date=$BUILD_DATE
+LABEL git-revision=$GIT_REVISION 

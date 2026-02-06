@@ -39,7 +39,7 @@ With the dependency added, you can use the `emit` function to trigger an event w
 The MySocial RPC provides a [queryEvents](/mys-api-ref#mysx_queryEvents) method to query on-chain packages and return available events. As an example, the following `curl` command queries the Deepbook package on Mainnet for a specific type of event:
 
 ```sh
-$ curl -X POST https://fullnode.mainnet.mys.io:443 \
+$ curl -X POST https://fullnode.mainnet.mysocial.network:443 \
 -H "Content-Type: application/json" \
 -d '{
   "jsonrpc": "2.0",
@@ -50,7 +50,7 @@ $ curl -X POST https://fullnode.mainnet.mys.io:443 \
       "MoveModule": {
         "package": "0x158f2027f60c89bb91526d9bf08831d27f5a0fcb0f74e6698b9f0e1fb2be5d05",
         "module": "deepbook_utils",
-        "type": "0xdee9::clob_v2::DepositAsset<0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>"
+        "type": "0x0b0c::clob::DepositAsset<0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>"
       }
     },
     null,
@@ -77,7 +77,7 @@ A successful `curl` return
 				"packageId": "0x158f2027f60c89bb91526d9bf08831d27f5a0fcb0f74e6698b9f0e1fb2be5d05",
 				"transactionModule": "deepbook_utils",
 				"sender": "0x8b35e67a519fffa11a9c74f169228ff1aa085f3a3d57710af08baab8c02211b9",
-				"type": "0xdee9::clob_v2::WithdrawAsset<0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
+				"type": "0x0b0c::clob::WithdrawAsset<0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
 				"parsedJson": {
 					"owner": "0x704c8c0d8052be7b5ca7174222a8980fb2ad3cd640f4482f931deb6436902627",
 					"pool_id": "0x7f526b1263c4b91b43c9e646419b5696f424de28dda3c1e6658cc0a54558baa7",
@@ -94,7 +94,7 @@ A successful `curl` return
 				"packageId": "0x158f2027f60c89bb91526d9bf08831d27f5a0fcb0f74e6698b9f0e1fb2be5d05",
 				"transactionModule": "deepbook_utils",
 				"sender": "0x8b35e67a519fffa11a9c74f169228ff1aa085f3a3d57710af08baab8c02211b9",
-				"type": "0xdee9::clob_v2::OrderFilled<0x2::mys::MYS, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
+				"type": "0x0b0c::clob::OrderFilled<0x2::mys::MYS, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
 				"parsedJson": {
 					"base_asset_quantity_filled": "0",
 					"base_asset_quantity_remaining": "1532800000000",
@@ -121,7 +121,7 @@ A successful `curl` return
 				"packageId": "0x158f2027f60c89bb91526d9bf08831d27f5a0fcb0f74e6698b9f0e1fb2be5d05",
 				"transactionModule": "deepbook_utils",
 				"sender": "0x8b35e67a519fffa11a9c74f169228ff1aa085f3a3d57710af08baab8c02211b9",
-				"type": "0xdee9::clob_v2::OrderFilled<0x2::mys::MYS, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
+				"type": "0x0b0c::clob::OrderFilled<0x2::mys::MYS, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>",
 				"parsedJson": {
 					"base_asset_quantity_filled": "700000000",
 					"base_asset_quantity_remaining": "0",
@@ -265,7 +265,7 @@ const PACKAGE_ID_CONST: &str = "0x279525274aa623ef31a25ad90e3b99f27c8dbbad636a64
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let mys_mainnet = MySocialClientBuilder::default()
-        .build("https://fullnode.mainnet.mys.io:443")
+        .build("https://fullnode.mainnet.mysocial.network:443")
         .await?;
 
     let events = mys_mainnet

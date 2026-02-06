@@ -1,5 +1,6 @@
 // Copyright (c) 2021, Facebook, Inc. and its affiliates
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod client_commands;
@@ -14,8 +15,8 @@ pub mod genesis_ceremony;
 pub mod genesis_inspector;
 pub mod key_identity;
 pub mod keytool;
-pub mod shell;
 pub mod mys_commands;
+pub mod shell;
 pub mod upgrade_compatibility;
 pub mod validator_commands;
 mod verifier_meter;

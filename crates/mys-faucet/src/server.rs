@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -7,13 +8,15 @@ use crate::{
 };
 use axum::{
     error_handling::HandleErrorLayer,
-    extract::{ConnectInfo, Host, Path},
-    http::{header::HeaderMap, StatusCode},
+    extract::{ConnectInfo, Path},
+    http::{header::{HeaderMap, HOST}, StatusCode},
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
     BoxError, Extension, Json, Router,
 };
 use http::Method;
+use mys_config::MYS_CLIENT_CONFIG;
+use mys_sdk::wallet_context::WalletContext;
 use mysten_metrics::spawn_monitored_task;
 use prometheus::Registry;
 use std::{
@@ -23,8 +26,6 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use mys_config::MYS_CLIENT_CONFIG;
-use mys_sdk::wallet_context::WalletContext;
 use tower::ServiceBuilder;
 use tower_governor::{
     governor::GovernorConfigBuilder, key_extractor::GlobalKeyExtractor, GovernorLayer,
@@ -40,7 +41,7 @@ use serde::Deserialize;
 use anyhow::ensure;
 use once_cell::sync::Lazy;
 
-const DEFAULT_FAUCET_WEB_APP_URL: &str = "https://faucet.mys.io";
+const DEFAULT_FAUCET_WEB_APP_URL: &str = "https://faucet.mysocial.network";
 
 static FAUCET_WEB_APP_URL: Lazy<String> = Lazy::new(|| {
     std::env::var("FAUCET_WEB_APP_URL")
@@ -258,9 +259,7 @@ pub async fn start_faucet(
     let global_limited_routes = Router::new()
         .route("/gas", post(request_gas))
         .route("/v1/gas", post(batch_request_gas))
-        .layer(GovernorLayer {
-            config: governor_cfg.clone(),
-        });
+        .layer(GovernorLayer::new(governor_cfg.clone()));
 
     // This has its own rate limiter via the RequestManager
     let faucet_web_routes = Router::new().route("/v1/faucet_web_gas", post(batch_faucet_web_gas));
@@ -269,7 +268,7 @@ pub async fn start_faucet(
         .route("/", get(redirect))
         .route("/health", get(health))
         .route("/v1/faucet_discord", post(batch_faucet_discord))
-        .route("/v1/status/:task_id", get(request_status));
+        .route("/v1/status/{task_id}", get(request_status));
 
     // Combine all routes
     let app = Router::new()
@@ -322,10 +321,14 @@ async fn health() -> &'static str {
     "OK"
 }
 
-/// Redirect to faucet.mys.io/?network if it's testnet/devnet network. For local network, keep the
+/// Redirect to faucet.mysocial.network/?network if it's testnet/devnet network. For local network, keep the
 /// previous behavior to return health status.
-async fn redirect(Host(host): Host) -> Response {
+async fn redirect(headers: HeaderMap) -> Response {
     let url = FAUCET_WEB_APP_URL.to_string();
+    let host = headers
+        .get(HOST)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
     if host.contains("testnet") {
         let redirect = Redirect::to(&format!("{url}/?network=testnet"));
         redirect.into_response()

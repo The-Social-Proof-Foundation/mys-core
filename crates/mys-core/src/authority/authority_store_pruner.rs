@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::authority_store_tables::{AuthorityPerpetualTables, AuthorityPrunerTables};
@@ -9,17 +10,6 @@ use crate::checkpoints::{CheckpointStore, CheckpointWatermark};
 use crate::rpc_index::RpcIndexStore;
 use anyhow::anyhow;
 use bincode::Options;
-use mysten_metrics::{monitored_scope, spawn_monitored_task};
-use once_cell::sync::Lazy;
-use prometheus::{
-    register_int_counter_with_registry, register_int_gauge_with_registry, IntCounter, IntGauge,
-    Registry,
-};
-use std::cmp::{max, min};
-use std::collections::{BTreeSet, HashMap};
-use std::sync::{Mutex, Weak};
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::{sync::Arc, time::Duration};
 use mys_archival::reader::ArchiveReaderBalancer;
 use mys_config::node::AuthorityStorePruningConfig;
 use mys_storage::mutex_table::RwLockTable;
@@ -35,6 +25,17 @@ use mys_types::{
     base_types::{ObjectID, VersionNumber},
     storage::ObjectKey,
 };
+use mysten_metrics::{monitored_scope, spawn_monitored_task};
+use once_cell::sync::Lazy;
+use prometheus::{
+    register_int_counter_with_registry, register_int_gauge_with_registry, IntCounter, IntGauge,
+    Registry,
+};
+use std::cmp::{max, min};
+use std::collections::{BTreeSet, HashMap};
+use std::sync::{Mutex, Weak};
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::{sync::Arc, time::Duration};
 use tokio::sync::oneshot::{self, Sender};
 use tokio::time::Instant;
 use tracing::{debug, error, info, warn};
@@ -232,8 +233,8 @@ impl AuthorityStorePruner {
         if !indirect_objects.is_empty() {
             let ref_count_update = indirect_objects
                 .iter()
-                .map(|(digest, delta)| (digest, delta.to_le_bytes()));
-            wb.partial_merge_batch(&perpetual_db.indirect_move_objects, ref_count_update)?;
+                .map(|(digest, delta)| (*digest, delta.to_be_bytes().to_vec()));
+            wb.partial_merge_batch_raw(&perpetual_db.indirect_move_objects, ref_count_update)?;
         }
         perpetual_db.set_highest_pruned_checkpoint(&mut wb, checkpoint_number)?;
         metrics.last_pruned_checkpoint.set(checkpoint_number as i64);
@@ -565,14 +566,14 @@ impl AuthorityStorePruner {
         delay_days: usize,
         last_processed: Arc<Mutex<HashMap<String, SystemTime>>>,
     ) -> anyhow::Result<Option<LiveFile>> {
-        let db_path = perpetual_db.objects.rocksdb.path();
+        let db_path = perpetual_db.objects.rocksdb().expect("RocksDB not available").path();
         let mut state = last_processed
             .lock()
             .expect("failed to obtain a lock for last processed SST files");
         let mut sst_file_for_compaction: Option<LiveFile> = None;
         let time_threshold =
             SystemTime::now() - Duration::from_secs(delay_days as u64 * 24 * 60 * 60);
-        for sst_file in perpetual_db.objects.rocksdb.live_files()? {
+        for sst_file in perpetual_db.objects.rocksdb().expect("RocksDB not available").live_files()? {
             let file_path = db_path.join(sst_file.name.clone().trim_matches('/'));
             let last_modified = std::fs::metadata(file_path)?.modified()?;
             if !PERIODIC_PRUNING_TABLES.contains(&sst_file.column_family_name)
@@ -854,7 +855,6 @@ mod tests {
         get_store_object_pair, ObjectContentDigest, StoreData, StoreObject, StoreObjectPair,
         StoreObjectWrapper,
     };
-    use prometheus::Registry;
     use mys_storage::mutex_table::RwLockTable;
     use mys_types::base_types::ObjectDigest;
     use mys_types::effects::TransactionEffects;
@@ -864,6 +864,7 @@ mod tests {
         object::Object,
         storage::ObjectKey,
     };
+    use prometheus::Registry;
     use typed_store::rocks::util::reference_count_merge_operator;
     use typed_store::rocks::{DBMap, MetricConf, ReadWriteOptions};
     use typed_store::Map;
@@ -1032,24 +1033,24 @@ mod tests {
     // Tests pruning old version of live objects.
     #[tokio::test]
     async fn test_pruning_objects() {
-        let path = tempfile::tempdir().unwrap().into_path();
+        let path = tempfile::tempdir().unwrap().keep();
         let to_keep = run_pruner(&path, 3, 2, 1000, 0).await;
         assert_eq!(
             HashSet::from_iter(to_keep),
             get_keys_after_pruning(&path).unwrap()
         );
-        run_pruner(&tempfile::tempdir().unwrap().into_path(), 3, 2, 1000, 0).await;
+        run_pruner(&tempfile::tempdir().unwrap().keep(), 3, 2, 1000, 0).await;
     }
 
     // Tests pruning deleted objects (object tombstones).
     #[tokio::test]
     async fn test_pruning_tombstones() {
-        let path = tempfile::tempdir().unwrap().into_path();
+        let path = tempfile::tempdir().unwrap().keep();
         let to_keep = run_pruner(&path, 0, 0, 1000, 0).await;
         assert_eq!(to_keep.len(), 0);
         assert_eq!(get_keys_after_pruning(&path).unwrap().len(), 0);
 
-        let path = tempfile::tempdir().unwrap().into_path();
+        let path = tempfile::tempdir().unwrap().keep();
         let to_keep = run_pruner(&path, 3, 0, 1000, 0).await;
         assert_eq!(to_keep.len(), 0);
         assert_eq!(get_keys_after_pruning(&path).unwrap().len(), 0);
@@ -1057,7 +1058,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_ref_count_pruning() {
-        let path = tempfile::tempdir().unwrap().into_path();
+        let path = tempfile::tempdir().unwrap().keep();
         run_pruner(&path, 3, 2, 1000, 1).await;
         {
             let perpetual_db = AuthorityPerpetualTables::open(&path, None);
@@ -1066,7 +1067,7 @@ mod tests {
             assert_eq!(count, 1000);
         }
 
-        let path = tempfile::tempdir().unwrap().into_path();
+        let path = tempfile::tempdir().unwrap().keep();
         run_pruner(&path, 3, 0, 1000, 1).await;
         {
             let perpetual_db = AuthorityPerpetualTables::open(&path, None);
@@ -1087,7 +1088,7 @@ mod tests {
     #[cfg(not(target_env = "msvc"))]
     #[tokio::test]
     async fn test_db_size_after_compaction() -> Result<(), anyhow::Error> {
-        let primary_path = tempfile::tempdir()?.into_path();
+        let primary_path = tempfile::tempdir()?.keep();
         let perpetual_db = Arc::new(AuthorityPerpetualTables::open(&primary_path, None));
         let total_unique_object_ids = 10_000;
         let num_versions_per_object = 10;
@@ -1124,7 +1125,7 @@ mod tests {
         let start = ObjectKey(ObjectID::ZERO, SequenceNumber::MIN);
         let end = ObjectKey(ObjectID::MAX, SequenceNumber::MAX);
 
-        perpetual_db.objects.rocksdb.flush()?;
+        perpetual_db.objects.rocksdb().flush()?;
         perpetual_db.objects.compact_range_to_bottom(&start, &end)?;
         let before_compaction_size = get_sst_size(&db_path);
 
@@ -1151,7 +1152,7 @@ mod tests {
         .await;
         info!("Total pruned keys = {:?}", total_pruned);
 
-        perpetual_db.objects.rocksdb.flush()?;
+        perpetual_db.objects.rocksdb().flush()?;
         perpetual_db.objects.compact_range_to_bottom(&start, &end)?;
         let after_compaction_size = get_sst_size(&db_path);
 
@@ -1177,8 +1178,6 @@ mod pprof_tests {
     use crate::authority::authority_store_pruner::AuthorityStorePruningMetrics;
     use crate::authority::authority_store_tables::AuthorityPerpetualTables;
     use crate::authority::authority_store_types::{get_store_object_pair, StoreObjectWrapper};
-    use pprof::Symbol;
-    use prometheus::Registry;
     use mys_types::base_types::ObjectDigest;
     use mys_types::base_types::VersionNumber;
     use mys_types::effects::TransactionEffects;
@@ -1188,6 +1187,8 @@ mod pprof_tests {
         object::Object,
         storage::ObjectKey,
     };
+    use pprof::Symbol;
+    use prometheus::Registry;
     use typed_store::rocks::DBMap;
     use typed_store::Map;
 
@@ -1258,7 +1259,7 @@ mod pprof_tests {
         // in it.
         let registry = Registry::default();
         let metrics = AuthorityStorePruningMetrics::new(&registry);
-        let primary_path = tempfile::tempdir()?.into_path();
+        let primary_path = tempfile::tempdir()?.keep();
         let perpetual_db = Arc::new(AuthorityPerpetualTables::open(&primary_path, None));
         let effects = insert_keys(&perpetual_db.objects)?;
         AuthorityStorePruner::prune_objects(
@@ -1295,7 +1296,7 @@ mod pprof_tests {
         // then does a bunch of get(). We open the db with `ignore_range_delete` set to true (default mode).
         // We then record a cpu profile of the `get()` calls and do not find any range fragmentation stack frame
         // in it.
-        let primary_path = tempfile::tempdir()?.into_path();
+        let primary_path = tempfile::tempdir()?.keep();
         let perpetual_db = Arc::new(AuthorityPerpetualTables::open(&primary_path, None));
         let effects = insert_keys(&perpetual_db.objects)?;
         let registry = Registry::default();

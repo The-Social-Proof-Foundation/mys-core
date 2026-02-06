@@ -1,16 +1,17 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{sync::Arc, time::Duration};
 
 use fastcrypto::traits::KeyPair;
 use futures::FutureExt;
-use mysten_metrics::RegistryService;
-use prometheus::Registry;
 use mys_swarm_config::network_config_builder::ConfigBuilder;
 use mys_types::messages_checkpoint::{
     CertifiedCheckpointSummary, CheckpointContents, CheckpointSummary,
 };
+use mysten_metrics::RegistryService;
+use prometheus::Registry;
 use tokio::{sync::mpsc, time::sleep};
 
 use crate::{

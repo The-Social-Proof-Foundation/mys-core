@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod adversarial;
@@ -18,7 +19,7 @@ use std::sync::Arc;
 
 use crate::drivers::Interval;
 use crate::workloads::payload::Payload;
-use mys_types::base_types::{ObjectRef, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectRef};
 use mys_types::crypto::AccountKeyPair;
 use workload::*;
 

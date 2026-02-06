@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! `BridgeOrchestrator` is the component that:
@@ -13,16 +14,16 @@ use crate::action_executor::{
 use crate::error::BridgeError;
 use crate::events::MysBridgeEvent;
 use crate::metrics::BridgeMetrics;
-use crate::storage::BridgeOrchestratorTables;
 use crate::mys_client::{MysClient, MysClientInner};
-use crate::types::EthLog;
+use crate::storage::BridgeOrchestratorTables;
+use crate::types::{BridgeAction, EthLog};
 use ethers::types::Address as EthAddress;
-use mysten_metrics::spawn_logged_monitored_task;
-use std::sync::Arc;
 use mys_json_rpc_types::MysEvent;
 use mys_types::Identifier;
+use mysten_metrics::spawn_logged_monitored_task;
+use std::sync::Arc;
 use tokio::task::JoinHandle;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub struct BridgeOrchestrator<C> {
     _mys_client: Arc<MysClient<C>>,
@@ -58,6 +59,34 @@ where
         }
     }
 
+    /// Apply token_id mapping: convert token_id=5 to token_id=0
+    /// This fixes the issue where Ethereum BridgeConfig contract has incorrect token_id mapping
+    fn apply_token_id_mapping(action: &mut BridgeAction) {
+        if let BridgeAction::EthToMysBridgeAction(ref mut eth_action) = action {
+            let original_token_id = eth_action.eth_bridge_event.token_id;
+            if original_token_id == 5 {
+                warn!(
+                    tx_hash = ?eth_action.eth_tx_hash,
+                    event_index = eth_action.eth_event_index,
+                    original_token_id,
+                    "⚠️  WARNING: Mapping token_id={} to token_id=0. \
+                     This indicates the BridgeConfig contract on EVM has incorrect mapping. \
+                     The BridgeConfig contract must be updated to map the token address to token_id=0.",
+                    original_token_id
+                );
+                // Create a new bridge event with corrected token_id
+                let mut corrected_event = eth_action.eth_bridge_event.clone();
+                corrected_event.token_id = 0;
+                // Replace the action with the corrected version
+                *eth_action = crate::types::EthToMysBridgeAction {
+                    eth_tx_hash: eth_action.eth_tx_hash,
+                    eth_event_index: eth_action.eth_event_index,
+                    eth_bridge_event: corrected_event,
+                };
+            }
+        }
+    }
+
     pub async fn run(
         self,
         bridge_action_executor: impl BridgeActionExecutorTrait,
@@ -81,10 +110,14 @@ where
         let store_clone = self.store.clone();
 
         // Re-submit pending actions to executor
-        let actions = store_clone
+        let mut actions = store_clone
             .get_all_pending_actions()
             .into_values()
             .collect::<Vec<_>>();
+        // Apply token_id mapping to any old actions loaded from storage
+        for action in &mut actions {
+            Self::apply_token_id_mapping(action);
+        }
         for action in actions {
             submit_to_executor(&executor_sender, action)
                 .await
@@ -160,6 +193,21 @@ where
                 if let Some(action) = bridge_event
                     .try_into_bridge_action(mys_event.id.tx_digest, mys_event.id.event_seq as u16)
                 {
+                    // Log detailed information about MysToEthBridgeAction creation
+                    if let crate::types::BridgeAction::MysToEthBridgeAction(ref mys_action) = action {
+                        info!(
+                            tx_digest = ?mys_event.id.tx_digest,
+                            event_seq = mys_event.id.event_seq,
+                            nonce = mys_action.mys_bridge_event.nonce,
+                            source_chain = ?mys_action.mys_bridge_event.mys_chain_id,
+                            target_chain = ?mys_action.mys_bridge_event.eth_chain_id,
+                            token_id = mys_action.mys_bridge_event.token_id,
+                            amount = mys_action.mys_bridge_event.amount_mys_adjusted,
+                            mys_address = ?mys_action.mys_bridge_event.mys_address,
+                            eth_address = ?mys_action.mys_bridge_event.eth_address,
+                            "Created MysToEthBridgeAction from TokenDepositedEvent - will be processed by action executor"
+                        );
+                    }
                     metrics.last_observed_actions_seq_num.with_label_values(&[
                         action.chain_id().to_string().as_str(),
                         action.action_type().to_string().as_str(),
@@ -213,7 +261,13 @@ where
                 continue;
             }
 
-            info!("Received {} Eth events", logs.len());
+            info!(
+                contract = ?contract,
+                end_block,
+                log_count = logs.len(),
+                "Received {} Eth events from contract",
+                logs.len()
+            );
             metrics
                 .eth_watcher_received_events
                 .inc_by(logs.len() as u64);
@@ -223,12 +277,27 @@ where
                 .map(EthBridgeEvent::try_from_eth_log)
                 .collect::<Vec<_>>();
 
+            info!(
+                contract = ?contract,
+                total_logs = logs.len(),
+                parsed_events = bridge_events.iter().filter(|e| e.is_some()).count(),
+                unrecognized_events = bridge_events.iter().filter(|e| e.is_none()).count(),
+                "Parsing Eth logs into bridge events"
+            );
+
             let mut actions = vec![];
             for (log, opt_bridge_event) in logs.iter().zip(bridge_events) {
                 if opt_bridge_event.is_none() {
                     // TODO: we probably should not miss any events, log for now.
                     metrics.eth_watcher_unrecognized_events.inc();
-                    error!("Eth event not recognized: {:?}", log);
+                    error!(
+                        contract = ?contract,
+                        tx_hash = ?log.tx_hash,
+                        block_number = log.block_number,
+                        log_index = log.log_index_in_tx,
+                        topics = ?log.log.topics,
+                        "Eth event not recognized - may be from different contract or unsupported event type"
+                    );
                     continue;
                 }
                 // Unwrap safe: checked above
@@ -242,7 +311,34 @@ where
                     .expect("Sending event to monitor channel should not fail");
 
                 match bridge_event.try_into_bridge_action(log.tx_hash, log.log_index_in_tx) {
-                    Ok(Some(action)) => {
+                    Ok(Some(mut action)) => {
+                        // Apply token_id mapping: convert token_id=5 to token_id=0
+                        Self::apply_token_id_mapping(&mut action);
+                        
+                        if let BridgeAction::EthToMysBridgeAction(ref eth_action) = action {
+                            let token_id = eth_action.eth_bridge_event.token_id;
+                            if token_id != 0 && token_id != 5 {
+                                warn!(
+                                    tx_hash = ?log.tx_hash,
+                                    log_index = log.log_index_in_tx,
+                                    token_id,
+                                    "⚠️  WARNING: TokensDeposited event has token_id={}, but expected token_id=0. \
+                                     This indicates the BridgeConfig contract on EVM has incorrect mapping. \
+                                     The BridgeConfig contract must be updated to map the token address to token_id=0. \
+                                     The bridge will process this event with token_id={} as emitted.",
+                                    token_id, token_id
+                                );
+                            }
+                            info!(
+                                tx_hash = ?log.tx_hash,
+                                log_index = log.log_index_in_tx,
+                                nonce = eth_action.eth_bridge_event.nonce,
+                                token_id,
+                                amount = eth_action.eth_bridge_event.mys_adjusted_amount,
+                                mys_address = ?eth_action.eth_bridge_event.mys_address,
+                                "Created EthToMysBridgeAction from TokensDeposited event"
+                            );
+                        }
                         metrics.last_observed_actions_seq_num.with_label_values(&[
                             action.chain_id().to_string().as_str(),
                             action.action_type().to_string().as_str(),

@@ -1,0 +1,20 @@
+[workspace]
+members = [
+    "tidehunter",
+    "benchmarks/random_access_speed_test",
+    "benchmarks/benchmark",
+    "benchmarks/read_window_test",
+    "benchmarks/index_benchmark",
+    "benchmarks/wal_benchmark",
+    "scripts/generate_target_configs",
+    "tests/concurrent_test",
+    "tools/wal_inspector",
+]
+resolver = "2"
+
+[workspace.dependencies]
+rand = "0.8.5"
+parking_lot = "0.12.3"
+prometheus = "0.13.3"
+bytes = "1.7.1"
+libc = "0.2.169"

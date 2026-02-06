@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -24,7 +25,6 @@ use move_core_types::{
     account_address::AccountAddress, annotated_value::MoveTypeLayout, ident_str,
 };
 use move_package::BuildConfig;
-use std::{collections::BTreeMap, path::Path};
 use mys_json::{is_receiving_argument, primitive_type};
 use mys_json_rpc_types::{MysObjectData, MysObjectDataOptions, MysRawData};
 use mys_move::manage_package::resolve_lock_file_path;
@@ -38,6 +38,7 @@ use mys_types::{
     transaction::{self as Tx, ObjectArg},
     Identifier, TypeTag, MYS_FRAMEWORK_PACKAGE_ID,
 };
+use std::{collections::BTreeMap, path::Path};
 
 use super::ast::{ModuleAccess as PTBModuleAccess, ParsedPTBCommand, Program};
 
@@ -385,7 +386,7 @@ impl<'a> PTBBuilder<'a> {
                     self.addresses.insert(ident, *addr);
                 }
             }
-            // If we encounter a dotted string e.g., "foo.0" or "mys.io" or something like that
+            // If we encounter a dotted string e.g., "foo.0" or "mysocial.network" or something like that
             // this see if we can find an address for it in the environment and bind to it.
             PTBArg::VariableAccess(ref head, ref fields) => {
                 let key = format!(

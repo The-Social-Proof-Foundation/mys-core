@@ -1,6 +1,21 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use fastcrypto::traits::ToFromBytes;
+use mys_core::authority_client::AuthorityAPI;
+use mys_macros::sim_test;
+use mys_test_transaction_builder::TestTransactionBuilder;
+use mys_types::crypto::Signature;
+use mys_types::error::UserInputError;
+use mys_types::error::{MysError, MysResult};
+use mys_types::signature::GenericSignature;
+use mys_types::transaction::Transaction;
+use mys_types::{
+    base_types::MysAddress,
+    crypto::{PublicKey, SignatureScheme},
+    passkey_authenticator::{to_signing_message, PasskeyAuthenticator},
+    transaction::TransactionData,
+};
 use p256::pkcs8::DecodePublicKey;
 use passkey_authenticator::{Authenticator, UserValidationMethod};
 use passkey_client::Client;
@@ -17,20 +32,6 @@ use passkey_types::{
 };
 use shared_crypto::intent::{Intent, IntentMessage};
 use std::net::SocketAddr;
-use mys_core::authority_client::AuthorityAPI;
-use mys_macros::sim_test;
-use mys_test_transaction_builder::TestTransactionBuilder;
-use mys_types::crypto::Signature;
-use mys_types::error::UserInputError;
-use mys_types::error::{MysError, MysResult};
-use mys_types::signature::GenericSignature;
-use mys_types::transaction::Transaction;
-use mys_types::{
-    base_types::MysAddress,
-    crypto::{PublicKey, SignatureScheme},
-    passkey_authenticator::{to_signing_message, PasskeyAuthenticator},
-    transaction::TransactionData,
-};
 use test_cluster::TestCluster;
 use test_cluster::TestClusterBuilder;
 use url::Url;
@@ -91,7 +92,7 @@ async fn create_credential_and_sign_test_tx(
     let store: Option<Passkey> = None;
     let my_authenticator = Authenticator::new(my_aaguid, store, user_validation_method);
     let mut my_client = Client::new(my_authenticator);
-    let origin = Url::parse("https://www.mys.io").unwrap();
+    let origin = Url::parse("https://www.mysocial.network").unwrap();
 
     // Create credential.
     let challenge_bytes_from_rp: Bytes = random_vec(32).into();

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::*;
@@ -11,7 +12,7 @@ bin_version::bin_version!();
 
 #[derive(Parser)]
 #[command(
-    name = "mys-tool",
+    name = "myso-tool",
     about = "Debugging utilities for mys",
     rename_all = "kebab-case",
     author,

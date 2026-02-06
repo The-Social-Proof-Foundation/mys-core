@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{bail, Context};
@@ -7,11 +8,6 @@ use fastcrypto::hash::HashFunction;
 use fastcrypto::traits::KeyPair;
 use move_binary_format::CompiledModule;
 use move_core_types::ident_str;
-use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
-use std::collections::{BTreeMap, HashSet};
-use std::fs;
-use std::path::Path;
-use std::sync::Arc;
 use mys_config::genesis::{
     Genesis, GenesisCeremonyParameters, GenesisChainParameters, TokenDistributionSchedule,
     UnsignedGenesis,
@@ -43,13 +39,18 @@ use mys_types::messages_checkpoint::{
     CheckpointVersionSpecificData, CheckpointVersionSpecificDataV1,
 };
 use mys_types::metrics::LimitsMetrics;
+use mys_types::mys_system_state::{get_mys_system_state, MysSystemState, MysSystemStateTrait};
 use mys_types::object::{Object, Owner};
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
-use mys_types::mys_system_state::{get_mys_system_state, MysSystemState, MysSystemStateTrait};
 use mys_types::transaction::{
     CallArg, CheckedInputObjects, Command, InputObjectKind, ObjectReadResult, Transaction,
 };
 use mys_types::{BRIDGE_ADDRESS, MYS_BRIDGE_OBJECT_ID, MYS_FRAMEWORK_ADDRESS, MYS_SYSTEM_ADDRESS};
+use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
+use std::collections::{BTreeMap, HashSet};
+use std::fs;
+use std::path::Path;
+use std::sync::Arc;
 use tracing::trace;
 use validator_info::{GenesisValidatorInfo, GenesisValidatorMetadata, ValidatorInfo};
 
@@ -292,9 +293,12 @@ impl Builder {
             chain_start_timestamp_ms,
             epoch_duration_ms,
             stake_subsidy_start_epoch,
-            stake_subsidy_initial_distribution_amount,
+            stake_subsidy_initial_apy_bps,
             stake_subsidy_period_length,
             stake_subsidy_decrease_rate,
+            stake_subsidy_max_apy_bps: _,
+            stake_subsidy_min_apy_bps: _,
+            stake_subsidy_intended_duration_years: _,
             max_validator_count,
             min_validator_joining_stake,
             validator_low_stake_threshold,
@@ -421,8 +425,8 @@ impl Builder {
 
         assert_eq!(system_state.stake_subsidy.distribution_counter, 0);
         assert_eq!(
-            system_state.stake_subsidy.current_distribution_amount,
-            stake_subsidy_initial_distribution_amount,
+            system_state.stake_subsidy.current_apy_bps,
+            stake_subsidy_initial_apy_bps,
         );
         assert_eq!(
             system_state.stake_subsidy.stake_subsidy_period_length,
@@ -1113,6 +1117,15 @@ pub fn generate_genesis_system_object(
             vec![],
         )?;
 
+        // Step 2.5: Initialize BootstrapKey
+        builder.move_call(
+            MYS_FRAMEWORK_ADDRESS.into(),
+            ident_str!("bootstrap_key").to_owned(),
+            ident_str!("bootstrap_init").to_owned(),
+            vec![],
+            vec![],
+        )?;
+
         // Step 3: Create ProtocolConfig-controlled system objects, unless disabled (which only
         // happens in tests).
         if protocol_config.create_authenticator_state_in_genesis() {
@@ -1160,12 +1173,28 @@ pub fn generate_genesis_system_object(
         }
 
         // Step 4: Mint the supply of MYS.
+        // Support token_symbol, token_name, token_description as parameters
+        // Default to "MySo" token if parameters aren't specified
+        let token_symbol = b"MySo";
+        let token_name = b"MySocial";
+        let token_description = b"The native token of the MySocial blockchain.";
+
+        // Pass the token parameters to mys::new
+        let token_symbol_arg = builder.input(CallArg::Pure(
+            bcs::to_bytes(&token_symbol.to_vec()).unwrap(),
+        ))?;
+        let token_name_arg =
+            builder.input(CallArg::Pure(bcs::to_bytes(&token_name.to_vec()).unwrap()))?;
+        let token_description_arg = builder.input(CallArg::Pure(
+            bcs::to_bytes(&token_description.to_vec()).unwrap(),
+        ))?;
+
         let mys_supply = builder.programmable_move_call(
             MYS_FRAMEWORK_ADDRESS.into(),
             ident_str!("mys").to_owned(),
             ident_str!("new").to_owned(),
             vec![],
-            vec![],
+            vec![token_symbol_arg, token_name_arg, token_description_arg],
         );
 
         // Step 5: Run genesis.

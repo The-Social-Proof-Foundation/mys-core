@@ -1,11 +1,12 @@
 // Copyright (c) 2021, Facebook, Inc. and its affiliates
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use crate::crypto::PublicKey;
 use crate::signature_verification::VerifiedDigestCache;
 use crate::{
     base_types::{EpochId, MysAddress},
-    crypto::{DefaultHash, Signature, SignatureScheme, MysSignature},
+    crypto::{DefaultHash, MysSignature, Signature, SignatureScheme},
     digests::ZKLoginInputsDigest,
     error::{MysError, MysResult},
     signature::{AuthenticatorTrait, VerifyParams},

@@ -1,13 +1,14 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
-use prometheus::Registry;
-use serde::{Deserialize, Serialize};
 use mys_data_ingestion::{ArchivalConfig, ArchivalReducer, ArchivalWorker};
 use mys_data_ingestion_core::{
     DataIngestionMetrics, IndexerExecutor, ReaderOptions, ShimProgressStore, WorkerPool,
 };
+use prometheus::Registry;
+use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,7 +55,7 @@ async fn main() -> Result<()> {
     executor.register(worker_pool).await?;
     executor
         .run(
-            tempfile::tempdir()?.into_path(),
+            tempfile::tempdir()?.keep(),
             Some(config.remote_store_url),
             vec![],
             ReaderOptions::default(),

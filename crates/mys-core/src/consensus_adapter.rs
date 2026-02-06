@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::HashMap;
@@ -18,6 +19,16 @@ use futures::stream::FuturesUnordered;
 use futures::FutureExt;
 use futures::{pin_mut, StreamExt};
 use itertools::Itertools;
+use mys_protocol_config::ProtocolConfig;
+use mys_simulator::anemo::PeerId;
+use mys_types::base_types::AuthorityName;
+use mys_types::base_types::TransactionDigest;
+use mys_types::committee::Committee;
+use mys_types::error::{MysError, MysResult};
+use mys_types::fp_ensure;
+use mys_types::messages_consensus::ConsensusTransactionKind;
+use mys_types::messages_consensus::{ConsensusTransaction, ConsensusTransactionKey};
+use mys_types::transaction::TransactionDataAPI;
 use mysten_metrics::{spawn_monitored_task, GaugeGuard, GaugeGuardFutureExt, LATENCY_SEC_BUCKETS};
 use parking_lot::RwLockReadGuard;
 use prometheus::Histogram;
@@ -31,16 +42,6 @@ use prometheus::{
     register_int_counter_vec_with_registry, register_int_gauge_vec_with_registry,
     register_int_gauge_with_registry,
 };
-use mys_protocol_config::ProtocolConfig;
-use mys_simulator::anemo::PeerId;
-use mys_types::base_types::AuthorityName;
-use mys_types::base_types::TransactionDigest;
-use mys_types::committee::Committee;
-use mys_types::error::{MysError, MysResult};
-use mys_types::fp_ensure;
-use mys_types::messages_consensus::ConsensusTransactionKind;
-use mys_types::messages_consensus::{ConsensusTransaction, ConsensusTransactionKey};
-use mys_types::transaction::TransactionDataAPI;
 use tokio::sync::{oneshot, Semaphore, SemaphorePermit};
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
@@ -1300,15 +1301,15 @@ mod adapter_tests {
     };
     use crate::mysticeti_adapter::LazyMysticetiClient;
     use fastcrypto::traits::KeyPair;
-    use rand::Rng;
-    use rand::{rngs::StdRng, SeedableRng};
-    use std::sync::Arc;
-    use std::time::Duration;
     use mys_types::{
         base_types::TransactionDigest,
         committee::Committee,
         crypto::{get_key_pair_from_rng, AuthorityKeyPair, AuthorityPublicKeyBytes},
     };
+    use rand::Rng;
+    use rand::{rngs::StdRng, SeedableRng};
+    use std::sync::Arc;
+    use std::time::Duration;
 
     fn test_committee(rng: &mut StdRng, size: usize) -> Committee {
         let authorities = (0..size)

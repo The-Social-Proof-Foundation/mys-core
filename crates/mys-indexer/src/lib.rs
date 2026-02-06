@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 #![recursion_limit = "256"]
 
@@ -36,12 +37,14 @@ pub mod indexer;
 pub mod indexer_reader;
 pub mod metrics;
 pub mod models;
+pub mod processors;
 pub mod restorer;
 pub mod schema;
 pub mod store;
 pub mod system_package_task;
 pub mod test_utils;
 pub mod types;
+pub mod social;
 
 pub async fn build_json_rpc_server(
     prometheus_registry: &Registry,

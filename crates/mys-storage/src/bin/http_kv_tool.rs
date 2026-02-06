@@ -1,22 +1,27 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::*;
-use std::str::FromStr;
-use std::sync::Arc;
 use mys_storage::http_key_value_store::*;
 use mys_storage::key_value_store::TransactionKeyValueStore;
 use mys_storage::key_value_store_metrics::KeyValueStoreMetrics;
 use mys_types::base_types::ObjectID;
 use mys_types::digests::{CheckpointDigest, TransactionDigest};
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use std::str::FromStr;
+use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(rename_all = "kebab-case")]
 enum Command {
     Fetch {
-        // default value of 'https://transactions.mys.io/'
-        #[arg(short, long, default_value = "https://transactions.mys.io/mainnet")]
+        // default value of 'https://transactions.mysocial.network/'
+        #[arg(
+            short,
+            long,
+            default_value = "https://transactions.mysocial.network/mainnet"
+        )]
         base_url: String,
 
         #[arg(short, long)]
@@ -140,7 +145,7 @@ impl Command {
             }
             Command::DecodeKey { url } => {
                 // url may look like
-                // https://transactions.mys.io/mainnet/jlkqmZbVuunngIyy2vjBOJSETrM56EH_kIc5wuLvDydN_x0GAAAAAA/ob
+                // https://transactions.mysocial.network/mainnet/jlkqmZbVuunngIyy2vjBOJSETrM56EH_kIc5wuLvDydN_x0GAAAAAA/ob
                 // extract the digest and type
                 let parts: Vec<_> = url.split('/').collect();
 

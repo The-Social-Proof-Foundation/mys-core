@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::chain_from_chain_id;
@@ -19,15 +20,6 @@ use move_core_types::{
     account_address::AccountAddress,
     language_storage::{ModuleId, StructTag},
     resolver::{ModuleResolver, ResourceResolver},
-};
-use prometheus::Registry;
-use serde::{Deserialize, Serialize};
-use similar::{ChangeTag, TextDiff};
-use std::{
-    collections::{BTreeMap, HashSet},
-    path::PathBuf,
-    sync::Arc,
-    sync::Mutex,
 };
 use mys_config::node::ExpensiveSafetyCheckConfig;
 use mys_core::authority::NodeStateDump;
@@ -59,7 +51,16 @@ use mys_types::{
         CheckedInputObjects, InputObjectKind, InputObjects, ObjectReadResult, ObjectReadResultKind,
         SenderSignedData, Transaction, TransactionDataAPI, TransactionKind, VerifiedTransaction,
     },
-    DEEPBOOK_PACKAGE_ID,
+    ORDERBOOK_PACKAGE_ID,
+};
+use prometheus::Registry;
+use serde::{Deserialize, Serialize};
+use similar::{ChangeTag, TextDiff};
+use std::{
+    collections::{BTreeMap, HashSet},
+    path::PathBuf,
+    sync::Arc,
+    sync::Mutex,
 };
 use tracing::{error, info, trace, warn};
 
@@ -1027,7 +1028,7 @@ impl LocalExec {
         let mut ids = BuiltInFramework::all_package_ids();
 
         if protocol_version < 5 {
-            ids.retain(|id| *id != DEEPBOOK_PACKAGE_ID)
+            ids.retain(|id| *id != ORDERBOOK_PACKAGE_ID)
         }
         ids
     }

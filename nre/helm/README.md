@@ -54,7 +54,7 @@ More Documentation on this coming soon! The storage amount recommendations will 
 
 # Indexer-Writer
 ### Containers
-**mys-indexer-writer** - Indexer writer syncs and indexes mys checkpoint data into a Postgres database. Checkpoint data can be pulled from a fullnode or a cloud provider hosted bucket. More info and available buckets can be found in mys [doc site](https://docs.mys.io/guides/developer/advanced/custom-indexer#remote-reader).
+**mys-indexer-writer** - Indexer writer syncs and indexes mys checkpoint data into a Postgres database. Checkpoint data can be pulled from a fullnode or a cloud provider hosted bucket. More info and available buckets can be found in mys [doc site](https://docs.mysocial.network/guides/developer/advanced/custom-indexer#remote-reader).
 
 ### Resource Recommendations
 **Cpu:** 16 cores / 32 vCPU

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! The EthBridgeStatus observable monitors whether the Eth Bridge is paused.
@@ -44,7 +45,7 @@ impl Observable for EthBridgeStatus {
         match status {
             Ok(status) => {
                 self.metric.set(status as i64);
-                info!("Eth Bridge Status: {:?}", status);
+                info!("Eth Bridge is paused: {:?}", status);
             }
             Err(e) => {
                 error!("Error getting eth bridge status: {:?}", e);
@@ -53,6 +54,6 @@ impl Observable for EthBridgeStatus {
     }
 
     fn interval(&self) -> Duration {
-        Duration::from_secs(10)
+        Duration::from_secs(60)
     }
 }

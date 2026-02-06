@@ -1,0 +1,30 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/mys-analytics-indexer/Dockerfile"
+buildCommand = "cargo build --release --bin mys-analytics-indexer"
+
+[deploy]
+healthcheckPath = "/metrics"
+healthcheckTimeout = 60
+
+[variables]
+# Logging configuration
+RUST_LOG = "info,mys_analytics_indexer=debug"
+
+# Core MySocial configuration
+REST_URL = "https://fullnode.testnet.mysocial.network:9000"
+FILE_TYPE = "checkpoint"
+
+# Processing settings
+CHECKPOINT_INTERVAL = "10000"
+FILE_FORMAT = "parquet"
+MAX_FILE_SIZE_MB = "100"
+TIME_INTERVAL_S = "600"
+
+# Google Cloud Storage (REQUIRED)
+REMOTE_STORE_BUCKET = "mysocial-testnet-analytics"
+REMOTE_STORE_REGION = "us"
+REMOTE_STORE_URL = "https://mysocial-testnet-checkpoints.storage.googleapis.com"
+
+# GCS Authentication - Set this in Railway UI (not here for security)
+# GCS_SERVICE_ACCOUNT_JSON = "{ your service account JSON content }" 

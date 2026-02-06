@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority::authority_per_epoch_store::AuthorityPerEpochStore;
@@ -6,7 +7,6 @@ use crate::authority::StableSyncAuthoritySigner;
 use crate::consensus_adapter::SubmitToConsensus;
 use crate::epoch::reconfiguration::ReconfigurationInitiator;
 use async_trait::async_trait;
-use std::sync::Arc;
 use mys_types::base_types::AuthorityName;
 use mys_types::error::MysResult;
 use mys_types::message_envelope::Message;
@@ -15,6 +15,7 @@ use mys_types::messages_checkpoint::{
     SignedCheckpointSummary, VerifiedCheckpoint,
 };
 use mys_types::messages_consensus::ConsensusTransaction;
+use std::sync::Arc;
 use tracing::{debug, info, instrument, trace};
 
 use super::{CheckpointMetrics, CheckpointStore};

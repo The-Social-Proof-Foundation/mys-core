@@ -1,13 +1,14 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_trait::async_trait;
 use futures::future::try_join_all;
-use std::sync::Arc;
 use mys_json_rpc_types::MysTransactionBlockResponseOptions;
 use mys_sdk::rpc_types::Checkpoint;
 use mys_sdk::MysClient;
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use std::sync::Arc;
 
 use crate::operations::Operations;
 use crate::types::{

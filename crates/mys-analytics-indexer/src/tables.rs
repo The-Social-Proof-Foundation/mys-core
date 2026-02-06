@@ -1,12 +1,13 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 #![allow(dead_code)]
 
 use crate::{ParquetSchema, ParquetValue};
-use serde::Serialize;
-use strum_macros::Display;
 use mys_analytics_indexer_derive::SerializeParquet;
 use mys_types::dynamic_field::DynamicFieldType;
+use serde::Serialize;
+use strum_macros::Display;
 
 //
 // Table entries for the analytics database.

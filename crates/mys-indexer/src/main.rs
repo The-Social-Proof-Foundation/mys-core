@@ -1,9 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::Parser;
 use mys_indexer::backfill::backfill_runner::BackfillRunner;
-use mys_indexer::config::{Command, RetentionConfig, UploadOptions};
+use mys_indexer::config::{Command, RetentionConfig, SocialIndexerConfig, UploadOptions};
 use mys_indexer::database::ConnectionPool;
 use mys_indexer::db::setup_postgres::clear_database;
 use mys_indexer::db::{
@@ -16,7 +17,35 @@ use mys_indexer::metrics::{
 use mys_indexer::restorer::formal_snapshot::IndexerFormalSnapshotRestorer;
 use mys_indexer::store::PgIndexerStore;
 use tokio_util::sync::CancellationToken;
-use tracing::warn;
+use tracing::{info, warn};
+
+/// Helper function to run social migrations
+async fn run_social_migrations(
+    database_url: &url::Url,
+    social_config: &SocialIndexerConfig,
+) -> anyhow::Result<()> {
+    // Determine the social database URL - use social_database_url if provided, otherwise use main database_url
+    let social_db_url = social_config
+        .social_database_url
+        .as_ref()
+        .map(|u| u.to_string())
+        .unwrap_or_else(|| database_url.to_string());
+
+    let social_db_config = mys_indexer::social::config::Config {
+        database: mys_indexer::social::config::DatabaseConfig {
+            url: social_db_url,
+            max_connections: social_config.social_db_max_connections,
+        },
+        ..Default::default()
+    };
+
+    info!("Running social migrations...");
+    mys_indexer::social::db::run_migrations(&social_db_config)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to run social migrations: {}", e))?;
+    info!("Social migrations completed successfully");
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -45,10 +74,14 @@ async fn main() -> anyhow::Result<()> {
             snapshot_config,
             pruning_options,
             upload_options,
+            social_config,
             mvr_mode,
         } => {
             // Make sure to run all migrations on startup, and also serve as a compatibility check.
             run_migrations(pool.dedicated_connection().await?).await?;
+            
+            // Run social migrations after main migrations
+            run_social_migrations(&opts.database_url, &social_config).await?;
 
             let retention_config = if mvr_mode {
                 warn!("Indexer in MVR mode is configured to prune `objects_history` to 2 epochs. The other tables have a 2000 epoch retention.");
@@ -73,6 +106,7 @@ async fn main() -> anyhow::Result<()> {
                 retention_config,
                 CancellationToken::new(),
                 mvr_mode,
+                social_config,
             )
             .await?;
         }
@@ -96,10 +130,16 @@ async fn main() -> anyhow::Result<()> {
                 clear_database(&mut pool.dedicated_connection().await?).await?;
             } else {
                 reset_database(pool.dedicated_connection().await?).await?;
+                // Also run social migrations after reset
+                let default_social_config = SocialIndexerConfig::default();
+                run_social_migrations(&opts.database_url, &default_social_config).await?;
             }
         }
         Command::RunMigrations => {
             run_migrations(pool.dedicated_connection().await?).await?;
+            // Also run social migrations
+            let default_social_config = SocialIndexerConfig::default();
+            run_social_migrations(&opts.database_url, &default_social_config).await?;
         }
         Command::RunBackFill {
             start,

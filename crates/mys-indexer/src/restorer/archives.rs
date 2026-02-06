@@ -1,10 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::num::NonZeroUsize;
 
-use prometheus::Registry;
 use mys_types::digests::CheckpointDigest;
+use prometheus::Registry;
 use tracing::info;
 
 use mys_archival::reader::{ArchiveReader, ArchiveReaderMetrics};

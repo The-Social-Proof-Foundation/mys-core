@@ -98,7 +98,7 @@ members = [
     "crates/mys-cost",
     "crates/mys-data-ingestion",
     "crates/mys-data-ingestion-core",
-    "crates/mys-deepbook-indexer",
+    "crates/mys-orderbook-indexer",
     "crates/mys-default-config",
     "crates/mys-e2e-tests",
     "crates/mys-edge-proxy",
@@ -144,6 +144,7 @@ members = [
     "crates/mys-open-rpc",
     "crates/mys-open-rpc-macros",
     "crates/mys-oracle",
+    "crates/mys-price-oracle",
     "crates/mys-package-dump",
     "crates/mys-package-management",
     "crates/mys-package-resolver",
@@ -161,6 +162,7 @@ members = [
     "crates/mys-simulator",
     "crates/mys-single-node-benchmark",
     "crates/mys-snapshot",
+    "crates/mys-social-indexer",
     "crates/mys-source-validation",
     "crates/mys-source-validation-service",
     "crates/mys-storage",
@@ -207,7 +209,7 @@ members = [
 
 [workspace.package]
 # This version string will be inherited by mys-core, mys-faucet, mys-node, mys-tools, mys-sdk, mys-move-build, and mys crates.
-version = "1.43.1"
+version = "0.0.1"
 
 [profile.release]
 # debug = 1 means line charts only, which is minimum needed for good stack traces
@@ -260,23 +262,26 @@ unexpected_cfgs = { level = "warn", check-cfg = [
 # Dependencies that should be kept in sync through the whole workspace
 [workspace.dependencies]
 anyhow = "1.0.71"
-arrow = "52"
-arrow-array = "52"
+arrow = "54"
+arrow-array = "54"
+arrow-arith = "54"
+arrow-buffer = "54"
+arrow-schema = "54"
 arc-swap = { version = "1.5.1", features = ["serde"] }
 assert_cmd = "2.0.6"
-async-graphql = "=7.0.1"
-async-graphql-axum = "=7.0.1"
-async-graphql-value = "=7.0.1"
+async-graphql = "7.2"
+async-graphql-axum = "7.2"
+async-graphql-value = "7.2"
 async-recursion = "1.0.4"
 async-stream = "0.3.6"
-async-trait = "0.1.61"
+async-trait = "0.1"
 atomic_float = "0.1"
 aws-config = "0.56"
 aws-sdk-ec2 = "0.29.0"
 aws-sdk-dynamodb = "0.29.0"
 aws-smithy-http = "0.56"
 aws-smithy-runtime-api = "0.56"
-axum = { version = "0.7", default-features = false, features = [
+axum = { version = "0.8", default-features = false, features = [
     "macros",
     "tokio",
     "http1",
@@ -288,8 +293,8 @@ axum = { version = "0.7", default-features = false, features = [
     "query",
     "ws",
 ] }
-axum-extra = { version = "0.9", features = ["typed-header"] }
-axum-server = { git = "https://github.com/bmwill/axum-server.git", rev = "f44323e271afdd1365fd0c8b0a4c0bbdf4956cb7", version = "0.6", default-features = false, features = [
+axum-extra = { version = "0.12", features = ["typed-header", "with-rejection"] }
+axum-server = { version = "0.8.0", default-features = false, features = [
     "tls-rustls",
 ] }
 backoff = { version = "0.4.0", features = [
@@ -299,7 +304,7 @@ backoff = { version = "0.4.0", features = [
     "tokio",
     "tokio_1",
 ] }
-base64 = "0.21.2"
+base64 = "0.21"
 base64-url = "2"
 bcs = "0.1.4"
 better_any = "0.1.1"
@@ -307,18 +312,18 @@ bimap = "0.6.2"
 bincode = "1.3.3"
 bip32 = "0.4.0"
 byteorder = "1.4.3"
-bytes = { version = "1.5.0", features = ["serde"] }
+bytes = { version = "1.10", features = ["serde"] }
 cached = "0.43.0"
 camino = "1.1.1"
 cfg-if = "1.0.0"
-chrono = { version = "0.4.26", features = ["clock", "serde"] }
+chrono = { version = "=0.4.38", features = ["clock", "serde"] }
 clap = { version = "4.4", features = ["derive", "wrap_help"] }
 codespan-reporting = "0.11.1"
 collectable = "0.0.2"
 colored = "2.0.0"
 color-eyre = "0.6.2"
 comfy-table = "6.1.3"
-console-subscriber = "0.2"
+console-subscriber = "0.4.1"
 const-str = "0.5.3"
 count-min-sketch = "0.1.7"
 criterion = { version = "0.5.0", features = [
@@ -364,8 +369,13 @@ hex-literal = "0.3.4"
 http = "1"
 http-body = "1"
 humantime = "2.1.0"
-hyper = "1"
-hyper-util = "0.1.6"
+# Pin home to prevent upgrade to 0.5.12 which incorrectly requires Rust 1.88
+# Must use "=0.5.11" (exact version) to prevent cargo update from upgrading
+# Transitive deps: kube-client (mysop-cli), toolchain_find (test-fuzz)
+# Remove this once home 0.5.13+ is released with fixed rust-version metadata
+home = "=0.5.11"
+hyper = "1.8"
+hyper-util = "0.1.20"
 hyper-rustls = { version = "0.27", default-features = false, features = [
     "webpki-roots",
     "http1",
@@ -559,6 +569,9 @@ zeroize = "1.6.0"
 versions = "4.1.0"
 linked-hash-map = "0.5.6"
 shlex = "1.3.0"
+backtrace = "0.3"
+bigdecimal = { version = "0.4.2", features = ["serde"] }
+blake2 = "0.10"
 
 # Move dependencies
 move-binary-format = { path = "external-crates/move/crates/move-binary-format" }
@@ -691,6 +704,7 @@ mys-rpc-loadgen = { path = "crates/mys-rpc-loadgen" }
 mys-sdk = { path = "crates/mys-sdk" }
 mys-simulator = { path = "crates/mys-simulator" }
 mys-snapshot = { path = "crates/mys-snapshot" }
+mys-social-indexer = { path = "crates/mys-social-indexer" }
 mys-source-validation = { path = "crates/mys-source-validation" }
 mys-source-validation-service = { path = "crates/mys-source-validation-service" }
 mys-storage = { path = "crates/mys-storage" }

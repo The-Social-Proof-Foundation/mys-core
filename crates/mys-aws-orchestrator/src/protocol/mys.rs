@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{
@@ -7,9 +8,9 @@ use std::{
     str::FromStr,
 };
 
-use serde::{Deserialize, Serialize};
 use mys_swarm_config::genesis_config::GenesisConfig;
 use mys_types::{base_types::MysAddress, multiaddr::Multiaddr};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     benchmark::{BenchmarkParameters, BenchmarkType},

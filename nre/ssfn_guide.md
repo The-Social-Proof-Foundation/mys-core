@@ -50,7 +50,7 @@ authority-store-pruning-config:
 
 metrics:
   push-interval-seconds: 60
-  push-url: https://metrics-proxy.mainnet.mys.io:8443/publish/metrics
+  push-url: https://metrics-proxy.mainnet.mysocial.network:8443/publish/metrics
 ```
 
 This coupled with starting your node from a formal snapshot should mean a very small database footprint for ssfns

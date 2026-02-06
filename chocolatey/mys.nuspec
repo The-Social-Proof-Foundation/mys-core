@@ -8,16 +8,16 @@ enclosed in quotation marks, you should use an editor that supports UTF-8, not t
 		<owners>MySocial Foundation</owners>
 		<title>Main MySocial Binary</title>
 		<authors>mys</authors>
-		<projectUrl>https://mys.io/</projectUrl>
+		<projectUrl>https://mysocial.network/</projectUrl>
 		<licenseUrl>https://github.com/MystenLabs/mys/blob/main/LICENSE</licenseUrl>
 		<iconUrl>https://assets-global.website-files.com/6425f546844727ce5fb9e5ab/643775f4a15c9a9e10426daa_Mys_Favicon_256.png</iconUrl>
-		<projectSourceUrl>https://github.com/MystenLabs/mys/</projectSourceUrl>
-		<bugTrackerUrl>https://github.com/MystenLabs/mys/issues</bugTrackerUrl>
+		<projectSourceUrl>https://github.com/the-social-proof-foundation/mys-core/</projectSourceUrl>
+		<bugTrackerUrl>https://github.com/the-social-proof-foundation/mys-core/issues</bugTrackerUrl>
 		<tags>mys</tags>
 		<packageSourceUrl>https://community.chocolatey.org/packages/mys.portable</packageSourceUrl>
 		<summary>MySocial delivers the benefits of Web3 with the ease of Web2</summary>
 		<description>MySocial is the first internet-scale programmable blockchain platform</description>
-		<releaseNotes>See https://github.com/MystenLabs/mys/releases/tag/testnet-v$version$</releaseNotes>
+		<releaseNotes>See https://github.com/the-social-proof-foundation/mys-core/releases/tag/testnet-v$version$</releaseNotes>
 	</metadata>
 	<files>
 		<file src="../tmp/release/mys.exe" target="bin/mys.exe" />

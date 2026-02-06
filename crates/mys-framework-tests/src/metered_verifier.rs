@@ -1,13 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use move_bytecode_verifier_meter::Scope;
-use prometheus::Registry;
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Instant,
-};
 use mys_adapter::adapter::run_metered_move_bytecode_verifier;
 use mys_config::verifier_signing_config::VerifierSigningConfig;
 use mys_framework::BuiltInFramework;
@@ -18,6 +13,12 @@ use mys_types::{
     metrics::BytecodeVerifierMetrics,
 };
 use mys_verifier::meter::MysVerifierMeter;
+use prometheus::Registry;
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 
 fn build(path: &Path) -> MysResult<CompiledPackage> {
     let mut config = mys_move_build::BuildConfig::new_for_testing();

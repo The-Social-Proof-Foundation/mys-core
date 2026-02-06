@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 /// A storable handler for Balances in general. Is used in the `Coin`
@@ -44,6 +45,12 @@ public fun supply_value<T>(supply: &Supply<T>): u64 {
 
 /// Create a new supply for type T.
 public fun create_supply<T: drop>(_: T): Supply<T> {
+    Supply { value: 0 }
+}
+
+/// Create a new supply for type T without requiring a witness parameter.
+/// Used when creating currencies without the one-time witness pattern.
+public(package) fun create_supply_without_witness<T>(): Supply<T> {
     Supply { value: 0 }
 }
 

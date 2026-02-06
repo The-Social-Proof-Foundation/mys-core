@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! This is a module that records Tokio-tracing [span](https://docs.rs/tracing/latest/tracing/span/index.html)

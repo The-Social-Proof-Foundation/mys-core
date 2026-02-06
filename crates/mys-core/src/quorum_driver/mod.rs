@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 mod metrics;
@@ -7,10 +8,6 @@ pub use metrics::*;
 pub mod reconfig_observer;
 
 use arc_swap::ArcSwap;
-use std::fmt::{Debug, Formatter};
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::time::Duration;
 use mys_types::base_types::TransactionDigest;
 use mys_types::committee::{Committee, EpochId};
 use mys_types::messages_grpc::HandleCertificateRequestV3;
@@ -18,6 +15,10 @@ use mys_types::quorum_driver_types::{
     ExecuteTransactionRequestV3, QuorumDriverEffectsQueueResult, QuorumDriverError,
     QuorumDriverResponse, QuorumDriverResult,
 };
+use std::fmt::{Debug, Formatter};
+use std::net::SocketAddr;
+use std::sync::Arc;
+use std::time::Duration;
 use tap::TapFallible;
 use tokio::sync::Semaphore;
 use tokio::time::{sleep_until, Instant};
@@ -31,14 +32,14 @@ use crate::authority_aggregator::{
     ProcessTransactionResult,
 };
 use crate::authority_client::AuthorityAPI;
+use mys_macros::fail_point;
+use mys_types::error::{MysError, MysResult};
+use mys_types::transaction::{CertifiedTransaction, Transaction};
 use mysten_common::sync::notify_read::{NotifyRead, Registration};
 use mysten_metrics::{
     spawn_monitored_task, GaugeGuard, TX_TYPE_SHARED_OBJ_TX, TX_TYPE_SINGLE_WRITER_TX,
 };
 use std::fmt::Write;
-use mys_macros::fail_point;
-use mys_types::error::{MysError, MysResult};
-use mys_types::transaction::{CertifiedTransaction, Transaction};
 
 use self::reconfig_observer::ReconfigObserver;
 

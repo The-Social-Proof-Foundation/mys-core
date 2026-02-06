@@ -5,7 +5,7 @@ description: Avoid unintentionally locking objects with your smart contract logi
 
 Equivocation is when validators send conflicting information about objects on the network. Sometimes this is because of bad actors trying to subvert the integrity of the MySocial network. The network has measures in place to punish validators that might engage in such behavior.
 
-The other source of equivocation does not originate from bad intentions. There are logic traps that smart contract code can inadvertently trigger, like when dealing with [sponsored transactions](https://docs.mys.io/guides/developer/mys-101/sponsor-txn#client-equivocation-risk). The effects of this type of equivocation can lock the objects your code interacts with until the end of the current epoch. This can lead to frustration for you, and more importantly, your users.
+The other source of equivocation does not originate from bad intentions. There are logic traps that smart contract code can inadvertently trigger, like when dealing with [sponsored transactions](https://docs.mysocial.network/guides/developer/mys-101/sponsor-txn#client-equivocation-risk). The effects of this type of equivocation can lock the objects your code interacts with until the end of the current epoch. This can lead to frustration for you, and more importantly, your users.
 
 To avoid double spending, validators lock objects as they validate transactions. An equivocation occurs when an owned object pair (`ObjectId`, `SequenceNumber`) is concurrently used in multiple non-finalized transactions.
 
@@ -45,18 +45,18 @@ Use the `ParallelTransactionExecutor` when you want to process transactions with
 
 If you find your smart contracts unintentionally locking objects, there are some tools you can use to help fix the issue.
 
-### mys-tool
+### myso-tool
 
-You can install the `mys-tool` (https://github.com/MystenLabs/mys/tree/main/crates/mys-tool) utility and use the `locked-object` command to check the locked status of the passed asset on a specific RPC network (`--fullnode-rpc-url` value). If you provide an address, locked-object checks if all the gas objects owned by that address are locked. Pass an object ID to check if that specific object is locked.
+You can install the `myso-tool` (https://github.com/MystenLabs/mys/tree/main/crates/mys-tool) utility and use the `locked-object` command to check the locked status of the passed asset on a specific RPC network (`--fullnode-rpc-url` value). If you provide an address, locked-object checks if all the gas objects owned by that address are locked. Pass an object ID to check if that specific object is locked.
 
 ```sh
-$ cargo run --bin mys-tool
+$ cargo run --bin myso-tool
 ```
 ```sh
-$ mys-tool locked-object --address 0x02a212de6a9dfa3a69e22387acfbafbb1a9e591bd9d636e7895dcfc8de05f331 --fullnode-rpc-url <https://rpc.mainnet.mys.io:443>
+$ myso-tool locked-object --address 0x02a212de6a9dfa3a69e22387acfbafbb1a9e591bd9d636e7895dcfc8de05f331 --fullnode-rpc-url <https://rpc.mainnet.mysocial.network:443>
 ```
 ```sh
-$ mys-tool locked-object --id 0xd4c3ecf5eaa211da58c36495613899e70349f6048baaeca99596f1682e89c837 --fullnode-rpc-url <https://rpc.mainnet.mys.io:443>
+$ myso-tool locked-object --id 0xd4c3ecf5eaa211da58c36495613899e70349f6048baaeca99596f1682e89c837 --fullnode-rpc-url <https://rpc.mainnet.mysocial.network:443>
 ```
 
 :::tip

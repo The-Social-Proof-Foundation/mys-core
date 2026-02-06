@@ -9,7 +9,7 @@
         },
         "enable": true,
         "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
+        "iconColor": "rgb(36, 236, 116)",
         "name": "Annotations & Alerts",
         "target": {
           "limit": 100,

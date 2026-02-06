@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 /// This test exists to make sure that the feature gating for all the code under `tracing`
@@ -35,14 +36,14 @@ fn test_macro_shows_feature_enabled() {
 #[cfg(feature = "tracing")]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_profiler() {
-    use std::fs;
     use mys_replay::ReplayToolCommand;
+    use std::fs;
     use tempfile::tempdir;
 
     let output_dir = tempdir().unwrap();
     let profile_output = output_dir.path().join("profile.json");
 
-    let testnet_url = "https://fullnode.testnet.mys.io:443".to_string();
+    let testnet_url = "https://fullnode.testnet.mysocial.network:443".to_string();
     let tx_digest = "98KxVD14f2JgceKx4X27HaVAA2YGJ3Aazf6Y4tabpHa8".to_string();
 
     let cmd = ReplayToolCommand::ProfileTransaction {
@@ -60,7 +61,7 @@ async fn test_profiler() {
 
     // check that the profile was written
     let mut found = false;
-    for entry in fs::read_dir(output_dir.into_path()).unwrap().flatten() {
+    for entry in fs::read_dir(output_dir.keep()).unwrap().flatten() {
         if entry
             .file_name()
             .into_string()

@@ -1,12 +1,13 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::benchmark_context::BenchmarkContext;
 use crate::command::WorkloadKind;
 use crate::tx_generator::{MoveTxGenerator, PackagePublishTxGenerator, TxGenerator};
+use mys_test_transaction_builder::PublishData;
 use std::path::PathBuf;
 use std::sync::Arc;
-use mys_test_transaction_builder::PublishData;
 
 #[derive(Clone)]
 pub struct Workload {

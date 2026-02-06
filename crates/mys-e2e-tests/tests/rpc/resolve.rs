@@ -1,8 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use prost_types::FieldMask;
-use shared_crypto::intent::Intent;
 use mys_keys::keystore::AccountKeystore;
 use mys_macros::sim_test;
 use mys_rpc_api::proto::node::v2alpha::ResolveTransactionRequest;
@@ -15,6 +14,8 @@ use mys_sdk_types::Command;
 use mys_sdk_types::TransactionExpiration;
 use mys_types::base_types::MysAddress;
 use mys_types::effects::TransactionEffectsAPI;
+use prost_types::FieldMask;
+use shared_crypto::intent::Intent;
 use test_cluster::TestClusterBuilder;
 
 fn build_resolve_request(

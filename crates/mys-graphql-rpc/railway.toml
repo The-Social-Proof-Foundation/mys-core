@@ -1,0 +1,25 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/mys-graphql-rpc/Dockerfile"
+buildCommand = "cargo build --release --bin mys-graphql-rpc"
+
+[deploy]
+startCommand = "mys-graphql-rpc start-server --host 0.0.0.0 --port 8080 --db-url $DATABASE_URL --node-rpc-url $RPC_URL"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+
+[deploy.envVars]
+PORT = { sync = false }
+DATABASE_URL = { sync = false }
+RPC_URL = { sync = false }
+
+# Explicitly tell Railway this is a Rust project
+[build.env]
+NIXPACKS_LANGUAGE = "rust"
+NIXPACKS_BUILD_CMD = "cargo build --release --bin mys-graphql-rpc"
+
+[variables]
+# Logging configuration  
+RUST_LOG = "info,mys_graphql_rpc=debug"
+RUST_BACKTRACE = "1" 

@@ -1,10 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_graphql::*;
 use mys_types::effects::{IDOperation, ObjectChange as NativeObjectChange};
 
-use super::{object::Object, mys_address::MysAddress};
+use super::{mys_address::MysAddress, object::Object};
 
 pub(crate) struct ObjectChange {
     pub native: NativeObjectChange,

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
@@ -91,7 +92,7 @@ export default function Home() {
           <HomeCard title="References" aux>
             <Link
               className={styles.cardLink}
-              to="https://sdk.mystenlabs.com/dapp-kit?ref=blog.mys.io"
+              to="https://sdk.mystenlabs.com/dapp-kit?ref=blog.mysocial.network"
             >
               MySocial dApp Kit
             </Link>
@@ -118,7 +119,7 @@ export default function Home() {
             >
               MySocial ecosystem directory
             </Link>
-            <Link className={styles.cardLink} to="https://blog.mys.io/">
+            <Link className={styles.cardLink} to="https://blog.mysocial.network/">
               MySocial blog
             </Link>
             <Link

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::metrics::BridgeIndexerMetrics;
@@ -11,15 +12,15 @@ use anyhow::Result;
 use futures::StreamExt;
 use mys_types::digests::TransactionDigest;
 
-use std::time::Duration;
 use mys_bridge::events::{
     MoveTokenDepositedEvent, MoveTokenTransferApproved, MoveTokenTransferClaimed,
 };
+use std::time::Duration;
 
 use mys_json_rpc_types::MysTransactionBlockEffectsAPI;
 
-use mysten_metrics::metered_channel::{Receiver, ReceiverStream};
 use mys_types::BRIDGE_ADDRESS;
+use mysten_metrics::metered_channel::{Receiver, ReceiverStream};
 use tracing::{error, info};
 
 pub(crate) const COMMIT_BATCH_SIZE: usize = 10;

@@ -1,15 +1,16 @@
 // Copyright (c) 2021, Facebook, Inc. and its affiliates
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::*;
 use crate::base_types::random_object_ref;
 use crate::committee::Committee;
 use crate::crypto::bcs_signable_test::{get_obligation_input, Foo};
-use crate::crypto::Secp256k1MysSignature;
 use crate::crypto::MysKeyPair;
 use crate::crypto::MysSignature;
 use crate::crypto::MysSignatureInner;
+use crate::crypto::Secp256k1MysSignature;
 use crate::crypto::VerificationObligation;
 use crate::crypto::{
     get_key_pair, AccountKeyPair, AuthorityKeyPair, AuthorityPublicKeyBytes,

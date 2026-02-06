@@ -23,9 +23,26 @@ Move.lock
 !crates/mys-framework/packages/move-stdlib/Move.lock
 !crates/mys-framework/packages/mys-framework/Move.lock
 !crates/mys-framework/packages/mys-system/Move.lock
-!crates/mys-framework/packages/deepbook/Move.lock
+!crates/mys-framework/packages/orderbook/Move.lock
 .trace
 .coverage_map.mvcov
+
+# Genesis files
+genesis/files/*
+genesis/*
+genesis/genesis_config
+genesis2/files/*
+genesis2/*
+
+# Bridge
+bridge/evm/artifacts
+bridge/evm/cache
+bridge/evm/dependencies
+bridge/evm/out
+bridge/evm/.env
+# Bridge config files (may contain sensitive data)
+crates/mys-bridge/bridge-config.yaml
+crates/mys-bridge/bridge-config-validator-*.yaml
 
 # Thumbnails
 ._*
@@ -75,3 +92,27 @@ docs/content/references/framework/**
 lcov.info
 
 .sparse
+
+# Added by Claude Task Master
+# Logs
+logs
+*.log
+dev-debug.log
+# Dependency directories
+node_modules/
+# Environment variables
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+# Task files
+tasks.json
+tasks/
+
+# Docker build artifacts
+docker-build/

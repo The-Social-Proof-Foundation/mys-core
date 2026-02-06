@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 // This file contains tests that detect changes in Mys configs.
@@ -18,9 +19,6 @@
 
 use fastcrypto::traits::KeyPair;
 use insta::assert_yaml_snapshot;
-use rand::rngs::StdRng;
-use rand::SeedableRng;
-use std::num::NonZeroUsize;
 use mys_config::genesis::{GenesisCeremonyParameters, TokenDistributionScheduleBuilder};
 use mys_config::node::{DEFAULT_COMMISSION_RATE, DEFAULT_VALIDATOR_GAS_PRICE};
 use mys_genesis_builder::validator_info::ValidatorInfo;
@@ -29,9 +27,12 @@ use mys_swarm_config::genesis_config::GenesisConfig;
 use mys_types::base_types::MysAddress;
 use mys_types::crypto::{
     generate_proof_of_possession, get_key_pair_from_rng, AccountKeyPair, AuthorityKeyPair,
-    NetworkKeyPair, MysKeyPair,
+    MysKeyPair, NetworkKeyPair,
 };
 use mys_types::multiaddr::Multiaddr;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
+use std::num::NonZeroUsize;
 
 #[test]
 #[cfg_attr(msim, ignore)]
@@ -106,9 +107,9 @@ fn populated_genesis_snapshot_matches() {
 #[test]
 #[cfg_attr(msim, ignore)]
 fn network_config_snapshot_matches() {
+    use mys_swarm_config::network_config_builder::ConfigBuilder;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
     use std::path::PathBuf;
-    use mys_swarm_config::network_config_builder::ConfigBuilder;
 
     let temp_dir = tempfile::tempdir().unwrap();
     let committee_size = 7;

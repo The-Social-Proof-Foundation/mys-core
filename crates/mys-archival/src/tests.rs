@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::reader::{ArchiveReader, ArchiveReaderMetrics};
@@ -6,6 +7,13 @@ use crate::writer::ArchiveWriter;
 use crate::{read_manifest, verify_archive_with_local_store, write_manifest, Manifest};
 use anyhow::{anyhow, Context, Result};
 use more_asserts as ma;
+use mys_config::node::ArchiveReaderConfig;
+use mys_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
+use mys_storage::object_store::util::path_to_filesystem;
+use mys_storage::{FileCompression, StorageFormat};
+use mys_swarm_config::test_utils::{empty_contents, CommitteeFixture};
+use mys_types::messages_checkpoint::{VerifiedCheckpoint, VerifiedCheckpointContents};
+use mys_types::storage::{ReadStore, SharedInMemoryStore, SingleCheckpointSharedInMemoryStore};
 use object_store::DynObjectStore;
 use prometheus::Registry;
 use std::fs;
@@ -16,13 +24,6 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use std::time::Duration;
-use mys_config::node::ArchiveReaderConfig;
-use mys_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
-use mys_storage::object_store::util::path_to_filesystem;
-use mys_storage::{FileCompression, StorageFormat};
-use mys_swarm_config::test_utils::{empty_contents, CommitteeFixture};
-use mys_types::messages_checkpoint::{VerifiedCheckpoint, VerifiedCheckpointContents};
-use mys_types::storage::{ReadStore, SharedInMemoryStore, SingleCheckpointSharedInMemoryStore};
 use tempfile::tempdir;
 
 struct TestState {
@@ -40,7 +41,7 @@ struct TestState {
 fn temp_dir() -> std::path::PathBuf {
     tempdir()
         .expect("Failed to open temporary directory")
-        .into_path()
+        .keep()
 }
 
 async fn write_new_checkpoints_to_store(

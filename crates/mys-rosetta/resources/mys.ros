@@ -1,7 +1,7 @@
 transfer(10){
   transfer{
     transfer.network = {"network":"{{mys.env}}", "blockchain":"mys"};
-    currency = {"symbol":"MYS", "decimals":9};
+    currency = {"symbol":"MySo", "decimals":9};
     sender = find_balance({
       "minimum_balance":{
         "value": "100000",

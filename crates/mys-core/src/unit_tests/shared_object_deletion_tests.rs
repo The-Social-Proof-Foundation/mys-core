@@ -1,11 +1,12 @@
 // Copyright (c) 2021, Facebook, Inc. and its affiliates
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::sync::Arc;
 
 use mys_types::{
-    base_types::{FullObjectID, ObjectID, ObjectRef, SequenceNumber, MysAddress},
+    base_types::{FullObjectID, MysAddress, ObjectID, ObjectRef, SequenceNumber},
     crypto::{get_key_pair, AccountKeyPair},
     effects::TransactionEffects,
     execution_status::{CommandArgumentError, ExecutionFailureStatus},

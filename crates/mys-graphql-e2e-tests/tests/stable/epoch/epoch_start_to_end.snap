@@ -82,7 +82,7 @@ Response: {
       },
       "systemStakeSubsidy": {
         "balance": "9949400000000000000",
-        "currentDistributionAmount": "1000000000000000"
+        "currentApyBps": "2000"
       },
       "checkpoints": {
         "nodes": [
@@ -155,7 +155,7 @@ Response: {
       },
       "systemStakeSubsidy": {
         "balance": "9949400000000000000",
-        "currentDistributionAmount": "1000000000000000"
+        "currentApyBps": "2000"
       },
       "checkpoints": {
         "nodes": [
@@ -216,7 +216,7 @@ Response: {
       },
       "systemStakeSubsidy": {
         "balance": "9949400000000000000",
-        "currentDistributionAmount": "1000000000000000"
+        "currentApyBps": "2000"
       },
       "checkpoints": {
         "nodes": [

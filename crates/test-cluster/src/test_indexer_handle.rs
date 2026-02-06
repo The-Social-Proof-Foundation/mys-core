@@ -1,9 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
-use std::path::PathBuf;
-use std::time::Duration;
 use mys_config::local_ip_utils::new_local_tcp_socket_for_testing_string;
 use mys_indexer::test_utils::{
     start_indexer_jsonrpc_for_testing, start_indexer_writer_for_testing,
@@ -11,6 +10,8 @@ use mys_indexer::test_utils::{
 use mys_json_rpc_api::ReadApiClient;
 use mys_pg_db::temp::TempDb;
 use mys_sdk::{MysClient, MysClientBuilder};
+use std::path::PathBuf;
+use std::time::Duration;
 use tempfile::TempDir;
 use tokio::time::sleep;
 
@@ -45,6 +46,7 @@ impl IndexerHandle {
             None,
             None,
             Some(data_ingestion_path.clone()),
+            None,
             None,
             None,
             None,

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -13,8 +14,8 @@ use diesel::{
     row::NamedRow,
     ExpressionMethods, QueryDsl,
 };
-use serde::{Deserialize, Serialize};
 use mys_indexer::{models::transactions::StoredTransaction, schema::transactions};
+use serde::{Deserialize, Serialize};
 
 use super::Query;
 

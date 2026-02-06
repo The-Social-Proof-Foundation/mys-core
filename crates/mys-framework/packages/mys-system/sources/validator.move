@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 #[allow(unused_const)]
@@ -610,8 +611,8 @@ module mys_system::validator {
         self.commission_rate
     }
 
-    public fun pool_token_exchange_rate_at_epoch(self: &Validator, epoch: u64): PoolTokenExchangeRate {
-        self.staking_pool.pool_token_exchange_rate_at_epoch(epoch)
+    public fun pool_social_proof_token_rate_at_epoch(self: &Validator, epoch: u64): PoolTokenExchangeRate {
+        self.staking_pool.pool_social_proof_token_rate_at_epoch(epoch)
     }
 
     public fun staking_pool_id(self: &Validator): ID {

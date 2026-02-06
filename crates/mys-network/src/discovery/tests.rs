@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::*;
@@ -7,8 +8,8 @@ use anemo::types::PeerAffinity;
 use anemo::Result;
 use fastcrypto::ed25519::Ed25519PublicKey;
 use futures::stream::FuturesUnordered;
-use std::collections::HashSet;
 use mys_config::p2p::AllowlistedPeer;
+use std::collections::HashSet;
 use tokio::time::timeout;
 
 #[tokio::test]

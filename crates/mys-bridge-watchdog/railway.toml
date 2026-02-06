@@ -1,0 +1,45 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "../crates/mys-bridge/Dockerfile"
+
+[deploy]
+startCommand = "cargo run --release --bin mys-bridge-watchdog -- --config-path /app/watchdog-config.yaml"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+
+[variables]
+# Logging configuration
+RUST_LOG = "info,mys_bridge_watchdog=debug"
+
+# Bridge Node URLs to monitor (your 3 bridge nodes)
+BRIDGE_NODE_1_URL = "https://mys-bridge-validator-1.up.railway.app"
+BRIDGE_NODE_2_URL = "https://mys-bridge-validator-2.up.railway.app"
+BRIDGE_NODE_3_URL = "https://mys-bridge-validator-3.up.railway.app"
+
+# Mys RPC URL for querying bridge status
+MYS_RPC_URL = "http://fullnode.testnet.mysocial.network:8082"
+
+# ETH RPC URL for checking vault balances
+ETH_RPC_URL = "https://sepolia.base.org"
+
+# Bridge contract addresses on Base Sepolia
+ETH_BRIDGE_PROXY_ADDRESS = "0x196D0E3f7b50F29531d1bd006AB3D4c2CB731DC6"
+BRIDGE_VAULT_ADDRESS = "0xBCD346797E5DEc586B0c4Fa19b82a4E2cAd5DD67"
+
+# Monitoring intervals (in seconds)
+ETH_VAULT_CHECK_INTERVAL = "300"  # 5 minutes
+MYS_BRIDGE_STATUS_CHECK_INTERVAL = "60"  # 1 minute
+ETH_BRIDGE_STATUS_CHECK_INTERVAL = "120"  # 2 minutes
+
+# Alert thresholds
+MIN_VAULT_BALANCE_ETH = "0.1"  # Minimum ETH balance in vault
+MAX_BRIDGE_DOWN_TIME = "300"   # Max seconds bridge can be down before alert
+
+# Notification settings (optional)
+# SLACK_WEBHOOK_URL = ""
+# DISCORD_WEBHOOK_URL = ""
+# TELEGRAM_BOT_TOKEN = "8452114998:AAGj98h0ZNDU3-wQOtvEWXgoR_p3J8nXjFs"
+# TELEGRAM_CHAT_ID = "mysocial_infrastructure_bot"
+
+# Database for storing monitoring history (optional)
+# DATABASE_URL = "${{Postgres.DATABASE_URL}}"

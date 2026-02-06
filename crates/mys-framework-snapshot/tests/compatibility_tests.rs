@@ -1,17 +1,18 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 mod compatibility_tests {
     use move_package::source_package::{
         manifest_parser::parse_move_manifest_from_file, parsed_manifest::SourceManifest,
     };
-    use std::collections::BTreeMap;
-    use std::path::Path;
     use mys_framework::{compare_system_package, BuiltInFramework};
     use mys_framework_snapshot::{load_bytecode_snapshot, load_bytecode_snapshot_manifest};
     use mys_move_build::published_at_property;
     use mys_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
     use mys_types::execution_config_utils::to_binary_config;
+    use std::collections::BTreeMap;
+    use std::path::Path;
 
     #[tokio::test]
     async fn test_framework_compatibility() {

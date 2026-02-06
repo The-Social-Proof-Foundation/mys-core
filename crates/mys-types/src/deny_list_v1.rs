@@ -1,7 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::base_types::{SequenceNumber, MysAddress};
+use crate::base_types::{MysAddress, SequenceNumber};
 use crate::collection_types::{Bag, Table, VecSet};
 use crate::dynamic_field::get_dynamic_field_from_store;
 use crate::error::{UserInputError, UserInputResult};

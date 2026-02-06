@@ -1,8 +1,9 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use std::fmt::Write;
 
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, future::Future, str::FromStr, sync::Arc};
 
 use async_graphql::dataloader::{DataLoader, Loader};
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,7 @@ use crate::{
 const QUERY_FRAGMENT: &str =
     "fragment RECORD_VALUES on DynamicField { value { ... on MoveValue { bcs } } }";
 
+#[derive(Clone)]
 pub(crate) struct ExternalNamesLoader {
     client: reqwest::Client,
     config: MoveRegistryConfig,
@@ -82,7 +84,6 @@ impl MoveRegistryDataLoader {
     }
 }
 
-#[async_trait::async_trait]
 impl Loader<Name> for ExternalNamesLoader {
     type Value = AppRecord;
     type Error = Error;
@@ -91,64 +92,72 @@ impl Loader<Name> for ExternalNamesLoader {
     /// This is part of the data loader, so all queries are bulked-up to the maximum of {config.page_limit}.
     /// We handle the cases where individual queries fail, to ensure that a failed query cannot affect
     /// a successful one.
-    async fn load(&self, keys: &[Name]) -> Result<HashMap<Name, AppRecord>, Error> {
-        let Some(api_url) = self.config.external_api_url.as_ref() else {
-            return Err(Error::MoveNameRegistry(
-                MoveRegistryError::ExternalApiUrlUnavailable,
-            ));
-        };
+    fn load(
+        &self,
+        keys: &[Name],
+    ) -> impl Future<Output = Result<HashMap<Name, AppRecord>, Error>> + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            let Some(api_url) = self_clone.config.external_api_url.as_ref() else {
+                return Err(Error::MoveNameRegistry(
+                    MoveRegistryError::ExternalApiUrlUnavailable,
+                ));
+            };
 
-        let (query, mapping) = self.construct_names_graphql_query(keys);
+            let (query, mapping) = self_clone.construct_names_graphql_query(&keys_vec);
 
-        let request_body = GraphQLRequest {
-            query,
-            variables: serde_json::Value::Null,
-        };
+            let request_body = GraphQLRequest {
+                query,
+                variables: serde_json::Value::Null,
+            };
 
-        let res = {
-            let _timer_guard = self
-                .metrics
-                .app_metrics
-                .external_mvr_resolution_latency
-                .start_timer();
+            let res = {
+                let _timer_guard = self_clone
+                    .metrics
+                    .app_metrics
+                    .external_mvr_resolution_latency
+                    .start_timer();
 
-            self.client
-                .post(api_url)
-                .json(&request_body)
-                .send()
-                .await
-                .map_err(|e| {
-                    Error::MoveNameRegistry(MoveRegistryError::FailedToQueryExternalApi(
-                        e.to_string(),
-                    ))
-                })?
-        };
+                self_clone
+                    .client
+                    .post(api_url)
+                    .json(&request_body)
+                    .send()
+                    .await
+                    .map_err(|e| {
+                        Error::MoveNameRegistry(MoveRegistryError::FailedToQueryExternalApi(
+                            e.to_string(),
+                        ))
+                    })?
+            };
 
-        if !res.status().is_success() {
-            return Err(Error::MoveNameRegistry(
-                MoveRegistryError::FailedToQueryExternalApi(format!(
-                    "Status code: {}",
-                    res.status()
-                )),
-            ));
+            if !res.status().is_success() {
+                return Err(Error::MoveNameRegistry(
+                    MoveRegistryError::FailedToQueryExternalApi(format!(
+                        "Status code: {}",
+                        res.status()
+                    )),
+                ));
+            }
+
+            let response_json: GraphQLResponse<Owner> = res.json().await.map_err(|e| {
+                Error::MoveNameRegistry(MoveRegistryError::FailedToParseExternalResponse(
+                    e.to_string(),
+                ))
+            })?;
+
+            let names = response_json.data.owner.names;
+
+            let results = HashMap::from_iter(mapping.into_iter().filter_map(|(k, idx)| {
+                let bcs = names.get(&fetch_key(&idx))?.as_ref()?;
+                let Base64(bytes) = Base64::from_str(&bcs.value.bcs).ok()?;
+                let app_record: AppRecord = bcs::from_bytes(&bytes).ok()?;
+                Some((k, app_record))
+            }));
+
+            Ok(results)
         }
-
-        let response_json: GraphQLResponse<Owner> = res.json().await.map_err(|e| {
-            Error::MoveNameRegistry(MoveRegistryError::FailedToParseExternalResponse(
-                e.to_string(),
-            ))
-        })?;
-
-        let names = response_json.data.owner.names;
-
-        let results = HashMap::from_iter(mapping.into_iter().filter_map(|(k, idx)| {
-            let bcs = names.get(&fetch_key(&idx))?.as_ref()?;
-            let Base64(bytes) = Base64::from_str(&bcs.value.bcs).ok()?;
-            let app_record: AppRecord = bcs::from_bytes(&bytes).ok()?;
-            Some((k, app_record))
-        }));
-
-        Ok(results)
     }
 }
 

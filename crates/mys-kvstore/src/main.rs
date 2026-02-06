@@ -1,9 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use anyhow::Result;
-use prometheus::Registry;
 use mys_data_ingestion_core::{DataIngestionMetrics, IndexerExecutor, ReaderOptions, WorkerPool};
 use mys_kvstore::{BigTableClient, BigTableProgressStore, KvWorker};
+use prometheus::Registry;
 use telemetry_subscribers::TelemetryConfig;
 use tokio::sync::oneshot;
 
@@ -33,8 +34,8 @@ async fn main() -> Result<()> {
     executor.register(worker_pool).await?;
     executor
         .run(
-            tempfile::tempdir()?.into_path(),
-            Some(format!("https://checkpoints.{}.mys.io", network)),
+            tempfile::tempdir()?.keep(),
+            Some(format!("https://checkpoints.{}.mysocial.network", network)),
             vec![],
             ReaderOptions::default(),
             exit_receiver,

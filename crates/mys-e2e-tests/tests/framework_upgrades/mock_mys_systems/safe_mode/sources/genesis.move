@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 module mys_system::genesis {
@@ -41,7 +42,7 @@ module mys_system::genesis {
         epoch_duration_ms: u64,
 
         stake_subsidy_start_epoch: u64,
-        stake_subsidy_initial_distribution_amount: u64,
+        stake_subsidy_initial_apy_bps: u64,
         stake_subsidy_period_length: u64,
         stake_subsidy_decrease_rate: u16,
 

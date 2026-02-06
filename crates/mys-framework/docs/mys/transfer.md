@@ -21,15 +21,15 @@ title: Module `mys::transfer`
 -  [Function `receive_impl`](#mys_transfer_receive_impl)
 
 
-<pre><code><b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
+<pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
+<b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
+<b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
+<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
-<b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
-<b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
-<b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
 </code></pre>
 
 
@@ -137,7 +137,7 @@ Transfer ownership of <code>obj</code> to <code>recipient</code>. <code>obj</cod
 which (in turn) ensures that <code>obj</code> has a globally unique ID. Note that if the recipient
 address represents an object ID, the <code>obj</code> sent will be inaccessible after the transfer
 (though they will be retrievable at a future date once new features are added).
-This function has custom rules performed by the MySocial Move bytecode verifier that ensures
+This function has custom rules performed by the Mys Move bytecode verifier that ensures
 that <code>T</code> is an object defined in the module where <code><a href="../mys/transfer.md#mys_transfer">transfer</a></code> is invoked. Use
 <code><a href="../mys/transfer.md#mys_transfer_public_transfer">public_transfer</a></code> to transfer an object with <code>store</code> outside of its module.
 
@@ -195,7 +195,7 @@ The object must have <code>store</code> to be transferred outside of its module.
 
 Freeze <code>obj</code>. After freezing <code>obj</code> becomes immutable and can no longer be transferred or
 mutated.
-This function has custom rules performed by the MySocial Move bytecode verifier that ensures
+This function has custom rules performed by the Mys Move bytecode verifier that ensures
 that <code>T</code> is an object defined in the module where <code><a href="../mys/transfer.md#mys_transfer_freeze_object">freeze_object</a></code> is invoked. Use
 <code><a href="../mys/transfer.md#mys_transfer_public_freeze_object">public_freeze_object</a></code> to freeze an object with <code>store</code> outside of its module.
 
@@ -253,7 +253,7 @@ Turn the given object into a mutable shared object that everyone can access and 
 This is irreversible, i.e. once an object is shared, it will stay shared forever.
 Aborts with <code><a href="../mys/transfer.md#mys_transfer_ESharedNonNewObject">ESharedNonNewObject</a></code> of the object being shared was not created in this
 transaction. This restriction may be relaxed in the future.
-This function has custom rules performed by the MySocial Move bytecode verifier that ensures
+This function has custom rules performed by the Mys Move bytecode verifier that ensures
 that <code>T</code> is an object defined in the module where <code><a href="../mys/transfer.md#mys_transfer_share_object">share_object</a></code> is invoked. Use
 <code><a href="../mys/transfer.md#mys_transfer_public_share_object">public_share_object</a></code> to share an object with <code>store</code> outside of its module.
 
@@ -312,7 +312,7 @@ The object must have <code>store</code> to be shared outside of its module.
 Given mutable (i.e., locked) access to the <code>parent</code> and a <code><a href="../mys/transfer.md#mys_transfer_Receiving">Receiving</a></code> argument
 referencing an object of type <code>T</code> owned by <code>parent</code> use the <code>to_receive</code>
 argument to receive and return the referenced owned object of type <code>T</code>.
-This function has custom rules performed by the MySocial Move bytecode verifier that ensures
+This function has custom rules performed by the Mys Move bytecode verifier that ensures
 that <code>T</code> is an object defined in the module where <code><a href="../mys/transfer.md#mys_transfer_receive">receive</a></code> is invoked. Use
 <code><a href="../mys/transfer.md#mys_transfer_public_receive">public_receive</a></code> to receivne an object with <code>store</code> outside of its module.
 

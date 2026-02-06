@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::exchange_rates_task::TriggerExchangeRatesTask;
@@ -29,9 +30,10 @@ use crate::{
         timeout::Timeout,
     },
     server::version::set_version_middleware,
-    types::query::{Query, MysGraphQLSchema},
+    types::query::{MysGraphQLSchema, Query},
 };
 use async_graphql::extensions::ApolloTracing;
+#[cfg(feature = "tracing")]
 use async_graphql::extensions::Tracing;
 use async_graphql::EmptySubscription;
 use async_graphql::{extensions::ExtensionFactory, Schema, SchemaBuilder};
@@ -49,6 +51,10 @@ use axum_extra::headers::ContentLength;
 use axum_extra::TypedHeader;
 use chrono::Utc;
 use http::{HeaderValue, Method, Request};
+use mys_graphql_rpc_headers::LIMITS_HEADER;
+use mys_indexer::db::check_db_migration_consistency;
+use mys_package_resolver::{PackageStoreWithLruCache, Resolver};
+use mys_sdk::MysClientBuilder;
 use mysten_metrics::spawn_monitored_task;
 use mysten_network::callback::{CallbackLayer, MakeCallbackHandler, ResponseHandler};
 use std::convert::Infallible;
@@ -56,10 +62,6 @@ use std::net::TcpStream;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{any::Any, net::SocketAddr, time::Instant};
-use mys_graphql_rpc_headers::LIMITS_HEADER;
-use mys_indexer::db::check_db_migration_consistency;
-use mys_package_resolver::{PackageStoreWithLruCache, Resolver};
-use mys_sdk::MysClientBuilder;
 use tokio::join;
 use tokio::sync::OnceCell;
 use tokio_util::sync::CancellationToken;
@@ -274,8 +276,8 @@ impl ServerBuilder {
 
     pub fn layer<L>(mut self, layer: L) -> Self
     where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>> + Clone + Send + 'static,
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request<Body>> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<Body>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<Body>>>::Future: Send + 'static,
@@ -494,6 +496,7 @@ impl ServerBuilder {
             builder = builder.extension(Timeout);
         }
 
+        #[cfg(feature = "tracing")]
         if config.internal_features.tracing {
             builder = builder.extension(Tracing);
         }
@@ -692,13 +695,13 @@ pub mod tests {
         extensions::{Extension, ExtensionContext, NextExecute},
         Request, Response, Variables,
     };
-    use serde_json::json;
-    use std::sync::Arc;
-    use std::time::Duration;
     use mys_pg_db::temp::get_available_port;
     use mys_sdk::MysClient;
     use mys_types::digests::get_mainnet_chain_identifier;
     use mys_types::transaction::TransactionData;
+    use serde_json::json;
+    use std::sync::Arc;
+    use std::time::Duration;
     use uuid::Uuid;
 
     /// Prepares a schema for tests dealing with extensions. Returns a `ServerBuilder` that can be

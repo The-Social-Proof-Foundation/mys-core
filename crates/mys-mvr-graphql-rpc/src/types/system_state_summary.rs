@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{
@@ -80,11 +81,16 @@ impl SystemStateSummary {
         Some(StakeSubsidy {
             balance: Some(BigInt::from(self.native.stake_subsidy_balance)),
             distribution_counter: Some(self.native.stake_subsidy_distribution_counter),
-            current_distribution_amount: Some(BigInt::from(
-                self.native.stake_subsidy_current_distribution_amount,
+            current_apy_bps: Some(BigInt::from(
+                self.native.stake_subsidy_current_apy_bps,
             )),
             period_length: Some(self.native.stake_subsidy_period_length),
             decrease_rate: Some(self.native.stake_subsidy_decrease_rate as u64),
+            max_apy_bps: Some(BigInt::from(self.native.stake_subsidy_max_apy_bps)),
+            min_apy_bps: Some(BigInt::from(self.native.stake_subsidy_min_apy_bps)),
+            intended_duration_years: Some(BigInt::from(
+                self.native.stake_subsidy_intended_duration_years,
+            )),
         })
     }
 }

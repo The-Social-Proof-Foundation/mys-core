@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 pub use crate::json_rpc_error::Error as JsonRpcError;
@@ -33,4 +34,6 @@ pub enum Error {
     },
     #[error("Insufficient fund for address [{address}], requested amount: {amount}")]
     InsufficientFund { address: MysAddress, amount: u128 },
+    #[error("Invalid signature")]
+    InvalidSignature,
 }

@@ -1,23 +1,18 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
-use clap::*;
+use clap::Parser;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use ethers::types::Address as EthAddress;
 use prometheus::Registry;
 use std::collections::HashSet;
 use std::env;
-use std::net::IpAddr;
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use mys_bridge::eth_client::EthClient;
-use mys_bridge::metered_eth_provider::{new_metered_eth_provider, MeteredEthHttpProvier};
-use mys_bridge::mys_bridge_watchdog::Observable;
-use mys_bridge::mys_client::MysBridgeClient;
-use mys_bridge::utils::get_eth_contract_addresses;
-use mys_config::Config;
 use tokio::task::JoinHandle;
 use tracing::info;
 
@@ -25,24 +20,32 @@ use mysten_metrics::metered_channel::channel;
 use mysten_metrics::spawn_logged_monitored_task;
 use mysten_metrics::start_prometheus_server;
 
+use mys_bridge::eth_client::EthClient;
+use mys_bridge::metered_eth_provider::{new_metered_eth_provider, MeteredEthHttpProvier};
 use mys_bridge::metrics::BridgeMetrics;
 use mys_bridge::mys_bridge_watchdog::{
     eth_bridge_status::EthBridgeStatus,
     eth_vault_balance::{EthereumVaultBalance, VaultAsset},
     metrics::WatchdogMetrics,
     mys_bridge_status::MysBridgeStatus,
-    BridgeWatchDog,
+    BridgeWatchDog, Observable,
 };
+use mys_bridge::mys_client::MysBridgeClient;
+use mys_bridge::utils::get_eth_contract_addresses;
 use mys_bridge_indexer::config::IndexerConfig;
 use mys_bridge_indexer::metrics::BridgeIndexerMetrics;
-use mys_bridge_indexer::postgres_manager::{get_connection_pool, read_mys_progress_store};
 use mys_bridge_indexer::mys_transaction_handler::handle_mys_transactions_loop;
 use mys_bridge_indexer::mys_transaction_queries::start_mys_tx_polling_task;
+use mys_bridge_indexer::postgres_manager::{get_connection_pool, read_mys_progress_store};
 use mys_bridge_indexer::{
     create_eth_subscription_indexer, create_eth_sync_indexer, create_mys_indexer,
 };
+use mys_config::Config;
 use mys_data_ingestion_core::DataIngestionMetrics;
+use mys_pg_db::{Db, DbArgs};
 use mys_sdk::MysClientBuilder;
+
+const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/migrations");
 
 #[derive(Parser, Clone, Debug)]
 struct Args {
@@ -83,6 +86,16 @@ async fn main() -> Result<()> {
 
     let db_url = config.db_url.clone();
     let pool = get_connection_pool(db_url.clone()).await;
+
+    // Run database migrations
+    info!("Running database migrations...");
+    let db_args = DbArgs {
+        database_url: db_url.parse()?,
+        ..Default::default()
+    };
+    let db = Db::for_write(db_args).await?;
+    db.run_migrations(MIGRATIONS).await?;
+    info!("Database migrations completed successfully");
 
     let eth_client: Arc<EthClient<MeteredEthHttpProvier>> = Arc::new(
         EthClient::<MeteredEthHttpProvier>::new(

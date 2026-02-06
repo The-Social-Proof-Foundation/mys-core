@@ -1,10 +1,9 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_trait::async_trait;
 use futures::FutureExt;
-use std::collections::HashMap;
-use std::sync::Arc;
 use mys_protocol_config::ProtocolConfig;
 use mys_test_transaction_builder::TestTransactionBuilder;
 use mys_types::base_types::{
@@ -23,6 +22,8 @@ use mys_types::messages_checkpoint::{
     SignedCheckpointSummary,
 };
 use mys_types::transaction::Transaction;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use mys_storage::http_key_value_store::*;
 use mys_storage::key_value_store::*;
@@ -366,11 +367,11 @@ mod simtests {
     use super::*;
     use axum::routing::get;
     use axum::{body::Body, extract::Request, extract::State, response::Response};
+    use mys_macros::sim_test;
+    use mys_simulator::configs::constant_latency_ms;
     use std::net::SocketAddr;
     use std::sync::Mutex;
     use std::time::{Duration, Instant};
-    use mys_macros::sim_test;
-    use mys_simulator::configs::constant_latency_ms;
     use tracing::info;
 
     async fn svc(

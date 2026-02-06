@@ -1,21 +1,22 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::str::FromStr;
 
 use async_graphql::ScalarType;
 use move_core_types::language_storage::StructTag;
-use once_cell::sync::Lazy;
-use regex::Regex;
-use serde::{Deserialize, Serialize};
 use mys_json_rpc::name_service::{validate_label, Domain};
 use mys_types::{
-    base_types::{ObjectID, MysAddress},
+    base_types::{MysAddress, ObjectID},
     collection_types::VecMap,
     dynamic_field::Field,
     id::ID,
     object::MoveObject as NativeMoveObject,
 };
+use once_cell::sync::Lazy;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     config::{MoveRegistryConfig, MOVE_REGISTRY_MODULE, MOVE_REGISTRY_TYPE},

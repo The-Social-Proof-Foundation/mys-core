@@ -32,14 +32,8 @@ More entry functions might be added in the future depending on the use cases.
 -  [Function `add_internal`](#mys_display_add_internal)
 
 
-<pre><code><b>use</b> <a href="../std/address.md#std_address">std::address</a>;
-<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
-<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
-<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
-<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
-<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
-<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/event.md#mys_event">mys::event</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
@@ -48,6 +42,13 @@ More entry functions might be added in the future depending on the use cases.
 <b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/vec_map.md#mys_vec_map">mys::vec_map</a>;
+<b>use</b> <a href="../std/address.md#std_address">std::address</a>;
+<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
+<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
+<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
+<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
+<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
 
@@ -120,7 +121,7 @@ Event: emitted when a new Display object has been created for type T.
 Type signature of the event corresponds to the type while id serves for
 the discovery.
 
-Since MySocial RPC supports querying events by type, finding a Display for the T
+Since Mys RPC supports querying events by type, finding a Display for the T
 would be as simple as looking for the first event with <code><a href="../mys/display.md#mys_display_Display">Display</a>&lt;T&gt;</code>.
 
 

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -20,16 +21,16 @@ use move_vm_types::{
     pop_arg,
     values::{self, StructRef, Value},
 };
+use mys_types::{
+    base_types::{MysAddress, ObjectID, SequenceNumber},
+    id::UID,
+    object::Owner,
+    storage::WriteKind,
+};
 use smallvec::smallvec;
 use std::{
     borrow::Borrow,
     collections::{BTreeMap, BTreeSet, VecDeque},
-};
-use mys_types::{
-    base_types::{ObjectID, SequenceNumber, MysAddress},
-    id::UID,
-    object::Owner,
-    storage::WriteKind,
 };
 
 const E_COULD_NOT_GENERATE_EFFECTS: u64 = 0;

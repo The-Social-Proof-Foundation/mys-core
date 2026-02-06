@@ -1,0 +1,24 @@
+---
+testbed_id: "${USER}-tidehunter"
+cloud_provider: custom
+token_file: "${HOME}/.aws/credentials"
+ssh_private_key_file: "${HOME}/.ssh/mysten_baremetal_shared"
+specs: default
+repository:
+  url: https://@github.com/mystenlabs/tidehunter.git
+  commit: orchestrator-raw
+target_configs_path: "./orchestrator/assets/target_configs.yml"
+log_processing: true
+working_dir: "/opt/myso/db"
+
+# Custom machines configuration
+custom_machines:
+  - host: benchmark-00.testing.mysocial.network
+  
+  - host: benchmark-01.testing.mysocial.network
+  
+  - host: benchmark-02.testing.mysocial.network
+  
+  - host: benchmark-03.testing.mysocial.network
+
+  - host: benchmark-04.testing.mysocial.network

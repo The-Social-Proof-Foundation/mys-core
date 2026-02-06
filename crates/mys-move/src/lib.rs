@@ -1,11 +1,12 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::Parser;
 use move_cli::base::test::UnitTestResult;
 use move_package::BuildConfig;
-use std::path::Path;
 use mys_move_build::{set_mys_flavor, MysPackageHooks};
+use std::path::Path;
 
 pub mod build;
 pub mod coverage;

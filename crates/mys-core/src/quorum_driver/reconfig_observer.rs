@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::AuthorityAggregatorUpdatable;
@@ -10,10 +11,10 @@ use crate::{
     safe_client::SafeClientMetricsBase,
 };
 use async_trait::async_trait;
-use std::sync::Arc;
 use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemStateTrait;
 use mys_types::mys_system_state::MysSystemState;
 use mys_types::mys_system_state::MysSystemStateTrait;
+use std::sync::Arc;
 use tokio::sync::broadcast::error::RecvError;
 use tracing::{info, warn};
 

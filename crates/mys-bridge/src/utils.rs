@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::abi::{
@@ -25,10 +26,6 @@ use fastcrypto::secp256k1::Secp256k1KeyPair;
 use fastcrypto::traits::EncodeDecodeBase64;
 use fastcrypto::traits::KeyPair;
 use futures::future::join_all;
-use std::collections::BTreeMap;
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::sync::Arc;
 use mys_config::Config;
 use mys_json_rpc_types::MysExecutionStatus;
 use mys_json_rpc_types::MysTransactionBlockEffectsAPI;
@@ -43,10 +40,14 @@ use mys_types::committee::StakeUnit;
 use mys_types::crypto::get_key_pair;
 use mys_types::crypto::MysKeyPair;
 use mys_types::crypto::ToFromBytes;
-use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::mys_system_state::mys_system_state_summary::MysSystemStateSummary;
+use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::transaction::{ObjectArg, TransactionData};
 use mys_types::BRIDGE_PACKAGE_ID;
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::sync::Arc;
 
 pub type EthSigner = SignerMiddleware<Provider<Http>, Wallet<SigningKey>>;
 
@@ -227,6 +228,8 @@ pub fn generate_bridge_node_config_and_write_to_file(
                     .to_string(),
             )]),
         }),
+        relay: None, // Optional relay configuration
+        deposits: None, // Optional deposit system configuration
     };
     if run_client {
         config.mys.bridge_client_key_path = Some(PathBuf::from("/path/to/your/bridge_client_key"));

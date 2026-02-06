@@ -47,9 +47,9 @@ To restore from a RocksDB snapshot, follow these steps:
    You can use the aws cli (provided you have credentials to associate with the download):
    `aws s3 cp s3://<BUCKET_NAME>/epoch_10 /opt/mys/db/authorities_db/full_node_db/live --recursive --request-payer`.
    
-   An alternative is to use `mys-tool` to copy the files:
+   An alternative is to use `myso-tool` to copy the files:
    ```
-   mys-tool download-db-snapshot --latest \
+   myso-tool download-db-snapshot --latest \
        --network <NETWORK> --snapshot-bucket <BUCKET-NAME> \
        --snapshot-bucket-type <TYPE> --path <PATH-TO-NODE-DB> \
        --num-parallel-downloads 25 \
@@ -70,7 +70,7 @@ To restore from a RocksDB snapshot, follow these steps:
    * *GCS*: `GCS_SNAPSHOT_SERVICE_ACCOUNT_FILE_PATH`
    * *AZURE*: `AZURE_SNAPSHOT_STORAGE_ACCOUNT`, `AZURE_SNAPSHOT_STORAGE_ACCESS_KEY`
 
-1. When using `mys-tool download-db-snapshot` the database is copied to the location you pass to `--path`, in a directory named `epoch_[NUM]`. Rename the `epoch_[NUM]` directory to `live/` under your node's `db_path`, for example `cp -r /tmp/epoch_[NUM] /opt/mys/db/authorities_db/full_node_db/live`.
+1. When using `myso-tool download-db-snapshot` the database is copied to the location you pass to `--path`, in a directory named `epoch_[NUM]`. Rename the `epoch_[NUM]` directory to `live/` under your node's `db_path`, for example `cp -r /tmp/epoch_[NUM] /opt/mys/db/authorities_db/full_node_db/live`.
 1. Make sure you update the ownership of the downloaded directory to the mys user (whichever linux user you run `mys-node` as)
    `sudo chown -R mys:mys  /opt/mys/db/authorities_db/full_node_db/live`.
 1. Start the MySocial node.
@@ -83,7 +83,7 @@ When you restore a Full node from a snapshot, write it to the path `/opt/mys/db/
 
 ### Restoring using Formal snapshots
 
-To restore using a Formal snapshot, use the `mys-tool` binary. `mys-tool` can be downloaded along with other mys binaries.
+To restore using a Formal snapshot, use the `myso-tool` binary. `myso-tool` can be downloaded along with other mys binaries.
 See [Install MySocial](../developer/getting-started/mys-install.mdx) for more details.
 
 The following steps can be used to restore a node from a Formal snapshot:
@@ -91,7 +91,7 @@ The following steps can be used to restore a node from a Formal snapshot:
 1. If it's running, stop the node.
 2. Run the command:
    ```
-   mys-tool download-formal-snapshot --latest --genesis "<PATH-TO-GENESIS-BLOB>" \
+   myso-tool download-formal-snapshot --latest --genesis "<PATH-TO-GENESIS-BLOB>" \
         --network <NETWORK> --snapshot-bucket <BUCKET-NAME> --snapshot-bucket-type <TYPE> \
         --path <PATH-TO-NODE-DB> --num-parallel-downloads 50 --no-sign-request
    ```

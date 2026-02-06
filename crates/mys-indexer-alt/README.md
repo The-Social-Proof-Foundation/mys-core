@@ -4,7 +4,7 @@
 The required flags are --remote-store-url (or --local-ingestion-path) and the --config. If both are provided, remote-store-url will be used.
 
 ```
-cargo run --bin mys-indexer-alt -- --database-url {url} indexer --remote-store-url https://checkpoints.mainnet.mys.io --skip-watermark --first-checkpoint 68918060 --last-checkpoint 68919060 --config indexer_alt_config.toml
+cargo run --bin mys-indexer-alt -- --database-url {url} indexer --remote-store-url https://checkpoints.mainnet.mysocial.network --skip-watermark --first-checkpoint 68918060 --last-checkpoint 68919060 --config indexer_alt_config.toml
 ```
 
 ## Pruning

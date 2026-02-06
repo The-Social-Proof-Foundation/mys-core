@@ -1,15 +1,16 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::*;
 use crate::authority::authority_store::LockDetailsWrapperDeprecated;
-use serde::{Deserialize, Serialize};
-use std::path::Path;
 use mys_types::accumulator::Accumulator;
 use mys_types::base_types::SequenceNumber;
 use mys_types::digests::TransactionEventsDigest;
 use mys_types::effects::TransactionEffects;
 use mys_types::storage::{FullObjectKey, MarkerValue};
+use serde::{Deserialize, Serialize};
+use std::path::Path;
 use tracing::error;
 use typed_store::metrics::SamplingInterval;
 use typed_store::rocks::util::{empty_compaction_filter, reference_count_merge_operator};
@@ -18,6 +19,7 @@ use typed_store::rocks::{
     MetricConf,
 };
 use typed_store::traits::{Map, TableSummary, TypedStoreDebug};
+use typed_store::TypedStoreError;
 
 use crate::authority::authority_store_pruner::ObjectsCompactionFilter;
 use crate::authority::authority_store_types::{
@@ -228,11 +230,14 @@ impl AuthorityPerpetualTables {
         object_id: ObjectID,
         version: SequenceNumber,
     ) -> MysResult<Option<Object>> {
-        let iter = self
+        let target_key = ObjectKey(object_id, version);
+        let mut iter = self
             .objects
-            .safe_range_iter(ObjectKey::min_for_id(&object_id)..=ObjectKey::max_for_id(&object_id))
-            .skip_prior_to(&ObjectKey(object_id, version))?;
-        match iter.reverse().next() {
+            .reversed_safe_iter_with_bounds(
+                Some(ObjectKey::min_for_id(&object_id)),
+                Some(target_key),
+            )?;
+        match iter.next() {
             Some(Ok((key, o))) => self.object(&key, o),
             Some(Err(e)) => Err(e.into()),
             None => Ok(None),
@@ -459,7 +464,7 @@ impl AuthorityPerpetualTables {
         let upper_bound = upper_bound.as_ref().map(ObjectKey::max_for_id);
 
         LiveSetIter {
-            iter: self.objects.iter_with_bounds(lower_bound, upper_bound),
+            iter: self.objects.unbounded_iter_with_bounds(lower_bound, upper_bound),
             tables: self,
             prev: None,
             include_wrapped_object,
@@ -486,7 +491,8 @@ impl AuthorityPerpetualTables {
         self.expected_storage_fund_imbalance.unsafe_clear()?;
         self.object_per_epoch_marker_table.unsafe_clear()?;
         self.object_per_epoch_marker_table_v2.unsafe_clear()?;
-        self.objects.rocksdb.flush()?;
+        self.objects.rocksdb().expect("RocksDB not available").flush()
+            .map_err(|e| TypedStoreError::RocksDBError(e.to_string()))?;
         Ok(())
     }
 

@@ -1,11 +1,12 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use futures::future::join_all;
-use std::fmt;
-use std::fmt::Display;
 use mys_sdk::MysClient;
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use std::fmt;
+use std::fmt::Display;
 
 pub(crate) struct CheckpointStats {
     pub latest_checkpoints: Vec<CheckpointSequenceNumber>,

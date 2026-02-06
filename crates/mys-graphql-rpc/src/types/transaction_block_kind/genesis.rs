@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_graphql::{
@@ -15,8 +16,8 @@ use crate::{
     consistency::ConsistentIndexCursor,
     types::{
         cursor::{JsonCursor, Page},
-        object::Object,
         mys_address::MysAddress,
+        object::Object,
     },
 };
 

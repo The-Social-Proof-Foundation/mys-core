@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anemo::Network;
@@ -14,18 +15,6 @@ use fastcrypto_zkp::bn254::zk_login::JwkId;
 use fastcrypto_zkp::bn254::zk_login::OIDCProvider;
 use futures::future::BoxFuture;
 use futures::TryFutureExt;
-use mysten_common::debug_fatal;
-use mysten_network::server::MYS_TLS_SERVER_NAME;
-use prometheus::Registry;
-use std::collections::{BTreeSet, HashMap, HashSet};
-use std::fmt;
-use std::future::Future;
-use std::path::PathBuf;
-use std::str::FromStr;
-#[cfg(msim)]
-use std::sync::atomic::Ordering;
-use std::sync::{Arc, Weak};
-use std::time::Duration;
 use mys_core::authority::authority_store_tables::{
     AuthorityPerpetualTablesOptions, AuthorityPrunerTables,
 };
@@ -54,6 +43,18 @@ use mys_types::messages_consensus::AuthorityCapabilitiesV2;
 use mys_types::messages_consensus::ConsensusTransactionKind;
 use mys_types::mys_system_state::MysSystemState;
 use mys_types::transaction::VerifiedCertificate;
+use mysten_common::debug_fatal;
+use mysten_network::server::MYS_TLS_SERVER_NAME;
+use prometheus::Registry;
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::fmt;
+use std::future::Future;
+use std::path::PathBuf;
+use std::str::FromStr;
+#[cfg(msim)]
+use std::sync::atomic::Ordering;
+use std::sync::{Arc, Weak};
+use std::time::Duration;
 use tap::tap::TapFallible;
 use tokio::runtime::Handle;
 use tokio::sync::{broadcast, mpsc, watch, Mutex};
@@ -64,9 +65,6 @@ use tracing::{error_span, info, Instrument};
 
 use fastcrypto_zkp::bn254::zk_login::JWK;
 pub use handle::MysNodeHandle;
-use mysten_metrics::{spawn_monitored_task, RegistryService};
-use mysten_network::server::ServerBuilder;
-use mysten_service::server_timing::server_timing_middleware;
 use mys_archival::reader::ArchiveReaderBalancer;
 use mys_archival::writer::ArchiveWriter;
 use mys_config::node::{DBCheckpointConfig, RunWithRange};
@@ -139,11 +137,14 @@ use mys_types::error::{MysError, MysResult};
 use mys_types::messages_consensus::{
     check_total_jwk_size, AuthorityCapabilitiesV1, ConsensusTransaction,
 };
-use mys_types::quorum_driver_types::QuorumDriverEffectsQueueResult;
 use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemState;
 use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemStateTrait;
 use mys_types::mys_system_state::MysSystemStateTrait;
+use mys_types::quorum_driver_types::QuorumDriverEffectsQueueResult;
 use mys_types::supported_protocol_versions::SupportedProtocolVersions;
+use mysten_metrics::{spawn_monitored_task, RegistryService};
+use mysten_network::server::ServerBuilder;
+use mysten_service::server_timing::server_timing_middleware;
 use typed_store::rocks::default_db_options;
 use typed_store::DBMetrics;
 
@@ -224,16 +225,16 @@ mod simulator {
     }
 }
 
-#[cfg(msim)]
-pub use simulator::set_jwk_injector;
-#[cfg(msim)]
-use simulator::*;
 use mys_core::authority::authority_store_pruner::ObjectsCompactionFilter;
 use mys_core::{
     consensus_handler::ConsensusHandlerInitializer, safe_client::SafeClientMetricsBase,
     validator_tx_finalizer::ValidatorTxFinalizer,
 };
 use mys_types::execution_config_utils::to_binary_config;
+#[cfg(msim)]
+pub use simulator::set_jwk_injector;
+#[cfg(msim)]
+use simulator::*;
 
 pub struct MysNode {
     config: NodeConfig,
@@ -461,7 +462,7 @@ impl MysNode {
         );
 
         // Initialize metrics to track db usage before creating any stores
-        DBMetrics::init(&prometheus_registry);
+        DBMetrics::init(registry_service.clone());
 
         // Initialize Mysten metrics.
         mysten_metrics::init_metrics(&prometheus_registry);
@@ -904,7 +905,7 @@ impl MysNode {
             subscription_service_checkpoint_sender,
         };
 
-        info!("MysNode started!");
+        info!("MySocial Node started!");
         let node = Arc::new(node);
         let node_copy = node.clone();
         spawn_monitored_task!(async move {
@@ -2222,9 +2223,9 @@ pub async fn build_http_server(
         server.register_module(IndexerApi::new(
             state.clone(),
             ReadApi::new(state.clone(), kv_store.clone(), metrics.clone()),
-            kv_store,
+            kv_store.clone(),
             name_service_config,
-            metrics,
+            metrics.clone(),
             config.indexer_max_subscriptions,
         ))?;
         server.register_module(MoveUtils::new(state.clone()))?;
@@ -2274,7 +2275,7 @@ pub async fn build_http_server(
         .serve(&config.json_rpc_address, router)
         .map_err(|e| anyhow::anyhow!("{e}"))?;
 
-    info!(local_addr =? handle.local_addr(), "Mys JSON-RPC server listening on {}", handle.local_addr());
+    info!(local_addr =? handle.local_addr(), "MySocail JSON-RPC server listening on {}", handle.local_addr());
 
     Ok((Some(handle), Some(subscription_service_checkpoint_sender)))
 }

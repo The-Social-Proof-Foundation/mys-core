@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::path::Path;
@@ -7,16 +8,16 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 
 use move_cli::base;
-use shared_crypto::intent::Intent;
 use mys_json_rpc_types::{
-    ObjectChange, MysObjectDataFilter, MysObjectDataOptions, MysObjectResponseQuery, MysRawData,
-    MysTransactionBlockResponse, MysTransactionBlockResponseOptions,
+    MysObjectDataFilter, MysObjectDataOptions, MysObjectResponseQuery, MysRawData,
+    MysTransactionBlockResponse, MysTransactionBlockResponseOptions, ObjectChange,
 };
 use mys_keys::keystore::{AccountKeystore, Keystore};
 use mys_move_build::BuildConfig as MoveBuildConfig;
+use shared_crypto::intent::Intent;
 
 use mys_sdk::MysClient;
-use mys_types::base_types::{ObjectID, ObjectRef, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID, ObjectRef};
 use mys_types::coin::COIN_MODULE_NAME;
 use mys_types::gas_coin::GasCoin;
 use mys_types::object::Owner;
@@ -148,6 +149,9 @@ pub async fn init_package(
                 ObjectID::from_hex_literal("0x1").unwrap(),
                 ObjectID::from_hex_literal("0x2").unwrap(),
             ],
+            None, // admin_cap - not needed for this test
+            None, // publish_admin_cap - not needed for this test
+            None, // coin_admin_cap - not needed for this test
         )
         .await?;
 

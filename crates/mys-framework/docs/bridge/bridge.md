@@ -20,8 +20,12 @@ title: Module `bridge::bridge`
 -  [Function `committee_registration`](#bridge_bridge_committee_registration)
 -  [Function `update_node_url`](#bridge_bridge_update_node_url)
 -  [Function `register_foreign_token`](#bridge_bridge_register_foreign_token)
+-  [Function `bootstrap_native_mys`](#bridge_bridge_bootstrap_native_mys)
+-  [Function `send_mys_token`](#bridge_bridge_send_mys_token)
 -  [Function `send_token`](#bridge_bridge_send_token)
 -  [Function `approve_token_transfer`](#bridge_bridge_approve_token_transfer)
+-  [Function `claim_mys_token`](#bridge_bridge_claim_mys_token)
+-  [Function `claim_and_transfer_mys_token`](#bridge_bridge_claim_and_transfer_mys_token)
 -  [Function `claim_token`](#bridge_bridge_claim_token)
 -  [Function `claim_and_transfer_token`](#bridge_bridge_claim_and_transfer_token)
 -  [Function `execute_system_message`](#bridge_bridge_execute_system_message)
@@ -29,6 +33,7 @@ title: Module `bridge::bridge`
 -  [Function `get_token_transfer_action_signatures`](#bridge_bridge_get_token_transfer_action_signatures)
 -  [Function `load_inner`](#bridge_bridge_load_inner)
 -  [Function `load_inner_mut`](#bridge_bridge_load_inner_mut)
+-  [Function `claim_mys_token_internal`](#bridge_bridge_claim_mys_token_internal)
 -  [Function `claim_token_internal`](#bridge_bridge_claim_token_internal)
 -  [Function `execute_emergency_op`](#bridge_bridge_execute_emergency_op)
 -  [Function `execute_update_bridge_limit`](#bridge_bridge_execute_update_bridge_limit)
@@ -45,18 +50,11 @@ title: Module `bridge::bridge`
 <b>use</b> <a href="../bridge/message.md#bridge_message">bridge::message</a>;
 <b>use</b> <a href="../bridge/message_types.md#bridge_message_types">bridge::message_types</a>;
 <b>use</b> <a href="../bridge/treasury.md#bridge_treasury">bridge::treasury</a>;
-<b>use</b> <a href="../std/address.md#std_address">std::address</a>;
-<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
-<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
-<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
-<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
-<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
-<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
-<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 <b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
 <b>use</b> <a href="../mys/bcs.md#mys_bcs">mys::bcs</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/clock.md#mys_clock">mys::clock</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
@@ -68,12 +66,12 @@ title: Module `bridge::bridge`
 <b>use</b> <a href="../mys/hash.md#mys_hash">mys::hash</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
 <b>use</b> <a href="../mys/linked_table.md#mys_linked_table">mys::linked_table</a>;
+<b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/object_bag.md#mys_object_bag">mys::object_bag</a>;
 <b>use</b> <a href="../mys/package.md#mys_package">mys::package</a>;
 <b>use</b> <a href="../mys/pay.md#mys_pay">mys::pay</a>;
 <b>use</b> <a href="../mys/priority_queue.md#mys_priority_queue">mys::priority_queue</a>;
-<b>use</b> <a href="../mys/mys.md#mys_mys">mys::mys</a>;
 <b>use</b> <a href="../mys/table.md#mys_table">mys::table</a>;
 <b>use</b> <a href="../mys/table_vec.md#mys_table_vec">mys::table_vec</a>;
 <b>use</b> <a href="../mys/transfer.md#mys_transfer">mys::transfer</a>;
@@ -83,16 +81,24 @@ title: Module `bridge::bridge`
 <b>use</b> <a href="../mys/vec_map.md#mys_vec_map">mys::vec_map</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
 <b>use</b> <a href="../mys/versioned.md#mys_versioned">mys::versioned</a>;
+<b>use</b> <a href="../mys_system/mys_system.md#mys_system_mys_system">mys_system::mys_system</a>;
+<b>use</b> <a href="../mys_system/mys_system_state_inner.md#mys_system_mys_system_state_inner">mys_system::mys_system_state_inner</a>;
 <b>use</b> <a href="../mys_system/stake_subsidy.md#mys_system_stake_subsidy">mys_system::stake_subsidy</a>;
 <b>use</b> <a href="../mys_system/staking_pool.md#mys_system_staking_pool">mys_system::staking_pool</a>;
 <b>use</b> <a href="../mys_system/storage_fund.md#mys_system_storage_fund">mys_system::storage_fund</a>;
-<b>use</b> <a href="../mys_system/mys_system.md#mys_system_mys_system">mys_system::mys_system</a>;
-<b>use</b> <a href="../mys_system/mys_system_state_inner.md#mys_system_mys_system_state_inner">mys_system::mys_system_state_inner</a>;
 <b>use</b> <a href="../mys_system/validator.md#mys_system_validator">mys_system::validator</a>;
 <b>use</b> <a href="../mys_system/validator_cap.md#mys_system_validator_cap">mys_system::validator_cap</a>;
 <b>use</b> <a href="../mys_system/validator_set.md#mys_system_validator_set">mys_system::validator_set</a>;
 <b>use</b> <a href="../mys_system/validator_wrapper.md#mys_system_validator_wrapper">mys_system::validator_wrapper</a>;
 <b>use</b> <a href="../mys_system/voting_power.md#mys_system_voting_power">mys_system::voting_power</a>;
+<b>use</b> <a href="../std/address.md#std_address">std::address</a>;
+<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
+<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
+<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
+<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
+<b>use</b> <a href="../std/u64.md#std_u64">std::u64</a>;
+<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
 
@@ -854,6 +860,108 @@ title: Module `bridge::bridge`
 
 </details>
 
+<a name="bridge_bridge_bootstrap_native_mys"></a>
+
+## Function `bootstrap_native_mys`
+
+Bootstrap the bridge with native MYS tokens for bidirectional bridging
+This function locks exactly 50 million MYS tokens in the bridge treasury
+Can only be called once to prevent duplicate bootstrapping
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_bootstrap_native_mys">bootstrap_native_mys</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, mys_coin: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_bootstrap_native_mys">bootstrap_native_mys</a>(
+    <a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">Bridge</a>,
+    mys_coin: Coin&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;,
+) {
+    <a href="../bridge/bridge.md#bridge_bridge_load_inner_mut">load_inner_mut</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>)
+        .<a href="../bridge/treasury.md#bridge_treasury">treasury</a>
+        .deposit_native_mys(mys_coin)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_bridge_send_mys_token"></a>
+
+## Function `send_mys_token`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_send_mys_token">send_mys_token</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, target_chain: u8, target_address: vector&lt;u8&gt;, token: <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_send_mys_token">send_mys_token</a>(
+    <a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">Bridge</a>,
+    target_chain: u8,
+    target_address: vector&lt;u8&gt;,
+    token: Coin&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> inner = <a href="../bridge/bridge.md#bridge_bridge_load_inner_mut">load_inner_mut</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>);
+    <b>assert</b>!(!inner.paused, <a href="../bridge/bridge.md#bridge_bridge_EBridgeUnavailable">EBridgeUnavailable</a>);
+    <b>assert</b>!(<a href="../bridge/chain_ids.md#bridge_chain_ids_is_valid_route">chain_ids::is_valid_route</a>(inner.chain_id, target_chain), <a href="../bridge/bridge.md#bridge_bridge_EInvalidBridgeRoute">EInvalidBridgeRoute</a>);
+    <b>assert</b>!(target_address.length() == <a href="../bridge/bridge.md#bridge_bridge_EVM_ADDRESS_LENGTH">EVM_ADDRESS_LENGTH</a>, <a href="../bridge/bridge.md#bridge_bridge_EInvalidEvmAddress">EInvalidEvmAddress</a>);
+    <b>let</b> bridge_seq_num = inner.<a href="../bridge/bridge.md#bridge_bridge_get_current_seq_num_and_increment">get_current_seq_num_and_increment</a>(<a href="../bridge/message_types.md#bridge_message_types_token">message_types::token</a>());
+    <b>let</b> token_id = 0; // MYS is token ID 0
+    <b>let</b> token_amount = token.balance().value();
+    <b>assert</b>!(token_amount &gt; 0, <a href="../bridge/bridge.md#bridge_bridge_ETokenValueIsZero">ETokenValueIsZero</a>);
+    // <a href="../bridge/bridge.md#bridge_bridge_create">create</a> <a href="../bridge/bridge.md#bridge_bridge">bridge</a> <a href="../bridge/message.md#bridge_message">message</a>
+    <b>let</b> <a href="../bridge/message.md#bridge_message">message</a> = <a href="../bridge/message.md#bridge_message_create_token_bridge_message">message::create_token_bridge_message</a>(
+        inner.chain_id,
+        bridge_seq_num,
+        address::to_bytes(ctx.sender()),
+        target_chain,
+        target_address,
+        token_id,
+        token_amount,
+    );
+    // Lock <b>native</b> MYS instead of burning
+    inner.<a href="../bridge/treasury.md#bridge_treasury">treasury</a>.burn_mys(token);
+    // Store pending <a href="../bridge/bridge.md#bridge_bridge">bridge</a> request
+    inner.token_transfer_records.push_back(
+        <a href="../bridge/message.md#bridge_message">message</a>.key(),
+        <a href="../bridge/bridge.md#bridge_bridge_BridgeRecord">BridgeRecord</a> {
+            <a href="../bridge/message.md#bridge_message">message</a>,
+            verified_signatures: option::none(),
+            claimed: <b>false</b>,
+        },
+    );
+    // emit event
+    emit(
+        <a href="../bridge/bridge.md#bridge_bridge_TokenDepositedEvent">TokenDepositedEvent</a> {
+            seq_num: bridge_seq_num,
+            source_chain: inner.chain_id,
+            sender_address: address::to_bytes(ctx.sender()),
+            target_chain,
+            target_address,
+            token_type: token_id,
+            amount: token_amount,
+        },
+    );
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="bridge_bridge_send_token"></a>
 
 ## Function `send_token`
@@ -957,7 +1065,7 @@ title: Module `bridge::bridge`
         <a href="../bridge/bridge.md#bridge_bridge_EUnexpectedChainID">EUnexpectedChainID</a>,
     );
     <b>let</b> message_key = <a href="../bridge/message.md#bridge_message">message</a>.key();
-    // retrieve pending <a href="../bridge/message.md#bridge_message">message</a> <b>if</b> source chain is MySocial, the initial <a href="../bridge/message.md#bridge_message">message</a>
+    // retrieve pending <a href="../bridge/message.md#bridge_message">message</a> <b>if</b> source chain is Mys, the initial <a href="../bridge/message.md#bridge_message">message</a>
     // must exist on chain
     <b>if</b> (<a href="../bridge/message.md#bridge_message">message</a>.source_chain() == inner.chain_id) {
         <b>let</b> record = &<b>mut</b> inner.token_transfer_records[message_key];
@@ -990,6 +1098,80 @@ title: Module `bridge::bridge`
         );
     };
     emit(<a href="../bridge/bridge.md#bridge_bridge_TokenTransferApproved">TokenTransferApproved</a> { message_key });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_bridge_claim_mys_token"></a>
+
+## Function `claim_mys_token`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_claim_mys_token">claim_mys_token</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, source_chain: u8, bridge_seq_num: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_claim_mys_token">claim_mys_token</a>(
+    <a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">Bridge</a>,
+    clock: &Clock,
+    source_chain: u8,
+    bridge_seq_num: u64,
+    ctx: &<b>mut</b> TxContext,
+): Coin&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt; {
+    <b>let</b> (maybe_token, owner) = <a href="../bridge/bridge.md#bridge_bridge">bridge</a>.<a href="../bridge/bridge.md#bridge_bridge_claim_mys_token_internal">claim_mys_token_internal</a>(
+        clock,
+        source_chain,
+        bridge_seq_num,
+        ctx,
+    );
+    // Only token owner can claim the token
+    <b>assert</b>!(ctx.sender() == owner, <a href="../bridge/bridge.md#bridge_bridge_EUnauthorisedClaim">EUnauthorisedClaim</a>);
+    <b>assert</b>!(maybe_token.is_some(), <a href="../bridge/bridge.md#bridge_bridge_ETokenAlreadyClaimedOrHitLimit">ETokenAlreadyClaimedOrHitLimit</a>);
+    maybe_token.destroy_some()
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_bridge_claim_and_transfer_mys_token"></a>
+
+## Function `claim_and_transfer_mys_token`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_claim_and_transfer_mys_token">claim_and_transfer_mys_token</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, source_chain: u8, bridge_seq_num: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_claim_and_transfer_mys_token">claim_and_transfer_mys_token</a>(
+    <a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">Bridge</a>,
+    clock: &Clock,
+    source_chain: u8,
+    bridge_seq_num: u64,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> (token, owner) = <a href="../bridge/bridge.md#bridge_bridge">bridge</a>.<a href="../bridge/bridge.md#bridge_bridge_claim_mys_token_internal">claim_mys_token_internal</a>(clock, source_chain, bridge_seq_num, ctx);
+    <b>if</b> (token.is_some()) {
+        transfer::public_transfer(token.destroy_some(), owner)
+    } <b>else</b> {
+        token.destroy_none();
+    };
 }
 </code></pre>
 
@@ -1260,6 +1442,74 @@ title: Module `bridge::bridge`
     <b>let</b> inner: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_BridgeInner">BridgeInner</a> = <a href="../bridge/bridge.md#bridge_bridge">bridge</a>.inner.load_value_mut();
     <b>assert</b>!(inner.bridge_version == version, <a href="../bridge/bridge.md#bridge_bridge_EWrongInnerVersion">EWrongInnerVersion</a>);
     inner
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_bridge_claim_mys_token_internal"></a>
+
+## Function `claim_mys_token_internal`
+
+
+
+<pre><code><b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_claim_mys_token_internal">claim_mys_token_internal</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">bridge::bridge::Bridge</a>, clock: &<a href="../mys/clock.md#mys_clock_Clock">mys::clock::Clock</a>, source_chain: u8, bridge_seq_num: u64, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): (<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/coin.md#mys_coin_Coin">mys::coin::Coin</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;&gt;, <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../bridge/bridge.md#bridge_bridge_claim_mys_token_internal">claim_mys_token_internal</a>(
+    <a href="../bridge/bridge.md#bridge_bridge">bridge</a>: &<b>mut</b> <a href="../bridge/bridge.md#bridge_bridge_Bridge">Bridge</a>,
+    clock: &Clock,
+    source_chain: u8,
+    bridge_seq_num: u64,
+    ctx: &<b>mut</b> TxContext,
+): (Option&lt;Coin&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;&gt;, <b>address</b>) {
+    <b>let</b> inner = <a href="../bridge/bridge.md#bridge_bridge_load_inner_mut">load_inner_mut</a>(<a href="../bridge/bridge.md#bridge_bridge">bridge</a>);
+    <b>assert</b>!(!inner.paused, <a href="../bridge/bridge.md#bridge_bridge_EBridgeUnavailable">EBridgeUnavailable</a>);
+    <b>let</b> key = <a href="../bridge/message.md#bridge_message_create_key">message::create_key</a>(source_chain, <a href="../bridge/message_types.md#bridge_message_types_token">message_types::token</a>(), bridge_seq_num);
+    <b>assert</b>!(inner.token_transfer_records.contains(key), <a href="../bridge/bridge.md#bridge_bridge_EMessageNotFoundInRecords">EMessageNotFoundInRecords</a>);
+    // retrieve approved <a href="../bridge/bridge.md#bridge_bridge">bridge</a> <a href="../bridge/message.md#bridge_message">message</a>
+    <b>let</b> record = &<b>mut</b> inner.token_transfer_records[key];
+    <b>assert</b>!(
+        &record.<a href="../bridge/message.md#bridge_message">message</a>.message_type() == <a href="../bridge/message_types.md#bridge_message_types_token">message_types::token</a>(),
+        <a href="../bridge/bridge.md#bridge_bridge_EUnexpectedMessageType">EUnexpectedMessageType</a>,
+    );
+    <b>assert</b>!(record.verified_signatures.is_some(), <a href="../bridge/bridge.md#bridge_bridge_EUnauthorisedClaim">EUnauthorisedClaim</a>);
+    <b>let</b> token_payload = record.<a href="../bridge/message.md#bridge_message">message</a>.extract_token_bridge_payload();
+    <b>let</b> owner = address::from_bytes(token_payload.token_target_address());
+    <b>if</b> (record.claimed) {
+        emit(<a href="../bridge/bridge.md#bridge_bridge_TokenTransferAlreadyClaimed">TokenTransferAlreadyClaimed</a> { message_key: key });
+        <b>return</b> (option::none(), owner)
+    };
+    <b>let</b> target_chain = token_payload.token_target_chain();
+    <b>assert</b>!(target_chain == inner.chain_id, <a href="../bridge/bridge.md#bridge_bridge_EUnexpectedChainID">EUnexpectedChainID</a>);
+    <b>let</b> route = <a href="../bridge/chain_ids.md#bridge_chain_ids_get_route">chain_ids::get_route</a>(source_chain, target_chain);
+    <b>assert</b>!(token_payload.token_type() == 0, <a href="../bridge/bridge.md#bridge_bridge_EUnexpectedTokenType">EUnexpectedTokenType</a>); // Must be MYS (token_id 0)
+    <b>let</b> amount = token_payload.token_amount();
+    <b>if</b> (!inner
+        .<a href="../bridge/limiter.md#bridge_limiter">limiter</a>
+        .check_and_record_sending_transfer&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;(
+        &inner.<a href="../bridge/treasury.md#bridge_treasury">treasury</a>,
+        clock,
+        route,
+        amount,
+    )
+    ) {
+        emit(<a href="../bridge/bridge.md#bridge_bridge_TokenTransferLimitExceed">TokenTransferLimitExceed</a> { message_key: key });
+        <b>return</b> (option::none(), owner)
+    };
+    // Unlock from <a href="../bridge/treasury.md#bridge_treasury">treasury</a> (instead of mint)
+    <b>let</b> token = inner.<a href="../bridge/treasury.md#bridge_treasury">treasury</a>.mint_mys(amount, ctx);
+    record.claimed = <b>true</b>;
+    emit(<a href="../bridge/bridge.md#bridge_bridge_TokenTransferClaimed">TokenTransferClaimed</a> { message_key: key });
+    (option::some(token), owner)
 }
 </code></pre>
 

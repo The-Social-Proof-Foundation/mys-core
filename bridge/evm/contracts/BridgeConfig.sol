@@ -16,6 +16,10 @@ contract BridgeConfig is IBridgeConfig, CommitteeUpgradeable {
     // price in USD (8 decimal precision) (e.g. 1 ETH = 2000 USD => 2000_00000000)
     mapping(uint8 tokenID => uint64 tokenPrice) public tokenPrices;
     mapping(uint8 chainId => bool isSupported) public supportedChains;
+    
+    /// @notice The MySocialToken bridge adapter address (for token ID 0)
+    /// @dev This adapter enables mint/burn functionality for the native MYS token
+    address public mySocialTokenAdapter;
 
     /* ========== INITIALIZER ========== */
 
@@ -23,9 +27,10 @@ contract BridgeConfig is IBridgeConfig, CommitteeUpgradeable {
     /// @dev the provided arrays must have the same length.
     /// @param _committee The address of the BridgeCommittee contract.
     /// @param _chainID The ID of the chain this contract is deployed on.
-    /// @param _supportedTokens The addresses of the supported tokens.
+    /// @param _supportedTokens The addresses of the supported tokens (adapter address for token ID 0).
     /// @param _tokenPrices An array of token prices (with 8 decimal precision).
     /// @param _supportedChains array of supported chain IDs.
+    /// @param _mySocialTokenAdapter The address of the MySocialToken bridge adapter (for token ID 0).
     function initialize(
         address _committee,
         uint8 _chainID,
@@ -33,7 +38,8 @@ contract BridgeConfig is IBridgeConfig, CommitteeUpgradeable {
         uint64[] memory _tokenPrices,
         uint8[] memory _tokenIds,
         uint8[] memory _mysDecimals,
-        uint8[] memory _supportedChains
+        uint8[] memory _supportedChains,
+        address _mySocialTokenAdapter
     ) external initializer {
         __CommitteeUpgradeable_init(_committee);
         require(
@@ -61,15 +67,26 @@ contract BridgeConfig is IBridgeConfig, CommitteeUpgradeable {
             tokenPrices[_tokenIds[i]] = _tokenPrices[i];
         }
 
+        // Set the MySocialToken adapter address if provided
+        // This enables mint/burn functionality for the native MYS token (ID 0)
+        if (_mySocialTokenAdapter != address(0)) {
+            mySocialTokenAdapter = _mySocialTokenAdapter;
+        }
+
         chainID = _chainID;
     }
 
     /* ========== VIEW FUNCTIONS ========== */
 
     /// @notice Returns the address of the token with the given ID.
+    /// @dev For token ID 0 (MYS), returns the adapter address instead of the token address
     /// @param tokenID The ID of the token.
-    /// @return address of the provided token.
+    /// @return address of the provided token (or adapter for MYS).
     function tokenAddressOf(uint8 tokenID) public view override returns (address) {
+        // For MYS token (ID 0), return the adapter address if configured
+        if (tokenID == 0 && mySocialTokenAdapter != address(0)) {
+            return mySocialTokenAdapter;
+        }
         return supportedTokens[tokenID].tokenAddress;
     }
 

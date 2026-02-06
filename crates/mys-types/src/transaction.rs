@@ -1,5 +1,6 @@
 // Copyright (c) 2021, Facebook, Inc. and its affiliates
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{base_types::*, error::*, MYS_BRIDGE_OBJECT_ID};
@@ -8,7 +9,7 @@ use crate::committee::{Committee, EpochId, ProtocolVersion};
 use crate::crypto::{
     default_hash, AuthoritySignInfo, AuthoritySignInfoTrait, AuthoritySignature,
     AuthorityStrongQuorumSignInfo, DefaultHash, Ed25519MysSignature, EmptySignInfo,
-    RandomnessRound, Signature, Signer, MysSignatureInner, ToFromBytes,
+    MysSignatureInner, RandomnessRound, Signature, Signer, ToFromBytes,
 };
 use crate::digests::{CertificateDigest, SenderSignedDataDigest};
 use crate::digests::{ChainIdentifier, ConsensusCommitDigest, ZKLoginInputsDigest};
@@ -37,6 +38,7 @@ use fastcrypto::{encoding::Base64, hash::HashFunction};
 use itertools::Either;
 use move_core_types::{ident_str, identifier};
 use move_core_types::{identifier::Identifier, language_storage::TypeTag};
+use mys_protocol_config::ProtocolConfig;
 use nonempty::{nonempty, NonEmpty};
 use serde::{Deserialize, Serialize};
 use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
@@ -50,7 +52,6 @@ use std::{
     iter,
 };
 use strum::IntoStaticStr;
-use mys_protocol_config::ProtocolConfig;
 use tap::Pipe;
 use tracing::trace;
 

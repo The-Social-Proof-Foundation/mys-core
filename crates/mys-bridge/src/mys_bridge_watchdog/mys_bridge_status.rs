@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! The MysBridgeStatus observable monitors whether the Mys Bridge is paused.
@@ -34,7 +35,7 @@ impl Observable for MysBridgeStatus {
         match status {
             Ok(status) => {
                 self.metric.set(status as i64);
-                info!("Mys Bridge Status: {:?}", status);
+                info!("Mys Bridge is paused: {:?}", status);
             }
             Err(e) => {
                 error!("Error getting mys bridge status: {:?}", e);
@@ -43,6 +44,6 @@ impl Observable for MysBridgeStatus {
     }
 
     fn interval(&self) -> Duration {
-        Duration::from_secs(10)
+        Duration::from_secs(60)
     }
 }

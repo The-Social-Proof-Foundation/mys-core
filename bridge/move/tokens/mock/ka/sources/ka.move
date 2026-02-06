@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 module bridged_ka::ka {
@@ -19,7 +20,7 @@ module bridged_ka::ka {
             DECIMAL,
             b"Ka",
             b"Ka Coin",
-            b"Ka, the opposite of Mys",
+            b"Ka, the opposite of MySo",
             option::none(),
             ctx
         );

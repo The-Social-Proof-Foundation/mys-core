@@ -2,7 +2,7 @@
 title: Module `mys::mys`
 ---
 
-Coin<MYS> is the token used to pay for gas in MySocial.
+Coin<MYS> is the token used to pay for gas in Mys.
 It has 9 decimals, and the smallest unit (10^-9) is called "mist".
 
 
@@ -12,16 +12,10 @@ It has 9 decimals, and the smallest unit (10^-9) is called "mist".
 -  [Function `transfer`](#mys_mys_transfer)
 
 
-<pre><code><b>use</b> <a href="../std/address.md#std_address">std::address</a>;
-<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
-<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
-<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
-<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
-<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
-<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/coin.md#mys_coin">mys::coin</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
 <b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
@@ -36,6 +30,13 @@ It has 9 decimals, and the smallest unit (10^-9) is called "mist".
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
+<b>use</b> <a href="../std/address.md#std_address">std::address</a>;
+<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
+<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
+<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
+<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
+<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
 
@@ -88,8 +89,8 @@ Sender is not @0x0 the system address.
 
 <a name="mys_mys_MIST_PER_MYS"></a>
 
-The amount of Mist per MySocial token based on the fact that mist is
-10^-9 of a MySocial token
+The amount of Mist per MySo token based on the fact that mist is
+10^-9 of a Mys token
 
 
 <pre><code><b>const</b> <a href="../mys/mys.md#mys_mys_MIST_PER_MYS">MIST_PER_MYS</a>: u64 = 1000000000;
@@ -99,20 +100,20 @@ The amount of Mist per MySocial token based on the fact that mist is
 
 <a name="mys_mys_TOTAL_SUPPLY_MIST"></a>
 
-The total supply of MySocial denominated in Mist (10 Billion * 10^9)
+The total supply of MySo denominated in Mist (1 Billion * 10^9)
 
 
-<pre><code><b>const</b> <a href="../mys/mys.md#mys_mys_TOTAL_SUPPLY_MIST">TOTAL_SUPPLY_MIST</a>: u64 = 10000000000000000000;
+<pre><code><b>const</b> <a href="../mys/mys.md#mys_mys_TOTAL_SUPPLY_MIST">TOTAL_SUPPLY_MIST</a>: u64 = 1000000000000000000;
 </code></pre>
 
 
 
 <a name="mys_mys_TOTAL_SUPPLY_MYS"></a>
 
-The total supply of MySocial denominated in whole MySocial tokens (10 Billion)
+The total supply of MySo denominated in whole MySo tokens (1 Billion)
 
 
-<pre><code><b>const</b> <a href="../mys/mys.md#mys_mys_TOTAL_SUPPLY_MYS">TOTAL_SUPPLY_MYS</a>: u64 = 10000000000;
+<pre><code><b>const</b> <a href="../mys/mys.md#mys_mys_TOTAL_SUPPLY_MYS">TOTAL_SUPPLY_MYS</a>: u64 = 1000000000;
 </code></pre>
 
 
@@ -125,7 +126,7 @@ Register the <code><a href="../mys/mys.md#mys_mys_MYS">MYS</a></code> Coin to ac
 This should be called only once during genesis creation.
 
 
-<pre><code><b>fun</b> <a href="../mys/mys.md#mys_mys_new">new</a>(ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;
+<pre><code><b>fun</b> <a href="../mys/mys.md#mys_mys_new">new</a>(token_symbol: vector&lt;u8&gt;, token_name: vector&lt;u8&gt;, token_description: vector&lt;u8&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/balance.md#mys_balance_Balance">mys::balance::Balance</a>&lt;<a href="../mys/mys.md#mys_mys_MYS">mys::mys::MYS</a>&gt;
 </code></pre>
 
 
@@ -134,16 +135,20 @@ This should be called only once during genesis creation.
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../mys/mys.md#mys_mys_new">new</a>(ctx: &<b>mut</b> TxContext): Balance&lt;<a href="../mys/mys.md#mys_mys_MYS">MYS</a>&gt; {
+<pre><code><b>fun</b> <a href="../mys/mys.md#mys_mys_new">new</a>(
+    token_symbol: vector&lt;u8&gt;,
+    token_name: vector&lt;u8&gt;,
+    token_description: vector&lt;u8&gt;,
+    ctx: &<b>mut</b> TxContext
+): Balance&lt;<a href="../mys/mys.md#mys_mys_MYS">MYS</a>&gt; {
     <b>assert</b>!(ctx.sender() == @0x0, <a href="../mys/mys.md#mys_mys_ENotSystemAddress">ENotSystemAddress</a>);
     <b>assert</b>!(ctx.epoch() == 0, <a href="../mys/mys.md#mys_mys_EAlreadyMinted">EAlreadyMinted</a>);
     <b>let</b> (treasury, metadata) = <a href="../mys/coin.md#mys_coin_create_currency">coin::create_currency</a>(
         <a href="../mys/mys.md#mys_mys_MYS">MYS</a> {},
         9,
-        b"<a href="../mys/mys.md#mys_mys_MYS">MYS</a>",
-        b"MySocial",
-        // TODO: add appropriate description and logo <a href="../mys/url.md#mys_url">url</a>
-        b"",
+        token_symbol,
+        token_name,
+        token_description,
         option::none(),
         ctx,
     );

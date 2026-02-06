@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 // @generated automatically by Diesel CLI.
 
@@ -242,6 +243,33 @@ diesel::table! {
 }
 
 diesel::table! {
+    profile_events (tx_sequence_number, event_sequence_number) {
+        tx_sequence_number -> Int8,
+        event_sequence_number -> Int8,
+        profile_id -> Bytea,
+        event_type -> Text,
+        owner -> Bytea,
+        timestamp_ms -> Int8,
+        data -> Jsonb,
+    }
+}
+
+diesel::table! {
+    profiles (profile_id) {
+        profile_id -> Bytea,
+        owner -> Bytea,
+        display_name -> Text,
+        bio -> Text,
+        profile_picture -> Nullable<Text>,
+        created_at -> Int8,
+        username_nft_id -> Nullable<Bytea>,
+        tx_sequence_number -> Int8,
+        checkpoint_sequence_number -> Int8,
+        timestamp_ms -> Int8,
+    }
+}
+
+diesel::table! {
     protocol_configs (protocol_version, config_name) {
         protocol_version -> Int8,
         config_name -> Text,
@@ -387,6 +415,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     objects_snapshot,
     objects_version,
     packages,
+    profile_events,
+    profiles,
     protocol_configs,
     pruner_cp_watermark,
     raw_checkpoints,

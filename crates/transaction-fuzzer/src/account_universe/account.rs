@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 // Copyright (c) The Diem Core Contributors
@@ -6,12 +7,12 @@
 
 use std::sync::Arc;
 
-use proptest::prelude::*;
 use mys_types::{
-    base_types::{ObjectID, MysAddress},
+    base_types::{MysAddress, ObjectID},
     crypto::{get_key_pair, AccountKeyPair},
     object::Object,
 };
+use proptest::prelude::*;
 
 use crate::executor::Executor;
 

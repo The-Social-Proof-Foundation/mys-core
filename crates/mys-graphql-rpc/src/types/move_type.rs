@@ -1,12 +1,13 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_graphql::*;
 use move_binary_format::file_format::AbilitySet;
 use move_core_types::{annotated_value as A, language_storage::TypeTag};
-use serde::{Deserialize, Serialize};
 use mys_types::base_types::MoveObjectType;
 use mys_types::type_input::TypeInput;
+use serde::{Deserialize, Serialize};
 
 use crate::data::package_resolver::PackageResolver;
 use crate::error::Error;

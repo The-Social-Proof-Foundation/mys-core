@@ -19,7 +19,7 @@ diverse, inclusive, and healthy community.
 
 ## More information
 
-See the central [MySocial Code of Conduct](https://github.com/MystenLabs/mys/blob/main/docs/content/references/contribute/code-of-conduct.mdx) for
+See the central [MySocial Code of Conduct](https://github.com/the-social-proof-foundation/mys-core/blob/main/docs/content/references/contribute/code-of-conduct.mdx) for
 full details.
 
 Our Code of Conduct is adapted from the

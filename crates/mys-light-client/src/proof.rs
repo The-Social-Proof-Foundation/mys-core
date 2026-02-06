@@ -1,9 +1,9 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::anyhow;
 
-use serde::{Deserialize, Serialize};
 use mys_types::{
     base_types::ObjectRef,
     committee::Committee,
@@ -13,6 +13,7 @@ use mys_types::{
     object::Object,
     transaction::Transaction,
 };
+use serde::{Deserialize, Serialize};
 
 /// Define aspect of Mys state that need to be certified in a proof
 #[derive(Default, Debug, Serialize, Deserialize)]

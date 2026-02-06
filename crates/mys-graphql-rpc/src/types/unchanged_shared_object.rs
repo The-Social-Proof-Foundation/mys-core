@@ -1,10 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_graphql::*;
 use mys_types::effects::InputSharedObject as NativeInputSharedObject;
 
-use super::{object_read::ObjectRead, mys_address::MysAddress, uint53::UInt53};
+use super::{mys_address::MysAddress, object_read::ObjectRead, uint53::UInt53};
 
 /// Details pertaining to shared objects that are referenced by but not changed by a transaction.
 /// This information is considered part of the effects, because although the transaction specifies

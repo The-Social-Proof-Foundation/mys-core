@@ -1,7 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { DryRunTransactionBlockResponse } from '@mysten/mys/client';
+import { DryRunTransactionBlockResponse } from '@socialproof/mys/client';
 import * as Tabs from '@radix-ui/react-tabs';
 import { useState } from 'react';
 

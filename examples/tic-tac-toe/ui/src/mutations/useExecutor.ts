@@ -1,9 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useSignAndExecuteTransaction, useMysClient } from '@mysten/dapp-kit';
-import { MysClient, MysTransactionBlockResponse } from '@mysten/mys/client';
-import { Transaction } from '@mysten/mys/transactions';
+import { useSignAndExecuteTransaction, useMysClient } from '@socialproof/dapp-kit';
+import { MysClient, MysTransactionBlockResponse } from '@socialproof/mys/client';
+import { Transaction } from '@socialproof/mys/transactions';
 
 type Options = Omit<Parameters<MysClient['getTransactionBlock']>[0], 'digest'> & {
 	tx: Transaction;

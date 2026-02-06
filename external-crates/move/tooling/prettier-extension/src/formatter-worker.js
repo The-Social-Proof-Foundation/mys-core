@@ -1,9 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
 
-const plugin = require('@mysten/prettier-plugin-move');
+const plugin = require('@socialproof/prettier-plugin-move');
 const { format } = require('prettier');
 const { parentPort } = require('node:worker_threads');
 

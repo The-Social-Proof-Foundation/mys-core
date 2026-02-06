@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::net::SocketAddr;
@@ -15,10 +16,10 @@ use data::system_package_task::{SystemPackageTask, SystemPackageTaskArgs};
 use jsonrpsee::server::{RpcServiceBuilder, ServerBuilder};
 use metrics::middleware::MetricsLayer;
 use metrics::RpcMetrics;
-use prometheus::Registry;
-use serde_json::json;
 use mys_open_rpc::Project;
 use mys_pg_db::DbArgs;
+use prometheus::Registry;
+use serde_json::json;
 use tokio::{join, signal, task::JoinHandle};
 use tokio_util::sync::CancellationToken;
 use tower_layer::Identity;
@@ -252,11 +253,11 @@ mod tests {
     };
 
     use jsonrpsee::{core::RpcResult, proc_macros::rpc, types::error::METHOD_NOT_FOUND_CODE};
-    use reqwest::Client;
-    use serde_json::{json, Value};
     use mys_open_rpc::Module;
     use mys_open_rpc_macros::open_rpc;
     use mys_pg_db::temp::get_available_port;
+    use reqwest::Client;
+    use serde_json::{json, Value};
 
     use super::*;
 

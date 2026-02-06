@@ -1,7 +1,7 @@
 [package]
 name = "mys"
 version.workspace = true
-authors = ["Mysten Labs <build@mystenlabs.com>"]
+authors = ["The Social Proof Foundation, LLC. <brandon@socialproof.foundation>"]
 license = "Apache-2.0"
 publish = false
 edition = "2021"
@@ -88,6 +88,7 @@ shell-words.workspace = true
 
 tempfile.workspace = true
 telemetry-subscribers.workspace = true
+rustls = { version = "0.23", features = ["aws_lc_rs"] }
 
 move-analyzer.workspace = true
 move-bytecode-verifier-meter.workspace = true

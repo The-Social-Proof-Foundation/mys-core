@@ -1,11 +1,12 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useCurrentAccount, useSignTransaction, useMysClientContext } from '@mysten/dapp-kit';
-import { getFullnodeUrl, MysClient } from '@mysten/mys/client';
-import { messageWithIntent } from '@mysten/mys/cryptography';
-import { Transaction } from '@mysten/mys/transactions';
-import { fromBase64, toHex } from '@mysten/mys/utils';
+import { useCurrentAccount, useSignTransaction, useMysClientContext } from '@socialproof/dapp-kit';
+import { getFullnodeUrl, MysClient } from '@socialproof/mys/client';
+import { messageWithIntent } from '@socialproof/mys/cryptography';
+import { Transaction } from '@socialproof/mys/transactions';
+import { fromBase64, toHex } from '@socialproof/mys/utils';
 import { blake2b } from '@noble/hashes/blake2b';
 import { useMutation } from '@tanstack/react-query';
 import { AlertCircle, Terminal } from 'lucide-react';

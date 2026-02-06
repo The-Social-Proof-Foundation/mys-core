@@ -275,3 +275,291 @@ Ideally you should be able to immediately reproduce the failure by running a sin
 *Currently, this feature is in progress due to some isolation failures in the simulator framework that I am trying to track down.*
 
 **Linux vs Mac**: There is one big caveat here, which is that we don't have identical execution across different platforms. This may be impossible to achieve due to `#[cfg(target_os = xxx)]` attributes in our dependencies. Therefore, even once test re-execution is fully supported, it may be necessary to use linux (perhaps via a local docker container) to reproduce failures found on our CI machines.
+
+
+
+
+
+// GRAPH QL
+
+
+query ExploerDashboardData {
+  chainIdentifier
+  availableRange {
+    first {
+      sequenceNumber
+    }
+    last {
+      sequenceNumber
+    }
+  }
+  epoch {
+    epochId
+    startTimestamp
+    endTimestamp
+    referenceGasPrice
+    systemParameters {
+      durationMs
+    }
+    safeMode {
+      enabled
+      gasSummary {
+        computationCost
+        storageCost
+        storageRebate
+        nonRefundableStorageFee
+      }
+    }
+  }
+  latestCheckpoint: checkpoint {
+    sequenceNumber
+    networkTotalTransactions
+  }
+  epochs(last: 5) {
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      epochId
+      referenceGasPrice
+      startTimestamp
+      endTimestamp
+      totalGasFees
+      totalStakeRewards
+      totalStakeSubsidies
+      netInflow
+      totalTransactions
+      totalCheckpoints
+    }
+  }
+  checkpoints(last: 5) {
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      digest
+      timestamp
+      sequenceNumber
+      networkTotalTransactions
+      epoch {
+        epochId
+      }
+      transactionBlocks(scanLimit: 8) {
+        nodes {
+          digest
+        }
+      }
+    }
+  }
+  transactionBlocks(last: 5) {
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+    nodes {
+      digest
+      sender {
+        address
+      }
+      gasInput {
+        gasPrice
+      }
+      kind {
+        __typename
+      }
+      effects {
+        status
+        errors
+        timestamp
+        balanceChanges(first: 3) {
+          nodes {
+            amount
+            coinType {
+              repr
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+query WalletBalance {
+  # ecosystem 0x14f543ec93eb800e916bcb9a6873036707a61fc7f89e5a538295ba8e8c060d52
+  # faucet 0x85354b9888c0f88d49ee45880bbe5927833a69dacb223ea749f88cd33bd97baa
+  # gas pool 0xc5eed5bd7e11d84ac1b32b6ce440f8586576964bbd1db94f2dfa07e3c1343c4f
+  owner(address: "0xc5eed5bd7e11d84ac1b32b6ce440f8586576964bbd1db94f2dfa07e3c1343c4f", rootVersion: 74) {
+    address
+    balance {
+      coinType {
+        repr
+      }
+      totalBalance
+    }
+  }
+}
+
+query MySocialPackage {
+  objects(filter: {type: "0x50c1"}, last: 20) {
+    nodes {
+      address
+      objects {
+        nodes {
+          contents {
+            json
+          }
+        }
+      }
+      owner {
+        __typename
+      }
+    }
+  }
+  package(
+    address: "0x000000000000000000000000000000000000000000000000000000000000d880"
+  ) {
+    modules {
+      nodes {
+        name
+        datatypes {
+          nodes {
+            name
+          }
+        }
+        functions {
+          nodes {
+            name
+            isEntry
+            visibility
+          }
+        }
+      }
+    }
+  }
+}
+
+query ValidatorDashboardData {
+  address(address: "0x...") {
+    address
+    balance(type: "0x2::mys::MYS") {
+      totalBalance
+    }
+    stakedMyss {
+      nodes {
+        status                    # PENDING, ACTIVE, or UNSTAKED
+        principal                # Original stake amount
+        estimatedReward         # Current estimated rewards
+        poolId                  # Validator staking pool ID
+        activatedEpoch {        # When stake became active
+          epochId
+          validatorSet {
+            activeValidators {
+              nodes {
+                name
+                description
+                address {
+                  defaultMysnsName
+                }
+              }
+            }
+          }
+        }
+        requestedEpoch {        # When stake was requested
+          epochId
+        }
+      }
+    }
+  }
+  epoch {
+    epochId
+    startTimestamp
+    endTimestamp
+    referenceGasPrice
+    totalGasFees
+    totalCheckpoints
+    totalTransactions
+    totalStakeRewards
+    totalStakeSubsidies
+    fundSize
+    fundInflow
+    fundOutflow
+    storageFund {
+      totalObjectStorageRebates
+      nonRefundableBalance
+    }
+    safeMode {
+      enabled
+      gasSummary {
+        computationCost
+        storageCost
+        storageRebate
+        nonRefundableStorageFee
+      }
+    }
+    systemParameters {
+      durationMs
+      stakeSubsidyStartEpoch
+      minValidatorCount
+      maxValidatorCount
+      minValidatorJoiningStake
+      validatorLowStakeThreshold
+      validatorVeryLowStakeThreshold
+      validatorLowStakeGracePeriod
+    }
+    systemStakeSubsidy {
+      balance
+      distributionCounter
+      currentApyBps
+      periodLength
+      decreaseRate
+    }
+    validatorSet {
+      totalStake
+      pendingActiveValidatorsSize
+      pendingActiveValidatorsId
+      stakingPoolMappingsSize
+      stakingPoolMappingsId
+      inactivePoolsSize
+      inactivePoolsId
+      validatorCandidatesSize
+      validatorCandidatesId
+      activeValidators(first: 10) {
+        nodes {
+          name
+          address {
+            address
+          }
+          description
+          imageUrl
+          projectUrl
+          stakingPoolId
+          stakingPoolMysBalance
+          stakingPoolActivationEpoch
+          rewardsPool
+          poolTokenBalance
+          nextEpochStake
+          pendingStake
+          pendingTotalMysWithdraw
+          commissionRate
+          nextEpochCommissionRate
+          votingPower
+          gasPrice
+          nextEpochGasPrice
+          apy
+          atRisk
+          operationCap {
+            address
+          }
+        }
+      }
+    }
+  }
+}

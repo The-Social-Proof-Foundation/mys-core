@@ -1,16 +1,17 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{string_input::impl_string_input, mys_address::MysAddress};
+use super::{mys_address::MysAddress, string_input::impl_string_input};
 use crate::filter;
 use crate::raw_query::RawQuery;
 use async_graphql::*;
 use move_core_types::language_storage::StructTag;
-use std::{fmt, result::Result, str::FromStr};
 use mys_types::{
     parse_mys_address, parse_mys_fq_name, parse_mys_module_id, parse_mys_struct_tag,
     parse_mys_type_tag, TypeTag,
 };
+use std::{fmt, result::Result, str::FromStr};
 
 /// A GraphQL scalar containing a filter on types that requires an exact match.
 #[derive(Clone, Debug, Eq, PartialEq)]

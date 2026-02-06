@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::anyhow;
@@ -9,6 +10,16 @@ use fastcrypto::traits::{EncodeDecodeBase64, KeyPair};
 use fastcrypto_zkp::bn254::utils::get_proof;
 use fastcrypto_zkp::bn254::utils::{gen_address_seed, get_salt};
 use fastcrypto_zkp::bn254::zk_login::ZkLoginInputs;
+use mys_json_rpc_types::MysTransactionBlockResponseOptions;
+use mys_keys::keystore::{AccountKeystore, Keystore};
+use mys_sdk::MysClientBuilder;
+use mys_types::base_types::MysAddress;
+use mys_types::committee::EpochId;
+use mys_types::crypto::{MysKeyPair, PublicKey};
+use mys_types::multisig::{MultiSig, MultiSigPublicKey};
+use mys_types::signature::GenericSignature;
+use mys_types::transaction::Transaction;
+use mys_types::zk_login_authenticator::ZkLoginAuthenticator;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use regex::Regex;
@@ -19,16 +30,6 @@ use std::io;
 use std::io::Write;
 use std::thread::sleep;
 use std::time::Duration;
-use mys_json_rpc_types::MysTransactionBlockResponseOptions;
-use mys_keys::keystore::{AccountKeystore, Keystore};
-use mys_sdk::MysClientBuilder;
-use mys_types::base_types::MysAddress;
-use mys_types::committee::EpochId;
-use mys_types::crypto::{PublicKey, MysKeyPair};
-use mys_types::multisig::{MultiSig, MultiSigPublicKey};
-use mys_types::signature::GenericSignature;
-use mys_types::transaction::Transaction;
-use mys_types::zk_login_authenticator::ZkLoginAuthenticator;
 
 /// Read a line from stdin, parse the id_token field and return.
 pub fn read_cli_line() -> Result<String, anyhow::Error> {
@@ -211,8 +212,8 @@ pub async fn perform_zk_login_test_tx(
 fn get_config(network: &str) -> (&str, &str) {
     match network {
         "devnet" => (
-            "https://faucet.devnet.mys.io/gas",
-            "https://rpc.devnet.mys.io:443",
+            "https://faucet.devnet.mysocial.network/gas",
+            "https://rpc.devnet.mysocial.network:443",
         ),
         "localnet" => ("http://127.0.0.1:9123/gas", "http://127.0.0.1:9000"),
         _ => panic!("Invalid network"),

@@ -1,8 +1,9 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { PublicKey } from '@mysten/mys/cryptography';
-import { MultiSigPublicKey } from '@mysten/mys/multisig';
+import { PublicKey } from '@socialproof/mys/cryptography';
+import { MultiSigPublicKey } from '@socialproof/mys/multisig';
 
 /**
  * Generate the public key corresponding to a 1-of-N multi-sig

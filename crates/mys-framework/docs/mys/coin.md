@@ -7,6 +7,7 @@ tokens and coins. <code><a href="../mys/coin.md#mys_coin_Coin">Coin</a></code> c
 <code>Balance</code> type.
 
 
+-  [Struct `CoinCreationAdminCap`](#mys_coin_CoinCreationAdminCap)
 -  [Struct `Coin`](#mys_coin_Coin)
 -  [Struct `CoinMetadata`](#mys_coin_CoinMetadata)
 -  [Struct `RegulatedCoinMetadata`](#mys_coin_RegulatedCoinMetadata)
@@ -15,6 +16,7 @@ tokens and coins. <code><a href="../mys/coin.md#mys_coin_Coin">Coin</a></code> c
 -  [Struct `CurrencyCreated`](#mys_coin_CurrencyCreated)
 -  [Struct `DenyCap`](#mys_coin_DenyCap)
 -  [Constants](#@Constants_0)
+-  [Function `create_coin_creation_admin_cap_for_bootstrap`](#mys_coin_create_coin_creation_admin_cap_for_bootstrap)
 -  [Function `total_supply`](#mys_coin_total_supply)
 -  [Function `treasury_into_supply`](#mys_coin_treasury_into_supply)
 -  [Function `supply_immut`](#mys_coin_supply_immut)
@@ -32,6 +34,7 @@ tokens and coins. <code><a href="../mys/coin.md#mys_coin_Coin">Coin</a></code> c
 -  [Function `zero`](#mys_coin_zero)
 -  [Function `destroy_zero`](#mys_coin_destroy_zero)
 -  [Function `create_currency`](#mys_coin_create_currency)
+-  [Function `create_currency_with_admin`](#mys_coin_create_currency_with_admin)
 -  [Function `create_regulated_currency_v2`](#mys_coin_create_regulated_currency_v2)
 -  [Function `migrate_regulated_currency_to_v2`](#mys_coin_migrate_regulated_currency_to_v2)
 -  [Function `mint`](#mys_coin_mint)
@@ -62,16 +65,10 @@ tokens and coins. <code><a href="../mys/coin.md#mys_coin_Coin">Coin</a></code> c
 -  [Function `deny_list_contains`](#mys_coin_deny_list_contains)
 
 
-<pre><code><b>use</b> <a href="../std/address.md#std_address">std::address</a>;
-<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
-<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
-<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
-<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
-<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
-<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/bag.md#mys_bag">mys::bag</a>;
 <b>use</b> <a href="../mys/balance.md#mys_balance">mys::balance</a>;
+<b>use</b> <a href="../mys/bootstrap_key.md#mys_bootstrap_key">mys::bootstrap_key</a>;
 <b>use</b> <a href="../mys/config.md#mys_config">mys::config</a>;
 <b>use</b> <a href="../mys/deny_list.md#mys_deny_list">mys::deny_list</a>;
 <b>use</b> <a href="../mys/dynamic_field.md#mys_dynamic_field">mys::dynamic_field</a>;
@@ -85,9 +82,43 @@ tokens and coins. <code><a href="../mys/coin.md#mys_coin_Coin">Coin</a></code> c
 <b>use</b> <a href="../mys/types.md#mys_types">mys::types</a>;
 <b>use</b> <a href="../mys/url.md#mys_url">mys::url</a>;
 <b>use</b> <a href="../mys/vec_set.md#mys_vec_set">mys::vec_set</a>;
+<b>use</b> <a href="../std/address.md#std_address">std::address</a>;
+<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
+<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
+<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
+<b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
+<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
 
+
+<a name="mys_coin_CoinCreationAdminCap"></a>
+
+## Struct `CoinCreationAdminCap`
+
+Admin capability for creating new coin types
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> <b>has</b> key, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>id: <a href="../mys/object.md#mys_object_UID">mys::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
 
 <a name="mys_coin_Coin"></a>
 
@@ -389,6 +420,16 @@ Invalid arguments are passed to a function.
 
 
 
+<a name="mys_coin_ENotAuthorized"></a>
+
+Caller is not authorized to create coins
+
+
+<pre><code><b>const</b> <a href="../mys/coin.md#mys_coin_ENotAuthorized">ENotAuthorized</a>: u64 = 4;
+</code></pre>
+
+
+
 <a name="mys_coin_ENotEnough"></a>
 
 Trying to split a coin more times than its balance allows.
@@ -398,6 +439,38 @@ Trying to split a coin more times than its balance allows.
 </code></pre>
 
 
+
+<a name="mys_coin_create_coin_creation_admin_cap_for_bootstrap"></a>
+
+## Function `create_coin_creation_admin_cap_for_bootstrap`
+
+Create CoinCreationAdminCap for bootstrap (called by bootstrap module)
+Requires BootstrapKey parameter for security - ensures only authorized callers can invoke
+Bootstrap module handles BootstrapKey check before calling this
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap_for_bootstrap">create_coin_creation_admin_cap_for_bootstrap</a>(_bootstrap_key: &<a href="../mys/bootstrap_key.md#mys_bootstrap_key_BootstrapKey">mys::bootstrap_key::BootstrapKey</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">mys::coin::CoinCreationAdminCap</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_coin_creation_admin_cap_for_bootstrap">create_coin_creation_admin_cap_for_bootstrap</a>(
+    _bootstrap_key: &BootstrapKey,
+    ctx: &<b>mut</b> TxContext
+): <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> {
+    <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> {
+        id: <a href="../mys/object.md#mys_object_new">object::new</a>(ctx)
+    }
+}
+</code></pre>
+
+
+
+</details>
 
 <a name="mys_coin_total_supply"></a>
 
@@ -835,6 +908,10 @@ Create a new currency type <code>T</code> as and return the <code><a href="../my
 <code>T</code> to the caller. Can only be called with a <code>one-time-witness</code>
 type, ensuring that there's only one <code><a href="../mys/coin.md#mys_coin_TreasuryCap">TreasuryCap</a></code> per <code>T</code>.
 
+SECURITY: Only @0x0 at epoch 0 (genesis) can call this.
+This allows the MYS token to be created during genesis.
+All other coin creation must use create_currency_with_admin().
+
 
 <pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_currency">create_currency</a>&lt;T: drop&gt;(witness: T, decimals: u8, symbol: vector&lt;u8&gt;, name: vector&lt;u8&gt;, description: vector&lt;u8&gt;, icon_url: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): (<a href="../mys/coin.md#mys_coin_TreasuryCap">mys::coin::TreasuryCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_CoinMetadata">mys::coin::CoinMetadata</a>&lt;T&gt;)
 </code></pre>
@@ -854,6 +931,8 @@ type, ensuring that there's only one <code><a href="../mys/coin.md#mys_coin_Trea
     icon_url: Option&lt;Url&gt;,
     ctx: &<b>mut</b> TxContext,
 ): (<a href="../mys/coin.md#mys_coin_TreasuryCap">TreasuryCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_CoinMetadata">CoinMetadata</a>&lt;T&gt;) {
+    // Only allow genesis (@0x0 at epoch 0)
+    <b>assert</b>!(ctx.sender() == @0x0 && ctx.epoch() == 0, <a href="../mys/coin.md#mys_coin_ENotAuthorized">ENotAuthorized</a>);
     // Make sure there's only one instance of the type T
     <b>assert</b>!(<a href="../mys/types.md#mys_types_is_one_time_witness">mys::types::is_one_time_witness</a>(&witness), <a href="../mys/coin.md#mys_coin_EBadWitness">EBadWitness</a>);
     (
@@ -877,21 +956,16 @@ type, ensuring that there's only one <code><a href="../mys/coin.md#mys_coin_Trea
 
 </details>
 
-<a name="mys_coin_create_regulated_currency_v2"></a>
+<a name="mys_coin_create_currency_with_admin"></a>
 
-## Function `create_regulated_currency_v2`
+## Function `create_currency_with_admin`
 
-This creates a new currency, via <code><a href="../mys/coin.md#mys_coin_create_currency">create_currency</a></code>, but with an extra capability that
-allows for specific addresses to have their coins frozen. When an address is added to the
-deny list, it is immediately unable to interact with the currency's coin as input objects.
-Additionally at the start of the next epoch, they will be unable to receive the currency's
-coin.
-The <code>allow_global_pause</code> flag enables an additional API that will cause all addresses to
-be denied. Note however, that this doesn't affect per-address entries of the deny list and
-will not change the result of the "contains" APIs.
+Create a new currency with admin authorization
+Requires CoinCreationAdminCap - only the admin can create new coins.
+Uniqueness is enforced by admin discretion (only CoinCreationAdminCap holder can create).
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_regulated_currency_v2">create_regulated_currency_v2</a>&lt;T: drop&gt;(witness: T, decimals: u8, symbol: vector&lt;u8&gt;, name: vector&lt;u8&gt;, description: vector&lt;u8&gt;, icon_url: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;, allow_global_pause: bool, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): (<a href="../mys/coin.md#mys_coin_TreasuryCap">mys::coin::TreasuryCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_DenyCapV2">mys::coin::DenyCapV2</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_CoinMetadata">mys::coin::CoinMetadata</a>&lt;T&gt;)
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_currency_with_admin">create_currency_with_admin</a>&lt;T&gt;(decimals: u8, symbol: vector&lt;u8&gt;, name: vector&lt;u8&gt;, description: vector&lt;u8&gt;, icon_url: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;, _admin_cap: &<a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">mys::coin::CoinCreationAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): (<a href="../mys/coin.md#mys_coin_TreasuryCap">mys::coin::TreasuryCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_CoinMetadata">mys::coin::CoinMetadata</a>&lt;T&gt;)
 </code></pre>
 
 
@@ -900,23 +974,79 @@ will not change the result of the "contains" APIs.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_regulated_currency_v2">create_regulated_currency_v2</a>&lt;T: drop&gt;(
-    witness: T,
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_currency_with_admin">create_currency_with_admin</a>&lt;T&gt;(
+    decimals: u8,
+    symbol: vector&lt;u8&gt;,
+    name: vector&lt;u8&gt;,
+    description: vector&lt;u8&gt;,
+    icon_url: Option&lt;Url&gt;,
+    _admin_cap: &<a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a>,
+    ctx: &<b>mut</b> TxContext,
+): (<a href="../mys/coin.md#mys_coin_TreasuryCap">TreasuryCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_CoinMetadata">CoinMetadata</a>&lt;T&gt;) {
+    // Admin cap proves authorization
+    // Uniqueness is enforced by admin discretion (only <a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a> holder can create)
+    (
+        <a href="../mys/coin.md#mys_coin_TreasuryCap">TreasuryCap</a> {
+            id: <a href="../mys/object.md#mys_object_new">object::new</a>(ctx),
+            <a href="../mys/coin.md#mys_coin_total_supply">total_supply</a>: <a href="../mys/balance.md#mys_balance_create_supply_without_witness">balance::create_supply_without_witness</a>(),
+        },
+        <a href="../mys/coin.md#mys_coin_CoinMetadata">CoinMetadata</a> {
+            id: <a href="../mys/object.md#mys_object_new">object::new</a>(ctx),
+            decimals,
+            name: string::utf8(name),
+            symbol: ascii::string(symbol),
+            description: string::utf8(description),
+            icon_url,
+        },
+    )
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="mys_coin_create_regulated_currency_v2"></a>
+
+## Function `create_regulated_currency_v2`
+
+This creates a new currency, via <code><a href="../mys/coin.md#mys_coin_create_currency_with_admin">create_currency_with_admin</a></code>, but with an extra capability that
+allows for specific addresses to have their coins frozen. When an address is added to the
+deny list, it is immediately unable to interact with the currency's coin as input objects.
+Additionally at the start of the next epoch, they will be unable to receive the currency's
+coin.
+The <code>allow_global_pause</code> flag enables an additional API that will cause all addresses to
+be denied. Note however, that this doesn't affect per-address entries of the deny list and
+will not change the result of the "contains" APIs.
+Requires CoinCreationAdminCap.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_regulated_currency_v2">create_regulated_currency_v2</a>&lt;T&gt;(decimals: u8, symbol: vector&lt;u8&gt;, name: vector&lt;u8&gt;, description: vector&lt;u8&gt;, icon_url: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;, allow_global_pause: bool, admin_cap: &<a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">mys::coin::CoinCreationAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): (<a href="../mys/coin.md#mys_coin_TreasuryCap">mys::coin::TreasuryCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_DenyCapV2">mys::coin::DenyCapV2</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_CoinMetadata">mys::coin::CoinMetadata</a>&lt;T&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_regulated_currency_v2">create_regulated_currency_v2</a>&lt;T&gt;(
     decimals: u8,
     symbol: vector&lt;u8&gt;,
     name: vector&lt;u8&gt;,
     description: vector&lt;u8&gt;,
     icon_url: Option&lt;Url&gt;,
     allow_global_pause: bool,
+    admin_cap: &<a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a>,
     ctx: &<b>mut</b> TxContext,
 ): (<a href="../mys/coin.md#mys_coin_TreasuryCap">TreasuryCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_DenyCapV2">DenyCapV2</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_CoinMetadata">CoinMetadata</a>&lt;T&gt;) {
-    <b>let</b> (treasury_cap, metadata) = <a href="../mys/coin.md#mys_coin_create_currency">create_currency</a>(
-        witness,
+    <b>let</b> (treasury_cap, metadata) = <a href="../mys/coin.md#mys_coin_create_currency_with_admin">create_currency_with_admin</a>(
         decimals,
         symbol,
         name,
         description,
         icon_url,
+        admin_cap,
         ctx,
     );
     <b>let</b> deny_cap = <a href="../mys/coin.md#mys_coin_DenyCapV2">DenyCapV2</a> {
@@ -1599,12 +1729,13 @@ Update the url of the coin in <code><a href="../mys/coin.md#mys_coin_CoinMetadat
 
 ## Function `create_regulated_currency`
 
-This creates a new currency, via <code><a href="../mys/coin.md#mys_coin_create_currency">create_currency</a></code>, but with an extra capability that
+This creates a new currency, via <code><a href="../mys/coin.md#mys_coin_create_currency_with_admin">create_currency_with_admin</a></code>, but with an extra capability that
 allows for specific addresses to have their coins frozen. Those addresses cannot interact
 with the coin as input objects.
+Requires CoinCreationAdminCap.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_regulated_currency">create_regulated_currency</a>&lt;T: drop&gt;(witness: T, decimals: u8, symbol: vector&lt;u8&gt;, name: vector&lt;u8&gt;, description: vector&lt;u8&gt;, icon_url: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): (<a href="../mys/coin.md#mys_coin_TreasuryCap">mys::coin::TreasuryCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_DenyCap">mys::coin::DenyCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_CoinMetadata">mys::coin::CoinMetadata</a>&lt;T&gt;)
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_regulated_currency">create_regulated_currency</a>&lt;T&gt;(decimals: u8, symbol: vector&lt;u8&gt;, name: vector&lt;u8&gt;, description: vector&lt;u8&gt;, icon_url: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../mys/url.md#mys_url_Url">mys::url::Url</a>&gt;, admin_cap: &<a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">mys::coin::CoinCreationAdminCap</a>, ctx: &<b>mut</b> <a href="../mys/tx_context.md#mys_tx_context_TxContext">mys::tx_context::TxContext</a>): (<a href="../mys/coin.md#mys_coin_TreasuryCap">mys::coin::TreasuryCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_DenyCap">mys::coin::DenyCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_CoinMetadata">mys::coin::CoinMetadata</a>&lt;T&gt;)
 </code></pre>
 
 
@@ -1613,22 +1744,22 @@ with the coin as input objects.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_regulated_currency">create_regulated_currency</a>&lt;T: drop&gt;(
-    witness: T,
+<pre><code><b>public</b> <b>fun</b> <a href="../mys/coin.md#mys_coin_create_regulated_currency">create_regulated_currency</a>&lt;T&gt;(
     decimals: u8,
     symbol: vector&lt;u8&gt;,
     name: vector&lt;u8&gt;,
     description: vector&lt;u8&gt;,
     icon_url: Option&lt;Url&gt;,
+    admin_cap: &<a href="../mys/coin.md#mys_coin_CoinCreationAdminCap">CoinCreationAdminCap</a>,
     ctx: &<b>mut</b> TxContext,
 ): (<a href="../mys/coin.md#mys_coin_TreasuryCap">TreasuryCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_DenyCap">DenyCap</a>&lt;T&gt;, <a href="../mys/coin.md#mys_coin_CoinMetadata">CoinMetadata</a>&lt;T&gt;) {
-    <b>let</b> (treasury_cap, metadata) = <a href="../mys/coin.md#mys_coin_create_currency">create_currency</a>(
-        witness,
+    <b>let</b> (treasury_cap, metadata) = <a href="../mys/coin.md#mys_coin_create_currency_with_admin">create_currency_with_admin</a>(
         decimals,
         symbol,
         name,
         description,
         icon_url,
+        admin_cap,
         ctx,
     );
     <b>let</b> deny_cap = <a href="../mys/coin.md#mys_coin_DenyCap">DenyCap</a> {

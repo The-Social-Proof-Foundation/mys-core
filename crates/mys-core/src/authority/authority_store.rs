@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::ops::Not;
@@ -21,7 +22,6 @@ use fastcrypto::hash::{HashFunction, MultisetHash, Sha3_256};
 use futures::stream::FuturesUnordered;
 use itertools::izip;
 use move_core_types::resolver::ModuleResolver;
-use serde::{Deserialize, Serialize};
 use mys_config::node::AuthorityStorePruningConfig;
 use mys_macros::fail_point_arg;
 use mys_storage::mutex_table::{MutexGuard, MutexTable, RwLockGuard, RwLockTable};
@@ -30,12 +30,13 @@ use mys_types::digests::TransactionEventsDigest;
 use mys_types::error::UserInputError;
 use mys_types::execution::TypeLayoutStore;
 use mys_types::message_envelope::Message;
+use mys_types::mys_system_state::get_mys_system_state;
 use mys_types::storage::{
     get_module, BackingPackageStore, FullObjectKey, MarkerValue, ObjectKey, ObjectOrTombstone,
     ObjectStore,
 };
-use mys_types::mys_system_state::get_mys_system_state;
 use mys_types::{base_types::SequenceNumber, fp_bail, fp_ensure};
+use serde::{Deserialize, Serialize};
 use tokio::time::Instant;
 use tracing::{debug, info, trace};
 use typed_store::traits::Map;
@@ -46,9 +47,9 @@ use typed_store::{
 
 use super::authority_store_tables::LiveObject;
 use super::{authority_store_tables::AuthorityPerpetualTables, *};
-use mysten_common::sync::notify_read::NotifyRead;
 use mys_types::effects::{TransactionEffects, TransactionEvents};
 use mys_types::gas_coin::TOTAL_SUPPLY_MIST;
+use mysten_common::sync::notify_read::NotifyRead;
 use typed_store::rocks::util::is_ref_count_value;
 
 const NUM_SHARDS: usize = 4096;
@@ -984,11 +985,11 @@ impl AuthorityStore {
             )?;
         }
         if !existing_indirect_objects.is_empty() {
-            write_batch.partial_merge_batch(
+            write_batch.partial_merge_batch_raw(
                 &self.perpetual_tables.indirect_move_objects,
                 existing_indirect_objects
                     .into_iter()
-                    .map(|(_, (digest, _))| (digest, 1_u64.to_le_bytes())),
+                    .map(|(_, (digest, _))| (digest, 1_u64.to_be_bytes().to_vec())),
             )?;
         }
 
@@ -1958,8 +1959,7 @@ impl AccumulatorStore for AuthorityStore {
         Ok(self
             .perpetual_tables
             .root_state_hash_by_epoch
-            .safe_iter()
-            .skip_to_last()
+            .reversed_safe_iter_with_bounds(None, None)?
             .next()
             .transpose()?)
     }

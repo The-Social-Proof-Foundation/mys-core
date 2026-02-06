@@ -43,7 +43,7 @@ Once the shared workspace has been initialized, each validator can contribute th
 
 ```
 $ git clone <url to genesis repo> && cd genesis
-$ mys genesis-ceremony add-validator \
+$ myso genesis-ceremony add-validator \
     --name <human-readable validator name> \
     --key-file <path to key file> \
     --network-address <multiaddr> \
@@ -63,7 +63,7 @@ $ git push # either to the shared workspace or another branch followed by a PR
 Add configuration for any initial gas objects that should be created at genesis.
 
 ```
-$ mys genesis-ceremony add-gas-object \
+$ myso genesis-ceremony add-gas-object \
     --address <MysAddress> \
     --object-id <ObjectId> \
     --valud <# of mys coins>
@@ -77,7 +77,7 @@ $ git push
 Once all validators and gas objects have been added, the MC can build the genesis object:
 
 ```
-$ mys genesis-ceremony build
+$ myso genesis-ceremony build
 $ git add .
 $ git commit -m "build genesis"
 $ git push
@@ -88,7 +88,7 @@ $ git push
 Once genesis is built each validator will need to verify and sign genesis:
 
 ```
-$ mys genesis-ceremony verify-and-sign \
+$ myso genesis-ceremony verify-and-sign \
     --key-file <path to key file>
 $ git add .
 $ git commit -m "sign genesis"
@@ -101,5 +101,5 @@ Once all validators have successfully verified and signed genesis, the MC can fi
 and then the genesis state can be distributed:
 
 ```
-$ mys genesis-ceremony finalize
+$ myso genesis-ceremony finalize
 ```

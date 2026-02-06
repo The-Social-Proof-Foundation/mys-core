@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 #[test_only]
@@ -74,7 +75,7 @@ module mys_system::governance_test_utils {
 
         let stake_subsidy = stake_subsidy::create(
             balance::create_for_testing<MYS>(mys_supply_amount * MIST_PER_MYS), // mys_supply
-            0,   // stake subsidy initial distribution amount
+            0,   // stake subsidy initial APY (in basis points)
             10,  // stake_subsidy_period_length
             0,   // stake_subsidy_decrease_rate
             ctx,

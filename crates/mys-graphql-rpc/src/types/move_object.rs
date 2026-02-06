@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::balance::{self, Balance};
@@ -11,11 +12,11 @@ use super::display::DisplayEntry;
 use super::dynamic_field::{DynamicField, DynamicFieldName};
 use super::move_type::MoveType;
 use super::move_value::MoveValue;
+use super::mys_address::MysAddress;
+use super::mysns_registration::{DomainFormat, MysnsRegistration, MysnsRegistrationDowncastError};
 use super::object::{self, ObjectFilter, ObjectImpl, ObjectLookup, ObjectOwner, ObjectStatus};
 use super::owner::OwnerImpl;
 use super::stake::StakedMysDowncastError;
-use super::mys_address::MysAddress;
-use super::mysns_registration::{DomainFormat, MysnsRegistration, MysnsRegistrationDowncastError};
 use super::transaction_block::{self, TransactionBlock, TransactionBlockFilter};
 use super::type_filter::ExactTypeFilter;
 use super::uint53::UInt53;

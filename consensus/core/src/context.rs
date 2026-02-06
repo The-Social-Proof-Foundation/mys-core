@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{sync::Arc, time::SystemTime};
@@ -67,7 +68,7 @@ impl Context {
             AuthorityIndex::new_for_test(0),
             committee,
             Parameters {
-                db_path: temp_dir.into_path(),
+                db_path: temp_dir.keep(),
                 ..Default::default()
             },
             ProtocolConfig::get_for_max_version_UNSAFE(),

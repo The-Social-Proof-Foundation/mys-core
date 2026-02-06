@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::path::Path;
@@ -7,7 +8,6 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use clap::Parser;
-use prometheus::Registry;
 use mys_indexer_alt::args::Args;
 use mys_indexer_alt::args::Command;
 use mys_indexer_alt::config::IndexerConfig;
@@ -17,6 +17,7 @@ use mys_indexer_alt_framework::Indexer;
 use mys_indexer_alt_metrics::MetricsService;
 use mys_indexer_alt_schema::MIGRATIONS;
 use mys_pg_db::reset_database;
+use prometheus::Registry;
 use tokio::fs;
 use tokio_util::sync::CancellationToken;
 use tracing::info;

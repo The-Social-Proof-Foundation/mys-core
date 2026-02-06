@@ -10,7 +10,7 @@ To request tokens from the faucet, you must own a wallet address that can receiv
 
 ## Request test tokens through the online faucet {#online-faucet}
 
-https://faucet.mys.io/: Visit the online faucet to request MYS tokens.
+https://faucet.mysocial.network/: Visit the online faucet to request MYS tokens.
 
 How to use:
 
@@ -52,7 +52,7 @@ You can request test tokens within [MySocial Wallet](https://github.com/MystenLa
 Use the following cURL command to request tokens directly from the faucet server:
 
 ```
-curl --location --request POST 'https://faucet.devnet.mys.io/v1/gas' \
+curl --location --request POST 'https://faucet.devnet.mysocial.network/v1/gas' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "FixedAmountRequest": {
@@ -61,7 +61,7 @@ curl --location --request POST 'https://faucet.devnet.mys.io/v1/gas' \
 }'
 ```
 
-If you're working with a local network, replace `'https://faucet.devnet.mys.io/v1/gas'` with the appropriate value based on which package runs your network:
+If you're working with a local network, replace `'https://faucet.devnet.mysocial.network/v1/gas'` with the appropriate value based on which package runs your network:
 
 - `mys-faucet`: `http://127.0.0.1:5003/gas`
 - `mys`: `http://127.0.0.1:9123/gas`
@@ -71,7 +71,7 @@ If you're working with a local network, replace `'https://faucet.devnet.mys.io/v
 You can also access the faucet using the MySocial TypeScript-SDK.
 
 ```typescript
-import { getFaucetHost, requestMySocialFromFaucetV0 } from '@mysten/mys/faucet';
+import { getFaucetHost, requestMySocialFromFaucetV0 } from '@socialproof/mys/faucet';
 
 // get tokens from the Devnet faucet server
 await requestMySocialFromFaucetV0({

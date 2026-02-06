@@ -1,0 +1,262 @@
+// Copyright (c) The Social Proof Foundation, LLC.
+// SPDX-License-Identifier: Apache-2.0
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+/// Profile event types - corresponds to the Move module events
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ProfileEventType {
+    ProfileCreated,
+    ProfileUpdated,
+    ProfileTransferred,
+    ServiceAuthorized,
+    ServiceRevoked,
+    // User blocks another user
+    BlockAdded,
+    // User unblocks another user
+    BlockRemoved,
+    // User joins a platform
+    PlatformJoined,
+    // User leaves a platform
+    PlatformLeft,
+    // MYS tokens are vested
+    TokensVested,
+    // Vested tokens are claimed
+    TokensClaimed,
+    // Profile offer created
+    ProfileOfferCreated,
+    // Profile offer accepted
+    ProfileOfferAccepted,
+    // Profile offer rejected/revoked
+    ProfileOfferRejected,
+    // Profile sale fee collected
+    ProfileSaleFee,
+    // Badge assigned to profile
+    BadgeAssigned,
+    // Badge revoked from profile
+    BadgeRevoked,
+    // Badge selected by profile owner
+    BadgeSelected,
+    // Vesting wallet deleted
+    VestingWalletDeleted,
+    // Paid messaging settings updated
+    PaidMessagingSettingsUpdated,
+    // Ecosystem treasury updated
+    EcosystemTreasuryUpdated,
+}
+
+impl ProfileEventType {
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            s if s.contains("::ProfileCreatedEvent") => Some(Self::ProfileCreated),
+            s if s.contains("::ProfileUpdatedEvent") => Some(Self::ProfileUpdated),
+            s if s.contains("::ProfileTransferredEvent") => Some(Self::ProfileTransferred),
+            s if s.contains("::ServiceAuthorizedEvent") => Some(Self::ServiceAuthorized),
+            s if s.contains("::ServiceRevokedEvent") => Some(Self::ServiceRevoked),
+            s if s.contains("::BlockAddedEvent") || s.contains("::UserBlockEvent") => {
+                Some(Self::BlockAdded)
+            }
+            s if s.contains("::BlockRemovedEvent") || s.contains("::UserUnblockEvent") => {
+                Some(Self::BlockRemoved)
+            }
+            s if s.contains("::UserJoinedPlatformEvent") || s.contains("::PlatformJoinedEvent") => {
+                Some(Self::PlatformJoined)
+            }
+            s if s.contains("::UserLeftPlatformEvent") || s.contains("::PlatformLeftEvent") => {
+                Some(Self::PlatformLeft)
+            }
+            s if s.contains("::TokensVestedEvent") || s.contains("::vest_myso") => Some(Self::TokensVested),
+            s if s.contains("::TokensClaimedEvent") || s.contains("::claim_vested_tokens") => Some(Self::TokensClaimed),
+            s if s.contains("::ProfileOfferCreatedEvent") => Some(Self::ProfileOfferCreated),
+            s if s.contains("::ProfileOfferAcceptedEvent") => Some(Self::ProfileOfferAccepted),
+            s if s.contains("::ProfileOfferRejectedEvent") => Some(Self::ProfileOfferRejected),
+            s if s.contains("::ProfileSaleFeeEvent") => Some(Self::ProfileSaleFee),
+            s if s.contains("::BadgeAssignedEvent") => Some(Self::BadgeAssigned),
+            s if s.contains("::BadgeRevokedEvent") => Some(Self::BadgeRevoked),
+            s if s.contains("::BadgeSelectedEvent") => Some(Self::BadgeSelected),
+            s if s.contains("::VestingWalletDeletedEvent") => Some(Self::VestingWalletDeleted),
+            s if s.contains("::PaidMessagingSettingsUpdatedEvent") => Some(Self::PaidMessagingSettingsUpdated),
+            s if s.contains("::EcosystemTreasuryUpdatedEvent") => Some(Self::EcosystemTreasuryUpdated),
+            _ => None,
+        }
+    }
+
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Self::ProfileCreated => "ProfileCreatedEvent",
+            Self::ProfileUpdated => "ProfileUpdatedEvent",
+            Self::ProfileTransferred => "ProfileTransferredEvent",
+            Self::ServiceAuthorized => "ServiceAuthorizedEvent",
+            Self::ServiceRevoked => "ServiceRevokedEvent",
+            Self::BlockAdded => "BlockAddedEvent",
+            Self::BlockRemoved => "BlockRemovedEvent",
+            Self::PlatformJoined => "PlatformJoinedEvent",
+            Self::PlatformLeft => "PlatformLeftEvent",
+            Self::TokensVested => "TokensVestedEvent",
+            Self::TokensClaimed => "TokensClaimedEvent",
+            Self::ProfileOfferCreated => "ProfileOfferCreatedEvent",
+            Self::ProfileOfferAccepted => "ProfileOfferAcceptedEvent",
+            Self::ProfileOfferRejected => "ProfileOfferRejectedEvent",
+            Self::ProfileSaleFee => "ProfileSaleFeeEvent",
+            Self::BadgeAssigned => "BadgeAssignedEvent",
+            Self::BadgeRevoked => "BadgeRevokedEvent",
+            Self::BadgeSelected => "BadgeSelectedEvent",
+            Self::VestingWalletDeleted => "VestingWalletDeletedEvent",
+            Self::PaidMessagingSettingsUpdated => "PaidMessagingSettingsUpdatedEvent",
+            Self::EcosystemTreasuryUpdated => "EcosystemTreasuryUpdatedEvent",
+        }
+    }
+}
+
+impl From<ProfileEventType> for String {
+    fn from(event_type: ProfileEventType) -> Self {
+        event_type.to_str().to_string()
+    }
+}
+
+/// Helper method to extract a profile ID from an event
+pub fn extract_profile_id(event_data: &Value) -> Option<String> {
+    // Try standard format first
+    let profile_id = event_data
+        .get("profile_id")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    if profile_id.is_some() {
+        return profile_id;
+    }
+
+    // Try blockchain object format with fields.profile_id
+    if let Some(fields) = event_data.get("fields") {
+        if let Some(profile_id) = fields.get("profile_id") {
+            if let Some(id_str) = profile_id.as_str() {
+                return Some(id_str.to_string());
+            }
+        }
+    }
+
+    // Try content.fields format
+    if let Some(content) = event_data.get("content") {
+        if let Some(fields) = content.get("fields") {
+            if let Some(profile_id) = fields.get("profile_id") {
+                if let Some(id_str) = profile_id.as_str() {
+                    return Some(id_str.to_string());
+                }
+            }
+        }
+    }
+
+    // Try with blocker_profile_id for block events
+    let blocker_id = event_data
+        .get("blocker_profile_id")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    if blocker_id.is_some() {
+        return blocker_id;
+    }
+
+    // Try array/tuple formats that might be in the move structure
+    if let Some(array) = event_data.as_array() {
+        if !array.is_empty() {
+            if let Some(id_str) = array[0].as_str() {
+                return Some(id_str.to_string());
+            }
+        }
+    }
+
+    // Log failure for debugging
+    tracing::warn!(
+        "Failed to extract profile_id from event data: {}",
+        serde_json::to_string_pretty(event_data).unwrap_or_default()
+    );
+
+    None
+}
+
+// Block event definitions
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BlockAddedEvent {
+    pub blocker_profile_id: String,
+    pub blocked_profile_id: String,
+    pub timestamp: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BlockRemovedEvent {
+    pub blocker_profile_id: String,
+    pub blocked_profile_id: String,
+    pub timestamp: u64,
+}
+
+// Platform membership event definitions
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PlatformJoinedEvent {
+    pub profile_id: String,
+    pub platform_id: String,
+    pub timestamp: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PlatformLeftEvent {
+    pub profile_id: String,
+    pub platform_id: String,
+    pub timestamp: u64,
+}
+
+// Vesting event definitions
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TokensVestedEvent {
+    pub wallet_id: String,
+    pub owner: String,
+    pub total_amount: u64,
+    pub start_time: u64,
+    pub duration: u64,
+    pub curve_factor: u64,
+    pub vested_at: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TokensClaimedEvent {
+    pub wallet_id: String,
+    pub owner: String,
+    pub claimed_amount: u64,
+    pub remaining_balance: u64,
+    pub claimed_at: u64,
+}
+
+/// Helper method to extract a wallet ID from a vesting event
+pub fn extract_wallet_id(event_data: &Value) -> Option<String> {
+    // Try standard format first
+    let wallet_id = event_data
+        .get("wallet_id")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    if wallet_id.is_some() {
+        return wallet_id;
+    }
+
+    // Try blockchain object format with fields.wallet_id
+    if let Some(fields) = event_data.get("fields") {
+        if let Some(wallet_id) = fields.get("wallet_id") {
+            if let Some(id_str) = wallet_id.as_str() {
+                return Some(id_str.to_string());
+            }
+        }
+    }
+
+    // Try content.fields format
+    if let Some(content) = event_data.get("content") {
+        if let Some(fields) = content.get("fields") {
+            if let Some(wallet_id) = fields.get("wallet_id") {
+                if let Some(id_str) = wallet_id.as_str() {
+                    return Some(id_str.to_string());
+                }
+            }
+        }
+    }
+
+    None
+}

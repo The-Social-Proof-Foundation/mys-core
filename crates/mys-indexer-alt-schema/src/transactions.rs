@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::schema::{
@@ -13,9 +14,9 @@ use diesel::{
     serialize,
     sql_types::SmallInt,
 };
-use serde::{Deserialize, Serialize};
 use mys_field_count::FieldCount;
 use mys_types::object::Owner;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BalanceChange {

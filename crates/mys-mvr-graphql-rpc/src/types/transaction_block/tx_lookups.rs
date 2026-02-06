@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! # Transaction Filter Lookup Tables
@@ -64,8 +65,8 @@ use crate::{
     },
 };
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl};
-use std::fmt::Write;
 use mys_indexer::schema::checkpoints;
+use std::fmt::Write;
 
 /// Bounds on transaction sequence number, imposed by filters, cursors, and the scan limit. The
 /// outermost bounds are determined by the checkpoint filters. These get translated into bounds in

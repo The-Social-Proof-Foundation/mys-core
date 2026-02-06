@@ -1,8 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::sync::Arc;
-use std::time::Duration;
 use mys_core::authority_client::NetworkAuthorityClient;
 use mys_core::transaction_orchestrator::TransactiondOrchestrator;
 use mys_macros::sim_test;
@@ -17,6 +16,8 @@ use mys_types::quorum_driver_types::{
     FinalizedEffects, IsTransactionExecutedLocally, QuorumDriverError,
 };
 use mys_types::transaction::Transaction;
+use std::sync::Arc;
+use std::time::Duration;
 use test_cluster::TestClusterBuilder;
 use tokio::time::timeout;
 use tracing::info;

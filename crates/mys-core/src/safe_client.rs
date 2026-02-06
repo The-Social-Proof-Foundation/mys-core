@@ -1,17 +1,10 @@
 // Copyright (c) 2021, Facebook, Inc. and its affiliates
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority_client::AuthorityAPI;
 use crate::epoch::committee_store::CommitteeStore;
-use prometheus::core::GenericCounter;
-use prometheus::{
-    register_histogram_vec_with_registry, register_int_counter_vec_with_registry, Histogram,
-    HistogramVec, IntCounterVec, Registry,
-};
-use std::collections::HashMap;
-use std::net::SocketAddr;
-use std::sync::Arc;
 use mys_types::crypto::AuthorityPublicKeyBytes;
 use mys_types::effects::{SignedTransactionEffects, TransactionEffectsAPI};
 use mys_types::messages_checkpoint::{
@@ -29,6 +22,14 @@ use mys_types::{
     error::{MysError, MysResult},
     transaction::*,
 };
+use prometheus::core::GenericCounter;
+use prometheus::{
+    register_histogram_vec_with_registry, register_int_counter_vec_with_registry, Histogram,
+    HistogramVec, IntCounterVec, Registry,
+};
+use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::sync::Arc;
 use tap::TapFallible;
 use tracing::{debug, error, instrument};
 

@@ -9,7 +9,7 @@ The default configuration limits scope to MySocial framework packages in `crates
 - `move-stdlib` — [address `0x1`](https://mysexplorer.com/object/0x1)
 - `mys-framework` — [address `0x2`](https://mysexplorer.com/object/0x2)
 - `mys-system` — [address `0x3`](https://mysexplorer.com/object/0x2)
-- `deepbook` — [address `0xdee9`](https://mysexplorer.com/object/0xdee9)
+- `deepbook` — [address `0x0b0c`](https://mysexplorer.com/object/0x0b0c)
 
 See examples below for requesting source from the server.
 
@@ -33,7 +33,7 @@ repository = "https://github.com/mystenlabs/mys"
 branch = "framework/mainnet"
 network = "mainnet"
 packages = [
-    { path = "crates/mys-framework/packages/deepbook", watch = "0xdee9" },
+    { path = "crates/mys-framework/packages/deepbook", watch = "0x0b0c" },
     { path = "crates/mys-framework/packages/move-stdlib", watch = "0x1" },
     { path = "crates/mys-framework/packages/mys-framework", watch = "0x2" },
     { path = "crates/mys-framework/packages/mys-system", watch = "0x3" },
@@ -81,10 +81,10 @@ On occasion `https://source.mystenlabs.com` may return a `502` response or exper
 
 The source service may experience transient downtime for at least the following reasons:
 
-- RPC event subscription disconnection or instability. The Mysten source service actively monitors on-chain upgrade events to ensure it always reports accurate verified source. If RPC subscription is lost, the service will attempt to regain the connection. During the time of disconnection the service will not respond with verified source in order to preserve integrity. This behavior is especially important for MySocial framework packages that are upgraded _in-place_ (e.g., `0x1`, `0x2`, `0x3`, and `0xdee9`) to ensure integrity. This is usually a transient issue.
+- RPC event subscription disconnection or instability. The Mysten source service actively monitors on-chain upgrade events to ensure it always reports accurate verified source. If RPC subscription is lost, the service will attempt to regain the connection. During the time of disconnection the service will not respond with verified source in order to preserve integrity. This behavior is especially important for MySocial framework packages that are upgraded _in-place_ (e.g., `0x1`, `0x2`, `0x3`, and `0x0b0c`) to ensure integrity. This is usually a transient issue.
 
 - The on-chain package content has changed (e.g., due to a protocol upgrade) and the source repository does not yet reflect the new on-chain bytecode. 
-  - This can happen when the branch containing we track for the source-to-be-verified as diverged from on-chain bytecode, or does not yet correspond to the new on-chain bytecode. This is especially the case for MySocial framework packages that are upgraded _in-place_ at protocol upgrades (e.g., `0x1`, `0x2`, `0x3`, and `0xdee9`).
+  - This can happen when the branch containing we track for the source-to-be-verified as diverged from on-chain bytecode, or does not yet correspond to the new on-chain bytecode. This is especially the case for MySocial framework packages that are upgraded _in-place_ at protocol upgrades (e.g., `0x1`, `0x2`, `0x3`, and `0x0b0c`).
     - While usually transient, there may be extended periods of mismatched source and bytecode due to MySocial's release process.
 	
 - A new version of Move compiler is released, requiring service redeployment.

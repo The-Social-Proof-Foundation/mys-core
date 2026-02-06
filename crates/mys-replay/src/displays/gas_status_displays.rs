@@ -1,10 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::displays::Pretty;
-use std::fmt::{Display, Formatter};
 use mys_types::gas::MysGasStatus;
 use mys_types::gas_model::gas_v2::MysGasStatus as GasStatusV2;
+use std::fmt::{Display, Formatter};
 use tabled::{
     builder::Builder as TableBuilder,
     settings::{style::HorizontalLine, Style as TableStyle},

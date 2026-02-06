@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::fs;
@@ -50,10 +51,32 @@ async fn main() {
 
         Command::StartServer {
             ide,
-            connection,
+            mut connection,
             config,
-            tx_exec_full_node,
+            mut tx_exec_full_node,
         } => {
+            // Override with environment variables if set
+            if let Ok(database_url) = std::env::var("DATABASE_URL") {
+                if database_url != "$DATABASE_URL" {
+                    // Make sure it's not the literal string
+                    connection.db_url = database_url;
+                }
+            }
+
+            if let Ok(rpc_url) = std::env::var("RPC_URL") {
+                if rpc_url != "$RPC_URL" {
+                    // Make sure it's not the literal string
+                    tx_exec_full_node =
+                        mys_graphql_rpc::config::TxExecFullNodeConfig::new(Some(rpc_url));
+                }
+            }
+
+            if let Ok(port) = std::env::var("PORT") {
+                if let Ok(port_num) = port.parse::<u16>() {
+                    connection.port = port_num;
+                }
+            }
+
             let service_config = service_config(config);
             let _guard = telemetry_subscribers::TelemetryConfig::new()
                 .with_env()

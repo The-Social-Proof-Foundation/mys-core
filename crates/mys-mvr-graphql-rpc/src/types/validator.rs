@@ -1,24 +1,27 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::consistency::ConsistentIndexCursor;
+use crate::context_data::db_data_provider::PgManager;
 use crate::data::apys::calculate_apy;
 use crate::data::{DataLoader, Db};
 use crate::types::cursor::{JsonCursor, Page};
 use async_graphql::connection::{Connection, CursorType, Edge};
 use async_graphql::dataloader::Loader;
-use std::collections::{BTreeMap, HashMap};
 use mys_indexer::apis::GovernanceReadApi;
 use mys_types::committee::EpochId;
 use mys_types::mys_system_state::PoolTokenExchangeRate;
+use std::collections::{BTreeMap, HashMap};
+use std::future::Future;
 
 use mys_types::base_types::MysAddress as NativeMysAddress;
 
 use super::big_int::BigInt;
 use super::move_object::MoveObject;
+use super::mys_address::MysAddress;
 use super::object::Object;
 use super::owner::Owner;
-use super::mys_address::MysAddress;
 use super::uint53::UInt53;
 use super::validator_credentials::ValidatorCredentials;
 use super::{address::Address, base64::Base64};
@@ -44,7 +47,6 @@ type EpochStakeSubsidyStarted = u64;
 ///
 /// It automatically filters the exchange rate table to only include data for the epochs that are
 /// less than or equal to the requested epoch.
-#[async_trait::async_trait]
 impl Loader<u64> for Db {
     type Value = (
         EpochStakeSubsidyStarted,
@@ -52,10 +54,10 @@ impl Loader<u64> for Db {
     );
     type Error = Error;
 
-    async fn load(
+    fn load(
         &self,
         keys: &[u64],
-    ) -> Result<
+    ) -> impl Future<Output = Result<
         HashMap<
             u64,
             (
@@ -64,61 +66,65 @@ impl Loader<u64> for Db {
             ),
         >,
         Error,
-    > {
-        let latest_mys_system_state = self
-            .inner
-            .get_latest_mys_system_state()
-            .await
-            .map_err(|_| Error::Internal("Failed to fetch latest Mys system state".to_string()))?;
-        let governance_api = GovernanceReadApi::new(self.inner.clone());
-        let exchange_rates = exchange_rates(&governance_api, &latest_mys_system_state)
-            .await
-            .map_err(|e| Error::Internal(format!("Error fetching exchange rates. {e}")))?;
-        let mut results = BTreeMap::new();
+    >> + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            let latest_mys_system_state = self_clone
+                .inner
+                .get_latest_mys_system_state()
+                .await
+                .map_err(|_| Error::Internal("Failed to fetch latest Mys system state".to_string()))?;
+            let governance_api = GovernanceReadApi::new(self_clone.inner.clone());
+            let exchange_rates = exchange_rates(&governance_api, &latest_mys_system_state)
+                .await
+                .map_err(|e| Error::Internal(format!("Error fetching exchange rates. {e}")))?;
+            let mut results = BTreeMap::new();
 
-        // The requested epoch is the epoch for which we want to compute the APY. For the current
-        // ongoing epoch we cannot compute an APY, so we compute it for epoch - 1.
-        // First need to check if that requested epoch is not the current running one. If it is,
-        // then subtract one as the APY cannot be computed for a running epoch.
-        // If no epoch is passed in the key, then we default to the latest epoch - 1
-        // for the same reasons as above.
-        let epoch_to_filter_out = if let Some(epoch) = keys.first() {
-            if epoch == &latest_mys_system_state.epoch {
-                *epoch - 1
+            // The requested epoch is the epoch for which we want to compute the APY. For the current
+            // ongoing epoch we cannot compute an APY, so we compute it for epoch - 1.
+            // First need to check if that requested epoch is not the current running one. If it is,
+            // then subtract one as the APY cannot be computed for a running epoch.
+            // If no epoch is passed in the key, then we default to the latest epoch - 1
+            // for the same reasons as above.
+            let epoch_to_filter_out = if let Some(epoch) = keys_vec.first() {
+                if epoch == &latest_mys_system_state.epoch {
+                    *epoch - 1
+                } else {
+                    *epoch
+                }
             } else {
-                *epoch
+                latest_mys_system_state.epoch - 1
+            };
+
+            // filter the exchange rates to only include data for the epochs that are less than or
+            // equal to the requested epoch. This enables us to get historical exchange rates
+            // accurately and pass this to the APY calculation function
+            // TODO we might even filter here by the epoch at which the stake subsidy started
+            // to avoid passing that to the `calculate_apy` function and doing another filter there
+            for er in exchange_rates {
+                results.insert(
+                    er.address,
+                    er.rates
+                        .into_iter()
+                        .filter(|(epoch, _)| epoch <= &epoch_to_filter_out)
+                        .collect(),
+                );
             }
-        } else {
-            latest_mys_system_state.epoch - 1
-        };
 
-        // filter the exchange rates to only include data for the epochs that are less than or
-        // equal to the requested epoch. This enables us to get historical exchange rates
-        // accurately and pass this to the APY calculation function
-        // TODO we might even filter here by the epoch at which the stake subsidy started
-        // to avoid passing that to the `calculate_apy` function and doing another filter there
-        for er in exchange_rates {
-            results.insert(
-                er.address,
-                er.rates
-                    .into_iter()
-                    .filter(|(epoch, _)| epoch <= &epoch_to_filter_out)
-                    .collect(),
+            let requested_epoch = match keys_vec.first() {
+                Some(x) => *x,
+                None => latest_mys_system_state.epoch,
+            };
+
+            let mut r = HashMap::new();
+            r.insert(
+                requested_epoch,
+                (latest_mys_system_state.stake_subsidy_start_epoch, results),
             );
+
+            Ok(r)
         }
-
-        let requested_epoch = match keys.first() {
-            Some(x) => *x,
-            None => latest_mys_system_state.epoch,
-        };
-
-        let mut r = HashMap::new();
-        r.insert(
-            requested_epoch,
-            (latest_mys_system_state.stake_subsidy_start_epoch, results),
-        );
-
-        Ok(r)
     }
 }
 
@@ -366,6 +372,12 @@ impl Validator {
     /// The APY of this validator in basis points.
     /// To get the APY in percentage, divide by 100.
     async fn apy(&self, ctx: &Context<'_>) -> Result<Option<u64>, Error> {
+        // Get the system state to access epoch_duration_ms
+        let system_state = ctx
+            .data_unchecked::<PgManager>()
+            .fetch_mys_system_state(Some(self.requested_for_epoch))
+            .await?;
+
         let DataLoader(loader) = ctx.data_unchecked();
         let (stake_subsidy_start_epoch, exchange_rates) = loader
             .load_one(self.requested_for_epoch)
@@ -380,7 +392,11 @@ impl Validator {
                 ))
             })?;
 
-        let avg_apy = Some(calculate_apy(stake_subsidy_start_epoch, rates));
+        let avg_apy = Some(calculate_apy(
+            stake_subsidy_start_epoch,
+            rates,
+            system_state.epoch_duration_ms,
+        ));
 
         Ok(avg_apy.map(|x| (x * 10000.0) as u64))
     }

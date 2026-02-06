@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::client_commands::MysClientCommands;
@@ -13,13 +14,6 @@ use colored::Colorize;
 use fastcrypto::traits::KeyPair;
 use move_analyzer::analyzer;
 use move_package::BuildConfig;
-use rand::rngs::OsRng;
-use std::io::{stderr, stdout, Write};
-use std::net::{AddrParseError, IpAddr, Ipv4Addr, SocketAddr};
-use std::num::NonZeroUsize;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::{fs, io};
 use mys_bridge::config::BridgeCommitteeConfig;
 use mys_bridge::metrics::BridgeMetrics;
 use mys_bridge::mys_client::MysBridgeClient;
@@ -34,9 +28,17 @@ use mys_config::{
     MYS_BENCHMARK_GENESIS_GAS_KEYSTORE_FILENAME, MYS_GENESIS_FILENAME, MYS_KEYSTORE_FILENAME,
 };
 use mys_faucet::{create_wallet_context, start_faucet, AppState, FaucetConfig, SimpleFaucet};
+use mys_indexer::config::SocialIndexerConfig;
 use mys_indexer::test_utils::{
     start_indexer_jsonrpc_for_testing, start_indexer_writer_for_testing,
 };
+use rand::rngs::OsRng;
+use std::io::{stderr, stdout, Write};
+use std::net::{AddrParseError, IpAddr, Ipv4Addr, SocketAddr};
+use std::num::NonZeroUsize;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::{fs, io};
 
 use mys_graphql_rpc::{
     config::{ConnectionConfig, ServiceConfig},
@@ -55,10 +57,11 @@ use mys_swarm_config::network_config::NetworkConfig;
 use mys_swarm_config::network_config_builder::ConfigBuilder;
 use mys_swarm_config::node_config_builder::FullnodeConfigBuilder;
 use mys_types::base_types::MysAddress;
-use mys_types::crypto::{SignatureScheme, MysKeyPair, ToFromBytes};
+use mys_types::crypto::{MysKeyPair, SignatureScheme, ToFromBytes};
 use tempfile::tempdir;
 use tracing;
 use tracing::info;
+use rustls;
 
 const CONCURRENCY_LIMIT: usize = 30;
 const DEFAULT_EPOCH_DURATION_MS: u64 = 60_000;
@@ -226,7 +229,7 @@ pub enum MysCommand {
         #[clap(short, long, help = "Dump the public keys of all authorities")]
         dump_addresses: bool,
     },
-    /// Bootstrap and initialize a new mys network
+    /// Bootstrap and initialize a new mysocial network
     #[clap(name = "genesis")]
     Genesis {
         #[clap(long, help = "Start genesis with a given config file")]
@@ -272,14 +275,14 @@ pub enum MysCommand {
         #[clap(subcommand)]
         cmd: KeyToolCommand,
     },
-    /// Start Mys interactive console.
+    /// Start the MySocial interactive console.
     #[clap(name = "console")]
     Console {
         /// Sets the file storing the state of our user accounts (an empty one will be created if missing)
         #[clap(long = "client.config")]
         config: Option<PathBuf>,
     },
-    /// Client for interacting with the Mys network.
+    /// Client for interacting with the MySocial network.
     #[clap(name = "client")]
     Client {
         /// Sets the file storing the state of our user accounts (an empty one will be created if missing)
@@ -636,6 +639,10 @@ async fn start(
     no_full_node: bool,
     committee_size: Option<usize>,
 ) -> Result<(), anyhow::Error> {
+    // Install default crypto provider for rustls (required for rustls 0.23+)
+    // This must be done before any TLS operations, including database connections that might use TLS
+    // install_default() returns Err(CryptoProvider) if already installed, which is fine - ignore it
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
     if force_regenesis {
         ensure!(
             config.is_none(),
@@ -689,7 +696,7 @@ async fn start(
         swarm_builder = swarm_builder.with_genesis_config(genesis_config);
         let epoch_duration_ms = epoch_duration_ms.unwrap_or(DEFAULT_EPOCH_DURATION_MS);
         swarm_builder = swarm_builder.with_epoch_duration_ms(epoch_duration_ms);
-        tempdir()?.into_path()
+        tempdir()?.keep()
     } else {
         // If the config path looks like a YAML file, it is treated as if it is the network.yaml
         // overriding the network.yaml found in the mys config directry. Otherwise it is treated as
@@ -797,7 +804,7 @@ async fn start(
     // note that this overrides the default configuration that is set when running the genesis
     // command, which sets data_ingestion_dir to None.
     if with_indexer.is_some() && data_ingestion_dir.is_none() {
-        data_ingestion_dir = Some(tempdir()?.into_path())
+        data_ingestion_dir = Some(tempdir()?.keep())
     }
 
     if let Some(ref dir) = data_ingestion_dir {
@@ -838,6 +845,16 @@ async fn start(
         )
         .await;
         info!("Indexer started in reader mode");
+        
+        // Auto-enable social indexer when --with-indexer is used
+        // Hardcoded framework address: 0x50c1
+        let social_config = SocialIndexerConfig {
+            enable_social_indexer: true,
+            mysocial_package_address: Some("0x50c1".to_string()),
+            social_database_url: None, // Uses main DB by default
+            social_db_max_connections: 10,
+        };
+        
         start_indexer_writer_for_testing(
             pg_address.clone(),
             None,
@@ -847,6 +864,7 @@ async fn start(
             None,
             None, /* start_checkpoint */
             None, /* end_checkpoint */
+            Some(social_config), // Pass enabled social config
         )
         .await;
         info!("Indexer started in writer mode");

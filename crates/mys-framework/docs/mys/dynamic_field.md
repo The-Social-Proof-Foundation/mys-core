@@ -2,11 +2,11 @@
 title: Module `mys::dynamic_field`
 ---
 
-In addition to the fields declared in its type definition, a MySocial object can have dynamic fields
+In addition to the fields declared in its type definition, a Mys object can have dynamic fields
 that can be added after the object has been constructed. Unlike ordinary field names
 (which are always statically declared identifiers) a dynamic field name can be any value with
 the <code><b>copy</b></code>, <code>drop</code>, and <code>store</code> abilities, e.g. an integer, a boolean, or a string.
-This gives MySocial programmers the flexibility to extend objects on-the-fly, and it also serves as a
+This gives Mys programmers the flexibility to extend objects on-the-fly, and it also serves as a
 building block for core collection types
 
 
@@ -30,15 +30,15 @@ building block for core collection types
 -  [Function `has_child_object_with_ty`](#mys_dynamic_field_has_child_object_with_ty)
 
 
-<pre><code><b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
+<pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
+<b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
+<b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
+<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
-<b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
-<b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
-<b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
 </code></pre>
 
 

@@ -11,12 +11,13 @@ pub mod info;
 pub mod linters;
 pub mod typing;
 
-// DEEPBOOK_ADDRESS / DEEPBOOK_PACKAGE_ID = 0xdee9;
+// ORDERBOOK_ADDRESS / ORDERBOOK_PACKAGE_ID = 0x0b0c;
 
 pub const STD_ADDR_VALUE: AccountAddress = AccountAddress::from_suffix(0x1);
 pub const MYS_ADDR_VALUE: AccountAddress = AccountAddress::from_suffix(0x2);
 pub const MYS_SYSTEM_ADDR_VALUE: AccountAddress = AccountAddress::from_suffix(0x3);
 pub const BRIDGE_ADDR_VALUE: AccountAddress = AccountAddress::from_suffix(0xb);
+pub const MYS_SOCIAL_ADDR_VALUE: AccountAddress = AccountAddress::from_suffix(0x50c1);
 
 pub const INIT_FUNCTION_NAME: Symbol = symbol!("init");
 pub const ID_FIELD_NAME: Symbol = symbol!("id");
@@ -60,6 +61,9 @@ pub const BRIDGE_ADDR_NAME: Symbol = symbol!("bridge");
 pub const BRIDGE_MODULE_NAME: Symbol = symbol!("bridge");
 pub const BRIDGE_TYPE_NAME: Symbol = symbol!("Bridge");
 pub const BRIDGE_CREATE: Symbol = symbol!("create");
+pub const MYS_SOCIAL_MODULE_NAME: Symbol = symbol!("String");
+pub const MYS_SOCIAL_CREATE: Symbol = symbol!("create");
+pub const MYS_SOCIAL_ADDR_NAME: Symbol = symbol!("String");
 
 pub const EVENT_MODULE_NAME: Symbol = symbol!("event");
 pub const EVENT_FUNCTION_NAME: Symbol = symbol!("emit");

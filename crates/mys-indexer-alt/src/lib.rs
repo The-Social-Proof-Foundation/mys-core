@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Context;
@@ -14,7 +15,6 @@ use handlers::{
     tx_affected_objects::TxAffectedObjects, tx_balance_changes::TxBalanceChanges,
     tx_calls::TxCalls, tx_digests::TxDigests, tx_kinds::TxKinds,
 };
-use prometheus::Registry;
 use mys_indexer_alt_framework::handlers::cp_sequence_numbers::CpSequenceNumbers;
 use mys_indexer_alt_framework::ingestion::{ClientArgs, IngestionConfig};
 use mys_indexer_alt_framework::pipeline::{
@@ -25,6 +25,7 @@ use mys_indexer_alt_framework::pipeline::{
 use mys_indexer_alt_framework::{Indexer, IndexerArgs};
 use mys_indexer_alt_schema::MIGRATIONS;
 use mys_pg_db::DbArgs;
+use prometheus::Registry;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 

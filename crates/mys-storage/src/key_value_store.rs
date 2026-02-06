@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! Immutable key/value store trait for storing/retrieving transactions, effects, and events
@@ -6,8 +7,6 @@
 
 use crate::key_value_store_metrics::KeyValueStoreMetrics;
 use async_trait::async_trait;
-use std::sync::Arc;
-use std::time::Instant;
 use mys_types::base_types::{ObjectID, SequenceNumber, VersionNumber};
 use mys_types::digests::{CheckpointDigest, TransactionDigest};
 use mys_types::effects::{TransactionEffects, TransactionEvents};
@@ -17,6 +16,8 @@ use mys_types::messages_checkpoint::{
 };
 use mys_types::object::Object;
 use mys_types::transaction::Transaction;
+use std::sync::Arc;
+use std::time::Instant;
 use tracing::instrument;
 
 pub type KVStoreTransactionData = (Vec<Option<Transaction>>, Vec<Option<TransactionEffects>>);

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use mys_sdk::MysClientBuilder;
@@ -24,15 +25,15 @@ async fn main() -> Result<(), anyhow::Error> {
     let mys_local = MysClientBuilder::default().build_localnet().await?;
     println!("Mys local network version: {}", mys_local.api_version());
 
-    // Mys devnet -- https://fullnode.devnet.mys.io:443
+    // Mys devnet -- https://fullnode.devnet.mysocial.network:443
     let mys_devnet = MysClientBuilder::default().build_devnet().await?;
     println!("Mys devnet version: {}", mys_devnet.api_version());
 
-    // Mys testnet -- https://fullnode.testnet.mys.io:443
+    // Mys testnet -- https://fullnode.testnet.mysocial.network:443
     let mys_testnet = MysClientBuilder::default().build_testnet().await?;
     println!("Mys testnet version: {}", mys_testnet.api_version());
 
-    // Mys mainnet -- https://fullnode.mainnet.mys.io:443
+    // Mys mainnet -- https://fullnode.mainnet.mysocial.network:443
     let mys_mainnet = MysClientBuilder::default().build_mainnet().await?;
     println!("Mys mainnet version: {}", mys_mainnet.api_version());
 

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{str::FromStr, time::Duration};
@@ -16,17 +17,17 @@ use mys_sdk::{
 };
 use tracing::info;
 
-use reqwest::Client;
-use serde_json::json;
-use shared_crypto::intent::Intent;
 use mys_sdk::types::{
-    base_types::{ObjectID, MysAddress},
+    base_types::{MysAddress, ObjectID},
     crypto::SignatureScheme::ED25519,
     digests::TransactionDigest,
     programmable_transaction_builder::ProgrammableTransactionBuilder,
     quorum_driver_types::ExecuteTransactionRequestType,
     transaction::{Argument, Command, Transaction, TransactionData},
 };
+use reqwest::Client;
+use serde_json::json;
+use shared_crypto::intent::Intent;
 
 use mys_sdk::{rpc_types::MysTransactionBlockResponseOptions, MysClient, MysClientBuilder};
 
@@ -36,9 +37,9 @@ struct FaucetResponse {
     error: Option<String>,
 }
 
-// const MYS_FAUCET: &str = "https://faucet.devnet.mys.io/gas"; // devnet faucet
+// const MYS_FAUCET: &str = "https://faucet.devnet.mysocial.network/gas"; // devnet faucet
 
-pub const MYS_FAUCET: &str = "https://faucet.testnet.mys.io/v1/gas"; // testnet faucet
+pub const MYS_FAUCET: &str = "https://faucet.testnet.mysocial.network/v1/gas"; // testnet faucet
 
 // const MYS_FAUCET: &str = "http://127.0.0.1:9123/gas";
 
@@ -132,7 +133,7 @@ pub async fn request_tokens_from_faucet(
     // wait for the faucet to finish the batch of token requests
     loop {
         let resp = client
-            .get("https://faucet.testnet.mys.io/v1/status")
+            .get("https://faucet.testnet.mysocial.network/v1/status")
             .header("Content-Type", "application/json")
             .json(&json_body)
             .send()

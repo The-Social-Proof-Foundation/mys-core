@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::abi::EthERC20;
@@ -105,6 +106,6 @@ impl Observable for EthereumVaultBalance {
     }
 
     fn interval(&self) -> Duration {
-        Duration::from_secs(10)
+        Duration::from_secs(60)
     }
 }

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! A mock implementation for `BridgeRequestHandlerTrait`
@@ -149,6 +150,7 @@ pub fn run_mock_server(
             Arc::new(mock_handler),
             Arc::new(BridgeMetrics::new_for_testing()),
             Arc::new(BridgeNodePublicMetadata::empty_for_testing()),
+            None, // No deposit API in tests
         );
         axum::serve(listener, router).await.unwrap()
     })

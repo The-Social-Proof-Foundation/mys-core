@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
@@ -19,15 +20,6 @@ use futures::future::{join_all, select, Either};
 use futures::FutureExt;
 use itertools::{izip, Itertools};
 use move_bytecode_utils::module_cache::SyncModuleCache;
-use mysten_common::sync::notify_once::NotifyOnce;
-use mysten_common::sync::notify_read::NotifyRead;
-use mysten_common::{debug_fatal, fatal};
-use mysten_metrics::monitored_scope;
-use nonempty::NonEmpty;
-use parking_lot::RwLock;
-use parking_lot::{Mutex, RwLockReadGuard, RwLockWriteGuard};
-use prometheus::IntCounter;
-use serde::{Deserialize, Serialize};
 use mys_config::node::ExpensiveSafetyCheckConfig;
 use mys_execution::{self, Executor};
 use mys_macros::fail_point;
@@ -62,17 +54,26 @@ use mys_types::messages_consensus::{
     ConsensusTransactionKey, ConsensusTransactionKind, ExecutionTimeObservation, Round,
     TimestampMs, VersionedDkgConfirmation,
 };
-use mys_types::signature::GenericSignature;
-use mys_types::storage::{BackingPackageStore, InputKey, ObjectStore};
 use mys_types::mys_system_state::epoch_start_mys_system_state::{
     EpochStartSystemState, EpochStartSystemStateTrait,
 };
+use mys_types::signature::GenericSignature;
+use mys_types::storage::{BackingPackageStore, InputKey, ObjectStore};
 use mys_types::transaction::{
     AuthenticatorStateUpdate, CallArg, CertifiedTransaction, InputObjectKind, ObjectArg,
     ProgrammableTransaction, SenderSignedData, Transaction, TransactionData, TransactionDataAPI,
     TransactionKey, TransactionKind, VerifiedCertificate, VerifiedSignedTransaction,
     VerifiedTransaction,
 };
+use mysten_common::sync::notify_once::NotifyOnce;
+use mysten_common::sync::notify_read::NotifyRead;
+use mysten_common::{debug_fatal, fatal};
+use mysten_metrics::monitored_scope;
+use nonempty::NonEmpty;
+use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLockReadGuard, RwLockWriteGuard};
+use prometheus::IntCounter;
+use serde::{Deserialize, Serialize};
 use tap::TapOptional;
 use tokio::sync::{mpsc, OnceCell};
 use tokio::time::Instant;
@@ -84,7 +85,6 @@ use typed_store::Map;
 use typed_store::{
     rocks::{default_db_options, DBBatch, DBMap, DBOptions, MetricConf},
     traits::{TableSummary, TypedStoreDebug},
-    TypedStoreError,
 };
 
 use super::authority_store_tables::ENV_VAR_LOCKS_BLOCK_CACHE_SIZE;
@@ -2450,24 +2450,20 @@ impl AuthorityPerEpochStore {
 
     pub fn get_capabilities_v1(&self) -> MysResult<Vec<AuthorityCapabilitiesV1>> {
         assert!(!self.protocol_config.authority_capabilities_v2());
-        let result: Result<Vec<AuthorityCapabilitiesV1>, TypedStoreError> = self
+        let result = self
             .tables()?
             .authority_capabilities
-            .values()
-            .map_into()
-            .collect();
-        Ok(result?)
+            .values()?;
+        Ok(result)
     }
 
     pub fn get_capabilities_v2(&self) -> MysResult<Vec<AuthorityCapabilitiesV2>> {
         assert!(self.protocol_config.authority_capabilities_v2());
-        let result: Result<Vec<AuthorityCapabilitiesV2>, TypedStoreError> = self
+        let result = self
             .tables()?
             .authority_capabilities_v2
-            .values()
-            .map_into()
-            .collect();
-        Ok(result?)
+            .values()?;
+        Ok(result)
     }
 
     fn record_jwk_vote(

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::big_int::BigInt;
@@ -15,14 +16,28 @@ pub(crate) struct StakeSubsidy {
     /// staking rewards, at the end of the epoch.
     pub distribution_counter: Option<u64>,
 
-    /// Amount of stake subsidy deducted from the balance per distribution -- decays over time.
-    pub current_distribution_amount: Option<BigInt>,
+    /// Current stake subsidy APY in basis points -- decays over time.
+    pub current_apy_bps: Option<BigInt>,
 
-    /// Maximum number of stake subsidy distributions that occur with the same distribution amount
-    /// (before the amount is reduced).
+    /// Maximum number of stake subsidy distributions that occur with the same APY
+    /// (before the APY is reduced).
     pub period_length: Option<u64>,
 
-    /// Percentage of the current distribution amount to deduct at the end of the current subsidy
+    /// Percentage of the current APY to deduct at the end of the current subsidy
     /// period, expressed in basis points.
     pub decrease_rate: Option<u64>,
+
+    /// Maximum APY cap (in basis points). Effective APY will never exceed this.
+    pub max_apy_bps: Option<BigInt>,
+
+    /// Minimum APY floor (in basis points). Effective APY will never go below this.
+    pub min_apy_bps: Option<BigInt>,
+
+    /// Target duration for subsidy pool in years (e.g., 10).
+    /// Used to calculate stake-aware APY reduction to ensure pool sustainability.
+    pub intended_duration_years: Option<BigInt>,
+
+    /// The annual percentage yield from the stake subsidy in basis points.
+    /// To get the APY in percentage, divide by 100.
+    pub apy: Option<u64>,
 }

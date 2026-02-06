@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use fastcrypto::encoding::Base64;
@@ -7,10 +8,10 @@ use jsonrpsee::proc_macros::rpc;
 
 use mys_json::MysJsonValue;
 use mys_json_rpc_types::{
-    RPCTransactionRequestParams, MysTransactionBlockBuilderMode, MysTypeTag, TransactionBlockBytes,
+    MysTransactionBlockBuilderMode, MysTypeTag, RPCTransactionRequestParams, TransactionBlockBytes,
 };
 use mys_open_rpc_macros::open_rpc;
-use mys_types::base_types::{ObjectID, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID};
 use mys_types::mys_serde::BigInt;
 
 #[open_rpc(namespace = "unsafe", tag = "Transaction Builder API")]
@@ -128,7 +129,7 @@ pub trait TransactionBuilder {
         function: String,
         /// the type arguments of the Move function
         type_arguments: Vec<MysTypeTag>,
-        /// the arguments to be passed into the Move function, in [MysJson](https://docs.mys.io/build/mys-json) format
+        /// the arguments to be passed into the Move function, in [MysJson](https://docs.mysocial.network/build/mys-json) format
         arguments: Vec<MysJsonValue>,
         /// gas object to be used in this transaction, node will pick one from the signer's possession if not provided
         gas: Option<ObjectID>,

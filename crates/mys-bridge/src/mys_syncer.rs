@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! The MysSyncer module is responsible for synchronizing Events emitted
@@ -7,14 +8,14 @@
 use crate::{
     error::BridgeResult,
     metrics::BridgeMetrics,
-    retry_with_max_elapsed_time,
     mys_client::{MysClient, MysClientInner},
+    retry_with_max_elapsed_time,
 };
-use mysten_metrics::spawn_logged_monitored_task;
-use std::{collections::HashMap, sync::Arc};
 use mys_json_rpc_types::MysEvent;
 use mys_types::BRIDGE_PACKAGE_ID;
 use mys_types::{event::EventID, Identifier};
+use mysten_metrics::spawn_logged_monitored_task;
+use std::{collections::HashMap, sync::Arc};
 use tokio::{
     sync::Notify,
     task::JoinHandle,
@@ -157,9 +158,9 @@ mod tests {
     use super::*;
 
     use crate::{mys_client::MysClient, mys_mock_client::MysMockClient};
-    use prometheus::Registry;
     use mys_json_rpc_types::EventPage;
     use mys_types::{digests::TransactionDigest, event::EventID, Identifier};
+    use prometheus::Registry;
     use tokio::time::timeout;
 
     #[tokio::test]

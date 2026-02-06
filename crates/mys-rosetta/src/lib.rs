@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::net::SocketAddr;
@@ -36,7 +37,7 @@ mod state;
 pub mod types;
 
 pub static MYS: Lazy<Currency> = Lazy::new(|| Currency {
-    symbol: "MYS".to_string(),
+    symbol: "MySo".to_string(),
     decimals: 9,
     metadata: CurrencyMetadata {
         coin_type: MYS_COIN_TYPE.to_string(),

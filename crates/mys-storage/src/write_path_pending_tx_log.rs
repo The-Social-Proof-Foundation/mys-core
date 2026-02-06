@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! WritePathPendingTransactionLog is used in the transaction write path (e.g. in
@@ -6,12 +7,12 @@
 //! 1. At one time, a transaction is only processed once.
 //! 2. When Fullnode crashes and restarts, the pending transaction will be loaded and retried.
 
-use std::path::PathBuf;
 use mys_types::base_types::TransactionDigest;
 use mys_types::crypto::EmptySignInfo;
 use mys_types::error::{MysError, MysResult};
 use mys_types::message_envelope::TrustedEnvelope;
 use mys_types::transaction::{SenderSignedData, VerifiedTransaction};
+use std::path::PathBuf;
 use typed_store::rocks::MetricConf;
 use typed_store::traits::{TableSummary, TypedStoreDebug};
 use typed_store::DBMapUtils;
@@ -95,8 +96,8 @@ impl WritePathPendingTransactionLog {
 mod tests {
     use super::*;
     use anyhow;
-    use std::collections::HashSet;
     use mys_types::utils::create_fake_transaction;
+    use std::collections::HashSet;
 
     #[tokio::test]
     async fn test_pending_tx_log_basic() -> anyhow::Result<()> {

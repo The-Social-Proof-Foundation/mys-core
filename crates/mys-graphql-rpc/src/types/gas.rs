@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_graphql::connection::Connection;
@@ -9,7 +10,7 @@ use mys_types::{
     transaction::GasData,
 };
 
-use super::{address::Address, big_int::BigInt, object::Object, mys_address::MysAddress};
+use super::{address::Address, big_int::BigInt, mys_address::MysAddress, object::Object};
 use super::{
     cursor::Page,
     object::{self, ObjectFilter, ObjectKey},

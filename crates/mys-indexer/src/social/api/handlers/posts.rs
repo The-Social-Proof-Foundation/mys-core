@@ -1,0 +1,1865 @@
+// Copyright (c) The Social Proof Foundation, LLC.
+// SPDX-License-Identifier: Apache-2.0
+
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
+use diesel::deserialize::QueryableByName;
+use diesel::pg::Pg;
+use diesel::prelude::*;
+use diesel::sql_types::*;
+use diesel_async::RunQueryDsl;
+use serde::{Deserialize, Serialize};
+use tracing::{debug, error};
+
+use crate::social::db::DbPool;
+use crate::social::db::query_types::CountResult;
+use crate::social::schema::profiles;
+
+// Query parameters for post listing
+#[derive(Debug, Deserialize)]
+pub struct PostQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub owner: Option<String>,
+    pub profile_id: Option<String>,
+    pub include_deleted: Option<bool>,
+    pub platform_id: Option<String>,
+    // Feature flag filters
+    pub enable_spt: Option<bool>,
+    pub enable_poc: Option<bool>,
+    pub enable_spot: Option<bool>,
+    // Linked object filters
+    pub has_spot: Option<bool>,
+    pub has_spt: Option<bool>,
+    pub has_poc: Option<bool>,
+    // PoC metadata filters
+    pub poc_media_type: Option<i16>,
+    pub poc_min_similarity_score: Option<i64>,
+    pub poc_oracle_address: Option<String>,
+}
+
+// Query parameters for promotion listing
+#[derive(Debug, Deserialize)]
+pub struct PromotionQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub owner: Option<String>,
+    pub active_only: Option<bool>,
+    pub platform_id: Option<String>,
+}
+
+// Basic post information returned from queries
+#[derive(Debug, Serialize, QueryableByName)]
+pub struct PostBasic {
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub profile_id: Option<String>,
+
+    #[diesel(sql_type = Text)]
+    pub content: String,
+
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub deleted_at: Option<i64>,
+
+    #[diesel(sql_type = Bool)]
+    pub removed_from_platform: bool,
+
+    #[diesel(sql_type = BigInt)]
+    pub reaction_count: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub comment_count: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub repost_count: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub tips_received: i64,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub promotion_id: Option<String>,
+
+    #[diesel(sql_type = Bool)]
+    pub enable_spt: bool,
+
+    #[diesel(sql_type = Bool)]
+    pub enable_poc: bool,
+
+    #[diesel(sql_type = Bool)]
+    pub enable_spot: bool,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub poc_id: Option<String>,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub spot_id: Option<String>,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub spt_id: Option<String>,
+
+    // PoC metadata fields
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub poc_reasoning: Option<String>,
+
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub poc_evidence_urls: Option<serde_json::Value>,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub poc_similarity_score: Option<i64>,
+
+    #[diesel(sql_type = Nullable<Int2>)]
+    pub poc_media_type: Option<i16>,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub poc_oracle_address: Option<String>,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub poc_analyzed_at: Option<i64>,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub revenue_redirect_to: Option<String>,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub revenue_redirect_percentage: Option<i64>,
+}
+
+// Response for a post with engagement stats
+#[derive(Debug, Serialize)]
+pub struct PostResponse {
+    #[serde(flatten)]
+    pub post: PostBasic,
+    pub engagement_score: i64,
+    pub trending_score: f64,
+}
+
+// Post response with universal user data
+#[derive(Debug, Serialize)]
+pub struct PostWithUser {
+    #[serde(flatten)]
+    pub post: PostBasic,
+    // Universal user result with profile, badge, and SPT info
+    pub user: crate::social::models::universal_user::UniversalUserResult,
+}
+
+// Pagination info structure
+#[derive(Debug, Serialize)]
+pub struct PaginationInfo {
+    pub limit: i64,
+    pub offset: i64,
+    pub total: i64,
+    pub total_pages: i64,
+}
+
+// API response structure with pagination
+#[derive(Debug, Serialize)]
+pub struct ApiResponse<T> {
+    pub data: T,
+    pub pagination: PaginationInfo,
+}
+
+// Comment data model (for database queries)
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct CommentInfo {
+    #[diesel(sql_type = Text)]
+    pub comment_id: String,
+
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub profile_id: Option<String>,
+
+    #[diesel(sql_type = Text)]
+    pub content: String,
+
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+}
+
+// Comment response with universal user data
+#[derive(Debug, Serialize)]
+pub struct CommentWithUser {
+    pub comment_id: String,
+    pub post_id: String,
+    pub content: String,
+    pub created_at: i64,
+    // Universal user result with profile, badge, and SPT info
+    #[serde(flatten)]
+    pub user: crate::social::models::universal_user::UniversalUserResult,
+}
+
+// Reaction data model (for database queries)
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct ReactionInfo {
+    #[diesel(sql_type = Text)]
+    pub reaction_id: String,
+
+    #[diesel(sql_type = Text)]
+    pub object_id: String,
+
+    #[diesel(sql_type = Bool)]
+    pub is_post: bool,
+
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub profile_id: Option<String>,
+
+    #[diesel(sql_type = Int2)]
+    pub reaction_type: i16,
+
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+}
+
+// Reaction response with universal user data
+#[derive(Debug, Serialize)]
+pub struct ReactionWithUser {
+    pub reaction_id: String,
+    pub object_id: String,
+    pub is_post: bool,
+    pub reaction_type: i16,
+    pub created_at: i64,
+    // Universal user result with profile, badge, and SPT info
+    #[serde(flatten)]
+    pub user: crate::social::models::universal_user::UniversalUserResult,
+}
+
+// Repost data model (for database queries)
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct RepostInfo {
+    #[diesel(sql_type = Text)]
+    pub repost_id: String,
+
+    #[diesel(sql_type = Text)]
+    pub original_id: String,
+
+    #[diesel(sql_type = Bool)]
+    pub is_original_post: bool,
+
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub profile_id: Option<String>,
+
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+}
+
+// Repost response with universal user data
+#[derive(Debug, Serialize)]
+pub struct RepostWithUser {
+    pub repost_id: String,
+    pub original_id: String,
+    pub is_original_post: bool,
+    pub created_at: i64,
+    // Universal user result with profile, badge, and SPT info
+    #[serde(flatten)]
+    pub user: crate::social::models::universal_user::UniversalUserResult,
+}
+
+// Post with engagement score for trending views
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PostWithEngagementInfo {
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub profile_id: Option<String>,
+
+    #[diesel(sql_type = Text)]
+    pub content: String,
+
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub deleted_at: Option<i64>,
+
+    #[diesel(sql_type = Bool)]
+    pub removed_from_platform: bool,
+
+    #[diesel(sql_type = BigInt)]
+    pub reaction_count: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub comment_count: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub repost_count: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub tips_received: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub engagement_score: i64,
+
+    #[diesel(sql_type = Float8)]
+    pub trending_score: f64,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub promotion_id: Option<String>,
+
+    #[diesel(sql_type = Bool)]
+    pub enable_spt: bool,
+
+    #[diesel(sql_type = Bool)]
+    pub enable_poc: bool,
+
+    #[diesel(sql_type = Bool)]
+    pub enable_spot: bool,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub poc_id: Option<String>,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub spot_id: Option<String>,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub spt_id: Option<String>,
+
+    // PoC metadata fields
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub poc_reasoning: Option<String>,
+
+    #[diesel(sql_type = Nullable<Jsonb>)]
+    pub poc_evidence_urls: Option<serde_json::Value>,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub poc_similarity_score: Option<i64>,
+
+    #[diesel(sql_type = Nullable<Int2>)]
+    pub poc_media_type: Option<i16>,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub poc_oracle_address: Option<String>,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub poc_analyzed_at: Option<i64>,
+
+    #[diesel(sql_type = Nullable<diesel::sql_types::Text>)]
+    pub revenue_redirect_to: Option<String>,
+
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub revenue_redirect_percentage: Option<i64>,
+}
+
+// Promoted post information
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PromotedPostInfo {
+    #[diesel(sql_type = Text)]
+    pub promotion_id: String,
+
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+
+    #[diesel(sql_type = Text)]
+    pub owner: String,
+
+    #[diesel(sql_type = Text)]
+    pub profile_id: String,
+
+    #[diesel(sql_type = BigInt)]
+    pub payment_per_view: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub total_budget: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub remaining_budget: i64,
+
+    #[diesel(sql_type = Bool)]
+    pub active: bool,
+
+    #[diesel(sql_type = BigInt)]
+    pub created_at: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub view_count: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub total_spent: i64,
+}
+
+// Promotion view information
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PromotionViewInfo {
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+
+    #[diesel(sql_type = Text)]
+    pub promotion_id: String,
+
+    #[diesel(sql_type = Text)]
+    pub viewer: String,
+
+    #[diesel(sql_type = BigInt)]
+    pub payment_amount: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub view_duration: i64,
+
+    #[diesel(sql_type = Text)]
+    pub platform_id: String,
+
+    #[diesel(sql_type = BigInt)]
+    pub timestamp: i64,
+}
+
+// Promotion statistics
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PromotionStats {
+    #[diesel(sql_type = Text)]
+    pub promotion_id: String,
+
+    #[diesel(sql_type = BigInt)]
+    pub total_views: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub unique_viewers: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub total_spent: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub avg_view_duration: i64,
+
+    #[diesel(sql_type = Float8)]
+    pub avg_payment_per_view: f64,
+
+    #[diesel(sql_type = BigInt)]
+    pub views_last_24h: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub views_last_7d: i64,
+}
+
+// Get a post by ID
+pub async fn get_post_by_id(State(pool): State<DbPool>, Path(post_id): Path<String>) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    // Use diesel sql_query instead of QueryDsl since there might be schema definition issues
+    let query = "SELECT post_id, owner, profile_id, content, created_at, deleted_at, removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id, enable_spt, enable_poc, enable_spot, poc_id, spot_id, spt_id, poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at, revenue_redirect_to, revenue_redirect_percentage FROM posts WHERE post_id = $1";
+
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(&post_id)
+        .get_result::<PostBasic>(&mut conn)
+        .await;
+
+    match result {
+        Ok(post) => Json(post).into_response(),
+        Err(diesel::result::Error::NotFound) => {
+            (StatusCode::NOT_FOUND, "Post not found").into_response()
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+// Get comments for a post with pagination
+pub async fn get_post_comments(
+    State(pool): State<DbPool>,
+    Path(post_id): Path<String>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    let limit = params.limit.unwrap_or(20).min(100);
+    let offset = params.offset.unwrap_or(0);
+
+    // Use direct SQL query
+    let query = "
+        SELECT comment_id, post_id, owner, profile_id, content, created_at FROM comments 
+        WHERE post_id = $1
+        ORDER BY created_at DESC 
+        LIMIT $2 OFFSET $3
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<diesel::sql_types::Text, _>(&post_id)
+        .bind::<diesel::sql_types::BigInt, _>(limit)
+        .bind::<diesel::sql_types::BigInt, _>(offset)
+        .load::<CommentInfo>(&mut conn)
+        .await;
+
+    match result {
+        Ok(comments) => {
+            // Get wallet addresses for universal enrichment
+            let wallet_addresses: Vec<String> = comments.iter()
+                .map(|c| c.owner.clone())
+                .collect();
+
+            // Enrich with universal user data
+            let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            // Build comments with user data
+            let comments_with_users: Vec<CommentWithUser> = comments.into_iter()
+                .map(|comment| {
+                    let user = enriched_users.get(&comment.owner).cloned().unwrap_or_else(|| {
+                        crate::social::models::universal_user::UniversalUserResult {
+                            wallet_address: comment.owner.clone(),
+                            username: None,
+                            fullname: None,
+                            profile_photo: None,
+                            social_proof_token: None,
+                            selected_badge: None,
+                        }
+                    });
+
+                    CommentWithUser {
+                        comment_id: comment.comment_id,
+                        post_id: comment.post_id,
+                        content: comment.content,
+                        created_at: comment.created_at,
+                        user,
+                    }
+                })
+                .collect();
+
+            Json(comments_with_users).into_response()
+        },
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+// List posts with pagination and filtering
+pub async fn list_posts(State(pool): State<DbPool>, Query(params): Query<PostQuery>) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    // Build the query
+    let limit = params.limit.unwrap_or(20).min(100); // Max 100 posts
+    let offset = params.offset.unwrap_or(0);
+
+    // Build query with optional filters
+    let mut query = "
+        SELECT post_id, owner, profile_id, content, created_at, deleted_at, 
+               removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id,
+               enable_spt, enable_poc, enable_spot, poc_id, spot_id, spt_id,
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at
+        FROM posts 
+        WHERE deleted_at IS NULL
+    ".to_string();
+
+    let mut bindings: Vec<String> = Vec::new();
+    let mut param_count = 1;
+
+    // Add feature flag filters
+    if let Some(enable_spt) = params.enable_spt {
+        query.push_str(&format!(" AND enable_spt = ${}", param_count));
+        bindings.push(enable_spt.to_string());
+        param_count += 1;
+    }
+    if let Some(enable_poc) = params.enable_poc {
+        query.push_str(&format!(" AND enable_poc = ${}", param_count));
+        bindings.push(enable_poc.to_string());
+        param_count += 1;
+    }
+    if let Some(enable_spot) = params.enable_spot {
+        query.push_str(&format!(" AND enable_spot = ${}", param_count));
+        bindings.push(enable_spot.to_string());
+        param_count += 1;
+    }
+
+    // Add linked object filters
+    if let Some(has_spot) = params.has_spot {
+        if has_spot {
+            query.push_str(" AND spot_id IS NOT NULL");
+        } else {
+            query.push_str(" AND spot_id IS NULL");
+        }
+    }
+    if let Some(has_spt) = params.has_spt {
+        if has_spt {
+            query.push_str(" AND spt_id IS NOT NULL");
+        } else {
+            query.push_str(" AND spt_id IS NULL");
+        }
+    }
+    if let Some(has_poc) = params.has_poc {
+        if has_poc {
+            query.push_str(" AND poc_id IS NOT NULL");
+        } else {
+            query.push_str(" AND poc_id IS NULL");
+        }
+    }
+
+    // Add PoC metadata filters
+    if let Some(media_type) = params.poc_media_type {
+        query.push_str(&format!(" AND poc_media_type = ${}", param_count));
+        bindings.push(media_type.to_string());
+        param_count += 1;
+    }
+    if let Some(min_score) = params.poc_min_similarity_score {
+        query.push_str(&format!(" AND poc_similarity_score >= ${}", param_count));
+        bindings.push(min_score.to_string());
+        param_count += 1;
+    }
+    if let Some(ref oracle) = params.poc_oracle_address {
+        query.push_str(&format!(" AND poc_oracle_address = ${}", param_count));
+        bindings.push(oracle.clone());
+        param_count += 1;
+    }
+
+    query.push_str(" ORDER BY created_at DESC LIMIT $");
+    query.push_str(&param_count.to_string());
+    param_count += 1;
+    query.push_str(" OFFSET $");
+    query.push_str(&param_count.to_string());
+    bindings.push(limit.to_string());
+    bindings.push(offset.to_string());
+
+    // For now, use a simpler query without dynamic filters to avoid SQL injection
+    // TODO: Implement proper parameterized query with diesel
+    let query = "
+        SELECT post_id, owner, profile_id, content, created_at, deleted_at, 
+               removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id,
+               enable_spt, enable_poc, enable_spot, poc_id, spot_id, spt_id,
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at,
+               revenue_redirect_to, revenue_redirect_percentage
+        FROM posts 
+        WHERE deleted_at IS NULL 
+        ORDER BY created_at DESC 
+        LIMIT $1 OFFSET $2
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<PostBasic>(&mut conn)
+        .await;
+
+    match result {
+        Ok(posts) => {
+            // Get wallet addresses for universal enrichment
+            let wallet_addresses: Vec<String> = posts.iter()
+                .map(|p| p.owner.clone())
+                .collect();
+
+            // Enrich with universal user data
+            let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            // Build posts with user data
+            let posts_with_users: Vec<PostWithUser> = posts.into_iter()
+                .map(|post| {
+                    let user = enriched_users.get(&post.owner).cloned().unwrap_or_else(|| {
+                        crate::social::models::universal_user::UniversalUserResult {
+                            wallet_address: post.owner.clone(),
+                            username: None,
+                            fullname: None,
+                            profile_photo: None,
+                            social_proof_token: None,
+                            selected_badge: None,
+                        }
+                    });
+
+                    PostWithUser {
+                        post,
+                        user,
+                    }
+                })
+                .collect();
+
+            Json(posts_with_users).into_response()
+        },
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// Get reactions for a specific post
+pub async fn get_post_reactions(
+    State(pool): State<DbPool>,
+    Path(post_id): Path<String>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    let limit = params.limit.unwrap_or(20).min(100);
+    let offset = params.offset.unwrap_or(0);
+
+    // Use a SQL query instead of the ORM to avoid type issues
+    let query = "
+        SELECT reaction_id, object_id, is_post, owner, profile_id, reaction_type, created_at 
+        FROM reactions
+        WHERE object_id = $1 AND is_post = true
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<diesel::sql_types::Text, _>(post_id)
+        .bind::<diesel::sql_types::BigInt, _>(limit)
+        .bind::<diesel::sql_types::BigInt, _>(offset)
+        .load::<ReactionInfo>(&mut conn)
+        .await;
+
+    match result {
+        Ok(reactions) => {
+            // Get wallet addresses for universal enrichment
+            let wallet_addresses: Vec<String> = reactions.iter()
+                .map(|r| r.owner.clone())
+                .collect();
+
+            // Enrich with universal user data
+            let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            // Build reactions with user data
+            let reactions_with_users: Vec<ReactionWithUser> = reactions.into_iter()
+                .map(|reaction| {
+                    let user = enriched_users.get(&reaction.owner).cloned().unwrap_or_else(|| {
+                        crate::social::models::universal_user::UniversalUserResult {
+                            wallet_address: reaction.owner.clone(),
+                            username: None,
+                            fullname: None,
+                            profile_photo: None,
+                            social_proof_token: None,
+                            selected_badge: None,
+                        }
+                    });
+
+                    ReactionWithUser {
+                        reaction_id: reaction.reaction_id,
+                        object_id: reaction.object_id,
+                        is_post: reaction.is_post,
+                        reaction_type: reaction.reaction_type,
+                        created_at: reaction.created_at,
+                        user,
+                    }
+                })
+                .collect();
+
+            Json(reactions_with_users).into_response()
+        },
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// Get reposts for a specific post
+pub async fn get_post_reposts(
+    State(pool): State<DbPool>,
+    Path(post_id): Path<String>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    let limit = params.limit.unwrap_or(20).min(100);
+    let offset = params.offset.unwrap_or(0);
+
+    // Use a SQL query instead of the ORM to avoid type issues
+    let query = "
+        SELECT repost_id, original_id, is_original_post, owner, profile_id, created_at
+        FROM reposts
+        WHERE original_id = $1 AND is_original_post = true
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<diesel::sql_types::Text, _>(post_id)
+        .bind::<diesel::sql_types::BigInt, _>(limit)
+        .bind::<diesel::sql_types::BigInt, _>(offset)
+        .load::<RepostInfo>(&mut conn)
+        .await;
+
+    match result {
+        Ok(reposts) => {
+            // Get wallet addresses for universal enrichment
+            let wallet_addresses: Vec<String> = reposts.iter()
+                .map(|r| r.owner.clone())
+                .collect();
+
+            // Enrich with universal user data
+            let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            // Build reposts with user data
+            let reposts_with_users: Vec<RepostWithUser> = reposts.into_iter()
+                .map(|repost| {
+                    let user = enriched_users.get(&repost.owner).cloned().unwrap_or_else(|| {
+                        crate::social::models::universal_user::UniversalUserResult {
+                            wallet_address: repost.owner.clone(),
+                            username: None,
+                            fullname: None,
+                            profile_photo: None,
+                            social_proof_token: None,
+                            selected_badge: None,
+                        }
+                    });
+
+                    RepostWithUser {
+                        repost_id: repost.repost_id,
+                        original_id: repost.original_id,
+                        is_original_post: repost.is_original_post,
+                        created_at: repost.created_at,
+                        user,
+                    }
+                })
+                .collect();
+
+            Json(reposts_with_users).into_response()
+        },
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// Get trending posts based on engagement - simplified to avoid diesel issues
+pub async fn get_trending_posts(
+    State(pool): State<DbPool>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    let limit = params.limit.unwrap_or(20).min(100);
+    let offset = params.offset.unwrap_or(0);
+
+    // Simplified query - just get posts ordered by created_at
+    let query = "
+        SELECT post_id, owner, profile_id, content, created_at, deleted_at, 
+               removed_from_platform, reaction_count, comment_count, repost_count, tips_received, promotion_id,
+               enable_spt, enable_poc, enable_spot, poc_id, spot_id, spt_id,
+               poc_reasoning, poc_evidence_urls, poc_similarity_score, poc_media_type, poc_oracle_address, poc_analyzed_at,
+               revenue_redirect_to, revenue_redirect_percentage
+        FROM posts 
+        WHERE deleted_at IS NULL AND removed_from_platform = false
+        ORDER BY (reaction_count + comment_count * 2 + repost_count * 3) DESC, created_at DESC
+        LIMIT $1 OFFSET $2
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<PostBasic>(&mut conn)
+        .await;
+
+    match result {
+        Ok(posts) => {
+            // Get wallet addresses for universal enrichment
+            let wallet_addresses: Vec<String> = posts.iter()
+                .map(|p| p.owner.clone())
+                .collect();
+
+            // Enrich with universal user data
+            let enriched_users = crate::social::api::helpers::user_enrichment::enrich_users_with_universal_data(wallet_addresses, &mut conn)
+                .await
+                .unwrap_or_default();
+
+            // Build posts with user data
+            let posts_with_users: Vec<PostWithUser> = posts.into_iter()
+                .map(|post| {
+                    let user = enriched_users.get(&post.owner).cloned().unwrap_or_else(|| {
+                        crate::social::models::universal_user::UniversalUserResult {
+                            wallet_address: post.owner.clone(),
+                            username: None,
+                            fullname: None,
+                            profile_photo: None,
+                            social_proof_token: None,
+                            selected_badge: None,
+                        }
+                    });
+
+                    PostWithUser {
+                        post,
+                        user,
+                    }
+                })
+                .collect();
+
+            Json(posts_with_users).into_response()
+        },
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// Get posts by a specific profile
+/// Supports profile_id, wallet address (0x...), or username
+pub async fn get_profile_posts(
+    State(pool): State<DbPool>,
+    Path(profile_id): Path<String>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    // Resolve profile_id, wallet address, or username to the actual profile_id used in posts table
+    let (resolved_profile_id, is_wallet_address) = if profile_id.starts_with("0x") {
+        // It's a wallet address - resolve to profile_id
+        debug!("Resolving wallet address to profile_id: {}", profile_id);
+        match profiles::table
+            .filter(profiles::owner_address.eq(&profile_id))
+            .select(profiles::profile_id.nullable())
+            .first::<Option<String>>(&mut conn)
+            .await
+        {
+            Ok(Some(pid)) => {
+                debug!("Resolved wallet address {} to profile_id {}", profile_id, pid);
+                (pid, false) // Resolved to profile_id, not a wallet address anymore
+            }
+            Ok(None) | Err(diesel::result::Error::NotFound) => {
+                // No profile_id found, will query by owner field
+                debug!("Wallet address not found in profiles, will query by owner field: {}", profile_id);
+                (profile_id.clone(), true) // Keep as wallet address to query by owner
+            }
+            Err(e) => {
+                error!("Error resolving wallet address: {}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": format!("Failed to resolve wallet address: {}", e)
+                    })),
+                )
+                    .into_response();
+            }
+        }
+    } else {
+        // Try to resolve as profile_id first
+        match profiles::table
+            .filter(profiles::profile_id.eq(&profile_id))
+            .select(profiles::profile_id.nullable())
+            .first::<Option<String>>(&mut conn)
+            .await
+        {
+            Ok(Some(pid)) => {
+                debug!("Found profile_id: {}", pid);
+                (pid, false)
+            }
+            Ok(None) => {
+                // Profile found but no profile_id - use input as-is
+                debug!("Profile found but no profile_id, using input as-is: {}", profile_id);
+                (profile_id.clone(), false)
+            }
+            Err(diesel::result::Error::NotFound) => {
+                // If profile_id not found, try resolving as username
+                debug!("Profile ID not found, trying username: {}", profile_id);
+                match profiles::table
+                    .filter(profiles::username.eq(&profile_id))
+                    .select(profiles::profile_id.nullable())
+                    .first::<Option<String>>(&mut conn)
+                    .await
+                {
+                    Ok(Some(pid)) => {
+                        debug!("Resolved username {} to profile_id {}", profile_id, pid);
+                        (pid, false)
+                    }
+                    Ok(None) => {
+                        // Username found but no profile_id - use username as-is
+                        debug!("Username found but no profile_id, using username: {}", profile_id);
+                        (profile_id.clone(), false)
+                    }
+                    Err(diesel::result::Error::NotFound) => {
+                        // Neither profile_id nor username found - use as-is (might be a legacy profile_id)
+                        debug!("Profile ID and username not found, using as-is: {}", profile_id);
+                        (profile_id.clone(), false)
+                    }
+                    Err(e) => {
+                        error!("Error resolving username: {}", e);
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(serde_json::json!({
+                                "error": format!("Failed to resolve username: {}", e)
+                            })),
+                        )
+                            .into_response();
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Error resolving profile_id: {}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": format!("Failed to resolve profile ID: {}", e)
+                    })),
+                )
+                    .into_response();
+            }
+        }
+    };
+
+    let limit = params.limit.unwrap_or(20).min(100);
+    let offset = params.offset.unwrap_or(0);
+    let include_deleted = params.include_deleted.unwrap_or(false);
+
+    // Build query - use profile_id if resolved, otherwise query by owner field for wallet addresses
+    let where_clause = if is_wallet_address {
+        "p.owner = $1"
+    } else {
+        "p.profile_id = $1"
+    };
+
+    let mut query = format!(
+        "
+        SELECT 
+            p.post_id, p.owner, p.profile_id, p.content, p.created_at, p.deleted_at, p.removed_from_platform, 
+            p.reaction_count, p.comment_count, p.repost_count, p.tips_received,
+            (p.reaction_count + p.comment_count * 2 + p.repost_count * 3 + p.tips_received) AS engagement_score,
+            ((p.reaction_count + p.comment_count * 2 + p.repost_count * 3 + p.tips_received) / 
+             (EXTRACT(EPOCH FROM NOW()) - p.created_at + 3600) * 10000) AS trending_score,
+            p.promotion_id, p.enable_spt, p.enable_poc, p.enable_spot, p.poc_id, p.spot_id, p.spt_id,
+            p.poc_reasoning, p.poc_evidence_urls, p.poc_similarity_score, p.poc_media_type, p.poc_oracle_address, p.poc_analyzed_at,
+            p.revenue_redirect_to, p.revenue_redirect_percentage
+        FROM 
+            posts p
+        WHERE 
+            {}
+        ",
+        where_clause
+    );
+
+    if !include_deleted {
+        query.push_str(" AND p.deleted_at IS NULL AND p.removed_from_platform = false");
+    }
+
+    // Filter by platform_id if provided
+    if let Some(platform_id) = &params.platform_id {
+        query.push_str(&format!(
+            "
+            AND EXISTS (
+                SELECT 1 FROM posts_moderation_events pme 
+                WHERE pme.object_id = p.post_id AND pme.platform_id = '{}'
+                AND pme.removed = false
+            )",
+            platform_id
+        ));
+    }
+
+    query.push_str(" ORDER BY p.created_at DESC LIMIT $2 OFFSET $3");
+
+    // Build count query with same WHERE conditions
+    let mut count_query = format!(
+        "
+        SELECT COUNT(*) as count
+        FROM posts p
+        WHERE {}
+        ",
+        where_clause
+    );
+
+    if !include_deleted {
+        count_query.push_str(" AND p.deleted_at IS NULL AND p.removed_from_platform = false");
+    }
+
+    // Filter by platform_id if provided
+    if let Some(platform_id) = &params.platform_id {
+        count_query.push_str(&format!(
+            "
+            AND EXISTS (
+                SELECT 1 FROM posts_moderation_events pme 
+                WHERE pme.object_id = p.post_id AND pme.platform_id = '{}'
+                AND pme.removed = false
+            )",
+            platform_id
+        ));
+    }
+
+    // Get total count for pagination
+    let count_result = diesel::sql_query(&count_query)
+        .bind::<Text, _>(&resolved_profile_id)
+        .get_result::<CountResult>(&mut conn)
+        .await;
+
+    let total = match count_result {
+        Ok(result) => result.count,
+        Err(e) => {
+            error!("Error getting post count: {}", e);
+            // If count fails, still return posts but with total = 0
+            0
+        }
+    };
+
+    let posts_result = diesel::sql_query(&query)
+        .bind::<Text, _>(resolved_profile_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<PostWithEngagementInfo>(&mut conn)
+        .await;
+
+    match posts_result {
+        Ok(posts_with_engagement) => {
+            // Convert the posts to PostResponse
+            let post_responses: Vec<PostResponse> = posts_with_engagement
+                .into_iter()
+                .map(|p| PostResponse {
+                    post: PostBasic {
+                        post_id: p.post_id,
+                        owner: p.owner,
+                        profile_id: p.profile_id,
+                        content: p.content,
+                        created_at: p.created_at,
+                        deleted_at: p.deleted_at,
+                        removed_from_platform: p.removed_from_platform,
+                        reaction_count: p.reaction_count,
+                        comment_count: p.comment_count,
+                        repost_count: p.repost_count,
+                        tips_received: p.tips_received,
+                        promotion_id: p.promotion_id,
+                        enable_spt: p.enable_spt,
+                        enable_poc: p.enable_poc,
+                        enable_spot: p.enable_spot,
+                        poc_id: p.poc_id,
+                        spot_id: p.spot_id,
+                        spt_id: p.spt_id,
+                        poc_reasoning: p.poc_reasoning,
+                        poc_evidence_urls: p.poc_evidence_urls,
+                        poc_similarity_score: p.poc_similarity_score,
+                        poc_media_type: p.poc_media_type,
+                        poc_oracle_address: p.poc_oracle_address,
+                        poc_analyzed_at: p.poc_analyzed_at,
+                        revenue_redirect_to: p.revenue_redirect_to,
+                        revenue_redirect_percentage: p.revenue_redirect_percentage,
+                    },
+                    engagement_score: p.engagement_score,
+                    trending_score: p.trending_score,
+                })
+                .collect();
+
+            // Calculate total pages
+            let total_pages = if total == 0 {
+                0
+            } else {
+                (total + limit - 1) / limit
+            };
+
+            // Return response with pagination metadata
+            Json(ApiResponse {
+                data: post_responses,
+                pagination: PaginationInfo {
+                    limit,
+                    offset,
+                    total,
+                    total_pages,
+                },
+            })
+            .into_response()
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// Get promoted posts with optional filtering
+pub async fn get_promoted_posts(
+    State(pool): State<DbPool>,
+    Query(params): Query<PromotionQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    let limit = params.limit.unwrap_or(20).min(100);
+    let offset = params.offset.unwrap_or(0);
+    let active_only = params.active_only.unwrap_or(true);
+
+    let mut query = "
+        SELECT DISTINCT
+            pp.promotion_id,
+            pp.post_id,
+            pp.owner,
+            pp.profile_id,
+            pp.payment_per_view,
+            pp.total_budget,
+            pp.remaining_budget,
+            pp.active,
+            pp.created_at,
+            COUNT(DISTINCT pv.viewer) AS view_count,
+            COALESCE(SUM(pv.payment_amount), 0) AS total_spent
+        FROM promoted_posts pp
+        LEFT JOIN promotion_views pv ON pp.promotion_id = pv.promotion_id
+        WHERE 1=1
+    "
+    .to_string();
+
+    if active_only {
+        query.push_str(" AND pp.active = true AND pp.remaining_budget > 0");
+    }
+
+    if let Some(owner) = &params.owner {
+        query.push_str(&format!(" AND pp.owner = '{}'", owner));
+    }
+
+    if let Some(platform_id) = &params.platform_id {
+        query.push_str(&format!(
+            " AND EXISTS (
+            SELECT 1 FROM promotion_views pv2 
+            WHERE pv2.promotion_id = pp.promotion_id 
+            AND pv2.platform_id = '{}'
+        )",
+            platform_id
+        ));
+    }
+
+    query.push_str(
+        "
+        GROUP BY pp.promotion_id, pp.post_id, pp.owner, pp.profile_id, 
+                 pp.payment_per_view, pp.total_budget, pp.remaining_budget, 
+                 pp.active, pp.created_at
+        ORDER BY pp.created_at DESC
+        LIMIT $1 OFFSET $2
+    ",
+    );
+
+    let result = diesel::sql_query(&query)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<PromotedPostInfo>(&mut conn)
+        .await;
+
+    match result {
+        Ok(promoted_posts) => Json(promoted_posts).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// Get promotion details for a specific post
+pub async fn get_post_promotion(
+    State(pool): State<DbPool>,
+    Path(post_id): Path<String>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    let query = "
+        SELECT 
+            pp.promotion_id,
+            pp.post_id,
+            pp.owner,
+            pp.profile_id,
+            pp.payment_per_view,
+            pp.total_budget,
+            pp.remaining_budget,
+            pp.active,
+            pp.created_at,
+            COUNT(DISTINCT pv.viewer) AS view_count,
+            COALESCE(SUM(pv.payment_amount), 0) AS total_spent
+        FROM promoted_posts pp
+        LEFT JOIN promotion_views pv ON pp.promotion_id = pv.promotion_id
+        WHERE pp.post_id = $1
+        GROUP BY pp.promotion_id, pp.post_id, pp.owner, pp.profile_id, 
+                 pp.payment_per_view, pp.total_budget, pp.remaining_budget, 
+                 pp.active, pp.created_at
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(&post_id)
+        .get_result::<PromotedPostInfo>(&mut conn)
+        .await;
+
+    match result {
+        Ok(promotion) => Json(promotion).into_response(),
+        Err(diesel::result::Error::NotFound) => {
+            (StatusCode::NOT_FOUND, "No promotion found for this post").into_response()
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// Get promotion views for a specific promotion
+pub async fn get_promotion_views(
+    State(pool): State<DbPool>,
+    Path(promotion_id): Path<String>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    let limit = params.limit.unwrap_or(20).min(100);
+    let offset = params.offset.unwrap_or(0);
+
+    let query = "
+        SELECT 
+            post_id,
+            promotion_id,
+            viewer,
+            payment_amount,
+            view_duration,
+            platform_id,
+            timestamp
+        FROM promotion_views
+        WHERE promotion_id = $1
+        ORDER BY timestamp DESC
+        LIMIT $2 OFFSET $3
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(&promotion_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<PromotionViewInfo>(&mut conn)
+        .await;
+
+    match result {
+        Ok(views) => Json(views).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+// Time bucket analytics for promotions
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PromotionTimeBucket {
+    #[diesel(sql_type = Timestamptz)]
+    pub bucket: chrono::DateTime<chrono::Utc>,
+
+    #[diesel(sql_type = BigInt)]
+    pub view_count: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub total_payments: i64,
+
+    #[diesel(sql_type = Float8)]
+    pub avg_view_duration: f64,
+}
+
+// Performance metrics from materialized views
+#[derive(Debug, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PromotionPerformance {
+    #[diesel(sql_type = Text)]
+    pub promotion_id: String,
+
+    #[diesel(sql_type = Text)]
+    pub post_id: String,
+
+    #[diesel(sql_type = BigInt)]
+    pub total_views: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub unique_viewers: i64,
+
+    #[diesel(sql_type = Float8)]
+    pub views_per_hour: f64,
+
+    #[diesel(sql_type = Float8)]
+    pub budget_utilization_percent: f64,
+
+    #[diesel(sql_type = Float8)]
+    pub actual_cost_per_view: f64,
+}
+
+/// Get promotion statistics
+pub async fn get_promotion_stats(
+    State(pool): State<DbPool>,
+    Path(promotion_id): Path<String>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    // Enhanced query using TimescaleDB time_bucket for better time-based analytics
+    let query = "
+        WITH current_stats AS (
+            SELECT 
+                COUNT(*) AS total_views,
+                COUNT(DISTINCT viewer) AS unique_viewers,
+                COALESCE(SUM(payment_amount), 0) AS total_spent,
+                COALESCE(AVG(view_duration), 0) AS avg_view_duration,
+                COALESCE(AVG(payment_amount), 0.0) AS avg_payment_per_view
+            FROM promotion_views
+            WHERE promotion_id = $1
+        ),
+        time_based_stats AS (
+            SELECT 
+                COUNT(CASE WHEN time >= NOW() - INTERVAL '24 hours' THEN 1 END) AS views_last_24h,
+                COUNT(CASE WHEN time >= NOW() - INTERVAL '7 days' THEN 1 END) AS views_last_7d
+            FROM promotion_views
+            WHERE promotion_id = $1
+        )
+        SELECT 
+            $1::text AS promotion_id,
+            cs.total_views,
+            cs.unique_viewers,
+            cs.total_spent,
+            cs.avg_view_duration,
+            cs.avg_payment_per_view,
+            ts.views_last_24h,
+            ts.views_last_7d
+        FROM current_stats cs, time_based_stats ts
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(&promotion_id)
+        .get_result::<PromotionStats>(&mut conn)
+        .await;
+
+    match result {
+        Ok(stats) => Json(stats).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// Get promotion view analytics over time using TimescaleDB time_bucket
+pub async fn get_promotion_time_analytics(
+    State(pool): State<DbPool>,
+    Path(promotion_id): Path<String>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    // Use time_bucket for efficient time-series aggregation
+    let query = "
+        SELECT 
+            time_bucket('1 hour', time) AS bucket,
+            COUNT(*) AS view_count,
+            SUM(payment_amount) AS total_payments,
+            AVG(view_duration)::FLOAT8 AS avg_view_duration
+        FROM promotion_views
+        WHERE promotion_id = $1
+        AND time >= NOW() - INTERVAL '7 days'
+        GROUP BY bucket
+        ORDER BY bucket DESC
+        LIMIT $2
+    ";
+
+    let limit = params.limit.unwrap_or(168).min(168); // Max 7 days of hourly data
+
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(&promotion_id)
+        .bind::<BigInt, _>(limit)
+        .load::<PromotionTimeBucket>(&mut conn)
+        .await;
+
+    match result {
+        Ok(buckets) => Json(buckets).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// Get top performing promotions using materialized views
+pub async fn get_top_performing_promotions(
+    State(pool): State<DbPool>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    let limit = params.limit.unwrap_or(20).min(100);
+
+    // Query the pre-computed view for better performance
+    let query = "
+        SELECT 
+            promotion_id,
+            post_id,
+            total_views,
+            unique_viewers,
+            views_per_hour,
+            budget_utilization_percent,
+            actual_cost_per_view
+        FROM promotion_performance
+        WHERE budget_utilization_percent < 100
+        ORDER BY views_per_hour DESC
+        LIMIT $1
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<BigInt, _>(limit)
+        .load::<PromotionPerformance>(&mut conn)
+        .await;
+
+    match result {
+        Ok(promotions) => Json(promotions).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// Get promotion views from continuous aggregate for better performance
+pub async fn get_promotion_hourly_stats(
+    State(pool): State<DbPool>,
+    Path(promotion_id): Path<String>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    // Query the continuous aggregate instead of raw data
+    let query = "
+        SELECT 
+            bucket,
+            view_count,
+            total_payments,
+            avg_view_duration::FLOAT8 AS avg_view_duration
+        FROM promotion_views_hourly
+        WHERE promotion_id = $1
+        AND bucket >= NOW() - INTERVAL '7 days'
+        ORDER BY bucket DESC
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(&promotion_id)
+        .load::<PromotionTimeBucket>(&mut conn)
+        .await;
+
+    match result {
+        Ok(stats) => Json(stats).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// Get overall promotion spending trends from continuous aggregate
+pub async fn get_promotion_spending_trends(
+    State(pool): State<DbPool>,
+    Query(params): Query<PostQuery>,
+) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database connection error: {}", e),
+            )
+                .into_response();
+        }
+    };
+
+    // Query the daily spending continuous aggregate
+    let query = "
+        SELECT 
+            bucket AS bucket,
+            total_views AS view_count,
+            total_spending AS total_payments,
+            COALESCE(avg_payment_per_view, 0)::FLOAT8 AS avg_view_duration
+        FROM promotion_spending_daily
+        WHERE bucket >= NOW() - INTERVAL '30 days'
+        ORDER BY bucket DESC
+        LIMIT $1
+    ";
+
+    let limit = params.limit.unwrap_or(30).min(90);
+
+    let result = diesel::sql_query(query)
+        .bind::<BigInt, _>(limit)
+        .load::<PromotionTimeBucket>(&mut conn)
+        .await;
+
+    match result {
+        Ok(trends) => Json(trends).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// Post Configuration response structure
+#[derive(Debug, Clone, Serialize, QueryableByName)]
+#[diesel(check_for_backend(Pg))]
+pub struct PostConfigInfo {
+    #[diesel(sql_type = Text)]
+    pub updated_by: String,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_content_length: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_media_urls: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_mentions: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_metadata_size: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_description_length: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub max_reaction_length: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub commenter_tip_percentage: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub repost_tip_percentage: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+
+    #[diesel(sql_type = BigInt)]
+    pub updated_at: i64,
+
+    #[diesel(sql_type = Timestamptz)]
+    pub time: chrono::DateTime<chrono::Utc>,
+
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// Get current post configuration (PostAdminCap settings)
+pub async fn get_post_configuration(State(pool): State<DbPool>) -> Response {
+    let mut conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("Database connection error: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database connection error: {}", e)
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    let query = "
+        SELECT 
+            updated_by,
+            max_content_length,
+            max_media_urls,
+            max_mentions,
+            max_metadata_size,
+            max_description_length,
+            max_reaction_length,
+            commenter_tip_percentage,
+            repost_tip_percentage,
+            version,
+            updated_at,
+            time,
+            transaction_id
+        FROM post_config
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .load::<PostConfigInfo>(&mut conn)
+        .await;
+
+    match result {
+        Ok(configs) => {
+            if !configs.is_empty() {
+                Json(&configs[0]).into_response()
+            } else {
+                // Return default configuration matching smart contract constants
+                // Default values from PostAdminCap smart contract
+                let default_config = PostConfigInfo {
+                    updated_by: "".to_string(),
+                    max_content_length: 5000, // MAX_CONTENT_LENGTH
+                    max_media_urls: 10, // MAX_MEDIA_URLS
+                    max_mentions: 10, // MAX_MENTIONS
+                    max_metadata_size: 10000, // MAX_METADATA_SIZE
+                    max_description_length: 500, // MAX_DESCRIPTION_LENGTH
+                    max_reaction_length: 20, // MAX_REACTION_LENGTH
+                    commenter_tip_percentage: 80, // COMMENTER_TIP_PERCENTAGE
+                    repost_tip_percentage: 50, // REPOST_TIP_PERCENTAGE
+                    version: 0, // Default version for initial config
+                    updated_at: 0, // No update timestamp for defaults
+                    time: chrono::DateTime::from_timestamp(0, 0).unwrap(), // Epoch time (not serialized)
+                    transaction_id: "".to_string(),
+                };
+                Json(default_config).into_response()
+            }
+        }
+        Err(e) => {
+            error!("Database error getting post configuration: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": format!("Database error: {}", e)
+                })),
+            )
+                .into_response()
+        }
+    }
+}

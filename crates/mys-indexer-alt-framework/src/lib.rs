@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{collections::BTreeSet, sync::Arc};
@@ -12,14 +13,14 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use ingestion::{client::IngestionClient, ClientArgs, IngestionConfig, IngestionService};
 use metrics::IndexerMetrics;
 use models::watermarks::{CommitterWatermark, PrunerWatermark};
+use mys_indexer_alt_metrics::db::DbConnectionStatsCollector;
+use mys_pg_db::{temp::TempDb, Db, DbArgs};
 use pipeline::{
     concurrent::{self, ConcurrentConfig},
     sequential::{self, SequentialConfig},
     Processor,
 };
 use prometheus::Registry;
-use mys_indexer_alt_metrics::db::DbConnectionStatsCollector;
-use mys_pg_db::{temp::TempDb, Db, DbArgs};
 use task::graceful_shutdown;
 use tempfile::tempdir;
 use tokio::task::JoinHandle;
@@ -181,7 +182,7 @@ impl Indexer {
             IndexerArgs::default(),
             ClientArgs {
                 remote_store_url: None,
-                local_ingestion_path: Some(tempdir().unwrap().into_path()),
+                local_ingestion_path: Some(tempdir().unwrap().keep()),
             },
             IngestionConfig::default(),
             Some(migrations),

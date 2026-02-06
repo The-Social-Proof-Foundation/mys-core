@@ -1,9 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::network_config::NetworkConfig;
-use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
-use std::collections::HashMap;
 use mys_types::{
     base_types::AuthorityName,
     committee::{Committee, EpochId, StakeUnit},
@@ -17,6 +16,8 @@ use mys_types::{
         VerifiedCheckpointContents,
     },
 };
+use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
+use std::collections::HashMap;
 
 pub struct CommitteeFixture {
     epoch: EpochId,

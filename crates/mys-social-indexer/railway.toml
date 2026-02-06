@@ -1,0 +1,42 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "crates/mys-social-indexer/Dockerfile"
+buildCommand = "cargo build --release --bin mys-social-indexer"
+
+[deploy]
+startCommand = "mys-social-indexer"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+
+[deploy.envVars]
+PORT = { sync = false }
+
+# Explicitly tell Railway this is a Rust project
+[build.env]
+NIXPACKS_LANGUAGE = "rust"
+NIXPACKS_BUILD_CMD = "cargo build --release --bin mys-social-indexer"
+
+[variables]
+# Database Configuration
+DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+DATABASE_PRIVATE_URL = "${{Postgres.DATABASE_PRIVATE_URL}}"
+PGDATABASE = "${{Postgres.PGDATABASE}}"
+PGHOST = "${{Postgres.PGHOST}}"
+PGPASSWORD = "${{Postgres.PGPASSWORD}}"
+PGPORT = "${{Postgres.PGPORT}}"
+PGUSER = "${{Postgres.PGUSER}}"
+
+# Server Configuration
+SERVER_HOST = "0.0.0.0"
+
+# Logging configuration  
+RUST_LOG = "info,mys_social_indexer=debug"
+RUST_BACKTRACE = "1"
+
+# Blockchain Configuration
+RPC_URL = "https://fullnode.testnet.mysocial.network:9000"
+
+# Force migrations on startup
+FORCE_MIGRATIONS = "true"
+RESET_BLOCKING_SCHEMA = "true"

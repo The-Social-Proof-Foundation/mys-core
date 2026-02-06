@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
@@ -45,6 +46,9 @@ pub(crate) async fn setup_indexer_backed_rpc(
         None,
         Some(data_ingestion_path.clone()),
         None,
+        None, /* start_checkpoint */
+        None, /* end_checkpoint */
+        None, /* social_config */
     )
     .await;
     cancellation_tokens.push(writer_token.drop_guard());

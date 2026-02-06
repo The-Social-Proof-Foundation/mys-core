@@ -1,12 +1,13 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::fmt;
 
 use async_graphql::*;
 use move_binary_format::file_format::{Ability, AbilitySet, Visibility};
-use serde::{Deserialize, Serialize};
 use mys_package_resolver::{OpenSignature, OpenSignatureBody, Reference};
+use serde::{Deserialize, Serialize};
 
 pub(crate) struct OpenMoveType {
     signature: OpenMoveTypeSignature,

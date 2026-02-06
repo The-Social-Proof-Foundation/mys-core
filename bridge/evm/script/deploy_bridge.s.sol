@@ -14,7 +14,52 @@ import "../contracts/MysBridge.sol";
 import "../test/mocks/MockTokens.sol";
 
 contract DeployBridge is Script {
-    function parseDeployConfig(string memory path) public returns (DeployConfig memory) {
+    
+    /// @notice Helper function to deploy BridgeConfig (extracted to avoid stack too deep)
+    function _deployBridgeConfig(
+        address bridgeCommittee,
+        DeployConfig memory deployConfig,
+        uint8[] memory supportedChainIds,
+        Options memory opts
+    ) internal returns (address) {
+        // convert token prices from uint256 to uint64
+        uint64[] memory tokenPrices = new uint64[](deployConfig.tokenPrices.length);
+        for (uint256 i; i < deployConfig.tokenPrices.length; i++) {
+            tokenPrices[i] = uint64(deployConfig.tokenPrices[i]);
+        }
+
+        // convert MySocial Decimals from uint256 to uint8
+        uint8[] memory mysDecimals = new uint8[](deployConfig.mysDecimals.length);
+        for (uint256 i; i < deployConfig.mysDecimals.length; i++) {
+            mysDecimals[i] = uint8(deployConfig.mysDecimals[i]);
+        }
+
+        // convert Token Id from uint256 to uint8
+        uint8[] memory tokenIds = new uint8[](deployConfig.tokenIds.length);
+        for (uint256 i; i < deployConfig.tokenIds.length; i++) {
+            tokenIds[i] = uint8(deployConfig.tokenIds[i]);
+        }
+
+        return Upgrades.deployUUPSProxy(
+            "BridgeConfig.sol",
+            abi.encodeCall(
+                BridgeConfig.initialize,
+                (
+                    bridgeCommittee,
+                    uint8(deployConfig.sourceChainId),
+                    deployConfig.supportedTokens,
+                    tokenPrices,
+                    tokenIds,
+                    mysDecimals,
+                    supportedChainIds,
+                    deployConfig.mySocialTokenAdapter
+                )
+            ),
+            opts
+        );
+    }
+    
+    function parseDeployConfig(string memory path) public view returns (DeployConfig memory) {
         string memory json = vm.readFile(path);
         DeployConfig memory config;
 
@@ -29,6 +74,7 @@ contract DeployBridge is Script {
         config.tokenIds = abi.decode(vm.parseJson(json, ".tokenIds"), (uint256[]));
         config.mysDecimals = abi.decode(vm.parseJson(json, ".mysDecimals"), (uint256[]));
         config.weth = abi.decode(vm.parseJson(json, ".weth"), (address));
+        config.mySocialTokenAdapter = abi.decode(vm.parseJson(json, ".mySocialTokenAdapter"), (address));
 
         return config;
     }
@@ -133,38 +179,10 @@ contract DeployBridge is Script {
 
         // deploy bridge config =====================================================================
 
-        // convert token prices from uint256 to uint64
-        uint64[] memory tokenPrices = new uint64[](deployConfig.tokenPrices.length);
-        for (uint256 i; i < deployConfig.tokenPrices.length; i++) {
-            tokenPrices[i] = uint64(deployConfig.tokenPrices[i]);
-        }
-
-        // convert MySocial Decimals from uint256 to uint8
-        uint8[] memory mysDecimals = new uint8[](deployConfig.mysDecimals.length);
-        for (uint256 i; i < deployConfig.mysDecimals.length; i++) {
-            mysDecimals[i] = uint8(deployConfig.mysDecimals[i]);
-        }
-
-        // convert Token Id from uint256 to uint8
-        uint8[] memory tokenIds = new uint8[](deployConfig.tokenIds.length);
-        for (uint256 i; i < deployConfig.tokenIds.length; i++) {
-            tokenIds[i] = uint8(deployConfig.tokenIds[i]);
-        }
-
-        address bridgeConfig = Upgrades.deployUUPSProxy(
-            "BridgeConfig.sol",
-            abi.encodeCall(
-                BridgeConfig.initialize,
-                (
-                    address(bridgeCommittee),
-                    uint8(deployConfig.sourceChainId),
-                    deployConfig.supportedTokens,
-                    tokenPrices,
-                    tokenIds,
-                    mysDecimals,
-                    supportedChainIds
-                )
-            ),
+        address bridgeConfig = _deployBridgeConfig(
+            bridgeCommittee,
+            deployConfig,
+            supportedChainIds,
             opts
         );
 
@@ -244,4 +262,5 @@ struct DeployConfig {
     uint256[] tokenIds;
     uint256[] mysDecimals;
     address weth;
+    address mySocialTokenAdapter;
 }

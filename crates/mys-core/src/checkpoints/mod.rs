@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 mod causal_order;
@@ -19,30 +20,21 @@ use crate::stake_aggregator::{InsertResult, MultiStakeAggregator};
 use crate::state_accumulator::StateAccumulator;
 use diffy::create_patch;
 use itertools::Itertools;
-use mysten_common::{debug_fatal, fatal};
-use mysten_metrics::{monitored_future, monitored_scope, MonitoredFutureExt};
-use nonempty::NonEmpty;
-use parking_lot::Mutex;
-use serde::{Deserialize, Serialize};
 use mys_macros::fail_point;
 use mys_network::default_mysten_network_config;
 use mys_types::base_types::ConciseableName;
 use mys_types::executable_transaction::VerifiedExecutableTransaction;
 use mys_types::messages_checkpoint::CheckpointCommitment;
 use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemStateTrait;
+use mysten_common::{debug_fatal, fatal};
+use mysten_metrics::{monitored_future, monitored_scope, MonitoredFutureExt};
+use nonempty::NonEmpty;
+use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
 
 use crate::authority::authority_per_epoch_store::AuthorityPerEpochStore;
 use crate::consensus_handler::SequencedConsensusTransactionKey;
-use rand::rngs::OsRng;
-use rand::seq::SliceRandom;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
-use std::sync::Arc;
-use std::sync::Weak;
-use std::time::{Duration, SystemTime};
 use mys_protocol_config::ProtocolVersion;
 use mys_types::base_types::{AuthorityName, EpochId, TransactionDigest};
 use mys_types::committee::StakeUnit;
@@ -60,9 +52,18 @@ use mys_types::messages_checkpoint::{
 };
 use mys_types::messages_checkpoint::{CheckpointRequestV2, SignedCheckpointSummary};
 use mys_types::messages_consensus::ConsensusTransactionKey;
-use mys_types::signature::GenericSignature;
 use mys_types::mys_system_state::{MysSystemState, MysSystemStateTrait};
+use mys_types::signature::GenericSignature;
 use mys_types::transaction::{TransactionDataAPI, TransactionKey, TransactionKind};
+use rand::rngs::OsRng;
+use rand::seq::SliceRandom;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
+use std::sync::Arc;
+use std::sync::Weak;
+use std::time::{Duration, SystemTime};
 use tokio::{sync::Notify, task::JoinSet, time::timeout};
 use tracing::{debug, error, info, instrument, trace, warn};
 use typed_store::traits::{TableSummary, TypedStoreDebug};
@@ -744,7 +745,8 @@ impl CheckpointStore {
 
     pub fn reset_db_for_execution_since_genesis(&self) -> MysResult {
         self.delete_highest_executed_checkpoint_test_only()?;
-        self.watermarks.rocksdb.flush()?;
+        self.watermarks.rocksdb().expect("RocksDB not available").flush()
+            .map_err(|e| TypedStoreError::RocksDBError(e.to_string()))?;
         Ok(())
     }
 
@@ -2213,7 +2215,7 @@ async fn diagnose_split_brain(
     let fork_logs_text = format!("{header}\n\n{diff_patches}\n\n");
     let path = tempfile::tempdir()
         .expect("Failed to create tempdir")
-        .into_path()
+        .keep()
         .join(Path::new("checkpoint_fork_dump.txt"));
     let mut file = File::create(path).unwrap();
     write!(file, "{}", fork_logs_text).unwrap();
@@ -2486,8 +2488,6 @@ mod tests {
     use crate::authority::test_authority_builder::TestAuthorityBuilder;
     use futures::future::BoxFuture;
     use futures::FutureExt as _;
-    use std::collections::{BTreeMap, HashMap};
-    use std::ops::Deref;
     use mys_macros::sim_test;
     use mys_protocol_config::{Chain, ProtocolConfig};
     use mys_types::base_types::{ObjectID, SequenceNumber, TransactionEffectsDigest};
@@ -2498,6 +2498,8 @@ mod tests {
     use mys_types::move_package::MovePackage;
     use mys_types::object;
     use mys_types::transaction::{GenesisObject, VerifiedTransaction};
+    use std::collections::{BTreeMap, HashMap};
+    use std::ops::Deref;
     use tokio::sync::mpsc;
 
     #[sim_test]

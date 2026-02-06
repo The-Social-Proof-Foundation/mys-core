@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority_state::StateReadError;
@@ -9,11 +10,11 @@ use itertools::Itertools;
 use jsonrpsee::core::ClientError as RpcError;
 use jsonrpsee::types::error::INTERNAL_ERROR_CODE;
 use jsonrpsee::types::{ErrorObject, ErrorObjectOwned};
-use std::collections::BTreeMap;
 use mys_json_rpc_api::{TRANSACTION_EXECUTION_CLIENT_ERROR_CODE, TRANSIENT_ERROR_CODE};
 use mys_types::committee::{QUORUM_THRESHOLD, TOTAL_VOTING_POWER};
 use mys_types::error::{MysError, MysObjectResponseError, UserInputError};
 use mys_types::quorum_driver_types::QuorumDriverError;
+use std::collections::BTreeMap;
 use thiserror::Error;
 use tokio::task::JoinError;
 

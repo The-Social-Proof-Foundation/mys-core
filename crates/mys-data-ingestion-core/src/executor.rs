@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::progress_store::{
@@ -10,13 +11,13 @@ use crate::Worker;
 use crate::{DataIngestionMetrics, ReaderOptions};
 use anyhow::Result;
 use futures::Future;
+use mys_types::full_checkpoint_content::CheckpointData;
+use mys_types::messages_checkpoint::CheckpointSequenceNumber;
 use mysten_metrics::spawn_monitored_task;
 use prometheus::Registry;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
-use mys_types::full_checkpoint_content::CheckpointData;
-use mys_types::messages_checkpoint::CheckpointSequenceNumber;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
@@ -136,7 +137,7 @@ pub async fn setup_single_workflow<W: Worker + 'static>(
     executor.register(worker_pool).await?;
     Ok((
         executor.run(
-            tempfile::tempdir()?.into_path(),
+            tempfile::tempdir()?.keep(),
             Some(remote_store_url),
             vec![],
             reader_options.unwrap_or_default(),

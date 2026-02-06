@@ -1,13 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use move_binary_format::{
     binary_config::BinaryConfig, compatibility::Compatibility, CompiledModule,
 };
 use move_core_types::gas_algebra::InternalGas;
-use serde::{Deserialize, Serialize};
-use std::fmt::Formatter;
-use std::sync::LazyLock;
 use mys_types::base_types::ObjectRef;
 use mys_types::storage::ObjectStore;
 use mys_types::{
@@ -15,9 +13,12 @@ use mys_types::{
     digests::TransactionDigest,
     move_package::MovePackage,
     object::{Object, OBJECT_START_VERSION},
-    MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID, MYS_SYSTEM_PACKAGE_ID,
+    BRIDGE_PACKAGE_ID, ORDERBOOK_PACKAGE_ID, MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID,
+    MYS_SOCIAL_PACKAGE_ID, MYS_SYSTEM_PACKAGE_ID, MYDATA_PACKAGE_ID,
 };
-use mys_types::{BRIDGE_PACKAGE_ID, DEEPBOOK_PACKAGE_ID};
+use serde::{Deserialize, Serialize};
+use std::fmt::Formatter;
+use std::sync::LazyLock;
 use tracing::error;
 
 /// Encapsulates a system package in the framework
@@ -107,7 +108,7 @@ macro_rules! define_system_package_metadata {
                     $name,
                     concat!("crates/mys-framework/packages/", $path),
                     $id,
-                    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/packages_compiled", "/", $path)),
+                    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/packages_compiled/", $path)),
                     &$deps,
                 )),*
             ]
@@ -137,9 +138,15 @@ impl BuiltInFramework {
                 [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
             ),
             (
-                DEEPBOOK_PACKAGE_ID,
-                "DeepBook",
-                "deepbook",
+                MYDATA_PACKAGE_ID,
+                "mydata",
+                "mydata",
+                [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
+            ),
+            (
+                ORDERBOOK_PACKAGE_ID,
+                "OrderBook",
+                "orderbook",
                 [MOVE_STDLIB_PACKAGE_ID, MYS_FRAMEWORK_PACKAGE_ID]
             ),
             (
@@ -150,6 +157,16 @@ impl BuiltInFramework {
                     MOVE_STDLIB_PACKAGE_ID,
                     MYS_FRAMEWORK_PACKAGE_ID,
                     MYS_SYSTEM_PACKAGE_ID
+                ]
+            ),
+            (
+                MYS_SOCIAL_PACKAGE_ID,
+                "MySocialContracts",
+                "mys-social",
+                [
+                    MOVE_STDLIB_PACKAGE_ID,
+                    MYS_FRAMEWORK_PACKAGE_ID,
+                    MYDATA_PACKAGE_ID
                 ]
             )
         ])

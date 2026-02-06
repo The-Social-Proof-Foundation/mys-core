@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority::authority_per_epoch_store::AuthorityPerEpochStore;
@@ -6,6 +7,8 @@ use crate::authority_aggregator::AuthorityAggregator;
 use crate::authority_client::AuthorityAPI;
 use crate::execution_cache::TransactionCacheRead;
 use arc_swap::ArcSwap;
+use mys_types::base_types::{AuthorityName, TransactionDigest};
+use mys_types::transaction::VerifiedSignedTransaction;
 use mysten_metrics::LATENCY_SEC_BUCKETS;
 use prometheus::{
     register_histogram_with_registry, register_int_counter_with_registry, Histogram, IntCounter,
@@ -17,8 +20,6 @@ use std::ops::Add;
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::sync::Arc;
 use std::time::Duration;
-use mys_types::base_types::{AuthorityName, TransactionDigest};
-use mys_types::transaction::VerifiedSignedTransaction;
 use tokio::select;
 use tokio::time::Instant;
 use tracing::{debug, error, trace};
@@ -280,18 +281,10 @@ mod tests {
     use crate::validator_tx_finalizer::ValidatorTxFinalizer;
     use arc_swap::ArcSwap;
     use async_trait::async_trait;
-    use std::cmp::min;
-    use std::collections::BTreeMap;
-    use std::iter;
-    use std::net::SocketAddr;
-    use std::num::NonZeroUsize;
-    use std::sync::atomic::AtomicBool;
-    use std::sync::atomic::Ordering::Relaxed;
-    use std::sync::Arc;
     use mys_macros::sim_test;
     use mys_swarm_config::network_config_builder::ConfigBuilder;
     use mys_test_transaction_builder::TestTransactionBuilder;
-    use mys_types::base_types::{AuthorityName, ObjectID, MysAddress, TransactionDigest};
+    use mys_types::base_types::{AuthorityName, MysAddress, ObjectID, TransactionDigest};
     use mys_types::committee::{CommitteeTrait, StakeUnit};
     use mys_types::crypto::{get_account_key_pair, AccountKeyPair};
     use mys_types::effects::{TransactionEffectsAPI, TransactionEvents};
@@ -306,13 +299,21 @@ mod tests {
         HandleTransactionResponse, ObjectInfoRequest, ObjectInfoResponse, SystemStateRequest,
         TransactionInfoRequest, TransactionInfoResponse,
     };
-    use mys_types::object::Object;
     use mys_types::mys_system_state::MysSystemState;
+    use mys_types::object::Object;
     use mys_types::transaction::{
         CertifiedTransaction, SignedTransaction, Transaction, VerifiedCertificate,
         VerifiedSignedTransaction, VerifiedTransaction,
     };
     use mys_types::utils::to_sender_signed_transaction;
+    use std::cmp::min;
+    use std::collections::BTreeMap;
+    use std::iter;
+    use std::net::SocketAddr;
+    use std::num::NonZeroUsize;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::Ordering::Relaxed;
+    use std::sync::Arc;
 
     #[derive(Clone)]
     struct MockAuthorityClient {

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::env;
@@ -14,11 +15,11 @@ use hyper::Request;
 use jsonrpsee::RpcModule;
 use metrics::Metrics;
 use metrics::MetricsLayer;
-use prometheus::Registry;
 use mys_core::traffic_controller::metrics::TrafficControllerMetrics;
 use mys_core::traffic_controller::TrafficController;
 use mys_types::traffic_control::PolicyConfig;
 use mys_types::traffic_control::RemoteFirewallConfig;
+use prometheus::Registry;
 use tokio::runtime::Handle;
 use tokio_util::sync::CancellationToken;
 use tower::ServiceBuilder;
@@ -27,13 +28,13 @@ use tower_http::trace::TraceLayer;
 use tracing::info;
 
 pub use balance_changes::*;
-pub use object_changes::*;
 pub use mys_config::node::ServerType;
 use mys_json_rpc_api::{
     CLIENT_REQUEST_METHOD_HEADER, CLIENT_SDK_TYPE_HEADER, CLIENT_SDK_VERSION_HEADER,
     CLIENT_TARGET_API_VERSION_HEADER,
 };
 use mys_open_rpc::{Module, Project};
+pub use object_changes::*;
 use traffic_control::TrafficControllerService;
 
 use crate::error::Error;
@@ -71,7 +72,7 @@ pub fn mys_rpc_doc(version: &str) -> Project {
     Project::new(
         version,
         "Mys JSON-RPC",
-        "Mys JSON-RPC API for interaction with Mys Full node. Make RPC calls using https://fullnode.NETWORK.mys.io:443, where NETWORK is the network you want to use (testnet, devnet, mainnet). By default, local networks use port 9000.",
+        "Mys JSON-RPC API for interaction with Mys Full node. Make RPC calls using https://fullnode.NETWORK.mysocial.network:443, where NETWORK is the network you want to use (testnet, devnet, mainnet). By default, local networks use port 9000.",
         "Mysten Labs",
         "https://mystenlabs.com",
         "build@mystenlabs.com",
@@ -295,7 +296,7 @@ impl JsonRpcServerBuilder {
         let handle = ServerHandle {
             handle: ServerHandleInner::Axum(handle),
         };
-        info!(local_addr =? addr, "Mys JSON-RPC server listening on {addr}");
+        info!(local_addr =? addr, "MySocail JSON-RPC server listening on {addr}");
         Ok(handle)
     }
 }

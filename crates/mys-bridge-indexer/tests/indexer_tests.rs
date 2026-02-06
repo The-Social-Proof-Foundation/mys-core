@@ -1,12 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::associations::HasTable;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
-use prometheus::Registry;
-use std::time::Duration;
 use mys_bridge::e2e_tests::test_utils::{
     initiate_bridge_eth_to_mys, BridgeTestCluster, BridgeTestClusterBuilder,
 };
@@ -20,6 +19,8 @@ use mys_data_ingestion_core::DataIngestionMetrics;
 use mys_indexer::database::Connection;
 use mys_indexer_builder::indexer_builder::IndexerProgressStore;
 use mys_pg_db::temp::TempDb;
+use prometheus::Registry;
+use std::time::Duration;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("src/migrations");
 

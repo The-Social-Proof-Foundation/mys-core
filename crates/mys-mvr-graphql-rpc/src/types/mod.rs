@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 pub(crate) mod address;
@@ -33,6 +34,8 @@ pub(crate) mod move_registry;
 pub(crate) mod move_struct;
 pub(crate) mod move_type;
 pub(crate) mod move_value;
+pub(crate) mod mys_address;
+pub(crate) mod mysns_registration;
 pub(crate) mod object;
 pub(crate) mod object_change;
 pub(crate) mod object_read;
@@ -45,8 +48,6 @@ pub(crate) mod stake;
 pub(crate) mod stake_subsidy;
 pub(crate) mod storage_fund;
 pub(crate) mod string_input;
-pub(crate) mod mys_address;
-pub(crate) mod mysns_registration;
 pub(crate) mod system_parameters;
 pub(crate) mod system_state_summary;
 pub(crate) mod transaction_block;

@@ -1,0 +1,22 @@
+{
+  "name": "myso-bridge-evm",
+  "version": "1.0.0",
+  "description": "MySo Bridge EVM contracts using Foundry/Forge",
+  "scripts": {
+    "install-deps": "forge soldeer update",
+    "build": "forge build",
+    "test": "forge test",
+    "deploy": "forge script script/deploy_bridge.s.sol --rpc-url $RPC_URL --broadcast --verify",
+    "deploy-local": "forge script script/deploy_bridge.s.sol --fork-url anvil --broadcast"
+  },
+  "keywords": [
+    "bridge",
+    "cross-chain", 
+    "solidity",
+    "forge",
+    "foundry",
+    "myso"
+  ],
+  "author": "",
+  "license": "MIT"
+}

@@ -1,11 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::workloads::Gas;
 use crate::ValidatorProxy;
 use anyhow::Result;
-use std::path::PathBuf;
-use std::sync::Arc;
 use mys_keys::keystore::{AccountKeystore, FileBasedKeystore};
 use mys_test_transaction_builder::TestTransactionBuilder;
 use mys_types::base_types::ObjectRef;
@@ -14,6 +13,8 @@ use mys_types::object::Owner;
 use mys_types::transaction::{Transaction, TransactionData, TEST_ONLY_GAS_UNIT_FOR_TRANSFER};
 use mys_types::utils::to_sender_signed_transaction;
 use mys_types::{base_types::MysAddress, crypto::MysKeyPair};
+use std::path::PathBuf;
+use std::sync::Arc;
 
 // This is the maximum gas we will transfer from primary coin into any gas coin
 // for running the benchmark

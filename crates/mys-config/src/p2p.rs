@@ -1,13 +1,14 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{net::SocketAddr, num::NonZeroU32, time::Duration};
 
-use serde::{Deserialize, Serialize};
 use mys_types::{
     messages_checkpoint::{CheckpointDigest, CheckpointSequenceNumber},
     multiaddr::Multiaddr,
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]

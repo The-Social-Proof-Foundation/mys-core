@@ -1,12 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
-use prometheus::Registry;
-use serde::{Deserialize, Serialize};
-use std::env;
-use std::path::PathBuf;
-use std::time::Duration;
 use mys_data_ingestion::{
     ArchivalConfig, ArchivalReducer, ArchivalWorker, BlobTaskConfig, BlobWorker,
     DynamoDBProgressStore,
@@ -14,6 +10,11 @@ use mys_data_ingestion::{
 use mys_data_ingestion_core::{DataIngestionMetrics, ReaderOptions};
 use mys_data_ingestion_core::{IndexerExecutor, WorkerPool};
 use mys_kvstore::{BigTableClient, BigTableProgressStore, KvWorker};
+use prometheus::Registry;
+use serde::{Deserialize, Serialize};
+use std::env;
+use std::path::PathBuf;
+use std::time::Duration;
 use tokio::signal;
 use tokio::sync::oneshot;
 

@@ -1,12 +1,13 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::str::FromStr;
 use mys_json_rpc::name_service::{self, Domain};
 use mys_types::{
-    base_types::{ObjectID, MysAddress},
+    base_types::{MysAddress, ObjectID},
     collection_types::VecMap,
 };
+use std::str::FromStr;
 
 #[test]
 fn test_parent_extraction() {

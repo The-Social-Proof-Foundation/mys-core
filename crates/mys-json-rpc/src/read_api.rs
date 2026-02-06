@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::HashMap;
@@ -20,16 +21,14 @@ use jsonrpsee::RpcModule;
 use move_bytecode_utils::module_cache::GetModule;
 use move_core_types::annotated_value::{MoveStruct, MoveStructLayout, MoveValue};
 use move_core_types::language_storage::StructTag;
-use shared_crypto::intent::{IntentMessage, PersonalMessage};
 use mys_json_rpc_types::ZkLoginIntentScope;
 use mys_types::base_types::MysAddress;
 use mys_types::signature::{GenericSignature, VerifyParams};
 use mys_types::signature_verification::VerifiedDigestCache;
+use shared_crypto::intent::{IntentMessage, PersonalMessage};
 use tap::TapFallible;
 use tracing::{debug, error, info, instrument, trace, warn};
 
-use mysten_metrics::add_server_timing;
-use mysten_metrics::spawn_monitored_task;
 use mys_core::authority::AuthorityState;
 use mys_json_rpc_api::{
     validate_limit, JsonRpcMetrics, ReadApiOpenRpc, ReadApiServer, QUERY_MAX_RESULT_LIMIT,
@@ -37,10 +36,10 @@ use mys_json_rpc_api::{
 };
 use mys_json_rpc_types::{
     BalanceChange, Checkpoint, CheckpointId, CheckpointPage, DisplayFieldsResponse, EventFilter,
-    ObjectChange, ProtocolConfigResponse, MysEvent, MysGetPastObjectRequest, MysMoveStruct,
-    MysMoveValue, MysMoveVariant, MysObjectDataOptions, MysObjectResponse, MysPastObjectResponse,
-    MysTransactionBlock, MysTransactionBlockEvents, MysTransactionBlockResponse,
-    MysTransactionBlockResponseOptions,
+    MysEvent, MysGetPastObjectRequest, MysMoveStruct, MysMoveValue, MysMoveVariant,
+    MysObjectDataOptions, MysObjectResponse, MysPastObjectResponse, MysTransactionBlock,
+    MysTransactionBlockEvents, MysTransactionBlockResponse, MysTransactionBlockResponseOptions,
+    ObjectChange, ProtocolConfigResponse,
 };
 use mys_open_rpc::Module;
 use mys_protocol_config::{ProtocolConfig, ProtocolVersion};
@@ -54,22 +53,24 @@ use mys_types::error::{MysError, MysObjectResponseError};
 use mys_types::messages_checkpoint::{
     CheckpointContents, CheckpointSequenceNumber, CheckpointSummary, CheckpointTimestamp,
 };
-use mys_types::object::{Object, ObjectRead, PastObjectRead};
 use mys_types::mys_serde::BigInt;
+use mys_types::object::{Object, ObjectRead, PastObjectRead};
 use mys_types::transaction::TransactionDataAPI;
 use mys_types::transaction::{Transaction, TransactionData};
+use mysten_metrics::add_server_timing;
+use mysten_metrics::spawn_monitored_task;
 
 use crate::authority_state::{StateRead, StateReadError, StateReadResult};
-use crate::error::{Error, RpcInterimResult, MysRpcInputError};
+use crate::error::{Error, MysRpcInputError, RpcInterimResult};
 use crate::{
-    get_balance_changes_from_effect, get_object_changes, ObjectProviderCache, MysRpcModule,
+    get_balance_changes_from_effect, get_object_changes, MysRpcModule, ObjectProviderCache,
 };
 use crate::{with_tracing, ObjectProvider};
 use fastcrypto::encoding::Encoding;
 use fastcrypto::traits::ToFromBytes;
-use shared_crypto::intent::Intent;
 use mys_json_rpc_types::ZkLoginVerifyResult;
 use mys_types::authenticator_state::{get_authenticator_state, ActiveJwk};
+use shared_crypto::intent::Intent;
 const MAX_DISPLAY_NESTED_LEVEL: usize = 10;
 
 // An implementation of the read portion of the JSON-RPC interface intended for use in
@@ -735,13 +736,37 @@ impl ReadApiServer for ReadApi {
             let opts = opts.unwrap_or_default();
             let mut temp_response = IntermediateTransactionResponse::new(digest);
 
-            // Fetch transaction to determine existence
+            // Fetch transaction to determine existence, with retry for recently
+            // executed transactions that may not yet be committed to the KV store.
             let transaction_kv_store = self.transaction_kv_store.clone();
             let transaction = spawn_monitored_task!(async move {
-                let ret = transaction_kv_store.get_tx(digest).await.map_err(|err| {
-                    debug!(tx_digest=?digest, "Failed to get transaction: {:?}", err);
-                    Error::from(err)
-                });
+                let backoff = ExponentialBackoff {
+                    max_elapsed_time: Some(Duration::from_secs(3)),
+                    multiplier: 1.0,
+                    ..ExponentialBackoff::default()
+                };
+                let ret = retry(backoff, || async {
+                    match transaction_kv_store.get_tx(digest).await {
+                        Ok(tx) => Ok(tx),
+                        Err(MysError::TransactionNotFound { .. }) => {
+                            debug!(
+                                tx_digest=?digest,
+                                "Transaction not yet available, retrying..."
+                            );
+                            Err(backoff::Error::transient(Error::MysError(
+                                MysError::TransactionNotFound { digest },
+                            )))
+                        }
+                        Err(err) => {
+                            debug!(
+                                tx_digest=?digest,
+                                "Failed to get transaction: {:?}", err
+                            );
+                            Err(backoff::Error::permanent(Error::from(err)))
+                        }
+                    }
+                })
+                .await;
                 add_server_timing("tx_kv_lookup");
                 ret
             })

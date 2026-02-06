@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use async_trait::async_trait;
@@ -15,9 +16,9 @@ use mys_json_rpc_api::{ReadApiServer, QUERY_MAX_RESULT_LIMIT};
 use mys_json_rpc_types::ZkLoginIntentScope;
 use mys_json_rpc_types::ZkLoginVerifyResult;
 use mys_json_rpc_types::{
-    Checkpoint, CheckpointId, CheckpointPage, ProtocolConfigResponse, MysEvent,
-    MysGetPastObjectRequest, MysObjectDataOptions, MysObjectResponse, MysPastObjectResponse,
-    MysTransactionBlockResponse, MysTransactionBlockResponseOptions,
+    Checkpoint, CheckpointId, CheckpointPage, MysEvent, MysGetPastObjectRequest,
+    MysObjectDataOptions, MysObjectResponse, MysPastObjectResponse, MysTransactionBlockResponse,
+    MysTransactionBlockResponseOptions, ProtocolConfigResponse,
 };
 use mys_open_rpc::Module;
 use mys_protocol_config::{ProtocolConfig, ProtocolVersion};

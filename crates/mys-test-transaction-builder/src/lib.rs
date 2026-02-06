@@ -1,9 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use move_core_types::ident_str;
-use shared_crypto::intent::{Intent, IntentMessage};
-use std::path::PathBuf;
 use mys_genesis_builder::validator_info::GenesisValidatorMetadata;
 use mys_move_build::{BuildConfig, CompiledPackage};
 use mys_sdk::rpc_types::{
@@ -11,14 +10,14 @@ use mys_sdk::rpc_types::{
     MysTransactionBlockResponse,
 };
 use mys_sdk::wallet_context::WalletContext;
-use mys_types::base_types::{ObjectID, ObjectRef, SequenceNumber, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID, ObjectRef, SequenceNumber};
 use mys_types::crypto::{get_key_pair, AccountKeyPair, Signature, Signer};
 use mys_types::digests::TransactionDigest;
 use mys_types::multisig::{BitmapUnit, MultiSig, MultiSigPublicKey};
 use mys_types::multisig_legacy::{MultiSigLegacy, MultiSigPublicKeyLegacy};
+use mys_types::mys_system_state::MYS_SYSTEM_MODULE_NAME;
 use mys_types::object::Owner;
 use mys_types::signature::GenericSignature;
-use mys_types::mys_system_state::MYS_SYSTEM_MODULE_NAME;
 use mys_types::transaction::{
     CallArg, ObjectArg, ProgrammableTransaction, Transaction, TransactionData,
     DEFAULT_VALIDATOR_GAS_PRICE, TEST_ONLY_GAS_UNIT_FOR_HEAVY_COMPUTATION_STORAGE,
@@ -26,6 +25,8 @@ use mys_types::transaction::{
 };
 use mys_types::MYS_RANDOMNESS_STATE_OBJECT_ID;
 use mys_types::{TypeTag, MYS_SYSTEM_PACKAGE_ID};
+use shared_crypto::intent::{Intent, IntentMessage};
+use std::path::PathBuf;
 
 pub struct TestTransactionBuilder {
     test_data: TestTransactionData,
@@ -155,7 +156,8 @@ impl TestTransactionBuilder {
                 CallArg::Pure(bcs::to_bytes("example_nft_name").unwrap()),
                 CallArg::Pure(bcs::to_bytes("example_nft_description").unwrap()),
                 CallArg::Pure(
-                    bcs::to_bytes("https://mys.io/_nuxt/img/mys-logo.8d3c44e.svg").unwrap(),
+                    bcs::to_bytes("https://mysocial.network/_nuxt/img/mys-logo.8d3c44e.svg")
+                        .unwrap(),
                 ),
             ],
         )

@@ -1,8 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 use crate::{consumer::ProtobufDecoder, peers::MysNodeProvider};
 use axum::{
-    async_trait,
     body::Body,
     body::Bytes,
     extract::{Extension, FromRequest},
@@ -14,10 +14,10 @@ use axum_extra::headers::{ContentLength, ContentType};
 use axum_extra::typed_header::TypedHeader;
 use bytes::Buf;
 use hyper::header::CONTENT_ENCODING;
+use mys_tls::TlsConnectionInfo;
 use once_cell::sync::Lazy;
 use prometheus::{proto::MetricFamily, register_counter_vec, CounterVec};
 use std::sync::Arc;
-use mys_tls::TlsConnectionInfo;
 use tracing::error;
 
 static MIDDLEWARE_OPS: Lazy<CounterVec> = Lazy::new(|| {
@@ -99,17 +99,17 @@ pub async fn expect_valid_public_key(
 #[derive(Debug)]
 pub struct LenDelimProtobuf(pub Vec<MetricFamily>);
 
-#[async_trait]
 impl<S> FromRequest<S> for LenDelimProtobuf
 where
     S: Send + Sync,
 {
     type Rejection = (StatusCode, String);
 
-    async fn from_request(
-        req: Request<axum::body::Body>,
+    fn from_request(
+        req: Request<Body>,
         state: &S,
-    ) -> Result<Self, Self::Rejection> {
+    ) -> impl std::future::Future<Output = Result<Self, Self::Rejection>> + Send {
+        async move {
         let should_be_snappy = req
             .headers()
             .get(CONTENT_ENCODING)
@@ -155,6 +155,7 @@ where
                 .inc();
             (StatusCode::BAD_REQUEST, msg)
         })?;
-        Ok(Self(decoded))
+            Ok(Self(decoded))
+        }
     }
 }

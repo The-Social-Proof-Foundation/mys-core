@@ -1,11 +1,12 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::HashSet;
 
+use mys_types::base_types::{MysAddress, ObjectID};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use mys_types::base_types::{ObjectID, MysAddress};
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]

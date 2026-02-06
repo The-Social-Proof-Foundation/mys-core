@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 import json
@@ -26,7 +27,7 @@ class Metric(Enum):
 
 def get_current_network_epoch(env='testnet'):
     for i in range(NUM_RETRIES):
-        cmd = ['curl', '--location', '--request', 'POST', f'https://explorer-rpc.{env}.mys.io/',
+        cmd = ['curl', '--location', '--request', 'POST', f'https://explorer-rpc.{env}.mysocial.network/',
                '--header', 'Content-Type: application/json', '--data-raw',
                '{"jsonrpc":"2.0", "method":"mysx_getCurrentEpoch", "params":[], "id":1}']
         try:

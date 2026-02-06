@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::abi::EthToMysTokenBridgeV1;
@@ -16,14 +17,6 @@ use ethers::types::H256;
 pub use ethers::types::H256 as EthTransactionHash;
 use fastcrypto::encoding::{Encoding, Hex};
 use fastcrypto::hash::{HashFunction, Keccak256};
-use num_enum::TryFromPrimitive;
-use rand::seq::SliceRandom;
-use rand::Rng;
-use serde::{Deserialize, Serialize};
-use shared_crypto::intent::IntentScope;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::Debug;
-use strum_macros::Display;
 use mys_types::base_types::MysAddress;
 use mys_types::bridge::{
     BridgeChainId, MoveTypeTokenTransferPayload, APPROVAL_THRESHOLD_ADD_TOKENS_ON_EVM,
@@ -42,6 +35,14 @@ use mys_types::crypto::ToFromBytes;
 use mys_types::digests::{Digest, TransactionDigest};
 use mys_types::message_envelope::{Envelope, Message, VerifiedEnvelope};
 use mys_types::TypeTag;
+use num_enum::TryFromPrimitive;
+use rand::seq::SliceRandom;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+use shared_crypto::intent::IntentScope;
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Debug;
+use strum_macros::Display;
 
 pub const BRIDGE_AUTHORITY_TOTAL_VOTING_POWER: u64 = 10000;
 
@@ -619,9 +620,9 @@ mod tests {
     use crate::test_utils::get_test_mys_to_eth_bridge_action;
     use ethers::types::Address as EthAddress;
     use fastcrypto::traits::KeyPair;
-    use std::collections::HashSet;
     use mys_types::bridge::TOKEN_ID_BTC;
     use mys_types::crypto::get_key_pair;
+    use std::collections::HashSet;
 
     use super::*;
 

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::indexer_builder::{DataSender, Datasource};
@@ -6,10 +7,6 @@ use crate::metrics::IndexerMetricProvider;
 use crate::Task;
 use anyhow::Error;
 use async_trait::async_trait;
-use mysten_metrics::{metered_channel, spawn_monitored_task};
-use prometheus::IntGauge;
-use std::path::PathBuf;
-use std::sync::Arc;
 use mys_data_ingestion_core::{
     DataIngestionMetrics, IndexerExecutor, ProgressStore, ReaderOptions, Worker, WorkerPool,
 };
@@ -17,6 +14,10 @@ use mys_sdk::MysClient;
 use mys_types::full_checkpoint_content::CheckpointData as MysCheckpointData;
 use mys_types::full_checkpoint_content::CheckpointTransaction;
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use mysten_metrics::{metered_channel, spawn_monitored_task};
+use prometheus::IntGauge;
+use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
 use tokio::task::JoinHandle;

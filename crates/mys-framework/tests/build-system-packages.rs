@@ -1,16 +1,17 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
 use move_binary_format::{file_format::Visibility, CompiledModule};
 use move_compiler::editions::Edition;
 use move_package::{BuildConfig as MoveBuildConfig, LintFlag};
+use mys_move_build::{BuildConfig, MysPackageHooks};
 use std::{
     collections::BTreeMap,
     env, fs,
     path::{Path, PathBuf},
 };
-use mys_move_build::{BuildConfig, MysPackageHooks};
 
 const CRATE_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 const COMPILED_PACKAGES_DIR: &str = "packages_compiled";
@@ -35,19 +36,24 @@ fn build_system_packages() {
     std::fs::create_dir_all(out_dir.join(DOCS_DIR)).unwrap();
 
     let packages_path = Path::new(CRATE_ROOT).join("packages");
+    // let crates_path = Path::new(CRATE_ROOT).join("..");
 
     let bridge_path = packages_path.join("bridge");
-    let deepbook_path = packages_path.join("deepbook");
+    let orderbook_path = packages_path.join("orderbook");
     let mys_system_path = packages_path.join("mys-system");
     let mys_framework_path = packages_path.join("mys-framework");
     let move_stdlib_path = packages_path.join("move-stdlib");
+    let mys_social_path = packages_path.join("mys-social");
+    let mydata_path = packages_path.join("mydata");
 
     build_packages(
         &bridge_path,
-        &deepbook_path,
+        &orderbook_path,
         &mys_system_path,
         &mys_framework_path,
         &move_stdlib_path,
+        &mys_social_path,
+        &mydata_path,
         out_dir,
     );
     check_diff(Path::new(CRATE_ROOT), out_dir)
@@ -79,10 +85,12 @@ fn check_diff(checked_in: &Path, built: &Path) {
 
 fn build_packages(
     bridge_path: &Path,
-    deepbook_path: &Path,
+    orderbook_path: &Path,
     mys_system_path: &Path,
     mys_framework_path: &Path,
     stdlib_path: &Path,
+    mys_social_path: &Path,
+    mydata_path: &Path,
     out_dir: &Path,
 ) {
     let config = MoveBuildConfig {
@@ -96,32 +104,40 @@ fn build_packages(
     debug_assert!(!config.test_mode);
     build_packages_with_move_config(
         bridge_path,
-        deepbook_path,
+        orderbook_path,
         mys_system_path,
         mys_framework_path,
         stdlib_path,
+        mys_social_path,
+        mydata_path,
         out_dir,
         "bridge",
-        "deepbook",
+        "orderbook",
         "mys-system",
         "mys-framework",
         "move-stdlib",
+        "mys-social",
+        "mydata",
         config,
     );
 }
 
 fn build_packages_with_move_config(
     bridge_path: &Path,
-    deepbook_path: &Path,
+    orderbook_path: &Path,
     mys_system_path: &Path,
     mys_framework_path: &Path,
     stdlib_path: &Path,
+    mys_social_path: &Path,
+    mydata_path: &Path,
     out_dir: &Path,
     bridge_dir: &str,
-    deepbook_dir: &str,
+    orderbook_dir: &str,
     system_dir: &str,
     framework_dir: &str,
     stdlib_dir: &str,
+    mys_social_dir: &str,
+    mydata_dir: &str,
     config: MoveBuildConfig,
 ) {
     let stdlib_pkg = BuildConfig {
@@ -148,29 +164,46 @@ fn build_packages_with_move_config(
     }
     .build(mys_system_path)
     .unwrap();
-    let deepbook_pkg = BuildConfig {
+    let orderbook_pkg = BuildConfig {
         config: config.clone(),
         run_bytecode_verifier: true,
         print_diags_to_stderr: false,
         chain_id: None, // Framework pkg addr is agnostic to chain, resolves from Move.toml
     }
-    .build(deepbook_path)
+    .build(orderbook_path)
     .unwrap();
     let bridge_pkg = BuildConfig {
-        config,
+        config: config.clone(),
         run_bytecode_verifier: true,
         print_diags_to_stderr: false,
         chain_id: None, // Framework pkg addr is agnostic to chain, resolves from Move.toml
     }
     .build(bridge_path)
     .unwrap();
+    let mys_social_pkg = BuildConfig {
+        config: config.clone(),
+        run_bytecode_verifier: true,
+        print_diags_to_stderr: false,
+        chain_id: None, // Framework pkg addr is agnostic to chain, resolves from Move.toml
+    }
+    .build(mys_social_path)
+    .unwrap();
+    let mydata_pkg = BuildConfig {
+        config,
+        run_bytecode_verifier: true,
+        print_diags_to_stderr: false,
+        chain_id: None, // Framework pkg addr is agnostic to chain, resolves from Move.toml
+    }
+    .build(mydata_path)
+    .unwrap();
 
     let move_stdlib = stdlib_pkg.get_stdlib_modules();
     let mys_system = system_pkg.get_mys_system_modules();
     let mys_framework = framework_pkg.get_mys_framework_modules();
-    let deepbook = deepbook_pkg.get_deepbook_modules();
+    let orderbook = orderbook_pkg.get_orderbook_modules();
     let bridge = bridge_pkg.get_bridge_modules();
-
+    let mys_social = mys_social_pkg.get_mys_social_modules();
+    let mydata = mydata_pkg.get_modules();
     let compiled_packages_dir = out_dir.join(COMPILED_PACKAGES_DIR);
 
     let mys_system_members =
@@ -178,12 +211,16 @@ fn build_packages_with_move_config(
     let mys_framework_members =
         serialize_modules_to_file(mys_framework, &compiled_packages_dir.join(framework_dir))
             .unwrap();
-    let deepbook_members =
-        serialize_modules_to_file(deepbook, &compiled_packages_dir.join(deepbook_dir)).unwrap();
+    let orderbook_members =
+        serialize_modules_to_file(orderbook, &compiled_packages_dir.join(orderbook_dir)).unwrap();
     let bridge_members =
         serialize_modules_to_file(bridge, &compiled_packages_dir.join(bridge_dir)).unwrap();
     let stdlib_members =
         serialize_modules_to_file(move_stdlib, &compiled_packages_dir.join(stdlib_dir)).unwrap();
+    let mys_social_members =
+        serialize_modules_to_file(mys_social, &compiled_packages_dir.join(mys_social_dir)).unwrap();
+    let mydata_members =
+        serialize_modules_to_file(mydata, &compiled_packages_dir.join(mydata_dir)).unwrap();
 
     // write out generated docs
     let docs_dir = out_dir.join(DOCS_DIR);
@@ -193,7 +230,7 @@ fn build_packages_with_move_config(
         &mut files_to_write,
     );
     relocate_docs(
-        &deepbook_pkg.package.compiled_docs.unwrap(),
+        &orderbook_pkg.package.compiled_docs.unwrap(),
         &mut files_to_write,
     );
     relocate_docs(
@@ -208,6 +245,14 @@ fn build_packages_with_move_config(
         &bridge_pkg.package.compiled_docs.unwrap(),
         &mut files_to_write,
     );
+    relocate_docs(
+        &mys_social_pkg.package.compiled_docs.unwrap(),
+        &mut files_to_write,
+    );
+    relocate_docs(
+        &mydata_pkg.package.compiled_docs.unwrap(),
+        &mut files_to_write,
+    );
     for (fname, doc) in files_to_write {
         let dst_path = docs_dir.join(fname);
         fs::create_dir_all(dst_path.parent().unwrap()).unwrap();
@@ -217,9 +262,11 @@ fn build_packages_with_move_config(
     let published_api = [
         mys_system_members.join("\n"),
         mys_framework_members.join("\n"),
-        deepbook_members.join("\n"),
+        orderbook_members.join("\n"),
         bridge_members.join("\n"),
         stdlib_members.join("\n"),
+        mys_social_members.join("\n"),
+        mydata_members.join("\n"),
     ]
     .join("\n");
 

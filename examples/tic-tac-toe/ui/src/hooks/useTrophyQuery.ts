@@ -1,8 +1,9 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useMysClient } from '@mysten/dapp-kit';
-import { normalizeMysAddress } from '@mysten/mys/utils';
+import { useMysClient } from '@socialproof/dapp-kit';
+import { normalizeMysAddress } from '@socialproof/mys/utils';
 import { useQuery, useQueryClient, UseQueryResult } from '@tanstack/react-query';
 import { Game } from 'hooks/useGameQuery';
 import { useTransactions } from 'hooks/useTransactions';

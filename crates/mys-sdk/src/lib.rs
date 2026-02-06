@@ -1,11 +1,12 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! The Mys Rust SDK
 //!
 //! It aims at providing a similar SDK functionality like the one existing for
 //! [TypeScript](https://github.com/MystenLabs/mys/tree/main/sdk/typescript/).
-//! Mys Rust SDK builds on top of the [JSON RPC API](https://docs.mys.io/mys-jsonrpc)
+//! Mys Rust SDK builds on top of the [JSON RPC API](https://docs.mysocial.network/mys-jsonrpc)
 //! and therefore many of the return types are the ones specified in [mys_types].
 //!
 //! The API is split in several parts corresponding to different functionalities
@@ -90,12 +91,12 @@ use mys_json_rpc_api::{
 };
 pub use mys_json_rpc_types as rpc_types;
 use mys_json_rpc_types::{
-    ObjectsPage, MysObjectDataFilter, MysObjectDataOptions, MysObjectResponse,
-    MysObjectResponseQuery,
+    MysObjectDataFilter, MysObjectDataOptions, MysObjectResponse, MysObjectResponseQuery,
+    ObjectsPage,
 };
 use mys_transaction_builder::{DataReader, TransactionBuilder};
 pub use mys_types as types;
-use mys_types::base_types::{ObjectID, ObjectInfo, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID, ObjectInfo};
 
 use crate::apis::{CoinReadApi, EventApi, GovernanceApi, QuorumDriverApi, ReadApi};
 use crate::error::{Error, MysRpcResult};
@@ -104,15 +105,16 @@ pub mod apis;
 pub mod error;
 pub mod json_rpc_error;
 pub mod mys_client_config;
+pub mod verify_personal_message_signature;
 pub mod wallet_context;
 
 pub const MYS_COIN_TYPE: &str = "0x2::mys::MYS";
 pub const MYS_LOCAL_NETWORK_URL: &str = "http://127.0.0.1:9000";
 pub const MYS_LOCAL_NETWORK_URL_0: &str = "http://0.0.0.0:9000";
 pub const MYS_LOCAL_NETWORK_GAS_URL: &str = "http://127.0.0.1:5003/gas";
-pub const MYS_DEVNET_URL: &str = "https://fullnode.devnet.mys.io:443";
-pub const MYS_TESTNET_URL: &str = "https://fullnode.testnet.mys.io:443";
-pub const MYS_MAINNET_URL: &str = "https://fullnode.mainnet.mys.io:443";
+pub const MYS_DEVNET_URL: &str = "https://fullnode.devnet.mysocial.network:443";
+pub const MYS_TESTNET_URL: &str = "https://fullnode.testnet.mysocial.network:443";
+pub const MYS_MAINNET_URL: &str = "https://fullnode.mainnet.mysocial.network:443";
 
 /// A Mys client builder for connecting to the Mys network
 ///

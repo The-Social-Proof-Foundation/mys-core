@@ -1,10 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::ValidatorProxy;
+use mys_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use std::sync::Arc;
 use std::time::Duration;
-use mys_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use tokio::sync::oneshot::Sender;
 use tokio::sync::watch;
 use tokio::sync::watch::Receiver;

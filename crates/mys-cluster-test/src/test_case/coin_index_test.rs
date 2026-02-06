@@ -1,15 +1,14 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{TestCaseImpl, TestContext};
 use async_trait::async_trait;
 use jsonrpsee::rpc_params;
 use move_core_types::language_storage::StructTag;
-use serde_json::json;
-use std::collections::HashMap;
 use mys_json::MysJsonValue;
-use mys_json_rpc_types::ObjectChange;
 use mys_json_rpc_types::MysTransactionBlockResponse;
+use mys_json_rpc_types::ObjectChange;
 use mys_json_rpc_types::{Balance, MysTransactionBlockResponseOptions};
 use mys_move_build::test_utils::compile_managed_coin_package;
 use mys_test_transaction_builder::make_staking_transaction;
@@ -17,6 +16,8 @@ use mys_types::base_types::{ObjectID, ObjectRef};
 use mys_types::gas_coin::GAS;
 use mys_types::object::Owner;
 use mys_types::quorum_driver_types::ExecuteTransactionRequestType;
+use serde_json::json;
+use std::collections::HashMap;
 use tracing::info;
 
 pub struct CoinIndexTest;

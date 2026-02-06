@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::{ArgGroup, Parser};
@@ -9,7 +10,6 @@ use tokio::sync::broadcast;
 use tokio::time::sleep;
 use tracing::{error, info};
 
-use mysten_common::sync::async_once_cell::AsyncOnceCell;
 use mys_config::node::RunWithRange;
 use mys_config::{Config, NodeConfig};
 use mys_core::runtime::MysRuntimes;
@@ -19,6 +19,7 @@ use mys_types::committee::EpochId;
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
 use mys_types::multiaddr::Multiaddr;
 use mys_types::supported_protocol_versions::SupportedProtocolVersions;
+use mysten_common::sync::async_once_cell::AsyncOnceCell;
 
 // Define the `GIT_REVISION` and `VERSION` consts
 bin_version::bin_version!();
@@ -84,7 +85,7 @@ fn main() {
 
     drop(metrics_rt);
 
-    info!("Mys Node version: {VERSION}");
+    info!("MySocial Node version: {VERSION}");
     info!(
         "Supported protocol versions: {:?}",
         config.supported_protocol_versions
@@ -150,7 +151,7 @@ fn main() {
     runtimes.metrics.spawn(async move {
         let node = node_once_cell_clone.get().await;
         let chain_identifier = node.state().get_chain_identifier().to_string();
-        info!("Mys chain identifier: {chain_identifier}");
+        info!("MySocial chain identifier: {chain_identifier}");
         prometheus_registry
             .register(mysten_metrics::uptime_metric(
                 if is_validator {

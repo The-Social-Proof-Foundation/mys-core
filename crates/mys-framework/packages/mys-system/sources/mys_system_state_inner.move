@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 module mys_system::mys_system_state_inner {
@@ -424,9 +425,11 @@ module mys_system::mys_system_state_inner {
         // Only check min validator condition if the current number of validators satisfy the constraint.
         // This is so that if we somehow already are in a state where we have less than min validators, it no longer matters
         // and is ok to stay so. This is useful for a test setup.
-        if (self.validators.active_validators().length() >= self.parameters.min_validator_count) {
+        if (self.parameters.min_validator_count > 0 && self.validators.active_validators().length() >= self.parameters.min_validator_count) {
+            // Check that after this removal, we'll still have more than min_validator_count validators.
+            // We subtract 1 because next_epoch_validator_count() doesn't include this removal yet.
             assert!(
-                self.validators.next_epoch_validator_count() > self.parameters.min_validator_count,
+                self.validators.next_epoch_validator_count() - 1 > self.parameters.min_validator_count,
                 ELimitExceeded,
             );
         };
@@ -883,12 +886,18 @@ module mys_system::mys_system_state_inner {
                 let first_safe_mode_epoch = 560;
                 let safe_mode_epoch_count = old_epoch - first_safe_mode_epoch;
                 safe_mode_epoch_count.do!(|_| {
-                    stake_subsidy.join(self.stake_subsidy.advance_epoch());
+                    stake_subsidy.join(self.stake_subsidy.advance_epoch(
+                        total_validators_stake,
+                        self.parameters.epoch_duration_ms,
+                    ));
                 });
                 // done with catchup for safe mode epochs. distribution counter is now >540, we won't hit this again
                 // fall through to the normal logic, which will add subsidies for the current epoch
             };
-            stake_subsidy.join(self.stake_subsidy.advance_epoch());
+            stake_subsidy.join(self.stake_subsidy.advance_epoch(
+                total_validators_stake,
+                self.parameters.epoch_duration_ms,
+            ));
         };
 
         let stake_subsidy_amount = stake_subsidy.value();

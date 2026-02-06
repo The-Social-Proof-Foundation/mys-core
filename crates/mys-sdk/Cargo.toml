@@ -1,7 +1,7 @@
 [package]
 name = "mys-sdk"
 version.workspace = true
-authors = ["Mysten Labs <build@mystenlabs.com>"]
+authors = ["The Social Proof Foundation <brandon@socialproof.foundation>"]
 license = "Apache-2.0"
 publish = false
 edition = "2021"
@@ -47,6 +47,8 @@ tempfile.workspace = true
 futures-core.workspace = true
 futures.workspace = true
 rand.workspace = true
+mys-macros.workspace = true
+test-cluster.workspace = true
 
 [[example]]
 name = "coin_read_api"

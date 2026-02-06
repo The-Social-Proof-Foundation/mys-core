@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 //! The EthSyncer module is responsible for synchronizing Events emitted on Ethereum blockchain from
@@ -18,7 +19,7 @@ use std::sync::Arc;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::time::{self, Duration, Instant};
-use tracing::error;
+use tracing::{error, info};
 
 const ETH_LOG_QUERY_MAX_BLOCK_RANGE: u64 = 1000;
 const ETH_EVENTS_CHANNEL_SIZE: usize = 1000;
@@ -100,6 +101,7 @@ where
         let mut last_block_number = 0;
         let mut interval = time::interval(FINALIZED_BLOCK_QUERY_INTERVAL);
         interval.set_missed_tick_behavior(time::MissedTickBehavior::Skip);
+        let mut consecutive_failures = 0;
         loop {
             interval.tick().await;
             // TODO: allow to pass custom initial interval
@@ -107,9 +109,27 @@ where
                 eth_client.get_last_finalized_block_id(),
                 time::Duration::from_secs(600)
             ) else {
-                error!("Failed to get last finalized block from eth client after retry");
+                consecutive_failures += 1;
+                error!(
+                    consecutive_failures,
+                    "Failed to get last finalized block from eth client after retry"
+                );
+                // If we've failed too many times, send the last known block to unblock listeners
+                // This prevents the event listener from being stuck forever
+                if consecutive_failures >= 10 && last_block_number > 0 {
+                    tracing::warn!(
+                        last_known_block = last_block_number,
+                        consecutive_failures,
+                        "Sending last known finalized block to unblock event listeners after {} consecutive failures",
+                        consecutive_failures
+                    );
+                    // Send the last known block to unblock waiting listeners
+                    // They will check if it's >= start_block and continue
+                    let _ = last_finalized_block_sender.send(last_block_number);
+                }
                 continue;
             };
+            consecutive_failures = 0; // Reset on success
             tracing::debug!("Last finalized block: {}", new_value);
             metrics.last_finalized_eth_block.set(new_value as i64);
 
@@ -117,6 +137,16 @@ where
                 last_finalized_block_sender
                     .send(new_value)
                     .expect("last_finalized_block channel receiver is closed");
+                info!(
+                    new_finalized_block = new_value,
+                    previous_finalized_block = last_block_number,
+                    blocks_behind = if new_value > last_block_number {
+                        Some(new_value - last_block_number)
+                    } else {
+                        None
+                    },
+                    "Finalized block updated"
+                );
                 tracing::info!("Observed new finalized eth block: {}", new_value);
                 last_block_number = new_value;
             }
@@ -133,18 +163,64 @@ where
         eth_client: Arc<EthClient<P>>,
         metrics: Arc<BridgeMetrics>,
     ) {
-        tracing::info!(contract_address=?contract_address, "Starting eth events listening task from block {start_block}");
+        tracing::info!(
+            contract_address=?contract_address,
+            start_block,
+            "Starting eth events listening task from block {start_block} for contract {contract_address}"
+        );
         let contract_address_str = contract_address.to_string();
         let mut more_blocks = false;
         loop {
             // If no more known blocks, wait for the next finalized block.
+            let mut use_direct_query = false;
+            let mut direct_query_value = None;
             if !more_blocks {
-                last_finalized_block_receiver
-                    .changed()
-                    .await
-                    .expect("last_finalized_block channel sender is closed");
+                // Add timeout to prevent infinite wait if finalized block query is stuck
+                match tokio::time::timeout(Duration::from_secs(30), last_finalized_block_receiver.changed()).await {
+                    Ok(Ok(_)) => {},
+                    Ok(Err(_)) => {
+                        error!("last_finalized_block channel sender is closed");
+                        break;
+                    },
+                    Err(_) => {
+                        tracing::warn!(
+                            contract_address = ?contract_address,
+                            "Timeout waiting for finalized block update - checking current finalized block directly"
+                        );
+                        // Try to get finalized block directly to unblock
+                        if let Ok(Ok(current_finalized)) = retry_with_max_elapsed_time!(
+                            eth_client.get_last_finalized_block_id(),
+                            Duration::from_secs(10)
+                        ) {
+                            let current_receiver_value = *last_finalized_block_receiver.borrow();
+                            if current_finalized >= current_receiver_value {
+                                // Use the directly queried value if it's >= receiver value
+                                use_direct_query = true;
+                                direct_query_value = Some(current_finalized);
+                                if current_finalized > current_receiver_value {
+                                    info!(
+                                        contract_address = ?contract_address,
+                                        current_finalized,
+                                        last_receiver_value = current_receiver_value,
+                                        "Finalized block advanced but wasn't notified via channel - using directly queried value"
+                                    );
+                                } else {
+                                    info!(
+                                        contract_address = ?contract_address,
+                                        current_finalized,
+                                        "Using directly queried finalized block value (same as receiver)"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            let new_finalized_block = *last_finalized_block_receiver.borrow();
+            let new_finalized_block = if use_direct_query {
+                direct_query_value.unwrap()
+            } else {
+                *last_finalized_block_receiver.borrow()
+            };
             if new_finalized_block < start_block {
                 tracing::info!(
                     contract_address=?contract_address,
@@ -160,12 +236,26 @@ where
                 new_finalized_block,
             );
             more_blocks = end_block < new_finalized_block;
+            
+            info!(
+                contract_address = ?contract_address,
+                start_block,
+                end_block,
+                finalized_block = new_finalized_block,
+                "Querying eth_getLogs for events in block range"
+            );
+            
             let timer = Instant::now();
             let Ok(Ok(events)) = retry_with_max_elapsed_time!(
                 eth_client.get_events_in_range(contract_address, start_block, end_block),
                 Duration::from_secs(600)
             ) else {
-                error!("Failed to get events from eth client after retry");
+                error!(
+                    contract_address = ?contract_address,
+                    start_block,
+                    end_block,
+                    "Failed to get events from eth client after retry"
+                );
                 continue;
             };
             tracing::debug!(
@@ -177,6 +267,16 @@ where
             );
             let len = events.len();
             let last_block = events.last().map(|e| e.block_number);
+            
+            if !events.is_empty() {
+                info!(
+                    contract_address = ?contract_address,
+                    event_count = events.len(),
+                    tx_hashes = ?events.iter().map(|e| e.tx_hash).collect::<Vec<_>>(),
+                    block_range = format!("{}-{}", start_block, end_block),
+                    "Retrieved events from eth_getLogs"
+                );
+            }
 
             // Note 1: we always events to the channel even when it is empty. This is because of
             // how `eth_getLogs` api is designed - we want cursor to move forward continuously.
@@ -190,10 +290,19 @@ where
                 .expect("All Eth event channel receivers are closed");
             if len != 0 {
                 tracing::info!(
-                    ?contract_address,
+                    contract_address=?contract_address,
                     start_block,
                     end_block,
-                    "Observed {len} new Eth events",
+                    event_count = len,
+                    "Observed {len} new Eth events from contract {contract_address}"
+                );
+            } else {
+                tracing::debug!(
+                    contract_address=?contract_address,
+                    start_block,
+                    end_block,
+                    finalized_block = new_finalized_block,
+                    "No events found in block range [{start_block}, {end_block}] for contract {contract_address} (finalized block: {new_finalized_block})"
                 );
             }
             metrics

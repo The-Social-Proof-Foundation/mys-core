@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{
@@ -9,16 +10,16 @@ use std::{
 
 use clap::*;
 use move_vm_config::verifier::VerifierConfig;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use mys_protocol_config_macros::{
     ProtocolConfigAccessors, ProtocolConfigFeatureFlagsGetters, ProtocolConfigOverride,
 };
+use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use tracing::{info, warn};
 
 /// The minimum and maximum protocol versions supported by this build.
 const MIN_PROTOCOL_VERSION: u64 = 1;
-const MAX_PROTOCOL_VERSION: u64 = 74;
+const MAX_PROTOCOL_VERSION: u64 = 75;
 
 // Record history of protocol version allocations here:
 //
@@ -45,11 +46,11 @@ const MAX_PROTOCOL_VERSION: u64 = 74;
 //            `max_meter_ticks_per_module` limits each from 6_000_000 to 16_000_000. mys-system
 //            framework changes.
 // Version 11: Introduce `std::type_name::get_with_original_ids` to the system frameworks. Bound max depth of values within the VM.
-// Version 12: Changes to deepbook in framework to add API for querying marketplace.
+// Version 12: Changes to orderbook in framework to add API for querying marketplace.
 //             Change NW Batch to use versioned metadata field.
 //             Changes to mys-system package to add PTB-friendly unstake function, and minor cleanup.
-// Version 13: System package change deprecating `0xdee9::clob` and `0xdee9::custodian`, replaced by
-//             `0xdee9::clob_v2` and `0xdee9::custodian_v2`.
+// Version 13: System package change deprecating `0x0b0c::clob` and `0x0b0c::custodian`, replaced by
+//             `0x0b0c::clob` and `0x0b0c::custodian`.
 // Version 14: Introduce a config variable to allow charging of computation to be either
 //             bucket base or rounding up. The presence of `gas_rounding_step` (or `None`)
 //             decides whether rounding is applied or not.
@@ -58,7 +59,7 @@ const MAX_PROTOCOL_VERSION: u64 = 74;
 // Version 16: Enabled simplified_unwrap_then_delete feature flag, which allows the execution engine
 //             to no longer consult the object store when generating unwrapped_then_deleted in the
 //             effects; this also allows us to stop including wrapped tombstones in accumulator.
-//             Add self-matching prevention for deepbook.
+//             Add self-matching prevention for orderbook.
 // Version 17: Enable upgraded multisig support.
 // Version 18: Introduce execution layer versioning, preserve all existing behaviour in v0.
 //             Gas minimum charges moved to be a multiplier over the reference gas price. In this
@@ -102,7 +103,7 @@ const MAX_PROTOCOL_VERSION: u64 = 74;
 //             Add mys::token module to mys framework.
 //             Enable transfer to object in testnet.
 //             Enable Narwhal CertificateV2 on mainnet
-//             Make critbit tree and order getters public in deepbook.
+//             Make critbit tree and order getters public in orderbook.
 // Version 33: Add support for `receiving_object_id` function in framework
 //             Hardened OTW check.
 //             Enable transfer-to-object in mainnet.
@@ -134,7 +135,7 @@ const MAX_PROTOCOL_VERSION: u64 = 74;
 //             Enable Leader Scoring & Schedule Change for Mysticeti consensus on testnet.
 // Version 46: Enable native bridge in testnet
 //             Enable resharing at the same initial shared version.
-// Version 47: Deepbook changes (framework update)
+// Version 47: orderbook changes (framework update)
 // Version 48: Use tonic networking for Mysticeti.
 //             Resolve Move abort locations to the package id instead of the runtime module ID.
 //             Enable random beacon in testnet.
@@ -217,6 +218,11 @@ const MAX_PROTOCOL_VERSION: u64 = 74;
 //             Enable all gas costs for load_nitro_attestation.
 //             Enable zstd compression for consensus tonic network in mainnet.
 //             Enable the new commit rule for devnet.
+// Version 75: Reduce compute and storage gas costs by 50% to lower transaction fees.
+//             Increase move package size limit from 100KB to 1MB.
+//             Affected parameters: base_tx_cost_fixed, package_publish_cost_fixed,
+//             obj_access_cost_read/mutate/delete/verify_per_byte, obj_data_cost_refundable,
+//             obj_metadata_cost_non_refundable, storage_gas_price, max_move_package_size.
 
 #[derive(Copy, Clone, Debug, Hash, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProtocolVersion(u64);
@@ -1971,7 +1977,7 @@ impl ProtocolConfig {
             binary_variant_handles: None,
             binary_variant_instantiation_handles: None,
             max_move_object_size: Some(250 * 1024),
-            max_move_package_size: Some(100 * 1024),
+            max_move_package_size: Some(1024 * 1024),
             max_publish_or_upgrade_per_ptb: None,
             max_tx_gas: Some(10_000_000_000),
             max_gas_price: Some(100_000),
@@ -3245,6 +3251,43 @@ impl ProtocolConfig {
                     if chain != Chain::Mainnet && chain != Chain::Testnet {
                         cfg.feature_flags.consensus_linearize_subdag_v2 = true;
                     }
+                }
+                75 => {
+                    // Reduce compute and storage gas costs by 75%
+
+                    // Compute costs - 75% reduction
+                    if let Some(cost) = cfg.base_tx_cost_fixed {
+                        cfg.base_tx_cost_fixed = Some(cost / 4);
+                    }
+                    if let Some(cost) = cfg.package_publish_cost_fixed {
+                        cfg.package_publish_cost_fixed = Some(cost / 4);
+                    }
+                    if let Some(cost) = cfg.obj_access_cost_read_per_byte {
+                        cfg.obj_access_cost_read_per_byte = Some(cost / 4);
+                    }
+                    if let Some(cost) = cfg.obj_access_cost_mutate_per_byte {
+                        cfg.obj_access_cost_mutate_per_byte = Some(cost / 4);
+                    }
+                    if let Some(cost) = cfg.obj_access_cost_delete_per_byte {
+                        cfg.obj_access_cost_delete_per_byte = Some(cost / 4);
+                    }
+                    if let Some(cost) = cfg.obj_access_cost_verify_per_byte {
+                        cfg.obj_access_cost_verify_per_byte = Some(cost / 4);
+                    }
+
+                    // Storage costs - 75% reduction
+                    if let Some(cost) = cfg.obj_data_cost_refundable {
+                        cfg.obj_data_cost_refundable = Some(cost / 4);
+                    }
+                    if let Some(cost) = cfg.obj_metadata_cost_non_refundable {
+                        cfg.obj_metadata_cost_non_refundable = Some(cost / 4);
+                    }
+                    if let Some(price) = cfg.storage_gas_price {
+                        cfg.storage_gas_price = Some(price / 4);
+                    }
+                    
+                    // Increase move package size limit from 100KB to 1MB to handle larger packages
+                    cfg.max_move_package_size = Some(1024 * 1024);
                 }
                 // Use this template when making changes:
                 //

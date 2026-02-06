@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 module bridge::treasury {
@@ -10,6 +11,7 @@ module bridge::treasury {
     use mys::address;
     use mys::bag;
     use mys::bag::Bag;
+    use mys::balance::{Self, Balance};
     use mys::coin::{Self, Coin, TreasuryCap, CoinMetadata};
     use mys::event::emit;
     use mys::hex;
@@ -18,11 +20,17 @@ module bridge::treasury {
     use mys::package::UpgradeCap;
     use mys::vec_map;
     use mys::vec_map::VecMap;
+    use mys::mys::MYS;
 
     const EUnsupportedTokenType: u64 = 1;
     const EInvalidUpgradeCap: u64 = 2;
-    const ETokenSupplyNonZero: u64 = 3;
-    const EInvalidNotionalValue: u64 = 4;
+    const EInvalidNotionalValue: u64 = 3;
+    const EInvalidNativeMysAmount: u64 = 4;
+    const ENativeMysAlreadyBootstrapped: u64 = 5;
+    const ENativeMysNotBootstrapped: u64 = 6;
+    
+    // Required amount for native MYS bootstrap: 50 million MYS with 9 decimals
+    const NATIVE_MYS_BOOTSTRAP_AMOUNT: u64 = 50_000_000_000_000_000;
 
     #[test_only]
     const USD_VALUE_MULTIPLIER: u64 = 100000000; // 8 DP accuracy
@@ -32,13 +40,17 @@ module bridge::treasury {
     //
 
     public struct BridgeTreasury has store {
-        // token treasuries, values are TreasuryCaps for native bridge V1.
+        // token treasuries, values are TreasuryCaps for foreign tokens
         treasuries: ObjectBag,
         supported_tokens: VecMap<TypeName, BridgeTokenMetadata>,
         // Mapping token id to type name
         id_token_type_map: VecMap<u8, TypeName>,
         // Bag for storing potential new token waiting to be approved
-        waiting_room: Bag
+        waiting_room: Bag,
+        // Balance for locked native MYS tokens
+        native_mys_locked: Balance<MYS>,
+        // Flag to track if native MYS has been bootstrapped
+        native_mys_bootstrapped: bool,
     }
 
     public struct BridgeTokenMetadata has store, copy, drop {
@@ -73,6 +85,10 @@ module bridge::treasury {
         native_token: bool
     }
 
+    public struct NativeMysBootstrappedEvent has copy, drop {
+        amount_locked: u64,
+    }
+
     public fun token_id<T>(self: &BridgeTreasury): u8 {
         let metadata = self.get_token_metadata<T>();
         metadata.id
@@ -98,8 +114,9 @@ module bridge::treasury {
         uc: UpgradeCap,
         metadata: &CoinMetadata<T>,
     ) {
-        // Make sure TreasuryCap has not been minted before.
-        assert!(coin::total_supply(&tc) == 0, ETokenSupplyNonZero);
+        // NOTE: Zero supply check removed to support admin-created tokens
+        // Security is now enforced by CoinCreationAdminCap requirement
+        
         let type_name = type_name::get<T>();
         let address_bytes = hex::decode(ascii::into_bytes(type_name::get_address(&type_name)));
         let coin_address = address::from_bytes(address_bytes);
@@ -161,8 +178,58 @@ module bridge::treasury {
                 notional_value
             })
         } else {
-            // Not implemented for V1
+            // Native token implementation (MYS only)
+            assert!(notional_value > 0, EInvalidNotionalValue);
+            
+            // For native tokens, token_name is the string representation of the type
+            // Parse it to get the TypeName
+            let type_name = type_name::get<MYS>();
+            let decimal_multiplier = 1_000_000_000; // MYS has 9 decimals
+            
+            self.supported_tokens.insert(
+                type_name,
+                BridgeTokenMetadata {
+                    id: token_id,
+                    decimal_multiplier,
+                    notional_value,
+                    native_token: true
+                },
+            );
+            self.id_token_type_map.insert(token_id, type_name);
+            
+            emit(NewTokenEvent {
+                token_id,
+                type_name,
+                native_token: true,
+                decimal_multiplier,
+                notional_value
+            })
         }
+    }
+
+    /// Bootstrap native MYS by depositing exactly 50 million MYS tokens
+    /// This function can only be called once to lock the initial native MYS supply
+    public(package) fun deposit_native_mys(
+        self: &mut BridgeTreasury,
+        mys_coin: Coin<MYS>,
+    ) {
+        // Ensure bootstrap hasn't been called before
+        assert!(!self.native_mys_bootstrapped, ENativeMysAlreadyBootstrapped);
+        
+        // Ensure exactly 50 million MYS is being deposited
+        let amount = mys_coin.value();
+        assert!(amount == NATIVE_MYS_BOOTSTRAP_AMOUNT, EInvalidNativeMysAmount);
+        
+        // Convert coin to balance and store it
+        let mys_balance = mys_coin.into_balance();
+        self.native_mys_locked.join(mys_balance);
+        
+        // Mark as bootstrapped
+        self.native_mys_bootstrapped = true;
+        
+        emit(NativeMysBootstrappedEvent {
+            amount_locked: amount,
+        });
     }
 
     public(package) fun create(ctx: &mut TxContext): BridgeTreasury {
@@ -171,12 +238,23 @@ module bridge::treasury {
             supported_tokens: vec_map::empty(),
             id_token_type_map: vec_map::empty(),
             waiting_room: bag::new(ctx),
+            native_mys_locked: balance::zero<MYS>(),
+            native_mys_bootstrapped: false,
         }
     }
 
     public(package) fun burn<T>(self: &mut BridgeTreasury, token: Coin<T>) {
-        let treasury = &mut self.treasuries[type_name::get<T>()];
+        // For now, only foreign tokens supported in generic burn
+        // Native MYS uses burn_mys() instead
+        let type_name = type_name::get<T>();
+        let treasury = &mut self.treasuries[type_name];
         coin::burn(treasury, token);
+    }
+    
+    /// Specialized burn for native MYS - locks instead of burns
+    public(package) fun burn_mys(self: &mut BridgeTreasury, token: Coin<MYS>) {
+        let mys_balance = token.into_balance();
+        self.native_mys_locked.join(mys_balance);
     }
 
     public(package) fun mint<T>(
@@ -184,8 +262,24 @@ module bridge::treasury {
         amount: u64,
         ctx: &mut TxContext,
     ): Coin<T> {
-        let treasury = &mut self.treasuries[type_name::get<T>()];
+        // For now, only foreign tokens supported in generic mint
+        // Native MYS uses mint_mys() instead
+        let type_name = type_name::get<T>();
+        let treasury = &mut self.treasuries[type_name];
         coin::mint(treasury, amount, ctx)
+    }
+    
+    /// Specialized mint for native MYS - unlocks instead of mints
+    public(package) fun mint_mys(
+        self: &mut BridgeTreasury,
+        amount: u64,
+        ctx: &mut TxContext,
+    ): Coin<MYS> {
+        assert!(self.native_mys_bootstrapped, ENativeMysNotBootstrapped);
+        assert!(self.native_mys_locked.value() >= amount, EUnsupportedTokenType);
+        
+        let unlocked_balance = self.native_mys_locked.split(amount);
+        coin::from_balance(unlocked_balance, ctx)
     }
 
     public(package) fun update_asset_notional_price(

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{collections::VecDeque, ops::Bound::Included, time::Duration};
@@ -9,7 +10,7 @@ use mys_macros::fail_point;
 use typed_store::{
     metrics::SamplingInterval,
     reopen,
-    rocks::{default_db_options, open_cf_opts, DBMap, MetricConf, ReadWriteOptions},
+    rocks::{default_db_options, open_cf_opts, DBMap, MetricConf},
     Map as _,
 };
 
@@ -223,18 +224,19 @@ impl Store for RocksDBStore {
     ) -> ConsensusResult<Vec<VerifiedBlock>> {
         let before_round = before_round.unwrap_or(Round::MAX);
         let mut refs = VecDeque::new();
-        for kv in self
+        let mut iter = self
             .digests_by_authorities
-            .safe_range_iter((
-                Included((author, Round::MIN, BlockDigest::MIN)),
-                Included((author, before_round, BlockDigest::MAX)),
-            ))
-            .skip_to_last()
-            .reverse()
-            .take(num_of_rounds as usize)
-        {
-            let ((author, round, digest), _) = kv?;
-            refs.push_front(BlockRef::new(round, author, digest));
+            .reversed_safe_iter_with_bounds(
+                Some((author, Round::MIN, BlockDigest::MIN)),
+                Some((author, before_round, BlockDigest::MAX)),
+            )?;
+        for _ in 0..num_of_rounds {
+            if let Some(kv) = iter.next() {
+                let ((author, round, digest), _) = kv?;
+                refs.push_front(BlockRef::new(round, author, digest));
+            } else {
+                break;
+            }
         }
         let results = self.read_blocks(refs.as_slices().0)?;
         let mut blocks = vec![];
@@ -247,7 +249,7 @@ impl Store for RocksDBStore {
     }
 
     fn read_last_commit(&self) -> ConsensusResult<Option<TrustedCommit>> {
-        let Some(result) = self.commits.safe_iter().skip_to_last().next() else {
+        let Some(result) = self.commits.reversed_safe_iter_with_bounds(None, None)?.next() else {
             return Ok(None);
         };
         let ((_index, digest), serialized) = result?;
@@ -289,7 +291,7 @@ impl Store for RocksDBStore {
     }
 
     fn read_last_commit_info(&self) -> ConsensusResult<Option<(CommitRef, CommitInfo)>> {
-        let Some(result) = self.commit_info.safe_iter().skip_to_last().next() else {
+        let Some(result) = self.commit_info.reversed_safe_iter_with_bounds(None, None)?.next() else {
             return Ok(None);
         };
         let (key, commit_info) = result.map_err(ConsensusError::RocksDBFailure)?;

@@ -1,11 +1,10 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use move_core_types::language_storage::StructTag;
-use parking_lot::Mutex;
-use std::sync::Arc;
-use mys_types::base_types::ObjectID;
 use mys_types::base_types::MysAddress;
+use mys_types::base_types::ObjectID;
 use mys_types::base_types::TransactionDigest;
 use mys_types::committee::Committee;
 use mys_types::committee::EpochId;
@@ -31,6 +30,8 @@ use mys_types::storage::RpcStateReader;
 use mys_types::storage::WriteStore;
 use mys_types::storage::{ObjectKey, ReadStore};
 use mys_types::transaction::VerifiedTransaction;
+use parking_lot::Mutex;
+use std::sync::Arc;
 use tap::Pipe;
 
 use crate::authority::AuthorityState;

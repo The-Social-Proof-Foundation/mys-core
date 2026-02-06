@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::config::ConnectionConfig;
@@ -6,13 +7,6 @@ use crate::config::ServerConfig;
 use crate::config::ServiceConfig;
 use crate::config::Version;
 use crate::server::graphiql_server::start_graphiql_server;
-use rand::rngs::StdRng;
-use rand::SeedableRng;
-use simulacrum::Simulacrum;
-use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
 use mys_graphql_rpc_client::simple_client::SimpleClient;
 pub use mys_indexer::config::RetentionConfig;
 pub use mys_indexer::config::SnapshotLagConfig;
@@ -22,6 +16,13 @@ use mys_indexer::test_utils::start_indexer_writer_for_testing;
 use mys_pg_db::temp::{get_available_port, TempDb};
 use mys_swarm_config::genesis_config::{AccountConfig, DEFAULT_GAS_AMOUNT};
 use mys_types::storage::RpcStateReader;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
+use simulacrum::Simulacrum;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Duration;
 use tempfile::tempdir;
 use tempfile::TempDir;
 use test_cluster::TestCluster;
@@ -135,6 +136,7 @@ pub async fn start_network_cluster() -> NetworkCluster {
         Some(cancellation_token.clone()),
         None, /* start_checkpoint */
         None, /* end_checkpoint */
+        None, /* social_config */
     )
     .await;
 
@@ -196,6 +198,7 @@ pub async fn serve_executor(
         Some(cancellation_token.clone()),
         None,
         None,
+        None, /* social_config */
     )
     .await;
 

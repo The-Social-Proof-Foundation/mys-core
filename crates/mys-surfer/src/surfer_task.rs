@@ -1,14 +1,15 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{collections::HashMap, sync::Arc};
 
-use rand::{rngs::StdRng, Rng, SeedableRng};
 use mys_core::authority::authority_store_tables::LiveObject;
 use mys_types::{
-    base_types::{ObjectRef, MysAddress},
+    base_types::{MysAddress, ObjectRef},
     object::Owner,
 };
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use test_cluster::TestCluster;
 use tokio::sync::{watch, RwLock};
 

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::ingestion::local_client::LocalIngestionClient;
@@ -10,11 +11,11 @@ use crate::metrics::IndexerMetrics;
 use backoff::backoff::Constant;
 use backoff::Error as BE;
 use backoff::ExponentialBackoff;
+use mys_storage::blob::Blob;
+use mys_types::full_checkpoint_content::CheckpointData;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use mys_storage::blob::Blob;
-use mys_types::full_checkpoint_content::CheckpointData;
 use tokio_util::bytes::Bytes;
 use tokio_util::sync::CancellationToken;
 use tracing::debug;

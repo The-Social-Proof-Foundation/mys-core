@@ -74,22 +74,22 @@ struct OrderFilled<phantom BaseAsset, phantom QuoteAsset> has copy, store, drop 
 The following example uses the [MySocial TypeScript SDK](https://sdk.mystenlabs.com/typescript) to connect via websocket to listen to events.
 
 ```javascript
-const local_client = new MySocialClient({ url: 'https://fullnode.mainnet.mys.io:443/' });
+const local_client = new MySocialClient({ url: 'https://fullnode.mainnet.mysocial.network:443/' });
 const deepbook_client = new DeepBookClient(local_client);
 
 const deepbook = '0x000000000000000000000000000000000000000000000000000000000000dee9';
 const deepbookClobEventsFilter = {
-	MoveModule: { package: deepbook, module: 'clob_v2' },
+	MoveModule: { package: deepbook, module: 'clob' },
 };
 
 // Note that these names must be exact
 const moveEventsFilter = {
 	MoveEventType:
-		'0xdee9::clob_v2::OrderPlaced<0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>',
+		'0x0b0c::clob::OrderPlaced<0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>',
 };
 const orderFilledFilter = {
 	MoveEventType:
-		'0xdee9::clob_v2::OrderFilled<0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>',
+		'0x0b0c::clob::OrderFilled<0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN, 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN>',
 };
 const poolFilter = {
 	MoveEventField: {

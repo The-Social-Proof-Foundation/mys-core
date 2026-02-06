@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::data_types::PgTimestamp;
@@ -7,8 +8,8 @@ use diesel::{Identifiable, Insertable, Queryable, Selectable};
 use mys_indexer_builder::{Task, LIVE_TASK_TARGET_CHECKPOINT};
 
 use crate::schema::{
-    governance_actions, progress_store, mys_error_transactions, mys_progress_store, token_transfer,
-    token_transfer_data,
+    bridge_treasury_balances, bridge_treasury_events, governance_actions, mys_error_transactions,
+    mys_progress_store, progress_store, token_transfer, token_transfer_data,
 };
 
 #[derive(Queryable, Selectable, Insertable, Identifiable, Debug)]
@@ -91,4 +92,34 @@ pub struct GovernanceAction {
     pub timestamp_ms: i64,
     pub action: String,
     pub data: serde_json::Value,
+}
+
+#[derive(Queryable, Selectable, Insertable, Identifiable, Debug, Clone)]
+#[diesel(table_name = bridge_treasury_balances, primary_key(id))]
+pub struct BridgeTreasuryBalance {
+    pub id: i32,
+    pub token_type: String,
+    pub token_id: i32,
+    pub total_locked: i64,
+    pub total_unlocked: i64,
+    pub net_balance: i64,
+    pub last_updated_block: i64,
+    pub last_updated_timestamp: i64,
+    pub created_at: Option<PgTimestamp>,
+    pub updated_at: Option<PgTimestamp>,
+}
+
+#[derive(Queryable, Selectable, Insertable, Identifiable, Debug, Clone)]
+#[diesel(table_name = bridge_treasury_events, primary_key(id))]
+pub struct BridgeTreasuryEvent {
+    pub id: i32,
+    pub token_type: String,
+    pub token_id: i32,
+    pub event_type: String,
+    pub amount: i64,
+    pub tx_digest: String,
+    pub block_height: i64,
+    pub timestamp_ms: i64,
+    pub sender_address: Option<Vec<u8>>,
+    pub created_at: Option<PgTimestamp>,
 }

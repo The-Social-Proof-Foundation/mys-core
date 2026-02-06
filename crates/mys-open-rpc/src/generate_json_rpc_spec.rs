@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::examples::RpcExampleProvider;
@@ -11,8 +12,8 @@ use std::io::Write;
 //use mys_json_rpc::api::ExtendedApiOpenRpc;
 use mys_json_rpc::coin_api::CoinReadApi;
 use mys_json_rpc::governance_api::GovernanceReadApi;
-use mys_json_rpc::read_api::ReadApi;
 use mys_json_rpc::mys_rpc_doc;
+use mys_json_rpc::read_api::ReadApi;
 use mys_json_rpc::transaction_builder_api::TransactionBuilderApi;
 use mys_json_rpc::transaction_execution_api::TransactionExecutionApi;
 use mys_json_rpc::MysRpcModule;

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::HashMap;
@@ -8,19 +9,20 @@ use anyhow::Result;
 use prometheus::Registry;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use async_trait::async_trait;
 use futures::future::try_join_all;
-use mysten_metrics::spawn_monitored_task;
 use mys_data_ingestion_core::{
     DataIngestionMetrics, IndexerExecutor, ProgressStore, ReaderOptions, WorkerPool,
 };
 use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use mysten_metrics::spawn_monitored_task;
 
 use crate::build_json_rpc_server;
-use crate::config::{IngestionConfig, JsonRpcConfig, RetentionConfig, SnapshotLagConfig};
+use crate::config::{IngestionConfig, JsonRpcConfig, RetentionConfig, SnapshotLagConfig, SocialIndexerConfig};
 use crate::database::ConnectionPool;
+use crate::db::run_migrations;
 use crate::errors::IndexerError;
 use crate::handlers::checkpoint_handler::new_handlers;
 use crate::handlers::objects_snapshot_handler::start_objects_snapshot_handler;
@@ -40,12 +42,49 @@ impl Indexer {
         mut retention_config: Option<RetentionConfig>,
         cancel: CancellationToken,
         mvr_mode: bool,
+        social_config: SocialIndexerConfig,
     ) -> Result<(), IndexerError> {
         info!(
             "Mys Indexer Writer (version {:?}) started...",
             env!("CARGO_PKG_VERSION")
         );
         info!("Mys Indexer Writer config: {config:?}",);
+        if social_config.enable_social_indexer {
+            info!("Social indexer enabled with package: {:?}", social_config.mysocial_package_address);
+        }
+
+        // Run main indexer migrations first (before social migrations)
+        info!("Running main indexer migrations...");
+        let main_migration_conn = store.pool().dedicated_connection().await
+            .map_err(|e| IndexerError::PostgresReadError(format!("Failed to get connection for main migrations: {}", e)))?;
+        run_migrations(main_migration_conn).await
+            .map_err(|e| IndexerError::PostgresReadError(format!("Failed to run main migrations: {}", e)))?;
+        info!("Main indexer migrations completed successfully");
+
+        // Always run social migrations (schema creation) regardless of enable_social_indexer flag
+        // This ensures social tables are created even if the worker is disabled
+        let social_db_url = social_config.social_database_url
+            .as_ref()
+            .map(|u| u.to_string())
+            .unwrap_or_else(|| {
+                // Use main database URL from store if social_database_url not provided
+                store.pool().url().to_string()
+            });
+
+        let social_db_config = crate::social::config::Config {
+            database: crate::social::config::DatabaseConfig {
+                url: social_db_url,
+                max_connections: social_config.social_db_max_connections,
+            },
+            ..Default::default()
+        };
+
+        info!("Running social indexer migrations...");
+        if let Err(e) = crate::social::db::run_migrations(&social_db_config).await {
+            warn!("Failed to run social migrations: {}. Continuing anyway...", e);
+        } else {
+            info!("Social indexer migrations completed successfully");
+        }
 
         let extra_reader_options = ReaderOptions {
             batch_size: config.checkpoint_download_queue_size,
@@ -102,15 +141,29 @@ impl Indexer {
             mvr_mode,
         )
         .await?;
+
         // Ingestion task watermarks are snapshotted once on indexer startup based on the
         // corresponding watermark table before being handed off to the ingestion task.
-        let progress_store = ShimIndexerProgressStore::new(vec![
+        let mut watermarks = vec![
             ("primary".to_string(), primary_watermark),
             ("object_snapshot".to_string(), object_snapshot_watermark),
-        ]);
+        ];
+
+        // Add social watermark if enabled (starts from 0, processor will skip already processed)
+        let social_watermark = if social_config.enable_social_indexer && social_config.package_address().is_some() {
+            // Use start_checkpoint if provided, otherwise start from 0
+            let watermark = config.start_checkpoint.unwrap_or(0);
+            watermarks.push(("social".to_string(), watermark));
+            Some(watermark)
+        } else {
+            None
+        };
+
+        let worker_count = if social_watermark.is_some() { 3 } else { 2 };
+        let progress_store = ShimIndexerProgressStore::new(watermarks);
         let mut executor = IndexerExecutor::new(
             progress_store.clone(),
-            2,
+            worker_count,
             DataIngestionMetrics::new(&Registry::new()),
         );
 
@@ -120,6 +173,46 @@ impl Indexer {
             config.checkpoint_download_queue_size,
         );
         executor.register(worker_pool).await?;
+
+        // Register social checkpoint processor if enabled (worker runtime behavior)
+        if social_config.enable_social_indexer {
+            if let Some(package_address) = social_config.package_address() {
+                info!("Initializing social checkpoint processor for package: {}", package_address);
+
+                match crate::social::db::setup_connection_pool(&social_db_config).await {
+                    Ok(social_db) => {
+                        let social_processor = crate::social::blockchain::SocialCheckpointProcessor::new(
+                            social_db.clone(),
+                            package_address,
+                        );
+
+                        let social_worker_pool = WorkerPool::new(
+                            social_processor,
+                            "social".to_string(),
+                            config.checkpoint_download_queue_size,
+                        );
+                        executor.register(social_worker_pool).await?;
+                        info!("Social checkpoint processor registered successfully");
+
+                        // Start the social API server
+                        let api_db = social_db.clone();
+                        let api_config = social_db_config.clone();
+                        spawn_monitored_task!(async move {
+                            if let Err(e) = crate::social::api::start_api_server(api_db, &api_config).await {
+                                error!("Failed to start social API server: {}", e);
+                            }
+                        });
+                        info!("Social API server started");
+                    }
+                    Err(e) => {
+                        warn!("Failed to set up social database connection: {}. Social indexer disabled.", e);
+                    }
+                }
+            } else {
+                warn!("Social indexer enabled but no package address provided. Skipping social indexer.");
+            }
+        }
+
         let (exit_sender, exit_receiver) = oneshot::channel();
         executors.push((executor, exit_receiver));
         exit_senders.push(exit_sender);
@@ -159,7 +252,7 @@ impl Indexer {
                     .sources
                     .data_ingestion_path
                     .clone()
-                    .unwrap_or(tempfile::tempdir().unwrap().into_path()),
+                    .unwrap_or(tempfile::tempdir().unwrap().keep()),
                 config
                     .sources
                     .remote_store_url

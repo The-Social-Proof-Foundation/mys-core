@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 mod gcs;
@@ -126,9 +127,9 @@ fn header_meta(location: &Path, headers: &HeaderMap) -> Result<ObjectMeta> {
 #[cfg(test)]
 mod tests {
     use crate::object_store::http::HttpDownloaderBuilder;
+    use mys_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
     use object_store::path::Path;
     use std::fs;
-    use mys_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
     use tempfile::TempDir;
 
     #[tokio::test]

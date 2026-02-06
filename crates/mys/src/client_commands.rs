@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
@@ -32,15 +33,14 @@ use move_binary_format::CompiledModule;
 use move_bytecode_verifier_meter::Scope;
 use move_core_types::{account_address::AccountAddress, language_storage::TypeTag};
 use move_package::BuildConfig as MoveBuildConfig;
-use prometheus::Registry;
-use serde::Serialize;
-use serde_json::{json, Value};
 use mys_config::verifier_signing_config::VerifierSigningConfig;
 use mys_move::manage_package::resolve_lock_file_path;
 use mys_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use mys_source_validation::{BytecodeSourceVerifier, ValidationMode};
+use prometheus::Registry;
+use serde::Serialize;
+use serde_json::{json, Value};
 
-use shared_crypto::intent::Intent;
 use mys_json::MysJsonValue;
 use mys_json_rpc_types::{
     Coin, DevInspectArgs, DevInspectResults, DryRunTransactionBlockResponse, DynamicFieldInfo,
@@ -64,7 +64,7 @@ use mys_sdk::{
     MYS_TESTNET_URL,
 };
 use mys_types::{
-    base_types::{ObjectID, SequenceNumber, MysAddress},
+    base_types::{MysAddress, ObjectID, SequenceNumber},
     crypto::{EmptySignInfo, SignatureScheme},
     digests::TransactionDigest,
     error::MysError,
@@ -73,14 +73,15 @@ use mys_types::{
     message_envelope::Envelope,
     metrics::BytecodeVerifierMetrics,
     move_package::UpgradeCap,
+    mys_serde,
     object::Owner,
     parse_mys_type_tag,
     signature::GenericSignature,
-    mys_serde,
     transaction::{
         SenderSignedData, Transaction, TransactionData, TransactionDataAPI, TransactionKind,
     },
 };
+use shared_crypto::intent::Intent;
 
 use json_to_table::json_to_table;
 use tabled::{
@@ -241,8 +242,8 @@ pub enum MysClientCommands {
     },
 
     /// Generate new address and keypair with keypair scheme flag {ed25519 | secp256k1 | secp256r1}
-    /// with optional derivation path, default to m/44'/784'/0'/0'/0' for ed25519 or
-    /// m/54'/784'/0'/0/0 for secp256k1 or m/74'/784'/0'/0/0 for secp256r1. Word length can be
+    /// with optional derivation path, default to m/44'/6976'/0'/0'/0' for ed25519 or
+    /// m/54'/6976'/0'/0/0 for secp256k1 or m/74'/6976'/0'/0/0 for secp256r1. Word length can be
     /// { word12 | word15 | word18 | word21 | word24} default to word12 if not specified.
     #[clap(name = "new-address")]
     NewAddress {
@@ -373,6 +374,18 @@ pub enum MysClientCommands {
         /// Also publish transitive dependencies that have not already been published.
         #[clap(long)]
         with_unpublished_dependencies: bool,
+
+        /// Object ID of UpgradeAdminCap to include in transaction (allows bypassing publish restrictions)
+        #[clap(long)]
+        admin_cap: Option<ObjectID>,
+
+        /// Object ID of PackagePublishingAdminCap to include in transaction (allows bypassing publish restrictions)
+        #[clap(long)]
+        publish_admin_cap: Option<ObjectID>,
+
+        /// Object ID of CoinCreationAdminCap to include in transaction (allows coin creation during publish)
+        #[clap(long)]
+        coin_admin_cap: Option<ObjectID>,
     },
 
     /// Split a coin object into multiple coins.
@@ -1016,6 +1029,9 @@ impl MysClientCommands {
                 skip_dependency_verification,
                 verify_deps,
                 with_unpublished_dependencies,
+                admin_cap,
+                publish_admin_cap,
+                coin_admin_cap,
                 opts,
             } => {
                 if build_config.test_mode {
@@ -1084,6 +1100,9 @@ impl MysClientCommands {
                         sender,
                         compiled_modules,
                         dependencies.published.into_values().collect(),
+                        admin_cap,
+                        publish_admin_cap,
+                        coin_admin_cap,
                     )
                     .await?;
                 let result = dry_run_or_execute_or_serialize(
@@ -1353,7 +1372,7 @@ impl MysClientCommands {
 
                 if let Some(gas) = opts.gas {
                     if input_coins.contains(&gas) {
-                        bail!("Gas coin is in input coins of Pay transaction, use PayMys transaction instead!");
+                        bail!("Gas coin is in input coins of Pay transaction, use PayMySo transaction instead!");
                     }
                 }
 
@@ -1371,11 +1390,11 @@ impl MysClientCommands {
             } => {
                 ensure!(
                     !input_coins.is_empty(),
-                    "PayMys transaction requires a non-empty list of input coins"
+                    "PayMySo transaction requires a non-empty list of input coins"
                 );
                 ensure!(
                     !recipients.is_empty(),
-                    "PayMys transaction requires a non-empty list of recipient addresses"
+                    "PayMySo transaction requires a non-empty list of recipient addresses"
                 );
                 ensure!(
                     recipients.len() == amounts.len(),
@@ -1501,8 +1520,8 @@ impl MysClientCommands {
                 let address = get_identity_address(address, context)?;
                 let url = if let Some(url) = url {
                     ensure!(
-                        !url.starts_with("https://faucet.testnet.mys.io"),
-                        "For testnet tokens, please use the Web UI: https://faucet.mys.io/?address={address}"
+                        !url.starts_with("https://faucet.testnet.mysocial.network"),
+                        "For testnet tokens, please use the Web UI: https://faucet.mysocial.network/?address={address}"
                     );
                     url
                 } else {
@@ -1510,9 +1529,9 @@ impl MysClientCommands {
 
                     if let Ok(env) = active_env {
                         let network = match env.rpc.as_str() {
-                            MYS_DEVNET_URL => "https://faucet.devnet.mys.io/v1/gas",
+                            MYS_DEVNET_URL => "https://faucet.devnet.mysocial.network/v1/gas",
                             MYS_TESTNET_URL => {
-                                bail!("For testnet tokens, please use the Web UI: https://faucet.mys.io/?address={address}");
+                                bail!("For testnet tokens, please use the Web UI: https://faucet.mysocial.network/?address={address}");
                             }
                             MYS_LOCAL_NETWORK_URL | MYS_LOCAL_NETWORK_URL_0 => "http://127.0.0.1:9123/gas",
                             _ => bail!("Cannot recognize the active network. Please provide the gas faucet full URL.")
@@ -2072,7 +2091,11 @@ impl Display for MysClientCommandResult {
                 }
 
                 let mut builder = TableBuilder::default();
-                builder.set_header(vec!["gasCoinId", "mistBalance (MIST)", "mysBalance (MYS)"]);
+                builder.set_header(vec![
+                    "gasCoinId",
+                    "mistBalance (MIST)",
+                    "mysoBalance (MySo)",
+                ]);
                 for coin in &gas_coins {
                     builder.push_record(vec![
                         coin.gas_coin_id.to_string(),
@@ -3111,7 +3134,7 @@ async fn check_protocol_version_and_warn(client: &MysClient) -> Result<(), anyho
                 "[warning] CLI's protocol version is {cli_protocol_version}, but the active \
                 network's protocol version is {on_chain_protocol_version}. \
                 \n Consider installing the latest version of the CLI - \
-                https://docs.mys.io/guides/developer/getting-started/mys-install \n\n \
+                https://docs.mysocial.network/guides/developer/getting-started/mys-install \n\n \
                 If publishing/upgrading returns a dependency verification error, then install the \
                 latest CLI version."
             )

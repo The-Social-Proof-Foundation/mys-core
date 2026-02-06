@@ -38,11 +38,11 @@ There are pre-built container images available in [Docker Hub](https://hub.docke
 And pre built `linux/amd64` binaries available in S3 that can be fetched using one of the following methods:
 
 ```shell
-wget https://releases.mys.io/$MYS_SHA/mys-node
+wget https://releases.mysocial.network/$MYS_SHA/mys-node
 ```
 
 ```shell
-curl https://releases.mys.io/$MYS_SHA/mys-node -o mys-node
+curl https://releases.mysocial.network/$MYS_SHA/mys-node -o mys-node
 ```
 
 To build directly from source:
@@ -125,7 +125,7 @@ The following keys are used by MySocial Node:
 
 These are configured in the [MySocial Node configuration file](#configuration).
 
-You can generate each of these via the [mys cli](https://docs.mys.io/guides/developer/getting-started/mys-install).
+You can generate each of these via the [mys cli](https://docs.mysocial.network/guides/developer/getting-started/mys-install).
 
 ```
 $ mys keytool generate bls12381
@@ -201,7 +201,7 @@ curl localhost:1337/logging -d "info"
 
 Public dashboard for network wide visibility:
 
-- [MySocial Testnet Validators](https://metrics.mys.io/public-dashboards/9b841d63c9bf43fe8acec4f0fa991f5e)
+- [MySocial Testnet Validators](https://metrics.mysocial.network/public-dashboards/9b841d63c9bf43fe8acec4f0fa991f5e)
 
 ## Software Updates
 
@@ -236,12 +236,12 @@ p2p-config:
 The following chain operations are executed using the `mys` CLI. This binary is built and provided as a release similar to `mys-node`, examples:
 
 ```shell
-wget https://releases.mys.io/$MYS_SHA/mys
+wget https://releases.mysocial.network/$MYS_SHA/mys
 chmod +x mys
 ```
 
 ```shell
-curl https://releases.mys.io/$MYS_SHA/mys -o mys
+curl https://releases.mysocial.network/$MYS_SHA/mys -o mys
 chmod +x mys
 ```
 
@@ -290,7 +290,7 @@ mys client call --package 0x3 --module mys_system --function rotate_operation_ca
 
 By default the new `Cap` object is transferred to the validator address, which then could be transferred to the new delegatee address. At this point, the old `Cap` becomes invalidated and no longer represents eligibility.
 
-To get the current valid `Cap` object's ID of a validator, use the MySocial Client CLI `mys client objects` command after setting the holder as the active address. Or go to the [explorer](https://explorer.mys.io/object/0x0000000000000000000000000000000000000005) and look for `operation_cap_id` of that validator in the `validators` module.
+To get the current valid `Cap` object's ID of a validator, use the MySocial Client CLI `mys client objects` command after setting the holder as the active address. Or go to the [explorer](https://explorer.mysocial.network/object/0x0000000000000000000000000000000000000005) and look for `operation_cap_id` of that validator in the `validators` module.
 
 ### Updating the Gas Price Survey Quote
 

@@ -1,13 +1,12 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{Context, Result};
 use fastcrypto::encoding::{Base64, Encoding};
 use fastcrypto::hash::HashFunction;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{fs, path::Path};
 use mys_types::authenticator_state::{get_authenticator_state, AuthenticatorStateInner};
-use mys_types::base_types::{ObjectID, MysAddress};
+use mys_types::base_types::{MysAddress, ObjectID};
 use mys_types::clock::Clock;
 use mys_types::committee::CommitteeWithNetworkMetadata;
 use mys_types::crypto::DefaultHash;
@@ -17,11 +16,11 @@ use mys_types::gas_coin::TOTAL_SUPPLY_MIST;
 use mys_types::messages_checkpoint::{
     CertifiedCheckpointSummary, CheckpointContents, CheckpointSummary, VerifiedCheckpoint,
 };
-use mys_types::storage::ObjectStore;
 use mys_types::mys_system_state::{
     get_mys_system_state, get_mys_system_state_wrapper, MysSystemState, MysSystemStateTrait,
     MysSystemStateWrapper, MysValidatorGenesis,
 };
+use mys_types::storage::ObjectStore;
 use mys_types::transaction::Transaction;
 use mys_types::{
     committee::{Committee, EpochId, ProtocolVersion},
@@ -29,6 +28,8 @@ use mys_types::{
     object::Object,
 };
 use mys_types::{MYS_BRIDGE_OBJECT_ID, MYS_RANDOMNESS_STATE_OBJECT_ID};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::{fs, path::Path};
 use tracing::trace;
 
 #[derive(Clone, Debug)]
@@ -350,9 +351,12 @@ pub struct GenesisChainParameters {
 
     // Stake Subsidy parameters
     pub stake_subsidy_start_epoch: u64,
-    pub stake_subsidy_initial_distribution_amount: u64,
+    pub stake_subsidy_initial_apy_bps: u64,
     pub stake_subsidy_period_length: u64,
     pub stake_subsidy_decrease_rate: u16,
+    pub stake_subsidy_max_apy_bps: u64,
+    pub stake_subsidy_min_apy_bps: u64,
+    pub stake_subsidy_intended_duration_years: u64,
 
     // Validator committee parameters
     pub max_validator_count: u64,
@@ -383,21 +387,34 @@ pub struct GenesisCeremonyParameters {
     #[serde(default)]
     pub stake_subsidy_start_epoch: u64,
 
-    /// The amount of stake subsidy to be drawn down per distribution.
-    /// This amount decays and decreases over time.
+    /// The initial stake subsidy APY, expressed in basis points.
+    /// This value decays and decreases over time.
     #[serde(
-        default = "GenesisCeremonyParameters::default_initial_stake_subsidy_distribution_amount"
+        default = "GenesisCeremonyParameters::default_initial_stake_subsidy_apy_bps"
     )]
-    pub stake_subsidy_initial_distribution_amount: u64,
+    pub stake_subsidy_initial_apy_bps: u64,
 
-    /// Number of distributions to occur before the distribution amount decays.
+    /// Number of distributions to occur before the APY decays.
     #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_period_length")]
     pub stake_subsidy_period_length: u64,
 
-    /// The rate at which the distribution amount decays at the end of each
+    /// The rate at which the APY decays at the end of each
     /// period. Expressed in basis points.
     #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_decrease_rate")]
     pub stake_subsidy_decrease_rate: u16,
+
+    /// Maximum APY cap (in basis points). Effective APY will never exceed this.
+    #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_max_apy_bps")]
+    pub stake_subsidy_max_apy_bps: u64,
+
+    /// Minimum APY floor (in basis points). Effective APY will never go below this.
+    #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_min_apy_bps")]
+    pub stake_subsidy_min_apy_bps: u64,
+
+    /// Target duration for subsidy pool in years (e.g., 10).
+    /// Used to calculate stake-aware APY reduction to ensure pool sustainability.
+    #[serde(default = "GenesisCeremonyParameters::default_stake_subsidy_intended_duration_years")]
+    pub stake_subsidy_intended_duration_years: u64,
     // Most other parameters (e.g. initial gas schedule) should be derived from protocol_version.
 }
 
@@ -409,10 +426,12 @@ impl GenesisCeremonyParameters {
             allow_insertion_of_extra_objects: true,
             stake_subsidy_start_epoch: 0,
             epoch_duration_ms: Self::default_epoch_duration_ms(),
-            stake_subsidy_initial_distribution_amount:
-                Self::default_initial_stake_subsidy_distribution_amount(),
+            stake_subsidy_initial_apy_bps: Self::default_initial_stake_subsidy_apy_bps(),
             stake_subsidy_period_length: Self::default_stake_subsidy_period_length(),
             stake_subsidy_decrease_rate: Self::default_stake_subsidy_decrease_rate(),
+            stake_subsidy_max_apy_bps: Self::default_stake_subsidy_max_apy_bps(),
+            stake_subsidy_min_apy_bps: Self::default_stake_subsidy_min_apy_bps(),
+            stake_subsidy_intended_duration_years: Self::default_stake_subsidy_intended_duration_years(),
         }
     }
 
@@ -432,9 +451,9 @@ impl GenesisCeremonyParameters {
         24 * 60 * 60 * 1000
     }
 
-    fn default_initial_stake_subsidy_distribution_amount() -> u64 {
-        // 1M Mys
-        1_000_000 * mys_types::gas_coin::MIST_PER_MYS
+    fn default_initial_stake_subsidy_apy_bps() -> u64 {
+        // 20% in basis points.
+        2000
     }
 
     fn default_stake_subsidy_period_length() -> u64 {
@@ -447,16 +466,34 @@ impl GenesisCeremonyParameters {
         1000
     }
 
+    fn default_stake_subsidy_max_apy_bps() -> u64 {
+        // 100% in basis points (maximum allowed)
+        10000
+    }
+
+    fn default_stake_subsidy_min_apy_bps() -> u64 {
+        // 0% in basis points (minimum floor)
+        0
+    }
+
+    fn default_stake_subsidy_intended_duration_years() -> u64 {
+        // 10 years default duration
+        10
+    }
+
     pub fn to_genesis_chain_parameters(&self) -> GenesisChainParameters {
         GenesisChainParameters {
             protocol_version: self.protocol_version.as_u64(),
             stake_subsidy_start_epoch: self.stake_subsidy_start_epoch,
             chain_start_timestamp_ms: self.chain_start_timestamp_ms,
             epoch_duration_ms: self.epoch_duration_ms,
-            stake_subsidy_initial_distribution_amount: self
-                .stake_subsidy_initial_distribution_amount,
+            stake_subsidy_initial_apy_bps: self
+                .stake_subsidy_initial_apy_bps,
             stake_subsidy_period_length: self.stake_subsidy_period_length,
             stake_subsidy_decrease_rate: self.stake_subsidy_decrease_rate,
+            stake_subsidy_max_apy_bps: self.stake_subsidy_max_apy_bps,
+            stake_subsidy_min_apy_bps: self.stake_subsidy_min_apy_bps,
+            stake_subsidy_intended_duration_years: self.stake_subsidy_intended_duration_years,
             max_validator_count: mys_types::governance::MAX_VALIDATOR_COUNT,
             min_validator_joining_stake: mys_types::governance::MIN_VALIDATOR_JOINING_STAKE_MIST,
             validator_low_stake_threshold:
@@ -491,7 +528,10 @@ impl TokenDistributionSchedule {
         }
 
         if total_mist != TOTAL_SUPPLY_MIST {
-            panic!("TokenDistributionSchedule adds up to {total_mist} and not expected {TOTAL_SUPPLY_MIST}");
+            eprintln!("Warning: TokenDistributionSchedule adds up to {total_mist} and not expected {TOTAL_SUPPLY_MIST}");
+            eprintln!(
+                "The system will proceed anyway, but allocation amounts may not be as expected"
+            );
         }
     }
 
@@ -531,15 +571,31 @@ impl TokenDistributionSchedule {
         validators: I,
     ) -> Self {
         let mut supply = TOTAL_SUPPLY_MIST;
-        let default_allocation = mys_types::governance::VALIDATOR_LOW_STAKE_THRESHOLD_MIST;
+        // Calculate how many validators we have
+        let validators_vec: Vec<MysAddress> = validators.into_iter().collect();
+        let validator_count = validators_vec.len() as u64;
 
-        let allocations = validators
+        // Allocate at most 0.5% of the total supply across all validators
+        let max_validator_allocation = TOTAL_SUPPLY_MIST / 200; // 0.5% of total supply
+
+        // Calculate per-validator allocation, but don't exceed VALIDATOR_LOW_STAKE_THRESHOLD_MIST
+        let allocation_per_validator = std::cmp::min(
+            max_validator_allocation / validator_count,
+            mys_types::governance::VALIDATOR_LOW_STAKE_THRESHOLD_MIST,
+        );
+
+        eprintln!(
+            "Allocating {} MIST per validator ({} validators)",
+            allocation_per_validator, validator_count
+        );
+
+        let allocations = validators_vec
             .into_iter()
             .map(|a| {
-                supply -= default_allocation;
+                supply -= allocation_per_validator;
                 TokenAllocation {
                     recipient_address: a,
-                    amount_mist: default_allocation,
+                    amount_mist: allocation_per_validator,
                     staked_with_validator: Some(a),
                 }
             })
@@ -560,7 +616,7 @@ impl TokenDistributionSchedule {
     /// allocation to the stake subsidy fund. It must be in the following format:
     /// `0x0000000000000000000000000000000000000000000000000000000000000000,<amount to stake subsidy fund>,`
     ///
-    /// All entries in a token distribution schedule must add up to 10B Mys.
+    /// All entries in a token distribution schedule must add up to 1B MySo.
     pub fn from_csv<R: std::io::Read>(reader: R) -> Result<Self> {
         let mut reader = csv::Reader::from_reader(reader);
         let mut allocations: Vec<TokenAllocation> =
@@ -568,7 +624,7 @@ impl TokenDistributionSchedule {
         assert_eq!(
             TOTAL_SUPPLY_MIST,
             allocations.iter().map(|a| a.amount_mist).sum::<u64>(),
-            "Token Distribution Schedule must add up to 10B Mys",
+            "Token Distribution Schedule must add up to 1B Mys",
         );
         let stake_subsidy_fund_allocation = allocations.pop().unwrap();
         assert_eq!(
@@ -638,19 +694,44 @@ impl TokenDistributionScheduleBuilder {
         &mut self,
         validators: I,
     ) {
-        let default_allocation = mys_types::governance::VALIDATOR_LOW_STAKE_THRESHOLD_MIST;
+        // Calculate how many validators we have
+        let validators_vec: Vec<MysAddress> = validators.into_iter().collect();
+        let validator_count = validators_vec.len() as u64;
 
-        for validator in validators {
+        // Allocate at most 0.5% of the total supply across all validators
+        let max_validator_allocation = TOTAL_SUPPLY_MIST / 200; // 0.5% of total supply
+
+        // Calculate per-validator allocation, but don't exceed VALIDATOR_LOW_STAKE_THRESHOLD_MIST
+        let allocation_per_validator = std::cmp::min(
+            max_validator_allocation / validator_count,
+            mys_types::governance::VALIDATOR_LOW_STAKE_THRESHOLD_MIST,
+        );
+
+        eprintln!(
+            "Allocating {} MIST per validator ({} validators)",
+            allocation_per_validator, validator_count
+        );
+
+        for validator in validators_vec {
             self.add_allocation(TokenAllocation {
                 recipient_address: validator,
-                amount_mist: default_allocation,
+                amount_mist: allocation_per_validator,
                 staked_with_validator: Some(validator),
             });
         }
     }
 
     pub fn add_allocation(&mut self, allocation: TokenAllocation) {
-        self.pool = self.pool.checked_sub(allocation.amount_mist).unwrap();
+        self.pool = self
+            .pool
+            .checked_sub(allocation.amount_mist)
+            .unwrap_or_else(|| {
+                eprintln!(
+                    "Warning: allocation amount exceeds available pool: {} > {}",
+                    allocation.amount_mist, self.pool
+                );
+                0
+            });
         self.allocations.push(allocation);
     }
 

@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::{BTreeMap, HashSet};
@@ -472,7 +473,7 @@ pub fn derive_dbmap_utils_general(input: TokenStream) -> TokenStream {
                     None => {
                         let p: std::path::PathBuf = tempfile::tempdir()
                         .expect("Failed to open temporary directory")
-                        .into_path();
+                        .keep();
                         #intermediate_db_map_struct_name::open_tables_impl(primary_path, Some(p), false, metric_conf, global_db_options_override, None, false)
                     }
                 };
@@ -850,7 +851,7 @@ pub fn derive_sallydb_general(input: TokenStream) -> TokenStream {
                             None => {
                                 let p: std::path::PathBuf = tempfile::tempdir()
                                     .expect("Failed to open temporary directory")
-                                    .into_path();
+                                    .keep();
                                 #intermediate_db_map_struct_name::init(SallyDBOptions::RocksDB((b.0, b.1, RocksDBAccessType::Secondary(Some(p)), b.3, None)))
                             }
                         };

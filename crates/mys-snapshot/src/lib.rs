@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 #![allow(dead_code)]
 
@@ -14,15 +15,6 @@ use fastcrypto::hash::MultisetHash;
 use indicatif::MultiProgress;
 use indicatif::ProgressBar;
 use indicatif::ProgressStyle;
-use num_enum::IntoPrimitive;
-use num_enum::TryFromPrimitive;
-use object_store::path::Path;
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use std::time::Duration;
 use mys_core::authority::authority_store_tables::AuthorityPerpetualTables;
 use mys_core::authority::authority_store_tables::LiveObject;
 use mys_core::authority::epoch_start_configuration::EpochFlag;
@@ -39,6 +31,15 @@ use mys_types::messages_checkpoint::ECMHLiveObjectSetDigest;
 use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemStateTrait;
 use mys_types::mys_system_state::get_mys_system_state;
 use mys_types::mys_system_state::MysSystemStateTrait;
+use num_enum::IntoPrimitive;
+use num_enum::TryFromPrimitive;
+use object_store::path::Path;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::time::Instant;
 
 /// The following describes the format of an object file (*.obj) used for persisting live mys objects.

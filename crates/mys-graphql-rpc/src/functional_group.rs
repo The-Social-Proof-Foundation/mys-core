@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::BTreeMap;
@@ -99,7 +100,6 @@ fn functional_groups() -> &'static BTreeMap<(&'static str, &'static str), Functi
             (("Query", "moveCallMetrics"), G::Analytics),
             (("Query", "networkMetrics"), G::Analytics),
             (("Query", "protocolConfig"), G::SystemState),
-            (("Query", "resolveMysnsAddress"), G::NameService),
             (("Query", "packageByName"), G::MoveRegistry),
             (("Query", "typeByName"), G::MoveRegistry),
             (("Subscription", "events"), G::Subscriptions),

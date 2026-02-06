@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright (c) Mysten Labs, Inc.
+# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 
 if ! cosign version &> /dev/null
@@ -17,10 +18,10 @@ echo "[+] Downloading mys binaries for $commit_sha ..."
 curl $url/mys -o mys
 curl $url/mys-indexer -o mys-indexer
 curl $url/mys-node -o mys-node
-curl $url/mys-tool -o mys-tool
+curl $url/myso-tool -o myso-tool
 
 echo "[+] Verifying mys binaries for $commit_sha ..."
 cosign verify-blob --insecure-ignore-tlog --key $pub_key --signature $url/mys.sig mys
 cosign verify-blob --insecure-ignore-tlog --key $pub_key --signature $url/mys-indexer.sig mys-indexer
 cosign verify-blob --insecure-ignore-tlog --key $pub_key --signature $url/mys-node.sig mys-node
-cosign verify-blob --insecure-ignore-tlog --key $pub_key --signature $url/mys-tool.sig mys-tool
+cosign verify-blob --insecure-ignore-tlog --key $pub_key --signature $url/myso-tool.sig myso-tool

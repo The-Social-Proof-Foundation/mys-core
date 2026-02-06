@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority::test_authority_builder::TestAuthorityBuilder;
@@ -7,17 +8,13 @@ use consensus_core::{BlockRef, BlockStatus};
 use fastcrypto::{ed25519::Ed25519KeyPair, traits::KeyPair};
 use fastcrypto_zkp::bn254::zk_login::{parse_jwks, OIDCProvider, ZkLoginInputs};
 use move_core_types::ident_str;
-use rand::{rngs::StdRng, SeedableRng};
-use shared_crypto::intent::{Intent, IntentMessage};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::ops::Deref;
-use mys_types::crypto::{PublicKey, MysSignature, ToFromBytes, ZkLoginPublicIdentifier};
+use mys_types::crypto::{MysSignature, PublicKey, ToFromBytes, ZkLoginPublicIdentifier};
 use mys_types::messages_grpc::HandleSoftBundleCertificatesRequestV3;
 use mys_types::utils::get_one_zklogin_inputs;
 use mys_types::{
     authenticator_state::ActiveJwk,
     base_types::dbg_addr,
-    crypto::{get_key_pair, AccountKeyPair, Signature, MysKeyPair},
+    crypto::{get_key_pair, AccountKeyPair, MysKeyPair, Signature},
     error::{MysError, UserInputError},
     messages_consensus::ConsensusDeterminedVersionAssignments,
     multisig::{MultiSig, MultiSigPublicKey},
@@ -29,6 +26,10 @@ use mys_types::{
     zk_login_authenticator::ZkLoginAuthenticator,
     zk_login_util::DEFAULT_JWK_BYTES,
 };
+use rand::{rngs::StdRng, SeedableRng};
+use shared_crypto::intent::{Intent, IntentMessage};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::ops::Deref;
 
 use crate::authority::authority_test_utils::send_batch_consensus_no_execution;
 use crate::authority::authority_tests::{call_move_, create_gas_objects, publish_object_basics};

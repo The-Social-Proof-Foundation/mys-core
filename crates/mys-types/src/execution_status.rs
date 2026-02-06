@@ -1,13 +1,14 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::base_types::MysAddress;
 use crate::ObjectID;
 use move_binary_format::file_format::{CodeOffset, TypeParameterIndex};
 use move_core_types::language_storage::ModuleId;
+use mys_macros::EnumVariantOrder;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
-use mys_macros::EnumVariantOrder;
 use thiserror::Error;
 
 #[cfg(test)]

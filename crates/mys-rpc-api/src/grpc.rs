@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::proto::types::Bcs;
@@ -32,12 +33,13 @@ impl Services {
             + NamedService
             + Clone
             + Send
+            + Sync
             + 'static,
         S::Future: Send + 'static,
         S::Error: Into<BoxError> + Send,
     {
         self.router = self.router.route_service(
-            &format!("/{}/*rest", S::NAME),
+            &format!("/{}/{{*rest}}", S::NAME),
             svc.map_request(|req: Request<axum::body::Body>| req.map(boxed)),
         );
         self

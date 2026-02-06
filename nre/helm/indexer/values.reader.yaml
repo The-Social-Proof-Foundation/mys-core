@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-args: ["--db-url", "$(DB_URL)", "--rpc-client-url", "https://public-rpc.mainnet.mys.io", "--remote-store-url", "https://storage.googleapis/mysten-mainnet-checkpoints", "--rpc-server-worker"]
+args: ["--db-url", "$(DB_URL)", "--rpc-client-url", "https://public-rpc.mainnet.mysocial.network", "--remote-store-url", "https://storage.googleapis/mysten-mainnet-checkpoints", "--rpc-server-worker"]
 
 podAnnotations:
     app: mys-indexer-reader

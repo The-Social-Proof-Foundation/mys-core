@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::system_state_observer::SystemStateObserver;
@@ -7,13 +8,13 @@ use crate::workloads::{Gas, GasCoinConfig};
 use crate::ValidatorProxy;
 use anyhow::anyhow;
 use async_trait::async_trait;
+use mys_types::gas_coin::MIST_PER_MYS;
 use rand::distributions::{Distribution, Standard};
 use rand::Rng;
 use std::str::FromStr;
 use std::sync::Arc;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
-use mys_types::gas_coin::MIST_PER_MYS;
 
 // This is the maximum gas we will transfer from primary coin into any gas coin
 // for running the benchmark

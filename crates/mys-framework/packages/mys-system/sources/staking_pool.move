@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 #[allow(unused_const)]
@@ -194,7 +195,7 @@ module mys_system::staking_pool {
 
         object::delete(id);
 
-        let latest_exchange_rate = pool_token_exchange_rate_at_epoch(pool, tx_context::epoch(ctx));
+        let latest_exchange_rate = pool_social_proof_token_rate_at_epoch(pool, tx_context::epoch(ctx));
         let fungible_staked_mys_data: &mut FungibleStakedMysData = bag::borrow_mut(
             &mut pool.extra_fields, 
             FungibleStakedMysDataKey {}
@@ -274,7 +275,7 @@ module mys_system::staking_pool {
         object::delete(id);
 
 
-        let exchange_rate_at_staking_epoch = pool_token_exchange_rate_at_epoch(
+        let exchange_rate_at_staking_epoch = pool_social_proof_token_rate_at_epoch(
             pool, 
             stake_activation_epoch
         );
@@ -322,7 +323,7 @@ module mys_system::staking_pool {
         // Check that the stake information matches the pool.
         assert!(staked_mys.pool_id == object::id(pool), EWrongPool);
 
-        let exchange_rate_at_staking_epoch = pool_token_exchange_rate_at_epoch(pool, staked_mys.stake_activation_epoch);
+        let exchange_rate_at_staking_epoch = pool_social_proof_token_rate_at_epoch(pool, staked_mys.stake_activation_epoch);
         let principal_withdraw = unwrap_staked_mys(staked_mys);
         let pool_token_withdraw_amount = get_token_amount(
 		&exchange_rate_at_staking_epoch,
@@ -400,7 +401,7 @@ module mys_system::staking_pool {
         pool_token_withdraw_amount: u64,
         epoch: u64,
     ) : Balance<MYS> {
-        let exchange_rate = pool_token_exchange_rate_at_epoch(pool, epoch);
+        let exchange_rate = pool_social_proof_token_rate_at_epoch(pool, epoch);
         let total_mys_withdraw_amount = get_mys_amount(&exchange_rate, pool_token_withdraw_amount);
         let mut reward_withdraw_amount =
             if (total_mys_withdraw_amount >= principal_withdraw_amount)
@@ -549,7 +550,7 @@ module mys_system::staking_pool {
         (self.stake_activation_epoch == other.stake_activation_epoch)
     }
 
-    public fun pool_token_exchange_rate_at_epoch(pool: &StakingPool, epoch: u64): PoolTokenExchangeRate {
+    public fun pool_social_proof_token_rate_at_epoch(pool: &StakingPool, epoch: u64): PoolTokenExchangeRate {
         // If the pool is preactive then the exchange rate is always 1:1.
         if (is_preactive_at_epoch(pool, epoch)) {
             return initial_exchange_rate()
@@ -626,7 +627,7 @@ module mys_system::staking_pool {
     }
 
     fun check_balance_invariants(pool: &StakingPool, epoch: u64) {
-        let exchange_rate = pool_token_exchange_rate_at_epoch(pool, epoch);
+        let exchange_rate = pool_social_proof_token_rate_at_epoch(pool, epoch);
         // check that the pool token balance and mys balance ratio matches the exchange rate stored.
         let expected = get_token_amount(&exchange_rate, pool.mys_balance);
         let actual = pool.pool_token_balance;
@@ -644,11 +645,11 @@ module mys_system::staking_pool {
     ): u64 {
         let staked_amount = staked_mys_amount(staked_mys);
         let pool_token_withdraw_amount = {
-            let exchange_rate_at_staking_epoch = pool_token_exchange_rate_at_epoch(pool, staked_mys.stake_activation_epoch);
+            let exchange_rate_at_staking_epoch = pool_social_proof_token_rate_at_epoch(pool, staked_mys.stake_activation_epoch);
             get_token_amount(&exchange_rate_at_staking_epoch, staked_amount)
         };
 
-        let new_epoch_exchange_rate = pool_token_exchange_rate_at_epoch(pool, current_epoch);
+        let new_epoch_exchange_rate = pool_social_proof_token_rate_at_epoch(pool, current_epoch);
         let total_mys_withdraw_amount = get_mys_amount(&new_epoch_exchange_rate, pool_token_withdraw_amount);
 
         let mut reward_withdraw_amount =

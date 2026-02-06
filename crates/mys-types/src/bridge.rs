@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::base_types::ObjectID;
@@ -6,10 +7,10 @@ use crate::base_types::SequenceNumber;
 use crate::collection_types::LinkedTableNode;
 use crate::dynamic_field::{get_dynamic_field_from_store, Field};
 use crate::error::MysResult;
-use crate::object::Owner;
-use crate::storage::ObjectStore;
 use crate::mys_serde::BigInt;
 use crate::mys_serde::Readable;
+use crate::object::Owner;
+use crate::storage::ObjectStore;
 use crate::versioned::Versioned;
 use crate::MYS_BRIDGE_OBJECT_ID;
 use crate::{
@@ -366,6 +367,12 @@ impl BridgeTrait for BridgeInnerV1 {
             treasury: BridgeTreasurySummary {
                 supported_tokens,
                 id_token_type_map,
+                native_mys_locked: if self.treasury.native_mys_bootstrapped {
+                    Some(self.treasury.native_mys_locked)
+                } else {
+                    None
+                },
+                native_mys_bootstrapped: Some(self.treasury.native_mys_bootstrapped),
             },
             is_frozen: self.frozen,
         })
@@ -381,6 +388,10 @@ pub struct MoveTypeBridgeTreasury {
     pub id_token_type_map: VecMap<u8, String>,
     // Bag for storing potential new token waiting to be approved
     pub waiting_room: Bag,
+    // Balance for locked native MYS tokens
+    pub native_mys_locked: u64,
+    // Flag to track if native MYS has been bootstrapped
+    pub native_mys_bootstrapped: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, Default, PartialEq, Eq)]
@@ -433,6 +444,10 @@ pub struct BridgeLimiterSummary {
 pub struct BridgeTreasurySummary {
     pub supported_tokens: Vec<(String, BridgeTokenMetadata)>,
     pub id_token_type_map: Vec<(u8, String)>,
+    #[schemars(with = "Option<BigInt<u64>>")]
+    #[serde_as(as = "Option<Readable<BigInt<u64>, _>>")]
+    pub native_mys_locked: Option<u64>,
+    pub native_mys_bootstrapped: Option<bool>,
 }
 
 /// Rust version of the Move committee::CommitteeMember type.

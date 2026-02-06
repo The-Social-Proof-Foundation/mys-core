@@ -1,12 +1,12 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use move_binary_format::file_format::AbilitySet;
 use move_core_types::{identifier::IdentStr, resolver::ResourceResolver};
 use move_vm_types::loaded_data::runtime_types::Type;
-use serde::Deserialize;
 use mys_types::{
-    base_types::{ObjectID, SequenceNumber, MysAddress},
+    base_types::{MysAddress, ObjectID, SequenceNumber},
     coin::Coin,
     error::{ExecutionError, ExecutionErrorKind, MysError},
     execution_status::CommandArgumentError,
@@ -14,6 +14,7 @@ use mys_types::{
     storage::{BackingPackageStore, ChildObjectResolver, StorageView},
     transfer::Receiving,
 };
+use serde::Deserialize;
 
 pub trait MysResolver: ResourceResolver<Error = MysError> + BackingPackageStore {
     fn as_backing_package_store(&self) -> &dyn BackingPackageStore;

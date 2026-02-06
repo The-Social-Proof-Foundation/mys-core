@@ -1,11 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
     error::Error,
     types::{address::Address, mys_address::MysAddress, validator::Validator},
 };
-use std::{collections::BTreeMap, time::Duration};
 use mys_indexer::db::ConnectionPoolConfig;
 use mys_indexer::{apis::GovernanceReadApi, indexer_reader::IndexerReader};
 use mys_json_rpc_types::Stake as RpcStakedMys;
@@ -13,6 +13,7 @@ use mys_types::{
     governance::StakedMys as NativeStakedMys,
     mys_system_state::mys_system_state_summary::MysSystemStateSummary as NativeMysSystemStateSummary,
 };
+use std::{collections::BTreeMap, time::Duration};
 
 pub(crate) struct PgManager {
     pub inner: IndexerReader,
@@ -97,7 +98,6 @@ impl PgManager {
 pub(crate) fn convert_to_validators(
     system_state_at_requested_epoch: NativeMysSystemStateSummary,
     checkpoint_viewed_at: u64,
-    requested_for_epoch: u64,
 ) -> Vec<Validator> {
     let at_risk = BTreeMap::from_iter(system_state_at_requested_epoch.at_risk_validators);
     let reports = BTreeMap::from_iter(system_state_at_requested_epoch.validator_report_records);
@@ -123,7 +123,6 @@ pub(crate) fn convert_to_validators(
                 at_risk,
                 report_records,
                 checkpoint_viewed_at,
-                requested_for_epoch,
             }
         })
         .collect()

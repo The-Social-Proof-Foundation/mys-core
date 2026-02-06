@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use itertools::Itertools;
@@ -14,6 +15,7 @@ use mys_types::mys_system_state::PoolTokenExchangeRate;
 pub(crate) fn calculate_apy(
     stake_subsidy_start_epoch: u64,
     rates: &[(u64, PoolTokenExchangeRate)],
+    epoch_duration_ms: u64,
 ) -> f64 {
     // we start the apy calculation from the epoch when the stake subsidy starts
     let exchange_rates = rates
@@ -28,6 +30,14 @@ pub(crate) fn calculate_apy(
         .collect::<Vec<_>>();
     let exchange_rates_size = exchange_rates.len();
 
+    // Calculate epochs per year based on actual epoch duration
+    // 365 days * 24 hours * 60 minutes * 60 seconds * 1000 milliseconds = milliseconds per year
+    let epochs_per_year = if epoch_duration_ms > 0 {
+        (365_u64 * 24 * 60 * 60 * 1000) as f64 / epoch_duration_ms as f64
+    } else {
+        365.0 // fallback to 365 if epoch_duration_ms is 0 (shouldn't happen in practice)
+    };
+
     // we need at least 2 data points to calculate apy
     if exchange_rates_size >= 2 {
         // rates are sorted by epoch in descending order.
@@ -36,7 +46,7 @@ pub(crate) fn calculate_apy(
         let er_e_1 = exchange_rates.iter().dropping_back(1);
         let apys = er_e
             .zip(er_e_1)
-            .map(apy_rate)
+            .map(|(rate_e, rate_e_1)| apy_rate(rate_e, rate_e_1, epochs_per_year))
             .filter(|apy| *apy > 0.0 && *apy < 0.1)
             .take(30)
             .collect::<Vec<_>>();
@@ -48,11 +58,14 @@ pub(crate) fn calculate_apy(
     }
 }
 
-// APY_e = (ER_e+1 / ER_e) ^ 365
+// APY_e = (ER_e+1 / ER_e) ^ epochs_per_year - 1
+// This calculates the annualized return based on the epoch-to-epoch rate change
 pub(crate) fn apy_rate(
-    (rate_e, rate_e_1): (&&PoolTokenExchangeRate, &&PoolTokenExchangeRate),
+    rate_e: &PoolTokenExchangeRate,
+    rate_e_1: &PoolTokenExchangeRate,
+    epochs_per_year: f64,
 ) -> f64 {
-    (rate_e.rate() / rate_e_1.rate()).powf(365.0) - 1.0
+    (rate_e.rate() / rate_e_1.rate()).powf(epochs_per_year) - 1.0
 }
 
 #[cfg(test)]
@@ -60,7 +73,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use mys_json_rpc::governance_api::ValidatorExchangeRates;
-    use mys_types::base_types::{ObjectID, MysAddress};
+    use mys_types::base_types::{MysAddress, ObjectID};
 
     use super::*;
 
@@ -89,8 +102,9 @@ mod tests {
             );
         });
 
+        // Use default epoch duration of 24 hours (86400000 ms) for test
         for (address, (validator, rates)) in &validator_exchange_rates {
-            let apy = calculate_apy(20, &rates.rates);
+            let apy = calculate_apy(20, &rates.rates, 86400000);
             println!("{} {}: {}", validator, address, apy);
             assert!(apy < 0.07)
         }

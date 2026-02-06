@@ -97,8 +97,6 @@ contract BridgeConfigTest is BridgeBaseTest {
     }
 
     function testAddTokensAddressFailure() public {
-        MockUSDC _newToken = new MockUSDC();
-
         // Create update tokens payload
         bool _isNative = true;
         uint8 _numTokenIDs = 1;
@@ -374,7 +372,7 @@ contract BridgeConfigTest is BridgeBaseTest {
             "BridgeConfig.sol",
             abi.encodeCall(
                 BridgeConfig.initialize,
-                (address(committee), chainID, supportedTokens, tokenPrices, tokenIds, mysDecimals, _supportedDestinationChains)
+                (address(committee), chainID, supportedTokens, tokenPrices, tokenIds, mysDecimals, _supportedDestinationChains, address(0))
             ),
             opts
         );
@@ -463,7 +461,7 @@ contract BridgeConfigTest is BridgeBaseTest {
             "BridgeConfig.sol",
             abi.encodeCall(
                 BridgeConfig.initialize,
-                (address(committee), 12, supportedTokens, tokenPrices, tokenIds, mysDecimals, _supportedDestinationChains)
+                (address(committee), 12, supportedTokens, tokenPrices, tokenIds, mysDecimals, _supportedDestinationChains, address(0))
             ),
             opts
         );

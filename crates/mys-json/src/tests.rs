@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::path::Path;
@@ -16,7 +17,7 @@ use test_fuzz::runtime::num_traits::ToPrimitive;
 use mys_framework::BuiltInFramework;
 use mys_move_build::BuildConfig;
 use mys_types::base_types::{
-    ObjectID, MysAddress, TransactionDigest, STD_ASCII_MODULE_NAME, STD_ASCII_STRUCT_NAME,
+    MysAddress, ObjectID, TransactionDigest, STD_ASCII_MODULE_NAME, STD_ASCII_STRUCT_NAME,
     STD_OPTION_MODULE_NAME, STD_OPTION_STRUCT_NAME,
 };
 use mys_types::dynamic_field::derive_dynamic_field_id;

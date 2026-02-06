@@ -1,14 +1,15 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use criterion::*;
 use fastcrypto::encoding::Encoding;
 use fastcrypto::encoding::Hex;
+use mys_types::nitro_attestation::{parse_nitro_attestation, verify_nitro_attestation};
 use p384::ecdsa::signature::Signer;
 use p384::ecdsa::signature::Verifier;
 use p384::ecdsa::{Signature, SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
-use mys_types::nitro_attestation::{parse_nitro_attestation, verify_nitro_attestation};
 
 fn nitro_attestation_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("attestation");

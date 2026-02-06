@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::str::FromStr;
@@ -6,8 +7,8 @@ use std::str::FromStr;
 use crate::error::Error;
 use async_graphql::*;
 use move_core_types::account_address::AccountAddress;
+use mys_types::base_types::{MysAddress as NativeMysAddress, ObjectID};
 use serde::{Deserialize, Serialize};
-use mys_types::base_types::{ObjectID, MysAddress as NativeMysAddress};
 
 const MYS_ADDRESS_LENGTH: usize = 32;
 

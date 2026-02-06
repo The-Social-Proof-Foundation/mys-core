@@ -5,9 +5,9 @@ the data to persist between transactions.
 
 For more details, see the MySocial documentation on
 
-- [The Object Model](https://docs.mys.io/concepts/object-model)
-- [Move Rules for Objects](https://docs.mys.io/concepts/mys-move-concepts#global-unique)
-- [Transferring Objects](https://docs.mys.io/concepts/transfers)
+- [The Object Model](https://docs.mysocial.network/concepts/object-model)
+- [Move Rules for Objects](https://docs.mysocial.network/concepts/mys-move-concepts#global-unique)
+- [Transferring Objects](https://docs.mysocial.network/concepts/transfers)
 
 ## Object Rules
 

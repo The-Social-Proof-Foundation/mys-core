@@ -1,12 +1,13 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::authority::authority_store_tables::LiveObject;
 use crate::authority::AuthorityStore;
-use std::time::Instant;
 use mys_types::base_types::ObjectID;
 use mys_types::object::Object;
 use mys_types::storage::error::Error as StorageError;
+use std::time::Instant;
 use tracing::info;
 
 /// Make `LiveObjectIndexer`s for parallel indexing of the live object set

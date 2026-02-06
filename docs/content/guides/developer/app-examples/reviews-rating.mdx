@@ -306,7 +306,7 @@ The Wallet Kit comes with a pre-built React.js component called `ConnectButton` 
 Place the `ConnectButton` in the navigation bar for users to connect their wallets:
 
 ```ts title='src/app/components/navbar/Navbar.tsx'
-import { ConnectButton } from '@mysten/wallet-kit';
+import { ConnectButton } from '@socialproof/wallet-kit';
 import { usePathname } from 'next/navigation';
 
 import { useAuthentication } from '@/app/hooks/useAuthentication';
@@ -385,8 +385,8 @@ export interface Service {
 In the frontend, you might need to execute a transaction block in multiple places, hence it's better to extract the transaction execution logic and reuse it everywhere. Let's examine the execute transaction hook.
 
 ```ts title='src/app/hooks/useSignAndExecuteTransaction.ts'
-import { Transaction } from '@mysten/mys/transactions';
-import { useWalletKit } from '@mysten/wallet-kit';
+import { Transaction } from '@socialproof/mys/transactions';
+import { useWalletKit } from '@socialproof/wallet-kit';
 import { toast } from 'react-hot-toast';
 
 import { useMySocial } from './useMySocial';

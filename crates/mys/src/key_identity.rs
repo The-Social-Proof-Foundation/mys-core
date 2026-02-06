@@ -1,13 +1,14 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{fmt::Display, str::FromStr};
 
 use anyhow::Error;
-use serde::Serialize;
 use mys_keys::keystore::{AccountKeystore, Keystore};
 use mys_sdk::wallet_context::WalletContext;
 use mys_types::base_types::MysAddress;
+use serde::Serialize;
 
 /// An address or an alias associated with a key in the wallet
 /// This is used to distinguish between an address or an alias,

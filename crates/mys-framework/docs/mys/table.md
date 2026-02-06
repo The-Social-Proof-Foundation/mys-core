@@ -3,7 +3,7 @@ title: Module `mys::table`
 ---
 
 A table is a map-like collection. But unlike a traditional collection, it's keys and values are
-not stored within the <code><a href="../mys/table.md#mys_table_Table">Table</a></code> value, but instead are stored using MySocial's object system. The
+not stored within the <code><a href="../mys/table.md#mys_table_Table">Table</a></code> value, but instead are stored using Mys's object system. The
 <code><a href="../mys/table.md#mys_table_Table">Table</a></code> struct acts only as a handle into the object system to retrieve those keys and values.
 Note that this means that <code><a href="../mys/table.md#mys_table_Table">Table</a></code> values with exactly the same key-value mapping will not be
 equal, with <code>==</code>, at runtime. For example
@@ -33,16 +33,16 @@ assert!(&table1 != &table2);
 -  [Function `drop`](#mys_table_drop)
 
 
-<pre><code><b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
-<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
-<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
-<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
-<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
-<b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
+<pre><code><b>use</b> <a href="../mys/address.md#mys_address">mys::address</a>;
 <b>use</b> <a href="../mys/dynamic_field.md#mys_dynamic_field">mys::dynamic_field</a>;
 <b>use</b> <a href="../mys/hex.md#mys_hex">mys::hex</a>;
 <b>use</b> <a href="../mys/object.md#mys_object">mys::object</a>;
 <b>use</b> <a href="../mys/tx_context.md#mys_tx_context">mys::tx_context</a>;
+<b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
+<b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/option.md#std_option">std::option</a>;
+<b>use</b> <a href="../std/string.md#std_string">std::string</a>;
+<b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
 

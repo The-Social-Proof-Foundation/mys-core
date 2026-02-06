@@ -159,7 +159,7 @@ the `/construction/parse` endpoint is used for checking transaction correctness 
     "amount": {
         "value": "-100000",
         "currency": {
-            "symbol": "MYS",
+            "symbol": "MySo",
             "decimals": 9
         }
     },
@@ -181,7 +181,7 @@ the `/construction/parse` endpoint is used for checking transaction correctness 
     "amount": {
         "value": "100000",
         "currency": {
-            "symbol": "MYS",
+            "symbol": "MySo",
             "decimals": 9
         }
     }

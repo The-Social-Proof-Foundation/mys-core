@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 #![warn(
     future_incompatible,
@@ -7,7 +8,7 @@
     rust_2021_compatibility
 )]
 
-use base_types::{SequenceNumber, MysAddress};
+use base_types::{MysAddress, SequenceNumber};
 use move_binary_format::file_format::{AbilitySet, SignatureToken};
 use move_binary_format::CompiledModule;
 use move_bytecode_utils::resolve_struct;
@@ -68,6 +69,9 @@ pub mod mock_checkpoint_builder;
 pub mod move_package;
 pub mod multisig;
 pub mod multisig_legacy;
+pub mod mys_sdk_types_conversions;
+pub mod mys_serde;
+pub mod mys_system_state;
 pub mod nitro_attestation;
 pub mod object;
 pub mod passkey_authenticator;
@@ -77,9 +81,6 @@ pub mod randomness_state;
 pub mod signature;
 pub mod signature_verification;
 pub mod storage;
-pub mod mys_sdk_types_conversions;
-pub mod mys_serde;
-pub mod mys_system_state;
 pub mod supported_protocol_versions;
 pub mod test_checkpoint_data_builder;
 pub mod traffic_control;
@@ -101,7 +102,7 @@ macro_rules! built_in_ids {
             pub const $id: ObjectID = ObjectID::from_address($addr);
         )*
     }
-}
+} 
 
 macro_rules! built_in_pkgs {
     ($($addr:ident / $id:ident = $init:expr);* $(;)?) => {
@@ -118,7 +119,9 @@ built_in_pkgs! {
     MYS_FRAMEWORK_ADDRESS / MYS_FRAMEWORK_PACKAGE_ID = 0x2;
     MYS_SYSTEM_ADDRESS / MYS_SYSTEM_PACKAGE_ID = 0x3;
     BRIDGE_ADDRESS / BRIDGE_PACKAGE_ID = 0xb;
-    DEEPBOOK_ADDRESS / DEEPBOOK_PACKAGE_ID = 0xdee9;
+    ORDERBOOK_ADDRESS / ORDERBOOK_PACKAGE_ID = 0x0b0c;
+    MYS_SOCIAL_ADDRESS / MYS_SOCIAL_PACKAGE_ID = 0x50c1;
+    MYDATA_ADDRESS / MYDATA_PACKAGE_ID = 0xda7a;
 }
 
 built_in_ids! {
@@ -141,7 +144,7 @@ pub fn mys_framework_address_concat_string(suffix: &str) -> String {
 /// Parses `s` as an address. Valid formats for addresses are:
 ///
 /// - A 256bit number, encoded in decimal, or hexadecimal with a leading "0x" prefix.
-/// - One of a number of pre-defined named addresses: std, mys, mys_system, deepbook.
+/// - One of a number of pre-defined named addresses: std, mys, mys_system, orderbook.
 ///
 /// Parsing succeeds if and only if `s` matches one of these formats exactly, with no remaining
 /// suffix. This function is intended for use within the authority codebases.
@@ -189,10 +192,12 @@ pub fn parse_mys_type_tag(s: &str) -> anyhow::Result<TypeTag> {
 /// Resolve well-known named addresses into numeric addresses.
 pub fn resolve_address(addr: &str) -> Option<AccountAddress> {
     match addr {
-        "deepbook" => Some(DEEPBOOK_ADDRESS),
+        "orderbook" => Some(ORDERBOOK_ADDRESS),
         "std" => Some(MOVE_STDLIB_ADDRESS),
         "mys" => Some(MYS_FRAMEWORK_ADDRESS),
         "mys_system" => Some(MYS_SYSTEM_ADDRESS),
+        "mys_social" => Some(MYS_SOCIAL_ADDRESS),
+        "mydata" => Some(MYDATA_ADDRESS),
         "bridge" => Some(BRIDGE_ADDRESS),
         _ => None,
     }
@@ -441,32 +446,39 @@ mod tests {
     #[test]
     fn test_dynamic_field_short_addr() {
         let result = parse_mys_struct_tag(
-            "0x2::dynamic_field::Field<address, 0xdee9::custodian_v2::Account<0x234::coin::COIN>>",
+            "0x2::dynamic_field::Field<address, 0x0b0c::custodian::Account<0x234::coin::COIN>>",
         )
         .expect("should not error");
 
         let expected = expect![
-            "0x2::dynamic_field::Field<address, 0xdee9::custodian_v2::Account<0x234::coin::COIN>>"
+            "0x2::dynamic_field::Field<address, 0x0b0c::custodian::Account<0x234::coin::COIN>>"
         ];
         expected.assert_eq(&result.to_string());
 
-        let expected = expect!["0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x000000000000000000000000000000000000000000000000000000000000dee9::custodian_v2::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"];
+        let expected = expect!["0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x0000000000000000000000000000000000000000000000000000000000000b0c::custodian::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"];
         expected.assert_eq(&result.to_canonical_string(/* with_prefix */ true));
     }
 
     #[test]
     fn test_dynamic_field_long_addr() {
         let result = parse_mys_struct_tag(
-            "0x2::dynamic_field::Field<address, 0xdee9::custodian_v2::Account<0x234::coin::COIN>>",
+            "0x2::dynamic_field::Field<address, 0x0b0c::custodian::Account<0x234::coin::COIN>>",
         )
         .expect("should not error");
 
         let expected = expect![
-            "0x2::dynamic_field::Field<address, 0xdee9::custodian_v2::Account<0x234::coin::COIN>>"
+            "0x2::dynamic_field::Field<address, 0x0b0c::custodian::Account<0x234::coin::COIN>>"
         ];
         expected.assert_eq(&result.to_string());
 
-        let expected = expect!["0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x000000000000000000000000000000000000000000000000000000000000dee9::custodian_v2::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"];
+        let expected = expect!["0x0000000000000000000000000000000000000000000000000000000000000002::dynamic_field::Field<address,0x0000000000000000000000000000000000000000000000000000000000000b0c::custodian::Account<0x0000000000000000000000000000000000000000000000000000000000000234::coin::COIN>>"];
+        expected.assert_eq(&result.to_canonical_string(/* with_prefix */ true));
+    }
+
+    #[test]
+    fn test_mys_social_module_id() {
+        let result = parse_mys_module_id("0x50c1::mys-social::create").expect("should not error");
+        let expected = expect!["0x50c1::mys-social::create"];
         expected.assert_eq(&result.to_canonical_string(/* with_prefix */ true));
     }
 }

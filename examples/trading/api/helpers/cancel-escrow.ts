@@ -1,7 +1,8 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-import { TransactionBlock } from '@mysten/mys/transactions';
+import { TransactionBlock } from '@socialproof/mys/transactions';
 
 import { CONFIG } from '../config';
 import { getActiveAddress, signAndExecute } from '../mys-utils';

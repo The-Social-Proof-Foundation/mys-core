@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::middleware::{self, Next};
@@ -40,14 +41,14 @@ pub const HOST_PORT_ENV: &str = "HOST_PORT";
 pub const MYS_SOURCE_VALIDATION_VERSION_HEADER: &str = "x-mys-source-validation-version";
 pub const MYS_SOURCE_VALIDATION_VERSION: &str = "0.1";
 
-pub const MAINNET_URL: &str = "https://fullnode.mainnet.mys.io:443";
-pub const TESTNET_URL: &str = "https://fullnode.testnet.mys.io:443";
-pub const DEVNET_URL: &str = "https://fullnode.devnet.mys.io:443";
+pub const MAINNET_URL: &str = "https://fullnode.mainnet.mysocial.network:443";
+pub const TESTNET_URL: &str = "https://fullnode.testnet.mysocial.network:443";
+pub const DEVNET_URL: &str = "https://fullnode.devnet.mysocial.network:443";
 pub const LOCALNET_URL: &str = "http://127.0.0.1:9000";
 
-pub const MAINNET_WS_URL: &str = "wss://rpc.mainnet.mys.io:443";
-pub const TESTNET_WS_URL: &str = "wss://rpc.testnet.mys.io:443";
-pub const DEVNET_WS_URL: &str = "wss://rpc.devnet.mys.io:443";
+pub const MAINNET_WS_URL: &str = "wss://rpc.mainnet.mysocial.network:443";
+pub const TESTNET_WS_URL: &str = "wss://rpc.testnet.mysocial.network:443";
+pub const DEVNET_WS_URL: &str = "wss://rpc.devnet.mysocial.network:443";
 pub const LOCALNET_WS_URL: &str = "ws://127.0.0.1:9000";
 
 pub const WS_PING_INTERVAL: Duration = Duration::from_millis(20_000);

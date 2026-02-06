@@ -1,4 +1,5 @@
 // Copyright (c) Mysten Labs, Inc.
+// Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::fwmap::Firewall;
@@ -30,17 +31,20 @@ pub struct ServerConfig {
 
 pub async fn serve(c: ServerConfig) -> std::io::Result<()> {
     // setup our graceful shutdown
-    let handle = axum_server::Handle::new();
+    let handle: axum_server::Handle<SocketAddr> = axum_server::Handle::new();
     // Spawn a task to gracefully shutdown server.
     tokio::spawn(shutdown_signal(c.ctx, handle.clone()));
-    axum_server::Server::from_tcp(c.listener)
+    
+    // axum-server 0.8 from_listener accepts tokio::net::TcpListener
+    let listener = tokio::net::TcpListener::from_std(c.listener)?;
+    axum_server::Server::from_listener(listener)
         .handle(handle)
         .serve(c.router.into_make_service_with_connect_info::<SocketAddr>())
         .await
 }
 
 /// Configure our graceful shutdown scenarios
-pub async fn shutdown_signal(ctx: CancellationToken, h: axum_server::Handle) {
+pub async fn shutdown_signal(ctx: CancellationToken, h: axum_server::Handle<SocketAddr>) {
     // Listen for the SIGTERM signal
     let mut sigterm =
         nix_signal(SignalKind::terminate()).expect("Failed to create SIGTERM signal handler");
