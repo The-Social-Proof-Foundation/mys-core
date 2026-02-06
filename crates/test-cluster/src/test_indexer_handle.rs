@@ -49,6 +49,7 @@ impl IndexerHandle {
             None,
             None,
             None,
+            None,
         )
         .await;
         cancellation_tokens.push(writer_token.drop_guard());

@@ -14,6 +14,7 @@ use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 use futures::FutureExt;
 use url::Url;
+use rustls;
 
 use crate::db::ConnectionConfig;
 use crate::db::ConnectionPoolConfig;
@@ -151,6 +152,11 @@ async fn establish_connection(
     url: &str,
     config: ConnectionConfig,
 ) -> Result<AsyncPgConnection, ConnectionError> {
+    // Install default crypto provider for rustls (required for rustls 0.23+).
+    // install_default() returns Err if a provider is already installed, which is
+    // expected when establishing multiple connections.
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     let mut connection = AsyncPgConnection::establish(url).await?;
 
     config

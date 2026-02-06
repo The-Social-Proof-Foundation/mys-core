@@ -25,7 +25,7 @@ uuid = { version = "1.0", features = ["v4"] }
 sha2 = "0.10"
 hex = "0.4"
 prometheus = "0.13"
-axum = "0.7"
+axum.workspace = true
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 sled = "0.34"

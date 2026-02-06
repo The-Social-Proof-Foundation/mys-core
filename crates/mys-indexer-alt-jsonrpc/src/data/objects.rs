@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, future::Future, sync::Arc};
 
 use anyhow::Context as _;
 use async_graphql::dataloader::{DataLoader, Loader};
@@ -19,52 +19,55 @@ use super::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct VersionedObjectKey(pub ObjectID, pub u64);
 
-#[async_trait::async_trait]
 impl Loader<VersionedObjectKey> for Reader {
     type Value = StoredObject;
     type Error = Arc<ReadError>;
 
-    async fn load(
+    fn load(
         &self,
         keys: &[VersionedObjectKey],
-    ) -> Result<HashMap<VersionedObjectKey, StoredObject>, Self::Error> {
-        use kv_objects::dsl as o;
+    ) -> impl Future<Output = Result<HashMap<VersionedObjectKey, StoredObject>, Self::Error>> + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            use kv_objects::dsl as o;
 
-        if keys.is_empty() {
-            return Ok(HashMap::new());
+            if keys_vec.is_empty() {
+                return Ok(HashMap::new());
+            }
+
+            let mut conn = self_clone.connect().await.map_err(Arc::new)?;
+
+            let mut query = o::kv_objects.into_boxed();
+
+            for VersionedObjectKey(id, version) in &keys_vec {
+                query = query.or_filter(
+                    o::object_id
+                        .eq(id.into_bytes())
+                        .and(o::object_version.eq(*version as i64)),
+                );
+            }
+
+            let objects: Vec<StoredObject> = conn.results(query).await.map_err(Arc::new)?;
+
+            let key_to_stored: HashMap<_, _> = objects
+                .iter()
+                .map(|stored| {
+                    let id = &stored.object_id[..];
+                    let version = stored.object_version as u64;
+                    ((id, version), stored)
+                })
+                .collect();
+
+            Ok(keys_vec
+                .iter()
+                .filter_map(|key| {
+                    let slice: &[u8] = key.0.as_ref();
+                    let stored = *key_to_stored.get(&(slice, key.1))?;
+                    Some((*key, stored.clone()))
+                })
+                .collect())
         }
-
-        let mut conn = self.connect().await.map_err(Arc::new)?;
-
-        let mut query = o::kv_objects.into_boxed();
-
-        for VersionedObjectKey(id, version) in keys {
-            query = query.or_filter(
-                o::object_id
-                    .eq(id.into_bytes())
-                    .and(o::object_version.eq(*version as i64)),
-            );
-        }
-
-        let objects: Vec<StoredObject> = conn.results(query).await.map_err(Arc::new)?;
-
-        let key_to_stored: HashMap<_, _> = objects
-            .iter()
-            .map(|stored| {
-                let id = &stored.object_id[..];
-                let version = stored.object_version as u64;
-                ((id, version), stored)
-            })
-            .collect();
-
-        Ok(keys
-            .iter()
-            .filter_map(|key| {
-                let slice: &[u8] = key.0.as_ref();
-                let stored = *key_to_stored.get(&(slice, key.1))?;
-                Some((*key, stored.clone()))
-            })
-            .collect())
     }
 }
 

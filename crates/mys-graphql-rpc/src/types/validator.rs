@@ -11,6 +11,7 @@ use mys_indexer::apis::GovernanceReadApi;
 use mys_types::committee::EpochId;
 use mys_types::mys_system_state::PoolTokenExchangeRate;
 use std::collections::{BTreeMap, HashMap};
+use std::future::Future;
 
 use mys_types::base_types::MysAddress as NativeMysAddress;
 
@@ -42,7 +43,6 @@ type EpochStakeSubsidyStarted = u64;
 ///
 /// It automatically filters the exchange rate table to only include data for the epochs that are
 /// less than or equal to the requested epoch.
-#[async_trait::async_trait]
 impl Loader<u64> for Db {
     type Value = (
         EpochStakeSubsidyStarted,
@@ -50,78 +50,84 @@ impl Loader<u64> for Db {
     );
     type Error = Error;
 
-    async fn load(
+    fn load(
         &self,
         keys: &[u64],
-    ) -> Result<
-        HashMap<
-            u64,
-            (
-                EpochStakeSubsidyStarted,
-                BTreeMap<NativeMysAddress, Vec<(EpochId, PoolTokenExchangeRate)>>,
-            ),
+    ) -> impl Future<
+        Output = Result<
+            HashMap<
+                u64,
+                (
+                    EpochStakeSubsidyStarted,
+                    BTreeMap<NativeMysAddress, Vec<(EpochId, PoolTokenExchangeRate)>>,
+                ),
+            >,
+            Error,
         >,
-        Error,
-    > {
-        let latest_mys_system_state = self
-            .inner
-            .get_latest_mys_system_state()
-            .await
-            .map_err(|_| Error::Internal("Failed to fetch latest Mys system state".to_string()))?;
-        let governance_api = GovernanceReadApi::new(self.inner.clone());
-        let exchange_rates = exchange_rates(&governance_api, &latest_mys_system_state)
-            .await
-            .map_err(|e| Error::Internal(format!("Error fetching exchange rates. {e}")))?;
-        let mut results = BTreeMap::new();
+    > + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            let latest_mys_system_state = self_clone
+                .inner
+                .get_latest_mys_system_state()
+                .await
+                .map_err(|_| Error::Internal("Failed to fetch latest Mys system state".to_string()))?;
+            let governance_api = GovernanceReadApi::new(self_clone.inner.clone());
+            let exchange_rates = exchange_rates(&governance_api, &latest_mys_system_state)
+                .await
+                .map_err(|e| Error::Internal(format!("Error fetching exchange rates. {e}")))?;
+            let mut results = BTreeMap::new();
 
-        // The requested epoch is the epoch for which we want to compute the APY. For the current
-        // ongoing epoch we cannot compute an APY, so we compute it for epoch - 1.
-        // First need to check if that requested epoch is not the current running one. If it is,
-        // then subtract one as the APY cannot be computed for a running epoch.
-        // If no epoch is passed in the key, then we default to the latest epoch - 1
-        // for the same reasons as above.
-        let epoch_to_filter_out = if let Some(epoch) = keys.first() {
-            if epoch == &latest_mys_system_state.epoch {
-                if *epoch > 0 {
-                    *epoch - 1
+            // The requested epoch is the epoch for which we want to compute the APY. For the current
+            // ongoing epoch we cannot compute an APY, so we compute it for epoch - 1.
+            // First need to check if that requested epoch is not the current running one. If it is,
+            // then subtract one as the APY cannot be computed for a running epoch.
+            // If no epoch is passed in the key, then we default to the latest epoch - 1
+            // for the same reasons as above.
+            let epoch_to_filter_out = if let Some(epoch) = keys_vec.first() {
+                if epoch == &latest_mys_system_state.epoch {
+                    if *epoch > 0 {
+                        *epoch - 1
+                    } else {
+                        0 // Don't subtract if epoch is already 0
+                    }
+                } else {
+                    *epoch
+                }
+            } else {
+                if latest_mys_system_state.epoch > 0 {
+                    latest_mys_system_state.epoch - 1
                 } else {
                     0 // Don't subtract if epoch is already 0
                 }
-            } else {
-                *epoch
-            }
-        } else {
-            if latest_mys_system_state.epoch > 0 {
-                latest_mys_system_state.epoch - 1
-            } else {
-                0 // Don't subtract if epoch is already 0
-            }
-        };
+            };
 
-        // filter the exchange rates to only include data for the epochs that are less than or
-        // equal to the requested epoch. This enables us to get historical exchange rates accurately.
-        for er in exchange_rates {
-            results.insert(
-                er.address,
-                er.rates
-                    .into_iter()
-                    .filter(|(epoch, _)| epoch <= &epoch_to_filter_out)
-                    .collect(),
+            // filter the exchange rates to only include data for the epochs that are less than or
+            // equal to the requested epoch. This enables us to get historical exchange rates accurately.
+            for er in exchange_rates {
+                results.insert(
+                    er.address,
+                    er.rates
+                        .into_iter()
+                        .filter(|(epoch, _)| epoch <= &epoch_to_filter_out)
+                        .collect(),
+                );
+            }
+
+            let requested_epoch = match keys_vec.first() {
+                Some(x) => *x,
+                None => latest_mys_system_state.epoch,
+            };
+
+            let mut r = HashMap::new();
+            r.insert(
+                requested_epoch,
+                (latest_mys_system_state.stake_subsidy_start_epoch, results),
             );
+
+            Ok(r)
         }
-
-        let requested_epoch = match keys.first() {
-            Some(x) => *x,
-            None => latest_mys_system_state.epoch,
-        };
-
-        let mut r = HashMap::new();
-        r.insert(
-            requested_epoch,
-            (latest_mys_system_state.stake_subsidy_start_epoch, results),
-        );
-
-        Ok(r)
     }
 }
 

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::{BTreeSet, HashMap};
+use std::future::Future;
 use std::sync::Arc;
 
 use async_graphql::dataloader::Loader;
@@ -50,38 +51,44 @@ impl PackageStore for DbPackageStore {
     }
 }
 
-#[async_trait::async_trait]
 impl Loader<PackageKey> for Db {
     type Value = Arc<Package>;
     type Error = PackageResolverError;
 
-    async fn load(&self, keys: &[PackageKey]) -> Result<HashMap<PackageKey, Arc<Package>>> {
-        use packages::dsl;
+    fn load(
+        &self,
+        keys: &[PackageKey],
+    ) -> impl Future<Output = std::result::Result<HashMap<PackageKey, Arc<Package>>, PackageResolverError>> + Send {
+        let self_clone = self.clone();
+        let keys_vec = keys.to_vec();
+        async move {
+            use packages::dsl;
 
-        let ids: BTreeSet<_> = keys.iter().map(|PackageKey(id)| id.to_vec()).collect();
-        let stored_packages: Vec<StoredPackage> = self
-            .execute(move |conn| {
-                async move {
-                    conn.results(move || {
-                        dsl::packages.filter(dsl::package_id.eq_any(ids.iter().cloned()))
-                    })
-                    .await
-                }
-                .scope_boxed()
-            })
-            .await
-            .map_err(|e| PackageResolverError::Store {
-                store: STORE,
-                error: e.to_string(),
-            })?;
+            let ids: BTreeSet<_> = keys_vec.iter().map(|PackageKey(id)| id.to_vec()).collect();
+            let stored_packages: Vec<StoredPackage> = self_clone
+                .execute(move |conn| {
+                    async move {
+                        conn.results(move || {
+                            dsl::packages.filter(dsl::package_id.eq_any(ids.iter().cloned()))
+                        })
+                        .await
+                    }
+                    .scope_boxed()
+                })
+                .await
+                .map_err(|e| PackageResolverError::Store {
+                    store: STORE,
+                    error: e.to_string(),
+                })?;
 
-        let mut id_to_package = HashMap::new();
-        for stored_package in stored_packages {
-            let move_package = bcs::from_bytes(&stored_package.move_package)?;
-            let package = Package::read_from_package(&move_package)?;
-            id_to_package.insert(PackageKey(*move_package.id()), Arc::new(package));
+            let mut id_to_package = HashMap::new();
+            for stored_package in stored_packages {
+                let move_package = bcs::from_bytes(&stored_package.move_package)?;
+                let package = Package::read_from_package(&move_package)?;
+                id_to_package.insert(PackageKey(*move_package.id()), Arc::new(package));
+            }
+
+            Ok(id_to_package)
         }
-
-        Ok(id_to_package)
     }
 }

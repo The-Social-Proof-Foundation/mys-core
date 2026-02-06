@@ -28,6 +28,7 @@ use mys_config::{
     MYS_BENCHMARK_GENESIS_GAS_KEYSTORE_FILENAME, MYS_GENESIS_FILENAME, MYS_KEYSTORE_FILENAME,
 };
 use mys_faucet::{create_wallet_context, start_faucet, AppState, FaucetConfig, SimpleFaucet};
+use mys_indexer::config::SocialIndexerConfig;
 use mys_indexer::test_utils::{
     start_indexer_jsonrpc_for_testing, start_indexer_writer_for_testing,
 };
@@ -60,6 +61,7 @@ use mys_types::crypto::{MysKeyPair, SignatureScheme, ToFromBytes};
 use tempfile::tempdir;
 use tracing;
 use tracing::info;
+use rustls;
 
 const CONCURRENCY_LIMIT: usize = 30;
 const DEFAULT_EPOCH_DURATION_MS: u64 = 60_000;
@@ -637,6 +639,10 @@ async fn start(
     no_full_node: bool,
     committee_size: Option<usize>,
 ) -> Result<(), anyhow::Error> {
+    // Install default crypto provider for rustls (required for rustls 0.23+)
+    // This must be done before any TLS operations, including database connections that might use TLS
+    // install_default() returns Err(CryptoProvider) if already installed, which is fine - ignore it
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
     if force_regenesis {
         ensure!(
             config.is_none(),
@@ -839,6 +845,16 @@ async fn start(
         )
         .await;
         info!("Indexer started in reader mode");
+        
+        // Auto-enable social indexer when --with-indexer is used
+        // Hardcoded framework address: 0x50c1
+        let social_config = SocialIndexerConfig {
+            enable_social_indexer: true,
+            mysocial_package_address: Some("0x50c1".to_string()),
+            social_database_url: None, // Uses main DB by default
+            social_db_max_connections: 10,
+        };
+        
         start_indexer_writer_for_testing(
             pg_address.clone(),
             None,
@@ -848,6 +864,7 @@ async fn start(
             None,
             None, /* start_checkpoint */
             None, /* end_checkpoint */
+            Some(social_config), // Pass enabled social config
         )
         .await;
         info!("Indexer started in writer mode");

@@ -33,12 +33,13 @@ impl Services {
             + NamedService
             + Clone
             + Send
+            + Sync
             + 'static,
         S::Future: Send + 'static,
         S::Error: Into<BoxError> + Send,
     {
         self.router = self.router.route_service(
-            &format!("/{}/*rest", S::NAME),
+            &format!("/{}/{{*rest}}", S::NAME),
             svc.map_request(|req: Request<axum::body::Body>| req.map(boxed)),
         );
         self

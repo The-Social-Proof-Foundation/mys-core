@@ -1,5 +1,6 @@
 -- Add watermarks table for stream processing checkpoint tracking
 -- This table tracks processing watermarks to ensure reliable stream processing
+--
 -- NOTE: The main indexer already creates a watermarks table with a 'pipeline' column.
 -- This migration only creates the table if it doesn't exist, and does NOT drop
 -- the existing main indexer watermarks table.
@@ -9,10 +10,11 @@ DO $$
 BEGIN
     -- Check if watermarks table exists with the main indexer schema (has 'pipeline' column)
     IF EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name = 'watermarks' 
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'watermarks'
         AND column_name = 'pipeline'
+        AND table_schema = 'public'
     ) THEN
         -- Main indexer's watermarks table already exists, skip creating social version
         RAISE NOTICE 'watermarks table already exists with main indexer schema (pipeline column), skipping social migration';

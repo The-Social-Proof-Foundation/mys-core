@@ -5,6 +5,7 @@
 use mysten_metrics::init_metrics;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
+use rustls;
 
 use mys_json_rpc_types::MysTransactionBlockResponse;
 use mys_pg_db::temp::{get_available_port, TempDb};
@@ -31,6 +32,12 @@ pub async fn start_indexer_jsonrpc_for_testing(
     json_rpc_url: String,
     cancel: Option<CancellationToken>,
 ) -> (JoinHandle<Result<(), IndexerError>>, CancellationToken) {
+    // Install default crypto provider for rustls (required for rustls 0.23+)
+    // This MUST be done before ANY database connections are created, including ConnectionPool::new()
+    // because connection pools may establish connections that use TLS
+    // install_default() returns Err(CryptoProvider) if already installed, which is fine - ignore it
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     let token = cancel.unwrap_or_default();
 
     // Reduce the connection pool size to 10 for testing
@@ -47,6 +54,7 @@ pub async fn start_indexer_jsonrpc_for_testing(
     let registry = prometheus::Registry::default();
     init_metrics(&registry);
 
+    // Create connection pool AFTER rustls is installed
     let pool = ConnectionPool::new(db_url.parse().unwrap(), pool_config)
         .await
         .unwrap();
@@ -77,6 +85,7 @@ pub async fn start_indexer_writer_for_testing(
     cancel: Option<CancellationToken>,
     start_checkpoint: Option<u64>,
     end_checkpoint: Option<u64>,
+    social_config: Option<SocialIndexerConfig>,
 ) -> (
     PgIndexerStore,
     JoinHandle<Result<(), IndexerError>>,
@@ -91,6 +100,7 @@ pub async fn start_indexer_writer_for_testing(
         start_checkpoint,
         end_checkpoint,
         false,
+        social_config,
     )
     .await
 }
@@ -107,11 +117,17 @@ pub async fn start_indexer_writer_for_testing_with_mvr_mode(
     start_checkpoint: Option<u64>,
     end_checkpoint: Option<u64>,
     mvr_mode: bool,
+    social_config: Option<SocialIndexerConfig>,
 ) -> (
     PgIndexerStore,
     JoinHandle<Result<(), IndexerError>>,
     CancellationToken,
 ) {
+    // Install default crypto provider for rustls (required for rustls 0.23+)
+    // This must be done before any TLS operations
+    // install_default() returns Err(CryptoProvider) if already installed, which is fine - ignore it
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     let token = cancel.unwrap_or_default();
     let snapshot_config = snapshot_config.unwrap_or(SnapshotLagConfig {
         snapshot_min_lag: 5,
@@ -166,7 +182,7 @@ pub async fn start_indexer_writer_for_testing_with_mvr_mode(
                 retention_config,
                 token_clone,
                 mvr_mode,
-                SocialIndexerConfig::default(),
+                social_config.unwrap_or_default(),
             )
             .await
         })
@@ -307,6 +323,7 @@ pub async fn set_up_on_mvr_mode(
         None,     /* start_checkpoint */
         None,     /* end_checkpoint */
         mvr_mode, /* mvr_mode */
+        None,     /* social_config */
     )
     .await;
     (server_handle, pg_store, pg_handle, database)
@@ -341,6 +358,7 @@ pub async fn set_up_with_start_and_end_checkpoints(
         None, /* cancel */
         Some(start_checkpoint),
         Some(end_checkpoint),
+        None, /* social_config */
     )
     .await;
     (server_handle, pg_store, pg_handle, database)

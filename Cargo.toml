@@ -269,19 +269,19 @@ arrow-buffer = "54"
 arrow-schema = "54"
 arc-swap = { version = "1.5.1", features = ["serde"] }
 assert_cmd = "2.0.6"
-async-graphql = "=7.0.1"
-async-graphql-axum = "=7.0.1"
-async-graphql-value = "=7.0.1"
+async-graphql = "7.2"
+async-graphql-axum = "7.2"
+async-graphql-value = "7.2"
 async-recursion = "1.0.4"
 async-stream = "0.3.6"
-async-trait = "0.1.61"
+async-trait = "0.1"
 atomic_float = "0.1"
 aws-config = "0.56"
 aws-sdk-ec2 = "0.29.0"
 aws-sdk-dynamodb = "0.29.0"
 aws-smithy-http = "0.56"
 aws-smithy-runtime-api = "0.56"
-axum = { version = "0.7", default-features = false, features = [
+axum = { version = "0.8", default-features = false, features = [
     "macros",
     "tokio",
     "http1",
@@ -293,8 +293,8 @@ axum = { version = "0.7", default-features = false, features = [
     "query",
     "ws",
 ] }
-axum-extra = { version = "0.9", features = ["typed-header"] }
-axum-server = { version = "0.7.1", default-features = false, features = [
+axum-extra = { version = "0.12", features = ["typed-header", "with-rejection"] }
+axum-server = { version = "0.8.0", default-features = false, features = [
     "tls-rustls",
 ] }
 backoff = { version = "0.4.0", features = [
@@ -375,7 +375,7 @@ humantime = "2.1.0"
 # Remove this once home 0.5.13+ is released with fixed rust-version metadata
 home = "=0.5.11"
 hyper = "1.8"
-hyper-util = "0.1.18"
+hyper-util = "0.1.20"
 hyper-rustls = { version = "0.27", default-features = false, features = [
     "webpki-roots",
     "http1",

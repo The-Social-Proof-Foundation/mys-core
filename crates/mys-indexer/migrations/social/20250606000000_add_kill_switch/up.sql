@@ -1,6 +1,5 @@
 -- Enhanced migration for emergency kill switch functionality only
--- Transaction wrapper for atomic operations
-BEGIN;
+-- Note: Diesel migrations run in transactions automatically, so BEGIN/COMMIT are not needed
 
 -- Create specific table for token exchange configuration (kill switch)
 CREATE TABLE IF NOT EXISTS token_exchange_config (
@@ -46,5 +45,3 @@ CREATE TABLE IF NOT EXISTS token_exchange_events (
 CREATE INDEX IF NOT EXISTS idx_token_exchange_events_type ON token_exchange_events(event_type);
 CREATE INDEX IF NOT EXISTS idx_token_exchange_events_created_at ON token_exchange_events(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_token_exchange_events_event_id ON token_exchange_events(event_id);
-
-COMMIT;

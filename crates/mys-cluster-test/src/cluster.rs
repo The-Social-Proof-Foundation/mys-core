@@ -241,6 +241,7 @@ impl Cluster for LocalNewCluster {
                 None, /* cancel */
                 None, /* start_checkpoint */
                 None, /* end_checkpoint */
+                None, /* social_config */
             )
             .await;
             cancellation_tokens.push(writer_token.drop_guard());

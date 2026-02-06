@@ -137,6 +137,7 @@ pub async fn start_network_cluster() -> NetworkCluster {
         None, /* start_checkpoint */
         None, /* end_checkpoint */
         true,
+        None, /* social_config */
     )
     .await;
 
@@ -195,6 +196,7 @@ pub async fn serve_executor(
         None,
         None,
         true,
+        None, /* social_config */
     )
     .await;
 
